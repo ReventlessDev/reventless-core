@@ -14,7 +14,20 @@ It's based on the following technologies:
 ```
 npm install -g bs-platform
 ```
+
 ### 2. Install Dependencies
 ```
 npm install
 ```
+
+### 3. Build Project
+```
+npm run build
+```
+
+Or in development:
+```
+npm run start
+```
+
+If you use Visual Studio Code, use the [reason-vscode](https://marketplace.visualstudio.com/items?itemName=jaredly.reason-vscode) plugin, which auto-builds the project on save by default.
