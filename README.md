@@ -32,7 +32,7 @@ npm run start
 
 If you use Visual Studio Code, use the [reason-vscode](https://marketplace.visualstudio.com/items?itemName=jaredly.reason-vscode) plugin, which auto-builds the project on save by default.
 
-### Test Project
+### 4. Test Project
 Run Test-Suite once:
 ```
 npm run test
