@@ -45,7 +45,7 @@ npm run dev
 
 The Bucklescript bindings for [Jest](https://jestjs.io/) are used as dev-dependency: [bs-jest](https://github.com/glennsl/bs-jest)
 
-### Test example
+#### Test Example
 This tests the function f in the file/module Try:
 ```
 // __tests__/try_test.re
