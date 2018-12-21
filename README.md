@@ -43,5 +43,34 @@ Run Test-Suite continously on file changes:
 npm run dev
 ```
 
+The Bucklescript bindings for [Jest](https://jestjs.io/) are used as dev-dependency: [bs-jest](https://github.com/glennsl/bs-jest)
+
+### Test example
+This tests the function f in the file/module Try:
+```
+// __tests__/try_test.re
+open Jest
+
+describe("Try should return...", () => {
+    open Expect
+    test("the same text given a count of 0", () => {
+        expect(Try.f("test", 0)) |> toBe("test")
+    })
+
+    test("the text doubled given a count of 1", () => {
+        expect(Try.f("test", 1)) |> toBe("testtest")
+    })
+})
+```
+File Try:
+```
+// src/Try.re
+let rec f = (text: string, count: int) => {
+    if(count <= 0) text
+    else f(text ++ text, count - 1)
+}
+```
+
+
 ## Ressources
 * [Project Wiki](https://gitlab.com/atos-austria/reason/reventless/wikis/home)
