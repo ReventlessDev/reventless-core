@@ -1,5 +1,7 @@
 # Reventless
-Reventless is supposed to be a Library / Toolkit based on the following technologies:
+Reventless is a toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.
+
+It's based on the following technologies:
 
 * [Serverless](https://serverless.com)
 * [ReasonML](https://reasonml.github.io/)
