@@ -74,3 +74,29 @@ let rec f = (text: string, count: int) => {
 
 ## Ressources
 * [Project Wiki](https://gitlab.com/atos-austria/reason/reventless/wikis/home)
+
+
+# ---------- PREVIOUSLY ----------
+# RE-PULUMI-AWS
+A minimal Pulumi Application written completely in ReasonML.
+
+## Setup
+Copy your Pulumi Access Token from your profile preferences into the `.env` file.
+
+## Development
+Use an [Editor-Plugin](https://reasonml.github.io/docs/en/editor-plugins) for best experience.  
+Run `npm install` once, first.  
+
+If you don't use an Editor-Plugin, call `npm run build` to transpile ReasonML code to JavaScript once. Or `npm start` to run a watcher.
+
+## Deployment
+Before running `npm run deploy`, make sure to update the `.env` file.
+
+This command will run 3 Shell-Scripts:
+
+  * `./scripts/pre-deploy.sh`: Move everything in `./node_modules/bs-platform` to a tmp-directory, but the JS-lib
+  * `./scripts/pulumi-up.sh`: Read `PULUMI_ACCESS_TOKEN` and `PULUMI_STACK` from the `.env` file and run `pulumi up` to actually deploy (This script will be only executed, if `pre-deploy` exited successfully.)
+  * `./scripts/post-deploy.sh`: Move `bs-platform` back into place from tmp-directory.
+
+
+**NOTE**: The `./scripts/pulumi-up.sh` exports the environment variable `PULUMI_ACCESS_TOKEN` to make it to the Pulumi CLI available. Export another value and set a `#` before the apropriate line inside`.env` to use another token.
