@@ -4,6 +4,7 @@
 .env
 npm-debug.log
 /lib/bs/
+/lib/ocaml/
 /node_modules/
 src/*.bs.js
 tmp-bs-platform
