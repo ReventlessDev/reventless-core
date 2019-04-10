@@ -75,6 +75,23 @@ let rec f = (text: string, count: int) => {
 ## Ressources
 * [Project Wiki](https://gitlab.com/atos-austria/reason/reventless/wikis/home)
 
+## Setup environment for local development of actual project and framework side by side
+### Setup the new project
+* add a new "deploy key" in [gitlab](https://gitlab.com/atos-austria/reason/reventless/settings/repository/deploy_token/create#js-deploy-tokens)
+* add "private repository" with the new deploy-token to the new project: `"reventless": "git+https://USER-TOKEN:PASSWORD-TOKEN@gitlab.com/atos-austria/reason/reventless.git"`
+* run `npm install` for the new project
+
+### Setup the framework project to use the local version in the new version
+* clone the framework repo into a local directory
+* run `npm link` inside the framework's directory
+* run `npm link reventless` inside the new project's directory
+
+## Use the repo in the new project
+[Medium Post](https://medium.com/dailyjs/how-to-use-npm-link-7375b6219557)
+
+* run `npm uninstall --no-save reventless && npm install` inside the new project's directory
+* OPTIONAL: to delete the global symlink of the framework run `npm uninstall` inside the framework's directory
+
 
 # ---------- PREVIOUSLY ----------
 # RE-PULUMI-AWS
