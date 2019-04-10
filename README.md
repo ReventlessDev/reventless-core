@@ -25,12 +25,13 @@ npm install
 npm run build
 ```
 
-Or in development:
+Or in development, to run a watcher:
 ```
 npm run start
 ```
 
 If you use Visual Studio Code, use the [reason-vscode](https://marketplace.visualstudio.com/items?itemName=jaredly.reason-vscode) plugin, which auto-builds the project on save by default.
+Otherwise, see https://reasonml.github.io/docs/en/editor-plugins.
 
 ### 4. Test Project
 Run Test-Suite once:
@@ -44,6 +45,8 @@ npm run dev
 ```
 
 The Bucklescript bindings for [Jest](https://jestjs.io/) are used as dev-dependency: [bs-jest](https://github.com/glennsl/bs-jest)
+
+
 
 #### Test Example
 This tests the function f in the file/module Try:
@@ -71,9 +74,17 @@ let rec f = (text: string, count: int) => {
 }
 ```
 
+### 5. Deployment
+Before running `npm run deploy`, make sure to update the `.env` file. (Copy your Pulumi Access Token from your profile preferences into the `.env` file.)
 
-## Ressources
-* [Project Wiki](https://gitlab.com/atos-austria/reason/reventless/wikis/home)
+This command will run 3 Shell-Scripts:
+  * `./scripts/pre-deploy.sh`: Move everything in `./node_modules/bs-platform` to a tmp-directory, but the JS-lib
+  * `./scripts/pulumi-up.sh`: Read `PULUMI_ACCESS_TOKEN` and `PULUMI_STACK` from the `.env` file and run `pulumi up` to actually deploy (This script will be only executed, if `pre-deploy` exited successfully.)
+  * `./scripts/post-deploy.sh`: Move `bs-platform` back into place from tmp-directory.
+
+
+**NOTE**: The `./scripts/pulumi-up.sh` exports the environment variable `PULUMI_ACCESS_TOKEN` to make it to the Pulumi CLI available. Export another value and set a `#` before the apropriate line inside`.env` to use another token.
+
 
 ## Setup environment for local development of actual project and framework side by side
 ### Setup the new project
@@ -86,34 +97,11 @@ let rec f = (text: string, count: int) => {
 * run `npm link` inside the framework's directory
 * run `npm link reventless` inside the new project's directory
 
-## Use the repo in the new project
+## Go back to using the actual framwork-repo as dependency
 [Medium Post](https://medium.com/dailyjs/how-to-use-npm-link-7375b6219557)
 
 * run `npm uninstall --no-save reventless && npm install` inside the new project's directory
 * OPTIONAL: to delete the global symlink of the framework run `npm uninstall` inside the framework's directory
 
-
-# ---------- PREVIOUSLY ----------
-# RE-PULUMI-AWS
-A minimal Pulumi Application written completely in ReasonML.
-
-## Setup
-Copy your Pulumi Access Token from your profile preferences into the `.env` file.
-
-## Development
-Use an [Editor-Plugin](https://reasonml.github.io/docs/en/editor-plugins) for best experience.  
-Run `npm install` once, first.  
-
-If you don't use an Editor-Plugin, call `npm run build` to transpile ReasonML code to JavaScript once. Or `npm start` to run a watcher.
-
-## Deployment
-Before running `npm run deploy`, make sure to update the `.env` file.
-
-This command will run 3 Shell-Scripts:
-
-  * `./scripts/pre-deploy.sh`: Move everything in `./node_modules/bs-platform` to a tmp-directory, but the JS-lib
-  * `./scripts/pulumi-up.sh`: Read `PULUMI_ACCESS_TOKEN` and `PULUMI_STACK` from the `.env` file and run `pulumi up` to actually deploy (This script will be only executed, if `pre-deploy` exited successfully.)
-  * `./scripts/post-deploy.sh`: Move `bs-platform` back into place from tmp-directory.
-
-
-**NOTE**: The `./scripts/pulumi-up.sh` exports the environment variable `PULUMI_ACCESS_TOKEN` to make it to the Pulumi CLI available. Export another value and set a `#` before the apropriate line inside`.env` to use another token.
+## Ressources
+* [Project Wiki](https://gitlab.com/atos-austria/reason/reventless/wikis/home)
