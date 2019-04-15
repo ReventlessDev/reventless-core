@@ -26,11 +26,11 @@
   "author": "Atos",
   "license": "proprietary",
   "dependencies": {
-    "bs-platform": "^4.0.18"
+    "bs-platform": "^5.0.2"
   },
   "devDependencies": {
     "@pulumi/aws": "^0.18.1",
     "@pulumi/cloud-aws": "^0.18.0",
-    "@glennsl/bs-jest": "^0.4.6"
+    "@glennsl/bs-jest": "^0.4.8"
   }
 }
