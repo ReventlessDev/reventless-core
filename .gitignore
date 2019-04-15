@@ -2,6 +2,8 @@
 .merlin
 .bsb.lock
 .env
+.history
+.vscode
 npm-debug.log
 /lib/bs/
 /lib/ocaml/
