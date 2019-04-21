@@ -9,7 +9,11 @@
     "clean": "bsb -clean-world",
     "deploy": "./scripts/deploy.sh",
     "test": "jest",
-    "dev": "jest --watchAll"
+    "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
+    "dev": "jest --watchAll",
+    "watch:bsb": "bsb -make-world -w",
+    "watch:jest": "jest --coverage --watchAll",
+    "watch:screen": "screen -c .screenrc"
   },
   "repository": {
     "type": "git",
