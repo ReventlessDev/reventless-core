@@ -8,6 +8,6 @@ npm-debug.log
 /lib
 /lib/ocaml/
 /node_modules/
-src/*.bs.js
+*.bs.js
 tmp-bs-platform
 coverage
