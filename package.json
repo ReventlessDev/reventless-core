@@ -2,7 +2,7 @@
   "name": "reventless",
   "version": "0.0.1",
   "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
-  "main": "lib/js/src/Index.bs.js",
+  "main": "lib/js/src/Example_AWS.bs.js",
   "scripts": {
     "build": "bsb -make-world",
     "start": "bsb -make-world -w",
