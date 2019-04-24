@@ -2,7 +2,6 @@
   "name": "reventless",
   "version": "0.0.1",
   "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
-  "main": "examples/src/Example_Infrastructure.bs.js",
   "scripts": {
     "build": "bsb -make-world",
     "start": "bsb -make-world -w",
@@ -30,10 +29,9 @@
   ],
   "author": "Atos",
   "license": "proprietary",
-  "dependencies": {
-    "bs-platform": "^5.0.2"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "bs-platform": "^5.0.2",
     "@pulumi/aws": "^0.18.1",
     "@pulumi/cloud-aws": "^0.18.0",
     "@glennsl/bs-jest": "^0.4.8"
