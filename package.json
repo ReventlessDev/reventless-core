@@ -31,9 +31,11 @@
   "license": "proprietary",
   "dependencies": {},
   "devDependencies": {
-    "bs-platform": "^5.0.2",
     "@pulumi/aws": "^0.18.1",
     "@pulumi/cloud-aws": "^0.18.0",
     "@glennsl/bs-jest": "^0.4.8"
+  },
+  "peerDependencies": {
+    "bs-platform": "^5.0.2"
   }
 }
