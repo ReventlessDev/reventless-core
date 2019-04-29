@@ -30,9 +30,10 @@
   ],
   "author": "Atos",
   "license": "proprietary",
-  "dependencies": {},
+  "dependencies": {
+    "@ryb73/decco": "0.0.12"
+  },
   "devDependencies": {
-    "@ryb73/decco": "0.0.12",
     "@glennsl/bs-jest": "^0.4.8",
     "@pulumi/aws": "^0.18.2",
     "@pulumi/cloud-aws": "^0.18.0"
