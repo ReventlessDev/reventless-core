@@ -39,6 +39,6 @@
     "@pulumi/cloud-aws": "^0.18.0"
   },
   "peerDependencies": {
-    "bs-platform": "^5.0.3"
+    "bs-platform": "^5.0.4"
   }
 }
