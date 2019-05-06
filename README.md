@@ -76,6 +76,12 @@ let rec f = (text: string, count: int) => {
 
 ### 5. Deployment
 Before running `npm run deploy`, make sure to update the `.env` file. (Copy your Pulumi Access Token from your profile preferences into the `.env` file.)
+You also need to set the environment variable like `export AWS_SDK_LOAD_CONFIG=1` and hava a file at `~/.aws/config`:
+```
+[default]
+region = eu-west-1
+output = json
+```
 
 This command will run 3 Shell-Scripts:
   * `./scripts/pre-deploy.sh`: Move everything in `./node_modules/bs-platform` to a tmp-directory, but the JS-lib
