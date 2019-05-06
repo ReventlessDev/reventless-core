@@ -98,6 +98,13 @@ This command will run 3 Shell-Scripts:
 * run `npm link reventless` inside the new project's directory
 
 ## Go back to using the actual framwork-repo as dependency
+### Unlink
+[Medium Post](https://medium.com/@alexishevia/the-magic-behind-npm-link-d94dcb3a81af)
+
+* run `npm unlink --no-save reventless` in the new project's directory
+* run `npm unlink` in the framework's directory
+
+### Alternative
 [Medium Post](https://medium.com/dailyjs/how-to-use-npm-link-7375b6219557)
 
 * run `npm uninstall --no-save reventless && npm install` inside the new project's directory
