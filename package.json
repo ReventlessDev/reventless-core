@@ -32,7 +32,7 @@
   "license": "proprietary",
   "dependencies": {
     "@ryb73/decco": "0.0.12",
-    "bs-guid": "^1.0.0"
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
