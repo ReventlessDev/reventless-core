@@ -35,14 +35,14 @@
     "@ryb73/decco": "0.0.12",
     "csv-parse": "^4.4.1",
     "hash-obj": "^2.0.0",
-    "let-anything": "^1.0.3",
     "rationale": "^0.1.10",
     "uuid": "^3.3.2"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
     "@pulumi/aws": "^0.18.3",
-    "@pulumi/cloud-aws": "^0.18.0"
+    "@pulumi/cloud-aws": "^0.18.0",
+    "let-anything": "^1.0.3"
   },
   "peerDependencies": {
     "bs-platform": "^5.0.4"
