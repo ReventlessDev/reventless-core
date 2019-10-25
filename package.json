@@ -37,7 +37,6 @@
     "csv-parse": "^4.4.1",
     "fast-csv": "chrwnsk/fast-csv#build",
     "hash-obj": "^2.0.0",
-    "rationale": "^0.1.10",
     "ssh2": "^0.8.5",
     "uuid": "^3.3.2"
   },
