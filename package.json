@@ -43,7 +43,8 @@
     "@glennsl/bs-jest": "^0.4.8",
     "@pulumi/pulumi": "^1.4.0",
     "@pulumi/aws": "^1.7.0",
-    "@pulumi/cloud-aws": "^0.18.0"
+    "@pulumi/cloud-aws": "^0.18.0",
+    "aws-sdk": "^2.556.0"
   },
   "peerDependencies": {
     "bs-platform": "^5.0.4"
