@@ -38,7 +38,8 @@
     "fast-csv": "chrwnsk/fast-csv#build",
     "hash-obj": "^2.0.0",
     "ssh2": "^0.8.5",
-    "uuid": "^3.3.2"
+    "uuid": "^3.3.2",
+    "wonka": "^3.2.1"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
