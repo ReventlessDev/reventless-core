@@ -15,7 +15,8 @@
     "watch:bsb": "bsb -make-world -w",
     "watch:jest": "jest --coverage --watchAll",
     "watch:screen": "screen -c .screenrc",
-    "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
+    "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json",
+    "docs": "docsify serve docs -o"
   },
   "repository": {
     "type": "git",
@@ -47,6 +48,7 @@
     "aws-sdk": "^2.556.0"
   },
   "peerDependencies": {
-    "bs-platform": "^5.0.4"
+    "bs-platform": "^5.0.4",
+    "docsify-cli": "^4.3.0"
   }
 }
