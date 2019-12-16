@@ -10,12 +10,25 @@ It's based on the following technologies:
 
 ## Getting started
 ### 1. Install BuckleScript (which comes bundled with reason)
+Currently used and supported version is bs-platform 5.2.1.
+
 [Reason Docs](https://reasonml.github.io/docs/en/installation)
 ```
 npm install -g bs-platform
 ```
 
-### 2. Install Dependencies
+### 2.a. Install Node 12.x
+We use `fnm` to manage the locally installed node-version.  
+The currently used/tested node version is stated in the `.node-version` file.
+
+#### [fnm](https://github.com/Schniz/fnm)
+> Fast and simple Node.js version manager, built in native ReasonML
+
+*Note: Currently this tool has no windows-support and is unlikely to be added in the near future.*
+
+Go to your reventless-directory and execute [`fnm use`](https://github.com/Schniz/fnm#fnm-use-version) in a shell to just set you node version to the one stated in `.node-version`. (maybe you want to set your default node version by calling [`fnm default <version>`](https://github.com/Schniz/fnm#fnm-default-version))
+
+### 2.b. Install Dependencies
 ```
 npm install
 ```
@@ -92,7 +105,11 @@ This command will run 3 Shell-Scripts:
 **NOTE**: The `./scripts/pulumi-up.sh` exports the environment variable `PULUMI_ACCESS_TOKEN` to make it to the Pulumi CLI available. Export another value and set a `#` before the apropriate line inside`.env` to use another token.
 
 
-## Setup environment for local development of actual project and framework side by side
+## Setup environment for local development of actual project and framework side by side -- DEPRECATED
+
+
+**🚨 We encountered some deployment issues, when using npm link. Therefore we discourage using this technic for the time being❗**
+
 ### Setup the new project
 * add a new "deploy key" in [gitlab](https://gitlab.com/atos-austria/reason/reventless/settings/repository/deploy_token/create#js-deploy-tokens)
 * add "private repository" with the new deploy-token to the new project: `"reventless": "git+https://USER-TOKEN:PASSWORD-TOKEN@gitlab.com/atos-austria/reason/reventless.git"`
