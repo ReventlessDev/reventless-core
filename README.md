@@ -135,3 +135,13 @@ This command will run 3 Shell-Scripts:
 
 ## Ressources
 * [Project Wiki](https://gitlab.com/atos-austria/reason/reventless/wikis/home)
+
+
+# Code-Smells
+
+## ReasonML
+* `...->ignore`
+
+## Pulumi
+* `...->Pulumi.Output.apply(_, ...)`
+* `...->Pulumi.Output.all->Pulumi.Output.apply(...)`
