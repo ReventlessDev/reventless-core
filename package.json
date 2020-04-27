@@ -41,7 +41,7 @@
     "uuid": "^3.3.2"
   },
   "devDependencies": {
-    "@glennsl/bs-jest": "^0.4.8",
+    "@glennsl/bs-jest": "^0.4.9",
     "@pulumi/aws": "^1.18.0",
     "@pulumi/cloud-aws": "^0.18.0",
     "@pulumi/pulumi": "^1.9.0",
