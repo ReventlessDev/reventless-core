@@ -1,0 +1,1 @@
+module AppSync = AdapterAws_QueryDbResolvers_AppSync;

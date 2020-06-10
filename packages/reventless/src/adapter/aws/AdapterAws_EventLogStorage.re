@@ -1,0 +1,2 @@
+module DynamoDb = AdapterAws_EventLogStorage_DynamoDb;
+module DynamoDb_Runtime = AdapterAws_EventLogStorage_DynamoDb_Runtime;

@@ -1,0 +1,224 @@
+let componentType = ComponentType.EventMapper;
+
+type outputs = {
+  .
+  "eventCollector": EventCollector.t,
+  "name": string,
+};
+type t = outputs;
+
+type maker =
+  (
+    ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
+    ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
+    ~memorySize: int,
+    ~timeout: int=?,
+    ~opts: option(Pulumi.ComponentResource.Options.t),
+    unit
+  ) =>
+  t;
+
+module type T = {let make: maker;};
+
+module Make =
+       (
+         Config: Config.T,
+         EventMappings: EventMapping.Mappings,
+         EventCollector: EventCollector.T,
+       )
+       : T => {
+  type constructed;
+  type construct = (t, string) => constructed;
+
+  [@bs.module "./Component"] [@bs.new]
+  external make:
+    (
+      ~componentType: string,
+      ~name: string,
+      ~construct: construct,
+      ~opts: option(Pulumi.ComponentResource.Options.t)
+    ) =>
+    t =
+    "default";
+
+  [@bs.obj]
+  external makeOutputs:
+    (~eventCollector: Reventless.EventCollector.t, ~name: string) => outputs =
+    "";
+  [@bs.send] external registerOutputs: (t, outputs) => constructed = "";
+  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  let setOutputs = (self, outputs) => {
+    self->setOutputs(outputs);
+    self->registerOutputs(outputs);
+  };
+
+  let findMapping = eventObj =>
+    eventObj->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
+    |> (
+      fun
+      | Some(Belt.Result.Ok(eventMeta)) =>
+        EventMappings.mappings->Js.Dict.get(eventMeta.service)
+        |> (
+          fun
+          | None => {
+              Js.log2(
+                "EventMapper.map: No mapping available for service:",
+                eventMeta.service,
+              );
+              None;
+            }
+          | Some(mapping) => Some((eventObj, eventMeta, mapping))
+        )
+      | Some(Error(err)) => {
+          Js.log2("EventMapper.map: Couldn't decode meta:", err);
+          None;
+        }
+      | _ => {
+          Js.log("EventMapper.map: Invalid JSON object");
+          None;
+        }
+    );
+
+  let map = (name, queryCommandTopic) =>
+    (. eventJson) => {
+      eventJson->Js.Json.decodeObject->Belt.Option.flatMap(findMapping)
+      |> (
+        fun
+        | Some((eventObj, eventMeta, mapping)) => {
+            module Mapping = (val mapping);
+            (
+              eventObj
+              ->Js.Dict.get("id")
+              ->Belt.Option.map(Mapping.eventIdDecoder),
+              eventObj
+              ->Js.Dict.get("event")
+              ->Belt.Option.map(Mapping.eventDecoder),
+            )
+            |> (
+              fun
+              | (Some(Ok(eventId)), Some(Ok(event))) =>
+                Mapping.map(. eventId, event)
+                |> Array.mapi((idx, action) =>
+                     switch (action) {
+                     | EventMapping.PublishToQueue(
+                         service,
+                         (commandId, command),
+                         idEncoder,
+                         commandEncoder,
+                       ) =>
+                       let commandMeta = {
+                         ...eventMeta,
+                         service,
+                         correlationId:
+                           // original correlationId only for first action to avoid counting problems
+                           // TODO: think about different solution, e.g. AtomicCounter with explicit
+                           // count parameter (instead of always counting by 1)
+                           idx == 0 ? eventMeta.correlationId : Message.uuid(),
+                         msgId: Message.uuid(),
+                       };
+                       let queueId =
+                         queryCommandTopic(service)##id->Pulumi.Output.get;
+
+                       {Message.id: commandId, meta: commandMeta, command}
+                       |> Message.command'_encode(idEncoder, commandEncoder)
+                       |> Js.Json.stringify
+                       |> AwsSdk.SQS.sendMessage(
+                            ~queueId,
+                            ~messageBody=_,
+                            (),
+                          )
+                       |> Js.Promise.catch(err =>
+                            err
+                            |> Js.log2(
+                                 "EventMapper: Error on publish command:",
+                               )
+                            |> Js.Promise.resolve
+                          );
+                     | Call(commandHandler, command) =>
+                       command
+                       |> commandHandler
+                       |> Js.Promise.catch(err =>
+                            err
+                            |> Js.log2(
+                                 "EventMapper: Error in commandHandler:",
+                               )
+                            |> Js.Promise.resolve
+                          )
+                     | Nothing => Js.Promise.resolve()
+                     }
+                   )
+                |> Js.Promise.all
+                |> Js.Promise.then_(_ => Js.Promise.resolve())
+              | (None, _)
+              | (_, None) =>
+                Js.Promise.resolve(Js.log("EventMapper.map: Invalid event"))
+              | (_, Some(Error(err)))
+              | (Some(Error(err)), _) =>
+                Js.Promise.resolve(
+                  Js.log2("EventMapper.map: Couldn't decode event:", err),
+                )
+            );
+          }
+        | None => Js.Promise.resolve()
+      );
+    };
+
+  let construct =
+      (
+        ~queryCommandTopic,
+        ~queryEventTopic,
+        ~memorySize,
+        ~timeout,
+        self,
+        name,
+      ) => {
+    let opts =
+      Pulumi.ComponentResource.Options.make(
+        ~parent=self->Pulumi.Resource.makeFromJs,
+        (),
+      );
+    let eventCollector =
+      EventCollector.make(
+        ~eventHandler=map(name, queryCommandTopic),
+        ~queryEventTopic,
+        ~memorySize,
+        ~timeout,
+        ~opts=Some(opts),
+        (),
+      );
+
+    makeOutputs(~eventCollector, ~name) |> self->setOutputs;
+  };
+
+  let make:
+    (
+      ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
+      ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
+      ~memorySize: int,
+      ~timeout: int=?,
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      unit
+    ) =>
+    t =
+    (
+      ~queryCommandTopic,
+      ~queryEventTopic,
+      ~memorySize,
+      ~timeout: int=180,
+      ~opts,
+      _unit,
+    ) => {
+      make(
+        ~componentType=componentType->ComponentType.toString,
+        ~name=EventMappings.name,
+        ~construct=
+          construct(
+            ~queryCommandTopic,
+            ~queryEventTopic,
+            ~memorySize,
+            ~timeout,
+          ),
+        ~opts,
+      );
+    };
+};

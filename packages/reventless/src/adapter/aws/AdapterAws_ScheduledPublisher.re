@@ -1,0 +1,2 @@
+module CloudWatchEvents = AdapterAws_ScheduledPublisher_CloudWatchEvents;
+module CloudWatchEvents_Runtime = AdapterAws_ScheduledPublisher_CloudWatchEvents_Runtime;

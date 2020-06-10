@@ -1,147 +1,96 @@
-# Reventless
-Reventless is a toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.
+# Reventless-Universe
+This is a mono-repo, which contains all necessary packages for the Reventless framework.
 
-It's based on the following technologies:
+For individual Readmes per package see inside the package's directory `./packages/*`:
 
-* [Serverless](https://serverless.com)
-* [ReasonML](https://reasonml.github.io/)
-* Event-Sourced
-* CQRS
+- [bs-aws-sdk](packages/bs-aws-sdk/README.md)
+- [bs-fast-csv](packages/bs-fast-csv/README.md)
+- [bs-hash-obj](packages/bs-hash-obj/README.md)
+- [bs-node-streams](packages/bs-node-streams/README.md)
+- [bs-pulumi-aws](packages/bs-pulumi-aws/README.md)
+- [bs-pulumi-pulumi](packages/bs-pulumi-pulumi/README.md)
+- [bs-ssh2](packages/bs-ssh2/README.md)
+- [bs-uuid](packages/bs-uuid/README.md)
+- [reventless](packages/reventless/README.md)
 
-## Getting started
-### 1. Install BuckleScript (which comes bundled with reason)
-Currently used and supported version is bs-platform 5.2.1.
+## Setup
+This repo uses [Lerna](https://lerna.js.org/) to manage all the packages.
 
-[Reason Docs](https://reasonml.github.io/docs/en/installation)
+1. install general devDependencies by invoking `npm install` in the repository's root directory
+2. invoke `lerna bootstrap` (if lerna is globally installed - otherwise `npm run bootstrap`) to download all dependencies of the packages in this repository and link them together
+3. Done!  
+  You can find the separate packages inside of `./packages/PkgName`. Change to the desired directory and work on the package like you would usually do.
+
+## Basic Usage Of Lerna
+> A tool for managing JavaScript projects with multiple packages.
+
+### Starting A New Package From Scratch
+Use the [wizard](#lerna-wizard) or [`lerna create`](https://github.com/lerna/lerna/tree/master/commands/create#readme) command to create a new directory in `./packages/` and bootstrap some files (like package.json).
+
+### Linking Local Packages
+If you work on a package (`A`), and you have a local package (`D` for dependency), that you want to make use of in `A`. [Local package means `D` is developed inside of this mono-repo, managed by lerna and not necessarily published to npm]. Add `D` to the dependencies in `package.json` of `A`. (mind to match the version) Then call `lerna bootstrap` and you're done.
+
+### [Lerna Wizard](https://github.com/webuniverseio/lerna-wizard)
+> Command line wizard for lerna 
+
+You can use the lerna wizard by running `npm run wizard` in the monorepo's root directoy. The wizard can help / guide you through the usage of lerna.
+
+### [Lerna Update Wizard](https://github.com/Anifacted/lerna-update-wizard)
+> A command line tool for bulk-updating lerna package dependencies 
+
+You can use the lerna update wizard by running `npm run update` in the monorepo's root directory. This wizard can help / guide you through manipulations of dependencies.
+
+#### Features
+- Update dependencies across packages
+- Add new dependencies across packages
+- Deduplicate dependencies across packages
+- Add/Update multiple dependencies in one session
+- Auto-generate Git branch & commit
+- Non-interactive Mode
+
+## Publish A Package In Git-Repo (gitpkg)
+Using npm (or yarn) it is not possible (as of today) to depend on a package inside a subdirectory of a (private) git repo.
+This is why we use [gitpkg](https://github.com/ramasilveyra/gitpkg): *Publish packages as git tags*  
+### Gitpkg Basics
+Every package should contain a script definition like:
+```json
+    "gitpkg": "../../node_modules/.bin/gitpkg publish"
 ```
-npm install -g bs-platform
+There are some life-cycle scripts which would be called by gitpkg if they are set in package.json. Taken from [gitpkg/src/tasks/Publish/index.js](https://github.com/ramasilveyra/gitpkg/blob/9c02f228fd8f6a4f31d35631a9a2f95a76ca7adb/src/tasks/Publish/index.js):
+
+* `prepublish`
+* `prepublishOnly`
+* `prepare`
+* `publish`
+* `postpublish`
+
+It's advisable to use the `prepare` life-cycle script to clean the package directory from any build-artifacts by using:
+
+```json
+    "prepare": "rm .merlin || npm run clean"
 ```
+Given the package is using bucklescript and a clean script defined.
 
-### 2.a. Install Node 12.x
-We use `fnm` to manage the locally installed node-version.  
-The currently used/tested node version is stated in the `.node-version` file.
+When the gitpkg script is executed (actually calling `gitpkg publish`) it will:
 
-#### [fnm](https://github.com/Schniz/fnm)
-> Fast and simple Node.js version manager, built in native ReasonML
+* parse the package json file in the current directory
+* move all files of the package's directory in a temporary directory
+* create git tag (on current git remote if not specified otherwise) named like \<PackageName\>-\<PackageVersion\>-gitpkg (*eg: bs-node-streams-v0.0.1-gitpkg*)
+* push the temporary directory to the named tag (only if tag doesn't already exists)
 
-*Note: Currently this tool has no windows-support and is unlikely to be added in the near future.*
+### Listing Tags Of A Repository
+If you want to get all tags in the current git repository you can use `git tag -l` for local tags and `git ls-remote --tags` for remote tags.
 
-Go to your reventless-directory and execute [`fnm use`](https://github.com/Schniz/fnm#fnm-use-version) in a shell to just set you node version to the one stated in `.node-version`. (maybe you want to set your default node version by calling [`fnm default <version>`](https://github.com/Schniz/fnm#fnm-default-version))
-
-### 2.b. Install Dependencies
+### Depending On A Package Published With Gitpkg
+Since packages are published as named tags in the repository it is possible to depend on them by using a git-link to specify dependency in a package.json. Previously, we used something like the following to depend on the reventless project:
 ```
-npm install
+    "reventless": "git+https://gitlab+deploy-token-59148:3FUfgP98A8vvrf26tFDU@gitlab.com/atos-austria/reason/reventless.git#41051a58f655f9bea2d16dd56fce5730069a44f3"
 ```
-
-### 3. Build Project
+For any separate package in the Reventless-Monorepo, which was published via gitpkg it is possible to add a dependency like:
 ```
-npm run build
-```
-
-Or in development, to run a watcher:
-```
-npm run start
-```
-
-If you use Visual Studio Code, use the [reason-vscode](https://marketplace.visualstudio.com/items?itemName=jaredly.reason-vscode) plugin, which auto-builds the project on save by default.
-Otherwise, see https://reasonml.github.io/docs/en/editor-plugins.
-
-### 4. Test Project
-Run Test-Suite once:
-```
-npm run test
-```
-
-Run Test-Suite continously on file changes:
-```
-npm run dev
-```
-
-The Bucklescript bindings for [Jest](https://jestjs.io/) are used as dev-dependency: [bs-jest](https://github.com/glennsl/bs-jest)
-
-
-
-#### Test Example
-This tests the function f in the file/module Try:
-```
-// __tests__/try_test.re
-open Jest
-
-describe("Try should return...", () => {
-    open Expect
-    test("the same text given a count of 0", () => {
-        expect(Try.f("test", 0)) |> toBe("test")
-    })
-
-    test("the text doubled given a count of 1", () => {
-        expect(Try.f("test", 1)) |> toBe("testtest")
-    })
-})
-```
-File Try:
-```
-// src/Try.re
-let rec f = (text: string, count: int) => {
-    if(count <= 0) text
-    else f(text ++ text, count - 1)
-}
-```
-
-### 5. Deployment
-Before running `npm run deploy`, make sure to update the `.env` file. (Copy your Pulumi Access Token from your profile preferences into the `.env` file.)
-You also need to set the environment variable like `export AWS_SDK_LOAD_CONFIG=1` and hava a file at `~/.aws/config`:
-```
-[default]
-region = eu-west-1
-output = json
+    "bs-node-streams": "git+https://gitlab+deploy-token-59148:3FUfgP98A8vvrf26tFDU@gitlab.com/atos-austria/reason/reventless.git#bs-node-streams-v0.0.1-gitpkg"
 ```
 
-This command will run 3 Shell-Scripts:
-  * `./scripts/pre-deploy.sh`: Move everything in `./node_modules/bs-platform` to a tmp-directory, but the JS-lib
-  * `./scripts/pulumi-up.sh`: Read `PULUMI_ACCESS_TOKEN` and `PULUMI_STACK` from the `.env` file and run `pulumi up` to actually deploy (This script will be only executed, if `pre-deploy` exited successfully.)
-  * `./scripts/post-deploy.sh`: Move `bs-platform` back into place from tmp-directory.
+### Modifying Already Published Package
+If you really need to change a published package withoug raising the version number, you can delete a remote tag by calling `git push --delete origin TAG-NAME`. Afterwards you can just run gitpkg again. Make sure to fetch this package in it's dependents (without using a cached version).
 
-
-**NOTE**: The `./scripts/pulumi-up.sh` exports the environment variable `PULUMI_ACCESS_TOKEN` to make it to the Pulumi CLI available. Export another value and set a `#` before the apropriate line inside`.env` to use another token.
-
-
-## Setup environment for local development of actual project and framework side by side -- DEPRECATED
-
-
-**🚨 We encountered some deployment issues, when using npm link. Therefore we discourage using this technic for the time being❗**
-
-### Setup the new project
-* add a new "deploy key" in [gitlab](https://gitlab.com/atos-austria/reason/reventless/settings/repository/deploy_token/create#js-deploy-tokens)
-* add "private repository" with the new deploy-token to the new project: `"reventless": "git+https://USER-TOKEN:PASSWORD-TOKEN@gitlab.com/atos-austria/reason/reventless.git"`
-* run `npm install` for the new project
-
-### Setup the framework project to use the local version in the new version
-* clone the framework repo into a local directory
-* run `npm link` inside the framework's directory
-* run `npm link reventless` inside the new project's directory
-
-## Go back to using the actual framwork-repo as dependency
-### Unlink
-[Medium Post](https://medium.com/@alexishevia/the-magic-behind-npm-link-d94dcb3a81af)
-
-* run `npm unlink --no-save reventless` in the new project's directory
-* run `npm unlink` in the framework's directory
-
-### Alternative
-[Medium Post](https://medium.com/dailyjs/how-to-use-npm-link-7375b6219557)
-
-* run `npm uninstall --no-save reventless && npm install` inside the new project's directory
-* OPTIONAL: to delete the global symlink of the framework run `npm uninstall` inside the framework's directory
-
-## Ressources
-* [Project Wiki](https://gitlab.com/atos-austria/reason/reventless/wikis/home)
-
-
-# Code-Smells
-
-## ReasonML
-* `...->ignore`
-
-## Pulumi
-* `...->Pulumi.Output.apply(_, ...)`
-* `...->Pulumi.Output.all->Pulumi.Output.apply(...)`

@@ -1,0 +1,127 @@
+module type T = {
+  type command;
+  type event;
+  type error;
+
+  let exec: (command, option(int), list(event)) => list(event);
+
+  let givenEvents: list(event) => list(event);
+  let whenCmd: (command, list(event)) => list(event);
+  let whenCmdWithCount: (command, int, list(event)) => list(event);
+  let thenEvent: (event, list(event)) => Jest.assertion;
+  let thenEventWithError: (event, error, list(event)) => Jest.assertion;
+  let thenEvents: (list(event), list(event)) => Jest.assertion;
+  let thenEventsWithError:
+    (list(event), error, list(event)) => Jest.assertion;
+  let thenError: (error, list(event)) => Jest.assertion;
+};
+
+module Make =
+       (
+         Service: Message.Service,
+         Behaviour:
+           Behaviour.T with
+             type command := Service.command and
+             type event := Service.event and
+             type error := Service.error,
+       )
+
+         : (
+           T with
+             type command := Service.command and
+             type event := Service.event and
+             type error := Service.error
+       ) => {
+  let apply' = (state, event) => Behaviour.apply(. state, event);
+
+  let currentState = events =>
+    List.(fold_left(apply', Behaviour.init(. hd(events)), tl(events)));
+
+  let errors = ref([]);
+
+  let errorHandler: Message.errorHandler(Service.error, Service.command) =
+    (error, _, _) => {
+      errors := errors^ @ [error];
+    };
+
+  let exec = (command, count, history): list(Service.event) => {
+    errors := [];
+    switch (history) {
+    | [] =>
+      Behaviour.create(. command, TestFixtures.context, errorHandler, count)
+    | history =>
+      try (
+        Behaviour.execute(.
+          currentState(history),
+          command,
+          TestFixtures.context,
+          errorHandler,
+          count,
+        )
+      ) {
+      | Reventless.Message.InvalidEvent(_) => []
+      }
+    };
+  };
+
+  let givenEvents = events => events;
+  let whenCmd = cmd => exec(cmd, None);
+  let whenCmdWithCount = (cmd, count) => exec(cmd, Some(count));
+
+  open Jest.Expect;
+
+  let thenEvents = (expectedEvents, events) =>
+    expect(((errors^)->Belt.List.length, events))
+    |> toEqual((0, expectedEvents));
+
+  let thenEvent = (expectedEvent, events) =>
+    if (events->Belt.List.length > 0) {
+      expect((
+        (errors^)->Belt.List.length,
+        events->Belt.List.length,
+        events->Belt.List.head,
+      ))
+      |> toEqual((0, 1, Some(expectedEvent)));
+    } else if ((errors^)->Belt.List.length > 0) {
+      "Errors occured: "
+      ++ (
+        errors^
+        |> List.map(err
+             /* NOTE: this process is very fragile!!
+                it relies on decco decoding the error-varints to arrays of string
+                */
+             =>
+               (
+                 err
+                 |> Service.error_encode
+                 |> Js.Json.decodeArray
+                 |> Belt.Option.getExn
+               )[0]
+               |> Js.Json.decodeString
+               |> Belt.Option.getExn
+             )
+        |> List.fold_left((a, b) => a ++ b ++ " ", "")
+      )
+      |> Jest.fail;
+    } else {
+      Jest.fail("thenEvent: No event present to validate");
+    };
+
+  let thenEventWithError = (expectedEvent, expectedError, events) =>
+    expect((
+      events->Belt.List.length,
+      events->Belt.List.head,
+      (errors^)->Belt.List.length,
+      (errors^)->Belt.List.head,
+    ))
+    |> toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
+
+  let thenEventsWithError = (expectedEvents, expectedError, events) =>
+    expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
+    |> toEqual((expectedEvents, 1, Some(expectedError)));
+
+  let thenError = (expectedError, events) => {
+    expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
+    |> toEqual(([], 1, Some(expectedError)));
+  };
+};

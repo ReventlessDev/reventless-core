@@ -1,0 +1,11 @@
+image: alpine
+
+pages:
+  script:
+  - mkdir public/
+  - cp docs/* public/
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
