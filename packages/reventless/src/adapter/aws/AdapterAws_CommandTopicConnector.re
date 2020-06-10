@@ -1,0 +1,2 @@
+module SQS = AdapterAws_CommandTopicConnector_SQS;
+module SQS_Runtime = AdapterAws_CommandTopicConnector_SQS_Runtime;

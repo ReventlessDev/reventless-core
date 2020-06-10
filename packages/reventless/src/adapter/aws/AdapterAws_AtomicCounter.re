@@ -1,0 +1,2 @@
+module DynamoDb = AdapterAws_AtomicCounter_DynamoDB;
+module DynamoDb_Runtime = AdapterAws_AtomicCounter_DynamoDB_Runtime;

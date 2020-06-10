@@ -1,0 +1,43 @@
+{
+  "name": "reventless",
+  "version": "0.0.1",
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    },
+    {
+      "dir": "__tests__",
+      "type": "dev"
+    },
+    {
+      "dir": "test-helper"
+    }
+  ],
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "suffix": ".bs.js",
+  "bs-dependencies": [
+    "@glennsl/bs-jest",
+    "@ryb73/decco",
+    "@aantron/repromise",
+    "bs-aws-sdk",
+    "bs-node-streams",
+    "bs-pulumi-pulumi",
+    "bs-pulumi-aws",
+    "bs-fast-csv",
+    "bs-hash-obj",
+    "bs-ssh2",
+    "bs-uuid"
+  ],
+  "ppx-flags": [
+    "@ryb73/decco/ppx/ppx_decco.sh"
+  ],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "namespace": true,
+  "refmt": 3
+}

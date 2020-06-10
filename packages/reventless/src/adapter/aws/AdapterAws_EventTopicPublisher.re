@@ -1,0 +1,2 @@
+module SNS = AdapterAws_EventTopicPublisher_SNS;
+module SNS_Runtime = AdapterAws_EventTopicPublisher_SNS_Runtime;

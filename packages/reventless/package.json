@@ -1,0 +1,62 @@
+{
+  "name": "reventless",
+  "version": "0.0.1",
+  "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
+  "private": true,
+  "scripts": {
+    "build": "bsb -make-world",
+    "start": "bsb -make-world -w",
+    "clean": "bsb -clean-world",
+    "rebuild": "npm run clean && npm run build",
+    "deploy": "./scripts/deploy.sh",
+    "test": "jest",
+    "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
+    "dev": "jest --watchAll",
+    "watch:bsb": "bsb -make-world -w",
+    "watch:jest": "jest --coverage --watchAll",
+    "watch:screen": "screen -c .screenrc",
+    "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json",
+    "prepublishOnly": "npm run clean && (rm -rf lib || rm -f .merlin)",
+    "postpublish": "echo 'Please ensure the CHANGELOG is up to date!'",
+    "gitpkg": "../../node_modules/.bin/gitpkg publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.com:atos-austria/reason/reventless.git"
+  },
+  "keywords": [
+    "bucklescript",
+    "reasonml",
+    "event",
+    "event-sourcing",
+    "cqrs",
+    "serverless"
+  ],
+  "author": "Atos",
+  "license": "proprietary",
+  "dependencies": {
+    "@aantron/repromise": "^0.6.0",
+    "@ryb73/decco": "0.0.12",
+    "bs-aws-sdk": "^0.0.1",
+    "bs-node-streams": "^0.0.1",
+    "bs-pulumi-pulumi": "^0.0.1",
+    "bs-pulumi-aws": "^0.0.1",
+    "fast-csv": "chrwnsk/fast-csv#build",
+    "bs-fast-csv": "^0.0.1",
+    "hash-obj": "^2.0.0",
+    "bs-hash-obj": "^0.0.1",
+    "ssh2": "^0.8.5",
+    "bs-ssh2": "^0.0.1",
+    "uuid": "^3.3.2",
+    "bs-uuid": "^0.0.1"
+  },
+  "devDependencies": {
+    "@glennsl/bs-jest": "^0.4.8",
+    "@pulumi/aws": "^1.18.0",
+    "@pulumi/pulumi": "^1.9.0",
+    "aws-sdk": "^2.556.0"
+  },
+  "peerDependencies": {
+    "bs-platform": "^5.2.1"
+  }
+}

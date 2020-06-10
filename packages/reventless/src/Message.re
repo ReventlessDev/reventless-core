@@ -1,0 +1,108 @@
+module type Service = {
+  module Id: Id.T;
+
+  [@decco]
+  type id = Id.t;
+
+  [@decco]
+  type command;
+  [@decco]
+  type event;
+  [@decco]
+  type error;
+
+  let name: string;
+};
+
+[@decco]
+type service = string;
+
+[@decco]
+type meta = {
+  service,
+  time: string,
+  ip: string,
+  user: string,
+  msgId: string,
+  correlationId: string,
+};
+
+[@decco]
+type statusChange = {
+  at: string,
+  by: string,
+};
+
+[@decco]
+type command'('id, 'command) = {
+  id: 'id,
+  meta,
+  command: 'command,
+};
+
+type commandHandler('id, 'command) =
+  (. command'('id, 'command)) => Js.Promise.t(unit);
+
+type commandsHandler('id, 'command) =
+  (. 'id, array(command'('id, 'command))) => Js.Promise.t(unit);
+
+[@decco]
+type event'('id, 'event) = {
+  id: 'id,
+  meta,
+  event: 'event,
+};
+
+type eventsHandler('id, 'event) =
+  (. 'id, array(event'('id, 'event))) => Js.Promise.t(unit);
+
+module type Events = {
+  type id;
+  type event;
+};
+
+exception InvalidEvent(Js.Json.t);
+exception InvalidCommand(Js.Json.t);
+
+[@bs.val]
+[@bs.scope "JSON"]
+[@deprecated "use Js.Json.stringify() or Js.Json.stringifyAny()"]
+external stringify: Js.t(_) => string = "";
+
+let log: (string, 'a) => 'a =
+  (str, value) => {
+    Js.log2(str, value);
+    value;
+  };
+
+let uuid = Uuid.v4;
+
+let now = () => Js.Date.make() |> Js.Date.getTime;
+
+let nowAsISOString = () => Js.Date.make() |> Js.Date.toISOString;
+
+type hrtime = (int, int);
+[@bs.val] [@bs.scope "process"] external hrtime: unit => hrtime = "hrtime";
+
+let hrtimeToString: (~hrtime: hrtime, ~now: float) => string =
+  (~hrtime, ~now) => {
+    let (_, mil) = hrtime;
+    let milString = mil |> string_of_int;
+    let milLength = milString |> String.length;
+    (now |> Js.Float.toString)
+    ++ "-"
+    ++ String.make(9 - milLength, '0')
+    ++ milString;
+  };
+
+type context = {
+  id: string,
+  meta,
+};
+
+type errorHandler('error, 'command) = ('error, 'command, context) => unit;
+
+let generateMeta = (service, ip, user) => {
+  let msgId = uuid();
+  {service, ip, user, time: nowAsISOString(), msgId, correlationId: msgId};
+};
