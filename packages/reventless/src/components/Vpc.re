@@ -1,4 +1,5 @@
 let componentType = ComponentType.Vpc;
+open PulumiAws.EC2;
 
 /*
  interface FunctionVpcConfig {
@@ -24,17 +25,17 @@ type functionVpcConfig = {
 
 type outputs = {
   .
-  "vpc": PulumiAws.EC2.VPC.t,
-  "securityGroup": PulumiAws.EC2.SecurityGroup.t,
-  "publicSubnet": PulumiAws.EC2.Subnet.t,
-  "privateSubnet": PulumiAws.EC2.Subnet.t,
-  "eip": PulumiAws.EC2.Eip.t,
-  "natGateway": PulumiAws.EC2.NatGateway.t,
-  "internetGateway": PulumiAWs.EC2.InternetGateway.t,
-  "publicSubnetRouteTable": PulumiAws.EC2.RouteTable.t,
-  "privateSubnetRouteTable": PulumiAws.EC2.RouteTable.t,
-  "publicSubnetRouteTableAssociation": PulumiAws.EC2.RouteTableAssociation.t,
-  "privateSubnetRouteTableAssociation": PulumiAws.EC2.RouteTableAssociation.t,
+  "vpc": VPC.t,
+  "securityGroup": SecurityGroup.t,
+  "publicSubnet": Subnet.t,
+  "privateSubnet": Subnet.t,
+  "eip": Eip.t,
+  "natGateway": NatGateway.t,
+  "internetGateway": InternetGateway.t,
+  "publicSubnetRouteTable": RouteTable.t,
+  "privateSubnetRouteTable": RouteTable.t,
+  "publicSubnetRouteTableAssociation": RouteTableAssociation.t,
+  "privateSubnetRouteTableAssociation": RouteTableAssociation.t,
 };
 type t = outputs;
 
@@ -55,17 +56,17 @@ external make:
 [@bs.obj]
 external makeOutputs:
   (
-    ~vpc: PulumiAws.EC2.VPC.t,
-    ~securityGroup: PulumiAws.EC2.SecurityGroup.t,
-    ~publicSubnet: PulumiAws.EC2.Subnet.t,
-    ~privateSubnet: PulumiAws.EC2.Subnet.t,
-    ~eip: PulumiAws.EC2.Eip.t,
-    ~natGateway: PulumiAws.EC2.NatGateway.t,
-    ~internetGateway: PulumiAws.EC2.InternetGateway.t,
-    ~publicSubnetRouteTable: PulumiAws.EC2.RouteTable.t,
-    ~privateSubnetRouteTable: PulumiAws.EC2.RouteTable.t,
-    ~publicSubnetRouteTableAssociation: PulumiAws.EC2.RouteTableAssociation.t,
-    ~privateSubnetRouteTableAssociation: PulumiAws.EC2.RouteTableAssociation.t
+    ~vpc: VPC.t,
+    ~securityGroup: SecurityGroup.t,
+    ~publicSubnet: Subnet.t,
+    ~privateSubnet: Subnet.t,
+    ~eip: Eip.t,
+    ~natGateway: NatGateway.t,
+    ~internetGateway: InternetGateway.t,
+    ~publicSubnetRouteTable: RouteTable.t,
+    ~privateSubnetRouteTable: RouteTable.t,
+    ~publicSubnetRouteTableAssociation: RouteTableAssociation.t,
+    ~privateSubnetRouteTableAssociation: RouteTableAssociation.t
   ) =>
   outputs =
   "";
@@ -86,7 +87,7 @@ let construct: construct =
       );
 
     let vpc =
-      PulumiAws.EC2.VPC.(
+      VPC.(
         make(
           ~name=name ++ "VPC",
           ~args=Args.make(~cidrBlock="172.31.0.0/16"),
@@ -96,28 +97,15 @@ let construct: construct =
       );
 
     let securityGroup =
-      PulumiAws.EC2.SecurityGroup.(
+      SecurityGroup.(
         make(
           ~name=name ++ "SecurityGroup",
           ~args=
             Args.make(
               ~name="todo",
               ~vpcId=vpc##id->Pulumi.Output.asInput,
-              ~ingress=[|
-                Args.Ingress.make(
-                  ~fromPort="todo",
-                  ~protocol="todo",
-                  ~toPort="todo",
-                  cidrBlocks = [|"todo"|],
-                ),
-              |],
-              ~egress=[|
-                Args.Egress.make(
-                  ~fromPort="todo",
-                  ~protocol="todo",
-                  ~toPort="todo",
-                ),
-              |],
+              ~ingress=[|Args.Ingress.allowAll|],
+              ~egress=[|Args.Egress.allowAll|],
             ),
           ~opts,
           (),
@@ -125,7 +113,7 @@ let construct: construct =
       );
 
     let publicSubnet =
-      PulumiAws.EC2.Subnet.(
+      Subnet.(
         make(
           ~name=name ++ "PublicSubnet",
           ~args=
@@ -140,7 +128,7 @@ let construct: construct =
       );
 
     let privateSubnet =
-      PulumiAws.EC2.Subnet.(
+      Subnet.(
         make(
           ~name=name ++ "PrivateSubnet",
           ~args=
@@ -155,26 +143,10 @@ let construct: construct =
       );
 
     let eip =
-      PulumiAws.EC2.Eip.(
-        make(~name=name ++ "Eip", ~args=Args.make(~vpc=true), ~opts, ())
-      );
-
-    let natGateway =
-      PulumiAws.EC2.NatGateway.(
-        make(
-          ~name=name ++ "NatGateway",
-          ~args=
-            Args.make(
-              ~allocationId=eip##allocationId->Pulumi.Output.asInput,
-              ~subnetId=publicSubnet##id->Pulumi.Output.asInput,
-            ),
-          ~opts,
-          (),
-        )
-      );
+      Eip.(make(~name=name ++ "Eip", ~args=Args.make(~vpc=true), ~opts, ()));
 
     let internetGateway =
-      PulumiAws.EC2.InternetGateway.(
+      InternetGateway.(
         make(
           ~name=name ++ "InternetGateway",
           ~args=Args.make(~vpcId=vpc##id->Pulumi.Output.asInput),
@@ -183,15 +155,34 @@ let construct: construct =
         )
       );
 
+    let natGateway =
+      NatGateway.(
+        make(
+          ~name=name ++ "NatGateway",
+          ~args=
+            Args.make(
+              ~allocationId=eip##allocationId->Pulumi.Output.asInput,
+              ~subnetId=publicSubnet##id->Pulumi.Output.asInput,
+            ),
+          ~opts=
+            Pulumi.CustomResourceOptions.make(
+              ~parent=self->Pulumi.Resource.makeFromJs,
+              ~dependsOn=[|internetGateway->Pulumi.Resource.makeFromJs|],
+              (),
+            ),
+          (),
+        )
+      );
+
     let publicSubnetRouteTable =
-      PulumiAws.EC2.RouteTable.(
+      RouteTable.(
         make(
           ~name=name ++ "PublicSubnetRouteTable",
           ~args=
             Args.make(
               ~vpcId=vpc##id->Pulumi.Output.asInput,
               ~routes=[|
-                PulumiAws.EC2.RouteTable.Route.makeInternetGatewayRoute(
+                Args.Route.makeInternetGatewayRoute(
                   ~cidrBlock="0.0.0.0/0",
                   ~gatewayId=internetGateway##id->Pulumi.Output.asInput,
                 ),
@@ -203,16 +194,16 @@ let construct: construct =
       );
 
     let privateSubnetRouteTable =
-      PulumiAws.EC2.RouteTable.(
+      RouteTable.(
         make(
           ~name=name ++ "PrivateSubnetRouteTable",
           ~args=
             Args.make(
               ~vpcId=vpc##id->Pulumi.Output.asInput,
               ~routes=[|
-                PulumiAws.EC2.RouteTable.Route.makeNatGatewayRoute(
+                Args.Route.makeNatGatewayRoute(
                   ~cidrBlock="0.0.0.0/0",
-                  ~gatewayId=natGateway##id->Pulumi.Output.asInput,
+                  ~natGatewayId=natGateway##id->Pulumi.Output.asInput,
                 ),
               |],
             ),
@@ -222,7 +213,7 @@ let construct: construct =
       );
 
     let publicSubnetRouteTableAssociation =
-      PulumiAws.EC2.RouteTableAssociation.(
+      RouteTableAssociation.(
         make(
           ~name=name ++ "PublicSubnetRouteTableAssociation",
           ~args=
@@ -236,7 +227,7 @@ let construct: construct =
       );
 
     let privateSubnetRouteTableAssociation =
-      PulumiAws.EC2.RouteTableAssociation.(
+      RouteTableAssociation.(
         make(
           ~name=name ++ "PrivateSubnetRouteTableAssociation",
           ~args=

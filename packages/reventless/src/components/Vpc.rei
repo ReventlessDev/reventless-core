@@ -6,7 +6,7 @@ type outputs = {
   "privateSubnet": PulumiAws.EC2.Subnet.t,
   "eip": PulumiAws.EC2.Eip.t,
   "natGateway": PulumiAws.EC2.NatGateway.t,
-  "internetGateway": PulumiAWs.EC2.InternetGateway.t,
+  "internetGateway": PulumiAws.EC2.InternetGateway.t,
   "publicSubnetRouteTable": PulumiAws.EC2.RouteTable.t,
   "privateSubnetRouteTable": PulumiAws.EC2.RouteTable.t,
   "publicSubnetRouteTableAssociation": PulumiAws.EC2.RouteTableAssociation.t,
