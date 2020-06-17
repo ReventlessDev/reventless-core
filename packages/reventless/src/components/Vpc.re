@@ -1,27 +1,6 @@
 let componentType = ComponentType.Vpc;
 open PulumiAws.EC2;
 
-/*
-  interface FunctionVpcConfig {
-      /**
-       * A list of security group IDs associated with the Lambda function.
-       */
-      securityGroupIds: pulumi.Input<pulumi.Input<string>[]>;
-      /**
-       * A list of subnet IDs associated with the Lambda function.
-       */
-      subnetIds: pulumi.Input<pulumi.Input<string>[]>;
-      vpcId?: pulumi.Input<string>;
-
- // TODO: use Pulumi specific types
- type functionVpcConfig = {
-   .
-   "securityGroupIds": array(string),
-   "subnetIds": array(string),
-   "vpcId": string,
- };
- */
-
 type outputs = {
   .
   "vpc": VPC.t,
