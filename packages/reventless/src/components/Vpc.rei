@@ -15,4 +15,10 @@ type outputs = {
 type t = outputs;
 
 let make:
-  (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
+  (
+    ~name: string,
+    ~availabilityZone: PulumiAws.Aws.AvailabilityZone.t=?,
+    ~opts: Pulumi.ComponentResource.Options.t=?,
+    unit
+  ) =>
+  t;

@@ -38,8 +38,10 @@ type outputs = {
 };
 type t = outputs;
 
+type name = string;
 type constructed;
-type construct = (t, string) => constructed;
+type construct =
+  (t, name, option(PulumiAws.Aws.AvailabilityZone.t)) => constructed;
 
 [@bs.module "./Component"] [@bs.new]
 external make:
@@ -47,7 +49,8 @@ external make:
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option(Pulumi.ComponentResource.Options.t)
+    ~opts: option(Pulumi.ComponentResource.Options.t),
+    ~availabilityZone: option(PulumiAws.Aws.AvailabilityZone.t)
   ) =>
   t =
   "default";
@@ -78,7 +81,7 @@ let setOutputs = (outputs, self) => {
 };
 
 let construct: construct =
-  (self, name) => {
+  (self, name, availabilityZone) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Pulumi.Resource.makeFromJs,
@@ -120,7 +123,7 @@ let construct: construct =
             Args.make(
               ~cidrBlock="172.31.0.0/17",
               ~vpcId=vpc##id->Pulumi.Output.asInput,
-              ~availabilityZone="eu-west-1a",
+              ~availabilityZone?,
               (),
             ),
           ~opts,
@@ -136,7 +139,7 @@ let construct: construct =
             Args.make(
               ~cidrBlock="172.31.128.0/17",
               ~vpcId=vpc##id->Pulumi.Output.asInput,
-              ~availabilityZone="eu-west-1a",
+              ~availabilityZone?,
               (),
             ),
           ~opts,
@@ -276,12 +279,19 @@ let construct: construct =
   };
 
 let make:
-  (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => t =
-  (~name, ~opts=?, _) => {
+  (
+    ~name: string,
+    ~availabilityZone: PulumiAws.Aws.AvailabilityZone.t=?,
+    ~opts: Pulumi.ComponentResource.Options.t=?,
+    unit
+  ) =>
+  t =
+  (~name, ~availabilityZone=?, ~opts=?, _) => {
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=name->ComponentType.name(componentType),
       ~construct,
       ~opts,
+      ~availabilityZone,
     );
   };
