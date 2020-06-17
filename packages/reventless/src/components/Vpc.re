@@ -90,7 +90,7 @@ let construct: construct =
       VPC.(
         make(
           ~name=name ++ "VPC",
-          ~args=Args.make(~cidrBlock="172.31.0.0/16"),
+          ~args=Args.make(~cidrBlock="172.31.0.0/16", ()),
           ~opts,
           (),
         )
@@ -106,6 +106,7 @@ let construct: construct =
               ~vpcId=vpc##id->Pulumi.Output.asInput,
               ~ingress=[|Args.Ingress.allowAll|],
               ~egress=[|Args.Egress.allowAll|],
+              (),
             ),
           ~opts,
           (),
@@ -121,6 +122,7 @@ let construct: construct =
               ~cidrBlock="172.31.0.0/17",
               ~vpcId=vpc##id->Pulumi.Output.asInput,
               ~availabilityZone="eu-west-1a",
+              (),
             ),
           ~opts,
           (),
@@ -136,6 +138,7 @@ let construct: construct =
               ~cidrBlock="172.31.128.0/17",
               ~vpcId=vpc##id->Pulumi.Output.asInput,
               ~availabilityZone="eu-west-1a",
+              (),
             ),
           ~opts,
           (),
@@ -146,7 +149,7 @@ let construct: construct =
       InternetGateway.(
         make(
           ~name=name ++ "InternetGateway",
-          ~args=Args.make(~vpcId=vpc##id->Pulumi.Output.asInput),
+          ~args=Args.make(~vpcId=vpc##id->Pulumi.Output.asInput, ()),
           ~opts,
           (),
         )
@@ -156,7 +159,7 @@ let construct: construct =
       Eip.(
         make(
           ~name=name ++ "Eip",
-          ~args=Args.make(~vpc=true),
+          ~args=Args.make(~vpc=true, ()),
           ~opts=
             Pulumi.CustomResourceOptions.make(
               ~parent=self->Pulumi.Resource.makeFromJs,
@@ -175,6 +178,7 @@ let construct: construct =
             Args.make(
               ~allocationId=eip##id->Pulumi.Output.asInput,
               ~subnetId=publicSubnet##id->Pulumi.Output.asInput,
+              (),
             ),
           ~opts=
             Pulumi.CustomResourceOptions.make(
@@ -199,6 +203,7 @@ let construct: construct =
                   ~gatewayId=internetGateway##id->Pulumi.Output.asInput,
                 ),
               |],
+              (),
             ),
           ~opts,
           (),
@@ -218,6 +223,7 @@ let construct: construct =
                   ~natGatewayId=natGateway##id->Pulumi.Output.asInput,
                 ),
               |],
+              (),
             ),
           ~opts,
           (),
@@ -232,6 +238,7 @@ let construct: construct =
             Args.make(
               ~routeTableId=publicSubnetRouteTable##id->Pulumi.Output.asInput,
               ~subnetId=publicSubnet##id->Pulumi.Output.asInput,
+              (),
             ),
           ~opts,
           (),
@@ -246,6 +253,7 @@ let construct: construct =
             Args.make(
               ~routeTableId=privateSubnetRouteTable##id->Pulumi.Output.asInput,
               ~subnetId=privateSubnet##id->Pulumi.Output.asInput,
+              (),
             ),
           ~opts,
           (),
