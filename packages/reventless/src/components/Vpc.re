@@ -142,9 +142,6 @@ let construct: construct =
         )
       );
 
-    let eip =
-      Eip.(make(~name=name ++ "Eip", ~args=Args.make(~vpc=true), ~opts, ()));
-
     let internetGateway =
       InternetGateway.(
         make(
@@ -155,13 +152,28 @@ let construct: construct =
         )
       );
 
+    let eip =
+      Eip.(
+        make(
+          ~name=name ++ "Eip",
+          ~args=Args.make(~vpc=true),
+          ~opts=
+            Pulumi.CustomResourceOptions.make(
+              ~parent=self->Pulumi.Resource.makeFromJs,
+              ~dependsOn=[|internetGateway->Pulumi.Resource.makeFromJs|],
+              (),
+            ),
+          (),
+        )
+      );
+
     let natGateway =
       NatGateway.(
         make(
           ~name=name ++ "NatGateway",
           ~args=
             Args.make(
-              ~allocationId=eip##allocationId->Pulumi.Output.asInput,
+              ~allocationId=eip##id->Pulumi.Output.asInput,
               ~subnetId=publicSubnet##id->Pulumi.Output.asInput,
             ),
           ~opts=
