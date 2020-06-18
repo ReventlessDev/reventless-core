@@ -16,8 +16,8 @@
     "watch:jest": "jest --coverage --watchAll",
     "watch:screen": "screen -c .screenrc",
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json",
-    "prepublishOnly": "npm run clean && (rm -rf lib & rm -f .merlin) && cd ../..; npm run gitpkg-link ./packages/bs-aws-sdk/package.json",
-    "postpublish": "echo 'Please ensure the CHANGELOG is up to date!'",
+    "prepublishOnly": "npm run clean && (rm -rf lib & rm -f .merlin) && cd ../..; npm run gitpkg-link ./packages/reventless/package.json",
+    "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'",
     "gitpkg": "../../node_modules/.bin/gitpkg publish"
   },
   "repository": {
@@ -37,18 +37,18 @@
   "dependencies": {
     "@aantron/repromise": "^0.6.0",
     "@ryb73/decco": "0.0.12",
-    "bs-aws-sdk": "git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git#bs-aws-sdk-v0.0.1-gitpkg",
-    "bs-node-streams": "git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git#bs-node-streams-v0.0.1-gitpkg",
-    "bs-pulumi-pulumi": "git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git#bs-pulumi-pulumi-v0.0.1-gitpkg",
-    "bs-pulumi-aws": "git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git#bs-pulumi-aws-v0.0.1-gitpkg",
+    "bs-aws-sdk": "0.0.1",
+    "bs-node-streams": "0.0.1",
+    "bs-pulumi-pulumi": "0.0.1",
+    "bs-pulumi-aws": "0.0.1",
     "fast-csv": "chrwnsk/fast-csv#build",
-    "bs-fast-csv": "git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git#bs-fast-csv-v0.0.1-gitpkg",
+    "bs-fast-csv": "0.0.1",
     "hash-obj": "^2.0.0",
-    "bs-hash-obj": "git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git#bs-hash-obj-v0.0.1-gitpkg",
+    "bs-hash-obj": "0.0.1",
     "ssh2": "^0.8.5",
-    "bs-ssh2": "git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git#bs-ssh2-v0.0.1-gitpkg",
+    "bs-ssh2": "0.0.1",
     "uuid": "^3.3.2",
-    "bs-uuid": "git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git#bs-uuid-v0.0.1-gitpkg"
+    "bs-uuid": "0.0.1"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
