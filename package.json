@@ -10,7 +10,8 @@
     "build": "lerna run build",
     "rebuild": "lerna run rebuild",
     "clean": "lerna run clean",
-    "test": "lerna run test"
+    "test": "lerna run test",
+    "gitpkg-link": "./packages/gitpkg-linker/gitpkg-linker.js git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git"
   },
   "devDependencies": {
     "gitpkg": "^1.0.0-beta.1",
