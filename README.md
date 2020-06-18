@@ -94,3 +94,28 @@ For any separate package in the Reventless-Monorepo, which was published via git
 ### Modifying Already Published Package
 If you really need to change a published package withoug raising the version number, you can delete a remote tag by calling `git push --delete origin TAG-NAME`. Afterwards you can just run gitpkg again. Make sure to fetch this package in it's dependents (without using a cached version).
 
+## Dependencies of packages in this repository
+How to read the following table:
+-  packages are listed top to bottom
+- dependencies are listed left to right
+
+| Package / dep    | bs-aws-sdk | bs-fast-csv | bs-hash-obj | bs-node-streams | bs-pulumi-aws | bs-pulumi-pulumi | bs-ssh2 | bs-uuid |
+|------------------|:----------:|:-----------:|:-----------:|:---------------:|:-------------:|:----------------:|:-------:|:-------:|
+| bs-aws-sdk       |            |             |             | x               |               |                  |         |         |
+| bs-fast-csv      |            |             |             | x               |               |                  |         |         |
+| bs-hash-obj      |            |             |             |                 |               |                  |         |         |
+| bs-node-streams  |            |             |             |                 |               |                  |         |         |
+| bs-pulumi-aws    |            |             |             |                 |               | x                |         |         |
+| bs-pulumi-pulumi |            |             |             |                 |               |                  |         |         |
+| bs-ssh2          |            |             |             | x               |               |                  |         |         |
+| bs-uuid          |            |             |             |                 |               |                  |         |         |
+| reventless       | x          | x           | x           | x               | x             | x                | x       | x       |
+
+Therefore there is a natural order in which package updates should be published:
+
+| 0                | 1             | 2          |
+|------------------|---------------|------------|
+| bs-hash-obj      | bs-aws-sdk    | reventless |
+| bs-node-streams  | bs-fast-csv   |            |
+| bs-pulumi-pulumi | bs-pulumi-aws |            |
+| bs-uuid          | bs-ssh2       |            |
