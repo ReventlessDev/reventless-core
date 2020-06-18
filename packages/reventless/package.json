@@ -1,6 +1,6 @@
 {
   "name": "reventless",
-  "version": "0.0.1",
+  "version": "0.0.1-vpc",
   "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
   "private": true,
   "scripts": {
@@ -40,7 +40,7 @@
     "bs-aws-sdk": "0.0.1",
     "bs-node-streams": "0.0.1",
     "bs-pulumi-pulumi": "0.0.1",
-    "bs-pulumi-aws": "0.0.1",
+    "bs-pulumi-aws": "git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git#bs-pulumi-aws-v0.0.1-vpc-gitpkg",
     "fast-csv": "chrwnsk/fast-csv#build",
     "bs-fast-csv": "0.0.1",
     "hash-obj": "^2.0.0",
