@@ -13,16 +13,12 @@ let getVpcConfig:
     | Some(vpcOutput) =>
       vpcOutput
       ->Pulumi.Output.apply(vpc =>
-          switch (
-            vpc##securityGroup##id,
-            vpc##privateSubnet##id,
-            vpc##vpc##id,
-          ) {
-          | (Some(securityGroupId), Some(subnetId), Some(vpcId)) =>
+          switch (vpc##securityGroup##id, vpc##privateSubnet##id) {
+          | (Some(securityGroupId), Some(subnetId)) =>
             PulumiAws.Lambda.CallbackFunction.Args.VpcConfig.make(
               ~securityGroupIds=[|securityGroupId|],
               ~subnetIds=[|subnetId|],
-              ~vpcId,
+              ~vpcId=None,
             )
           | _ => Js.Exn.raiseError("Output is not a Reventless Vpc Component")
           }
