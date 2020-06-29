@@ -3,17 +3,19 @@ open PulumiAws.EC2;
 
 type outputs = {
   .
-  "vpc": VPC.t,
-  "securityGroup": SecurityGroup.t,
-  "publicSubnet": Subnet.t,
-  "privateSubnet": Subnet.t,
   "eip": Eip.t,
-  "natGateway": NatGateway.t,
   "internetGateway": InternetGateway.t,
-  "publicSubnetRouteTable": RouteTable.t,
+  "natGateway": NatGateway.t,
+  "privateSubnet": Subnet.t,
   "privateSubnetRouteTable": RouteTable.t,
-  "publicSubnetRouteTableAssociation": RouteTableAssociation.t,
   "privateSubnetRouteTableAssociation": RouteTableAssociation.t,
+  "publicSubnet": Subnet.t,
+  "publicSubnetRouteTable": RouteTable.t,
+  "publicSubnetRouteTableAssociation": RouteTableAssociation.t,
+  "s3Endpoint": VpcEndpoint.t,
+  "securityGroup": SecurityGroup.t,
+  "sqsEndpoint": VpcEndpoint.t,
+  "vpc": Vpc.t,
 };
 type t = outputs;
 
@@ -37,17 +39,19 @@ external make:
 [@bs.obj]
 external makeOutputs:
   (
-    ~vpc: VPC.t,
-    ~securityGroup: SecurityGroup.t,
-    ~publicSubnet: Subnet.t,
-    ~privateSubnet: Subnet.t,
     ~eip: Eip.t,
-    ~natGateway: NatGateway.t,
     ~internetGateway: InternetGateway.t,
-    ~publicSubnetRouteTable: RouteTable.t,
+    ~natGateway: NatGateway.t,
+    ~privateSubnet: Subnet.t,
     ~privateSubnetRouteTable: RouteTable.t,
+    ~privateSubnetRouteTableAssociation: RouteTableAssociation.t,
+    ~publicSubnet: Subnet.t,
+    ~publicSubnetRouteTable: RouteTable.t,
     ~publicSubnetRouteTableAssociation: RouteTableAssociation.t,
-    ~privateSubnetRouteTableAssociation: RouteTableAssociation.t
+    ~s3Endpoint: VpcEndpoint.t,
+    ~securityGroup: SecurityGroup.t,
+    ~sqsEndpoint: VpcEndpoint.t,
+    ~vpc: Vpc.t
   ) =>
   outputs =
   "";
@@ -68,7 +72,7 @@ let construct: construct =
       );
 
     let vpc =
-      VPC.(
+      Vpc.(
         make(
           ~name=name ++ "VPC",
           ~args=Args.make(~cidrBlock="172.31.0.0/16", ()),
@@ -241,6 +245,47 @@ let construct: construct =
         )
       );
 
+    let s3Endpoint =
+      VpcEndpoint.(
+        make(
+          ~name=name ++ "S3Endpoint",
+          ~args=
+            Args.make(
+              ~serviceName=
+                "com.amazonaws."
+                ++
+                PulumiAws.Aws.getRegionSync()##name
+                ++ ".s3",
+              ~vpcId=vpc##id->Pulumi.Output.asInput,
+              (),
+            ),
+          ~opts,
+          (),
+        )
+      );
+
+    let sqsEndpoint =
+      VpcEndpoint.(
+        make(
+          ~name=name ++ "SQSEndpoint",
+          ~args=
+            Args.make(
+              ~privateDnsEnabled=true,
+              ~securityGroupIds=[|securityGroup##id->Pulumi.Output.asInput|],
+              ~serviceName=
+                "com.amazonaws."
+                ++
+                PulumiAws.Aws.getRegionSync()##name
+                ++ ".sqs",
+              ~vpcEndpointType=Args.VpcEndpointType.interface,
+              ~vpcId=vpc##id->Pulumi.Output.asInput,
+              (),
+            ),
+          ~opts,
+          (),
+        )
+      );
+
     makeOutputs(
       ~vpc,
       ~securityGroup,
@@ -252,7 +297,9 @@ let construct: construct =
       ~publicSubnetRouteTable,
       ~privateSubnetRouteTable,
       ~publicSubnetRouteTableAssociation,
+      ~s3Endpoint,
       ~privateSubnetRouteTableAssociation,
+      ~sqsEndpoint,
     )
     ->setOutputs(self);
   };
