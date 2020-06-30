@@ -15,7 +15,7 @@ type outputs = {
   "s3Endpoint": VpcEndpoint.t,
   "securityGroup": SecurityGroup.t,
   "sqsEndpoint": VpcEndpoint.t,
-  "vpc": Vpc.t,
+  "vpc": PulumiAws.EC2.Vpc.t,
 };
 type t = outputs;
 
@@ -51,7 +51,7 @@ external makeOutputs:
     ~s3Endpoint: VpcEndpoint.t,
     ~securityGroup: SecurityGroup.t,
     ~sqsEndpoint: VpcEndpoint.t,
-    ~vpc: Vpc.t
+    ~vpc: PulumiAws.EC2.Vpc.t
   ) =>
   outputs =
   "";
