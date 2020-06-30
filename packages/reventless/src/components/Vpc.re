@@ -75,7 +75,12 @@ let construct: construct =
       PulumiAws.EC2.Vpc.(
         make(
           ~name=name ++ "VPC",
-          ~args=Args.make(~cidrBlock="172.31.0.0/16", ()),
+          ~args=
+            Args.make(
+              ~cidrBlock="172.31.0.0/16",
+              ~enableDnsHostnames=true,
+              (),
+            ),
           ~opts,
           (),
         )
@@ -286,12 +291,14 @@ let construct: construct =
               ~privateDnsEnabled=true,
               ~securityGroupIds=[|securityGroup##id->Pulumi.Output.asInput|],
               ~serviceName=
-                (region
-                |> Js.Promise.then_(region =>
-                     ("com.amazonaws." ++ region##name ++ ".sqs")
-                     ->Js.Promise.resolve
-                   ))
-                   ->Pulumi.Input.ofPromise,
+                (
+                  region
+                  |> Js.Promise.then_(region =>
+                       ("com.amazonaws." ++ region##name ++ ".sqs")
+                       ->Js.Promise.resolve
+                     )
+                )
+                ->Pulumi.Input.ofPromise,
               ~vpcEndpointType=Args.VpcEndpointType.interface,
               ~vpcId=vpc##id->Pulumi.Output.asInput,
               (),
