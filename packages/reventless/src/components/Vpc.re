@@ -248,8 +248,11 @@ let construct: construct =
     let _ =
       securityGroup##id
       ->Pulumi.Output.apply(id => id |> Js.log2("SecurityGroup.id"));
-    let region = PulumiAws.Aws.getRegionSync();
-    Js.log3("AWSRegion:", region##name, region);
+    let region = PulumiAws.Aws.getRegion();
+    region
+    |> Js.Promise.then_(region =>
+         Js.log2("AWSRegion:", region)->Js.Promise.resolve
+       );
 
     let s3Endpoint =
       VpcEndpoint.(
@@ -257,7 +260,15 @@ let construct: construct =
           ~name=name ++ "S3Endpoint",
           ~args=
             Args.make(
-              ~serviceName="com.amazonaws." ++ region##name ++ ".s3",
+              ~serviceName=
+                (
+                  region
+                  |> Js.Promise.then_(region =>
+                       ("com.amazonaws." ++ region##name ++ ".s3")
+                       ->Js.Promise.resolve
+                     )
+                )
+                ->Pulumi.Input.ofPromise,
               ~vpcId=vpc##id->Pulumi.Output.asInput,
               (),
             ),
@@ -274,7 +285,13 @@ let construct: construct =
             Args.make(
               ~privateDnsEnabled=true,
               ~securityGroupIds=[|securityGroup##id->Pulumi.Output.asInput|],
-              ~serviceName="com.amazonaws." ++ region##name ++ ".sqs",
+              ~serviceName=
+                (region
+                |> Js.Promise.then_(region =>
+                     ("com.amazonaws." ++ region##name ++ ".sqs")
+                     ->Js.Promise.resolve
+                   ))
+                   ->Pulumi.Input.ofPromise,
               ~vpcEndpointType=Args.VpcEndpointType.interface,
               ~vpcId=vpc##id->Pulumi.Output.asInput,
               (),
