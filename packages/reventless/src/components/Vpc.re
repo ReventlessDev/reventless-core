@@ -72,7 +72,7 @@ let construct: construct =
       );
 
     let vpc =
-      Vpc.(
+      PulumiAws.EC2.Vpc.(
         make(
           ~name=name ++ "VPC",
           ~args=Args.make(~cidrBlock="172.31.0.0/16", ()),
