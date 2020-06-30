@@ -250,14 +250,7 @@ let construct: construct =
         )
       );
 
-    let _ =
-      securityGroup##id
-      ->Pulumi.Output.apply(id => id |> Js.log2("SecurityGroup.id"));
     let region = PulumiAws.Aws.getRegion();
-    region
-    |> Js.Promise.then_(region =>
-         Js.log2("AWSRegion:", region)->Js.Promise.resolve
-       );
 
     let s3Endpoint =
       VpcEndpoint.(
