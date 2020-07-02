@@ -251,6 +251,10 @@ let construct: construct =
       );
 
     let region = PulumiAws.Aws.getRegion();
+    let routeTableIds = [|
+      publicSubnetRouteTable##id->Pulumi.Output.asInput,
+      privateSubnetRouteTable##id->Pulumi.Output.asInput,
+    |];
 
     let s3Endpoint =
       VpcEndpoint.(
@@ -268,6 +272,7 @@ let construct: construct =
                 )
                 ->Pulumi.Input.ofPromise,
               ~vpcId=vpc##id->Pulumi.Output.asInput,
+              ~routeTableIds,
               (),
             ),
           ~opts,
@@ -275,25 +280,23 @@ let construct: construct =
         )
       );
 
-    let sqsEndpoint =
+    let dynamoDbEndpoint =
       VpcEndpoint.(
         make(
-          ~name=name ++ "SQSEndpoint",
+          ~name=name ++ "DynamoDbEndpoint",
           ~args=
             Args.make(
-              ~privateDnsEnabled=true,
-              ~securityGroupIds=[|securityGroup##id->Pulumi.Output.asInput|],
               ~serviceName=
                 (
                   region
                   |> Js.Promise.then_(region =>
-                       ("com.amazonaws." ++ region##name ++ ".sqs")
+                       ("com.amazonaws." ++ region##name ++ ".dynamodb")
                        ->Js.Promise.resolve
                      )
                 )
                 ->Pulumi.Input.ofPromise,
-              ~vpcEndpointType=Args.VpcEndpointType.interface,
               ~vpcId=vpc##id->Pulumi.Output.asInput,
+              ~routeTableIds,
               (),
             ),
           ~opts,
