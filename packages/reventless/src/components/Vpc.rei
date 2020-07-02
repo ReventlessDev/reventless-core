@@ -1,5 +1,6 @@
 type outputs = {
   .
+  "dynamoDbEndpoint": PulumiAws.EC2.VpcEndpoint.t,
   "eip": PulumiAws.EC2.Eip.t,
   "internetGateway": PulumiAws.EC2.InternetGateway.t,
   "natGateway": PulumiAws.EC2.NatGateway.t,
@@ -11,7 +12,6 @@ type outputs = {
   "publicSubnetRouteTableAssociation": PulumiAws.EC2.RouteTableAssociation.t,
   "s3Endpoint": PulumiAws.EC2.VpcEndpoint.t,
   "securityGroup": PulumiAws.EC2.SecurityGroup.t,
-  "sqsEndpoint": PulumiAws.EC2.VpcEndpoint.t,
   "vpc": PulumiAws.EC2.Vpc.t,
 };
 type t = outputs;

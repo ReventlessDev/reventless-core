@@ -3,6 +3,7 @@ open PulumiAws.EC2;
 
 type outputs = {
   .
+  "dynamoDbEndpoint": VpcEndpoint.t,
   "eip": Eip.t,
   "internetGateway": InternetGateway.t,
   "natGateway": NatGateway.t,
@@ -14,7 +15,6 @@ type outputs = {
   "publicSubnetRouteTableAssociation": RouteTableAssociation.t,
   "s3Endpoint": VpcEndpoint.t,
   "securityGroup": SecurityGroup.t,
-  "sqsEndpoint": VpcEndpoint.t,
   "vpc": PulumiAws.EC2.Vpc.t,
 };
 type t = outputs;
@@ -39,6 +39,7 @@ external make:
 [@bs.obj]
 external makeOutputs:
   (
+    ~dynamoDbEndpoint: VpcEndpoint.t,
     ~eip: Eip.t,
     ~internetGateway: InternetGateway.t,
     ~natGateway: NatGateway.t,
@@ -50,7 +51,6 @@ external makeOutputs:
     ~publicSubnetRouteTableAssociation: RouteTableAssociation.t,
     ~s3Endpoint: VpcEndpoint.t,
     ~securityGroup: SecurityGroup.t,
-    ~sqsEndpoint: VpcEndpoint.t,
     ~vpc: PulumiAws.EC2.Vpc.t
   ) =>
   outputs =
@@ -305,19 +305,19 @@ let construct: construct =
       );
 
     makeOutputs(
-      ~vpc,
-      ~securityGroup,
-      ~publicSubnet,
-      ~privateSubnet,
+      ~dynamoDbEndpoint,
       ~eip,
-      ~natGateway,
       ~internetGateway,
-      ~publicSubnetRouteTable,
+      ~natGateway,
+      ~privateSubnet,
       ~privateSubnetRouteTable,
+      ~privateSubnetRouteTableAssociation,
+      ~publicSubnet,
+      ~publicSubnetRouteTable,
       ~publicSubnetRouteTableAssociation,
       ~s3Endpoint,
-      ~privateSubnetRouteTableAssociation,
-      ~sqsEndpoint,
+      ~securityGroup,
+      ~vpc,
     )
     ->setOutputs(self);
   };
