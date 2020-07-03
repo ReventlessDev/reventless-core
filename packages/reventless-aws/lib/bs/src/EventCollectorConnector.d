@@ -1,0 +1,1 @@
+src/EventCollectorConnector-ReventlessAws.cmj : ReventlessAws.cmi src/EventCollectorConnector_SQS-ReventlessAws.cmj src/EventCollectorConnector_SQS-ReventlessAws.cmi src/EventCollectorConnector_SQS_Runtime-ReventlessAws.cmj src/EventCollectorConnector_SQS_Runtime-ReventlessAws.cmi

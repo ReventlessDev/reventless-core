@@ -1,2 +1,0 @@
-module AppSync = AdapterAws_CommandGeneratorResolvers_AppSync;
-module AppSync_Runtime = AdapterAws_CommandGeneratorResolvers_AppSync_Runtime;

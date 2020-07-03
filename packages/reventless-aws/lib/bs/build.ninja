@@ -1,0 +1,206 @@
+g_std_incl = /Users/martin/prj/oews/reventless/packages/reventless-aws/node_modules/bs-platform/lib/ocaml
+g_pkg_flg = -bs-package-name reventless-aws -bs-ns ReventlessAws
+src_root_dir = /Users/martin/prj/oews/reventless/packages/reventless-aws
+bsc = /Users/martin/prj/oews/reventless/packages/reventless-aws/node_modules/bs-platform/lib/bsc.exe
+bsdep = /Users/martin/prj/oews/reventless/packages/reventless-aws/node_modules/bs-platform/lib/bsb_helper.exe
+warnings = -w -30-40+6+7+27+32..39+44+45+101 -warn-error -44+101
+bsc_flags = 
+ppx_flags = 
+g_dpkg_incls = 
+g_ns = -bs-ns ReventlessAws
+bsb_dir_group = 0
+bsc_group_1_includes = -I __tests__
+g_lib_incls = -I . -I src/util -I src -I /Users/martin/prj/oews/reventless/packages/reventless-aws/node_modules/@glennsl/bs-jest/lib/ocaml -I /Users/martin/prj/oews/reventless/packages/reventless-aws/node_modules/bs-aws-sdk/lib/ocaml -I /Users/martin/prj/oews/reventless/packages/reventless-aws/node_modules/bs-node-streams/lib/ocaml -I /Users/martin/prj/oews/reventless/packages/reventless-aws/node_modules/bs-pulumi-pulumi/lib/ocaml -I /Users/martin/prj/oews/reventless/packages/reventless-aws/node_modules/bs-pulumi-aws/lib/ocaml -I /Users/martin/prj/oews/reventless/packages/reventless-aws/node_modules/reventless/lib/ocaml
+rule build_ast_from_re
+  command = $bsc  $warnings -color always $bsc_flags -o $out -bs-syntax-only -bs-binary-ast $in
+  description = [34mBuilding[39m [2m${out}[22m
+build  src/DataCleaner.reast : build_ast_from_re $src_root_dir/src/DataCleaner.re
+rule build_deps
+  command = $bsdep -hash 0d4fc7877d382e70dc8627ebd66b3ecf $g_ns -g $bsb_dir_group $in
+  restat = 1
+  description = [34mBuilding[39m [2m${out}[22m
+build  src/DataCleaner.d : build_deps src/DataCleaner.reast
+rule ml_cmj_cmi
+  command = $bsc -nostdlib $g_pkg_flg -color always -bs-suffix $g_lib_incls -I $g_std_incl $warnings $bsc_flags -o $out $in
+  dyndep = $in_e.d
+  restat = 1
+  description = [34mBuilding[39m [2m${out}[22m
+build  src/DataCleaner-ReventlessAws.cmj |  src/DataCleaner-ReventlessAws.cmi $src_root_dir/src/DataCleaner.bs.js : ml_cmj_cmi src/DataCleaner.reast ||  src/DataCleaner.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/AtomicCounter.reast : build_ast_from_re $src_root_dir/src/AtomicCounter.re
+build  src/AtomicCounter.d : build_deps src/AtomicCounter.reast
+build  src/AtomicCounter-ReventlessAws.cmj |  src/AtomicCounter-ReventlessAws.cmi $src_root_dir/src/AtomicCounter.bs.js : ml_cmj_cmi src/AtomicCounter.reast ||  src/AtomicCounter.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/QueryDbStorage.reast : build_ast_from_re $src_root_dir/src/QueryDbStorage.re
+build  src/QueryDbStorage.d : build_deps src/QueryDbStorage.reast
+build  src/QueryDbStorage-ReventlessAws.cmj |  src/QueryDbStorage-ReventlessAws.cmi $src_root_dir/src/QueryDbStorage.bs.js : ml_cmj_cmi src/QueryDbStorage.reast ||  src/QueryDbStorage.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/EventLogStorage.reast : build_ast_from_re $src_root_dir/src/EventLogStorage.re
+build  src/EventLogStorage.d : build_deps src/EventLogStorage.reast
+build  src/EventLogStorage-ReventlessAws.cmj |  src/EventLogStorage-ReventlessAws.cmi $src_root_dir/src/EventLogStorage.bs.js : ml_cmj_cmi src/EventLogStorage.reast ||  src/EventLogStorage.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/QueryDbResolvers.reast : build_ast_from_re $src_root_dir/src/QueryDbResolvers.re
+build  src/QueryDbResolvers.d : build_deps src/QueryDbResolvers.reast
+build  src/QueryDbResolvers-ReventlessAws.cmj |  src/QueryDbResolvers-ReventlessAws.cmi $src_root_dir/src/QueryDbResolvers.bs.js : ml_cmj_cmi src/QueryDbResolvers.reast ||  src/QueryDbResolvers.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/ScheduledPublisher.reast : build_ast_from_re $src_root_dir/src/ScheduledPublisher.re
+build  src/ScheduledPublisher.d : build_deps src/ScheduledPublisher.reast
+build  src/ScheduledPublisher-ReventlessAws.cmj |  src/ScheduledPublisher-ReventlessAws.cmi $src_root_dir/src/ScheduledPublisher.bs.js : ml_cmj_cmi src/ScheduledPublisher.reast ||  src/ScheduledPublisher.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/EventTopicPublisher.reast : build_ast_from_re $src_root_dir/src/EventTopicPublisher.re
+build  src/EventTopicPublisher.d : build_deps src/EventTopicPublisher.reast
+build  src/EventTopicPublisher-ReventlessAws.cmj |  src/EventTopicPublisher-ReventlessAws.cmi $src_root_dir/src/EventTopicPublisher.bs.js : ml_cmj_cmi src/EventTopicPublisher.reast ||  src/EventTopicPublisher.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/CommandTopicConnector.reast : build_ast_from_re $src_root_dir/src/CommandTopicConnector.re
+build  src/CommandTopicConnector.d : build_deps src/CommandTopicConnector.reast
+build  src/CommandTopicConnector-ReventlessAws.cmj |  src/CommandTopicConnector-ReventlessAws.cmi $src_root_dir/src/CommandTopicConnector.bs.js : ml_cmj_cmi src/CommandTopicConnector.reast ||  src/CommandTopicConnector.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/AtomicCounter_DynamoDB.reast : build_ast_from_re $src_root_dir/src/AtomicCounter_DynamoDB.re
+build  src/AtomicCounter_DynamoDB.d : build_deps src/AtomicCounter_DynamoDB.reast
+build  src/AtomicCounter_DynamoDB-ReventlessAws.cmj |  src/AtomicCounter_DynamoDB-ReventlessAws.cmi $src_root_dir/src/AtomicCounter_DynamoDB.bs.js : ml_cmj_cmi src/AtomicCounter_DynamoDB.reast ||  src/AtomicCounter_DynamoDB.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/EventCollectorConnector.reast : build_ast_from_re $src_root_dir/src/EventCollectorConnector.re
+build  src/EventCollectorConnector.d : build_deps src/EventCollectorConnector.reast
+build  src/EventCollectorConnector-ReventlessAws.cmj |  src/EventCollectorConnector-ReventlessAws.cmi $src_root_dir/src/EventCollectorConnector.bs.js : ml_cmj_cmi src/EventCollectorConnector.reast ||  src/EventCollectorConnector.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/EventTopicPublisher_SNS.reast : build_ast_from_re $src_root_dir/src/EventTopicPublisher_SNS.re
+build  src/EventTopicPublisher_SNS.d : build_deps src/EventTopicPublisher_SNS.reast
+build  src/EventTopicPublisher_SNS-ReventlessAws.cmj |  src/EventTopicPublisher_SNS-ReventlessAws.cmi $src_root_dir/src/EventTopicPublisher_SNS.bs.js : ml_cmj_cmi src/EventTopicPublisher_SNS.reast ||  src/EventTopicPublisher_SNS.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/QueryDbStorage_DynamoDb.reast : build_ast_from_re $src_root_dir/src/QueryDbStorage_DynamoDb.re
+build  src/QueryDbStorage_DynamoDb.d : build_deps src/QueryDbStorage_DynamoDb.reast
+build  src/QueryDbStorage_DynamoDb-ReventlessAws.cmj |  src/QueryDbStorage_DynamoDb-ReventlessAws.cmi $src_root_dir/src/QueryDbStorage_DynamoDb.bs.js : ml_cmj_cmi src/QueryDbStorage_DynamoDb.reast ||  src/QueryDbStorage_DynamoDb.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/EventLogStorage_DynamoDb.reast : build_ast_from_re $src_root_dir/src/EventLogStorage_DynamoDb.re
+build  src/EventLogStorage_DynamoDb.d : build_deps src/EventLogStorage_DynamoDb.reast
+build  src/EventLogStorage_DynamoDb-ReventlessAws.cmj |  src/EventLogStorage_DynamoDb-ReventlessAws.cmi $src_root_dir/src/EventLogStorage_DynamoDb.bs.js : ml_cmj_cmi src/EventLogStorage_DynamoDb.reast ||  src/EventLogStorage_DynamoDb.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/QueryDbResolvers_AppSync.reast : build_ast_from_re $src_root_dir/src/QueryDbResolvers_AppSync.re
+build  src/QueryDbResolvers_AppSync.d : build_deps src/QueryDbResolvers_AppSync.reast
+build  src/QueryDbResolvers_AppSync-ReventlessAws.cmj |  src/QueryDbResolvers_AppSync-ReventlessAws.cmi $src_root_dir/src/QueryDbResolvers_AppSync.bs.js : ml_cmj_cmi src/QueryDbResolvers_AppSync.reast ||  src/QueryDbResolvers_AppSync.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/CommandGeneratorResolvers.reast : build_ast_from_re $src_root_dir/src/CommandGeneratorResolvers.re
+build  src/CommandGeneratorResolvers.d : build_deps src/CommandGeneratorResolvers.reast
+build  src/CommandGeneratorResolvers-ReventlessAws.cmj |  src/CommandGeneratorResolvers-ReventlessAws.cmi $src_root_dir/src/CommandGeneratorResolvers.bs.js : ml_cmj_cmi src/CommandGeneratorResolvers.reast ||  src/CommandGeneratorResolvers.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/CommandTopicConnector_SQS.reast : build_ast_from_re $src_root_dir/src/CommandTopicConnector_SQS.re
+build  src/CommandTopicConnector_SQS.d : build_deps src/CommandTopicConnector_SQS.reast
+build  src/CommandTopicConnector_SQS-ReventlessAws.cmj |  src/CommandTopicConnector_SQS-ReventlessAws.cmi $src_root_dir/src/CommandTopicConnector_SQS.bs.js : ml_cmj_cmi src/CommandTopicConnector_SQS.reast ||  src/CommandTopicConnector_SQS.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/EventCollectorConnector_SQS.reast : build_ast_from_re $src_root_dir/src/EventCollectorConnector_SQS.re
+build  src/EventCollectorConnector_SQS.d : build_deps src/EventCollectorConnector_SQS.reast
+build  src/EventCollectorConnector_SQS-ReventlessAws.cmj |  src/EventCollectorConnector_SQS-ReventlessAws.cmi $src_root_dir/src/EventCollectorConnector_SQS.bs.js : ml_cmj_cmi src/EventCollectorConnector_SQS.reast ||  src/EventCollectorConnector_SQS.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/AtomicCounter_DynamoDB_Runtime.reast : build_ast_from_re $src_root_dir/src/AtomicCounter_DynamoDB_Runtime.re
+build  src/AtomicCounter_DynamoDB_Runtime.d : build_deps src/AtomicCounter_DynamoDB_Runtime.reast
+build  src/AtomicCounter_DynamoDB_Runtime-ReventlessAws.cmj |  src/AtomicCounter_DynamoDB_Runtime-ReventlessAws.cmi $src_root_dir/src/AtomicCounter_DynamoDB_Runtime.bs.js : ml_cmj_cmi src/AtomicCounter_DynamoDB_Runtime.reast ||  src/AtomicCounter_DynamoDB_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/EventTopicPublisher_SNS_Runtime.reast : build_ast_from_re $src_root_dir/src/EventTopicPublisher_SNS_Runtime.re
+build  src/EventTopicPublisher_SNS_Runtime.d : build_deps src/EventTopicPublisher_SNS_Runtime.reast
+build  src/EventTopicPublisher_SNS_Runtime-ReventlessAws.cmj |  src/EventTopicPublisher_SNS_Runtime-ReventlessAws.cmi $src_root_dir/src/EventTopicPublisher_SNS_Runtime.bs.js : ml_cmj_cmi src/EventTopicPublisher_SNS_Runtime.reast ||  src/EventTopicPublisher_SNS_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/QueryDbStorage_DynamoDb_Runtime.reast : build_ast_from_re $src_root_dir/src/QueryDbStorage_DynamoDb_Runtime.re
+build  src/QueryDbStorage_DynamoDb_Runtime.d : build_deps src/QueryDbStorage_DynamoDb_Runtime.reast
+build  src/QueryDbStorage_DynamoDb_Runtime-ReventlessAws.cmj |  src/QueryDbStorage_DynamoDb_Runtime-ReventlessAws.cmi $src_root_dir/src/QueryDbStorage_DynamoDb_Runtime.bs.js : ml_cmj_cmi src/QueryDbStorage_DynamoDb_Runtime.reast ||  src/QueryDbStorage_DynamoDb_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/EventLogStorage_DynamoDb_Runtime.reast : build_ast_from_re $src_root_dir/src/EventLogStorage_DynamoDb_Runtime.re
+build  src/EventLogStorage_DynamoDb_Runtime.d : build_deps src/EventLogStorage_DynamoDb_Runtime.reast
+build  src/EventLogStorage_DynamoDb_Runtime-ReventlessAws.cmj |  src/EventLogStorage_DynamoDb_Runtime-ReventlessAws.cmi $src_root_dir/src/EventLogStorage_DynamoDb_Runtime.bs.js : ml_cmj_cmi src/EventLogStorage_DynamoDb_Runtime.reast ||  src/EventLogStorage_DynamoDb_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/CommandGeneratorResolvers_AppSync.reast : build_ast_from_re $src_root_dir/src/CommandGeneratorResolvers_AppSync.re
+build  src/CommandGeneratorResolvers_AppSync.d : build_deps src/CommandGeneratorResolvers_AppSync.reast
+build  src/CommandGeneratorResolvers_AppSync-ReventlessAws.cmj |  src/CommandGeneratorResolvers_AppSync-ReventlessAws.cmi $src_root_dir/src/CommandGeneratorResolvers_AppSync.bs.js : ml_cmj_cmi src/CommandGeneratorResolvers_AppSync.reast ||  src/CommandGeneratorResolvers_AppSync.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/CommandTopicConnector_SQS_Runtime.reast : build_ast_from_re $src_root_dir/src/CommandTopicConnector_SQS_Runtime.re
+build  src/CommandTopicConnector_SQS_Runtime.d : build_deps src/CommandTopicConnector_SQS_Runtime.reast
+build  src/CommandTopicConnector_SQS_Runtime-ReventlessAws.cmj |  src/CommandTopicConnector_SQS_Runtime-ReventlessAws.cmi $src_root_dir/src/CommandTopicConnector_SQS_Runtime.bs.js : ml_cmj_cmi src/CommandTopicConnector_SQS_Runtime.reast ||  src/CommandTopicConnector_SQS_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/EventCollectorConnector_SQS_Runtime.reast : build_ast_from_re $src_root_dir/src/EventCollectorConnector_SQS_Runtime.re
+build  src/EventCollectorConnector_SQS_Runtime.d : build_deps src/EventCollectorConnector_SQS_Runtime.reast
+build  src/EventCollectorConnector_SQS_Runtime-ReventlessAws.cmj |  src/EventCollectorConnector_SQS_Runtime-ReventlessAws.cmi $src_root_dir/src/EventCollectorConnector_SQS_Runtime.bs.js : ml_cmj_cmi src/EventCollectorConnector_SQS_Runtime.reast ||  src/EventCollectorConnector_SQS_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/ScheduledPublisher_CloudWatchEvents.reast : build_ast_from_re $src_root_dir/src/ScheduledPublisher_CloudWatchEvents.re
+build  src/ScheduledPublisher_CloudWatchEvents.d : build_deps src/ScheduledPublisher_CloudWatchEvents.reast
+build  src/ScheduledPublisher_CloudWatchEvents-ReventlessAws.cmj |  src/ScheduledPublisher_CloudWatchEvents-ReventlessAws.cmi $src_root_dir/src/ScheduledPublisher_CloudWatchEvents.bs.js : ml_cmj_cmi src/ScheduledPublisher_CloudWatchEvents.reast ||  src/ScheduledPublisher_CloudWatchEvents.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/CommandGeneratorResolvers_AppSync_Runtime.reast : build_ast_from_re $src_root_dir/src/CommandGeneratorResolvers_AppSync_Runtime.re
+build  src/CommandGeneratorResolvers_AppSync_Runtime.d : build_deps src/CommandGeneratorResolvers_AppSync_Runtime.reast
+build  src/CommandGeneratorResolvers_AppSync_Runtime-ReventlessAws.cmj |  src/CommandGeneratorResolvers_AppSync_Runtime-ReventlessAws.cmi $src_root_dir/src/CommandGeneratorResolvers_AppSync_Runtime.bs.js : ml_cmj_cmi src/CommandGeneratorResolvers_AppSync_Runtime.reast ||  src/CommandGeneratorResolvers_AppSync_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/ScheduledPublisher_CloudWatchEvents_Runtime.reast : build_ast_from_re $src_root_dir/src/ScheduledPublisher_CloudWatchEvents_Runtime.re
+build  src/ScheduledPublisher_CloudWatchEvents_Runtime.d : build_deps src/ScheduledPublisher_CloudWatchEvents_Runtime.reast
+build  src/ScheduledPublisher_CloudWatchEvents_Runtime-ReventlessAws.cmj |  src/ScheduledPublisher_CloudWatchEvents_Runtime-ReventlessAws.cmi $src_root_dir/src/ScheduledPublisher_CloudWatchEvents_Runtime.bs.js : ml_cmj_cmi src/ScheduledPublisher_CloudWatchEvents_Runtime.reast ||  src/ScheduledPublisher_CloudWatchEvents_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src
+build  src/util/Util.reast : build_ast_from_re $src_root_dir/src/util/Util.re
+build  src/util/Util.d : build_deps src/util/Util.reast
+build  src/util/Util-ReventlessAws.cmj |  src/util/Util-ReventlessAws.cmi $src_root_dir/src/util/Util.bs.js : ml_cmj_cmi src/util/Util.reast ||  src/util/Util.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_SNS.reast : build_ast_from_re $src_root_dir/src/util/Util_SNS.re
+build  src/util/Util_SNS.d : build_deps src/util/Util_SNS.reast
+build  src/util/Util_SNS-ReventlessAws.cmj |  src/util/Util_SNS-ReventlessAws.cmi $src_root_dir/src/util/Util_SNS.bs.js : ml_cmj_cmi src/util/Util_SNS.reast ||  src/util/Util_SNS.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_SQS.reast : build_ast_from_re $src_root_dir/src/util/Util_SQS.re
+build  src/util/Util_SQS.d : build_deps src/util/Util_SQS.reast
+build  src/util/Util_SQS-ReventlessAws.cmj |  src/util/Util_SQS-ReventlessAws.cmi $src_root_dir/src/util/Util_SQS.bs.js : ml_cmj_cmi src/util/Util_SQS.reast ||  src/util/Util_SQS.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_AppSync.reast : build_ast_from_re $src_root_dir/src/util/Util_AppSync.re
+build  src/util/Util_AppSync.d : build_deps src/util/Util_AppSync.reast
+build  src/util/Util_AppSync-ReventlessAws.cmj |  src/util/Util_AppSync-ReventlessAws.cmi $src_root_dir/src/util/Util_AppSync.bs.js : ml_cmj_cmi src/util/Util_AppSync.reast ||  src/util/Util_AppSync.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_DynamoDb.reast : build_ast_from_re $src_root_dir/src/util/Util_DynamoDb.re
+build  src/util/Util_DynamoDb.d : build_deps src/util/Util_DynamoDb.reast
+build  src/util/Util_DynamoDb-ReventlessAws.cmj |  src/util/Util_DynamoDb-ReventlessAws.cmi $src_root_dir/src/util/Util_DynamoDb.bs.js : ml_cmj_cmi src/util/Util_DynamoDb.reast ||  src/util/Util_DynamoDb.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_S3_Runtime.reast : build_ast_from_re $src_root_dir/src/util/Util_S3_Runtime.re
+build  src/util/Util_S3_Runtime.d : build_deps src/util/Util_S3_Runtime.reast
+build  src/util/Util_S3_Runtime-ReventlessAws.cmj |  src/util/Util_S3_Runtime-ReventlessAws.cmi $src_root_dir/src/util/Util_S3_Runtime.bs.js : ml_cmj_cmi src/util/Util_S3_Runtime.reast ||  src/util/Util_S3_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_SES_Runtime.reast : build_ast_from_re $src_root_dir/src/util/Util_SES_Runtime.re
+build  src/util/Util_SES_Runtime.d : build_deps src/util/Util_SES_Runtime.reast
+build  src/util/Util_SES_Runtime-ReventlessAws.cmj |  src/util/Util_SES_Runtime-ReventlessAws.cmi $src_root_dir/src/util/Util_SES_Runtime.bs.js : ml_cmj_cmi src/util/Util_SES_Runtime.reast ||  src/util/Util_SES_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_SNS_Runtime.reast : build_ast_from_re $src_root_dir/src/util/Util_SNS_Runtime.re
+build  src/util/Util_SNS_Runtime.d : build_deps src/util/Util_SNS_Runtime.reast
+build  src/util/Util_SNS_Runtime-ReventlessAws.cmj |  src/util/Util_SNS_Runtime-ReventlessAws.cmi $src_root_dir/src/util/Util_SNS_Runtime.bs.js : ml_cmj_cmi src/util/Util_SNS_Runtime.reast ||  src/util/Util_SNS_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_SQS_Runtime.reast : build_ast_from_re $src_root_dir/src/util/Util_SQS_Runtime.re
+build  src/util/Util_SQS_Runtime.d : build_deps src/util/Util_SQS_Runtime.reast
+build  src/util/Util_SQS_Runtime-ReventlessAws.cmj |  src/util/Util_SQS_Runtime-ReventlessAws.cmi $src_root_dir/src/util/Util_SQS_Runtime.bs.js : ml_cmj_cmi src/util/Util_SQS_Runtime.reast ||  src/util/Util_SQS_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_SqsQueuePolicy.reast : build_ast_from_re $src_root_dir/src/util/Util_SqsQueuePolicy.re
+build  src/util/Util_SqsQueuePolicy.d : build_deps src/util/Util_SqsQueuePolicy.reast
+build  src/util/Util_SqsQueuePolicy-ReventlessAws.cmj |  src/util/Util_SqsQueuePolicy-ReventlessAws.cmi $src_root_dir/src/util/Util_SqsQueuePolicy.bs.js : ml_cmj_cmi src/util/Util_SqsQueuePolicy.reast ||  src/util/Util_SqsQueuePolicy.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_Cognito_Runtime.reast : build_ast_from_re $src_root_dir/src/util/Util_Cognito_Runtime.re
+build  src/util/Util_Cognito_Runtime.d : build_deps src/util/Util_Cognito_Runtime.reast
+build  src/util/Util_Cognito_Runtime-ReventlessAws.cmj |  src/util/Util_Cognito_Runtime-ReventlessAws.cmi $src_root_dir/src/util/Util_Cognito_Runtime.bs.js : ml_cmj_cmi src/util/Util_Cognito_Runtime.reast ||  src/util/Util_Cognito_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_DeadLetterQueue.reast : build_ast_from_re $src_root_dir/src/util/Util_DeadLetterQueue.re
+build  src/util/Util_DeadLetterQueue.d : build_deps src/util/Util_DeadLetterQueue.reast
+build  src/util/Util_DeadLetterQueue-ReventlessAws.cmj |  src/util/Util_DeadLetterQueue-ReventlessAws.cmi $src_root_dir/src/util/Util_DeadLetterQueue.bs.js : ml_cmj_cmi src/util/Util_DeadLetterQueue.reast ||  src/util/Util_DeadLetterQueue.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_Kinesis_Runtime.reast : build_ast_from_re $src_root_dir/src/util/Util_Kinesis_Runtime.re
+build  src/util/Util_Kinesis_Runtime.d : build_deps src/util/Util_Kinesis_Runtime.reast
+build  src/util/Util_Kinesis_Runtime-ReventlessAws.cmj |  src/util/Util_Kinesis_Runtime-ReventlessAws.cmi $src_root_dir/src/util/Util_Kinesis_Runtime.bs.js : ml_cmj_cmi src/util/Util_Kinesis_Runtime.reast ||  src/util/Util_Kinesis_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_CognitoGroupUser.reast : build_ast_from_re $src_root_dir/src/util/Util_CognitoGroupUser.re
+build  src/util/Util_CognitoGroupUser.d : build_deps src/util/Util_CognitoGroupUser.reast
+build  src/util/Util_CognitoGroupUser-ReventlessAws.cmj |  src/util/Util_CognitoGroupUser-ReventlessAws.cmi $src_root_dir/src/util/Util_CognitoGroupUser.bs.js : ml_cmj_cmi src/util/Util_CognitoGroupUser.reast ||  src/util/Util_CognitoGroupUser.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_DynamoDb_Runtime.reast : build_ast_from_re $src_root_dir/src/util/Util_DynamoDb_Runtime.re
+build  src/util/Util_DynamoDb_Runtime.d : build_deps src/util/Util_DynamoDb_Runtime.reast
+build  src/util/Util_DynamoDb_Runtime-ReventlessAws.cmj |  src/util/Util_DynamoDb_Runtime-ReventlessAws.cmi $src_root_dir/src/util/Util_DynamoDb_Runtime.bs.js : ml_cmj_cmi src/util/Util_DynamoDb_Runtime.reast ||  src/util/Util_DynamoDb_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_SesPolicy_Runtime.reast : build_ast_from_re $src_root_dir/src/util/Util_SesPolicy_Runtime.re
+build  src/util/Util_SesPolicy_Runtime.d : build_deps src/util/Util_SesPolicy_Runtime.reast
+build  src/util/Util_SesPolicy_Runtime-ReventlessAws.cmj |  src/util/Util_SesPolicy_Runtime-ReventlessAws.cmi $src_root_dir/src/util/Util_SesPolicy_Runtime.bs.js : ml_cmj_cmi src/util/Util_SesPolicy_Runtime.reast ||  src/util/Util_SesPolicy_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+build  src/util/Util_CognitoGroupUser_Runtime.reast : build_ast_from_re $src_root_dir/src/util/Util_CognitoGroupUser_Runtime.re
+build  src/util/Util_CognitoGroupUser_Runtime.d : build_deps src/util/Util_CognitoGroupUser_Runtime.reast
+build  src/util/Util_CognitoGroupUser_Runtime-ReventlessAws.cmj |  src/util/Util_CognitoGroupUser_Runtime-ReventlessAws.cmi $src_root_dir/src/util/Util_CognitoGroupUser_Runtime.bs.js : ml_cmj_cmi src/util/Util_CognitoGroupUser_Runtime.reast ||  src/util/Util_CognitoGroupUser_Runtime.d
+  g_pkg_flg = $g_pkg_flg  -bs-package-output commonjs:src/util
+rule build_package
+  command = $bsc -w -49 -color always -no-alias-deps  $in
+  restat = 1
+  description = [34mBuilding[39m [2m${out}[22m
+build  ReventlessAws.cmi : build_package ReventlessAws.mlmap

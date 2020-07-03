@@ -1,2 +1,0 @@
-module DynamoDb = AdapterAws_QueryDbStorage_DynamoDb;
-module DynamoDb_Runtime = AdapterAws_QueryDbStorage_DynamoDb_Runtime;

@@ -1,0 +1,1 @@
+src/CommandGeneratorResolvers_AppSync-ReventlessAws.cmj : ReventlessAws.cmi src/CommandGeneratorResolvers_AppSync_Runtime-ReventlessAws.cmj src/CommandGeneratorResolvers_AppSync_Runtime-ReventlessAws.cmi src/util/Util_AppSync-ReventlessAws.cmj src/util/Util_AppSync-ReventlessAws.cmi

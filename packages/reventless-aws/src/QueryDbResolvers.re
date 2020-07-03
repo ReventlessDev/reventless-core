@@ -1,0 +1,1 @@
+module AppSync = QueryDbResolvers_AppSync;

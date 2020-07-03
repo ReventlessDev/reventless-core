@@ -1,2 +1,0 @@
-module SQS = AdapterAws_EventCollectorConnector_SQS;
-module SQS_Runtime = AdapterAws_EventCollectorConnector_SQS_Runtime;

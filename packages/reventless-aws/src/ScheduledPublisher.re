@@ -1,0 +1,2 @@
+module CloudWatchEvents = ScheduledPublisher_CloudWatchEvents;
+module CloudWatchEvents_Runtime = ScheduledPublisher_CloudWatchEvents_Runtime;

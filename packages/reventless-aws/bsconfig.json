@@ -1,0 +1,33 @@
+{
+  "name": "reventless-aws",
+  "version": "0.0.1",
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    },
+    {
+      "dir": "__tests__",
+      "type": "dev"
+    }
+  ],
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "suffix": ".bs.js",
+  "bs-dependencies": [
+    "@glennsl/bs-jest",
+    "bs-aws-sdk",
+    "bs-node-streams",
+    "bs-pulumi-pulumi",
+    "bs-pulumi-aws",
+    "reventless"
+  ],
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "namespace": true,
+  "refmt": 3
+}
