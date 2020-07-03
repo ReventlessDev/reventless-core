@@ -48,7 +48,7 @@
     "ssh2": "^0.8.5",
     "bs-ssh2": "0.0.1",
     "uuid": "^3.3.2",
-    "bs-uuid": "0.0.1"
+    "bs-uuid": "0.0.2"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
