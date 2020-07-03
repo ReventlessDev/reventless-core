@@ -1,1 +1,0 @@
-src/QueryDbStorage_DynamoDb-ReventlessAws.cmj : ReventlessAws.cmi src/QueryDbStorage_DynamoDb_Runtime-ReventlessAws.cmj src/QueryDbStorage_DynamoDb_Runtime-ReventlessAws.cmi src/util/Util_DynamoDb-ReventlessAws.cmj src/util/Util_DynamoDb-ReventlessAws.cmi

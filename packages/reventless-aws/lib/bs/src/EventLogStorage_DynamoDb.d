@@ -1,1 +1,0 @@
-src/EventLogStorage_DynamoDb-ReventlessAws.cmj : ReventlessAws.cmi src/EventLogStorage_DynamoDb_Runtime-ReventlessAws.cmj src/EventLogStorage_DynamoDb_Runtime-ReventlessAws.cmi src/util/Util_DynamoDb-ReventlessAws.cmj src/util/Util_DynamoDb-ReventlessAws.cmi

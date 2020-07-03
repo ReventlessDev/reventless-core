@@ -6,7 +6,6 @@
 .vscode
 npm-debug.log
 /lib
-/lib/ocaml/
 /node_modules/
 /packages/*/node_modules/
 *.bs.js
