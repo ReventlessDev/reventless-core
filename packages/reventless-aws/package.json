@@ -1,6 +1,6 @@
 {
   "name": "reventless-aws",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "AWS adapters for Reventless",
   "private": true,
   "scripts": {
@@ -27,7 +27,7 @@
   "author": "Atos",
   "license": "proprietary",
   "dependencies": {
-    "reventless": "0.0.2"
+    "reventless": "0.0.3"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
