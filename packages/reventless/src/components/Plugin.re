@@ -1,12 +1,12 @@
-let componentType = ComponentType.Backend;
+let componentType = ComponentType.Plugin;
 
-type contextMakers = array(Context.maker);
 type taskMakers = array(Task.maker);
+type serviceMakers = array(Service.maker);
 type eventMapperMakers = array(EventMapper.maker);
 
 type outputs = {
   .
-  "contexts": array(Context.t),
+  "services": array(Service.t),
   "tasks": array(Task.t),
   "eventMappers": array(EventMapper.t),
   "resolvers": Pulumi.Output.t(array(Adapter.resource)),
@@ -17,7 +17,7 @@ module type T = {
   let make:
     (
       ~name: string,
-      ~contextMakers: contextMakers,
+      ~serviceMakers: serviceMakers,
       ~taskMakers: taskMakers,
       ~eventMapperMakers: eventMapperMakers,
       ~opts: Pulumi.ComponentResource.Options.t=?,
@@ -46,7 +46,7 @@ module Make =
   [@bs.obj]
   external makeOutputs:
     (
-      ~contexts: array(Context.t),
+      ~services: array(Service.t),
       ~tasks: array(Task.t),
       ~eventMappers: array(EventMapper.t),
       ~resolvers: array(Adapter.resource)
@@ -64,9 +64,9 @@ module Make =
 
   let construct =
       (
-        ~contextMakers,
-        ~taskMakers: array(Task.maker),
-        ~eventMapperMakers,
+        ~serviceMakers: serviceMakers,
+        ~taskMakers: taskMakers,
+        ~eventMapperMakers: eventMapperMakers,
         self,
         _,
       ) => {
@@ -75,24 +75,29 @@ module Make =
         ~parent=self->Pulumi.Resource.makeFromJs,
         (),
       );
-    let contexts =
-      contextMakers |> Array.map(contextMaker => contextMaker(Some(opts)));
+    let services =
+      serviceMakers->Belt.Array.map(serviceMaker =>
+        serviceMaker(Some(opts))
+      );
 
     let queryCommandTopic =
-      InterstackResourceQueryRuntime.commandTopicConnectorOfAllContextsExn(
-        contexts->Interstack.mergeContexts,
+      InterstackResourceQueryRuntime.commandTopicConnectorOfAllServicesExn(
+        services->Interstack.mergeServices,
       );
+
     let queryEventTopic =
-      InterstackResourceQueryDeploytime.eventTopicPublisherOfAllContextsExn(
-        contexts,
+      InterstackResourceQueryDeploytime.eventTopicPublisherOfAllServicesExn(
+        services,
       );
+
     let queryQueryDb =
-      InterstackResourceQueryRuntime.queryDbStorageOfAllContextsExn(
-        contexts->Interstack.mergeContexts,
+      InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
+        services->Interstack.mergeServices,
       );
+
     let queryQueryDbDeploytime =
-      InterstackResourceQueryDeploytime.queryDbStorageOfAllContextsExn(
-        contexts,
+      InterstackResourceQueryDeploytime.queryDbStorageOfAllServicesExn(
+        services,
       );
 
     let eventMappers = ref([||]);
@@ -187,13 +192,13 @@ module Make =
          );
 
     let resolvers =
-      contexts
+      services
       ->InterstackResourceQueryDeploytime.allResolversMakers
       ->Belt.Array.map(resolverMaker => resolverMaker(queryQueryDbDeploytime))
       ->Belt.Array.concatMany;
 
     makeOutputs(
-      ~contexts,
+      ~services,
       ~tasks=tasks^,
       ~eventMappers=eventMappers^,
       ~resolvers,
@@ -204,18 +209,18 @@ module Make =
   let make:
     (
       ~name: string,
-      ~contextMakers: contextMakers,
+      ~serviceMakers: serviceMakers,
       ~taskMakers: taskMakers,
       ~eventMapperMakers: eventMapperMakers,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
     t =
-    (~name, ~contextMakers, ~taskMakers, ~eventMapperMakers, ~opts=?, _unit) =>
+    (~name, ~serviceMakers, ~taskMakers, ~eventMapperMakers, ~opts=?, _unit) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=name->ComponentType.name(componentType),
-        ~construct=construct(~contextMakers, ~taskMakers, ~eventMapperMakers),
+        ~construct=construct(~serviceMakers, ~taskMakers, ~eventMapperMakers),
         ~opts,
       );
 };

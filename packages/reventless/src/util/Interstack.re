@@ -1,42 +1,35 @@
-type backend;
-[@bs.get] external getContexts: backend => array(Context.t) = "contexts";
-[@bs.get] external getTasks: backend => array(Task.t) = "tasks";
+type plugin;
+[@bs.get] external getServices: plugin => array(Service.t) = "services";
+[@bs.get] external getTasks: plugin => array(Task.t) = "tasks";
 [@bs.get]
-external getEventMapper: backend => array(EventMapper.t) = "eventMappers";
+external getEventMapper: plugin => array(EventMapper.t) = "eventMappers";
 
-let stackDependencies: Pulumi.Output.t(array(backend)) =
+let stackDependencies: Pulumi.Output.t(array(plugin)) =
   Pulumi.Config.(make(Some("interstack"))->getObject("dependencies"))
   ->Belt.Option.getWithDefault([||])
   ->Belt.Array.map(stackName =>
       Pulumi.StackReference.(
-        make(stackName)->getOutput("backend")->Belt.Option.getExn
+        make(stackName)->getOutput("plugin")->Belt.Option.getExn
       )
     )
   ->Pulumi.Output.all;
 
-let getOutputs: (backend => array('a)) => Pulumi.Output.t(array('a)) =
+let getOutputs: (plugin => array('a)) => Pulumi.Output.t(array('a)) =
   getOutput =>
-    stackDependencies->Pulumi.Output.apply(backends =>
-      backends
-      ->Belt.Array.map(backend => backend->getOutput)
+    stackDependencies->Pulumi.Output.apply(plugins =>
+      plugins
+      ->Belt.Array.map(plugin => plugin->getOutput)
       ->Belt.Array.concatMany
     );
 
-let stackDependenciesContexts: Pulumi.Output.t(array(Context.t)) =
-  getOutputs(getContexts);
+let stackDependenciesServices: Pulumi.Output.t(array(Service.t)) =
+  getOutputs(getServices);
 
 let stackDependenciesTasks: Pulumi.Output.t(array(Task.t)) =
   getOutputs(getTasks);
 
 let stackDependenciesEventMappers: Pulumi.Output.t(array(EventMapper.t)) =
   getOutputs(getEventMapper);
-
-let mergeSingle:
-  (Pulumi.Output.t(array('a)), 'a) => Pulumi.Output.t(array('a)) =
-  (dependencies, local) =>
-    dependencies->Pulumi.Output.apply(dependencies =>
-      [|local|]->Belt.Array.concat(dependencies)
-    );
 
 let mergeMany:
   (Pulumi.Output.t(array('a)), array('a)) => Pulumi.Output.t(array('a)) =
@@ -53,7 +46,6 @@ let mergeManyRef:
       (locals^)->Belt.Array.concat(dependencies)
     );
 
-let mergeContext = mergeSingle(stackDependenciesContexts);
-let mergeContexts = mergeMany(stackDependenciesContexts);
+let mergeServices = mergeMany(stackDependenciesServices);
 let mergeTasks = mergeManyRef(stackDependenciesTasks);
 let mergeEventMappers = mergeManyRef(stackDependenciesEventMappers);

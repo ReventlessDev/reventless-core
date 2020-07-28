@@ -1,10 +1,9 @@
 type t =
   | Aggregate
   | AtomicCounter
-  | Backend
+  | Plugin
   | CommandGenerator
   | CommandTopic
-  | Context
   | EventCollector
   | EventLog
   | EventMapper
@@ -21,10 +20,9 @@ let toString =
   fun
   | Aggregate => "Aggregate"
   | AtomicCounter => "AtomicCounter"
-  | Backend => "Backend"
+  | Plugin => "Plugin"
   | CommandGenerator => "CommandGenerator"
   | CommandTopic => "CommandTopic"
-  | Context => "Context"
   | EventCollector => "EventCollector"
   | EventLog => "EventLog"
   | EventMapper => "EventMapper"
@@ -41,10 +39,9 @@ let ofString =
   fun
   | "Aggregate" => Aggregate->Some
   | "AtomicCounter" => AtomicCounter->Some
-  | "Backend" => Backend->Some
+  | "Plugin" => Plugin->Some
   | "CommandGenerator" => CommandGenerator->Some
   | "CommandTopic" => CommandTopic->Some
-  | "Context" => Context->Some
   | "EventCollector" => EventCollector->Some
   | "EventLog" => EventLog->Some
   | "EventMapper" => EventMapper->Some

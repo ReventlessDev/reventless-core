@@ -1,21 +1,21 @@
 //include ResourceQueryDeploytime;
 
-let eventTopicPublisherOfAllContextsExn = (contexts, serviceName) =>
-  contexts
-  ->Interstack.mergeContexts
-  ->Pulumi.Output.apply(contexts =>
-      ResourceQueryDeploytime.eventTopicPublisherOfAllContextsExn(
-        contexts,
+let eventTopicPublisherOfAllServicesExn = (services, serviceName) =>
+  services
+  ->Interstack.mergeServices
+  ->Pulumi.Output.apply(services =>
+      ResourceQueryDeploytime.eventTopicPublisherOfAllServicesExn(
+        services,
         serviceName,
       )
     );
 
-let queryDbStorageOfAllContextsExn = (contexts, serviceName) =>
-  contexts
-  ->Interstack.mergeContexts
-  ->Pulumi.Output.apply(contexts =>
-      ResourceQueryDeploytime.queryDbStorageOfAllContextsExn(
-        contexts,
+let queryDbStorageOfAllServicesExn = (services, serviceName) =>
+  services
+  ->Interstack.mergeServices
+  ->Pulumi.Output.apply(services =>
+      ResourceQueryDeploytime.queryDbStorageOfAllServicesExn(
+        services,
         serviceName,
       )
     );
