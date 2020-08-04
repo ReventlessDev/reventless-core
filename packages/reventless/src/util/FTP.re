@@ -21,8 +21,8 @@ let parseUrl:
             : url |> sliceToEnd(~from=colonI + 1);
         let path =
           colonI < slashI
-            ? url |> sliceToEnd(~from=slashI)
-            : url |> slice(~from=slashI, ~to_=colonI);
+            ? url |> sliceToEnd(~from=slashI + 1)
+            : url |> slice(~from=slashI + 1, ~to_=colonI);
         (
           url |> slice(~from=0, ~to_=fst),
           switch (port |> int_of_string) {
@@ -34,7 +34,7 @@ let parseUrl:
       | (false, true) => (
           url |> slice(~from=0, ~to_=slashI),
           None,
-          url |> sliceToEnd(~from=slashI),
+          url |> sliceToEnd(~from=slashI + 1),
         )
       | (true, false) => (
           url |> slice(~from=0, ~to_=colonI),
