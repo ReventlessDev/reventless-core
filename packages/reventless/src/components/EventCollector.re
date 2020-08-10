@@ -17,6 +17,8 @@ module NoPolicies: Policies = {
 module type T = {
   let make:
     (
+      ~name: string,
+      ~aggregateNames: array(string),
       ~eventHandler: eventHandler,
       ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
       ~memorySize: int=?,
@@ -44,14 +46,7 @@ module type Connector = {
     connector;
 };
 
-module Make =
-       (
-         Config: Config.T,
-         EventMappings: EventMapping.Mappings,
-         Policies: Policies,
-         Connector: Connector,
-       )
-       : T => {
+module Make = (Policies: Policies, Connector: Connector) : T => {
   type constructed;
   type construct = (t, string) => constructed;
 
@@ -77,7 +72,15 @@ module Make =
   };
 
   let construct =
-      (~eventHandler, ~queryEventTopic, ~memorySize, ~timeout, self, name) => {
+      (
+        ~aggregateNames,
+        ~eventHandler,
+        ~queryEventTopic,
+        ~memorySize,
+        ~timeout,
+        self,
+        name,
+      ) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Pulumi.Resource.makeFromJs,
@@ -94,9 +97,7 @@ module Make =
     let connector =
       Connector.make(
         ~name,
-        ~eventServices=
-          EventMappings.mappings->Js.Dict.entries
-          |> Array.map(((eventService, _)) => eventService),
+        ~eventServices=aggregateNames,
         ~queryEventTopic,
         ~policies=Policies.policies,
         ~handleEvents,
@@ -110,6 +111,8 @@ module Make =
 
   let make:
     (
+      ~name: string,
+      ~aggregateNames: array(string),
       ~eventHandler: (. Js.Json.t) => Js.Promise.t(unit),
       ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
       ~memorySize: int=?,
@@ -118,12 +121,27 @@ module Make =
       unit
     ) =>
     t =
-    (~eventHandler, ~queryEventTopic, ~memorySize=128, ~timeout=30, ~opts, _) =>
+    (
+      ~name,
+      ~aggregateNames,
+      ~eventHandler,
+      ~queryEventTopic,
+      ~memorySize=128,
+      ~timeout=30,
+      ~opts,
+      _,
+    ) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=EventMappings.name->ComponentType.name(componentType),
+        ~name=name->ComponentType.name(componentType),
         ~construct=
-          construct(~eventHandler, ~queryEventTopic, ~memorySize, ~timeout),
+          construct(
+            ~aggregateNames,
+            ~eventHandler,
+            ~queryEventTopic,
+            ~memorySize,
+            ~timeout,
+          ),
         ~opts,
       );
 };

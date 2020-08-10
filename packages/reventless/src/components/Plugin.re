@@ -135,27 +135,17 @@ module Make =
                module EventCollector =
                  EventCollector.Make
                    // TODO: general EventCollector
-                   (
-                     Config,
-                     (val mappings),
-                     (val policies),
-                     EventCollectorConnector,
-                   );
+                   ((val policies), EventCollectorConnector);
                module EventMapper =
-                 EventMapper.Make(Config, (val mappings), EventCollector);
+                 EventMapper.Make((val mappings), EventCollector);
                Some(EventMapper.make);
              | (Some((mappings: (module EventMapping.Mappings))), None) =>
                module EventCollector =
                  EventCollector.Make
                    // TODO: general EventCollector
-                   (
-                     Config,
-                     (val mappings),
-                     EventCollector.NoPolicies,
-                     EventCollectorConnector,
-                   );
+                   (EventCollector.NoPolicies, EventCollectorConnector);
                module EventMapper =
-                 EventMapper.Make(Config, (val mappings), EventCollector);
+                 EventMapper.Make((val mappings), EventCollector);
                Some(EventMapper.make);
              };
            (task, eventMapperMaker);

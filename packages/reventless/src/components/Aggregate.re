@@ -9,12 +9,14 @@ type outputs = {
 };
 type t = outputs;
 
+type name = string;
+
 module type T = {
   type id;
   type command;
   type event;
 
-  let name: string;
+  let name: name;
 
   let make:
     (

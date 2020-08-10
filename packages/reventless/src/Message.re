@@ -33,6 +33,8 @@ type statusChange = {
   by: string,
 };
 
+type handler('msg) = 'msg => Js.Promise.t(unit);
+
 [@decco]
 type command'('id, 'command) = {
   id: 'id,
@@ -106,3 +108,6 @@ let generateMeta = (service, ip, user) => {
   let msgId = uuid();
   {service, ip, user, time: nowAsISOString(), msgId, correlationId: msgId};
 };
+
+type decoder('a) = Js.Json.t => Belt.Result.t('a, Decco.decodeError);
+type encoder('a) = 'a => Js.Json.t;

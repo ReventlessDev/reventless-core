@@ -22,7 +22,6 @@ module type T = {let make: maker;};
 
 module Make =
        (
-         Config: Config.T,
          EventMappings: EventMapping.Mappings,
          EventCollector: EventCollector.T,
        )
@@ -79,7 +78,7 @@ module Make =
         }
     );
 
-  let map = (name, queryCommandTopic) =>
+  let map = queryCommandTopic =>
     (. eventJson) => {
       eventJson->Js.Json.decodeObject->Belt.Option.flatMap(findMapping)
       |> (
@@ -179,7 +178,11 @@ module Make =
       );
     let eventCollector =
       EventCollector.make(
-        ~eventHandler=map(name, queryCommandTopic),
+        ~name=EventMappings.name,
+        ~aggregateNames=
+          EventMappings.mappings->Js.Dict.entries
+          |> Array.map(((eventService, _)) => eventService),
+        ~eventHandler=map(queryCommandTopic),
         ~queryEventTopic,
         ~memorySize,
         ~timeout,
