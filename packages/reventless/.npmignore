@@ -1,11 +1,6 @@
-.storybook/
 node_modules/
 lib/
-fixtures/
-stories/
-__tests__/
 **/*.bs.js
-babel.config.js
 yarn.lock
 .merlin
 .graphql_ppx_cache
