@@ -1,6 +1,17 @@
 {
-  "name": "reventless-aws",
-  "version": "0.0.1",
+  "name": "@reventless-universe/reventless-aws",
+  "version": "0.1.0",
+  "namespace": "ReventlessAws",
+  "suffix": ".bs.js",
+  "refmt": 3,
+  "ppx-flags": [],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
   "sources": [
     {
       "dir": "src",
@@ -11,23 +22,11 @@
       "type": "dev"
     }
   ],
-  "package-specs": {
-    "module": "commonjs",
-    "in-source": true
-  },
-  "suffix": ".bs.js",
   "bs-dependencies": [
     "@glennsl/bs-jest",
-    "bs-aws-sdk",
-    "bs-node-streams",
-    "bs-pulumi-pulumi",
-    "bs-pulumi-aws",
-    "reventless"
-  ],
-  "ppx-flags": [],
-  "warnings": {
-    "error": "-44+101"
-  },
-  "namespace": true,
-  "refmt": 3
+    "@reventless-universe/bs-aws-sdk",
+    "@reventless-universe/bs-pulumi-aws",
+    "@reventless-universe/bs-pulumi-pulumi",
+    "@reventless-universe/reventless"
+  ]
 }

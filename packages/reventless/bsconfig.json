@@ -1,6 +1,19 @@
 {
-  "name": "reventless",
-  "version": "0.0.3",
+  "name": "@reventless-universe/reventless",
+  "version": "0.1.0",
+  "namespace": "Reventless",
+  "suffix": ".bs.js",
+  "refmt": 3,
+  "ppx-flags": [
+    "@ryb73/decco/ppx/ppx_decco.sh"
+  ],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
   "sources": [
     {
       "dir": "src",
@@ -14,30 +27,17 @@
       "dir": "test-helper"
     }
   ],
-  "package-specs": {
-    "module": "commonjs",
-    "in-source": true
-  },
-  "suffix": ".bs.js",
   "bs-dependencies": [
-    "@glennsl/bs-jest",
-    "@ryb73/decco",
     "@aantron/repromise",
-    "bs-aws-sdk",
-    "bs-node-streams",
-    "bs-pulumi-pulumi",
-    "bs-pulumi-aws",
-    "bs-fast-csv",
-    "bs-hash-obj",
-    "bs-ssh2",
-    "bs-uuid"
-  ],
-  "ppx-flags": [
-    "@ryb73/decco/ppx/ppx_decco.sh"
-  ],
-  "warnings": {
-    "error": "-44+101"
-  },
-  "namespace": true,
-  "refmt": 3
+    "@glennsl/bs-jest",
+    "@reventless-universe/bs-aws-sdk",
+    "@reventless-universe/bs-fast-csv",
+    "@reventless-universe/bs-hash-obj",
+    "@reventless-universe/bs-node-streams",
+    "@reventless-universe/bs-pulumi-aws",
+    "@reventless-universe/bs-pulumi-pulumi",
+    "@reventless-universe/bs-ssh2",
+    "@reventless-universe/bs-uuid",
+    "@ryb73/decco"
+  ]
 }

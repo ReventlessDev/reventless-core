@@ -1,20 +1,24 @@
 {
-  "name": "reventless-universe",
-  "private": true,
+  "name": "@reventless-universe/reventless-universe",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@github.com:reventless-universe/reventless-universe.git",
+    "directory": "@reventless-universe/reventless-universe"
+  },
   "scripts": {
     "start": "lerna run build --scope reventless",
     "wizard": "lerna-wizard",
-    "update": "lernaupdate",
+    "update": "lerna update",
     "bootstrap": "lerna bootstrap",
-    "gitpkg": "lerna run gitpkg",
     "build": "lerna run build",
     "rebuild": "lerna run rebuild",
     "clean": "lerna run clean",
-    "test": "lerna run test",
-    "gitpkg-link": "./packages/gitpkg-linker/gitpkg-linker.js git+https://gitpkg:H_s5pzyP9xpqZA8sBesY@gitlab.com/atos-austria/reason/reventless.git"
+    "test": "lerna run test"
   },
   "devDependencies": {
-    "gitpkg": "^1.0.0-beta.1",
     "lerna": "^3.20.2",
     "lerna-wizard": "^1.1.1",
     "lerna-update-wizard": "^0.17.7",

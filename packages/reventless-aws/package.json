@@ -1,8 +1,16 @@
 {
-  "name": "reventless-aws",
-  "version": "0.0.2",
+  "name": "@reventless-universe/reventless-aws",
+  "version": "0.1.0",
   "description": "AWS adapters for Reventless",
-  "private": true,
+  "author": "Atos",
+  "license": "proprietary",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:reventless-universe/reventless-universe.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "scripts": {
     "build": "bsb -make-world",
     "start": "bsb -make-world -w",
@@ -16,24 +24,18 @@
     "watch:jest": "jest --coverage --watchAll",
     "watch:screen": "screen -c .screenrc",
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json",
-    "prepublishOnly": "npm run clean && (rm -rf lib & rm -f .merlin) && cd ../..; npm run gitpkg-link ./packages/reventless-aws/package.json",
-    "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'",
-    "gitpkg": "../../node_modules/.bin/gitpkg publish"
+    "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
   },
-  "repository": {
-    "type": "git",
-    "url": "git@gitlab.com:atos-austria/reason/reventless.git"
-  },
-  "author": "Atos",
-  "license": "proprietary",
   "dependencies": {
-    "reventless": "0.0.3"
+    "@reventless-universe/bs-aws-sdk": "0.1.0",
+    "@reventless-universe/bs-pulumi-aws": "0.1.0",
+    "@reventless-universe/bs-pulumi-pulumi": "0.1.0",
+    "@reventless-universe/reventless": "0.1.0"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
     "@pulumi/aws": "^1.18.0",
-    "@pulumi/pulumi": "^1.9.0",
-    "aws-sdk": "^2.556.0"
+    "@pulumi/pulumi": "^1.9.0"
   },
   "peerDependencies": {
     "bs-platform": "^5.2.1"
