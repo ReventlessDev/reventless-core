@@ -14,10 +14,19 @@ type t('id, 'command) = functions('id, 'command);
 
 exception NotPublishedToPublisher(Js.Promise.error);
 
-module type T = {
-  type id;
+module type Spec = {
+  module Id: Id.T;
+
+  let name: string;
+
+  [@decco]
   type event;
-  type nonrec t = t(id, event);
+};
+
+module type T = {
+  module Spec: Spec;
+
+  type nonrec t = t(Spec.Id.t, Spec.event);
 
   let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
 };
@@ -32,17 +41,15 @@ module type Publisher = {
     (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => publisher;
 };
 
-module Make =
-       (Spec: Message.Service, Publisher: Publisher)
-       : (T with type id = Spec.id and type event = Spec.event) => {
-  type id = Spec.id;
-  type event = Spec.event;
-  type nonrec t = t(id, event);
+module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) => {
+  module Spec = Spec;
+  type nonrec t = t(Spec.Id.t, Spec.event);
 
   type constructed;
   type construct = (t, string) => constructed;
 
-  type nonrec publish = publish(array(Message.event'(id, event)));
+  type nonrec publish =
+    publish(array(Message.event'(Spec.Id.t, Spec.event)));
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -74,7 +81,11 @@ module Make =
       events'
       |> Array.mapi((idx, event') => {
            let json =
-             Message.event'_encode(Spec.id_encode, Spec.event_encode, event');
+             Message.event'_encode(
+               Spec.Id.t_encode,
+               Spec.event_encode,
+               event',
+             );
 
            let id = event'.id;
            let event = json->Js.Json.stringify;

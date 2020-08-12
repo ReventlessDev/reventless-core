@@ -37,11 +37,8 @@ module Make =
        (
          Spec: Message.Service with module Id = Id.String,
          EventCollector: EventCollector.T,
-         CommandTopic:
-           CommandTopic.T with
-             module Spec = Spec,
-         EventTopic:
-           EventTopic.T with type id = Spec.id and type event := Spec.event,
+         CommandTopic: CommandTopic.T with module Spec = Spec,
+         EventTopic: EventTopic.T with module Spec = Spec,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;

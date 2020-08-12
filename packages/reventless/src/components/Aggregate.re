@@ -50,18 +50,14 @@ module Make =
          CommandGenerator:
            CommandGenerator.T with
              type id := Service.Id.t and type command := Service.command,
-         CommandTopic:
-           CommandTopic.T with
-             module Spec = Service,
+         CommandTopic: CommandTopic.T with module Spec = Service,
          EventLog:
            EventLog.T with
              type id := Service.Id.t and type event := Service.event,
-         EventTopic:
-           EventTopic.T with
-             type id = Service.Id.t and type event := Service.event,
+         EventTopic: EventTopic.T with module Spec = Service,
        )
        : (T with module Spec = Service) => {
-         module Spec = Service;
+  module Spec = Service;
   type commandGenerator = CommandGenerator.t;
   type commandTopic = CommandTopic.t;
   type eventLog = EventLog.t;
