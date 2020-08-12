@@ -21,7 +21,7 @@
   },
   "jest": {
     "testMatch": [
-      "**/tests/**/*.test.bs.js"
+      "**/tests/**/*Test.bs.js"
     ]
   },
   "scripts": {
