@@ -11,16 +11,27 @@ type t = outputs;
 
 type name = string;
 
-module type T = {
-  type id;
+module type Spec = {
+  module Id: Id.T;
+
+  let name: string;
+
+  [@decco]
   type command;
+
+  [@decco]
   type event;
 
-  let name: name;
+  [@decco]
+  type error;
+};
+
+module type T = {
+  module Spec: Spec;
 
   let make:
     (
-      ~eventsHandler: Message.eventsHandler(id, event),
+      ~eventsHandler: Message.eventsHandler(Spec.Id.t, Spec.event),
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
@@ -30,7 +41,7 @@ module type T = {
 module Make =
        (
          Config: Config.T,
-         Service: Message.Service,
+         Service: Spec,
          Behaviour:
            Behaviour.T with
              type command := Service.command and
@@ -38,29 +49,25 @@ module Make =
              type error := Service.error,
          CommandGenerator:
            CommandGenerator.T with
-             type id := Service.id and type command := Service.command,
+             type id := Service.Id.t and type command := Service.command,
          CommandTopic:
            CommandTopic.T with
              module Spec = Service,
          EventLog:
            EventLog.T with
-             type id := Service.id and type event := Service.event,
+             type id := Service.Id.t and type event := Service.event,
          EventTopic:
            EventTopic.T with
-             type id = Service.id and type event := Service.event,
+             type id = Service.Id.t and type event := Service.event,
        )
-       : (T with type id = Service.id and type event = Service.event) => {
-  type id = Service.id;
-  type command = Service.command;
-  [@decco]
-  type event = Service.event;
-
+       : (T with module Spec = Service) => {
+         module Spec = Service;
   type commandGenerator = CommandGenerator.t;
   type commandTopic = CommandTopic.t;
   type eventLog = EventLog.t;
   type eventTopic = EventTopic.t;
 
-  type eventsHandler = Message.eventsHandler(id, event);
+  type eventsHandler = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
   type construct = (t, string, eventsHandler) => constructed;
@@ -119,7 +126,7 @@ module Make =
           atomicCounterGet,
         ),
       ) =>
-    (. id, commands': array(Message.command'(id, command))) => {
+    (. id, commands': array(Message.command'(Spec.Id.t, Spec.command))) => {
       let apply' = (stateOpt, event) =>
         switch (stateOpt) {
         | Some(state) => Some(Behaviour.apply(. state, event))
@@ -129,7 +136,7 @@ module Make =
       let updateState = (stateOpt, events) =>
         events |> List.fold_left(apply', stateOpt);
 
-      let updateMeta = (command': Message.command'(id, command)) => {
+      let updateMeta = (command': Message.command'(Spec.Id.t, Spec.command)) => {
         ...command'.meta,
         time: Js.Date.make()->Js.Date.toISOString,
         msgId: Message.uuid(),
@@ -145,7 +152,7 @@ module Make =
       eventLogReplay(. id)
       |> Js.Promise.then_(history => {
            let processCommand =
-               (promise, command': Message.command'(id, command)) => {
+               (promise, command': Message.command'(Spec.Id.t, Spec.command)) => {
              let countPromise =
                Behaviour.atomicCounter->Belt.Option.flatMap(
                  ({name, shouldIncrement}) =>

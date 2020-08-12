@@ -17,7 +17,7 @@ module Make =
          Service: Message.Service,
          Aggregate:
            Aggregate.T with
-             type id = Service.id and type event = Service.event,
+             module Spec = Service,
          ReadModel:
            ReadModel.T with
              type id = Service.id and type event = Service.event,
