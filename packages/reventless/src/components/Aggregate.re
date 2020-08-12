@@ -41,7 +41,7 @@ module Make =
              type id := Service.id and type command := Service.command,
          CommandTopic:
            CommandTopic.T with
-             type id := Service.id and type command := Service.command,
+             module Spec = Service,
          EventLog:
            EventLog.T with
              type id := Service.id and type event := Service.event,

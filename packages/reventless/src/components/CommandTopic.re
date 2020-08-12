@@ -14,11 +14,25 @@ type t('id, 'command) = functions('id, 'command);
 
 exception NotPublishedToConnector(Js.Promise.error);
 
-module type T = {
-  type id;
+type connector = {
+  resource: Adapter.resource,
+  publish: publish(Js.Json.t),
+};
+
+module type Spec = {
+  module Id: Id.T;
+
+  let name: string;
+
+  [@decco]
   type command;
-  type commandsHandler = Message.commandsHandler(id, command);
-  type nonrec t = t(id, command);
+};
+
+module type T = {
+  module Spec: Spec;
+
+  type commandsHandler = Message.commandsHandler(Spec.Id.t, Spec.command);
+  type nonrec t = t(Spec.Id.t, Spec.command);
 
   let make:
     (
@@ -29,11 +43,6 @@ module type T = {
       unit
     ) =>
     t;
-};
-
-type connector = {
-  resource: Adapter.resource,
-  publish: publish(Js.Json.t),
 };
 
 module type Connector = {
@@ -49,18 +58,18 @@ module type Connector = {
 };
 
 module Make =
-       (Spec: Message.Service, Connector: Connector)
-       : (T with type id = Spec.id and type command := Spec.command) => {
-  type id = Spec.id;
-  type command = Spec.command;
-  type commandsHandler = Message.commandsHandler(id, command);
+       (Spec: Spec, Connector: Connector)
+       : (T with module Spec = Spec) => {
+   module Spec = Spec;
+    
+  type commandsHandler = Message.commandsHandler(Spec.Id.t, Spec.command);
 
-  type nonrec t = t(id, command);
+  type nonrec t = t(Spec.Id.t, Spec.command);
 
   type constructed;
   type construct = (t, string, commandsHandler) => constructed;
 
-  type nonrec publish = publish(Message.command'(id, command));
+  type nonrec publish = publish(Message.command'(Spec.Id.t, Spec.command));
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -90,7 +99,7 @@ module Make =
     (. command') => {
       let json =
         Message.command'_encode(
-          Spec.id_encode,
+          Spec.Id.t_encode,
           Spec.command_encode,
           command',
         );
@@ -111,14 +120,14 @@ module Make =
          );
     };
 
-  let logCommand' = (idx, count, command': Message.command'(id, command)) => {
+  let logCommand' = (idx, count, command': Message.command'(Spec.Id.t, Spec.command)) => {
     let id = command'.id;
     let command: array(string) =
       command'.command->Spec.command_encode->Obj.magic;
     let commandName = command[0];
     let commandStr =
       command'
-      |> Message.command'_encode(Spec.id_encode, Spec.command_encode)
+      |> Message.command'_encode(Spec.Id.t_encode, Spec.command_encode)
       |> Js.Json.stringify;
     let idx = idx + 1;
     Js.log(
@@ -127,8 +136,8 @@ module Make =
   };
 
   let groupCommandsById:
-    array((id, Message.command'(id, command))) =>
-    array((id, array(Message.command'(id, command)))) =
+    array((Spec.Id.t, Message.command'(Spec.Id.t, Spec.command))) =>
+    array((Spec.Id.t, array(Message.command'(Spec.Id.t, Spec.command)))) =
     commands => {
       let (ids, commands) = commands->Belt.Array.unzip;
       ids
@@ -143,7 +152,7 @@ module Make =
     (. jsons) =>
       jsons->Belt.Array.keepMap(json =>
         switch (
-          json |> Message.command'_decode(Spec.id_decode, Spec.command_decode)
+          json |> Message.command'_decode(Spec.Id.t_decode, Spec.command_decode)
         ) {
         | Belt_Result.Ok(command') => Some((command'.id, command'))
         | Belt_Result.Error(err) =>

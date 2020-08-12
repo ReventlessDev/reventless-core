@@ -39,7 +39,7 @@ module Make =
          EventCollector: EventCollector.T,
          CommandTopic:
            CommandTopic.T with
-             type id := Spec.id and type command := Spec.command,
+             module Spec = Spec,
          EventTopic:
            EventTopic.T with type id = Spec.id and type event := Spec.event,
        )
