@@ -15,7 +15,8 @@ type t =
   | Scheduler
   | Service
   | Task
-  | Vpc;
+  | Vpc
+  | Core;
 
 let toString =
   fun
@@ -35,7 +36,8 @@ let toString =
   | Scheduler => "Scheduler"
   | Service => "Service"
   | Task => "Task"
-  | Vpc => "Vpc";
+  | Vpc => "Vpc"
+  | Core => "Core";
 
 let ofString =
   fun
@@ -55,6 +57,7 @@ let ofString =
   | "Service" => Service->Some
   | "Task" => Task->Some
   | "Vpc" => Vpc->Some
+  | "Core" => Core->Some
   | _ => None;
 
 let name = (name, t) => name ++ t->toString;

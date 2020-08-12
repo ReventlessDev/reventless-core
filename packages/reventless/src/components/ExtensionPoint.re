@@ -11,55 +11,44 @@ type t = outputs;
 
 type name = string;
 
+type maker =
+  (
+    ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
+    ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
+    ~opts: option(Pulumi.ComponentResource.Options.t),
+    unit
+  ) =>
+  t;
+
 module type T = {
-  type command;
-  type event;
-
-  //let name: string;
-
+  module Spec: ExtensionPointSpec.T;
   let make:
     (
       ~mappings: array(
                    module ExtensionPointMapping.T with
-                     type ExtensionPoint.event = event and
-                     type ExtensionPoint.command = command,
-                 ),
-      ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
-      ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
-      ~memorySize: int,
-      ~timeout: int=?,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      unit
+                     type ExtensionPointSpec.event = Spec.event and
+                     type ExtensionPointSpec.command = Spec.command,
+                 )
     ) =>
-    t;
+    maker;
 };
 
 module Make =
        (
-         ExtensionPoint: ExtensionPointDefinition.T,
+         Spec: Message.Service with module Id = Id.String,
          EventCollector: EventCollector.T,
          CommandTopic:
            CommandTopic.T with
-             type id := ExtensionPointDefinition.id and
-             type command := ExtensionPoint.command,
+             type id := Spec.id and type command := Spec.command,
          EventTopic:
-           EventTopic.T with
-             type id = ExtensionPointDefinition.id and
-             type event := ExtensionPoint.event,
+           EventTopic.T with type id = Spec.id and type event := Spec.event,
        )
-
-         : (
-           T with
-             type command = ExtensionPoint.command and
-             type event = ExtensionPoint.event
-       ) => {
-  type command = ExtensionPoint.command;
-  type event = ExtensionPoint.event;
-
+       : (T with module Spec = Spec) => {
+  module Spec = Spec;
   module type Mapping =
     ExtensionPointMapping.T with
-      type ExtensionPoint.event = event and
-      type ExtensionPoint.command = command;
+      type ExtensionPointSpec.event = Spec.event and
+      type ExtensionPointSpec.command = Spec.command;
 
   type eventCollector = Reventless.EventCollector.t;
   type commandTopic = CommandTopic.t;
@@ -131,7 +120,7 @@ module Make =
         (
           mappings,
           commands':
-            array(Message.command'(ExtensionPointDefinition.id, command)),
+            array(Message.command'(ExtensionPointSpec.id, Spec.command)),
         ) =>
       mappings
       ->Belt.Array.map((module Mapping: Mapping) =>
@@ -151,15 +140,7 @@ module Make =
   };
 
   let construct =
-      (
-        ~mappings,
-        ~queryCommandTopic,
-        ~queryEventTopic,
-        ~memorySize,
-        ~timeout,
-        self,
-        name,
-      ) => {
+      (~mappings, ~queryCommandTopic, ~queryEventTopic, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Pulumi.Resource.makeFromJs,
@@ -228,8 +209,6 @@ module Make =
           ),
         ~eventHandler,
         ~queryEventTopic,
-        ~memorySize,
-        ~timeout,
         ~opts=Some(opts),
         (),
       );
@@ -246,27 +225,83 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make =
-      (
-        ~mappings,
-        ~queryCommandTopic,
-        ~queryEventTopic,
-        ~memorySize,
-        ~timeout: int=180,
+  let make:
+    (
+      ~mappings: array(
+                   module ExtensionPointMapping.T with
+                     type ExtensionPointSpec.event = Spec.event and
+                     type ExtensionPointSpec.command = Spec.command,
+                 )
+    ) =>
+    maker =
+    (~mappings, ~queryCommandTopic, ~queryEventTopic, ~opts, _) =>
+      make(
+        ~componentType=componentType->ComponentType.toString,
+        ~name=Spec.name->ComponentType.name(componentType),
+        ~construct=construct(~mappings, ~queryCommandTopic, ~queryEventTopic),
         ~opts,
-        _,
-      ) =>
-    make(
-      ~componentType=componentType->ComponentType.toString,
-      ~name=ExtensionPoint.name->ComponentType.name(componentType),
-      ~construct=
-        construct(
-          ~mappings,
-          ~queryCommandTopic,
-          ~queryEventTopic,
-          ~memorySize,
-          ~timeout,
-        ),
-      ~opts,
-    );
+      );
 };
+
+// module MakeSpec = (ExtensionPoint: ExtensionPointSpec.T) => {
+//   let name = ExtensionPoint.name;
+
+//   module Id = Id.String;
+
+//   [@decco]
+//   type id = Id.t;
+
+//   type command = ExtensionPoint.command;
+//   let command_encode = ExtensionPoint.command_encode;
+//   let command_decode = ExtensionPoint.command_decode;
+
+//   type event = ExtensionPoint.event;
+//   let event_encode = ExtensionPoint.event_encode;
+//   let event_decode = ExtensionPoint.event_decode;
+
+//   [@decco]
+//   type error = unit;
+// };
+
+/*
+ module MakeSpec =
+        (ExtensionPoint: ExtensionPointSpec.T)
+
+          : (
+            Message.Service with
+              module Id = Id.String and type id = ExtensionPointSpec.id
+        ) => {
+   include ExtensionPoint;
+
+   module Id = Id.String;
+   [@decco]
+   type id = Id.t;
+
+   [@decco]
+   type error = unit;
+ };
+
+ let make =
+     (
+       ~spec: (module Message.Service),
+       ~eventCollectorAdapter: (module EventCollector.Connector),
+       ~commandTopicAdapter: (module CommandTopic.Connector),
+       ~eventTopicAdapter: (module EventTopic.Publisher),
+     ) => {
+   module EventCollector =
+     EventCollector.Make(
+       EventCollector.NoPolicies,
+       (val eventCollectorAdapter),
+     );
+   module Spec = (val spec);
+
+   module CommandTopic = CommandTopic.Make(Spec, (val commandTopicAdapter));
+
+   module EventTopic = EventTopic.Make(Spec, (val eventTopicAdapter));
+
+   module ExtensionPoint =
+     Make(Spec, EventCollector, CommandTopic, EventTopic);
+
+   ExtensionPoint.make;
+ };
+ */

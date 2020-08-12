@@ -14,45 +14,58 @@ type eventActions('event, 'msg) = array(eventAction('event, 'msg));
 // type mapEventJson = Js.Json.t => eventActions(Js.Json.t);
 
 module type Impl = {
-  module ExtensionPoint: ExtensionPointDefinition.T;
+  module ExtensionPointSpec: ExtensionPointSpec.T;
   module Aggregate: Message.Service;
 
   let mapIncomingCommand:
-    (ExtensionPointDefinition.id, ExtensionPoint.command, Message.meta) =>
+    (
+      Reventless.ExtensionPointSpec.id,
+      ExtensionPointSpec.command,
+      Message.meta
+    ) =>
     commandActions((Aggregate.id, Aggregate.command), 'msg);
   let mapOutgoingEvent:
     (Aggregate.id, Aggregate.event, Message.meta) =>
-    eventActions((ExtensionPointDefinition.id, ExtensionPoint.event), 'msg);
+    eventActions(
+      (Reventless.ExtensionPointSpec.id, ExtensionPointSpec.event),
+      'msg,
+    );
 };
 
 module type T = {
-  module ExtensionPoint: ExtensionPointDefinition.T;
+  module ExtensionPointSpec: ExtensionPointSpec.T;
   module Aggregate: Message.Service;
 
   let mapIncomingCommands:
     array(
-      Message.command'(ExtensionPointDefinition.id, ExtensionPoint.command),
+      Message.command'(
+        Reventless.ExtensionPointSpec.id,
+        ExtensionPointSpec.command,
+      ),
     ) =>
     commandActions(Js.Json.t, 'msg);
   let mapOutgoingEvent:
     Js.Json.t =>
     eventActions(
-      Message.event'(ExtensionPointDefinition.id, ExtensionPoint.event),
+      Message.event'(
+        Reventless.ExtensionPointSpec.id,
+        ExtensionPointSpec.event,
+      ),
       'msg,
     );
 };
 
 module Make =
        (
-         ExtensionPoint: ExtensionPointDefinition.T,
+         ExtensionPointSpec: ExtensionPointSpec.T,
          Aggregate: Message.Service,
          MappingImpl:
            Impl with
-             module ExtensionPoint = ExtensionPoint and
+             module ExtensionPointSpec = ExtensionPointSpec and
              module Aggregate = Aggregate,
        )
        : T => {
-  module ExtensionPoint = ExtensionPoint;
+  module ExtensionPointSpec = ExtensionPointSpec;
   module Aggregate = Aggregate;
 
   let mapIncomingCommands = commands' =>
@@ -103,4 +116,10 @@ module Make =
         "ExtensionPointMapping.Make.mapOutgoing: Decode failure: " // TODO improve message
       )
     };
+};
+
+let make = (module Impl: Impl) => {
+  module Mapping = Make(Impl.ExtensionPointSpec, Impl.Aggregate, Impl);
+
+  ((module Mapping): (module T));
 };

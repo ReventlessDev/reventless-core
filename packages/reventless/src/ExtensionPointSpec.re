@@ -1,5 +1,5 @@
 [@decco]
-type id = string;
+type id = Id.String.t;
 type name = string;
 
 module type T = {

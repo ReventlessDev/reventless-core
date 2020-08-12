@@ -33,10 +33,10 @@ module type Publisher = {
 };
 
 module Make =
-       (Config: Config.T, Service: Message.Service, Publisher: Publisher)
-       : (T with type id = Service.id and type event = Service.event) => {
-  type id = Service.id;
-  type event = Service.event;
+       (Spec: Message.Service, Publisher: Publisher)
+       : (T with type id = Spec.id and type event = Spec.event) => {
+  type id = Spec.id;
+  type event = Spec.event;
   type nonrec t = t(id, event);
 
   type constructed;
@@ -74,17 +74,11 @@ module Make =
       events'
       |> Array.mapi((idx, event') => {
            let json =
-             Message.event'_encode(
-               Service.id_encode,
-               Service.event_encode,
-               event',
-             );
+             Message.event'_encode(Spec.id_encode, Spec.event_encode, event');
 
            let id = event'.id;
            let event = json->Js.Json.stringify;
-           let eventName: string = event'.event
-                                   ->Service.event_encode
-                                   ->Obj.magic[0];
+           let eventName: string = event'.event->Spec.event_encode->Obj.magic[0];
            let idx = idx + 1;
            let resourceName = publisher.resource##name->Pulumi.Output.get;
 
@@ -125,7 +119,7 @@ module Make =
     (~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Service.name->ComponentType.name(componentType),
+        ~name=Spec.name->ComponentType.name(componentType),
         ~construct,
         ~opts,
       );

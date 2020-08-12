@@ -49,10 +49,10 @@ module type Connector = {
 };
 
 module Make =
-       (Config: Config.T, Service: Message.Service, Connector: Connector)
-       : (T with type id = Service.id and type command := Service.command) => {
-  type id = Service.id;
-  type command = Service.command;
+       (Spec: Message.Service, Connector: Connector)
+       : (T with type id = Spec.id and type command := Spec.command) => {
+  type id = Spec.id;
+  type command = Spec.command;
   type commandsHandler = Message.commandsHandler(id, command);
 
   type nonrec t = t(id, command);
@@ -90,8 +90,8 @@ module Make =
     (. command') => {
       let json =
         Message.command'_encode(
-          Service.id_encode,
-          Service.command_encode,
+          Spec.id_encode,
+          Spec.command_encode,
           command',
         );
       let resourceName = connector.resource##name->Pulumi.Output.get;
@@ -114,11 +114,11 @@ module Make =
   let logCommand' = (idx, count, command': Message.command'(id, command)) => {
     let id = command'.id;
     let command: array(string) =
-      command'.command->Service.command_encode->Obj.magic;
+      command'.command->Spec.command_encode->Obj.magic;
     let commandName = command[0];
     let commandStr =
       command'
-      |> Message.command'_encode(Service.id_encode, Service.command_encode)
+      |> Message.command'_encode(Spec.id_encode, Spec.command_encode)
       |> Js.Json.stringify;
     let idx = idx + 1;
     Js.log(
@@ -132,7 +132,7 @@ module Make =
     commands => {
       let (ids, commands) = commands->Belt.Array.unzip;
       ids
-      ->Belt.Set.fromArray(~id=(module Belt.Id.MakeComparable(Service.Id)))
+      ->Belt.Set.fromArray(~id=(module Belt.Id.MakeComparable(Spec.Id)))
       ->Belt.Set.toArray
       ->Belt.Array.map(id =>
           (id, commands->Belt.Array.keep(command' => command'.id == id))
@@ -143,11 +143,7 @@ module Make =
     (. jsons) =>
       jsons->Belt.Array.keepMap(json =>
         switch (
-          json
-          |> Message.command'_decode(
-               Service.id_decode,
-               Service.command_decode,
-             )
+          json |> Message.command'_decode(Spec.id_decode, Spec.command_decode)
         ) {
         | Belt_Result.Ok(command') => Some((command'.id, command'))
         | Belt_Result.Error(err) =>
@@ -211,7 +207,7 @@ module Make =
     (~commandsHandler, ~memorySize=256, ~timeout=30, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Service.name->ComponentType.name(componentType),
+        ~name=Spec.name->ComponentType.name(componentType),
         ~construct=construct(~memorySize, ~timeout),
         ~opts,
         ~commandsHandler,
