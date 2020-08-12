@@ -1,6 +1,9 @@
 node_modules/
 lib/
+__tests__/*.re
+__tests__/*.js
 **/*.bs.js
 yarn.lock
-.merlin
 .graphql_ppx_cache
+.merlin
+.node-version
