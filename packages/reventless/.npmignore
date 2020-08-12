@@ -1,6 +1,15 @@
 node_modules/
 lib/
+docs/
+__tests__/*.re
+__tests__/*.js
+test-helper/*.re
+test-helper/*.js
 **/*.bs.js
 yarn.lock
-.merlin
+TODO.txt
 .graphql_ppx_cache
+.merlin
+.editorconfig
+.gitlab-ci.yml
+.node-version
