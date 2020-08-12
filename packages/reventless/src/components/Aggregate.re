@@ -41,23 +41,15 @@ module type T = {
 module Make =
        (
          Config: Config.T,
-         Service: Spec,
-         Behaviour:
-           Behaviour.T with
-             type command := Service.command and
-             type event := Service.event and
-             type error := Service.error,
-         CommandGenerator:
-           CommandGenerator.T with
-             type id := Service.Id.t and type command := Service.command,
-         CommandTopic: CommandTopic.T with module Spec = Service,
-         EventLog:
-           EventLog.T with
-             type id := Service.Id.t and type event := Service.event,
-         EventTopic: EventTopic.T with module Spec = Service,
+         Spec: Spec,
+         Behaviour: Behaviour.T with module Spec = Spec,
+         CommandGenerator: CommandGenerator.T with module Spec = Spec,
+         CommandTopic: CommandTopic.T with module Spec = Spec,
+         EventLog: EventLog.T with module Spec = Spec,
+         EventTopic: EventTopic.T with module Spec = Spec,
        )
-       : (T with module Spec = Service) => {
-  module Spec = Service;
+       : (T with module Spec = Spec) => {
+  module Spec = Spec;
   type commandGenerator = CommandGenerator.t;
   type commandTopic = CommandTopic.t;
   type eventLog = EventLog.t;
@@ -99,12 +91,12 @@ module Make =
     self->registerOutputs(outputs);
   };
 
-  let name = Service.name;
+  let name = Spec.name;
 
   let errorHandler = (error, command, context: Message.context) => {
-    let errorJson = error |> Service.error_encode |> Js.Json.stringify;
-    let commandJson = command |> Service.command_encode |> Js.Json.stringify;
-    let serviceName = Service.name;
+    let errorJson = error |> Spec.error_encode |> Js.Json.stringify;
+    let commandJson = command |> Spec.command_encode |> Js.Json.stringify;
+    let serviceName = Spec.name;
     let id = context.id;
     Js.log(
       {j|Behaviour error $errorJson in $serviceName($id): Command: $commandJson|j},
@@ -156,7 +148,7 @@ module Make =
                    Some(
                      atomicCounterIncrement(.
                        name,
-                       command'.id |> Service.Id.toString,
+                       command'.id |> Spec.Id.toString,
                        command'.meta.correlationId,
                      ),
                    );
@@ -164,7 +156,7 @@ module Make =
                    Some(
                      atomicCounterGet(.
                        name,
-                       command'.id |> Service.Id.toString,
+                       command'.id |> Spec.Id.toString,
                      ),
                    );
                  }
@@ -187,7 +179,7 @@ module Make =
                           state,
                           command'.command,
                           {
-                            id: command'.id |> Service.Id.toString,
+                            id: command'.id |> Spec.Id.toString,
                             meta: command'.meta,
                           },
                           errorHandler,
@@ -210,7 +202,7 @@ module Make =
                       Behaviour.create(.
                         command'.command,
                         {
-                          id: command'.id |> Service.Id.toString,
+                          id: command'.id |> Spec.Id.toString,
                           meta: command'.meta,
                         },
                         errorHandler,
@@ -318,7 +310,7 @@ module Make =
     (~eventsHandler, ~opts=?, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Service.name->ComponentType.name(componentType),
+        ~name=Spec.name->ComponentType.name(componentType),
         ~construct,
         ~opts,
         ~eventsHandler,

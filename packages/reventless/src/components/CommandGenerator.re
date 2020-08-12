@@ -3,11 +3,25 @@ let componentType = ComponentType.CommandGenerator;
 type outputs = {. "connector": Adapter.resource};
 type t = outputs;
 
-module type T = {
-  type id;
+module type Spec = {
+  module Id: Id.T;
+
+  let name: string;
+
+  [@decco]
   type command;
 
-  type commandHandler = Message.commandHandler(id, command);
+  [@decco]
+  type event;
+
+  [@decco]
+  type error;
+};
+
+module type T = {
+  module Spec: Spec;
+
+  type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
 
   type t;
 
@@ -51,23 +65,17 @@ module type Resolvers = {
 module Make =
        (
          Config: Config.T,
-         Service: Message.Service,
-         Behaviour:
-           Behaviour.T with
-             type event := Service.event and
-             type command := Service.command and
-             type error := Service.error,
+         Spec: Spec,
+         Behaviour: Behaviour.T with module Spec = Spec,
          Resolvers: Resolvers with type api := Config.api,
        )
-       : (T with type id = Service.id and type command = Service.command) => {
-  type id = Service.id;
-  type command = Service.command;
-
+       : (T with module Spec = Spec) => {
+  module Spec = Spec;
   type nonrec t = t;
 
   type api = Config.api;
 
-  type commandHandler = Message.commandHandler(id, command);
+  type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
 
   type constructed;
   type construct = (t, string, api, commandHandler) => constructed;
@@ -96,10 +104,10 @@ module Make =
     commandHandler => {
       let fn = payload => {
         let msgId = Message.uuid();
-        let id = payload##arguments##id |> Service.Id.makeFromString;
+        let id = payload##arguments##id |> Spec.Id.makeFromString;
         let meta =
           Message.{
-            service: Service.name,
+            service: Spec.name,
             ip:
               payload##meta##ip
               |> Js.Array.shift
@@ -173,7 +181,7 @@ module Make =
     (~commandHandler, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Service.name->ComponentType.name(componentType),
+        ~name=Spec.name->ComponentType.name(componentType),
         ~construct,
         ~opts,
         ~api=Config.api,

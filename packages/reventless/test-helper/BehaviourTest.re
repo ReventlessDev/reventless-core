@@ -18,19 +18,15 @@ module type T = {
 
 module Make =
        (
-         Service: Message.Service,
-         Behaviour:
-           Behaviour.T with
-             type command := Service.command and
-             type event := Service.event and
-             type error := Service.error,
+         Spec: Behaviour.Spec,
+         Behaviour: Behaviour.T with module Spec = Spec,
        )
 
          : (
            T with
-             type command := Service.command and
-             type event := Service.event and
-             type error := Service.error
+             type command := Spec.command and
+             type event := Spec.event and
+             type error := Spec.error
        ) => {
   let apply' = (state, event) => Behaviour.apply(. state, event);
 
@@ -39,12 +35,12 @@ module Make =
 
   let errors = ref([]);
 
-  let errorHandler: Message.errorHandler(Service.error, Service.command) =
+  let errorHandler: Message.errorHandler(Spec.error, Spec.command) =
     (error, _, _) => {
       errors := errors^ @ [error];
     };
 
-  let exec = (command, count, history): list(Service.event) => {
+  let exec = (command, count, history): list(Spec.event) => {
     errors := [];
     switch (history) {
     | [] =>
@@ -93,7 +89,7 @@ module Make =
              =>
                (
                  err
-                 |> Service.error_encode
+                 |> Spec.error_encode
                  |> Js.Json.decodeArray
                  |> Belt.Option.getExn
                )[0]

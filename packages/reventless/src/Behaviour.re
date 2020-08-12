@@ -32,20 +32,29 @@ type execute('state, 'command, 'event, 'error) =
 
 exception NoCountProvided;
 
-module type T = {
+module type Spec = {
+  [@decco]
   type command;
+
+  [@decco]
   type event;
+
+  [@decco]
   type error;
+};
+
+module type T = {
+  module Spec: Spec;
 
   type state;
 
-  let resolverConfig: resolverConfig(command);
+  let resolverConfig: resolverConfig(Spec.command);
 
-  let atomicCounter: option(atomicCounterConfig(command));
+  let atomicCounter: option(atomicCounterConfig(Spec.command));
 
-  let init: init(state, event);
-  let apply: apply(state, event);
+  let init: init(state, Spec.event);
+  let apply: apply(state, Spec.event);
 
-  let create: create(command, event, error);
-  let execute: execute(state, command, event, error);
+  let create: create(Spec.command, Spec.event, Spec.error);
+  let execute: execute(state, Spec.command, Spec.event, Spec.error);
 };

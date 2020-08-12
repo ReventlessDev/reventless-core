@@ -1,14 +1,8 @@
 module Make =
-       (Service: Message.Service)
-
-         : (
-           CommandGenerator.T with
-             type id = Service.id and type command = Service.command
-       ) => {
-  type id = Service.id;
-  type command = Service.command;
-
-  type commandHandler = Message.commandHandler(id, command);
+       (Spec: CommandGenerator.Spec)
+       : (CommandGenerator.T with module Spec = Spec) => {
+  module Spec = Spec;
+  type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
 
   type t = unit;
 

@@ -17,10 +17,18 @@ external toOutputs: functions('id, 'command) => outputs = "%identity";
 
 type t('id, 'command) = functions('id, 'command);
 
-module type T = {
-  type id;
+module type Spec = {
+  module Id: Id.T;
+
+  let name: string;
+
+  [@decco]
   type event;
-  type nonrec t = t(id, event);
+};
+
+module type T = {
+  module Spec: Spec;
+  type nonrec t = t(Spec.Id.t, Spec.event);
 
   let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
 };
@@ -36,17 +44,16 @@ module type Storage = {
 };
 
 module Make =
-       (Service: Message.Service, Storage: Storage)
-       : (T with type id = Service.id and type event = Service.event) => {
-  type id = Service.id;
-  type event = Service.event;
-  type nonrec t = t(id, event);
+       (Spec: Spec, Storage: Storage)
+       : (T with module Spec = Spec) => {
+  module Spec = Spec;
+  type nonrec t = t(Spec.Id.t, Spec.event);
 
   type constructed;
   type construct = (t, string) => constructed;
 
-  type nonrec append = append(id, Message.event'(id, event));
-  type nonrec replay = replay(id, event);
+  type nonrec append = append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
+  type nonrec replay = replay(Spec.Id.t, Spec.event);
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -75,9 +82,9 @@ module Make =
     (. sequenceNr, id, events') =>
       try (
         events'
-        |> Array.map((event': Message.event'(id, event)) =>
+        |> Array.map((event': Message.event'(Spec.Id.t, Spec.event)) =>
              [|
-               ("id", Service.id_encode(id)),
+               ("id", Spec.Id.t_encode(id)),
                (
                  "sequenceNr",
                  Js.Json.string(
@@ -87,7 +94,7 @@ module Make =
                    ),
                  ),
                ),
-               ("event", event'.event |> Service.event_encode),
+               ("event", event'.event |> Spec.event_encode),
              |]
              |> Array.append(
                   event'.meta
@@ -101,9 +108,9 @@ module Make =
            )
         |> (
           data =>
-            storage.append(. sequenceNr, id |> Service.Id.toString, data)
+            storage.append(. sequenceNr, id |> Spec.Id.toString, data)
             |> Js.Promise.catch(err => {
-                 let serviceName = Service.name;
+                 let serviceName = Spec.name;
                  let resourceName = storage.resource##name->Pulumi.Output.get;
                  Js.Promise.resolve(
                    Js.log(
@@ -120,13 +127,13 @@ module Make =
 
   let replay = storage =>
     (. id) => {
-      storage.replay(. id |> Service.Id.toString)
+      storage.replay(. id |> Spec.Id.toString)
       |> Js.Promise.then_(jsons =>
            jsons
            |> Array.map(json =>
                 Js.Json.decodeObject(json)
                 ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
-                ->Belt.Option.map(json => (json, Service.event_decode(json)))
+                ->Belt.Option.map(json => (json, Spec.event_decode(json)))
                 ->Belt.Option.map(
                     fun
                     | (_, Belt.Result.Ok(event)) => event
@@ -173,7 +180,7 @@ module Make =
     (~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Service.name->ComponentType.name(componentType),
+        ~name=Spec.name->ComponentType.name(componentType),
         ~construct,
         ~opts,
       );
