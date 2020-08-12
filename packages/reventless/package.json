@@ -19,6 +19,11 @@
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
   },
+  "jest": {
+    "testMatch": [
+      "**/tests/**/*.test.bs.js"
+    ]
+  },
   "scripts": {
     "build": "bsb -make-world",
     "start": "bsb -make-world -w",
@@ -26,10 +31,9 @@
     "rebuild": "npm run clean && npm run build",
     "deploy": "./scripts/deploy.sh",
     "test": "jest",
+    "test:watch": "jest --coverage --watchAll",
     "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
     "dev": "jest --watchAll",
-    "watch:bsb": "bsb -make-world -w",
-    "watch:jest": "jest --coverage --watchAll",
     "watch:screen": "screen -c .screenrc",
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json",
     "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
