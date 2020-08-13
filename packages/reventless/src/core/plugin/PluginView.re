@@ -3,7 +3,6 @@ open PluginSpec;
 
 [@decco]
 type status =
-  | Detected
   | Connected
   | Disconnected
   | Inactive;
@@ -12,8 +11,9 @@ type status =
 type state = {
   name,
   version,
-  dependencies,
   status,
+  extensionPoints,
+  extensions,
 };
 
 let name = None;
@@ -39,11 +39,35 @@ let init: init(state, event) =
 let apply: apply(state, event) =
   (. state, event, _) =>
     switch (event) {
-    | UnknownPluginDetected
-    | PluginConnected(_)
+    | UnknownPluginDetected => []
+    | PluginConnected({name, version, extensionPoints, extensions}) => [
+        Create({
+          name,
+          version,
+          status: Connected,
+          extensionPoints,
+          extensions,
+        }),
+      ]
     | PluginDisconnected
-    | PluginActivated
-    | PluginDeactivated => []
+    | PluginActivated => [
+        Update({
+          name: state.name,
+          version: state.version,
+          status: Disconnected,
+          extensionPoints: state.extensionPoints,
+          extensions: state.extensions,
+        }),
+      ]
+    | PluginDeactivated => [
+        Update({
+          name: state.name,
+          version: state.version,
+          status: Inactive,
+          extensionPoints: state.extensionPoints,
+          extensions: state.extensions,
+        }),
+      ]
     };
 
 let applyMulti =
