@@ -1,6 +1,8 @@
 open Reventless;
 open PluginSpec;
 
+module Spec = PluginSpec;
+
 [@decco]
 type state =
   | Detected
@@ -21,7 +23,9 @@ let create: Behaviour.create(command, event, error) =
     switch (command) {
     | Heartbeat => [UnknownPluginDetected]
     | ConnectPlugin(_)
-    | DisconnectPlugin =>
+    | DisconnectPlugin
+    | ActivatePlugin
+    | DeactivatePlugin =>
       error(PluginDoesNotExist, command, context);
       [];
     };
@@ -32,6 +36,8 @@ let execute: Behaviour.execute(state, command, event, error) =
     | Heartbeat => []
     | ConnectPlugin(plugin) => [PluginConnected(plugin)]
     | DisconnectPlugin => [PluginDisconnected]
+    | ActivatePlugin => [PluginActivated]
+    | DeactivatePlugin => [PluginDeactivated]
     };
   };
 
@@ -47,24 +53,35 @@ let init: Behaviour.init(state, event) =
     };
 
 let apply: Behaviour.apply(state, event) =
-  (. state: state, event) => {
-    let plugin =
-      switch (state) {
-      | Detected =>
-        raise(
-          Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)),
-        )
-      | Connected(plugin)
-      | Disconnected(plugin)
-      | Inactive(plugin) => plugin
-      };
-
+  (. state, event) => {
     switch (event) {
     | UnknownPluginDetected =>
       raise(Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)))
     | PluginConnected(plugin) => Connected(plugin)
     | PluginDisconnected
-    | PluginActivated => Disconnected(plugin)
-    | PluginDeactivated => Inactive(plugin)
+    | PluginActivated =>
+      let plugin =
+        switch (state) {
+        | Detected
+        | Disconnected(_) =>
+          raise(
+            Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)),
+          )
+        | Connected(plugin)
+        | Inactive(plugin) => plugin
+        };
+      Disconnected(plugin);
+    | PluginDeactivated =>
+      let plugin =
+        switch (state) {
+        | Detected
+        | Disconnected(_)
+        | Inactive(_) =>
+          raise(
+            Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)),
+          )
+        | Connected(plugin) => plugin
+        };
+      Inactive(plugin);
     };
   };
