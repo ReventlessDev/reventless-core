@@ -1,4 +1,3 @@
-open Reventless;
 open PluginSpec;
 
 module Spec = PluginSpec;
@@ -31,7 +30,7 @@ let create: Behaviour.create(command, event, error) =
     };
 
 let execute: Behaviour.execute(state, command, event, error) =
-  (. state, command, context, error, _) => {
+  (. _, command, _, _, _) => {
     switch (command) {
     | Heartbeat => []
     | ConnectPlugin(plugin) => [PluginConnected(plugin)]
@@ -49,14 +48,23 @@ let init: Behaviour.init(state, event) =
     | PluginDisconnected
     | PluginActivated
     | PluginDeactivated =>
-      raise(Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)))
+      raise(Reventless.Message.InvalidEvent(event_encode(event)))
     };
 
 let apply: Behaviour.apply(state, event) =
-  (. state, event) => {
+  (. state: state, event) => {
+    let plugin =
+      switch (state) {
+      | Detected =>
+        raise(Reventless.Message.InvalidEvent(event_encode(event)))
+      | Connected(plugin)
+      | Disconnected(plugin)
+      | Inactive(plugin) => plugin
+      };
+
     switch (event) {
     | UnknownPluginDetected =>
-      raise(Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)))
+      raise(Reventless.Message.InvalidEvent(event_encode(event)))
     | PluginConnected(plugin) => Connected(plugin)
     | PluginDisconnected
     | PluginActivated =>

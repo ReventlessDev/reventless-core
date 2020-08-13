@@ -40,10 +40,10 @@ external toOutputs: functions('id, 'command) => outputs = "%identity";
 type t('id, 'state) = functions('id, 'state);
 
 module type T = {
-  type id;
-  type state;
+  module Spec: View.Spec;
+  module View: View.T with module Spec := Spec;
 
-  type nonrec t = t(id, state);
+  type nonrec t = t(Spec.Id.t, View.state);
 
   let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
 };
@@ -99,25 +99,25 @@ module type Resolvers = {
 module Make =
        (
          Config: Config.T,
-         Service: Message.Service,
-         View: View.T with type event := Service.event,
+         Spec: View.Spec,
+         View: View.T with module Spec := Spec,
          Storage:
            Storage with type api = Config.api and type role = Config.role,
          Resolvers:
            Resolvers with type api = Config.api and type role = Config.role,
        )
-       : (T with type id = Service.id and type state = View.state) => {
-  type id = Service.id;
-  type state = View.state;
+       : (T with module Spec = Spec and module View = View) => {
+  module Spec = Spec;
+  module View = View;
 
   type api = Config.api;
   type role = Config.role;
 
-  type nonrec load = load(id, state);
-  type nonrec save = save(id, state);
-  type nonrec delete = delete(id);
+  type nonrec load = load(Spec.Id.t, View.state);
+  type nonrec save = save(Spec.Id.t, View.state);
+  type nonrec delete = delete(Spec.Id.t);
 
-  type nonrec t = t(id, state);
+  type nonrec t = t(Spec.Id.t, View.state);
 
   type constructed;
   type construct = (t, string, api, role) => constructed;
@@ -158,7 +158,7 @@ module Make =
   [@bs.set] external setDelete: (t, delete) => unit = "delete";
 
   let viewName =
-    View.name |> Js.Option.getWithDefault(Service.name) |> String.capitalize;
+    View.name |> Js.Option.getWithDefault(Spec.name) |> String.capitalize;
 
   let decode = (id, item) =>
     switch (View.state_decode(item)) {
@@ -170,7 +170,7 @@ module Make =
 
   let load = storage =>
     (. id) =>
-      storage.load(. id |> Service.Id.toString)
+      storage.load(. id |> Spec.Id.toString)
       |> Js.Promise.then_(result =>
            result
            ->Belt.Result.map(states =>
@@ -183,9 +183,9 @@ module Make =
     (. id, state, saveMode) => {
       switch (state |> View.state_encode |> Js.Json.decodeObject) {
       | Some(dict) =>
-        dict->Js.Dict.set("id", Service.id_encode(id));
+        dict->Js.Dict.set("id", Spec.Id.t_encode(id));
         let json = Js.Json.object_(dict);
-        storage.save(. id |> Service.Id.toString, json, saveMode);
+        storage.save(. id |> Spec.Id.toString, json, saveMode);
       | None =>
         Js.log("QueryDB.save: Error: Couldn't decodeObject");
         Belt.Result.Error(
@@ -197,7 +197,7 @@ module Make =
 
   let delete = storage =>
     (. id, sort) => {
-      storage.delete(. id |> Service.Id.toString, sort);
+      storage.delete(. id |> Spec.Id.toString, sort);
     };
 
   let construct = (self, name, api, apiRole) => {

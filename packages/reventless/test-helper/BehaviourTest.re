@@ -1,33 +1,27 @@
 module type T = {
-  type command;
-  type event;
-  type error;
+  module Spec: Behaviour.Spec;
 
-  let exec: (command, option(int), list(event)) => list(event);
+  let exec:
+    (Spec.command, option(int), list(Spec.event)) => list(Spec.event);
 
-  let givenEvents: list(event) => list(event);
-  let whenCmd: (command, list(event)) => list(event);
-  let whenCmdWithCount: (command, int, list(event)) => list(event);
-  let thenEvent: (event, list(event)) => Jest.assertion;
-  let thenEventWithError: (event, error, list(event)) => Jest.assertion;
-  let thenEvents: (list(event), list(event)) => Jest.assertion;
+  let givenEvents: list(Spec.event) => list(Spec.event);
+  let whenCmd: (Spec.command, list(Spec.event)) => list(Spec.event);
+  let whenCmdWithCount:
+    (Spec.command, int, list(Spec.event)) => list(Spec.event);
+  let thenEvent: (Spec.event, list(Spec.event)) => Jest.assertion;
+  let thenEventWithError:
+    (Spec.event, Spec.error, list(Spec.event)) => Jest.assertion;
+  let thenEvents: (list(Spec.event), list(Spec.event)) => Jest.assertion;
   let thenEventsWithError:
-    (list(event), error, list(event)) => Jest.assertion;
-  let thenError: (error, list(event)) => Jest.assertion;
+    (list(Spec.event), Spec.error, list(Spec.event)) => Jest.assertion;
+  let thenError: (Spec.error, list(Spec.event)) => Jest.assertion;
 };
 
 module Make =
-       (
-         Spec: Behaviour.Spec,
-         Behaviour: Behaviour.T with module Spec = Spec,
-       )
+       (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := Spec)
+       : (T with module Spec = Spec) => {
+  module Spec = Spec;
 
-         : (
-           T with
-             type command := Spec.command and
-             type event := Spec.event and
-             type error := Spec.error
-       ) => {
   let apply' = (state, event) => Behaviour.apply(. state, event);
 
   let currentState = events =>

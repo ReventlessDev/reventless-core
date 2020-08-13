@@ -13,40 +13,35 @@ type maker('id, 'event) =
   option(Pulumi.ComponentResource.Options.t) => t('id, 'event);
 
 module type T = {
-  type id;
-  type event;
-  type state;
+  module Spec: View.Spec;
+  module View: View.T with module Spec := Spec;
 
   let update:
     (
-      QueryDb.load(id, state),
-      QueryDb.save(id, state),
-      QueryDb.delete(id)
+      QueryDb.load(Spec.Id.t, View.state),
+      QueryDb.save(Spec.Id.t, View.state),
+      QueryDb.delete(Spec.Id.t)
     ) =>
-    update(id, event);
+    update(Spec.Id.t, Spec.event);
 
-  let make: maker(id, event);
+  let make: maker(Spec.Id.t, Spec.event);
 };
 
 module Make =
        (
-         Service: Message.Service,
-         View: View.T with type event := Service.event,
-         QueryDb:
-           QueryDb.T with type id := Service.id and type state := View.state,
+         Spec: View.Spec,
+         View: View.T with module Spec := Spec,
+         QueryDb: QueryDb.T with module Spec := Spec and module View := View,
        )
-       : (T with type id = Service.id and type event = Service.event) => {
-  type id = Service.id;
-  [@decco]
-  type event = Service.event;
-
-  type state = View.state;
+       : (T with module Spec = Spec and module View = View) => {
+  module Spec = Spec;
+  module View = View;
 
   type queryDb = QueryDb.t;
 
-  type update = Message.eventsHandler(id, event);
+  type update = Message.eventsHandler(Spec.Id.t, Spec.event);
 
-  type nonrec t = t(id, event);
+  type nonrec t = t(Spec.Id.t, Spec.event);
 
   type constructed;
   type construct = (t, string) => constructed;
@@ -72,7 +67,7 @@ module Make =
 
   [@bs.set] external setUpdate: (t, update) => unit = "update";
 
-  let name = View.name |> Js.Option.getWithDefault(Service.name);
+  let name = View.name |> Js.Option.getWithDefault(Spec.name);
 
   open Reventless.View;
 
@@ -129,7 +124,7 @@ module Make =
           let rec handleEvents =
                   (
                     states,
-                    event's: list(Message.event'(id, Service.event)),
+                    event's: list(Message.event'(Spec.Id.t, Spec.event)),
                     unhandledActions,
                   ) => {
             switch (event's) {
@@ -137,7 +132,7 @@ module Make =
             | [event', ...unhandledEvent's] =>
               let context = {
                 Message.meta: event'.meta,
-                id: event'.id |> Service.Id.toString,
+                id: event'.id |> Spec.Id.toString,
               };
               let actions =
                 switch (unhandledActions) {

@@ -10,17 +10,25 @@ type t = outputs;
 
 type maker = option(Pulumi.ComponentResource.Options.t) => t;
 
+module type Spec = {
+  module Id: Id.T;
+
+  let name: string;
+
+  [@decco]
+  type command;
+  [@decco]
+  type event;
+  [@decco]
+  type error;
+};
 module type T = {let make: maker;};
 
 module Make =
        (
-         Service: Message.Service,
-         Aggregate:
-           Aggregate.T with
-             module Spec = Service,
-         ReadModel:
-           ReadModel.T with
-             type id = Service.id and type event = Service.event,
+         Spec: Spec,
+         Aggregate: Aggregate.T with module Spec := Spec,
+         ReadModel: ReadModel.T with module Spec := Spec,
        )
        : T => {
   type constructed;
@@ -42,12 +50,13 @@ module Make =
     (
       ~name: string,
       ~aggregate: Reventless.Aggregate.t,
-      ~readModel: Reventless.ReadModel.t(Service.id, Service.event)
+      ~readModel: Reventless.ReadModel.t(Spec.Id.t, Spec.event)
     ) =>
     outputs =
     "";
 
-  [@bs.send] external registerOutputs: (t, outputs) => constructed = "";
+  [@bs.send]
+  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
   [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
@@ -66,14 +75,13 @@ module Make =
     let aggregate =
       Aggregate.make(~eventsHandler=readModel##update, ~opts, ());
 
-    makeOutputs(~name=Service.name, ~aggregate, ~readModel)
-    |> self->setOutputs;
+    makeOutputs(~name=Spec.name, ~aggregate, ~readModel) |> self->setOutputs;
   };
 
   let make = opts =>
     make(
       ~componentType=componentType->ComponentType.toString,
-      ~name=Service.name->ComponentType.name(componentType),
+      ~name=Spec.name->ComponentType.name(componentType),
       ~construct,
       ~opts,
     );

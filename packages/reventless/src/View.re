@@ -45,13 +45,22 @@ type apply('state, 'event) =
 type applyMulti('state, 'event) =
   (. list('state), 'event, Message.context) => list(action('state));
 
-module type T = {
+module type Spec = {
+  module Id: Id.T;
+
+  let name: string;
+
+  [@decco]
   type event;
+};
+
+module type T = {
+  module Spec: Spec;
+
+  let name: option(string);
 
   [@decco]
   type state;
-
-  let name: option(string);
 
   let resolveIdConfigs: list(resolveIdConfig);
   let resolveIdsConfigs: list(resolveIdsConfig);
@@ -60,7 +69,7 @@ module type T = {
 
   let indexes: list(index);
 
-  let init: init(state, event);
-  let apply: apply(state, event);
-  let applyMulti: applyMulti(state, event);
+  let init: init(state, Spec.event);
+  let apply: apply(state, Spec.event);
+  let applyMulti: applyMulti(state, Spec.event);
 };

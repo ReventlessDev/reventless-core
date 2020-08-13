@@ -1,10 +1,12 @@
 module type T = {
-  type event;
+  module Spec: View.Spec;
+
   type state;
 
-  let givenEvents: list(event) => list(state);
+  let givenEvents: list(Spec.event) => list(state);
   let whenEvent:
-    (event, list(state)) => Jest.Expect.plainPartial(unit => list(state));
+    (Spec.event, list(state)) =>
+    Jest.Expect.plainPartial(unit => list(state));
   let thenStates:
     (list(state), Jest.Expect.plainPartial(unit => list(state))) =>
     Jest.assertion;
@@ -24,12 +26,9 @@ let unpack: Jest.Expect.plainPartial('a) => 'a =
   };
 
 module Make =
-       (
-         Service: Message.Service,
-         View: View.T with type event := Service.event,
-       )
-       : (T with type event := Service.event and type state := View.state) => {
-  open View;
+       (Spec: View.Spec, View: View.T with module Spec := Spec)
+       : (T with module Spec = Spec and type state := View.state) => {
+  module Spec = Spec;
 
   let applyAction =
     fun
@@ -43,11 +42,12 @@ module Make =
 
   let update = (event, states) =>
     switch (states) {
-    | [] => init(. event, TestFixtures.context)
+    | [] => View.init(. event, TestFixtures.context)
     | [oldState] =>
-      apply(. oldState, event, TestFixtures.context) |> applyActions
+      View.apply(. oldState, event, TestFixtures.context) |> applyActions
     | oldStates =>
-      applyMulti(. oldStates, event, TestFixtures.context) |> applyActions
+      View.applyMulti(. oldStates, event, TestFixtures.context)
+      |> applyActions
     };
 
   let givenEvents = events => {
