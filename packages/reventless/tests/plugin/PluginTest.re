@@ -6,7 +6,7 @@ open PluginTest;
 open PluginSpec;
 open PluginFixture;
 
-describe("Plugin", () => {
+describe("Plugin Aggregate", () => {
   test("detected", () =>
     givenEvents([])
     |> whenCmd(Heartbeat)
@@ -26,8 +26,46 @@ describe("Plugin", () => {
   );
 
   test("disconnected", () =>
-    givenEvents([PluginConnected(plugin1)])
+    givenEvents([UnknownPluginDetected, PluginConnected(plugin1)])
     |> whenCmd(DisconnectPlugin)
     |> thenEvents([PluginDisconnected])
+  );
+
+  test("deactivated", () =>
+    givenEvents([UnknownPluginDetected, PluginConnected(plugin1)])
+    |> whenCmd(DeactivatePlugin)
+    |> thenEvents([PluginDeactivated])
+  );
+
+  test("activated", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      PluginConnected(plugin1),
+      PluginDeactivated,
+    ])
+    |> whenCmd(ActivatePlugin)
+    |> thenEvents([PluginActivated])
+  );
+
+  test("re-detected after activation", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      PluginConnected(plugin1),
+      PluginDeactivated,
+      PluginActivated,
+    ])
+    |> whenCmd(Heartbeat)
+    |> thenEvents([])
+  );
+
+  test("re-connected after activation", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      PluginConnected(plugin1),
+      PluginDeactivated,
+      PluginActivated,
+    ])
+    |> whenCmd(ConnectPlugin(plugin1))
+    |> thenEvents([PluginConnected(plugin1)])
   );
 });
