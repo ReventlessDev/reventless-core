@@ -42,11 +42,11 @@ module Make =
        (
          Config: Config.T,
          Spec: Spec,
-         Behaviour: Behaviour.T with module Spec = Spec,
-         CommandGenerator: CommandGenerator.T with module Spec = Spec,
-         CommandTopic: CommandTopic.T with module Spec = Spec,
-         EventLog: EventLog.T with module Spec = Spec,
-         EventTopic: EventTopic.T with module Spec = Spec,
+         Behaviour: Behaviour.T with module Spec := Spec,
+         CommandGenerator: CommandGenerator.T with module Spec := Spec,
+         CommandTopic: CommandTopic.T with module Spec := Spec,
+         EventLog: EventLog.T with module Spec := Spec,
+         EventTopic: EventTopic.T with module Spec := Spec,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;

@@ -66,7 +66,7 @@ module Make =
        (
          Config: Config.T,
          Spec: Spec,
-         Behaviour: Behaviour.T with module Spec = Spec,
+         Behaviour: Behaviour.T with module Spec := Spec,
          Resolvers: Resolvers with type api := Config.api,
        )
        : (T with module Spec = Spec) => {

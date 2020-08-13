@@ -10,23 +10,11 @@ type t = outputs;
 
 type maker = option(Pulumi.ComponentResource.Options.t) => t;
 
-module type Spec = {
-  module Id: Id.T;
-
-  let name: string;
-
-  [@decco]
-  type command;
-  [@decco]
-  type event;
-  [@decco]
-  type error;
-};
 module type T = {let make: maker;};
 
 module Make =
        (
-         Spec: Spec,
+         Spec: Aggregate.Spec,
          Aggregate: Aggregate.T with module Spec := Spec,
          ReadModel: ReadModel.T with module Spec := Spec,
        )
