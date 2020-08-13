@@ -11,20 +11,40 @@ type name = string;
 type version = string;
 
 [@decco]
-type dependencies = array(id);
+type extensionPoint = {
+  id: string,
+  commandTopic: string,
+  eventTopic: string,
+};
+
+[@decco]
+type extensionPoints = array(extensionPoint);
+
+[@decco]
+type extension = {
+  id: string,
+  commandTopic: string,
+  eventTopic: string,
+};
+
+[@decco]
+type extensions = array(extension);
 
 [@decco]
 type plugin = {
   name,
   version,
-  dependencies,
+  extensionPoints: array(extensionPoint),
+  extensions: array(extension),
 };
 
 [@decco]
 type command =
   | Heartbeat
   | ConnectPlugin(plugin)
-  | DisconnectPlugin;
+  | DisconnectPlugin
+  | ActivatePlugin
+  | DeactivatePlugin;
 
 [@decco]
 type event =
