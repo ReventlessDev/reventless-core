@@ -1,8 +1,6 @@
 let name = "Plugin";
 
-module Id: Reventless.Id.T = Reventless.Id.String;
-[@decco]
-type id = Id.t;
+module Id = Id.String;
 
 [@decco]
 type name = string;

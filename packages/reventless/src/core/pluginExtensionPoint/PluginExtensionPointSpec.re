@@ -1,8 +1,6 @@
 let name = "Plugin";
 
 module Id = Id.String;
-[@decco]
-type id = Id.t;
 
 [@decco]
 type command =

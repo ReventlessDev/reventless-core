@@ -1,4 +1,4 @@
-open Reventless.View;
+open View;
 open PluginSpec;
 
 [@decco]
