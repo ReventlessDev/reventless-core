@@ -10,116 +10,123 @@ type eventAction('event, 'msg) =
   | Call(Message.handler('msg), 'msg);
 type eventActions('event, 'msg) = array(eventAction('event, 'msg));
 
-// type mapCommandJson = Js.Json.t => commandActions(Js.Json.t);
-// type mapEventJson = Js.Json.t => eventActions(Js.Json.t);
+module type Spec = {
+  module Id: Id.T;
+
+  let name: string;
+
+  [@decco]
+  type command;
+  [@decco]
+  type event;
+};
 
 module type Impl = {
-  module ExtensionPointSpec: ExtensionPointSpec.T;
-  module Aggregate: Message.Service;
+  module ExtensionPoint: Spec;
+  module Aggregate: Aggregate.Spec;
+
+  type callCommand;
 
   let mapIncomingCommand:
-    (
-      Reventless.ExtensionPointSpec.id,
-      ExtensionPointSpec.command,
-      Message.meta
-    ) =>
-    commandActions((Aggregate.id, Aggregate.command), 'msg);
+    (ExtensionPoint.Id.t, ExtensionPoint.command, Message.meta) =>
+    commandActions((Aggregate.Id.t, Aggregate.command), callCommand);
   let mapOutgoingEvent:
-    (Aggregate.id, Aggregate.event, Message.meta) =>
-    eventActions(
-      (Reventless.ExtensionPointSpec.id, ExtensionPointSpec.event),
-      'msg,
-    );
+    (Aggregate.Id.t, Aggregate.event, Message.meta) =>
+    eventActions((ExtensionPoint.Id.t, ExtensionPoint.event), callCommand);
 };
 
 module type T = {
-  module ExtensionPointSpec: ExtensionPointSpec.T;
-  module Aggregate: Message.Service;
+  module ExtensionPoint: Spec;
+  module Aggregate: Aggregate.Spec;
+
+  type callCommand;
 
   let mapIncomingCommands:
-    array(
-      Message.command'(
-        Reventless.ExtensionPointSpec.id,
-        ExtensionPointSpec.command,
-      ),
-    ) =>
-    commandActions(Js.Json.t, 'msg);
+    array(Message.command'(ExtensionPoint.Id.t, ExtensionPoint.command)) =>
+    commandActions(Js.Json.t, callCommand);
+
   let mapOutgoingEvent:
     Js.Json.t =>
     eventActions(
-      Message.event'(
-        Reventless.ExtensionPointSpec.id,
-        ExtensionPointSpec.event,
-      ),
-      'msg,
+      Message.event'(ExtensionPoint.Id.t, ExtensionPoint.event),
+      callCommand,
     );
 };
 
 module Make =
-       (
-         ExtensionPointSpec: ExtensionPointSpec.T,
-         Aggregate: Message.Service,
-         MappingImpl:
-           Impl with
-             module ExtensionPointSpec = ExtensionPointSpec and
-             module Aggregate = Aggregate,
-       )
-       : T => {
-  module ExtensionPointSpec = ExtensionPointSpec;
-  module Aggregate = Aggregate;
+       (MappingImpl: Impl)
 
-  let mapIncomingCommands = commands' =>
-    commands'
-    ->Belt.Array.map(({Message.id, command, meta}) =>
-        MappingImpl.mapIncomingCommand(id, command, meta)
+         : (
+           T with
+             module ExtensionPoint := MappingImpl.ExtensionPoint and
+             module Aggregate = MappingImpl.Aggregate
+       ) => {
+  module Aggregate = MappingImpl.Aggregate;
+  type callCommand = MappingImpl.callCommand;
+
+  let mapIncomingCommands:
+    array(
+      Message.command'(
+        MappingImpl.ExtensionPoint.Id.t,
+        MappingImpl.ExtensionPoint.command,
+      ),
+    ) =>
+    commandActions(Js.Json.t, callCommand) =
+    commands' =>
+      commands'
+      ->Belt.Array.map(({Message.id, command, meta}) =>
+          MappingImpl.mapIncomingCommand(id, command, meta)
+          ->Belt.Array.map(
+              fun
+              | PublishCommand(aggregateName, (aggregateId, aggregateCmd)) =>
+                PublishCommand(
+                  aggregateName,
+                  Message.command'_encode(
+                    MappingImpl.Aggregate.Id.t_encode,
+                    MappingImpl.Aggregate.command_encode,
+                    {
+                      id: aggregateId,
+                      meta: {
+                        ...meta,
+                        msgId: Message.uuid(),
+                      },
+                      command: aggregateCmd,
+                    },
+                  ),
+                )
+              | Call(handler, msg) => Call(handler, msg),
+            )
+        )
+      ->Belt.Array.concatMany;
+
+  let mapOutgoingEvent:
+    Js.Json.t =>
+    eventActions(
+      Message.event'(
+        MappingImpl.ExtensionPoint.Id.t,
+        MappingImpl.ExtensionPoint.event,
+      ),
+      callCommand,
+    ) =
+    aggregateEvent'Json =>
+      switch (
+        Message.event'_decode(
+          MappingImpl.Aggregate.Id.t_decode,
+          MappingImpl.Aggregate.event_decode,
+          aggregateEvent'Json,
+        )
+      ) {
+      | Ok({id, meta, event}) =>
+        MappingImpl.mapOutgoingEvent(id, event, meta)
         ->Belt.Array.map(
             fun
-            | PublishCommand(aggregateName, (aggregateId, aggregateCmd)) =>
-              PublishCommand(
-                aggregateName,
-                Message.command'_encode(
-                  Aggregate.id_encode,
-                  Aggregate.command_encode,
-                  {
-                    id: aggregateId,
-                    meta: {
-                      ...meta,
-                      msgId: Message.uuid(),
-                    },
-                    command: aggregateCmd,
-                  },
-                ),
-              )
+            | PublishEvent((id, event)) =>
+              PublishEvent({Message.id, event, meta})
             | Call(handler, msg) => Call(handler, msg),
           )
-      )
-    ->Belt.Array.concatMany;
-
-  let mapOutgoingEvent = aggregateEvent'Json =>
-    switch (
-      Message.event'_decode(
-        Aggregate.id_decode,
-        Aggregate.event_decode,
-        aggregateEvent'Json,
-      )
-    ) {
-    | Ok({id, meta, event}) =>
-      MappingImpl.mapOutgoingEvent(id, event, meta)
-      ->Belt.Array.map(
-          fun
-          | PublishEvent((id, event)) =>
-            PublishEvent({Message.id, event, meta})
-          | Call(handler, msg) => Call(handler, msg),
+      | Error(_) =>
+        Js.Exn.raiseError(
+          "ExtensionPointMapping.Make.mapOutgoing: Decode failure: " // TODO improve message
         )
-    | Error(_) =>
-      Js.Exn.raiseError(
-        "ExtensionPointMapping.Make.mapOutgoing: Decode failure: " // TODO improve message
-      )
-    };
-};
-
-let make = (module Impl: Impl) => {
-  module Mapping = Make(Impl.ExtensionPointSpec, Impl.Aggregate, Impl);
-
-  ((module Mapping): (module T));
+      };
 };

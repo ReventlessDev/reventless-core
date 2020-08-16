@@ -21,31 +21,31 @@ type maker =
   t;
 
 module type T = {
-  module Spec: ExtensionPointSpec.T;
-  let make:
-    (
-      ~mappings: array(
-                   module ExtensionPointMapping.T with
-                     type ExtensionPointSpec.event = Spec.event and
-                     type ExtensionPointSpec.command = Spec.command,
-                 )
-    ) =>
-    maker;
+  module Spec: ExtensionPointMapping.Spec;
+  module type Mapping =
+    ExtensionPointMapping.T with
+      type ExtensionPoint.command = Spec.command and
+      type ExtensionPoint.event = Spec.event and
+      module ExtensionPoint.Id = Id.String;
+  let make: (~mappings: array(module Mapping)) => maker;
 };
 
 module Make =
        (
-         Spec: Message.Service with module Id = Id.String,
+         Spec: ExtensionPointMapping.Spec with module Id = Id.String,
          EventCollector: EventCollector.T,
-         CommandTopic: CommandTopic.T with module Spec = Spec,
-         EventTopic: EventTopic.T with module Spec = Spec,
+         CommandTopic:
+           CommandTopic.T with
+             module Spec = Spec and module Spec.Id = Id.String,
+         EventTopic: EventTopic.T with module Spec := Spec,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
   module type Mapping =
     ExtensionPointMapping.T with
-      type ExtensionPointSpec.event = Spec.event and
-      type ExtensionPointSpec.command = Spec.command;
+      type ExtensionPoint.event = Spec.event and
+      type ExtensionPoint.command = Spec.command and
+      module ExtensionPoint.Id = Id.String;
 
   type eventCollector = Reventless.EventCollector.t;
   type commandTopic = CommandTopic.t;
@@ -116,8 +116,7 @@ module Make =
     let mapIncomingCommands =
         (
           mappings,
-          commands':
-            array(Message.command'(ExtensionPointSpec.id, Spec.command)),
+          commands': array(Message.command'(Spec.Id.t, Spec.command)),
         ) =>
       mappings
       ->Belt.Array.map((module Mapping: Mapping) =>
@@ -222,15 +221,7 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make:
-    (
-      ~mappings: array(
-                   module ExtensionPointMapping.T with
-                     type ExtensionPointSpec.event = Spec.event and
-                     type ExtensionPointSpec.command = Spec.command,
-                 )
-    ) =>
-    maker =
+  let make: (~mappings: array(module Mapping)) => maker =
     (~mappings, ~queryCommandTopic, ~queryEventTopic, ~opts, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
@@ -240,65 +231,25 @@ module Make =
       );
 };
 
-// module MakeSpec = (ExtensionPoint: ExtensionPointSpec.T) => {
-//   let name = ExtensionPoint.name;
+let make =
+    (
+      ~spec: (module Spec),
+      ~mappings: array(module Mapping),
+      ~eventCollectorAdapter: (module EventCollector.Connector),
+      ~commandTopicAdapter: (module CommandTopic.Connector),
+      ~eventTopicAdapter: (module EventTopic.Publisher),
+    ) => {
+  module EventCollector =
+    EventCollector.Make(
+      EventCollector.NoPolicies,
+      (val eventCollectorAdapter),
+    );
+  module Spec = (val spec);
+  module CommandTopic = CommandTopic.Make(Spec, (val commandTopicAdapter));
+  module EventTopic = EventTopic.Make(Spec, (val eventTopicAdapter));
 
-//   module Id = Id.String;
+  module ExtensionPoint =
+    Make(Spec, EventCollector, CommandTopic, EventTopic);
 
-//   [@decco]
-//   type id = Id.t;
-
-//   type command = ExtensionPoint.command;
-//   let command_encode = ExtensionPoint.command_encode;
-//   let command_decode = ExtensionPoint.command_decode;
-
-//   type event = ExtensionPoint.event;
-//   let event_encode = ExtensionPoint.event_encode;
-//   let event_decode = ExtensionPoint.event_decode;
-
-//   [@decco]
-//   type error = unit;
-// };
-
-/*
- module MakeSpec =
-        (ExtensionPoint: ExtensionPointSpec.T)
-
-          : (
-            Message.Service with
-              module Id = Id.String and type id = ExtensionPointSpec.id
-        ) => {
-   include ExtensionPoint;
-
-   module Id = Id.String;
-   [@decco]
-   type id = Id.t;
-
-   [@decco]
-   type error = unit;
- };
-
- let make =
-     (
-       ~spec: (module Message.Service),
-       ~eventCollectorAdapter: (module EventCollector.Connector),
-       ~commandTopicAdapter: (module CommandTopic.Connector),
-       ~eventTopicAdapter: (module EventTopic.Publisher),
-     ) => {
-   module EventCollector =
-     EventCollector.Make(
-       EventCollector.NoPolicies,
-       (val eventCollectorAdapter),
-     );
-   module Spec = (val spec);
-
-   module CommandTopic = CommandTopic.Make(Spec, (val commandTopicAdapter));
-
-   module EventTopic = EventTopic.Make(Spec, (val eventTopicAdapter));
-
-   module ExtensionPoint =
-     Make(Spec, EventCollector, CommandTopic, EventTopic);
-
-   ExtensionPoint.make;
- };
- */
+  ExtensionPoint.make(~mappings);
+};
