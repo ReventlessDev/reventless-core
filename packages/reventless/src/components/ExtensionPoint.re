@@ -20,36 +20,56 @@ type maker =
   ) =>
   t;
 
+module type Spec = {
+  module Id = Id.String;
+
+  let name: string;
+
+  [@decco]
+  type command;
+  [@decco]
+  type event;
+  [@decco]
+  type callCommand;
+};
+
 module type T = {
   module Spec: ExtensionPointMapping.Spec;
   module type Mapping =
-    ExtensionPointMapping.T with
-      type ExtensionPoint.command = Spec.command and
-      type ExtensionPoint.event = Spec.event and
-      module ExtensionPoint.Id = Id.String;
-  let make: (~mappings: array(module Mapping)) => maker;
+    ExtensionPointMapping.T with module ExtensionPoint := Spec;
+  let make: array(module Mapping) => maker;
 };
 
 module Make =
        (
-         Spec: ExtensionPointMapping.Spec with module Id = Id.String,
-         EventCollector: EventCollector.T,
-         CommandTopic:
-           CommandTopic.T with
-             module Spec = Spec and module Spec.Id = Id.String,
-         EventTopic: EventTopic.T with module Spec := Spec,
+         Spec: ExtensionPointMapping.Spec,
+         EventCollectorAdapter: EventCollector.Connector,
+         CommandTopicAdapter: CommandTopic.Connector,
+         EventTopicAdapter: EventTopic.Publisher,
        )
-       : (T with module Spec = Spec) => {
-  module Spec = Spec;
+       : (T with module Spec := Spec) => {
   module type Mapping =
-    ExtensionPointMapping.T with
-      type ExtensionPoint.event = Spec.event and
-      type ExtensionPoint.command = Spec.command and
-      module ExtensionPoint.Id = Id.String;
+    ExtensionPointMapping.T with module ExtensionPoint := Spec;
 
-  type eventCollector = Reventless.EventCollector.t;
-  type commandTopic = CommandTopic.t;
-  type eventTopic = EventTopic.t;
+  module EventCollector =
+    EventCollector.Make(EventCollector.NoPolicies, EventCollectorAdapter);
+
+  module SpecWithId:
+    Spec with
+      type command = Spec.command and
+      type event = Spec.event and
+      type callCommand = Spec.callCommand = {
+    include Spec;
+    module Id = Id.String;
+  };
+
+  module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter);
+
+  module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter);
+
+  //type eventCollector = Reventless.EventCollector.t;
+  //type commandTopic = CommandTopic.t;
+  //type eventTopic = EventTopic.t;
 
   type constructed;
   type construct = (t, string) => constructed;
@@ -69,9 +89,9 @@ module Make =
   external makeOutputs:
     (
       ~name: string,
-      ~eventCollector: eventCollector,
-      ~commandTopic: commandTopic,
-      ~eventTopic: eventTopic
+      ~eventCollector: Reventless.EventCollector.t,
+      ~commandTopic: CommandTopic.t,
+      ~eventTopic: EventTopic.t
     ) =>
     outputs =
     "";
@@ -88,7 +108,7 @@ module Make =
     let findOutgoingMapping = (aggregateNameOpt, mappings) =>
       aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
         mappings->Belt.Array.getBy((module Mapping: Mapping) =>
-          Mapping.Aggregate.name == aggregateName
+          Mapping.aggregateName == aggregateName
         )
       ); // TODO: handle multiple mappings for same Aggregate name
 
@@ -116,7 +136,7 @@ module Make =
     let mapIncomingCommands =
         (
           mappings,
-          commands': array(Message.command'(Spec.Id.t, Spec.command)),
+          commands': array(Message.command'(Id.String.t, Spec.command)),
         ) =>
       mappings
       ->Belt.Array.map((module Mapping: Mapping) =>
@@ -201,7 +221,7 @@ module Make =
         ~name,
         ~aggregateNames=
           mappings->Belt.Array.map(((module Mapping)) =>
-            Mapping.Aggregate.name
+            Mapping.aggregateName
           ),
         ~eventHandler,
         ~queryEventTopic,
@@ -221,8 +241,8 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make: (~mappings: array(module Mapping)) => maker =
-    (~mappings, ~queryCommandTopic, ~queryEventTopic, ~opts, _) =>
+  let make: array(module Mapping) => maker =
+    (mappings, ~queryCommandTopic, ~queryEventTopic, ~opts, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name->ComponentType.name(componentType),
@@ -231,25 +251,52 @@ module Make =
       );
 };
 
-let make =
-    (
-      ~spec: (module Spec),
-      ~mappings: array(module Mapping),
-      ~eventCollectorAdapter: (module EventCollector.Connector),
-      ~commandTopicAdapter: (module CommandTopic.Connector),
-      ~eventTopicAdapter: (module EventTopic.Publisher),
-    ) => {
-  module EventCollector =
-    EventCollector.Make(
-      EventCollector.NoPolicies,
-      (val eventCollectorAdapter),
-    );
-  module Spec = (val spec);
-  module CommandTopic = CommandTopic.Make(Spec, (val commandTopicAdapter));
-  module EventTopic = EventTopic.Make(Spec, (val eventTopicAdapter));
+/*
+ let make =
+     (
+       ~spec: (module ExtensionPointMapping.Spec),
+       ~mappings: array(module ExtensionPointMapping.T with
+     module ExtensionPoint = Spec),
+       ~eventCollectorAdapter: (module EventCollector.Connector),
+       ~commandTopicAdapter: (module CommandTopic.Connector),
+       ~eventTopicAdapter: (module EventTopic.Publisher),
+     ) => {
+   module EventCollector =
+     EventCollector.Make(
+       EventCollector.NoPolicies,
+       (val eventCollectorAdapter),
+     );
+   module Spec = (val spec);
+   module CommandTopic = CommandTopic.Make(Spec, (val commandTopicAdapter));
+   module EventTopic = EventTopic.Make(Spec, (val eventTopicAdapter));
 
-  module ExtensionPoint =
-    Make(Spec, EventCollector, CommandTopic, EventTopic);
+   module ExtensionPoint =
+     Make(Spec, EventCollector, CommandTopic, EventTopic);
 
-  ExtensionPoint.make(~mappings);
-};
+   ExtensionPoint.make(~mappings);
+ };
+ */
+
+/*
+ module MakeSimple =
+        (
+          OriginalSpec: ExtensionPointMapping.Spec,
+          EventCollectorAdapter: EventCollector.Connector,
+          CommandTopicAdapter: CommandTopic.Connector,
+          EventTopicAdapter: EventTopic.Publisher,
+        )
+        : (T with module Spec := OriginalSpec) => {
+   module Spec = {
+     include OriginalSpec;
+     module Id = Id.String;
+   };
+   module EventCollector =
+     EventCollector.Make(EventCollector.NoPolicies, EventCollectorAdapter);
+   module CommandTopic = CommandTopic.Make(Spec, CommandTopicAdapter);
+   module EventTopic = EventTopic.Make(Spec, EventTopicAdapter);
+
+   module ExPt = Make(Spec, EventCollector, CommandTopic, EventTopic);
+
+   include ExPt;
+ };
+ */

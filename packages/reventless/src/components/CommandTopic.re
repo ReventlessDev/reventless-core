@@ -59,7 +59,7 @@ module type Connector = {
 
 module Make =
        (Spec: Spec, Connector: Connector)
-       : (T with module Spec = Spec) => {
+       : (T with module Spec := Spec) => {
    module Spec = Spec;
     
   type commandsHandler = Message.commandsHandler(Spec.Id.t, Spec.command);

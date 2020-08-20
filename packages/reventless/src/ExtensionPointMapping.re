@@ -11,67 +11,65 @@ type eventAction('event, 'msg) =
 type eventActions('event, 'msg) = array(eventAction('event, 'msg));
 
 module type Spec = {
-  module Id: Id.T;
-
   let name: string;
 
   [@decco]
   type command;
   [@decco]
   type event;
+  [@decco]
+  type callCommand;
 };
+
+type mapIncomingCommand('extensionPointCommand, 'aggregateId, 'aggregateCommand, 'extensionPointCallCommand) = (Id.String.t, 'extensionPointCommand, Message.meta) =>
+    commandActions(
+      ('aggregateId, 'aggregateCommand),
+      'extensionPointCallCommand,
+    );
 
 module type Impl = {
   module ExtensionPoint: Spec;
   module Aggregate: Aggregate.Spec;
 
-  type callCommand;
-
   let mapIncomingCommand:
-    (ExtensionPoint.Id.t, ExtensionPoint.command, Message.meta) =>
-    commandActions((Aggregate.Id.t, Aggregate.command), callCommand);
+    (Id.String.t, ExtensionPoint.command, Message.meta) =>
+    commandActions(
+      (Aggregate.Id.t, Aggregate.command),
+      ExtensionPoint.callCommand,
+    );
   let mapOutgoingEvent:
     (Aggregate.Id.t, Aggregate.event, Message.meta) =>
-    eventActions((ExtensionPoint.Id.t, ExtensionPoint.event), callCommand);
+    eventActions(
+      (Id.String.t, ExtensionPoint.event),
+      ExtensionPoint.callCommand,
+    );
 };
 
 module type T = {
   module ExtensionPoint: Spec;
-  module Aggregate: Aggregate.Spec;
 
-  type callCommand;
+  let aggregateName: string;
 
   let mapIncomingCommands:
-    array(Message.command'(ExtensionPoint.Id.t, ExtensionPoint.command)) =>
-    commandActions(Js.Json.t, callCommand);
+    array(Message.command'(Id.String.t, ExtensionPoint.command)) =>
+    commandActions(Js.Json.t, ExtensionPoint.callCommand);
 
   let mapOutgoingEvent:
     Js.Json.t =>
     eventActions(
-      Message.event'(ExtensionPoint.Id.t, ExtensionPoint.event),
-      callCommand,
+      Message.event'(Id.String.t, ExtensionPoint.event),
+      ExtensionPoint.callCommand,
     );
 };
 
 module Make =
-       (MappingImpl: Impl)
-
-         : (
-           T with
-             module ExtensionPoint := MappingImpl.ExtensionPoint and
-             module Aggregate = MappingImpl.Aggregate
-       ) => {
-  module Aggregate = MappingImpl.Aggregate;
-  type callCommand = MappingImpl.callCommand;
+       (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
+       : (T with module ExtensionPoint := Spec) => {
+  let aggregateName = MappingImpl.Aggregate.name;
 
   let mapIncomingCommands:
-    array(
-      Message.command'(
-        MappingImpl.ExtensionPoint.Id.t,
-        MappingImpl.ExtensionPoint.command,
-      ),
-    ) =>
-    commandActions(Js.Json.t, callCommand) =
+    array(Message.command'(Id.String.t, Spec.command)) =>
+    commandActions(Js.Json.t, Spec.callCommand) =
     commands' =>
       commands'
       ->Belt.Array.map(({Message.id, command, meta}) =>
@@ -102,11 +100,8 @@ module Make =
   let mapOutgoingEvent:
     Js.Json.t =>
     eventActions(
-      Message.event'(
-        MappingImpl.ExtensionPoint.Id.t,
-        MappingImpl.ExtensionPoint.event,
-      ),
-      callCommand,
+      Message.event'(Id.String.t, Spec.event),
+      Spec.callCommand,
     ) =
     aggregateEvent'Json =>
       switch (
