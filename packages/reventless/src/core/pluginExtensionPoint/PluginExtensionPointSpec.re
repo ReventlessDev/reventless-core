@@ -1,7 +1,5 @@
 let name = "Plugin";
 
-module Id = Id.String;
-
 [@decco]
 type command =
   | Heartbeat
@@ -17,4 +15,5 @@ type event =
   | PluginDeacivated
   | PluginActivated;
 
-type error = unit;
+[@decco]
+type callCommand = unit;
