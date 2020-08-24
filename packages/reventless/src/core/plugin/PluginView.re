@@ -29,7 +29,9 @@ let init: init(state, event) =
   (. event, _) =>
     switch (event) {
     | UnknownPluginDetected => []
-    | PluginConnected(_)
+    | PluginConnected({name, version, extensionPoints, extensions}) => [
+        {name, version, extensionPoints, extensions, status: Connected},
+      ]
     | PluginDisconnected
     | PluginActivated
     | PluginDeactivated =>
@@ -41,33 +43,17 @@ let apply: apply(state, event) =
     switch (event) {
     | UnknownPluginDetected => []
     | PluginConnected({name, version, extensionPoints, extensions}) => [
-        Create({
+        Update({
           name,
           version,
-          status: Connected,
           extensionPoints,
           extensions,
+          status: Connected,
         }),
       ]
     | PluginDisconnected
-    | PluginActivated => [
-        Update({
-          name: state.name,
-          version: state.version,
-          status: Disconnected,
-          extensionPoints: state.extensionPoints,
-          extensions: state.extensions,
-        }),
-      ]
-    | PluginDeactivated => [
-        Update({
-          name: state.name,
-          version: state.version,
-          status: Inactive,
-          extensionPoints: state.extensionPoints,
-          extensions: state.extensions,
-        }),
-      ]
+    | PluginActivated => [Update({...state, status: Disconnected})]
+    | PluginDeactivated => [Update({...state, status: Inactive})]
     };
 
 let applyMulti =
