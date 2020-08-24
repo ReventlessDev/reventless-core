@@ -6,7 +6,7 @@ module Impl = {
 
   let mapIncomingCommand =
       (id, cmd, _meta)
-      : commandActions((Aggregate.Id.t, Aggregate.command), unit) =>
+      : commandActions((Aggregate.Id.t, Aggregate.command), callCommand) =>
     switch (cmd) {
     | Heartbeat => [|
         PublishCommand(

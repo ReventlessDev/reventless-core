@@ -16,4 +16,4 @@ type event =
   | PluginActivated;
 
 [@decco]
-type callCommand = unit;
+type callCommand = | ConfigAlarm;
