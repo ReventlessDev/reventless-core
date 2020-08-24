@@ -1,17 +1,15 @@
 type extensionPointName = string;
 
 /* these actions are needed for Impl */
-type commandAction('id, 'command, 'msg) =
-  | PublishCommand('id, 'command)
+type commandAction('command, 'msg) =
+  | PublishCommand(string, 'command)
   | Call(Message.handler('msg), 'msg);
-type commandActions('id, 'command, 'msg) =
-  array(commandAction('id, 'command, 'msg));
+type commandActions('command, 'msg) = array(commandAction('command, 'msg));
 
-type eventAction('id, 'event, 'msg) =
-  | PublishEvent('id, 'event)
+type eventAction('event, 'msg) =
+  | PublishEvent(string, 'event)
   | Call(Message.handler('msg), 'msg);
-type eventActions('id, 'event, 'msg) =
-  array(eventAction('id, 'event, 'msg));
+type eventActions('event, 'msg) = array(eventAction('event, 'msg));
 
 module type Spec = {
   let name: string;
@@ -31,7 +29,7 @@ type mapIncomingCommand(
   'extensionPointCallCommand,
 ) =
   (Id.String.t, 'extensionPointCommand, Message.meta) =>
-  commandActions('aggregateId, 'aggregateCommand, 'extensionPointCallCommand);
+  commandActions('aggregateCommand, 'extensionPointCallCommand);
 
 type mapOutgoingEvent(
   'aggregateId,
@@ -40,7 +38,7 @@ type mapOutgoingEvent(
   'extensionPointCallCommand,
 ) =
   ('aggregateId, 'aggregateEvent, Message.meta) =>
-  eventActions(Id.String.t, 'extensionPointEvent, 'extensionPointCallCommand);
+  eventActions('extensionPointEvent, 'extensionPointCallCommand);
 
 module type Impl = {
   module ExtensionPoint: Spec;
@@ -109,7 +107,7 @@ module Make =
                     MappingImpl.Aggregate.Id.t_encode,
                     MappingImpl.Aggregate.command_encode,
                     {
-                      id: aggregateId,
+                      id: aggregateId->MappingImpl.Aggregate.Id.makeFromString,
                       meta: {
                         ...meta,
                         msgId: Message.uuid(),
@@ -137,7 +135,11 @@ module Make =
         ->Belt.Array.map(
             fun
             | PublishEvent(id, event) =>
-              AbstractPublishEvent({Message.id, event, meta})
+              AbstractPublishEvent({
+                Message.id: id->Id.String.makeFromString,
+                event,
+                meta,
+              })
             | Call(handler, msg) => AbstractCall(() => handler(msg)),
           )
       | Error(_) =>

@@ -21,5 +21,3 @@ module Make =
 
   let make = make([|(module PluginExtensionPoint_PluginMapping.Mapping)|]);
 };
-
-//module PluginMapping = PluginExtensionPoint_PluginMapping;
