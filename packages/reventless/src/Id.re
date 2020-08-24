@@ -13,7 +13,7 @@ module String: T = {
   type t = string;
   type input = string;
   let make = str => str;
-  let makeFromString = str => str;
+  external makeFromString: string => t = "%identity";
   let toString = t => t;
   let cmp = String.compare;
 };
