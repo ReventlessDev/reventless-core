@@ -168,7 +168,7 @@ module Make =
 
     let applyCommandAction =
       fun
-      | ExtensionPointMapping.PublishCommand(aggregateName, cmdJson) =>
+      | ExtensionPointMapping.AbstractPublishCommand(aggregateName, cmdJson) =>
         cmdJson
         |> Js.Json.stringify
         |> AwsSdk.SQS.sendMessage(
@@ -181,8 +181,8 @@ module Make =
              |> Js.log2("ExtensionPoint: Error on publish command:")
              |> Js.Promise.resolve
            )
-      | Call(handler, msg) =>
-        handler(msg)
+      | AbstractCall(handler) =>
+        handler()
         |> Js.Promise.catch(err =>
              err
              |> Js.log2("ExtensionPoint: Error on calling handler:")
@@ -193,7 +193,7 @@ module Make =
 
     let applyEventAction =
       fun
-      | ExtensionPointMapping.PublishEvent(event') => {
+      | ExtensionPointMapping.AbstractPublishEvent(event') => {
           let publish = eventTopic##publish;
           publish(. [|event'|])
           |> Js.Promise.catch(err =>
@@ -202,8 +202,8 @@ module Make =
                |> Js.Promise.resolve
              );
         }
-      | Call(handler, msg) =>
-        handler(msg)
+      | AbstractCall(handler) =>
+        handler()
         |> Js.Promise.catch(err =>
              err
              |> Js.log2("ExtensionPoint: Error on calling handler:")
