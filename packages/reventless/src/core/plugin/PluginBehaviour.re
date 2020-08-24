@@ -53,15 +53,6 @@ let init: Behaviour.init(state, event) =
 
 let apply: Behaviour.apply(state, event) =
   (. state: state, event) => {
-    let plugin =
-      switch (state) {
-      | Detected =>
-        raise(Reventless.Message.InvalidEvent(event_encode(event)))
-      | Connected(plugin)
-      | Disconnected(plugin)
-      | Inactive(plugin) => plugin
-      };
-
     switch (event) {
     | UnknownPluginDetected =>
       raise(Reventless.Message.InvalidEvent(event_encode(event)))
