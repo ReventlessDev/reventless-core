@@ -1,0 +1,28 @@
+type ExtensionPoint {
+  id: String!
+  commandTopic: String!
+  eventTopic: String
+}
+
+type Extension = {
+  id: String!
+  commandTopic: String!
+  eventTopic: String!
+}
+
+type Plugin = {
+  name: String!
+  version: String!
+  extensionPoints: [ExtensionPoint!]!,
+  extensions: [Extension!]!,
+}
+
+type Query {
+  plugin(id: ID!): Plugin
+  everyPlugin(nextToken: String, limit: Int): Plugin!
+}
+
+type Mutation {
+  deactivatePlugin(id: ID!): String!
+  activatePlugin(id: ID!): String!
+}

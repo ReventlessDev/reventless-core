@@ -12,7 +12,7 @@ type state =
 let resolverConfig =
   Behaviour.{
     commandDecoder: command_decode,
-    fields: [|"connectPlugin", "registerPlugin", "disconnectPlugin"|],
+    fields: [|"activatePlugin", "deactivatePlugin"|],
   };
 
 let atomicCounter = None;
