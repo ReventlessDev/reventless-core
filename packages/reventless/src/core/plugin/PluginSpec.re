@@ -4,7 +4,6 @@ module Id = Id.String;
 
 [@decco]
 type name = string;
-
 [@decco]
 type version = string;
 

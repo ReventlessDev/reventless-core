@@ -4,6 +4,7 @@ module PluginTest = Reventless.ViewTest.Make(PluginSpec, PluginView);
 open PluginTest;
 open PluginSpec;
 open PluginFixture;
+open Reventless.TestFixtures;
 
 describe("Plugin: View", () => {
   test("detected", () =>
@@ -22,9 +23,10 @@ describe("Plugin: View", () => {
     |> thenState({
          name: plugin1.name,
          version: plugin1.version,
-         status: Connected,
          extensionPoints: plugin1.extensionPoints,
          extensions: plugin1.extensions,
+         status: Connected,
+         since: context.meta.time,
        })
   );
 
@@ -34,9 +36,10 @@ describe("Plugin: View", () => {
     |> thenState({
          name: plugin1.name,
          version: plugin1.version,
-         status: Disconnected,
          extensionPoints: plugin1.extensionPoints,
          extensions: plugin1.extensions,
+         status: Disconnected,
+         since: context.meta.time,
        })
   );
 
@@ -46,9 +49,10 @@ describe("Plugin: View", () => {
     |> thenState({
          name: plugin1.name,
          version: plugin1.version,
-         status: Inactive,
          extensionPoints: plugin1.extensionPoints,
          extensions: plugin1.extensions,
+         status: Inactive,
+         since: context.meta.time,
        })
   );
 
@@ -62,9 +66,10 @@ describe("Plugin: View", () => {
     |> thenState({
          name: plugin1.name,
          version: plugin1.version,
-         status: Disconnected,
          extensionPoints: plugin1.extensionPoints,
          extensions: plugin1.extensions,
+         status: Disconnected,
+         since: context.meta.time,
        })
   );
 
@@ -79,9 +84,10 @@ describe("Plugin: View", () => {
     |> thenState({
          name: plugin1.name,
          version: plugin1.version,
-         status: Connected,
          extensionPoints: plugin1.extensionPoints,
          extensions: plugin1.extensions,
+         status: Connected,
+         since: context.meta.time,
        })
   );
 });

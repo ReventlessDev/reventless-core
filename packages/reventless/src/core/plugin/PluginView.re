@@ -11,9 +11,10 @@ type status =
 type state = {
   name,
   version,
-  status,
   extensionPoints,
   extensions,
+  status,
+  since: string,
 };
 
 let name = None;
@@ -25,12 +26,19 @@ let sortConfig = None;
 
 let indexes = [];
 
-let init: init(state, event) =
-  (. event, _) =>
+let init =
+  (. event, context: Message.context) =>
     switch (event) {
     | UnknownPluginDetected => []
     | PluginConnected({name, version, extensionPoints, extensions}) => [
-        {name, version, extensionPoints, extensions, status: Connected},
+        {
+          name,
+          version,
+          extensionPoints,
+          extensions,
+          status: Connected,
+          since: context.meta.time,
+        },
       ]
     | PluginDisconnected
     | PluginActivated
@@ -38,8 +46,8 @@ let init: init(state, event) =
       raise(Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)))
     };
 
-let apply: apply(state, event) =
-  (. state, event, _) =>
+let apply =
+  (. state, event, context: Message.context) =>
     switch (event) {
     | UnknownPluginDetected => []
     | PluginConnected({name, version, extensionPoints, extensions}) => [
@@ -49,11 +57,16 @@ let apply: apply(state, event) =
           extensionPoints,
           extensions,
           status: Connected,
+          since: context.meta.time,
         }),
       ]
     | PluginDisconnected
-    | PluginActivated => [Update({...state, status: Disconnected})]
-    | PluginDeactivated => [Update({...state, status: Inactive})]
+    | PluginActivated => [
+        Update({...state, status: Disconnected, since: context.meta.time}),
+      ]
+    | PluginDeactivated => [
+        Update({...state, status: Inactive, since: context.meta.time}),
+      ]
     };
 
 let applyMulti =
