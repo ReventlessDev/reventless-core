@@ -4,11 +4,12 @@ module PluginTest = Reventless.ViewTest.Make(PluginSpec, PluginView);
 open PluginTest;
 open PluginSpec;
 open PluginFixture;
-open Reventless.TestFixtures;
 
 describe("Plugin: View", () => {
   test("detected", () =>
-    givenEvents([]) |> whenEvent(UnknownPluginDetected) |> thenNoState
+    givenEvents([])  //
+    |> whenEvent(UnknownPluginDetected)
+    |> thenNoState
   );
 
   test("already detected", () =>
@@ -20,40 +21,19 @@ describe("Plugin: View", () => {
   test("connected", () =>
     givenEvents([UnknownPluginDetected])
     |> whenEvent(PluginConnected(plugin1))
-    |> thenState({
-         name: plugin1.name,
-         version: plugin1.version,
-         extensionPoints: plugin1.extensionPoints,
-         extensions: plugin1.extensions,
-         status: Connected,
-         since: context.meta.time,
-       })
+    |> thenState({...state1, status: Connected})
   );
 
   test("disconnected", () =>
     givenEvents([UnknownPluginDetected, PluginConnected(plugin1)])
     |> whenEvent(PluginDisconnected)
-    |> thenState({
-         name: plugin1.name,
-         version: plugin1.version,
-         extensionPoints: plugin1.extensionPoints,
-         extensions: plugin1.extensions,
-         status: Disconnected,
-         since: context.meta.time,
-       })
+    |> thenState({...state1, status: Disconnected})
   );
 
   test("deactivated", () =>
     givenEvents([UnknownPluginDetected, PluginConnected(plugin1)])
     |> whenEvent(PluginDeactivated)
-    |> thenState({
-         name: plugin1.name,
-         version: plugin1.version,
-         extensionPoints: plugin1.extensionPoints,
-         extensions: plugin1.extensions,
-         status: Inactive,
-         since: context.meta.time,
-       })
+    |> thenState({...state1, status: Inactive})
   );
 
   test("activated", () =>
@@ -63,31 +43,17 @@ describe("Plugin: View", () => {
       PluginDeactivated,
     ])
     |> whenEvent(PluginActivated)
-    |> thenState({
-         name: plugin1.name,
-         version: plugin1.version,
-         extensionPoints: plugin1.extensionPoints,
-         extensions: plugin1.extensions,
-         status: Disconnected,
-         since: context.meta.time,
-       })
+    |> thenState({...state1, status: Disconnected})
   );
 
-  test("re-connected after activation", () =>
+  test("re-connected after activated", () =>
     givenEvents([
       UnknownPluginDetected,
       PluginConnected(plugin1),
       PluginDeactivated,
       PluginActivated,
     ])
-    |> whenEvent(PluginConnected(plugin1))
-    |> thenState({
-         name: plugin1.name,
-         version: plugin1.version,
-         extensionPoints: plugin1.extensionPoints,
-         extensions: plugin1.extensions,
-         status: Connected,
-         since: context.meta.time,
-       })
+    |> whenEvent(PluginReconnected)
+    |> thenState({...state1, status: Connected})
   );
 });

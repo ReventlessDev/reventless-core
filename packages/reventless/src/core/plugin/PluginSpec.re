@@ -47,6 +47,7 @@ type command =
 type event =
   | UnknownPluginDetected
   | PluginConnected(plugin)
+  | PluginReconnected
   | PluginDisconnected
   | PluginActivated
   | PluginDeactivated;

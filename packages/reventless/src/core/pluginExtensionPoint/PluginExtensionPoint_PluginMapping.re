@@ -30,6 +30,9 @@ module Impl = {
     | Aggregate.PluginConnected(plugin) => [|
         PublishEvent(id, PluginExtensionPointSpec.PluginConnected(plugin)),
       |]
+    | Aggregate.PluginReconnected => [|
+        PublishEvent(id, PluginExtensionPointSpec.PluginReconnected),
+      |]
     | Aggregate.PluginDisconnected => [|
         PublishEvent(id, PluginExtensionPointSpec.PluginDisconnected),
       |]

@@ -30,13 +30,40 @@ let create: Behaviour.create(command, event, error) =
     };
 
 let execute: Behaviour.execute(state, command, event, error) =
-  (. _, command, _, _, _) => {
-    switch (command) {
-    | Heartbeat => []
-    | ConnectPlugin(plugin) => [PluginConnected(plugin)]
-    | DisconnectPlugin => [PluginDisconnected]
-    | ActivatePlugin => [PluginActivated]
-    | DeactivatePlugin => [PluginDeactivated]
+  (. state, command, _, _, _) => {
+    switch (state) {
+    | Detected =>
+      switch (command) {
+      | ConnectPlugin(plugin) => [PluginConnected(plugin)]
+      | Heartbeat
+      | DisconnectPlugin
+      | ActivatePlugin
+      | DeactivatePlugin => []
+      }
+    | Connected(_) =>
+      switch (command) {
+      | DisconnectPlugin => [PluginDisconnected]
+      | DeactivatePlugin => [PluginDeactivated]
+      | Heartbeat
+      | ConnectPlugin(_)
+      | ActivatePlugin => []
+      }
+    | Disconnected(plugin) =>
+      switch (command) {
+      | Heartbeat => [PluginConnected(plugin)]
+      | DeactivatePlugin => [PluginDeactivated]
+      | ConnectPlugin(_)
+      | DisconnectPlugin
+      | ActivatePlugin => []
+      }
+    | Inactive(_) =>
+      switch (command) {
+      | ActivatePlugin => [PluginActivated]
+      | Heartbeat
+      | ConnectPlugin(_)
+      | DisconnectPlugin
+      | DeactivatePlugin => []
+      }
     };
   };
 
@@ -44,7 +71,8 @@ let init: Behaviour.init(state, event) =
   (. event) =>
     switch (event) {
     | UnknownPluginDetected => Detected
-    | PluginConnected(plugin) => Connected(plugin)
+    | PluginConnected(_)
+    | PluginReconnected
     | PluginDisconnected
     | PluginActivated
     | PluginDeactivated =>
@@ -53,34 +81,46 @@ let init: Behaviour.init(state, event) =
 
 let apply: Behaviour.apply(state, event) =
   (. state: state, event) => {
-    switch (event) {
-    | UnknownPluginDetected =>
-      raise(Reventless.Message.InvalidEvent(event_encode(event)))
-    | PluginConnected(plugin) => Connected(plugin)
-    | PluginDisconnected
-    | PluginActivated =>
-      let plugin =
-        switch (state) {
-        | Detected
-        | Disconnected(_) =>
-          raise(
-            Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)),
-          )
-        | Connected(plugin)
-        | Inactive(plugin) => plugin
-        };
-      Disconnected(plugin);
-    | PluginDeactivated =>
-      let plugin =
-        switch (state) {
-        | Detected
-        | Disconnected(_)
-        | Inactive(_) =>
-          raise(
-            Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)),
-          )
-        | Connected(plugin) => plugin
-        };
-      Inactive(plugin);
+    switch (state) {
+    | Detected =>
+      switch (event) {
+      | PluginConnected(plugin) => Connected(plugin)
+      | UnknownPluginDetected
+      | PluginReconnected
+      | PluginDisconnected
+      | PluginActivated
+      | PluginDeactivated =>
+        raise(Reventless.Message.InvalidEvent(event_encode(event)))
+      }
+    | Connected(plugin) =>
+      switch (event) {
+      | PluginDisconnected => Disconnected(plugin)
+      | PluginDeactivated => Inactive(plugin)
+      | UnknownPluginDetected
+      | PluginConnected(_)
+      | PluginReconnected
+      | PluginActivated =>
+        raise(Reventless.Message.InvalidEvent(event_encode(event)))
+      }
+    | Disconnected(plugin) =>
+      switch (event) {
+      | PluginReconnected => Connected(plugin)
+      | PluginDeactivated => Inactive(plugin)
+      | UnknownPluginDetected
+      | PluginConnected(_)
+      | PluginDisconnected
+      | PluginActivated =>
+        raise(Reventless.Message.InvalidEvent(event_encode(event)))
+      }
+    | Inactive(plugin) =>
+      switch (event) {
+      | PluginActivated => Disconnected(plugin)
+      | UnknownPluginDetected
+      | PluginConnected(_)
+      | PluginReconnected
+      | PluginDisconnected
+      | PluginDeactivated =>
+        raise(Reventless.Message.InvalidEvent(event_encode(event)))
+      }
     };
   };

@@ -9,6 +9,15 @@ let plugin1 = {
   |],
 };
 
+let state1: PluginView.state = {
+  name: plugin1.name,
+  version: plugin1.version,
+  extensionPoints: plugin1.extensionPoints,
+  extensions: plugin1.extensions,
+  status: Connected,
+  since: TestFixtures.context.meta.time,
+};
+
 let plugin2 = {
   name: "test-plugin-2",
   version: "1",

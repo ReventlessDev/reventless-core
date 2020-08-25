@@ -40,6 +40,7 @@ let init =
           since: context.meta.time,
         },
       ]
+    | PluginReconnected
     | PluginDisconnected
     | PluginActivated
     | PluginDeactivated =>
@@ -59,6 +60,9 @@ let apply =
           status: Connected,
           since: context.meta.time,
         }),
+      ]
+    | PluginReconnected => [
+        Update({...state, status: Connected, since: context.meta.time}),
       ]
     | PluginDisconnected
     | PluginActivated => [
