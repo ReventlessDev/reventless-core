@@ -12,8 +12,8 @@ module String: T = {
   [@decco]
   type t = string;
   type input = string;
-  let make = str => str;
+  external make: t => t = "%identity";
   external makeFromString: string => t = "%identity";
-  let toString = t => t;
+  external toString: t => t = "%identity";
   let cmp = String.compare;
 };

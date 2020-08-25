@@ -28,7 +28,7 @@ type mapIncomingCommand(
   'aggregateCommand,
   'extensionPointCallCommand,
 ) =
-  (Id.String.t, 'extensionPointCommand, Message.meta) =>
+  (string, 'extensionPointCommand, Message.meta) =>
   commandActions('aggregateCommand, 'extensionPointCallCommand);
 
 type mapOutgoingEvent(
@@ -37,7 +37,7 @@ type mapOutgoingEvent(
   'extensionPointEvent,
   'extensionPointCallCommand,
 ) =
-  ('aggregateId, 'aggregateEvent, Message.meta) =>
+  (string, 'aggregateEvent, Message.meta) =>
   eventActions('extensionPointEvent, 'extensionPointCallCommand);
 
 module type Impl = {
@@ -89,7 +89,8 @@ module type T = {
 module Make =
        (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
        : (T with module ExtensionPoint := Spec) => {
-  let aggregateName = MappingImpl.Aggregate.name;
+  module Aggregate = MappingImpl.Aggregate;
+  let aggregateName = Aggregate.name;
 
   let mapIncomingCommands:
     array(Message.command'(Id.String.t, Spec.command)) =>
@@ -97,17 +98,21 @@ module Make =
     commands' =>
       commands'
       ->Belt.Array.map(({Message.id, command, meta}) =>
-          MappingImpl.mapIncomingCommand(id, command, meta)
+          MappingImpl.mapIncomingCommand(
+            id->Id.String.toString,
+            command,
+            meta,
+          )
           ->Belt.Array.map(
               fun
               | PublishCommand(aggregateId, aggregateCmd) =>
                 AbstractPublishCommand(
                   aggregateName,
                   Message.command'_encode(
-                    MappingImpl.Aggregate.Id.t_encode,
-                    MappingImpl.Aggregate.command_encode,
+                    Aggregate.Id.t_encode,
+                    Aggregate.command_encode,
                     {
-                      id: aggregateId->MappingImpl.Aggregate.Id.makeFromString,
+                      id: aggregateId->Aggregate.Id.makeFromString,
                       meta: {
                         ...meta,
                         msgId: Message.uuid(),
@@ -125,13 +130,13 @@ module Make =
     aggregateEvent'Json =>
       switch (
         Message.event'_decode(
-          MappingImpl.Aggregate.Id.t_decode,
-          MappingImpl.Aggregate.event_decode,
+          Aggregate.Id.t_decode,
+          Aggregate.event_decode,
           aggregateEvent'Json,
         )
       ) {
       | Ok({id, meta, event}) =>
-        MappingImpl.mapOutgoingEvent(id, event, meta)
+        MappingImpl.mapOutgoingEvent(id->Aggregate.Id.toString, event, meta)
         ->Belt.Array.map(
             fun
             | PublishEvent(id, event) =>
