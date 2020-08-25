@@ -1,19 +1,24 @@
 let name = "Plugin";
 
 [@decco]
+type id = string;
+[@decco]
+type timeout = int;
+
+[@decco]
 type command =
-  | Heartbeat
-  | RegisterPlugin
+  | Heartbeat(timeout)
+  | ConnectPlugin(PluginSpec.plugin)
   | DisconnectPlugin;
 
 [@decco]
 type event =
   | UnknownPluginDetected
-  | PluginRegistered
+  | PluginConnected(PluginSpec.plugin)
   | PluginDisconnected
-  | PluginConnected
-  | PluginDeacivated
+  | PluginDeactivated
   | PluginActivated;
 
 [@decco]
-type callCommand = | ConfigAlarm;
+type callCommand =
+  | ConfigAlarm(id, timeout);

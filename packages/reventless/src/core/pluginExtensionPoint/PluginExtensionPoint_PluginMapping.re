@@ -1,3 +1,8 @@
+let handler =
+  fun
+  | PluginExtensionPointSpec.ConfigAlarm(id, timeout) =>
+    Js.log({j|ConfigAlarm($id, $timeout)|j})->Js.Promise.resolve;
+
 module Impl = {
   open ExtensionPointMapping;
 
@@ -5,25 +10,35 @@ module Impl = {
 
   let mapIncomingCommand = (id, cmd, _meta) =>
     switch (cmd) {
-    | PluginExtensionPointSpec.Heartbeat => [|
-        PublishCommand(id->Id.String.toString, Aggregate.Heartbeat),
-        Call(
-          _cmd => Js.Promise.resolve(),
-          PluginExtensionPointSpec.ConfigAlarm,
-        ),
+    | PluginExtensionPointSpec.Heartbeat(timeout) => [|
+        PublishCommand(id, Aggregate.Heartbeat),
+        Call(handler, PluginExtensionPointSpec.ConfigAlarm(id, timeout)),
       |]
-    | _ => [||]
+    | PluginExtensionPointSpec.ConnectPlugin(plugin) => [|
+        PublishCommand(id, Aggregate.ConnectPlugin(plugin)),
+      |]
+    | PluginExtensionPointSpec.DisconnectPlugin => [|
+        PublishCommand(id, Aggregate.DisconnectPlugin),
+      |]
     };
 
   let mapOutgoingEvent = (id, event, _meta) =>
     switch (event) {
     | Aggregate.UnknownPluginDetected => [|
-        PublishEvent(
-          id->Aggregate.Id.toString,
-          PluginExtensionPointSpec.UnknownPluginDetected,
-        ),
+        PublishEvent(id, PluginExtensionPointSpec.UnknownPluginDetected),
       |]
-    | _ => [||]
+    | Aggregate.PluginConnected(plugin) => [|
+        PublishEvent(id, PluginExtensionPointSpec.PluginConnected(plugin)),
+      |]
+    | Aggregate.PluginDisconnected => [|
+        PublishEvent(id, PluginExtensionPointSpec.PluginDisconnected),
+      |]
+    | Aggregate.PluginDeactivated => [|
+        PublishEvent(id, PluginExtensionPointSpec.PluginDeactivated),
+      |]
+    | Aggregate.PluginActivated => [|
+        PublishEvent(id, PluginExtensionPointSpec.PluginActivated),
+      |]
     };
 };
 
