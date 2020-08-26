@@ -15,7 +15,6 @@ type name = string;
 type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
-    ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>
@@ -58,6 +57,7 @@ module Make =
       type callCommand = Spec.callCommand = {
     include Spec;
     module Id = Id.String;
+    let name = name ++ componentType->ComponentType.toString;
   };
 
   module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter);
@@ -149,8 +149,7 @@ module Make =
       };
   };
 
-  let construct =
-      (~mappings, ~queryCommandTopic, ~queryEventTopic, self, name) => {
+  let construct = (~mappings, ~queryCommandTopic, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Pulumi.Resource.makeFromJs,
@@ -230,11 +229,11 @@ module Make =
   };
 
   let make: array(module Mapping) => maker =
-    (mappings, ~queryCommandTopic, ~queryEventTopic, ~opts, _) =>
+    (mappings, ~queryCommandTopic, ~opts, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name->ComponentType.name(componentType),
-        ~construct=construct(~mappings, ~queryCommandTopic, ~queryEventTopic),
+        ~name=Spec.name,
+        ~construct=construct(~mappings, ~queryCommandTopic),
         ~opts,
       );
 };

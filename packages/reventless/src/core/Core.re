@@ -73,12 +73,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
 
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
-        extensionPointMaker(
-          ~queryCommandTopic,
-          ~queryEventTopic,
-          ~opts=Some(opts),
-          (),
-        )
+        extensionPointMaker(~queryCommandTopic, ~opts=Some(opts), ())
       );
 
     module Set = Belt.Set.String;
