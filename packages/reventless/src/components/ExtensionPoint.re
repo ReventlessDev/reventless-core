@@ -3,7 +3,8 @@ let componentType = ComponentType.ExtensionPoint;
 type outputs = {
   .
   "name": string,
-  "eventCollector": EventCollector.outputs,
+  "aggregateNames": array(string),
+  "eventHandler": (. Js.Json.t) => Js.Promise.t(unit),
   "commandTopic": CommandTopic.outputs,
   "eventTopic": EventTopic.outputs,
 };
@@ -43,16 +44,12 @@ module type T = {
 module Make =
        (
          Spec: ExtensionPointMapping.Spec,
-         EventCollectorAdapter: EventCollector.Connector,
          CommandTopicAdapter: CommandTopic.Connector,
          EventTopicAdapter: EventTopic.Publisher,
        )
        : (T with module Spec := Spec) => {
   module type Mapping =
     ExtensionPointMapping.T with module ExtensionPoint := Spec;
-
-  module EventCollector =
-    EventCollector.Make(EventCollector.NoPolicies, EventCollectorAdapter);
 
   module SpecWithId:
     Spec with
@@ -66,10 +63,6 @@ module Make =
   module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter);
 
   module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter);
-
-  //type eventCollector = Reventless.EventCollector.t;
-  //type commandTopic = CommandTopic.t;
-  //type eventTopic = EventTopic.t;
 
   type constructed;
   type construct = (t, string) => constructed;
@@ -89,7 +82,8 @@ module Make =
   external makeOutputs:
     (
       ~name: string,
-      ~eventCollector: Reventless.EventCollector.t,
+      ~aggregateNames: array(string),
+      ~eventHandler: (. Js.Json.t) => Js.Promise.t(unit),
       ~commandTopic: CommandTopic.t,
       ~eventTopic: EventTopic.t
     ) =>
@@ -216,19 +210,6 @@ module Make =
         |> Js.Promise.all
         |> Js.Promise.then_(_ => Js.Promise.resolve());
 
-    let eventCollector =
-      EventCollector.make(
-        ~name,
-        ~aggregateNames=
-          mappings->Belt.Array.map(((module Mapping)) =>
-            Mapping.aggregateName
-          ),
-        ~eventHandler,
-        ~queryEventTopic,
-        ~opts=Some(opts),
-        (),
-      );
-
     let commandsHandler =
       (. _id, cmds'Json) =>
         cmds'Json->mapIncomingCommands->Belt.Array.map(applyCommandAction)
@@ -237,7 +218,14 @@ module Make =
 
     let commandTopic = CommandTopic.make(~commandsHandler, ~opts, ());
 
-    makeOutputs(~name, ~eventCollector, ~commandTopic, ~eventTopic)
+    makeOutputs(
+      ~name,
+      ~aggregateNames=
+        mappings->Belt.Array.map(((module Mapping)) => Mapping.aggregateName),
+      ~eventHandler,
+      ~commandTopic,
+      ~eventTopic,
+    )
     |> self->setOutputs;
   };
 

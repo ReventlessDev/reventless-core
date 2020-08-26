@@ -7,14 +7,12 @@ module type T = {
 
 module Make =
        (
-         EventCollectorAdapter: EventCollector.Connector,
          CommandTopicAdapter: CommandTopic.Connector,
          EventTopicAdapter: EventTopic.Publisher,
        )
        : (T with module Spec := PluginExtensionPointSpec) => {
   include ExtensionPoint.Make(
             PluginExtensionPointSpec,
-            EventCollectorAdapter,
             CommandTopicAdapter,
             EventTopicAdapter,
           );
