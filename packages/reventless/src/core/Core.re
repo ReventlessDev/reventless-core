@@ -15,7 +15,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
   type constructed;
   type construct = (t, string) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@bs.module "../components/Component"] [@bs.new]
   external make:
     (
       ~componentType: string,
@@ -49,7 +49,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
         ~extensionPointMakers: extensionPointMakers,
         ~serviceMakers: serviceMakers,
         self,
-        name,
+        _,
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
@@ -105,7 +105,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
 
     let eventCollector =
       EventCollector.make(
-        ~name,
+        ~name="Core",
         ~aggregateNames,
         ~eventHandler,
         ~queryEventTopic,
@@ -119,18 +119,15 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
 
   let make:
     (
-      ~name: string,
       ~extensionPointMakers: extensionPointMakers,
-      ~serviceMakers: serviceMakers,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      unit
+      ~serviceMakers: serviceMakers
     ) =>
     t =
-    (~name, ~extensionPointMakers, ~serviceMakers, ~opts=?, _) =>
+    (~extensionPointMakers, ~serviceMakers) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=name ++ "-" ++ Pulumi.Pulumi.getStackName(),
+        ~name="Core",
         ~construct=construct(~extensionPointMakers, ~serviceMakers),
-        ~opts,
+        ~opts=None,
       );
 };

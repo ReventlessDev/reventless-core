@@ -1,6 +1,5 @@
 {
   "name": "@reventless-universe/reventless",
-  "version": "0.1.1",
   "namespace": "Reventless",
   "suffix": ".bs.js",
   "refmt": 3,

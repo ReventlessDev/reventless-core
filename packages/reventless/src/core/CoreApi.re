@@ -1,0 +1,1 @@
+let graphQLSchema = PluginApi.graphQLSchema;
