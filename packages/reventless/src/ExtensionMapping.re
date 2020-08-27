@@ -1,0 +1,155 @@
+type extensionPointName = string;
+
+/* these actions are needed for Impl */
+type incomingCommandAction('aggregateCommand, 'msg) =
+  | PublishAggregateCommand(string, 'aggregateCommand)
+  | Call(Message.handler('msg), 'msg);
+type incomingCommandActions('aggregateCommand, 'msg) =
+  array(incomingCommandAction('aggregateCommand, 'msg));
+
+type outgoingCommandAction('extensionPointCommand, 'msg) =
+  | PublishExtensionPointCommand(string, 'extensionPointCommand)
+  | Call(Message.handler('msg), 'msg);
+type outgoingCommandActions('extensionPointCommand, 'msg) =
+  array(outgoingCommandAction('extensionPointCommand, 'msg));
+
+module type Spec = {
+  let name: string;
+
+  [@decco]
+  type command;
+  [@decco]
+  type event;
+  [@decco]
+  type callCommand;
+};
+
+type mapIncomingEvent(
+  'extensionPointEvent,
+  'aggregateId,
+  'aggregateCommand,
+  'extensionPointCallCommand,
+) =
+  (string, 'extensionPointEvent, Message.meta) =>
+  incomingCommandActions('aggregateCommand, 'extensionPointCallCommand);
+
+type mapOutgoingEvent(
+  'aggregateId,
+  'aggregateEvent,
+  'extensionPointCommand,
+  'extensionPointCallCommand,
+) =
+  (string, 'aggregateEvent, Message.meta) =>
+  outgoingCommandActions('extensionPointCommand, 'extensionPointCallCommand);
+
+/* these actions are internal to the Mapping Functor */
+type abstractIncomingCommandAction =
+  | AbstractPublishAggregateCommand(Aggregate.name, Js.Json.t)
+  | AbstractCall(Message.handler(unit));
+type abstractIncomingCommandActions = array(abstractIncomingCommandAction);
+
+type abstractOutgoingCommandAction =
+  | AbstractPublishExtensionPointCommand(Js.Json.t)
+  | AbstractCall(Message.handler(unit));
+type abstractOutgoingCommandActions = array(abstractOutgoingCommandAction);
+
+module type Impl = {
+  module ExtensionPoint: Spec;
+  module Aggregate: Aggregate.Spec;
+
+  let mapIncomingEvent:
+    mapIncomingEvent(
+      ExtensionPoint.event,
+      Aggregate.Id.t,
+      Aggregate.command,
+      ExtensionPoint.callCommand,
+    );
+
+  let mapOutgoingEvent:
+    mapOutgoingEvent(
+      Aggregate.Id.t,
+      Aggregate.event,
+      ExtensionPoint.command,
+      ExtensionPoint.callCommand,
+    );
+};
+
+module type T = {
+  module ExtensionPoint: Spec;
+
+  let aggregateName: string;
+
+  let mapIncomingEvent:
+    Message.event'(Id.String.t, ExtensionPoint.event) =>
+    abstractIncomingCommandActions;
+
+  let mapOutgoingEvent: Js.Json.t => abstractOutgoingCommandActions;
+};
+
+module Make =
+       (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
+       : (T with module ExtensionPoint := Spec) => {
+  module Aggregate = MappingImpl.Aggregate;
+  let aggregateName = Aggregate.name;
+
+  let mapIncomingEvent:
+    Message.event'(Id.String.t, Spec.event) => abstractIncomingCommandActions =
+    ({Message.id, event, meta}) =>
+      MappingImpl.mapIncomingEvent(id->Id.String.toString, event, meta)
+      ->Belt.Array.map(
+          fun
+          | PublishAggregateCommand(aggregateId, aggregateCmd) =>
+            AbstractPublishAggregateCommand(
+              aggregateName,
+              Message.command'_encode(
+                Aggregate.Id.t_encode,
+                Aggregate.command_encode,
+                {
+                  id: aggregateId->Aggregate.Id.makeFromString,
+                  meta: {
+                    ...meta,
+                    msgId: Message.uuid(),
+                  },
+                  command: aggregateCmd,
+                },
+              ),
+            )
+          | Call(handler, msg) => AbstractCall(() => handler(msg)),
+        );
+
+  let mapOutgoingEvent: Js.Json.t => abstractOutgoingCommandActions =
+    aggregateEvent'Json =>
+      switch (
+        Message.event'_decode(
+          Aggregate.Id.t_decode,
+          Aggregate.event_decode,
+          aggregateEvent'Json,
+        )
+      ) {
+      | Ok({id, meta, event}) =>
+        MappingImpl.mapOutgoingEvent(id->Aggregate.Id.toString, event, meta)
+        ->Belt.Array.map(
+            fun
+            | PublishExtensionPointCommand(id, command) =>
+              AbstractPublishExtensionPointCommand(
+                Message.command'_encode(
+                  Id.String.t_encode,
+                  Spec.command_encode,
+                  {
+                    id: id->Id.String.makeFromString,
+                    meta: {
+                      ...meta,
+                      msgId: Message.uuid(),
+                    },
+                    command,
+                  },
+                ),
+              )
+            | Call(handler, msg) => AbstractCall(() => handler(msg)),
+          )
+      | Error(_) =>
+        Js.Exn.raiseError(
+          "ExtensionPointMapping.Make.mapOutgoing: Decode failure: " // TODO improve message
+        )
+      };
+};

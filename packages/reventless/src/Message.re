@@ -55,6 +55,27 @@ type event'('id, 'event) = {
   event: 'event,
 };
 
+let serviceNameOfMsg = msgJson =>
+  switch (msgJson->Js.Json.decodeObject) {
+  | Some(msgObj) =>
+    msgObj->Js.Dict.get("meta")->Belt.Option.map(meta_decode)
+    |> (
+      fun
+      | Some(Ok(msgMeta)) => Some(msgMeta.service)
+      | Some(Error(err)) => {
+          Js.log2("Message.serviceNameOfMsg: Couldn't decode meta:", err);
+          None;
+        }
+      | _ => {
+          Js.log("Message.serviceNameOfMsg: Invalid JSON object");
+          None;
+        }
+    )
+  | None =>
+    Js.log2("Message.serviceNameOfMsg:", msgJson);
+    None;
+  };
+
 type eventsHandler('id, 'event) =
   (. 'id, array(event'('id, 'event))) => Js.Promise.t(unit);
 

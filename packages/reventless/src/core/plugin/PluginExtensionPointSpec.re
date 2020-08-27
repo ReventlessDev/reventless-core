@@ -1,8 +1,6 @@
 let name = "Plugin";
 
 [@decco]
-type id = string;
-[@decco]
 type timeout = int;
 
 [@decco]
@@ -22,4 +20,4 @@ type event =
 
 [@decco]
 type callCommand =
-  | ConfigAlarm(id, timeout);
+  | ConfigAlarm(string, timeout);

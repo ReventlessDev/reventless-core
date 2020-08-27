@@ -187,6 +187,14 @@ module Make =
       ->Belt.Array.map(resolverMaker => resolverMaker(queryQueryDbDeploytime))
       ->Belt.Array.concatMany;
 
+    /* TODO:
+     *    - create Plugin-EventCollector if a handler of the following spec:
+     *    - inspect events from event-collector:
+     *      - if service in event.meta equals one of the extension's extensionpoint-names, then call the appropriate Extension.mapIncomingEvent
+     *      - if the service in event.meta equals on of the Plugin's (Context) Aggregates, then call Extension.mapOutgoingEvent on all Extensions
+     *      - else raise an error
+     */
+
     makeOutputs(
       ~services,
       ~tasks=tasks^,
