@@ -1,11 +1,14 @@
 type extensionPointName = string;
 
 /* these actions are needed for Impl */
-type incomingCommandAction('aggregateCommand, 'msg) =
+type incomingCommandAction('aggregateCommand, 'extensionPointCommand, 'msg) =
   | PublishAggregateCommand(string, 'aggregateCommand)
+  | PublishExtensionPointCommand(string, 'extensionPointCommand)
   | Call(Message.handler('msg), 'msg);
-type incomingCommandActions('aggregateCommand, 'msg) =
-  array(incomingCommandAction('aggregateCommand, 'msg));
+type incomingCommandActions('aggregateCommand, 'extensionPointCommand, 'msg) =
+  array(
+    incomingCommandAction('aggregateCommand, 'extensionPointCommand, 'msg),
+  );
 
 type outgoingCommandAction('extensionPointCommand, 'msg) =
   | PublishExtensionPointCommand(string, 'extensionPointCommand)
@@ -28,10 +31,15 @@ type mapIncomingEvent(
   'extensionPointEvent,
   'aggregateId,
   'aggregateCommand,
+  'extensionPointCommand,
   'extensionPointCallCommand,
 ) =
   (string, 'extensionPointEvent, Message.meta) =>
-  incomingCommandActions('aggregateCommand, 'extensionPointCallCommand);
+  incomingCommandActions(
+    'aggregateCommand,
+    'extensionPointCommand,
+    'extensionPointCallCommand,
+  );
 
 type mapOutgoingEvent(
   'aggregateId,
@@ -45,6 +53,7 @@ type mapOutgoingEvent(
 /* these actions are internal to the Mapping Functor */
 type abstractIncomingCommandAction =
   | AbstractPublishAggregateCommand(Aggregate.name, Js.Json.t)
+  | AbstractPublishExtensionPointCommand(Js.Json.t)
   | AbstractCall(Message.handler(unit));
 type abstractIncomingCommandActions = array(abstractIncomingCommandAction);
 
@@ -62,6 +71,7 @@ module type Impl = {
       ExtensionPoint.event,
       Aggregate.Id.t,
       Aggregate.command,
+      ExtensionPoint.command,
       ExtensionPoint.callCommand,
     );
 
@@ -114,6 +124,21 @@ module Make =
                 },
               ),
             )
+          | PublishExtensionPointCommand(id, command) =>
+            AbstractPublishExtensionPointCommand(
+              Message.command'_encode(
+                Id.String.t_encode,
+                Spec.command_encode,
+                {
+                  id: id->Id.String.makeFromString,
+                  meta: {
+                    ...meta,
+                    msgId: Message.uuid(),
+                  },
+                  command,
+                },
+              ),
+            )
           | Call(handler, msg) => AbstractCall(() => handler(msg)),
         );
 
@@ -152,4 +177,19 @@ module Make =
           "ExtensionPointMapping.Make.mapOutgoing: Decode failure: " // TODO improve message
         )
       };
+};
+
+module NoAggregate: Aggregate.Spec = {
+  let name = "NoAggregate";
+
+  module Id = Id.String;
+
+  [@decco]
+  type command = unit;
+
+  [@decco]
+  type event = unit;
+
+  [@decco]
+  type error = unit;
 };

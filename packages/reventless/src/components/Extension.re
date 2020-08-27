@@ -145,6 +145,16 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
           command'Json,
           queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
         )
+      | ExtensionMapping.AbstractPublishExtensionPointCommand(command'Json) =>
+        queryExtensionPointCommandTopic(Spec.name)
+        ->Js.Promise.then_(
+            extensionPointCommandTopic =>
+              extensionPointCommandTopic->Belt.Option.mapWithDefaultU(
+                Js.Promise.resolve(), (. extensionPointCommandTopic) =>
+                publishCommand(command'Json, extensionPointCommandTopic)
+              ),
+            _,
+          )
       | AbstractCall(handler) =>
         handler()
         |> Js.Promise.catch(err =>
