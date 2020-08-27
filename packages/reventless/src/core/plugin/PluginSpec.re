@@ -1,4 +1,4 @@
-let name = "Plugin";
+let name = "Core.Plugin";
 
 module Id = Id.String;
 
