@@ -9,6 +9,7 @@ type t =
   | EventMapper
   | EventTopic
   | ExtensionPoint
+  | Extension
   | QueryDb
   | ReadModel
   | ReadModels
@@ -30,6 +31,7 @@ let toString =
   | EventMapper => "EventMapper"
   | EventTopic => "EventTopic"
   | ExtensionPoint => "ExtensionPoint"
+  | Extension => "Extension"
   | QueryDb => "QueryDB"
   | ReadModel => "ReadModel"
   | ReadModels => "ReadModels"
@@ -50,6 +52,8 @@ let ofString =
   | "EventLog" => EventLog->Some
   | "EventMapper" => EventMapper->Some
   | "EventTopic" => EventTopic->Some
+  | "ExtensionPoint" => ExtensionPoint->Some
+  | "Extension" => Extension->Some
   | "QueryDB" => QueryDb->Some
   | "ReadModel" => ReadModel->Some
   | "ReadModels" => ReadModels->Some
