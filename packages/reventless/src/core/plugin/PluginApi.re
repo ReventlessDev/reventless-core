@@ -1,12 +1,12 @@
 let graphQLSchema = "
 type Extension {
-	id: String!
+	name: String!
 	commandTopic: String!
 	eventTopic: String!
 }
 
 type ExtensionPoint {
-	id: String!
+	name: String!
 	commandTopic: String!
 	eventTopic: String
 }
@@ -17,6 +17,7 @@ type Mutation {
 }
 
 type Plugin {
+	id: ID!
 	name: String!
 	version: String!
 	extensionPoints: [ExtensionPoint!]!
