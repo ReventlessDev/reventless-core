@@ -5,9 +5,9 @@ type serviceMakers = array(Service.maker);
 
 type outputs = {
   .
-  "eventCollector": EventCollector.outputs,
-  "extensionPoints": array(ExtensionPoint.t),
-  "services": array(Service.t),
+  "eventCollector": EventCollector.t,
+  "extensionPoints": Js.Dict.t(ExtensionPoint.t),
+  "services": Js.Dict.t(Service.t),
 };
 type t = outputs;
 
@@ -29,9 +29,9 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
   [@bs.obj]
   external makeOutputs:
     (
-      ~eventCollector: Reventless.EventCollector.t,
-      ~extensionPoints: array(ExtensionPoint.t),
-      ~services: array(Service.t)
+      ~eventCollector: EventCollector.t,
+      ~extensionPoints: Js.Dict.t(ExtensionPoint.t),
+      ~services: Js.Dict.t(Service.t)
     ) =>
     outputs =
     "";
@@ -108,7 +108,19 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
         (),
       );
 
-    makeOutputs(~eventCollector, ~extensionPoints, ~services)
+    makeOutputs(
+      ~eventCollector,
+      ~extensionPoints=
+        extensionPoints
+        ->Belt.Array.map(extensionPoint =>
+            (extensionPoint##name, extensionPoint)
+          )
+        ->Js.Dict.fromArray,
+      ~services=
+        services
+        ->Belt.Array.map(service => (service##name, service))
+        ->Js.Dict.fromArray,
+    )
     |> self->setOutputs;
   };
 
