@@ -9,7 +9,7 @@ type version = string;
 
 [@decco]
 type extensionPoint = {
-  id: string,
+  name: string,
   commandTopic: string,
   eventTopic: string,
 };
@@ -19,9 +19,8 @@ type extensionPoints = array(extensionPoint);
 
 [@decco]
 type extension = {
-  id: string,
-  commandTopic: string,
-  eventTopic: string,
+  name: string,
+  eventCollector: string,
 };
 
 [@decco]
