@@ -57,7 +57,9 @@ module Make =
       type callCommand = Spec.callCommand = {
     include Spec;
     module Id = Id.String;
-    let name = name ++ componentType->ComponentType.toString;
+    let name =
+      name->Js.String2.replace(".", "")
+      ++ componentType->ComponentType.toString;
   };
 
   module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter);

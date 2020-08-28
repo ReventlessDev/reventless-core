@@ -1,4 +1,4 @@
-let name = "Plugin";
+let name = "Core.Plugin";
 
 [@decco]
 type timeout = int;
@@ -20,4 +20,5 @@ type event =
 
 [@decco]
 type callCommand =
-  | ConfigAlarm(string, timeout);
+  | ConfigAlarm(string, timeout)
+  | ConnectPlugin(PluginSpec.plugin);

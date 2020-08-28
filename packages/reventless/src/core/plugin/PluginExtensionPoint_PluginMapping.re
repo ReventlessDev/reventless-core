@@ -1,7 +1,8 @@
-let handler =
+let callHandler =
   fun
   | PluginExtensionPointSpec.ConfigAlarm(id, timeout) =>
-    Js.log({j|ConfigAlarm($id, $timeout)|j})->Js.Promise.resolve;
+    Js.log({j|ConfigAlarm($id, $timeout)|j})->Js.Promise.resolve
+  | _ => Js.Promise.resolve();
 
 module Impl = {
   open ExtensionPointMapping;
@@ -12,7 +13,7 @@ module Impl = {
     switch (cmd) {
     | PluginExtensionPointSpec.Heartbeat(timeout) => [|
         PublishCommand(id, Aggregate.Heartbeat),
-        Call(handler, PluginExtensionPointSpec.ConfigAlarm(id, timeout)),
+        Call(callHandler, PluginExtensionPointSpec.ConfigAlarm(id, timeout)),
       |]
     | PluginExtensionPointSpec.ConnectPlugin(plugin) => [|
         PublishCommand(id, Aggregate.ConnectPlugin(plugin)),
