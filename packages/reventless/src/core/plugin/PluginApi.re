@@ -21,6 +21,8 @@ type Plugin {
 	version: String!
 	extensionPoints: [ExtensionPoint!]!
 	extensions: [Extension!]!
+	status: [String!]!
+	since: String!
 }
 
 type Plugins {
