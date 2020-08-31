@@ -1,6 +1,6 @@
 {
   "name": "@reventless-universe/reventless",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
   "author": "Atos",
   "license": "proprietary",
@@ -35,8 +35,7 @@
     "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
     "dev": "jest --watchAll",
     "watch:screen": "screen -c .screenrc",
-    "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json",
-    "postpublish": "git checkout package.json & echo 'Please ensure the CHANGELOG is up to date!'"
+    "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
   },
   "dependencies": {
     "@aantron/repromise": "^0.6.0",
@@ -44,7 +43,7 @@
     "@reventless-universe/bs-fast-csv": "^0.1.0",
     "@reventless-universe/bs-hash-obj": "^0.1.0",
     "@reventless-universe/bs-node-streams": "^0.1.0",
-    "@reventless-universe/bs-pulumi-aws": "^0.1.0",
+    "@reventless-universe/bs-pulumi-aws": "^0.1.3",
     "@reventless-universe/bs-pulumi-pulumi": "^0.1.0",
     "@reventless-universe/bs-ssh2": "^0.1.0",
     "@reventless-universe/bs-uuid": "^0.1.0",
