@@ -1,9 +1,9 @@
 open PulumiAws;
 
-type api = PulumiAws.AppSync.GraphQLApi.t;
-type role = PulumiAws.IAM.Role.t;
+type api = Pulumi.Output.t(PulumiAws.AppSync.GraphQLApi.t);
+type role = Pulumi.Output.t(PulumiAws.IAM.Role.t);
 
-let make = (~name, ~indexes, ~sortField, ~api, ~apiRole, ~opts) => {
+let make = (~name, ~indexes, ~sortField, ~api: api, ~apiRole: role, ~opts) => {
   let globalSecondaryIndexes =
     indexes
     |> Array.of_list
@@ -72,7 +72,7 @@ let make = (~name, ~indexes, ~sortField, ~api, ~apiRole, ~opts) => {
       ~name=name ++ "RolePolicy",
       ~action="dynamodb:*",
       ~resource=[|table##arn->Pulumi.Output.apply(arn => arn ++ "*")|], // including indexes
-      ~role=apiRole##id,
+      ~role=apiRole->Pulumi.Output.flatMap(role => role##id),
       ~opts,
       (),
     );

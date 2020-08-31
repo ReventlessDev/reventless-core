@@ -1,11 +1,11 @@
 open PulumiAws;
 
-type api = AppSync.GraphQLApi.t;
+type api = Pulumi.Output.t(AppSync.GraphQLApi.t);
 
 let make =
     (
       ~name: string,
-      ~api,
+      ~api: api,
       ~fields,
       ~commandGenerator: Reventless.CommandGenerator.commandGenerator,
       ~opts: Pulumi.CustomResourceOptions.t,
@@ -67,7 +67,8 @@ let make =
       ~args=
         AppSync.DataSource.Args.make(
           ~_type=`AWS_LAMBDA,
-          ~apiId=api##id->Pulumi.Output.asInput,
+          ~apiId=
+            api->Pulumi.Output.flatMap(api => api##id)->Pulumi.Output.asInput,
           ~lambdaConfig=
             AppSync.DataSource.LambdaConfig.make(
               ~functionArn=commandGeneratorArn->Pulumi.Output.asInput,

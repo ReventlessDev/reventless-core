@@ -1,14 +1,14 @@
 open PulumiAws.AppSync;
 open Reventless;
 
-type api = PulumiAws.AppSync.GraphQLApi.t;
-type role = PulumiAws.IAM.Role.t;
+type api = Pulumi.Output.t(PulumiAws.AppSync.GraphQLApi.t);
+type role = Pulumi.Output.t(PulumiAws.IAM.Role.t);
 
 let make =
     (
       ~name: string,
-      ~api,
-      ~apiRole,
+      ~api: api,
+      ~apiRole: role,
       ~dataSourceName,
       ~indexes: list(View.index),
       ~sortField,
