@@ -105,8 +105,8 @@ module Make =
       );
 
     let coreStack =
-      Pulumi.Config.make(None)
-      ->Pulumi.Config.get("core")
+      Pulumi.Config.make(Some("core"))
+      ->Pulumi.Config.get("stack")
       ->Belt.Option.getExn
       ->Pulumi.StackReference.make;
 
