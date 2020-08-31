@@ -3,8 +3,6 @@ lib/
 docs/
 __tests__/*.re
 __tests__/*.js
-test-helper/*.re
-test-helper/*.js
 **/*.bs.js
 yarn.lock
 TODO.txt

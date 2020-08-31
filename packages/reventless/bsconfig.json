@@ -24,7 +24,8 @@
       "type": "dev"
     },
     {
-      "dir": "test-helper"
+      "dir": "test-helper",
+      "subdirs": true
     }
   ],
   "bs-dependencies": [
