@@ -104,11 +104,16 @@ module Make =
         (),
       );
 
+    let makeId = (name, version) => {j|$name@$version|j};
+    let id = makeId(name, version);
+
     let coreStack =
       Pulumi.Config.make(Some("core"))
       ->Pulumi.Config.get("stack")
       ->Belt.Option.getExn
       ->Pulumi.StackReference.make;
+    let coreStackOutput =
+      coreStack->Pulumi.StackReference.getOutput("core")->Belt.Option.getExn;
 
     let services =
       serviceMakers->Belt.Array.map(serviceMaker =>
@@ -124,21 +129,36 @@ module Make =
         services->Interstack.mergeServices,
       );
 
-    let queryExtensionPointCommandTopic = name =>
-      Some("")->Js.Promise.resolve; // TODO
-
     let dictGetExn = (dict, key) =>
       dict->Js.Dict.get(key)->Belt.Option.getExn;
 
     let (-#) = dictGetExn;
 
+    let queryExtensionPointCommandTopicId = name =>
+      if (name == PluginExtensionPointSpec.name) {
+        (
+          coreStackOutput->Pulumi.Output.get
+          -# "extensionPoints"
+          -# PluginExtensionPointSpec.name
+          -# "commandTopic"
+          -# "connector"
+          -# "id"
+        )
+        ->Some
+        ->Js.Promise.resolve;
+      } else {
+        Some("NOT IMPLEMENTED YET !")
+        ->Js.Promise.resolve; // TODO
+      };
+
     let queryEventTopic = name =>
       if (name == PluginExtensionPointSpec.name) {
         coreStack
-        ->Pulumi.StackReference.getOutput("extensionPoints")
+        ->Pulumi.StackReference.getOutput("core")
         ->Belt.Option.getExn
-        ->Pulumi.Output.apply(extensionPoints =>
-            extensionPoints
+        ->Pulumi.Output.apply(core =>
+            core
+            -# "extensionPoints"
             -# PluginExtensionPointSpec.name
             -# "eventTopic"
             -# "publisher"
@@ -165,7 +185,7 @@ module Make =
       extensionMakers->Belt.Array.map(extensionMaker =>
         extensionMaker(
           ~queryCommandTopic,
-          ~queryExtensionPointCommandTopic,
+          ~queryExtensionPointCommandTopicId,
           ~opts=Some(opts),
           (),
         )
@@ -173,6 +193,24 @@ module Make =
 
     let eventCollectorId: ref(Pulumi.Output.t(string)) =
       ref("NOT-SET"->Pulumi.Output.make);
+
+    let extensionPointsConfig =
+      extensionPoints->Belt.Array.map(extensionPoint =>
+        {
+          PluginSpec.name: extensionPoint##name,
+          commandTopic:
+            extensionPoint##commandTopic##connector##id->Pulumi.Output.get,
+          eventTopic:
+            extensionPoint##eventTopic##publisher##id->Pulumi.Output.get,
+        }
+      );
+    let extensionsConfig =
+      otherExtensions->Belt.Array.map(extension =>
+        {
+          PluginSpec.name: extension##name,
+          eventCollector: (eventCollectorId^)->Pulumi.Output.get,
+        }
+      );
 
     let callHandler =
       fun
@@ -239,31 +277,12 @@ module Make =
               PluginExtensionPointSpec.command,
               PluginExtensionPointSpec.callCommand,
             ) =
-            (_id, event, _meta) =>
+            (eventId, event, _meta) =>
               switch (event) {
-              | PluginExtensionPointSpec.UnknownPluginDetected =>
-                let extensionPointsConfig =
-                  extensionPoints->Belt.Array.map(extensionPoint =>
-                    {
-                      PluginSpec.name: extensionPoint##name,
-                      commandTopic:
-                        extensionPoint##commandTopic##connector##id
-                        ->Pulumi.Output.get,
-                      eventTopic:
-                        extensionPoint##eventTopic##publisher##id
-                        ->Pulumi.Output.get,
-                    }
-                  );
-                let extensionsConfig =
-                  otherExtensions->Belt.Array.map(extension =>
-                    {
-                      PluginSpec.name: extension##name,
-                      eventCollector: (eventCollectorId^)->Pulumi.Output.get,
-                    }
-                  );
-                [|
+              | PluginExtensionPointSpec.UnknownPluginDetected
+                  when eventId == id => [|
                   PublishExtensionPointCommand(
-                    {j|$name-$version|j},
+                    id,
                     PluginExtensionPointSpec.ConnectPlugin({
                       PluginSpec.name,
                       version,
@@ -271,8 +290,8 @@ module Make =
                       extensions: extensionsConfig,
                     }),
                   ),
-                |];
-              | PluginConnected(pluginSpec) => [|
+                |]
+              | PluginConnected(pluginSpec) when eventId != id => [|
                   Call(callHandler, ConnectPlugin(pluginSpec)),
                 |]
               | _ => [||]
@@ -288,7 +307,7 @@ module Make =
     let pluginExtension =
       pluginExtensionMaker(
         ~queryCommandTopic,
-        ~queryExtensionPointCommandTopic,
+        ~queryExtensionPointCommandTopicId,
         ~opts=Some(opts),
         (),
       );
@@ -423,14 +442,16 @@ module Make =
     };
 
     let serviceNameToExtensionPointsMapping =
-      serviceNameToEx(extensionPoints, ex => ex##aggregateNames);
+      serviceNameToEx(extensionPoints, extensionPoint =>
+        extensionPoint##aggregateNames
+      );
     let outgoingServiceNameToExtensionsMapping =
-      serviceNameToEx(extensions, ex => ex##aggregateNames);
+      serviceNameToEx(otherExtensions, extension => extension##aggregateNames);
     let incomingServiceNameToExtensionsMapping =
-      serviceNameToEx(extensions, ex => [|ex##name|]);
+      serviceNameToEx(extensions, extension => [|extension##name|]);
 
     let extensionAggregateNames =
-      extensions->Belt.Array.map(extension =>
+      otherExtensions->Belt.Array.map(extension =>
         extension##aggregateNames->Set.fromArray
       );
 
@@ -441,7 +462,7 @@ module Make =
       ->Belt.Set.String.toArray
       ->Belt.Array.concat([|PluginExtensionPointSpec.name|]);
 
-    let handleEvent = (event'Json, dict, getEventHandler) =>
+    let handleEvent = (event'Json, dict, getEventHandler) => {
       event'Json
       ->Message.serviceNameOfMsg
       ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
@@ -451,6 +472,7 @@ module Make =
           ->Js.Promise.all
           ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
         );
+    };
 
     let getExtensionPointEventHandler = extensionPoint =>
       extensionPoint##eventHandler;
@@ -472,7 +494,11 @@ module Make =
           | _ => Some()
           }
         )
-      ->Belt.Option.getWithDefault(Js.log2("Unhandled Event:", event'Json));
+      ->(
+          fun
+          | None => Js.log2("Unhandled Event:", event'Json)
+          | _ => ()
+        );
 
     let eventHandler =
       (. event'Json) => {
@@ -503,7 +529,7 @@ module Make =
 
     let eventCollector =
       EventCollector.make(
-        ~name="Core",
+        ~name="Plugin",
         ~aggregateNames,
         ~eventHandler,
         ~queryEventTopic,
@@ -539,7 +565,7 @@ module Make =
     ) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=name->ComponentType.name(componentType),
+        ~name,
         ~construct=
           construct(
             ~version,

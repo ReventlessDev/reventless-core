@@ -14,7 +14,8 @@ type name = string;
 type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
-    ~queryExtensionPointCommandTopic: string => Js.Promise.t(option(string)),
+    ~queryExtensionPointCommandTopicId: string =>
+                                        Js.Promise.t(option(string)),
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>
@@ -128,7 +129,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       (
         ~mappings,
         ~queryCommandTopic,
-        ~queryExtensionPointCommandTopic,
+        ~queryExtensionPointCommandTopicId,
         self,
         name,
       ) => {
@@ -146,7 +147,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
           queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
         )
       | ExtensionMapping.AbstractPublishExtensionPointCommand(command'Json) =>
-        queryExtensionPointCommandTopic(Spec.name)
+        queryExtensionPointCommandTopicId(Spec.name)
         ->Js.Promise.then_(
             extensionPointCommandTopic =>
               extensionPointCommandTopic->Belt.Option.mapWithDefaultU(
@@ -166,7 +167,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
     let applyOutgoingCommandAction =
       fun
       | ExtensionMapping.AbstractPublishExtensionPointCommand(command'Json) =>
-        queryExtensionPointCommandTopic(Spec.name)
+        queryExtensionPointCommandTopicId(Spec.name)
         ->Js.Promise.then_(
             extensionPointCommandTopic =>
               extensionPointCommandTopic->Belt.Option.mapWithDefaultU(
@@ -221,7 +222,13 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
   };
 
   let make: array(module Mapping) => maker =
-    (mappings, ~queryCommandTopic, ~queryExtensionPointCommandTopic, ~opts, _) =>
+    (
+      mappings,
+      ~queryCommandTopic,
+      ~queryExtensionPointCommandTopicId,
+      ~opts,
+      _,
+    ) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
@@ -229,7 +236,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
           construct(
             ~mappings,
             ~queryCommandTopic,
-            ~queryExtensionPointCommandTopic,
+            ~queryExtensionPointCommandTopicId,
           ),
         ~opts,
       );
