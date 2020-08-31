@@ -580,13 +580,15 @@ module Make =
         );
     };
 
+    let heartbeatName = name ++ "Heartbeat";
+
     let heartBeatCallback: PulumiAws.Lambda.eventHandler(unit, unit) =
       (_, _) => publishHeartbeatCommand();
 
     let heartbeatLambda =
       PulumiAws.Lambda.(
         CallbackFunction.make(
-          ~name=name ++ "HeatbeatLambda",
+          ~name=heartbeatName ++ "Lambda",
           ~args=
             CallbackFunction.Args.make(
               ~callback=heartBeatCallback,
@@ -606,7 +608,7 @@ module Make =
     let cloudwatchEventRule =
       PulumiAws.Cloudwatch.(
         EventRule.make(
-          ~name=id ++ "Heartbeat",
+          ~name=heartbeatName,
           ~args=
             EventRule.Args.make(
               ~description=
@@ -624,7 +626,7 @@ module Make =
     let cloudwatchEventTarget =
       PulumiAws.Cloudwatch.(
         EventTarget.make(
-          ~name=id ++ "Heartbeat",
+          ~name=heartbeatName,
           ~args=
             EventTarget.Args.make(
               ~rule=EventTarget.Args.Rule.ofEventRule(cloudwatchEventRule),
