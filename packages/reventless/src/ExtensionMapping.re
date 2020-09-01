@@ -118,6 +118,7 @@ module Make =
                   id: aggregateId->Aggregate.Id.makeFromString,
                   meta: {
                     ...meta,
+                    service: Aggregate.name,
                     msgId: Message.uuid(),
                   },
                   command: aggregateCmd,
@@ -164,6 +165,7 @@ module Make =
                     id: id->Id.String.makeFromString,
                     meta: {
                       ...meta,
+                      service: Spec.name,
                       msgId: Message.uuid(),
                     },
                     command,
