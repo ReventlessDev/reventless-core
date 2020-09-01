@@ -115,6 +115,7 @@ module Make =
                       id: aggregateId->Aggregate.Id.makeFromString,
                       meta: {
                         ...meta,
+                        service: Aggregate.name,
                         msgId: Message.uuid(),
                       },
                       command: aggregateCmd,
@@ -143,7 +144,11 @@ module Make =
               AbstractPublishEvent({
                 Message.id: id->Id.String.makeFromString,
                 event,
-                meta,
+                meta: {
+                  ...meta,
+                  service: Spec.name,
+                  msgId: Message.uuid(),
+                },
               })
             | Call(handler, msg) => AbstractCall(() => handler(msg)),
           )
