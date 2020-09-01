@@ -27,7 +27,7 @@ type outputs = {
   "tasks": array(Task.t),
   "eventMappers": array(EventMapper.t),
   "resolvers": Pulumi.Output.t(array(Adapter.resource)),
-  "heartbeatLambda": PulumiAws.Lambda.CallbackFunction.t,
+  "heartbeatLambda": Pulumi.Output.t(PulumiAws.Lambda.CallbackFunction.t),
   "cloudwatchEventRule": PulumiAws.Cloudwatch_EventRule.t,
   "cloudwatchEventTarget": PulumiAws.Cloudwatch_EventTarget.t,
 };
@@ -77,7 +77,7 @@ module Make =
       ~tasks: array(Task.t),
       ~eventMappers: array(EventMapper.t),
       ~resolvers: array(Adapter.resource),
-      ~heartbeatLambda: PulumiAws.Lambda.CallbackFunction.t,
+      ~heartbeatLambda: Pulumi.Output.t(PulumiAws.Lambda.CallbackFunction.t),
       ~cloudwatchEventRule: PulumiAws.Cloudwatch_EventRule.t,
       ~cloudwatchEventTarget: PulumiAws.Cloudwatch_EventTarget.t
     ) =>
@@ -566,11 +566,14 @@ module Make =
           _,
         )
       ->Js.Json.stringify
-      ->AwsSdk.SQS.sendMessage(
+      ->Js.log2("DUMMY: publish command to Core.PluginExtensionPoint:", _)
+      ->Js.Promise.resolve
+      /*->AwsSdk.SQS.sendMessage(
           ~queueId=queryCorePluginCommandTopicId(),
           ~messageBody=_,
           (),
         )
+        */
       ->Js.Promise.catch(
           err =>
             err
@@ -585,26 +588,6 @@ module Make =
     let heartBeatCallback: PulumiAws.Lambda.eventHandler(unit, unit) =
       (_, _) => publishHeartbeatCommand();
 
-    let heartbeatLambda =
-      PulumiAws.Lambda.(
-        CallbackFunction.make(
-          ~name=heartbeatName ++ "Lambda",
-          ~args=
-            CallbackFunction.Args.make(
-              ~callback=heartBeatCallback,
-              /* TODO: add deadLetterConfig after extraction to ReventlessAws:
-                 ~deadLetterConfig=
-                   CallbackFunction.Args.DeadLetterConfig.make(
-                     ~targetArn=PulumiAws.Util_DeadLetterQueue.queue##arn,
-                   ),
-                   */
-              (),
-            ),
-          ~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
-          (),
-        )
-      );
-
     let cloudwatchEventRule =
       PulumiAws.Cloudwatch.(
         EventRule.make(
@@ -618,10 +601,51 @@ module Make =
                 EventRule.Args.ScheduleExpression.every(timeout->Minutes),
               (),
             ),
-          ~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
+          //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
           (),
         )
       );
+
+    let heartbeatLambda =
+      cloudwatchEventRule##arn
+      ->Pulumi.Output.apply(ruleArn =>
+          PulumiAws.Lambda.(
+            CallbackFunction.make(
+              ~name=heartbeatName ++ "Lambda",
+              ~args=
+                CallbackFunction.Args.make(
+                  ~callback=heartBeatCallback,
+                  ~policies=[|
+                    PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess,
+                    PulumiAws.Lambda.Policy.awsLambdaFullAccess,
+                    {j|{
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                      "Effect": "Allow",
+                      "Action": "lambda:InvokeFunction",
+                      "Principal": {
+                        "Service": "events.amazonaws.com"
+                        },
+                      "Condition": {
+                        "ArnLike": {
+                          "AWS:SourceArn: "$ruleArn"
+                        }
+                      }
+                    }]|j},
+                  |],
+                  (),
+                  /* TODO: add deadLetterConfig after extraction to ReventlessAws:
+                     ~deadLetterConfig=
+                       CallbackFunction.Args.DeadLetterConfig.make(
+                         ~targetArn=PulumiAws.Util_DeadLetterQueue.queue##arn,
+                       ),
+                       */
+                ),
+              //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
+              (),
+            )
+          )
+        );
 
     let cloudwatchEventTarget =
       PulumiAws.Cloudwatch.(
@@ -630,10 +654,13 @@ module Make =
           ~args=
             EventTarget.Args.make(
               ~rule=EventTarget.Args.Rule.ofEventRule(cloudwatchEventRule),
-              ~arn=heartbeatLambda##arn->Pulumi.Output.asInput,
+              ~arn=
+                heartbeatLambda
+                ->Pulumi.Output.flatMap(lambda => lambda##arn)
+                ->Pulumi.Output.asInput,
               (),
             ),
-          ~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
+          //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
           (),
         )
       );
