@@ -39,3 +39,11 @@ let queryDbStorageOfAllServicesExn = (services, serviceName) =>
   ->find(serviceName)
   ->Belt.Option.map(queryDbStorageOfService)
   ->ResourceQuery.unwrapResource("QueryDb", serviceName);
+
+let allEventLogStorages: array(Service.t) => array(Adapter.resource) =
+  services =>
+    services->Belt.Array.map(service => service##aggregate##eventLog##storage);
+
+let allQueryDbStorages: array(Service.t) => array(Adapter.resource) =
+  services =>
+    services->Belt.Array.map(service => service##readModel##queryDb##storage);
