@@ -31,7 +31,7 @@ let make =
 
   let _commandGeneratorPermission =
     Lambda.Permission.make(
-      ~name=name ++ "Permission",
+      ~name,
       ~args=
         Lambda.Permission.Args.make(
           ~action="lambda:InvokeFunction",
@@ -45,7 +45,7 @@ let make =
 
   let dataSourceRole =
     IAM.Role.makeWithDefaultPolicy(
-      ~name=name ++ "DataSourceRole",
+      ~name,
       ~service="appsync.amazonaws.com",
       ~opts,
       (),
@@ -53,7 +53,7 @@ let make =
 
   let _dataSourcePolicy =
     IAM.RolePolicy.make(
-      ~name=name ++ "DataSourceRolePolicy",
+      ~name,
       ~action="lambda:InvokeFunction",
       ~resource=[|commandGeneratorArn|],
       ~role=dataSourceRole##id,
@@ -63,7 +63,7 @@ let make =
 
   let dataSource =
     AppSync.DataSource.make(
-      ~name=name ++ "DataSource",
+      ~name,
       ~args=
         AppSync.DataSource.Args.make(
           ~_type=`AWS_LAMBDA,
@@ -74,7 +74,7 @@ let make =
               ~functionArn=commandGeneratorArn->Pulumi.Output.asInput,
               (),
             ),
-          ~name=name ++ "DataSource", // This has to be provided for DataSource !
+          ~name, // This has to be provided for DataSource !
           ~serviceRoleArn=dataSourceRole##arn->Pulumi.Output.asInput,
           (),
         ),
@@ -101,7 +101,7 @@ let make =
     |> Array.map(field => {
          let commandName = field->String.capitalize;
          AppSync.Resolver.make(
-           ~name=commandName ++ "CommandResolver",
+           ~name=commandName,
            ~api,
            ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
            ~_type="Mutation",

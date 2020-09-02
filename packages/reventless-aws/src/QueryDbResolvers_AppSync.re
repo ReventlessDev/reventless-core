@@ -20,7 +20,7 @@ let make =
   let dataSourceName = dataSourceName->Pulumi.Output.asInput;
   let resolverById =
     Resolver.make(
-      ~name=name ++ "Resolver",
+      ~name,
       ~api,
       ~dataSourceName,
       ~_type="Query",
@@ -70,7 +70,7 @@ let make =
              switch (authorization) {
              | None =>
                Resolver.make(
-                 ~name=name ++ "Resolver",
+                 ~name,
                  ~api,
                  ~dataSourceName,
                  ~_type="Query",
@@ -118,7 +118,7 @@ let make =
                    (),
                  );
                Resolver.make(
-                 ~name=name ++ "Resolver",
+                 ~name,
                  ~api,
                  ~_type="Query",
                  ~field=name->String.uncapitalize,

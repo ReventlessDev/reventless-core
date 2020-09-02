@@ -9,13 +9,14 @@ let queue =
 
 let callback: Lambda.eventHandlerNoResult('a) =
   (evt, ctx) =>
-    Reventless.Promise.resolved(Js.log3("DEAD LETTER ITEM:", evt, ctx)) |> Reventless.Promise.toJs;
+    Reventless.Promise.resolved(Js.log3("DEAD LETTER ITEM:", evt, ctx))
+    |> Reventless.Promise.toJs;
 
 let name = "DeadLetterQueue";
 
 let handler =
   PulumiAws.Lambda.CallbackFunction.make(
-    ~name=name ++ "Lambda",
+    ~name,
     ~args=
       PulumiAws.Lambda.CallbackFunction.Args.make(
         ~callback,

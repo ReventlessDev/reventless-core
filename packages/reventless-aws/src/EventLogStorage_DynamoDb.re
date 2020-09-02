@@ -1,8 +1,7 @@
 let make = (~name, ~opts) => {
-  let tableName = name ++ "Table";
   let table =
     PulumiAws.DynamoDb.Table.make(
-      ~name=tableName,
+      ~name,
       ~args=
         PulumiAws.DynamoDb.Table.Args.make(
           ~attributes=[|

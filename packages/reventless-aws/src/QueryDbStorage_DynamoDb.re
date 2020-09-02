@@ -50,10 +50,9 @@ let make = (~name, ~indexes, ~sortField, ~api: api, ~apiRole: role, ~opts) => {
     |> List.flatten
     |> Array.of_list;
 
-  let tableName = name ++ "Table";
   let table =
     DynamoDb.Table.make(
-      ~name=tableName,
+      ~name,
       ~args=
         DynamoDb.Table.Args.make(
           ~attributes,
@@ -69,7 +68,7 @@ let make = (~name, ~indexes, ~sortField, ~api: api, ~apiRole: role, ~opts) => {
   // API resources
   let _dataSourceRolePolicy =
     IAM.RolePolicy.make(
-      ~name=name ++ "RolePolicy",
+      ~name,
       ~action="dynamodb:*",
       ~resource=[|table##arn->Pulumi.Output.apply(arn => arn ++ "*")|], // including indexes
       ~role=apiRole->Pulumi.Output.flatMap(role => role##id),
@@ -78,7 +77,7 @@ let make = (~name, ~indexes, ~sortField, ~api: api, ~apiRole: role, ~opts) => {
     );
   let dataSource =
     AppSync.DataSource.makeDynamoDBDataSource(
-      ~name=name ++ "DataSource",
+      ~name,
       ~api,
       ~table,
       ~serviceRole=apiRole,

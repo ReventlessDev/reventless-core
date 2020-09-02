@@ -2,10 +2,9 @@ open PulumiAws;
 open Reventless;
 
 let make = (~name, ~handleCommands, ~memorySize, ~timeout, ~opts) => {
-  let queueName = name ++ "Queue";
   let queue =
     SQS.Queue.make(
-      ~name=queueName,
+      ~name,
       ~args=
         SQS.Queue.Args.make(
           ~visibilityTimeoutSeconds=timeout,
@@ -29,7 +28,7 @@ let make = (~name, ~handleCommands, ~memorySize, ~timeout, ~opts) => {
   let handler =
     Lambda.CallbackFunction.(
       make(
-        ~name=name ++ "Lambda",
+        ~name,
         ~args=
           Args.make(
             ~callback=

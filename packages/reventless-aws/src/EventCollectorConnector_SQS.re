@@ -11,11 +11,9 @@ let make =
       ~timeout,
       ~opts,
     ) => {
-  let queueName = name ++ "Queue";
-
   let queue =
     SQS.Queue.make(
-      ~name=queueName,
+      ~name,
       ~args=
         SQS.Queue.Args.make(
           ~visibilityTimeoutSeconds=timeout,
@@ -42,7 +40,7 @@ let make =
   let _topicSubscriptions =
     serviceNamesAndTopics->Belt.Array.map(((eventService, topic)) =>
       SNS.TopicSubscription.make(
-        ~name=eventService ++ "2" ++ queueName ++ "TopicSubscription",
+        ~name=eventService ++ "2" ++ name,
         ~args=
           SNS.TopicSubscription.Args.make(
             ~endpoint=queue##arn->Pulumi.Output.asInput,
@@ -65,7 +63,7 @@ let make =
     ->Pulumi.Output.apply(topics =>
         Util.SqsQueuePolicy.(
           make(
-            ~name=queueName ++ "Policy",
+            ~name,
             ~queue,
             ~statements=[
               allowResources(~queue, ~resources=topics),
@@ -82,7 +80,7 @@ let make =
     ->Pulumi.Output.all
     ->Pulumi.Output.apply(policies =>
         Lambda.CallbackFunction.make(
-          ~name=name ++ "Lambda",
+          ~name,
           ~args=
             Lambda.CallbackFunction.Args.make(
               ~callback=
