@@ -117,17 +117,19 @@ module Make =
 
     let (-#) = dictGetExn;
 
-    let queryCorePluginCommandTopicId = () =>
-      coreStackOutput->Pulumi.Output.get
-      -# "extensionPoints"
-      -# PluginExtensionPointSpec.name
-      -# "commandTopic"
-      -# "connector"
-      -# "id";
+    let corePluginCommandTopicId =
+      coreStackOutput->Pulumi.Output.apply(output =>
+        output
+        -# "extensionPoints"
+        -# PluginExtensionPointSpec.name
+        -# "commandTopic"
+        -# "connector"
+        -# "id"
+      );
 
     let queryExtensionPointCommandTopicId = name =>
       if (name == PluginExtensionPointSpec.name) {
-        queryCorePluginCommandTopicId()->Some->Js.Promise.resolve;
+        corePluginCommandTopicId->Pulumi.Output.get->Some->Js.Promise.resolve;
       } else {
         Some("NOT IMPLEMENTED YET !")
         ->Js.Promise.resolve; // TODO
@@ -515,7 +517,7 @@ module Make =
         ~id=id->Id.String.makeFromString,
         ~name,
         ~timeout,
-        ~commandTopicId=queryCorePluginCommandTopicId(),
+        ~commandTopicId=corePluginCommandTopicId,
         ~opts,
         (),
       );

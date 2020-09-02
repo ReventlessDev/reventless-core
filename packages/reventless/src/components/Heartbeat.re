@@ -70,7 +70,11 @@ let construct = (self, name, ~id, ~timeout, ~commandTopicId) => {
         _,
       )
     ->Js.Json.stringify
-    ->AwsSdk.SQS.sendMessage(~queueId=commandTopicId, ~messageBody=_, ())
+    ->AwsSdk.SQS.sendMessage(
+        ~queueId=commandTopicId->Pulumi.Output.get,
+        ~messageBody=_,
+        (),
+      )
     ->Js.Promise.catch(
         err =>
           err
