@@ -9,6 +9,7 @@ npm-debug.log
 /node_modules/
 /packages/*/node_modules/
 *.bs.js
+.grapqhl_ppx_cache
 tmp-bs-platform
 coverage
 lerna-debug.log
