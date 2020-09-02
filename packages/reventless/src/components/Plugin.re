@@ -25,9 +25,8 @@ type outputs = {
   "extensions": Js.Dict.t(Extension.t),
   "services": Js.Dict.t(Service.t),
   "tasks": array(Task.t),
-  "eventMappers": array(EventMapper.t),
+  "eventMappers": Js.Dict.t(EventMapper.t),
   "resolvers": Pulumi.Output.t(array(Adapter.resource)),
-  "heartbeatLambda": PulumiAws.Lambda.CallbackFunction.t,
   "cloudwatchEventRule": PulumiAws.Cloudwatch_EventRule.t,
   "cloudwatchEventTarget": PulumiAws.Cloudwatch_EventTarget.t,
 };
@@ -50,12 +49,14 @@ type maker =
 
 module type T = {let make: maker;};
 
+let toMap = els =>
+  els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
+
 module Make =
        (Config: Config.T, EventCollectorAdapter: EventCollector.Connector)
        : T => {
   type constructed;
-  // OLD: type construct = (t, string) => constructed;
-  type construct = (t, string) => unit;
+  type construct = (t, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -76,9 +77,8 @@ module Make =
       ~extensions: Js.Dict.t(Extension.t),
       ~services: Js.Dict.t(Service.t),
       ~tasks: array(Task.t),
-      ~eventMappers: array(EventMapper.t),
+      ~eventMappers: Js.Dict.t(EventMapper.t),
       ~resolvers: array(Adapter.resource),
-      ~heartbeatLambda: PulumiAws.Lambda.CallbackFunction.t,
       ~cloudwatchEventRule: PulumiAws.Cloudwatch_EventRule.t,
       ~cloudwatchEventTarget: PulumiAws.Cloudwatch_EventTarget.t
     ) =>
@@ -126,10 +126,6 @@ module Make =
       serviceMakers->Belt.Array.map(serviceMaker =>
         serviceMaker(Some(opts))
       );
-    let servicesMap =
-      services
-      ->Belt.Array.map(service => (service##name, service))
-      ->Js.Dict.fromArray;
 
     let queryCommandTopic =
       InterstackResourceQueryRuntime.commandTopicConnectorOfAllServicesExn(
@@ -180,14 +176,8 @@ module Make =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
         extensionPointMaker(~queryCommandTopic, ~opts=Some(opts), ())
       );
-    let extensionPointsMap =
-      extensionPoints
-      ->Belt.Array.map(extensionPoint =>
-          (extensionPoint##name, extensionPoint)
-        )
-      ->Js.Dict.fromArray;
 
-    let otherExtensions =
+    let extensions =
       extensionMakers->Belt.Array.map(extensionMaker =>
         extensionMaker(
           ~queryCommandTopic,
@@ -211,7 +201,7 @@ module Make =
         }
       );
     let extensionsConfig =
-      otherExtensions->Belt.Array.map(extension =>
+      extensions->Belt.Array.map(extension =>
         {
           PluginSpec.name: extension##name,
           eventCollector: (eventCollectorId^)->Pulumi.Output.get,
@@ -229,7 +219,7 @@ module Make =
           let connectToExtensionPoints =
             pluginSpec.extensionPoints
             ->Belt.Array.map(extensionPoint =>
-                otherExtensions
+                extensions
                 ->Belt.Array.getBy(extension =>
                     extension##name == extensionPoint.name
                   )
@@ -318,11 +308,7 @@ module Make =
         (),
       );
 
-    let extensions = otherExtensions->Belt.Array.concat([|pluginExtension|]);
-    let extensionsMap =
-      extensions
-      ->Belt.Array.map(extension => (extension##name, extension))
-      ->Js.Dict.fromArray;
+    let allExtensions = extensions->Belt.Array.concat([|pluginExtension|]);
 
     let queryQueryDb =
       InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
@@ -452,12 +438,12 @@ module Make =
         extensionPoint##aggregateNames
       );
     let outgoingServiceNameToExtensionsMapping =
-      serviceNameToEx(otherExtensions, extension => extension##aggregateNames);
+      serviceNameToEx(extensions, extension => extension##aggregateNames);
     let incomingServiceNameToExtensionsMapping =
-      serviceNameToEx(extensions, extension => [|extension##name|]);
+      serviceNameToEx(allExtensions, extension => [|extension##name|]);
 
     let extensionAggregateNames =
-      otherExtensions->Belt.Array.map(extension =>
+      extensions->Belt.Array.map(extension =>
         extension##aggregateNames->Set.fromArray
       );
 
@@ -604,37 +590,51 @@ module Make =
         )
       );
 
-    let _outputs =
+    let heartbeatLambda =
+      PulumiAws.Lambda.(
+        CallbackFunction.make(
+          ~name=heartbeatName,
+          ~args=
+            CallbackFunction.Args.make(
+              ~callback=heartBeatCallback,
+              ~policies=[|
+                PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess,
+                PulumiAws.Lambda.Policy.awsLambdaFullAccess,
+              |],
+              (),
+              /* TODO: add deadLetterConfig after extraction to ReventlessAws:
+                 ~deadLetterConfig=
+                   CallbackFunction.Args.DeadLetterConfig.make(
+                     ~targetArn=PulumiAws.Util_DeadLetterQueue.queue##arn,
+                   ),
+                   */
+            ),
+          //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
+          (),
+        )
+      );
+
+    let cloudwatchEventTarget =
+      PulumiAws.Cloudwatch.(
+        EventTarget.make(
+          ~name=heartbeatName,
+          ~args=
+            EventTarget.Args.make(
+              ~rule=EventTarget.Args.Rule.ofEventRule(cloudwatchEventRule),
+              ~arn=heartbeatLambda##arn->Pulumi.Output.asInput,
+              (),
+            ),
+          //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
+          (),
+        )
+      );
+    let _ =
       cloudwatchEventRule##arn
       ->Pulumi.Output.apply(ruleArn => {
-          let heartbeatLambda =
-            PulumiAws.Lambda.(
-              CallbackFunction.make(
-                ~name=heartbeatName ++ "Lambda",
-                ~args=
-                  CallbackFunction.Args.make(
-                    ~callback=heartBeatCallback,
-                    ~policies=[|
-                      PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess,
-                      PulumiAws.Lambda.Policy.awsLambdaFullAccess,
-                    |],
-                    (),
-                    /* TODO: add deadLetterConfig after extraction to ReventlessAws:
-                       ~deadLetterConfig=
-                         CallbackFunction.Args.DeadLetterConfig.make(
-                           ~targetArn=PulumiAws.Util_DeadLetterQueue.queue##arn,
-                         ),
-                         */
-                  ),
-                //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
-                (),
-              )
-            );
-
           let _heartbeatLambdaPermission =
             PulumiAws.Lambda.(
               Permission.make(
-                ~name=heartbeatName ++ "Permission",
+                ~name=heartbeatName,
                 ~args=
                   Permission.Args.make(
                     ~_function=heartbeatLambda##arn->Pulumi.Output.asInput,
@@ -647,37 +647,20 @@ module Make =
                 (),
               )
             );
-
-          let cloudwatchEventTarget =
-            PulumiAws.Cloudwatch.(
-              EventTarget.make(
-                ~name=heartbeatName,
-                ~args=
-                  EventTarget.Args.make(
-                    ~rule=
-                      EventTarget.Args.Rule.ofEventRule(cloudwatchEventRule),
-                    ~arn=heartbeatLambda##arn->Pulumi.Output.asInput,
-                    (),
-                  ),
-                //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
-                (),
-              )
-            );
-          makeOutputs(
-            ~eventCollector,
-            ~extensionPoints=extensionPointsMap,
-            ~extensions=extensionsMap,
-            ~services=servicesMap,
-            ~tasks=tasks^,
-            ~eventMappers=eventMappers^,
-            ~resolvers,
-            ~heartbeatLambda,
-            ~cloudwatchEventRule,
-            ~cloudwatchEventTarget,
-          )
-          |> self->setOutputs;
+          ();
         });
-    ();
+    makeOutputs(
+      ~eventCollector,
+      ~extensionPoints=extensionPoints->toMap,
+      ~extensions=extensions->toMap,
+      ~services=services->toMap,
+      ~tasks=tasks^,
+      ~eventMappers=(eventMappers^)->toMap,
+      ~resolvers,
+      ~cloudwatchEventRule,
+      ~cloudwatchEventTarget,
+    )
+    |> self->setOutputs;
   };
 
   let make: maker =

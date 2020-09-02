@@ -11,6 +11,9 @@ type outputs = {
 };
 type t = outputs;
 
+let toMap = els =>
+  els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
+
 module Make = (EventCollectorAdapter: EventCollector.Connector) => {
   type constructed;
   type construct = (t, string) => constructed;
@@ -110,16 +113,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
 
     makeOutputs(
       ~eventCollector,
-      ~extensionPoints=
-        extensionPoints
-        ->Belt.Array.map(extensionPoint =>
-            (extensionPoint##name, extensionPoint)
-          )
-        ->Js.Dict.fromArray,
-      ~services=
-        services
-        ->Belt.Array.map(service => (service##name, service))
-        ->Js.Dict.fromArray,
+      ~extensionPoints=extensionPoints->toMap,
+      ~services=services->toMap,
     )
     |> self->setOutputs;
   };
