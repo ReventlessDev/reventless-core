@@ -8,7 +8,7 @@ const fs = require("fs");
 // Define a component for serving a static website on S3
 class Frontend extends pulumi.ComponentResource {
 
-  constructor(bucketName, path, clientId, userPoolId, region, endpoint, identityPoolId,
+  constructor(bucketName, path, clientId, userPoolId, region, endpoint, coreEndpoint, identityPoolId,
     importerBucket, importerBucketRegion, exporterBucket, exporterBucketRegion,
     csvExporterBucket, csvExporterBucketRegion, domain, certificateArn, opts) {
 
@@ -53,6 +53,7 @@ class Frontend extends pulumi.ComponentResource {
             indexJsFile = indexJsFile.replace(/t.userPoolId="[\w/:\-_.]+"/, "t.userPoolId=\"" + userPoolId + "\"");
             indexJsFile = indexJsFile.replace(/t.region="[\w/:\-_.]+"/, "t.region=\"" + region + "\"");
             indexJsFile = indexJsFile.replace(/t.endpoint="[\w/:\-_.]+"/, "t.endpoint=\"" + endpoint + "\"");
+            indexJsFile = indexJsFile.replace(/Yu="[\w/:\-_.]+"/, "Yu=\"" + coreEndpoint + "\"");
             indexJsFile = indexJsFile.replace(/t.identityPoolId="[\w/:\-_.]+"/, "t.identityPoolId=\"" + identityPoolId + "\"");
             indexJsFile = indexJsFile.replace(/t.importBucket="[\w/:\-_.]+"/, "t.importBucket=\"" + importerBucket + "\"");
             indexJsFile = indexJsFile.replace(/t.importBucketRegion="[\w/:\-_.]+"/, "t.importBucketRegion=\"" + importerBucketRegion + "\"");

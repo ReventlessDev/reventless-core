@@ -8,6 +8,7 @@ external make:
     ~userPoolId: string,
     ~region: string,
     ~endpoint: string,
+    ~coreEndpoint: string,
     ~identityPoolId: string,
     ~importerBucket: string,
     ~importerBucketRegion: string,
