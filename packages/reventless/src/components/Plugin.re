@@ -514,7 +514,7 @@ module Make =
 
     let heartbeat =
       Heartbeat.make(
-        ~id=id->Id.String.makeFromString,
+        ~id,
         ~name,
         ~timeout,
         ~commandTopicId=corePluginCommandTopicId,

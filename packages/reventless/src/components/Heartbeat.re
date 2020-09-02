@@ -40,9 +40,9 @@ let setOutputs = (self, outputs) => {
   self->registerOutputs(outputs);
 };
 
-let construct = (self, name, ~id, ~timeout, ~commandTopicId) => {
+let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
   let opts =
-    Pulumi.ComponentResource.Options.make(
+    Pulumi.CustomResourceOptions.make(
       ~parent=self->Pulumi.Resource.makeFromJs,
       (),
     );
@@ -53,7 +53,7 @@ let construct = (self, name, ~id, ~timeout, ~commandTopicId) => {
   let publishHeartbeatCommand = () => {
     let msgId = Message.uuid();
     {
-      Message.id,
+      Message.id: id->Id.String.makeFromString,
       meta: {
         service: PluginExtensionPointSpec.name,
         time: Message.nowAsISOString(),
@@ -102,7 +102,7 @@ let construct = (self, name, ~id, ~timeout, ~commandTopicId) => {
               EventRule.Args.ScheduleExpression.every(timeout->Minutes),
             (),
           ),
-        //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
+        ~opts,
         (),
       )
     );
@@ -126,7 +126,7 @@ let construct = (self, name, ~id, ~timeout, ~commandTopicId) => {
                  ),
                  */
           ),
-        //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
+        ~opts,
         (),
       )
     );
@@ -141,31 +141,30 @@ let construct = (self, name, ~id, ~timeout, ~commandTopicId) => {
             ~arn=heartbeatLambda##arn->Pulumi.Output.asInput,
             (),
           ),
-        //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
+        ~opts,
         (),
       )
     );
-  let _ =
+
+  let _heartbeatLambdaPermission =
     cloudwatchEventRule##arn
-    ->Pulumi.Output.apply(ruleArn => {
-        let _heartbeatLambdaPermission =
-          PulumiAws.Lambda.(
-            Permission.make(
-              ~name=heartbeatName,
-              ~args=
-                Permission.Args.make(
-                  ~_function=heartbeatLambda##arn->Pulumi.Output.asInput,
-                  ~action="lambda:InvokeFunction",
-                  ~principal="events.amazonaws.com",
-                  ~sourceArn=ruleArn,
-                  (),
-                ),
-              /* TODO: opts */
-              (),
-            )
-          );
-        ();
-      });
+    ->Pulumi.Output.apply(ruleArn =>
+        PulumiAws.Lambda.(
+          Permission.make(
+            ~name=heartbeatName,
+            ~args=
+              Permission.Args.make(
+                ~_function=heartbeatLambda##arn->Pulumi.Output.asInput,
+                ~action="lambda:InvokeFunction",
+                ~principal="events.amazonaws.com",
+                ~sourceArn=ruleArn,
+                (),
+              ),
+            ~opts,
+            (),
+          )
+        )
+      );
 
   makeOutputs(~name, ~cloudwatchEventRule, ~cloudwatchEventTarget)
   |> self->setOutputs;
