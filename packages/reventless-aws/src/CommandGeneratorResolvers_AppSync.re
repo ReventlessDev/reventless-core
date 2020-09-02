@@ -45,7 +45,7 @@ let make =
 
   let dataSourceRole =
     IAM.Role.makeWithDefaultPolicy(
-      ~name,
+      ~name=name ++ "DataSource",
       ~service="appsync.amazonaws.com",
       ~opts,
       (),
@@ -53,7 +53,7 @@ let make =
 
   let _dataSourcePolicy =
     IAM.RolePolicy.make(
-      ~name,
+      ~name=name ++ "DataSource",
       ~action="lambda:InvokeFunction",
       ~resource=[|commandGeneratorArn|],
       ~role=dataSourceRole##id,
