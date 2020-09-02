@@ -24,7 +24,7 @@ type outputs = {
   "extensionPoints": Js.Dict.t(ExtensionPoint.t),
   "extensions": Js.Dict.t(Extension.t),
   "services": Js.Dict.t(Service.t),
-  "tasks": array(Task.t),
+  "tasks": Js.Dict.t(Task.t),
   "eventMappers": Js.Dict.t(EventMapper.t),
   "resolvers": Pulumi.Output.t(array(Adapter.resource)),
   "cloudwatchEventRule": PulumiAws.Cloudwatch_EventRule.t,
@@ -49,7 +49,7 @@ type maker =
 
 module type T = {let make: maker;};
 
-let toMap = els =>
+let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
 
 module Make =
@@ -76,7 +76,7 @@ module Make =
       ~extensionPoints: Js.Dict.t(ExtensionPoint.t),
       ~extensions: Js.Dict.t(Extension.t),
       ~services: Js.Dict.t(Service.t),
-      ~tasks: array(Task.t),
+      ~tasks: Js.Dict.t(Task.t),
       ~eventMappers: Js.Dict.t(EventMapper.t),
       ~resolvers: array(Adapter.resource),
       ~cloudwatchEventRule: PulumiAws.Cloudwatch_EventRule.t,
@@ -651,11 +651,11 @@ module Make =
         });
     makeOutputs(
       ~eventCollector,
-      ~extensionPoints=extensionPoints->toMap,
-      ~extensions=extensions->toMap,
-      ~services=services->toMap,
-      ~tasks=tasks^,
-      ~eventMappers=(eventMappers^)->toMap,
+      ~extensionPoints=extensionPoints->toDict,
+      ~extensions=extensions->toDict,
+      ~services=services->toDict,
+      ~tasks=(tasks^)->toDict,
+      ~eventMappers=(eventMappers^)->toDict,
       ~resolvers,
       ~cloudwatchEventRule,
       ~cloudwatchEventTarget,

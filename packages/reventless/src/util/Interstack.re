@@ -1,8 +1,8 @@
 type plugin;
-[@bs.get] external getServices: plugin => array(Service.t) = "services";
-[@bs.get] external getTasks: plugin => array(Task.t) = "tasks";
+[@bs.get] external getServices: plugin => Js.Dict.t(Service.t) = "services";
+[@bs.get] external getTasks: plugin => Js.Dict.t(Task.t) = "tasks";
 [@bs.get]
-external getEventMapper: plugin => array(EventMapper.t) = "eventMappers";
+external getEventMapper: plugin => Js.Dict.t(EventMapper.t) = "eventMappers";
 
 let stackDependencies: Pulumi.Output.t(array(plugin)) =
   Pulumi.Config.(make(Some("interstack"))->getObject("dependencies"))
@@ -14,11 +14,11 @@ let stackDependencies: Pulumi.Output.t(array(plugin)) =
     )
   ->Pulumi.Output.all;
 
-let getOutputs: (plugin => array('a)) => Pulumi.Output.t(array('a)) =
+let getOutputs: (plugin => Js.Dict.t('a)) => Pulumi.Output.t(array('a)) =
   getOutput =>
     stackDependencies->Pulumi.Output.apply(plugins =>
       plugins
-      ->Belt.Array.map(plugin => plugin->getOutput)
+      ->Belt.Array.map(plugin => plugin->getOutput->Js.Dict.values)
       ->Belt.Array.concatMany
     );
 

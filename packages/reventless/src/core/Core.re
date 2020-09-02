@@ -11,7 +11,7 @@ type outputs = {
 };
 type t = outputs;
 
-let toMap = els =>
+let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
 
 module Make = (EventCollectorAdapter: EventCollector.Connector) => {
@@ -113,8 +113,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
 
     makeOutputs(
       ~eventCollector,
-      ~extensionPoints=extensionPoints->toMap,
-      ~services=services->toMap,
+      ~extensionPoints=extensionPoints->toDict,
+      ~services=services->toDict,
     )
     |> self->setOutputs;
   };
