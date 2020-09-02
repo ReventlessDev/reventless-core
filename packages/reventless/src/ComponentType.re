@@ -17,7 +17,8 @@ type t =
   | Service
   | Task
   | Vpc
-  | Core;
+  | Core
+  | Heartbeat;
 
 let toString =
   fun
@@ -39,7 +40,8 @@ let toString =
   | Service => "Service"
   | Task => "Task"
   | Vpc => "Vpc"
-  | Core => "Core";
+  | Core => "Core"
+  | Heartbeat => "Heartbeat";
 
 let ofString =
   fun
@@ -62,6 +64,7 @@ let ofString =
   | "Task" => Task->Some
   | "Vpc" => Vpc->Some
   | "Core" => Core->Some
+  | "Heartbeat" => Heartbeat->Some
   | _ => None;
 
 let name = (name, t) => name ++ t->toString;

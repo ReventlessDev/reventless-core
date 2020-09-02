@@ -1,21 +1,3 @@
-/* TODO: EXTENSION
- *    - inspect events from event-collector:
- *      x if service in event.meta equals one of the extension's extensionPoint-names, then call the appropriate Extension.mapIncomingEvent
- *      x if the service in event.meta equals on of the Plugin's (Context) Aggregates, then call Extension.mapOutgoingEvent on all Extensions
- *      x else raise an error
- *      x map all events from the Plugin-EventCollector which came from the context itself to all ExtensionPoint.mapOutgoingEvents
- *
- *    - if the eventHandler in ExtensionPoint & Extension would return another type than Js.Promise.t(unit)
- *        they could signal if they actually handled the event and if there have been errors
- */
-
-/* TODO: HEARTBEAT + HEALTH-CHECK
- *    - create a Lambda calling a user provided (Plugin.make function argument) health-check function
- *      - the dev provided function should be of type: unit => result(string, string)
- *      - the Plugin.make function argument should be optional
- *    - create a Cloud Event Rule to call the health-check-function in a specified intervall (Plugin.make function argument)
- */
-
 let componentType = ComponentType.Plugin;
 
 type outputs = {
@@ -27,8 +9,7 @@ type outputs = {
   "tasks": Js.Dict.t(Task.t),
   "eventMappers": Js.Dict.t(EventMapper.t),
   "resolvers": Pulumi.Output.t(array(Adapter.resource)),
-  "cloudwatchEventRule": PulumiAws.Cloudwatch_EventRule.t,
-  "cloudwatchEventTarget": PulumiAws.Cloudwatch_EventTarget.t,
+  "heartbeat": Heartbeat.t,
 };
 type t = outputs;
 
@@ -79,8 +60,7 @@ module Make =
       ~tasks: Js.Dict.t(Task.t),
       ~eventMappers: Js.Dict.t(EventMapper.t),
       ~resolvers: array(Adapter.resource),
-      ~cloudwatchEventRule: PulumiAws.Cloudwatch_EventRule.t,
-      ~cloudwatchEventTarget: PulumiAws.Cloudwatch_EventTarget.t
+      ~heartbeat: Heartbeat.t
     ) =>
     outputs =
     "";
@@ -530,125 +510,16 @@ module Make =
       );
     eventCollectorId :=  eventCollector##connector##id;
 
-    // Heartbeat + HealthCheck
-    // see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/RunLambdaSchedule.html
-
-    let publishHeartbeatCommand = () => {
-      let msgId = Message.uuid();
-      {
-        Message.id: id->Id.String.makeFromString,
-        meta: {
-          service: PluginExtensionPointSpec.name,
-          time: Message.nowAsISOString(),
-          ip: "",
-          user: "Heartbeat",
-          msgId,
-          correlationId: msgId,
-        },
-        command: PluginExtensionPointSpec.Heartbeat(timeout),
-      }
-      ->Message.command'_encode(
-          Id.String.t_encode,
-          PluginExtensionPointSpec.command_encode,
-          _,
-        )
-      ->Js.Json.stringify
-      ->AwsSdk.SQS.sendMessage(
-          ~queueId=queryCorePluginCommandTopicId(),
-          ~messageBody=_,
-          (),
-        )
-      ->Js.Promise.catch(
-          err =>
-            err
-            ->Js.log2("Extension: Error on publish command:", _)
-            ->Js.Promise.resolve,
-          _,
-        );
-    };
-
-    let heartbeatName = name ++ "Heartbeat";
-
-    let heartBeatCallback: PulumiAws.Lambda.eventHandler(unit, unit) =
-      (_, _) => publishHeartbeatCommand();
-
-    let cloudwatchEventRule =
-      PulumiAws.Cloudwatch.(
-        EventRule.make(
-          ~name=heartbeatName,
-          ~args=
-            EventRule.Args.make(
-              ~description=
-                "Send a heartbeat to the Core Plugin ExtensionPoint"
-                ->Pulumi.Input.wrap,
-              ~scheduleExpression=
-                EventRule.Args.ScheduleExpression.every(timeout->Minutes),
-              (),
-            ),
-          //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
-          (),
-        )
+    let heartbeat =
+      Heartbeat.make(
+        ~id=id->Id.String.makeFromString,
+        ~name,
+        ~timeout,
+        ~commandTopicId=queryCorePluginCommandTopicId(),
+        ~opts,
+        (),
       );
 
-    let heartbeatLambda =
-      PulumiAws.Lambda.(
-        CallbackFunction.make(
-          ~name=heartbeatName,
-          ~args=
-            CallbackFunction.Args.make(
-              ~callback=heartBeatCallback,
-              ~policies=[|
-                PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess,
-                PulumiAws.Lambda.Policy.awsLambdaFullAccess,
-              |],
-              (),
-              /* TODO: add deadLetterConfig after extraction to ReventlessAws:
-                 ~deadLetterConfig=
-                   CallbackFunction.Args.DeadLetterConfig.make(
-                     ~targetArn=PulumiAws.Util_DeadLetterQueue.queue##arn,
-                   ),
-                   */
-            ),
-          //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
-          (),
-        )
-      );
-
-    let cloudwatchEventTarget =
-      PulumiAws.Cloudwatch.(
-        EventTarget.make(
-          ~name=heartbeatName,
-          ~args=
-            EventTarget.Args.make(
-              ~rule=EventTarget.Args.Rule.ofEventRule(cloudwatchEventRule),
-              ~arn=heartbeatLambda##arn->Pulumi.Output.asInput,
-              (),
-            ),
-          //~opts=opts->Obj.magic, // TODO: is ComponentResource.Options still relevant in today's Pulumi version
-          (),
-        )
-      );
-    let _ =
-      cloudwatchEventRule##arn
-      ->Pulumi.Output.apply(ruleArn => {
-          let _heartbeatLambdaPermission =
-            PulumiAws.Lambda.(
-              Permission.make(
-                ~name=heartbeatName,
-                ~args=
-                  Permission.Args.make(
-                    ~_function=heartbeatLambda##arn->Pulumi.Output.asInput,
-                    ~action="lambda:InvokeFunction",
-                    ~principal="events.amazonaws.com",
-                    ~sourceArn=ruleArn,
-                    (),
-                  ),
-                /* TODO: opts */
-                (),
-              )
-            );
-          ();
-        });
     makeOutputs(
       ~eventCollector,
       ~extensionPoints=extensionPoints->toDict,
@@ -657,8 +528,7 @@ module Make =
       ~tasks=(tasks^)->toDict,
       ~eventMappers=(eventMappers^)->toDict,
       ~resolvers,
-      ~cloudwatchEventRule,
-      ~cloudwatchEventTarget,
+      ~heartbeat,
     )
     |> self->setOutputs;
   };
