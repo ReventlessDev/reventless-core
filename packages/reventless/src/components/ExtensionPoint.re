@@ -15,6 +15,7 @@ type name = string;
 type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
+    ~scheduler: Scheduler.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>
@@ -111,19 +112,31 @@ module Make =
     let mapIncomingCommands =
         (
           mappings,
+          scheduler,
+          queue,
           commands': array(Message.command'(Id.String.t, Spec.command)),
         ) =>
       mappings
       ->Belt.Array.map((module Mapping: Mapping) =>
-          Mapping.mapIncomingCommands(commands')
+          Mapping.mapIncomingCommands(
+            commands',
+            Schedule.create(scheduler, queue),
+            Schedule.delete(scheduler, queue),
+          )
         )
       ->Belt.Array.concatMany;
 
-    let mapOutgoingEvent = (mappings: array(module Mapping), event'Json) =>
+    let mapOutgoingEvent =
+        (mappings: array(module Mapping), scheduler, queue, event'Json) =>
       switch (
         event'Json->Message.serviceNameOfMsg->findOutgoingMapping(mappings)
       ) {
-      | Some((module Mapping)) => Mapping.mapOutgoingEvent(event'Json)
+      | Some((module Mapping)) =>
+        Mapping.mapOutgoingEvent(
+          event'Json,
+          Schedule.create(scheduler, queue),
+          Schedule.delete(scheduler, queue),
+        )
       | None =>
         Js.Exn.raiseError(
           "ExtensionPoint.Mapping: Missing mapping for "
@@ -132,15 +145,14 @@ module Make =
       };
   };
 
-  let construct = (~mappings, ~queryCommandTopic, self, name) => {
+  let construct = (~mappings, ~queryCommandTopic, ~scheduler, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Pulumi.Resource.makeFromJs,
         (),
       );
 
-    let mapIncomingCommands = Mapper.mapIncomingCommands(mappings);
-    let mapOutgoingEvent = Mapper.mapOutgoingEvent(mappings);
+    let commandTopic: ref(option(CommandTopic.t)) = ref(None);
 
     let applyCommandAction =
       fun
@@ -187,36 +199,52 @@ module Make =
            );
 
     let eventHandler =
-      (. event'Json) =>
+      (. event'Json) => {
+        let queue =
+          (commandTopic^)
+          ->Belt.Option.getExn
+          ->Reventless.CommandTopic.toOutputs##connector;
+        let mapOutgoingEvent =
+          Mapper.mapOutgoingEvent(mappings, scheduler, queue);
+
         event'Json->mapOutgoingEvent->Belt.Array.map(applyEventAction)
         |> Js.Promise.all
         |> Js.Promise.then_(_ => Js.Promise.resolve());
+      };
 
     let commandsHandler =
-      (. _id, cmds'Json) =>
+      (. _id, cmds'Json) => {
+        let queue =
+          (commandTopic^)
+          ->Belt.Option.getExn
+          ->Reventless.CommandTopic.toOutputs##connector;
+        let mapIncomingCommands =
+          Mapper.mapIncomingCommands(mappings, scheduler, queue);
+
         cmds'Json->mapIncomingCommands->Belt.Array.map(applyCommandAction)
         |> Js.Promise.all
         |> Js.Promise.then_(_ => Js.Promise.resolve());
+      };
 
-    let commandTopic = CommandTopic.make(~commandsHandler, ~opts, ());
+    commandTopic := Some(CommandTopic.make(~commandsHandler, ~opts, ()));
 
     makeOutputs(
       ~name,
       ~aggregateNames=
         mappings->Belt.Array.map(((module Mapping)) => Mapping.aggregateName),
       ~eventHandler,
-      ~commandTopic,
+      ~commandTopic=(commandTopic^)->Belt.Option.getExn,
       ~eventTopic,
     )
     |> self->setOutputs;
   };
 
   let make: array(module Mapping) => maker =
-    (mappings, ~queryCommandTopic, ~opts, _) =>
+    (mappings, ~queryCommandTopic, ~scheduler, ~opts, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~mappings, ~queryCommandTopic),
+        ~construct=construct(~mappings, ~queryCommandTopic, ~scheduler),
         ~opts,
       );
 };

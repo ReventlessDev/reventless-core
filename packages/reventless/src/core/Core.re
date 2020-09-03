@@ -51,6 +51,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
       (
         ~extensionPointMakers: extensionPointMakers,
         ~serviceMakers: serviceMakers,
+        ~scheduler: Scheduler.t,
         self,
         _,
       ) => {
@@ -76,7 +77,12 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
 
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
-        extensionPointMaker(~queryCommandTopic, ~opts=Some(opts), ())
+        extensionPointMaker(
+          ~queryCommandTopic,
+          ~scheduler,
+          ~opts=Some(opts),
+          (),
+        )
       );
 
     module Set = Belt.Set.String;
@@ -122,14 +128,16 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
   let make:
     (
       ~extensionPointMakers: extensionPointMakers,
-      ~serviceMakers: serviceMakers
+      ~serviceMakers: serviceMakers,
+      ~scheduler: Scheduler.t
     ) =>
     t =
-    (~extensionPointMakers, ~serviceMakers) =>
+    (~extensionPointMakers, ~serviceMakers, ~scheduler) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name="Core",
-        ~construct=construct(~extensionPointMakers, ~serviceMakers),
+        ~construct=
+          construct(~extensionPointMakers, ~serviceMakers, ~scheduler),
         ~opts=None,
       );
 };

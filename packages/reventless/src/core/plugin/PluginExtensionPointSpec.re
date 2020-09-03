@@ -20,5 +20,6 @@ type event =
 
 [@decco]
 type callCommand =
-  | ConfigAlarm(string, timeout)
+  | CreateAlarm(string, timeout)
+  | DeleteAlarm(string)
   | ConnectPlugin(PluginSpec.plugin);

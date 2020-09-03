@@ -1,14 +1,17 @@
 type extensionPointName = string;
 
+type callHandler('msg) =
+  (Schedule.create, Schedule.delete, 'msg) => Js.Promise.t(unit);
+
 /* these actions are needed for Impl */
 type commandAction('command, 'msg) =
   | PublishCommand(string, 'command)
-  | Call(Message.handler('msg), 'msg);
+  | Call(callHandler('msg), 'msg);
 type commandActions('command, 'msg) = array(commandAction('command, 'msg));
 
 type eventAction('event, 'msg) =
   | PublishEvent(string, 'event)
-  | Call(Message.handler('msg), 'msg);
+  | Call(callHandler('msg), 'msg);
 type eventActions('event, 'msg) = array(eventAction('event, 'msg));
 
 module type Spec = {
@@ -64,12 +67,12 @@ module type Impl = {
 /* these actions are internal to the Mapping Functor */
 type abstractCommandAction =
   | AbstractPublishCommand(Aggregate.name, Js.Json.t)
-  | AbstractCall(Message.handler(unit));
+  | AbstractCall(unit => Js.Promise.t(unit));
 type abstractCommandActions = array(abstractCommandAction);
 
 type abstractEventAction('extensionPointEvent) =
   | AbstractPublishEvent(Message.event'(Id.String.t, 'extensionPointEvent))
-  | AbstractCall(Message.handler(unit));
+  | AbstractCall(unit => Js.Promise.t(unit));
 type abstractEventActions('extensionPointEvent) =
   array(abstractEventAction('extensionPointEvent));
 
@@ -79,11 +82,16 @@ module type T = {
   let aggregateName: string;
 
   let mapIncomingCommands:
-    array(Message.command'(Id.String.t, ExtensionPoint.command)) =>
+    (
+      array(Message.command'(Id.String.t, ExtensionPoint.command)),
+      Schedule.create,
+      Schedule.delete
+    ) =>
     abstractCommandActions;
 
   let mapOutgoingEvent:
-    Js.Json.t => abstractEventActions(ExtensionPoint.event);
+    (Js.Json.t, Schedule.create, Schedule.delete) =>
+    abstractEventActions(ExtensionPoint.event);
 };
 
 module Make =
@@ -91,21 +99,20 @@ module Make =
        : (T with module ExtensionPoint := Spec) => {
   module Aggregate = MappingImpl.Aggregate;
   let aggregateName = Aggregate.name;
+  let extensionPointName = Spec.name;
 
-  let mapIncomingCommands:
-    array(Message.command'(Id.String.t, Spec.command)) =>
-    abstractCommandActions =
-    commands' =>
-      commands'
-      ->Belt.Array.map(({Message.id, command, meta}) =>
-          MappingImpl.mapIncomingCommand(
-            id->Id.String.toString,
-            command,
-            meta,
-          )
-          ->Belt.Array.map(
-              fun
-              | PublishCommand(aggregateId, aggregateCmd) =>
+  let mapIncomingCommands = (commands', createSchedule, deleteSchedule) =>
+    commands'
+    ->Belt.Array.map(({Message.id, command, meta}) =>
+        MappingImpl.mapIncomingCommand(id->Id.String.toString, command, meta)
+        ->Belt.Array.map(
+            fun
+            | PublishCommand(aggregateId, aggregateCmd) => {
+                Js.log2(
+                  {j|ExtensionPointMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command|j},
+                  aggregateCmd->Aggregate.command_encode->Js.Json.stringify,
+                );
+
                 AbstractPublishCommand(
                   aggregateName,
                   Message.command'_encode(
@@ -121,26 +128,40 @@ module Make =
                       command: aggregateCmd,
                     },
                   ),
-                )
-              | Call(handler, msg) => AbstractCall(() => handler(msg)),
-            )
-        )
-      ->Belt.Array.concatMany;
+                );
+              }
+            | Call(handler, callCommand) => {
+                Js.log2(
+                  {j|ExtensionPointMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Handling call command|j},
+                  callCommand->Spec.callCommand_encode->Js.Json.stringify,
+                );
 
-  let mapOutgoingEvent: Js.Json.t => abstractEventActions(Spec.event) =
-    aggregateEvent'Json =>
-      switch (
-        Message.event'_decode(
-          Aggregate.Id.t_decode,
-          Aggregate.event_decode,
-          aggregateEvent'Json,
-        )
-      ) {
-      | Ok({id, meta, event}) =>
-        MappingImpl.mapOutgoingEvent(id->Aggregate.Id.toString, event, meta)
-        ->Belt.Array.map(
-            fun
-            | PublishEvent(id, event) =>
+                AbstractCall(
+                  () => handler(createSchedule, deleteSchedule, callCommand),
+                );
+              },
+          )
+      )
+    ->Belt.Array.concatMany;
+
+  let mapOutgoingEvent = (aggregateEvent'Json, createSchedule, deleteSchedule) =>
+    switch (
+      Message.event'_decode(
+        Aggregate.Id.t_decode,
+        Aggregate.event_decode,
+        aggregateEvent'Json,
+      )
+    ) {
+    | Ok({id, meta, event}) =>
+      MappingImpl.mapOutgoingEvent(id->Aggregate.Id.toString, event, meta)
+      ->Belt.Array.map(
+          fun
+          | PublishEvent(id, event) => {
+              Js.log2(
+                {j|ExtensionPointMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing event|j},
+                event->Spec.event_encode->Js.Json.stringify,
+              );
+
               AbstractPublishEvent({
                 Message.id: id->Id.String.makeFromString,
                 event,
@@ -149,12 +170,22 @@ module Make =
                   service: Spec.name,
                   msgId: Message.uuid(),
                 },
-              })
-            | Call(handler, msg) => AbstractCall(() => handler(msg)),
-          )
-      | Error(_) =>
-        Js.Exn.raiseError(
-          "ExtensionPointMapping.Make.mapOutgoing: Decode failure: " // TODO improve message
+              });
+            }
+          | Call(handler, msg) => {
+              Js.log2(
+                {j|ExtensionPointMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Handling call command|j},
+                msg->Spec.callCommand_encode->Js.Json.stringify,
+              );
+
+              AbstractCall(
+                () => handler(createSchedule, deleteSchedule, msg),
+              );
+            },
         )
-      };
+    | Error(_) =>
+      Js.Exn.raiseError(
+        "ExtensionPointMapping.Make.mapOutgoing: Decode failure: " // TODO improve message
+      )
+    };
 };

@@ -1,8 +1,29 @@
 let callHandler =
-  fun
-  | PluginExtensionPointSpec.ConfigAlarm(id, timeout) =>
-    Js.log({j|ConfigAlarm($id, $timeout)|j})->Js.Promise.resolve
-  | _ => Js.Promise.resolve();
+    (
+      createSchedule: Schedule.create,
+      deleteSchedule: Schedule.delete,
+      callCommand,
+    ) =>
+  switch (callCommand) {
+  | PluginExtensionPointSpec.CreateAlarm(id, timeout) =>
+    createSchedule(. {
+      name: id,
+      rate: timeout->Minutes,
+      payload:
+        {
+          Message.id,
+          meta: Message.generateMeta("Core.Plugin", "", "Scheduler"),
+          command: PluginExtensionPointSpec.DisconnectPlugin,
+        }
+        |> Message.command'_encode(
+             Decco.stringToJson,
+             PluginExtensionPointSpec.command_encode,
+           )
+        |> Js.Json.stringify,
+    })
+  | PluginExtensionPointSpec.DeleteAlarm(id) => deleteSchedule(. id)
+  | _ => Js.Promise.resolve()
+  };
 
 module Impl = {
   open ExtensionPointMapping;
@@ -13,10 +34,11 @@ module Impl = {
     switch (cmd) {
     | PluginExtensionPointSpec.Heartbeat(timeout) => [|
         PublishCommand(id, Aggregate.Heartbeat),
-        Call(callHandler, PluginExtensionPointSpec.ConfigAlarm(id, timeout)),
+        Call(callHandler, PluginExtensionPointSpec.CreateAlarm(id, timeout)),
       |]
     | PluginExtensionPointSpec.ConnectPlugin(plugin) => [|
         PublishCommand(id, Aggregate.ConnectPlugin(plugin)),
+        Call(callHandler, PluginExtensionPointSpec.DeleteAlarm(id)),
       |]
     | PluginExtensionPointSpec.DisconnectPlugin => [|
         PublishCommand(id, Aggregate.DisconnectPlugin),

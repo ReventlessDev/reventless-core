@@ -60,8 +60,8 @@ module type Connector = {
 module Make =
        (Spec: Spec, Connector: Connector)
        : (T with module Spec := Spec) => {
-   module Spec = Spec;
-    
+  module Spec = Spec;
+
   type commandsHandler = Message.commandsHandler(Spec.Id.t, Spec.command);
 
   type nonrec t = t(Spec.Id.t, Spec.command);
@@ -120,7 +120,8 @@ module Make =
          );
     };
 
-  let logCommand' = (idx, count, command': Message.command'(Spec.Id.t, Spec.command)) => {
+  let logCommand' =
+      (idx, count, command': Message.command'(Spec.Id.t, Spec.command)) => {
     let id = command'.id;
     let command: array(string) =
       command'.command->Spec.command_encode->Obj.magic;
@@ -152,7 +153,8 @@ module Make =
     (. jsons) =>
       jsons->Belt.Array.keepMap(json =>
         switch (
-          json |> Message.command'_decode(Spec.Id.t_decode, Spec.command_decode)
+          json
+          |> Message.command'_decode(Spec.Id.t_decode, Spec.command_decode)
         ) {
         | Belt_Result.Ok(command') => Some((command'.id, command'))
         | Belt_Result.Error(err) =>

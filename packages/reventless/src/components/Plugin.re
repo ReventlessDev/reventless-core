@@ -23,6 +23,7 @@ type maker =
     ~serviceMakers: array(Service.maker),
     ~taskMakers: array(Task.maker),
     ~eventMapperMakers: array(EventMapper.maker),
+    ~scheduler: Scheduler.t,
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit
   ) =>
@@ -82,6 +83,7 @@ module Make =
         ~serviceMakers: array(Service.maker),
         ~taskMakers: array(Task.maker),
         ~eventMapperMakers: array(EventMapper.maker),
+        ~scheduler: Scheduler.t,
         self,
         name,
       ) => {
@@ -156,7 +158,12 @@ module Make =
 
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
-        extensionPointMaker(~queryCommandTopic, ~opts=Some(opts), ())
+        extensionPointMaker(
+          ~queryCommandTopic,
+          ~scheduler,
+          ~opts=Some(opts),
+          (),
+        )
       );
 
     let extensions =
@@ -545,6 +552,7 @@ module Make =
       ~serviceMakers,
       ~taskMakers,
       ~eventMapperMakers,
+      ~scheduler,
       ~opts=?,
       _unit,
     ) =>
@@ -560,6 +568,7 @@ module Make =
             ~serviceMakers,
             ~taskMakers,
             ~eventMapperMakers,
+            ~scheduler,
           ),
         ~opts,
       );

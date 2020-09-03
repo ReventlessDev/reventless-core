@@ -7,6 +7,9 @@ type minute = int;
 
 [@decco]
 type rate =
+  | Minutes(int)
+  | Hours(int)
+  | Days(int)
   | Daily(hour, minute)
   | Weekdays(hour, minute);
 
