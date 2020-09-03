@@ -48,9 +48,9 @@ let execute: Behaviour.execute(state, command, event, error) =
       | ConnectPlugin(_)
       | ActivatePlugin => []
       }
-    | Disconnected(plugin) =>
+    | Disconnected(_) =>
       switch (command) {
-      | Heartbeat => [PluginConnected(plugin)]
+      | Heartbeat => [PluginReconnected]
       | DeactivatePlugin => [PluginDeactivated]
       | ConnectPlugin(_)
       | DisconnectPlugin

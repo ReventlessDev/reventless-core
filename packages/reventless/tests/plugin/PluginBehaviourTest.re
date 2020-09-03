@@ -44,7 +44,7 @@ describe("Plugin Aggregate", () => {
       PluginDisconnected,
     ])
     |> whenCmd(Heartbeat)
-    |> thenEvents([PluginConnected(plugin1)])
+    |> thenEvents([PluginReconnected])
   );
 
   test("ignore further connect when disconnected", () =>
@@ -112,7 +112,7 @@ describe("Plugin Aggregate", () => {
       PluginActivated,
     ])
     |> whenCmd(Heartbeat)
-    |> thenEvents([PluginConnected(plugin1)])
+    |> thenEvents([PluginReconnected])
   );
 
   test("ignore further connect after re-activated", () =>
