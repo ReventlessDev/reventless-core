@@ -146,10 +146,7 @@ let make =
              let {View.fieldName, tableName, idFieldName} = config;
 
              Resolver.make(
-               ~name=
-                 name->String.capitalize
-                 ++ idFieldName->String.capitalize
-                 ++ "Resolver",
+               ~name=name->String.capitalize ++ idFieldName->String.capitalize,
                ~api,
                ~dataSourceName,
                ~_type=name,
@@ -172,9 +169,7 @@ let make =
              let {View.fieldName, tableName, idsFieldName} = config;
              Resolver.make(
                ~name=
-                 name->String.capitalize
-                 ++ idsFieldName->String.capitalize
-                 ++ "Resolver",
+                 name->String.capitalize ++ idsFieldName->String.capitalize,
                ~api,
                ~dataSourceName,
                ~_type=name,
