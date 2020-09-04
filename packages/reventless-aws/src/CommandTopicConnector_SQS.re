@@ -23,6 +23,11 @@ let make = (~name, ~handleCommands, ~memorySize, ~timeout, ~opts) => {
       (),
     );
 
+  let _queuePolicy =
+    Util.SqsQueuePolicy.(
+      make(~name, ~queue, ~statements=[allowCloudWatchEvents], ~opts, ())
+    );
+
   let name = name ++ "Handler";
 
   let handler =
