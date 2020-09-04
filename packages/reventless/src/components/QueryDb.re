@@ -204,13 +204,11 @@ module Make =
         (),
       );
 
-    let childName = name->ComponentType.name(componentType);
-
     let sortField =
       View.sortConfig->Belt.Option.map(config => config.sortField);
     let storage =
       Storage.make(
-        ~name=childName,
+        ~name=name->ComponentType.name(componentType),
         ~indexes=View.indexes,
         ~sortField,
         ~api,
@@ -224,7 +222,7 @@ module Make =
 
     let resolvers =
       Resolvers.make(
-        ~name=childName,
+        ~name,
         ~api,
         ~apiRole,
         ~dataSourceName=storage.dataSourceName,

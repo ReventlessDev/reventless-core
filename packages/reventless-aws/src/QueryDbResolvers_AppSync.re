@@ -20,7 +20,7 @@ let make =
   let dataSourceName = dataSourceName->Pulumi.Output.asInput;
   let resolverById =
     Resolver.make(
-      ~name,
+      ~name=name->String.capitalize,
       ~api,
       ~dataSourceName,
       ~_type="Query",
@@ -49,7 +49,7 @@ let make =
   let fieldNameForAll = "every" ++ name;
   let resolverAll =
     Resolver.make(
-      ~name=fieldNameForAll->String.capitalize ++ "Resolver",
+      ~name=fieldNameForAll->String.capitalize,
       ~api,
       ~dataSourceName,
       ~_type="Query",
@@ -66,7 +66,7 @@ let make =
       let resolversByIndex =
         indexes
         |> List.map(({View.index, authorization}) => {
-             let name = name ++ "By" ++ index->String.capitalize;
+             let name = (name ++ "By" ++ index)->String.capitalize;
              switch (authorization) {
              | None =>
                Resolver.make(
