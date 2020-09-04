@@ -70,7 +70,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
         _,
       )
     ->Js.Json.stringify
-    ->Message.log("Sending Heartbeat:")
+    ->Message.log("Sending Heartbeat:", _)
     ->AwsSdk.SQS.sendMessage(
         ~queueId=commandTopicId->Pulumi.Output.get,
         ~messageBody=_,
