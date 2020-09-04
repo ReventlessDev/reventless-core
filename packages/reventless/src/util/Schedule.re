@@ -55,7 +55,7 @@ let delete: (Scheduler.t, Adapter.resource) => delete =
       let deleteSchedule = scheduler##deleteSchedule;
       deleteSchedule(. target, name)
       |> Js.Promise.then_(_ =>
-           Js.log3("Task.deleteSchedule: deleted", name, queueId)
+           Js.log3("ExtensionPoint.deleteSchedule: deleted", name, queueId)
            |> Js.Promise.resolve
          )
       |> Js.Promise.catch(err => {
