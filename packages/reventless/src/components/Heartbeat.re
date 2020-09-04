@@ -93,7 +93,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
   let cloudwatchEventRule =
     PulumiAws.Cloudwatch.(
       EventRule.make(
-        ~name=childName,
+        ~name=Pulumi.Pulumi.getStackName() ++ "-" ++ childName,
         ~args=
           EventRule.Args.make(
             ~description=

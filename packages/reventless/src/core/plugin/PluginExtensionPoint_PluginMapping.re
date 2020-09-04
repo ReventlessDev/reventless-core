@@ -5,9 +5,9 @@ let callHandler =
       callCommand,
     ) =>
   switch (callCommand) {
-  | PluginExtensionPointSpec.CreateAlarm(id, timeout) =>
+  | PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
     createSchedule(. {
-      name: id,
+      name: id, // TODO: prefix with Pulumi.Pulumi.getStackName()
       rate: timeout->Minutes,
       payload:
         {
@@ -21,7 +21,8 @@ let callHandler =
            )
         |> Js.Json.stringify,
     })
-  | PluginExtensionPointSpec.DeleteAlarm(id) => deleteSchedule(. id)
+  | PluginExtensionPointSpec.DeleteDisconnectSchedule(id) =>
+    deleteSchedule(. id)
   | _ => Js.Promise.resolve()
   };
 
@@ -34,14 +35,21 @@ module Impl = {
     switch (cmd) {
     | PluginExtensionPointSpec.Heartbeat(timeout) => [|
         PublishCommand(id, Aggregate.Heartbeat),
-        Call(callHandler, PluginExtensionPointSpec.CreateAlarm(id, timeout)),
+        // Re-create timeout (+1 minute to avoid toggling)
+        Call(
+          callHandler,
+          PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout + 1),
+        ),
       |]
     | PluginExtensionPointSpec.ConnectPlugin(plugin) => [|
         PublishCommand(id, Aggregate.ConnectPlugin(plugin)),
       |]
     | PluginExtensionPointSpec.DisconnectPlugin => [|
         PublishCommand(id, Aggregate.DisconnectPlugin),
-        Call(callHandler, PluginExtensionPointSpec.DeleteAlarm(id)),
+        Call(
+          callHandler,
+          PluginExtensionPointSpec.DeleteDisconnectSchedule(id),
+        ),
       |]
     };
 

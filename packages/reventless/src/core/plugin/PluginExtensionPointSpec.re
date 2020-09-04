@@ -1,7 +1,7 @@
 let name = "Core.Plugin";
 
 [@decco]
-type timeout = int;
+type timeout = int; // in minutes
 
 [@decco]
 type command =
@@ -20,6 +20,6 @@ type event =
 
 [@decco]
 type callCommand =
-  | CreateAlarm(string, timeout)
-  | DeleteAlarm(string)
+  | CreateDisconnectSchedule(string, timeout)
+  | DeleteDisconnectSchedule(string)
   | ConnectPlugin(PluginSpec.plugin);
