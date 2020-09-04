@@ -70,6 +70,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
         _,
       )
     ->Js.Json.stringify
+    ->Message.log("Sending Heartbeat:")
     ->AwsSdk.SQS.sendMessage(
         ~queueId=commandTopicId->Pulumi.Output.get,
         ~messageBody=_,
@@ -84,7 +85,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
       );
   };
 
-  let heartbeatName = name ++ "Heartbeat";
+  let childName = name->ComponentType.name(componentType);
 
   let heartBeatCallback: PulumiAws.Lambda.eventHandler(unit, unit) =
     (_, _) => publishHeartbeatCommand();
@@ -92,7 +93,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
   let cloudwatchEventRule =
     PulumiAws.Cloudwatch.(
       EventRule.make(
-        ~name=heartbeatName,
+        ~name=childName,
         ~args=
           EventRule.Args.make(
             ~description=
@@ -110,7 +111,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
   let heartbeatLambda =
     PulumiAws.Lambda.(
       CallbackFunction.make(
-        ~name=heartbeatName,
+        ~name=childName,
         ~args=
           CallbackFunction.Args.make(
             ~callback=heartBeatCallback,
@@ -134,7 +135,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
   let cloudwatchEventTarget =
     PulumiAws.Cloudwatch.(
       EventTarget.make(
-        ~name=heartbeatName,
+        ~name=childName,
         ~args=
           EventTarget.Args.make(
             ~rule=EventTarget.Args.Rule.ofEventRule(cloudwatchEventRule),
@@ -151,7 +152,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
     ->Pulumi.Output.apply(ruleArn =>
         PulumiAws.Lambda.(
           Permission.make(
-            ~name=heartbeatName,
+            ~name=childName,
             ~args=
               Permission.Args.make(
                 ~_function=heartbeatLambda##arn->Pulumi.Output.asInput,

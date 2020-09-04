@@ -157,9 +157,6 @@ module Make =
   [@bs.set] external setSave: (t, save) => unit = "save";
   [@bs.set] external setDelete: (t, delete) => unit = "delete";
 
-  let viewName =
-    View.name |> Js.Option.getWithDefault(Spec.name) |> String.capitalize;
-
   let decode = (id, item) =>
     switch (View.state_decode(item)) {
     | Ok(state) => [state]
@@ -207,11 +204,13 @@ module Make =
         (),
       );
 
+    let childName = name->ComponentType.name(componentType);
+
     let sortField =
       View.sortConfig->Belt.Option.map(config => config.sortField);
     let storage =
       Storage.make(
-        ~name,
+        ~name=childName,
         ~indexes=View.indexes,
         ~sortField,
         ~api,
@@ -225,7 +224,7 @@ module Make =
 
     let resolvers =
       Resolvers.make(
-        ~name=viewName,
+        ~name=childName,
         ~api,
         ~apiRole,
         ~dataSourceName=storage.dataSourceName,
@@ -248,7 +247,7 @@ module Make =
     (~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=viewName->ComponentType.name(componentType),
+        ~name=View.name |> Js.Option.getWithDefault(Spec.name),
         ~construct,
         ~opts,
         ~api=Config.api,

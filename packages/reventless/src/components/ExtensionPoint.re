@@ -4,7 +4,7 @@ type outputs = {
   .
   "name": string,
   "aggregateNames": array(string),
-  "eventHandler": (. Js.Json.t) => Js.Promise.t(unit),
+  "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
   "commandTopic": CommandTopic.outputs,
   "eventTopic": EventTopic.outputs,
 };
@@ -58,9 +58,6 @@ module Make =
       type callCommand = Spec.callCommand = {
     include Spec;
     module Id = Id.String;
-    let name =
-      name->Js.String2.replace(".", "")
-      ++ componentType->ComponentType.toString;
   };
 
   module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter);
@@ -86,7 +83,7 @@ module Make =
     (
       ~name: string,
       ~aggregateNames: array(string),
-      ~eventHandler: (. Js.Json.t) => Js.Promise.t(unit),
+      ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(unit),
       ~commandTopic: CommandTopic.t,
       ~eventTopic: EventTopic.t
     ) =>
@@ -152,6 +149,9 @@ module Make =
         (),
       );
 
+    let childName =
+      name->Js.String2.replace(".", "")->ComponentType.name(componentType);
+
     let commandTopic: ref(option(CommandTopic.t)) = ref(None);
 
     let applyCommandAction =
@@ -177,7 +177,7 @@ module Make =
              |> Js.Promise.resolve
            );
 
-    let eventTopic = EventTopic.make(~opts, ());
+    let eventTopic = EventTopic.make(~name=childName, ~opts, ());
 
     let applyEventAction =
       fun
@@ -198,7 +198,7 @@ module Make =
              |> Js.Promise.resolve
            );
 
-    let eventHandler =
+    let outgoingEventHandler =
       (. event'Json) => {
         let queue =
           (commandTopic^)
@@ -212,7 +212,7 @@ module Make =
         |> Js.Promise.then_(_ => Js.Promise.resolve());
       };
 
-    let commandsHandler =
+    let incomingCommandsHandler =
       (. _id, cmds'Json) => {
         let queue =
           (commandTopic^)
@@ -226,13 +226,21 @@ module Make =
         |> Js.Promise.then_(_ => Js.Promise.resolve());
       };
 
-    commandTopic := Some(CommandTopic.make(~commandsHandler, ~opts, ()));
+    commandTopic :=
+      Some(
+        CommandTopic.make(
+          ~name=childName,
+          ~commandsHandler=incomingCommandsHandler,
+          ~opts,
+          (),
+        ),
+      );
 
     makeOutputs(
       ~name,
       ~aggregateNames=
         mappings->Belt.Array.map(((module Mapping)) => Mapping.aggregateName),
-      ~eventHandler,
+      ~outgoingEventHandler,
       ~commandTopic=(commandTopic^)->Belt.Option.getExn,
       ~eventTopic,
     )

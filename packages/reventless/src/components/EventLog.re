@@ -30,7 +30,8 @@ module type T = {
   module Spec: Spec;
   type nonrec t = t(Spec.Id.t, Spec.event);
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
+  let make:
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
 };
 
 type storage = {
@@ -43,16 +44,15 @@ module type Storage = {
   let make: (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage;
 };
 
-module Make =
-       (Spec: Spec, Storage: Storage)
-       : (T with module Spec = Spec) => {
+module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
   module Spec = Spec;
   type nonrec t = t(Spec.Id.t, Spec.event);
 
   type constructed;
   type construct = (t, string) => constructed;
 
-  type nonrec append = append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
+  type nonrec append =
+    append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
   type nonrec replay = replay(Spec.Id.t, Spec.event);
 
   [@bs.module "./Component"] [@bs.new]
@@ -68,7 +68,8 @@ module Make =
 
   [@bs.obj] external makeOutputs: (~storage: Adapter.resource) => outputs = "";
 
-  [@bs.send] external registerOutputs: (t, outputs) => constructed = "";
+  [@bs.send]
+  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
   [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
@@ -167,7 +168,8 @@ module Make =
         (),
       );
 
-    let storage = Storage.make(~name, ~opts);
+    let storage =
+      Storage.make(~name=name->ComponentType.name(componentType), ~opts);
     let storageOutputs = storage.resource;
 
     self->setAppend(storage->append);
@@ -176,11 +178,12 @@ module Make =
     makeOutputs(~storage=storageOutputs) |> self->setOutputs;
   };
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t =
-    (~opts=?, _) => {
+  let make:
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => t =
+    (~name, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name->ComponentType.name(componentType),
+        ~name,
         ~construct,
         ~opts,
       );

@@ -27,6 +27,7 @@ module type T = {
 
   let make:
     (
+      ~name: string,
       ~commandHandler: commandHandler,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
@@ -159,7 +160,7 @@ module Make =
 
     let resolvers =
       Resolvers.make(
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~api,
         ~fields=Behaviour.resolverConfig.fields,
         ~commandGenerator=generateCommand(commandHandler),
@@ -173,15 +174,16 @@ module Make =
 
   let make:
     (
+      ~name: string,
       ~commandHandler: commandHandler,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
     t =
-    (~commandHandler, ~opts=?, _) => {
+    (~name, ~commandHandler, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name->ComponentType.name(componentType),
+        ~name,
         ~construct,
         ~opts,
         ~api=Config.api,

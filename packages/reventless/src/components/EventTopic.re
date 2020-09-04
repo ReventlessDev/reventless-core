@@ -28,7 +28,8 @@ module type T = {
 
   type nonrec t = t(Spec.Id.t, Spec.event);
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
+  let make:
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
 };
 
 type publisher = {
@@ -118,7 +119,8 @@ module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) =
         (),
       );
 
-    let publisher = Publisher.make(~name, ~opts);
+    let publisher =
+      Publisher.make(~name=name->ComponentType.name(componentType), ~opts);
     let publisherOutputs = publisher.resource;
 
     self->setPublish(publisher->publish);
@@ -126,11 +128,12 @@ module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) =
     makeOutputs(~publisher=publisherOutputs) |> self->setOutputs;
   };
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t =
-    (~opts=?, _) => {
+  let make:
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => t =
+    (~name, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name->ComponentType.name(componentType),
+        ~name,
         ~construct,
         ~opts,
       );

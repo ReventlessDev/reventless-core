@@ -22,8 +22,6 @@ type connector = {
 module type Spec = {
   module Id: Id.T;
 
-  let name: string;
-
   [@decco]
   type command;
 };
@@ -36,6 +34,7 @@ module type T = {
 
   let make:
     (
+      ~name: string,
       ~commandsHandler: commandsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
@@ -86,7 +85,8 @@ module Make =
   [@bs.obj]
   external makeOutputs: (~connector: Adapter.resource) => outputs = "";
 
-  [@bs.send] external registerOutputs: (t, outputs) => constructed = "";
+  [@bs.send]
+  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
   [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
@@ -194,7 +194,7 @@ module Make =
 
     let connector =
       Connector.make(
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~handleCommands=commandsHandler->handleCommands,
         ~memorySize,
         ~timeout,
@@ -208,6 +208,7 @@ module Make =
 
   let make:
     (
+      ~name: string,
       ~commandsHandler: commandsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
@@ -215,10 +216,10 @@ module Make =
       unit
     ) =>
     t =
-    (~commandsHandler, ~memorySize=256, ~timeout=30, ~opts=?, _) => {
+    (~name, ~commandsHandler, ~memorySize=256, ~timeout=30, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name->ComponentType.name(componentType),
+        ~name,
         ~construct=construct(~memorySize, ~timeout),
         ~opts,
         ~commandsHandler,

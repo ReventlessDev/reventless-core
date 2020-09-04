@@ -455,8 +455,8 @@ module Make =
         );
     };
 
-    let getExtensionPointEventHandler = extensionPoint =>
-      extensionPoint##eventHandler;
+    let getExtensionPointOutgoingEventHandler = extensionPoint =>
+      extensionPoint##outgoingEventHandler;
     let getExtensionOutgoingEventHandler = extension =>
       extension##outgoingEventHandler;
     let getExtensionIncomingEventHandler = extension =>
@@ -488,7 +488,7 @@ module Make =
           handleEvent(
             event'Json,
             serviceNameToExtensionPointsMapping,
-            getExtensionPointEventHandler,
+            getExtensionPointOutgoingEventHandler,
           ),
           handleEvent(
             event'Json,
@@ -510,7 +510,7 @@ module Make =
 
     let eventCollector =
       EventCollector.make(
-        ~name="Plugin",
+        ~name=name ++ componentType->ComponentType.toString,
         ~aggregateNames,
         ~eventHandler,
         ~queryEventTopic,
@@ -522,7 +522,7 @@ module Make =
     let heartbeat =
       Heartbeat.make(
         ~id,
-        ~name,
+        ~name=name ++ componentType->ComponentType.toString,
         ~timeout,
         ~commandTopicId=corePluginCommandTopicId,
         ~opts,

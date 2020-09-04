@@ -58,7 +58,8 @@ module Make =
     "default";
 
   [@bs.obj] external makeOutputs: (~queryDb: queryDb) => outputs = "";
-  [@bs.send] external registerOutputs: (t, outputs) => constructed = "";
+  [@bs.send]
+  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
   [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
@@ -66,8 +67,6 @@ module Make =
   };
 
   [@bs.set] external setUpdate: (t, update) => unit = "update";
-
-  let name = View.name |> Js.Option.getWithDefault(Spec.name);
 
   open Reventless.View;
 
@@ -187,7 +186,7 @@ module Make =
   let make = opts => {
     make(
       ~componentType=componentType->ComponentType.toString,
-      ~name=name->ComponentType.name(componentType),
+      ~name=View.name |> Js.Option.getWithDefault(Spec.name),
       ~construct,
       ~opts,
     );

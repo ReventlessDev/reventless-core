@@ -8,13 +8,14 @@ module Make =
 
   let make:
     (
+      ~name: string,
       ~commandHandler: commandHandler,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
     t =
-    (~commandHandler, ~opts=?, _) => {
-      let _ = (commandHandler, opts);
+    (~name, ~commandHandler, ~opts=?, _) => {
+      let _ = (name, commandHandler, opts);
       ();
     };
 };

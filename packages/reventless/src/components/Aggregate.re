@@ -266,15 +266,17 @@ module Make =
     };
 
   let construct: construct =
-    (self, _, eventsHandler) => {
+    (self, name, eventsHandler) => {
       let opts =
         Pulumi.ComponentResource.Options.make(
           ~parent=self->Pulumi.Resource.makeFromJs,
           (),
         );
 
-      let eventLog = EventLog.make(~opts, ());
-      let eventTopic = EventTopic.make(~opts, ());
+      let childName = name->ComponentType.name(componentType);
+
+      let eventLog = EventLog.make(~name=childName, ~opts, ());
+      let eventTopic = EventTopic.make(~name=childName, ~opts, ());
 
       let execCommands =
         execCommands((
@@ -287,10 +289,16 @@ module Make =
         ));
 
       let commandTopic =
-        CommandTopic.make(~commandsHandler=execCommands, ~opts, ());
+        CommandTopic.make(
+          ~name=childName,
+          ~commandsHandler=execCommands,
+          ~opts,
+          (),
+        );
 
       let commandGenerator =
         CommandGenerator.make(
+          ~name=childName,
           ~commandHandler=commandTopic##publish,
           ~opts,
           (),
@@ -310,7 +318,7 @@ module Make =
     (~eventsHandler, ~opts=?, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name->ComponentType.name(componentType),
+        ~name=Spec.name,
         ~construct,
         ~opts,
         ~eventsHandler,

@@ -98,7 +98,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
     let eventHandler =
       (. event'Json) =>
         extensionPoints->Belt.Array.map(extensionPoint => {
-          let handle = extensionPoint##eventHandler;
+          let handle = extensionPoint##outgoingEventHandler;
           handle(. event'Json);
         })
         |> Js.Promise.all

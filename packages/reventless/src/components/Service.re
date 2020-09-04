@@ -69,7 +69,7 @@ module Make =
   let make = opts =>
     make(
       ~componentType=componentType->ComponentType.toString,
-      ~name=Spec.name->ComponentType.name(componentType),
+      ~name=Spec.name,
       ~construct,
       ~opts,
     );

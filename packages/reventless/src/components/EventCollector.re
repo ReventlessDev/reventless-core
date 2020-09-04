@@ -96,7 +96,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
 
     let connector =
       Connector.make(
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~eventServices=aggregateNames,
         ~queryEventTopic,
         ~policies=Policies.policies,
@@ -133,7 +133,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
     ) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=name->ComponentType.name(componentType),
+        ~name,
         ~construct=
           construct(
             ~aggregateNames,
