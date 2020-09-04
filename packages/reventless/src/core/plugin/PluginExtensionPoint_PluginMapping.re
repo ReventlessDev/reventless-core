@@ -38,10 +38,10 @@ module Impl = {
       |]
     | PluginExtensionPointSpec.ConnectPlugin(plugin) => [|
         PublishCommand(id, Aggregate.ConnectPlugin(plugin)),
-        Call(callHandler, PluginExtensionPointSpec.DeleteAlarm(id)),
       |]
     | PluginExtensionPointSpec.DisconnectPlugin => [|
         PublishCommand(id, Aggregate.DisconnectPlugin),
+        Call(callHandler, PluginExtensionPointSpec.DeleteAlarm(id)),
       |]
     };
 
