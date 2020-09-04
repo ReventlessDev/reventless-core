@@ -11,10 +11,9 @@ let create: (Scheduler.t, Adapter.resource) => create =
   (scheduler, queue) =>
     (. schedule: Scheduler.schedule) => {
       let queueId = queue##name->OutputFailsafeRuntime.get;
+      let re = [%re "/[^.\-_a-zA-Z0-9]/g"];
       let name =
-        schedule.name
-        ->Js.String2.replace("^[\.\-_A-Za-z0-9]", "_")
-        ->forQueue(queueId);
+        schedule.name->Js.String2.replaceByRe(re, "_")->forQueue(queueId);
       let schedule = {...schedule, name};
       let target =
         Scheduler.{
