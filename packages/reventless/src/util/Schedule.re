@@ -5,15 +5,15 @@ exception ScheduleNotCreated(Scheduler.schedule, string, Js.Promise.error);
 exception ScheduleNotDeleted(string, string, Js.Promise.error);
 
 let forQueue = (name, queueId) =>
-  name ++ "-" ++ (queueId |> Js.String.split("-"))[1];
+  name->Js.String2.replaceByRe([%re "/[^.\-_a-zA-Z0-9]/g"], "_")
+  ++ "-"
+  ++ (queueId |> Js.String.split("-"))[1];
 
 let create: (Scheduler.t, Adapter.resource) => create =
   (scheduler, queue) =>
     (. schedule: Scheduler.schedule) => {
       let queueId = queue##name->OutputFailsafeRuntime.get;
-      let re = [%re "/[^.\-_a-zA-Z0-9]/g"];
-      let name =
-        schedule.name->Js.String2.replaceByRe(re, "_")->forQueue(queueId);
+      let name = schedule.name->forQueue(queueId);
       let schedule = {...schedule, name};
       let target =
         Scheduler.{
