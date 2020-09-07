@@ -392,7 +392,7 @@ module Make =
 
     let resolvers =
       services
-      ->InterstackResourceQueryDeploytime.allResolversMakers
+      ->ResourceQueryDeploytime.allResolversMakers
       ->Belt.Array.map(resolverMaker => resolverMaker(queryQueryDbDeploytime))
       ->Belt.Array.concatMany;
 

@@ -148,24 +148,21 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
     );
 
   let _heartbeatLambdaPermission =
-    cloudwatchEventRule##arn
-    ->Pulumi.Output.apply(ruleArn =>
-        PulumiAws.Lambda.(
-          Permission.make(
-            ~name=childName,
-            ~args=
-              Permission.Args.make(
-                ~_function=heartbeatLambda##arn->Pulumi.Output.asInput,
-                ~action="lambda:InvokeFunction",
-                ~principal="events.amazonaws.com",
-                ~sourceArn=ruleArn,
-                (),
-              ),
-            ~opts,
+    PulumiAws.Lambda.(
+      Permission.make(
+        ~name=childName,
+        ~args=
+          Permission.Args.make(
+            ~_function=heartbeatLambda##arn->Pulumi.Output.asInput,
+            ~action="lambda:InvokeFunction",
+            ~principal="events.amazonaws.com",
+            ~sourceArn=cloudwatchEventRule##arn->Pulumi.Output.asInput,
             (),
-          )
-        )
-      );
+          ),
+        ~opts,
+        (),
+      )
+    );
 
   makeOutputs(~name, ~cloudwatchEventRule, ~cloudwatchEventTarget)
   |> self->setOutputs;
