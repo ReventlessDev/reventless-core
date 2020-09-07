@@ -5,6 +5,7 @@ let plural = count => count == 1 ? "" : "s";
 
 let toScheduleExpression =
   fun
+  | Single(year, month, day, hour, minute) => {j|cron($minute $hour $day $month * $year)|j}
   | Minutes(minutes) => {
       let plural = minutes->plural;
       {j|rate($minutes minute$plural)|j};
