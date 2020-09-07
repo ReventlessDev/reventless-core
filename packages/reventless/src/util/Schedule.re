@@ -15,7 +15,7 @@ let minutesFromNow = minutes => {
   let m =
     momentNow()
     ->Moment.add(~duration=duration(minutes->float_of_int, `minutes));
-  Scheduler.Single(m->year, m->month, m->date, m->hour, m->minute);
+  Scheduler.Single(m->year, m->month + 1, m->date, m->hour, m->minute);
 };
 
 let create: (Scheduler.t, Adapter.resource) => create =
