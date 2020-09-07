@@ -8,7 +8,7 @@ let callHandler =
   | PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
     createSchedule(. {
       name: id, // TODO: prefix with Pulumi.Pulumi.getStackName()
-      rate: timeout->Minutes,
+      rate: timeout->Schedule.minutesFromNow,
       payload:
         {
           Message.id,

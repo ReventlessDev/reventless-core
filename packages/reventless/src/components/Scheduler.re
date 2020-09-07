@@ -1,12 +1,19 @@
 let componentType = ComponentType.Scheduler;
 
 [@decco]
+type year = int;
+[@decco]
+type month = int;
+[@decco]
+type day = int;
+[@decco]
 type hour = int;
 [@decco]
 type minute = int;
 
 [@decco]
 type rate =
+  | Single(year, month, day, hour, minute)
   | Minutes(int)
   | Hours(int)
   | Days(int)

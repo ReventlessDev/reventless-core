@@ -29,6 +29,8 @@
     }
   ],
   "bs-dependencies": [
+    "@ryb73/decco",
+    "bs-moment",
     "@aantron/repromise",
     "@glennsl/bs-jest",
     "@reventless-universe/bs-aws-sdk",
@@ -38,7 +40,6 @@
     "@reventless-universe/bs-pulumi-aws",
     "@reventless-universe/bs-pulumi-pulumi",
     "@reventless-universe/bs-ssh2",
-    "@reventless-universe/bs-uuid",
-    "@ryb73/decco"
+    "@reventless-universe/bs-uuid"
   ]
 }

@@ -9,6 +9,15 @@ let forQueue = (name, queueId) =>
   ++ "-"
   ++ (queueId |> Js.String.split("-"))[1];
 
+let minutesFromNow = minutes => {
+  open MomentRe;
+  open Moment;
+  let m =
+    momentNow()
+    ->Moment.add(~duration=duration(minutes->float_of_int, `minutes));
+  Scheduler.Single(m->year, m->month, m->date, m->hour, m->minute);
+};
+
 let create: (Scheduler.t, Adapter.resource) => create =
   (scheduler, queue) =>
     (. schedule: Scheduler.schedule) => {
