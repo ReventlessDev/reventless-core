@@ -8,7 +8,7 @@ type outputs = {
   "services": Js.Dict.t(Service.t),
   "tasks": Js.Dict.t(Task.t),
   "eventMappers": Js.Dict.t(EventMapper.t),
-  "resolvers": Pulumi.Output.t(array(Adapter.resource)),
+  "resolvers": array(Adapter.resource),
   "heartbeat": Heartbeat.t,
 };
 type t = outputs;
