@@ -34,9 +34,7 @@ module type T = {let make: maker;};
 let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
 
-module Make =
-       (Config: Config.T, EventCollectorAdapter: EventCollector.Connector)
-       : T => {
+module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
   type constructed;
   type construct = (t, string) => constructed;
 
@@ -329,7 +327,7 @@ module Make =
              ~queryQueryDb,
              ~queryEventCollector,
              ~queryBucketName,
-             ~scheduler=Config.scheduler,
+             ~scheduler,
              ~opts=Some(opts),
            )
          )
