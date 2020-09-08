@@ -14,9 +14,21 @@ module type T = {let make: maker;};
 
 module Make =
        (
+         Config: Config.T,
          Spec: Aggregate.Spec,
-         Aggregate: Aggregate.T with module Spec := Spec,
-         ReadModel: ReadModel.T with module Spec := Spec,
+         Behaviour: Behaviour.T with module Spec := Spec,
+         View: View.T with module Spec := Spec,
+         CommandGeneratorResolvers:
+           CommandGenerator.Resolvers with type api := Config.api,
+         CommandTopicConnector: CommandTopic.Connector,
+         EventLogStorage: EventLog.Storage,
+         EventTopicPublisher: EventTopic.Publisher,
+         QueryDbStorage:
+           QueryDb.Storage with
+             type api = Config.api and type role = Config.role,
+         QueryDbResolvers:
+           QueryDb.Resolvers with
+             type api = Config.api and type role = Config.role,
        )
        : T => {
   type constructed;
@@ -33,13 +45,22 @@ module Make =
     t =
     "default";
 
+  module Aggregate =
+    Aggregate.Make(
+      Config,
+      Spec,
+      Behaviour,
+      CommandGeneratorResolvers,
+      CommandTopicConnector,
+      EventLogStorage,
+      EventTopicPublisher,
+    );
+  module ReadModel =
+    ReadModel.Make(Config, Spec, View, QueryDbStorage, QueryDbResolvers);
+
   [@bs.obj]
   external makeOutputs:
-    (
-      ~name: string,
-      ~aggregate: Reventless.Aggregate.t,
-      ~readModel: Reventless.ReadModel.t(Spec.Id.t, Spec.event)
-    ) =>
+    (~name: string, ~aggregate: Aggregate.t, ~readModel: ReadModel.t) =>
     outputs =
     "";
 

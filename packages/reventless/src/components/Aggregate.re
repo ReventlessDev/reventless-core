@@ -28,6 +28,7 @@ module type Spec = {
 
 module type T = {
   module Spec: Spec;
+  type t;
 
   let make:
     (
@@ -43,17 +44,15 @@ module Make =
          Config: Config.T,
          Spec: Spec,
          Behaviour: Behaviour.T with module Spec := Spec,
-         CommandGenerator: CommandGenerator.T with module Spec := Spec,
-         CommandTopic: CommandTopic.T with module Spec := Spec,
-         EventLog: EventLog.T with module Spec := Spec,
-         EventTopic: EventTopic.T with module Spec := Spec,
+         CommandGeneratorResolvers:
+           CommandGenerator.Resolvers with type api := Config.api,
+         CommandTopicConnector: CommandTopic.Connector,
+         EventLogStorage: EventLog.Storage,
+         EventTopicPublisher: EventTopic.Publisher,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type commandGenerator = CommandGenerator.t;
-  type commandTopic = CommandTopic.t;
-  type eventLog = EventLog.t;
-  type eventTopic = EventTopic.t;
+  type nonrec t = t;
 
   type eventsHandler = Message.eventsHandler(Spec.Id.t, Spec.event);
 
@@ -72,13 +71,19 @@ module Make =
     t =
     "default";
 
+  module CommandGenerator =
+    CommandGenerator.Make(Config, Spec, Behaviour, CommandGeneratorResolvers);
+  module CommandTopic = CommandTopic.Make(Spec, CommandTopicConnector);
+  module EventLog = EventLog.Make(Spec, EventLogStorage);
+  module EventTopic = EventTopic.Make(Spec, EventTopicPublisher);
+
   [@bs.obj]
   external makeOutputs:
     (
-      ~commandGenerator: commandGenerator,
-      ~commandTopic: commandTopic,
-      ~eventLog: eventLog,
-      ~eventTopic: eventTopic
+      ~commandGenerator: CommandGenerator.t,
+      ~commandTopic: CommandTopic.t,
+      ~eventLog: EventLog.t,
+      ~eventTopic: EventTopic.t
     ) =>
     outputs =
     "";

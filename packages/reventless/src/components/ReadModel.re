@@ -15,6 +15,7 @@ type maker('id, 'event) =
 module type T = {
   module Spec: View.Spec;
   module View: View.T with module Spec := Spec;
+  type t;
 
   let update:
     (
@@ -29,19 +30,28 @@ module type T = {
 
 module Make =
        (
+         Config: Config.T,
          Spec: View.Spec,
          View: View.T with module Spec := Spec,
-         QueryDb: QueryDb.T with module Spec := Spec and module View := View,
+         QueryDbStorage:
+           QueryDb.Storage with
+             type api = Config.api and type role = Config.role,
+         QueryDbResolvers:
+           QueryDb.Resolvers with
+             type api = Config.api and type role = Config.role,
        )
-       : (T with module Spec = Spec and module View = View) => {
+
+         : (
+           T with
+             module Spec = Spec and
+             module View = View and
+             type t = t(Spec.Id.t, Spec.event)
+       ) => {
   module Spec = Spec;
   module View = View;
-
-  type queryDb = QueryDb.t;
+  type nonrec t = t(Spec.Id.t, Spec.event);
 
   type update = Message.eventsHandler(Spec.Id.t, Spec.event);
-
-  type nonrec t = t(Spec.Id.t, Spec.event);
 
   type constructed;
   type construct = (t, string) => constructed;
@@ -57,7 +67,10 @@ module Make =
     t =
     "default";
 
-  [@bs.obj] external makeOutputs: (~queryDb: queryDb) => outputs = "";
+  module QueryDb =
+    QueryDb.Make(Config, Spec, View, QueryDbStorage, QueryDbResolvers);
+
+  [@bs.obj] external makeOutputs: (~queryDb: QueryDb.t) => outputs = "";
   [@bs.send]
   external registerOutputs: (t, outputs) => constructed = "registerOutputs";
   [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
