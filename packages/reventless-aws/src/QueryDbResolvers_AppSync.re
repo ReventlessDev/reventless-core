@@ -18,9 +18,10 @@ let make =
     ) => {
   open Resolver.Templates;
   let dataSourceName = dataSourceName->Pulumi.Output.asInput;
+  let name = name->String.capitalize;
   let resolverById =
     Resolver.make(
-      ~name=name->String.capitalize,
+      ~name,
       ~api,
       ~dataSourceName,
       ~_type="Query",
@@ -66,7 +67,7 @@ let make =
       let resolversByIndex =
         indexes
         |> List.map(({View.index, authorization}) => {
-             let name = (name ++ "By" ++ index)->String.capitalize;
+             let name = name ++ "By" ++ index->String.capitalize;
              switch (authorization) {
              | None =>
                Resolver.make(
@@ -146,7 +147,7 @@ let make =
              let {View.fieldName, tableName, idFieldName} = config;
 
              Resolver.make(
-               ~name=name->String.capitalize ++ idFieldName->String.capitalize,
+               ~name=name ++ idFieldName->String.capitalize,
                ~api,
                ~dataSourceName,
                ~_type=name,
@@ -168,8 +169,7 @@ let make =
         |> List.map(config => {
              let {View.fieldName, tableName, idsFieldName} = config;
              Resolver.make(
-               ~name=
-                 name->String.capitalize ++ idsFieldName->String.capitalize,
+               ~name=name ++ idsFieldName->String.capitalize,
                ~api,
                ~dataSourceName,
                ~_type=name,
