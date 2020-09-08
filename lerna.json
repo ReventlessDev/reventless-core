@@ -7,6 +7,9 @@
   "command": {
     "bootstrap": {
       "hoist": false
+    },
+    "publish": {
+      "registry": "https://npm.pkg.github.com"
     }
   }
 }
