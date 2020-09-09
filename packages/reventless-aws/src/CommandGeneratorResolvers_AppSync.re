@@ -20,7 +20,8 @@ let make =
               commandGenerator,
             ),
           ~tracingConfig=
-            Lambda.CallbackFunction.Args.TracingConfig.make(~mode=`Active),
+            Lambda.CallbackFunction.Args.TracingConfig.make(~mode=`Active)
+            ->Pulumi.Input.wrap,
           (),
         ),
       ~opts,
@@ -46,7 +47,7 @@ let make =
   let dataSourceRole =
     IAM.Role.makeWithDefaultPolicy(
       ~name=name ++ "DataSource",
-      ~service="appsync.amazonaws.com",
+      ~service="appsync.amazonaws.com"->Pulumi.Output.make,
       ~opts,
       (),
     );
@@ -73,8 +74,9 @@ let make =
             AppSync.DataSource.LambdaConfig.make(
               ~functionArn=commandGeneratorArn->Pulumi.Output.asInput,
               (),
-            ),
-          ~name, // This has to be provided for DataSource !
+            )
+            ->Pulumi.Input.wrap,
+          ~name=name->Pulumi.Input.wrap, // This has to be provided for DataSource !
           ~serviceRoleArn=dataSourceRole##arn->Pulumi.Output.asInput,
           (),
         ),
@@ -104,8 +106,8 @@ let make =
            ~name=commandName,
            ~api,
            ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
-           ~_type="Mutation",
-           ~field,
+           ~_type="Mutation"->Pulumi.Input.wrap,
+           ~field=field->Pulumi.Input.wrap,
            ~requestTemplate=
              invokeCommandGenerator(commandName)->Pulumi.Input.wrap,
            ~responseTemplate=

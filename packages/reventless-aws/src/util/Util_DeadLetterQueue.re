@@ -3,7 +3,11 @@ open PulumiAws;
 let queue =
   SQS.Queue.make(
     ~name="DeadLetterQueue",
-    ~args=SQS.Queue.Args.make(~visibilityTimeoutSeconds=180, ()),
+    ~args=
+      SQS.Queue.Args.make(
+        ~visibilityTimeoutSeconds=180->Pulumi.Input.wrap,
+        (),
+      ),
     (),
   );
 

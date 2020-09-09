@@ -6,29 +6,31 @@ type role = Pulumi.Output.t(PulumiAws.IAM.Role.t);
 let make = (~name, ~indexes, ~sortField, ~api: api, ~apiRole: role, ~opts) => {
   let globalSecondaryIndexes =
     indexes
-    |> Array.of_list
-    |> Array.map(({Reventless.View.index, sortField, projectionType}) =>
-         switch (projectionType) {
-         | `ALL as projectionType
-         | `KEYS_ONLY as projectionType =>
-           DynamoDb.Table.GlobalSecondaryIndex.make(
-             ~name=index,
-             ~hashKey=index,
-             ~rangeKey=?sortField,
-             ~projectionType,
-             (),
-           )
-         | `INCLUDE(includes) =>
-           DynamoDb.Table.GlobalSecondaryIndex.make(
-             ~name=index,
-             ~hashKey=index,
-             ~rangeKey=?sortField,
-             ~projectionType=`INCLUDE,
-             ~nonKeyAttributes=includes,
-             (),
-           )
-         }
-       );
+    ->Belt.List.toArray
+    ->Belt.Array.map(({Reventless.View.index, sortField, projectionType}) =>
+        switch (projectionType) {
+        | `ALL as projectionType
+        | `KEYS_ONLY as projectionType =>
+          DynamoDb.Table.GlobalSecondaryIndex.make(
+            ~name=index,
+            ~hashKey=index,
+            ~rangeKey=?sortField,
+            ~projectionType,
+            (),
+          )
+        | `INCLUDE(includes) =>
+          DynamoDb.Table.GlobalSecondaryIndex.make(
+            ~name=index,
+            ~hashKey=index,
+            ~rangeKey=?sortField,
+            ~projectionType=`INCLUDE,
+            ~nonKeyAttributes=includes,
+            (),
+          )
+        }
+      )
+    ->Pulumi.Input.wrap
+    ->Pulumi.Input.wrap;
 
   let attributes =
     [
@@ -37,18 +39,19 @@ let make = (~name, ~indexes, ~sortField, ~api: api, ~apiRole: role, ~opts) => {
         [{"name": sortField, "type": "S"}]
       ),
       indexes
-      |> List.map(({Reventless.View.index, _type, sortField}) =>
-           [
-             {"name": index, "type": _type},
-             ...sortField->Belt.Option.mapWithDefault([], sortField =>
-                  [{"name": sortField, "type": "S"}]
-                ),
-           ]
-         )
-      |> List.flatten,
+      ->Belt.List.map(({Reventless.View.index, _type, sortField}) =>
+          [
+            {"name": index, "type": _type},
+            ...sortField->Belt.Option.mapWithDefault([], sortField =>
+                 [{"name": sortField, "type": "S"}]
+               ),
+          ]
+        )
+      ->Belt.List.flatten,
     ]
-    |> List.flatten
-    |> Array.of_list;
+    ->Belt.List.flatten
+    ->Belt.List.toArray
+    ->Pulumi.Input.wrap;
 
   let table =
     DynamoDb.Table.make(
@@ -56,8 +59,8 @@ let make = (~name, ~indexes, ~sortField, ~api: api, ~apiRole: role, ~opts) => {
       ~args=
         DynamoDb.Table.Args.make(
           ~attributes,
-          ~hashKey="id",
-          ~rangeKey=?sortField,
+          ~hashKey="id"->Pulumi.Input.wrap,
+          ~rangeKey=?sortField->Belt.Option.map(Pulumi.Input.wrap),
           ~billingMode=`PAY_PER_REQUEST,
           ~globalSecondaryIndexes,
           (),

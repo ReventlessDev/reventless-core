@@ -49,7 +49,7 @@ let make =
               topic
               ->Pulumi.Output.flatMap(topic => topic##urn)
               ->Pulumi.Output.asInput,
-            ~rawMessageDelivery=true,
+            ~rawMessageDelivery=true->Pulumi.Input.wrap,
             (),
           ),
         ~opts=Some(opts),

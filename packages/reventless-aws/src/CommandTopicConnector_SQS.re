@@ -7,7 +7,7 @@ let make = (~name, ~handleCommands, ~memorySize, ~timeout, ~opts) => {
       ~name,
       ~args=
         SQS.Queue.Args.make(
-          ~visibilityTimeoutSeconds=timeout,
+          ~visibilityTimeoutSeconds=timeout->Pulumi.Input.wrap,
           ~redrivePolicy=
             Util_DeadLetterQueue.queue##arn
             ->Pulumi.Output.apply(dlqArn =>
@@ -45,8 +45,8 @@ let make = (~name, ~handleCommands, ~memorySize, ~timeout, ~opts) => {
               SQS.QueuePolicy.amazonSQSFullAccess,
               Lambda.Policy.awsLambdaFullAccess,
             |],
-            ~memorySize,
-            ~timeout,
+            ~memorySize=memorySize->Pulumi.Input.wrap,
+            ~timeout=timeout->Pulumi.Input.wrap,
             (),
           ),
         ~opts,

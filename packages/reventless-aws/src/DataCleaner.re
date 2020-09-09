@@ -148,8 +148,7 @@ let scanTableAndClean =
 let toTableConfig: Adapter.resource => tableConfig =
   resource => {
     let name = resource##name->Pulumi.Output.get;
-    let (id, sort) =
-      resource->Util.DynamoDb_Runtime.keysFromResource;
+    let (id, sort) = resource->Util.DynamoDb_Runtime.keysFromResource;
 
     {"name": name, "id": id, "sort": sort};
   };
@@ -208,7 +207,11 @@ let make =
     make(
       ~name="DataCleaner-" ++ stackName(prefix),
       ~args=
-        Args.make(~callback=cleanerFn(tablesToClean), ~memorySize=1024, ()),
+        Args.make(
+          ~callback=cleanerFn(tablesToClean),
+          ~memorySize=1024->Pulumi.Input.wrap,
+          (),
+        ),
       (),
     )
   );

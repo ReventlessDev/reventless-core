@@ -2,7 +2,7 @@ let make = (~name as _, ~opts) => {
   let role =
     PulumiAws.IAM.Role.makeWithDefaultPolicy(
       ~name="CloudWatchEventsRole",
-      ~service="events.amazonaws.com",
+      ~service="events.amazonaws.com"->Pulumi.Output.make,
       ~opts,
       (),
     );
@@ -26,7 +26,8 @@ let make = (~name as _, ~opts) => {
                       "Action": "iam:PassRole",
                       "Resource": "$roleArn"
                   }]
-                  }|j},
+                  }|j}
+                ->Pulumi.Input.wrap,
               (),
             ),
           ~opts,

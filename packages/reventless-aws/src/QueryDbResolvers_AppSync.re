@@ -24,8 +24,8 @@ let make =
       ~name,
       ~api,
       ~dataSourceName,
-      ~_type="Query",
-      ~field=name->String.uncapitalize,
+      ~_type="Query"->Pulumi.Input.wrap,
+      ~field=name->String.uncapitalize->Pulumi.Input.wrap,
       ~requestTemplate=
         sortField
         ->(
@@ -53,8 +53,8 @@ let make =
       ~name=fieldNameForAll->String.capitalize,
       ~api,
       ~dataSourceName,
-      ~_type="Query",
-      ~field=fieldNameForAll,
+      ~_type="Query"->Pulumi.Input.wrap,
+      ~field=fieldNameForAll->Pulumi.Input.wrap,
       ~requestTemplate=listAllItems->Pulumi.Input.wrap,
       ~responseTemplate=result->Pulumi.Input.wrap,
       ~kind=Unit,
@@ -74,8 +74,8 @@ let make =
                  ~name,
                  ~api,
                  ~dataSourceName,
-                 ~_type="Query",
-                 ~field=name->String.uncapitalize,
+                 ~_type="Query"->Pulumi.Input.wrap,
+                 ~field=name->String.uncapitalize->Pulumi.Input.wrap,
                  ~requestTemplate=
                    queryByIndexFiltered(index)->Pulumi.Input.wrap,
                  ~responseTemplate=result->Pulumi.Input.wrap,
@@ -90,8 +90,7 @@ let make =
                    ~api,
                    ~tableName=
                      queryQueryDb(group)
-                     ->Pulumi.Output.flatMap(qdb => qdb##name)
-                     ->Pulumi.Output.asInput,
+                     ->Pulumi.Output.flatMap(qdb => qdb##name),
                    ~serviceRole=apiRole,
                    ~opts,
                    (),
@@ -102,9 +101,10 @@ let make =
                    ~api,
                    ~dataSource=authDataSource##name->Pulumi.Output.asInput,
                    ~requestMappingTemplate=
-                     authorizeIndexedAccessRequest(~index, ~group),
+                     authorizeIndexedAccessRequest(~index, ~group)
+                     ->Pulumi.Input.wrap,
                    ~responseMappingTemplate=
-                     authorizeIndexedAccessResponse(index),
+                     authorizeIndexedAccessResponse(index)->Pulumi.Input.wrap,
                    ~opts,
                    (),
                  );
@@ -113,16 +113,17 @@ let make =
                    ~name,
                    ~api,
                    ~dataSource=dataSourceName,
-                   ~requestMappingTemplate=queryByIndexFiltered(index),
-                   ~responseMappingTemplate=result,
+                   ~requestMappingTemplate=
+                     queryByIndexFiltered(index)->Pulumi.Input.wrap,
+                   ~responseMappingTemplate=result->Pulumi.Input.wrap,
                    ~opts,
                    (),
                  );
                Resolver.make(
                  ~name,
                  ~api,
-                 ~_type="Query",
-                 ~field=name->String.uncapitalize,
+                 ~_type="Query"->Pulumi.Input.wrap,
+                 ~field=name->String.uncapitalize->Pulumi.Input.wrap,
                  ~requestTemplate="{}"->Pulumi.Input.wrap,
                  ~responseTemplate=result->Pulumi.Input.wrap,
                  ~kind=Pipeline([|authFunction, queryFunction|]),
@@ -150,8 +151,8 @@ let make =
                ~name=name ++ idFieldName->String.capitalize,
                ~api,
                ~dataSourceName,
-               ~_type=name,
-               ~field=fieldName,
+               ~_type=name->Pulumi.Input.wrap,
+               ~field=fieldName->Pulumi.Input.wrap,
                ~requestTemplate=
                  generateTemplate(
                    ~tableName,
@@ -172,8 +173,8 @@ let make =
                ~name=name ++ idsFieldName->String.capitalize,
                ~api,
                ~dataSourceName,
-               ~_type=name,
-               ~field=fieldName,
+               ~_type=name->Pulumi.Input.wrap,
+               ~field=fieldName->Pulumi.Input.wrap,
                ~requestTemplate=
                  generateTemplate(
                    ~tableName,

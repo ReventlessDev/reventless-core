@@ -13,7 +13,7 @@ let addUserGroup = (~name: string, ~userPool: PulumiAws.Cognito.UserPool.t) =>
 let makeAddRemoveUserToGroupPolicy =
     (
       ~name: string,
-      ~userPoolArn: string,
+      ~userPoolArn: Pulumi.Output.t(string),
       ~opts: option(Pulumi.CustomResourceOptions.t)=?,
       _: unit,
     ) =>
@@ -22,7 +22,9 @@ let makeAddRemoveUserToGroupPolicy =
     ~args=
       PulumiAws.IAM.Policy.Args.makeFromString(
         ~policy=
-          {j|{
+          userPoolArn
+          ->Pulumi.Output.apply(userPoolArn =>
+              {j|{
             "Version": "2012-10-17",
             "Statement": [
               {
@@ -38,7 +40,9 @@ let makeAddRemoveUserToGroupPolicy =
                   "Resource": "$userPoolArn"
               }
             ]
-          }|j},
+          }|j}
+            )
+          ->Pulumi.Output.asInput,
         (),
       ),
     ~opts?,

@@ -4,12 +4,14 @@ let make = (~name, ~opts) => {
       ~name,
       ~args=
         PulumiAws.DynamoDb.Table.Args.make(
-          ~attributes=[|
-            {"name": "id", "type": "S"},
-            {"name": "sequenceNr", "type": "S"},
-          |],
-          ~hashKey="id",
-          ~rangeKey="sequenceNr",
+          ~attributes=
+            [|
+              {"name": "id", "type": "S"},
+              {"name": "sequenceNr", "type": "S"},
+            |]
+            ->Pulumi.Input.wrap,
+          ~hashKey="id"->Pulumi.Input.wrap,
+          ~rangeKey="sequenceNr"->Pulumi.Input.wrap,
           ~billingMode=`PAY_PER_REQUEST,
           (),
         ),

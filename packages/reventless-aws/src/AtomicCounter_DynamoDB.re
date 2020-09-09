@@ -5,12 +5,14 @@ let make = (~name, ~opts) => {
         ~name,
         ~args=
           Args.make(
-            ~attributes=[|
-              {"name": "reference", "type": "S"},
-              {"name": "id", "type": "S"},
-            |],
-            ~hashKey="id",
-            ~rangeKey="reference",
+            ~attributes=
+              [|
+                {"name": "reference", "type": "S"},
+                {"name": "id", "type": "S"},
+              |]
+              ->Pulumi.Input.wrap,
+            ~hashKey="id"->Pulumi.Input.wrap,
+            ~rangeKey="reference"->Pulumi.Input.wrap,
             ~billingMode=`PAY_PER_REQUEST,
             (),
           ),
