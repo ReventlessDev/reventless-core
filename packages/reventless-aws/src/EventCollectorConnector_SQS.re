@@ -16,7 +16,7 @@ let make =
       ~name,
       ~args=
         SQS.Queue.Args.make(
-          ~visibilityTimeoutSeconds=timeout,
+          ~visibilityTimeoutSeconds=timeout->Pulumi.Input.wrap,
           ~redrivePolicy=
             Util_DeadLetterQueue.queue##arn
             ->Pulumi.Output.apply(dlqArn =>
@@ -89,8 +89,8 @@ let make =
                   queue,
                 ),
               ~policies,
-              ~memorySize,
-              ~timeout,
+              ~memorySize=memorySize->Pulumi.Input.wrap,
+              ~timeout=timeout->Pulumi.Input.wrap,
               (),
             ),
           ~opts,
