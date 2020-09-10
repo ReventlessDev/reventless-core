@@ -150,37 +150,38 @@ module Make =
 
   let handleCommands = commandsHandler =>
     (. jsons) =>
-      jsons->Belt.Array.keepMap(json =>
-        switch (
-          json
-          |> Message.command'_decode(Spec.Id.t_decode, Spec.command_decode)
-        ) {
-        | Belt_Result.Ok(command') => Some((command'.id, command'))
-        | Belt_Result.Error(err) =>
-          let commandStr = json->Js.Json.stringify;
-          let message = err.message;
-          Js.log(
-            {j|CommandTopic: Error: Couldn't decode command $commandStr: $message|j},
-          );
-          None;
-        }
-      )
-      |> groupCommandsById
-      |> Array.map(((id, commands')) => {
-           let commandCount = commands' |> Array.length;
-           commands'
-           |> Array.mapi((idx, command') =>
-                logCommand'(idx, commands' |> Array.length, command')
-              )
-           |> ignore;
-           commandsHandler(. id, commands')
-           |> Js.Promise.catch(err =>
-                failwith(
-                  {j|CommandTopic.handleCommand: Error: Couldn't handle $commandCount command(s) for id $id: $err|j},
-                )
-                |> Js.Promise.reject
-              );
-         })
+      jsons
+      ->Belt.Array.keepMap(json =>
+          switch (
+            json
+            |> Message.command'_decode(Spec.Id.t_decode, Spec.command_decode)
+          ) {
+          | Belt_Result.Ok(command') => Some((command'.id, command'))
+          | Belt_Result.Error(err) =>
+            let commandStr = json->Js.Json.stringify;
+            let message = err.message;
+            Js.log(
+              {j|CommandTopic: Error: Couldn't decode command $commandStr: $message|j},
+            );
+            None;
+          }
+        )
+      ->groupCommandsById
+      ->Belt.Array.map(((id, commands')) => {
+          let commandCount = commands'->Belt.Array.length;
+          commands'
+          ->Belt.Array.mapWithIndex((idx, command') =>
+              logCommand'(idx, commands'->Belt.Array.length, command')
+            )
+          ->ignore;
+          commandsHandler(. id, commands')
+          |> Js.Promise.catch(err =>
+               failwith(
+                 {j|CommandTopic.handleCommand: Error: Couldn't handle $commandCount command(s) for id $id: $err|j},
+               )
+               |> Js.Promise.reject
+             );
+        })
       |> Js.Promise.all
       |> Js.Promise.then_(_ => Js.Promise.resolve());
 

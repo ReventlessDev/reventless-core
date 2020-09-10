@@ -33,10 +33,8 @@ let handlePromise:
 
 let all_inArray: array(t('v, 'f)) => t(array('v), 'f) =
   promises =>
-    promises
-    |> Array.to_list
-    |> Repromise.Rejectable.all
-    |> Repromise.Rejectable.map(resultList => resultList |> Array.of_list);
+    promises->Belt.List.fromArray->Repromise.Rejectable.all
+    |> Repromise.Rejectable.map(resultList => resultList->Belt.List.toArray);
 
 let all_inList: list(t('v, 'f)) => t(list('v), 'f) =
   promises => promises |> Repromise.Rejectable.all;

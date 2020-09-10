@@ -190,13 +190,13 @@ let make: QueryDb.resolversMaker(api, role) =
              });
 
         (resolversByIndex @ idResolvers @ idsResolvers)
-        ->Array.of_list
+        ->Belt.List.toArray
         ->Belt.Array.map(Util_AppSync.toResource);
       };
 
     let resolvers = [|resolverById, resolverAll|]; // TODO add other resolvers (from maker)
 
-    let resources = resolvers |> Array.map(Util_AppSync.toResource);
+    let resources = resolvers->Belt.Array.map(Util_AppSync.toResource);
 
     {QueryDb.resources, resourcesMaker};
   };

@@ -186,7 +186,7 @@ let construct =
       |> then_(result =>
            resolve(
              result##_Items
-             |> Array.map(js => js |> Message.stringify |> Js.Json.parseExn),
+             ->Belt.Array.map(js => js->Message.stringify->Js.Json.parseExn),
            )
          )
       |> catch(err => {

@@ -9,7 +9,7 @@ let fromValidation: (callback, Validation.t(unit, string)) => calledBack =
     switch (validation) {
     | Failure(msg) => cb |> toInvalid(msg)
     | Failures(msgs) =>
-      cb |> toInvalid(msgs |> Array.to_list |> String.concat(", "))
+      cb |> toInvalid(msgs->Belt.List.fromArray |> String.concat(", "))
     | Success(_)
     | Successes(_) => cb |> toValid
     };

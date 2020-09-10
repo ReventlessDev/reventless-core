@@ -97,55 +97,51 @@ module Make =
               fun
               | (Some(Ok(eventId)), Some(Ok(event))) =>
                 Mapping.map(. eventId, event)
-                |> Array.mapi((idx, action) =>
-                     switch (action) {
-                     | EventMapping.PublishToQueue(
-                         service,
-                         (commandId, command),
-                         idEncoder,
-                         commandEncoder,
-                       ) =>
-                       let commandMeta = {
-                         ...eventMeta,
-                         service,
-                         correlationId:
-                           // original correlationId only for first action to avoid counting problems
-                           // TODO: think about different solution, e.g. AtomicCounter with explicit
-                           // count parameter (instead of always counting by 1)
-                           idx == 0 ? eventMeta.correlationId : Message.uuid(),
-                         msgId: Message.uuid(),
-                       };
-                       let queueId =
-                         queryCommandTopic(service)##id->Pulumi.Output.get;
+                ->Belt.Array.mapWithIndex((idx, action) =>
+                    switch (action) {
+                    | EventMapping.PublishToQueue(
+                        service,
+                        (commandId, command),
+                        idEncoder,
+                        commandEncoder,
+                      ) =>
+                      let commandMeta = {
+                        ...eventMeta,
+                        service,
+                        correlationId:
+                          // original correlationId only for first action to avoid counting problems
+                          // TODO: think about different solution, e.g. AtomicCounter with explicit
+                          // count parameter (instead of always counting by 1)
+                          idx == 0 ? eventMeta.correlationId : Message.uuid(),
+                        msgId: Message.uuid(),
+                      };
+                      let queueId =
+                        queryCommandTopic(service)##id->Pulumi.Output.get;
 
-                       {Message.id: commandId, meta: commandMeta, command}
-                       |> Message.command'_encode(idEncoder, commandEncoder)
-                       |> Js.Json.stringify
-                       |> AwsSdk.SQS.sendMessage(
-                            ~queueId,
-                            ~messageBody=_,
-                            (),
-                          )
-                       |> Js.Promise.catch(err =>
-                            err
-                            |> Js.log2(
-                                 "EventMapper: Error on publish command:",
-                               )
-                            |> Js.Promise.resolve
-                          );
-                     | Call(commandHandler, command) =>
-                       command
-                       |> commandHandler
-                       |> Js.Promise.catch(err =>
-                            err
-                            |> Js.log2(
-                                 "EventMapper: Error in commandHandler:",
-                               )
-                            |> Js.Promise.resolve
-                          )
-                     | Nothing => Js.Promise.resolve()
-                     }
-                   )
+                      {Message.id: commandId, meta: commandMeta, command}
+                      |> Message.command'_encode(idEncoder, commandEncoder)
+                      |> Js.Json.stringify
+                      |> AwsSdk.SQS.sendMessage(~queueId, ~messageBody=_, ())
+                      |> Js.Promise.catch(err =>
+                           err
+                           |> Js.log2(
+                                "EventMapper: Error on publish command:",
+                              )
+                           |> Js.Promise.resolve
+                         );
+                    | Call(commandHandler, command) =>
+                      command
+                      |> commandHandler
+                      |> Js.Promise.catch(err =>
+                           err
+                           |> Js.log2(
+                                "EventMapper: Error in commandHandler:",
+                              )
+                           |> Js.Promise.resolve
+                         )
+                    | Nothing => Js.Promise.resolve()
+                    }
+                  )
                 |> Js.Promise.all
                 |> Js.Promise.then_(_ => Js.Promise.resolve())
               | (None, _)
@@ -180,8 +176,9 @@ module Make =
       EventCollector.make(
         ~name=EventMappings.name,
         ~aggregateNames=
-          EventMappings.mappings->Js.Dict.entries
-          |> Array.map(((eventService, _)) => eventService),
+          EventMappings.mappings
+          ->Js.Dict.entries
+          ->Belt.Array.map(((eventService, _)) => eventService),
         ~eventHandler=map(queryCommandTopic),
         ~queryEventTopic,
         ~memorySize,

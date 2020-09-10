@@ -11,7 +11,7 @@ let load = table =>
          (
            switch (arr) {
            | [||] => []
-           | items => items |> Array.to_list
+           | items => items->Belt.List.fromArray
            }
          )
          ->Ok

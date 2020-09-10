@@ -77,36 +77,31 @@ module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) =
 
   let publish = publisher =>
     (. events') => {
-      let eventCount = events' |> Array.length;
-      events'
-      |> Array.mapi((idx, event') => {
-           let json =
-             Message.event'_encode(
-               Spec.Id.t_encode,
-               Spec.event_encode,
-               event',
+      let eventCount = events'->Belt.Array.length;
+      events'->Belt.Array.mapWithIndex((idx, event') => {
+        let json =
+          Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event');
+
+        let id = event'.id;
+        let event = json->Js.Json.stringify;
+        let eventName: string = event'.event->Spec.event_encode->Obj.magic[0];
+        let idx = idx + 1;
+        let resourceName = publisher.resource##name->Pulumi.Output.get;
+
+        publisher.publish(. json)
+        |> Js.Promise.catch(e => {
+             Js.log(
+               {j|EventTopic: Couldn't publish event $idx/$eventCount: $eventName($id) to $resourceName|j},
              );
-
-           let id = event'.id;
-           let event = json->Js.Json.stringify;
-           let eventName: string = event'.event->Spec.event_encode->Obj.magic[0];
-           let idx = idx + 1;
-           let resourceName = publisher.resource##name->Pulumi.Output.get;
-
-           publisher.publish(. json)
-           |> Js.Promise.catch(e => {
-                Js.log(
-                  {j|EventTopic: Couldn't publish event $idx/$eventCount: $eventName($id) to $resourceName|j},
-                );
-                NotPublishedToPublisher(e)->Js.Promise.reject;
-              })
-           |> Js.Promise.then_(_ =>
-                Js.log(
-                  {j|EventTopic: Published event $idx/$eventCount: $eventName($id) to $resourceName: $event|j},
-                )
-                ->Js.Promise.resolve
-              );
-         })
+             NotPublishedToPublisher(e)->Js.Promise.reject;
+           })
+        |> Js.Promise.then_(_ =>
+             Js.log(
+               {j|EventTopic: Published event $idx/$eventCount: $eventName($id) to $resourceName: $event|j},
+             )
+             ->Js.Promise.resolve
+           );
+      })
       |> Js.Promise.all
       |> Js.Promise.then_(_ => Js.Promise.resolve());
     };

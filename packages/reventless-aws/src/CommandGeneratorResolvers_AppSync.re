@@ -101,26 +101,25 @@ let make: Reventless.CommandGenerator.resolversMaker(api) =
   |j};
 
     let resolvers =
-      fields
-      |> Array.map(field => {
-           let commandName = field->String.capitalize;
-           AppSync.Resolver.make(
-             ~name=commandName,
-             ~api,
-             ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
-             ~_type="Mutation"->Pulumi.Input.wrap,
-             ~field=field->Pulumi.Input.wrap,
-             ~requestTemplate=
-               invokeCommandGenerator(commandName)->Pulumi.Input.wrap,
-             ~responseTemplate=
-               AppSync.Resolver.Templates.result->Pulumi.Input.wrap,
-             ~kind=AppSync.Resolver.Unit,
-             ~opts,
-             (),
-           );
-         });
+      fields->Belt.Array.map(field => {
+        let commandName = field->String.capitalize;
+        AppSync.Resolver.make(
+          ~name=commandName,
+          ~api,
+          ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
+          ~_type="Mutation"->Pulumi.Input.wrap,
+          ~field=field->Pulumi.Input.wrap,
+          ~requestTemplate=
+            invokeCommandGenerator(commandName)->Pulumi.Input.wrap,
+          ~responseTemplate=
+            AppSync.Resolver.Templates.result->Pulumi.Input.wrap,
+          ~kind=AppSync.Resolver.Unit,
+          ~opts,
+          (),
+        );
+      });
 
-    let resources = resolvers |> Array.map(Util_AppSync.toResource);
+    let resources = resolvers->Belt.Array.map(Util_AppSync.toResource);
 
     {Reventless.CommandGenerator.resources: resources};
   };

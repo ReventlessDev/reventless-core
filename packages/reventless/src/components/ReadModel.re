@@ -179,7 +179,7 @@ module Make =
                       )
                  | Error(_) => process(event's, []),
                );
-          process(event's |> Array.to_list, []);
+          process(event's->Belt.List.fromArray, []);
         }
       );
 

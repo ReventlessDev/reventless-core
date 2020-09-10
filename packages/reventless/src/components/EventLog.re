@@ -82,31 +82,31 @@ module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
   let append = storage =>
     (. sequenceNr, id, events') =>
       try (
-        events'
-        |> Array.map((event': Message.event'(Spec.Id.t, Spec.event)) =>
-             [|
-               ("id", Spec.Id.t_encode(id)),
-               (
-                 "sequenceNr",
-                 Js.Json.string(
-                   Message.hrtimeToString(
-                     ~hrtime=Message.hrtime(),
-                     ~now=Message.now(),
-                   ),
-                 ),
-               ),
-               ("event", event'.event |> Spec.event_encode),
-             |]
-             |> Array.append(
-                  event'.meta
-                  |> Message.meta_encode
-                  |> Js.Json.decodeObject
-                  |> Js.Option.getExn
-                  |> Js.Dict.entries,
-                )
-             |> Js.Dict.fromArray
-             |> Js.Json.object_
-           )
+        events'->Belt.Array.map(
+          (event': Message.event'(Spec.Id.t, Spec.event)) =>
+          [|
+            ("id", Spec.Id.t_encode(id)),
+            (
+              "sequenceNr",
+              Js.Json.string(
+                Message.hrtimeToString(
+                  ~hrtime=Message.hrtime(),
+                  ~now=Message.now(),
+                ),
+              ),
+            ),
+            ("event", event'.event |> Spec.event_encode),
+          |]
+          ->Belt.Array.concat(
+              event'.meta
+              ->Message.meta_encode
+              ->Js.Json.decodeObject
+              ->Js.Option.getExn
+              ->Js.Dict.entries,
+            )
+          ->Js.Dict.fromArray
+          ->Js.Json.object_
+        )
         |> (
           data =>
             storage.append(. sequenceNr, id |> Spec.Id.toString, data)
@@ -130,33 +130,32 @@ module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
     (. id) => {
       storage.replay(. id |> Spec.Id.toString)
       |> Js.Promise.then_(jsons =>
-           jsons
-           |> Array.map(json =>
-                Js.Json.decodeObject(json)
-                ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
-                ->Belt.Option.map(json => (json, Spec.event_decode(json)))
-                ->Belt.Option.map(
-                    fun
-                    | (_, Belt.Result.Ok(event)) => event
-                    | (json, Error(err)) => {
-                        let eventStr = json |> Js.Json.stringify;
-                        let message = err.message;
-                        Js.Exn.raiseError(
-                          {j|EventLog.replay: Error: Couldn't decode $eventStr: $message|j},
-                        );
-                      },
-                  )
-                ->(
-                    fun
-                    | Some(event) => event
-                    | None => {
-                        let eventStr = json |> Js.Json.stringify;
-                        Js.Exn.raiseError(
-                          {j|EventLog.replay: Error: Couldn't decodeObject $eventStr|j},
-                        );
-                      }
-                  )
-              )
+           jsons->Belt.Array.map(json =>
+             Js.Json.decodeObject(json)
+             ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
+             ->Belt.Option.map(json => (json, Spec.event_decode(json)))
+             ->Belt.Option.map(
+                 fun
+                 | (_, Belt.Result.Ok(event)) => event
+                 | (json, Error(err)) => {
+                     let eventStr = json |> Js.Json.stringify;
+                     let message = err.message;
+                     Js.Exn.raiseError(
+                       {j|EventLog.replay: Error: Couldn't decode $eventStr: $message|j},
+                     );
+                   },
+               )
+             ->(
+                 fun
+                 | Some(event) => event
+                 | None => {
+                     let eventStr = json |> Js.Json.stringify;
+                     Js.Exn.raiseError(
+                       {j|EventLog.replay: Error: Couldn't decodeObject $eventStr|j},
+                     );
+                   }
+               )
+           )
            |> Js.Promise.resolve
          );
     };

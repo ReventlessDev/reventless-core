@@ -221,25 +221,24 @@ module Make =
                 });
            };
 
-           commands'
-           |> Array.fold_left(
-                processCommand,
-                Js.Promise.resolve((
-                  updateState(None, history |> Array.to_list),
-                  [],
-                )),
-              )
+           commands'->Belt.Array.reduce(
+             (updateState(None, history->Belt.List.fromArray), [])
+             ->Js.Promise.resolve,
+             processCommand,
+           )
            |> Js.Promise.then_(((_, newEvents)) => {
                 let newEvents' =
                   newEvents
-                  |> List.map(((events, meta)) =>
-                       events |> List.map(event => {Message.id, meta, event})
-                     )
-                  |> List.flatten
-                  |> Array.of_list;
+                  ->Belt.List.map(((events, meta)) =>
+                      events->Belt.List.map(event =>
+                        {Message.id, meta, event}
+                      )
+                    )
+                  ->Belt.List.flatten
+                  ->Belt.List.toArray;
 
                 Js.Promise.all2((
-                  eventLogAppend(. history |> Array.length, id, newEvents')
+                  eventLogAppend(. history->Belt.Array.length, id, newEvents')
                   |> Js.Promise.catch(err =>
                        Js.Promise.reject(
                          failwith(

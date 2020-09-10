@@ -88,8 +88,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
 
     let handleEvents =
       (. jsons) =>
-        jsons
-        |> Array.map(json => eventHandler(. json))
+        jsons->Belt.Array.map(json => eventHandler(. json))
         |> Js.Promise.all
         |> Js.Promise.then_(_ => Js.Promise.resolve());
 

@@ -317,49 +317,51 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
 
     let tasksWithEventMappers =
       taskMakers
-      |> Array.map(taskMaker =>
-           taskMaker(
-             ~queryCommandTopic,
-             ~queryQueryDb,
-             ~queryEventCollector,
-             ~queryBucketName,
-             ~scheduler,
-             ~opts=Some(opts),
-           )
-         )
-      |> Array.map(task => {
-           let eventMapperMaker =
-             switch (task##mappings, task##policies) {
-             | (None, _) => None
-             | (
-                 Some((mappings: (module EventMapping.Mappings))),
-                 Some((policies: (module EventCollector.Policies))),
-               ) =>
-               module EventCollector =
-                 EventCollector.Make
-                   // TODO: general EventCollector
-                   ((val policies), EventCollectorAdapter);
-               module EventMapper =
-                 EventMapper.Make((val mappings), EventCollector);
-               Some(EventMapper.make);
-             | (Some((mappings: (module EventMapping.Mappings))), None) =>
-               module EventCollector =
-                 EventCollector.Make
-                   // TODO: general EventCollector
-                   (EventCollector.NoPolicies, EventCollectorAdapter);
-               module EventMapper =
-                 EventMapper.Make((val mappings), EventCollector);
-               Some(EventMapper.make);
-             };
-           (task, eventMapperMaker);
-         })
-      |> Belt.Array.unzip;
+      ->Belt.Array.map(taskMaker =>
+          taskMaker(
+            ~queryCommandTopic,
+            ~queryQueryDb,
+            ~queryEventCollector,
+            ~queryBucketName,
+            ~scheduler,
+            ~opts=Some(opts),
+          )
+        )
+      ->Belt.Array.map(task => {
+          let eventMapperMaker =
+            switch (task##mappings, task##policies) {
+            | (None, _) => None
+            | (
+                Some((mappings: (module EventMapping.Mappings))),
+                Some((policies: (module EventCollector.Policies))),
+              ) =>
+              module EventCollector =
+                EventCollector.Make
+                  // TODO: general EventCollector
+                  ((val policies), EventCollectorAdapter);
+              module EventMapper =
+                EventMapper.Make((val mappings), EventCollector);
+              Some(EventMapper.make);
+            | (Some((mappings: (module EventMapping.Mappings))), None) =>
+              module EventCollector =
+                EventCollector.Make
+                  // TODO: general EventCollector
+                  (EventCollector.NoPolicies, EventCollectorAdapter);
+              module EventMapper =
+                EventMapper.Make((val mappings), EventCollector);
+              Some(EventMapper.make);
+            };
+          (task, eventMapperMaker);
+        })
+      ->Belt.Array.unzip;
 
     tasks := tasksWithEventMappers->fst;
 
     let taskEventMapperMakers =
-      tasksWithEventMappers->snd->Belt.Array.keep(Belt.Option.isSome)
-      |> Array.map(Belt.Option.getExn);
+      tasksWithEventMappers
+      ->snd
+      ->Belt.Array.keep(Belt.Option.isSome)
+      ->Belt.Array.map(Belt.Option.getExn);
 
     eventMappers :=
       eventMapperMakers->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
@@ -372,16 +374,16 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         )
       )
       |> Belt.Array.concat(
-           taskEventMapperMakers
-           |> Array.map((eventMapperMaker: EventMapper.maker) =>
-                eventMapperMaker(
-                  ~queryCommandTopic,
-                  ~queryEventTopic,
-                  ~memorySize=1024,
-                  ~opts=Some(opts),
-                  (),
-                )
-              ),
+           taskEventMapperMakers->Belt.Array.map(
+             (eventMapperMaker: EventMapper.maker) =>
+             eventMapperMaker(
+               ~queryCommandTopic,
+               ~queryEventTopic,
+               ~memorySize=1024,
+               ~opts=Some(opts),
+               (),
+             )
+           ),
          );
 
     let resolvers =
