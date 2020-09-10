@@ -111,11 +111,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       InterstackResourceQueryRuntime.commandTopicConnectorOfAllServicesExn(
         services->Interstack.mergeServices,
       );
-
-    let dictGetExn = (dict, key) =>
-      dict->Js.Dict.get(key)->Belt.Option.getExn;
-
-    let (-#) = dictGetExn;
+    open Pulumi.StackReference.Infix;
 
     let corePluginCommandTopicId =
       coreStackOutput->Pulumi.Output.apply(output =>
