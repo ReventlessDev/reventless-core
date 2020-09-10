@@ -36,11 +36,10 @@ type publisher = {
   resource: Adapter.resource,
   publish: publish(Js.Json.t),
 };
+type publisherMaker =
+  (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => publisher;
 
-module type Publisher = {
-  let make:
-    (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => publisher;
-};
+module type Publisher = {let make: publisherMaker;};
 
 module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) => {
   module Spec = Spec;

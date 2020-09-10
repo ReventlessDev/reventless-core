@@ -48,19 +48,20 @@ type payload = {
 type commandGenerator = payload => Js.Promise.t(string);
 
 type resolvers = {resources: array(Adapter.resource)};
+type resolversMaker('api) =
+  (
+    ~name: string,
+    ~api: 'api,
+    ~fields: array(string),
+    ~commandGenerator: commandGenerator,
+    ~opts: Pulumi.CustomResourceOptions.t
+  ) =>
+  resolvers;
 
 module type Resolvers = {
   type api;
 
-  let make:
-    (
-      ~name: string,
-      ~api: api,
-      ~fields: array(string),
-      ~commandGenerator: commandGenerator,
-      ~opts: Pulumi.CustomResourceOptions.t
-    ) =>
-    resolvers;
+  let make: resolversMaker(api);
 };
 
 module Make =

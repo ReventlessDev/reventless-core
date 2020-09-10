@@ -14,11 +14,6 @@ type t('id, 'command) = functions('id, 'command);
 
 exception NotPublishedToConnector(Js.Promise.error);
 
-type connector = {
-  resource: Adapter.resource,
-  publish: publish(Js.Json.t),
-};
-
 module type Spec = {
   module Id: Id.T;
 
@@ -44,17 +39,21 @@ module type T = {
     t;
 };
 
-module type Connector = {
-  let make:
-    (
-      ~name: string,
-      ~handleCommands: (. array(Js.Json.t)) => Js.Promise.t(unit),
-      ~memorySize: int,
-      ~timeout: int,
-      ~opts: Pulumi.CustomResourceOptions.t
-    ) =>
-    connector;
+type connector = {
+  resource: Adapter.resource,
+  publish: publish(Js.Json.t),
 };
+type connectorMaker =
+  (
+    ~name: string,
+    ~handleCommands: (. array(Js.Json.t)) => Js.Promise.t(unit),
+    ~memorySize: int,
+    ~timeout: int,
+    ~opts: Pulumi.CustomResourceOptions.t
+  ) =>
+  connector;
+
+module type Connector = {let make: connectorMaker;};
 
 module Make =
        (Spec: Spec, Connector: Connector)

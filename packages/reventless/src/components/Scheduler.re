@@ -55,12 +55,10 @@ type scheduledPublisher = {
   createSchedule,
   deleteSchedule,
 };
+type scheduledPublisherMaker =
+  (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => scheduledPublisher;
 
-module type ScheduledPublisher = {
-  let make:
-    (~name: string, ~opts: Pulumi.CustomResourceOptions.t) =>
-    scheduledPublisher;
-};
+module type ScheduledPublisher = {let make: scheduledPublisherMaker;};
 
 module Make = (ScheduledPublisher: ScheduledPublisher) : T => {
   type constructed;

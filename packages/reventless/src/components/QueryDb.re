@@ -19,7 +19,7 @@ type delete('id) =
   (. 'id, option((string, string))) =>
   Js.Promise.t(Belt.Result.t(unit, storageError));
 
-type resolversMaker =
+type resolversResourcesMaker =
   InterstackResourceQuery.deploytimeQueryExn => array(Adapter.resource);
 
 type functions('id, 'state) = {
@@ -33,7 +33,7 @@ type outputs = {
   .
   "storage": Adapter.resource,
   "resolvers": Adapter.resource,
-  "resolversMaker": resolversMaker,
+  "resolversMaker": resolversResourcesMaker,
 };
 external toOutputs: functions('id, 'command) => outputs = "%identity";
 
@@ -55,45 +55,47 @@ type storage = {
   save: save(string, Js.Json.t),
   delete: delete(string),
 };
+type storageMaker('api, 'role) =
+  (
+    ~name: string,
+    ~indexes: list(View.index),
+    ~sortField: option(string),
+    ~api: 'api,
+    ~apiRole: 'role,
+    ~opts: Pulumi.CustomResourceOptions.t
+  ) =>
+  storage;
 
 module type Storage = {
   type api;
   type role;
 
-  let make:
-    (
-      ~name: string,
-      ~indexes: list(View.index),
-      ~sortField: option(string),
-      ~api: api,
-      ~apiRole: role,
-      ~opts: Pulumi.CustomResourceOptions.t
-    ) =>
-    storage;
+  let make: storageMaker(api, role);
 };
 
 type resolvers = {
   resources: array(Adapter.resource),
-  maker: resolversMaker,
+  resourcesMaker: resolversResourcesMaker,
 };
+type resolversMaker('api, 'role) =
+  (
+    ~name: string,
+    ~api: 'api,
+    ~apiRole: 'role,
+    ~dataSourceName: Pulumi.Output.t(string),
+    ~indexes: list(View.index),
+    ~sortField: option(string),
+    ~resolveIdConfigs: list(View.resolveIdConfig),
+    ~resolveIdsConfigs: list(View.resolveIdsConfig),
+    ~opts: Pulumi.CustomResourceOptions.t
+  ) =>
+  resolvers;
 
 module type Resolvers = {
   type api;
   type role;
 
-  let make:
-    (
-      ~name: string,
-      ~api: api,
-      ~apiRole: role,
-      ~dataSourceName: Pulumi.Output.t(string),
-      ~indexes: list(View.index),
-      ~sortField: option(string),
-      ~resolveIdConfigs: list(View.resolveIdConfig),
-      ~resolveIdsConfigs: list(View.resolveIdsConfig),
-      ~opts: Pulumi.CustomResourceOptions.t
-    ) =>
-    resolvers;
+  let make: resolversMaker(api, role);
 };
 
 module Make =
@@ -140,7 +142,7 @@ module Make =
     (
       ~storage: Adapter.resource,
       ~resolvers: array(Adapter.resource),
-      ~resolversMaker: resolversMaker
+      ~resolversMaker: resolversResourcesMaker
     ) =>
     outputs =
     "";
@@ -236,7 +238,7 @@ module Make =
     makeOutputs(
       ~storage=storage.resource,
       ~resolvers=resolvers.resources,
-      ~resolversMaker=resolvers.maker,
+      ~resolversMaker=resolvers.resourcesMaker,
     )
     |> self->setOutputs;
   };

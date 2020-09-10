@@ -30,21 +30,20 @@ module type T = {
 };
 
 type connector = {resource: Adapter.resource};
+type connectorMaker =
+  (
+    ~name: string,
+    ~eventServices: array(string),
+    ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
+    ~policies: array(Pulumi.Output.t(arn)),
+    ~handleEvents: (. array(Js.Json.t)) => Js.Promise.t(unit),
+    ~memorySize: int,
+    ~timeout: int,
+    ~opts: Pulumi.CustomResourceOptions.t
+  ) =>
+  connector;
 
-module type Connector = {
-  let make:
-    (
-      ~name: string,
-      ~eventServices: array(string),
-      ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
-      ~policies: array(Pulumi.Output.t(arn)),
-      ~handleEvents: (. array(Js.Json.t)) => Js.Promise.t(unit),
-      ~memorySize: int,
-      ~timeout: int,
-      ~opts: Pulumi.CustomResourceOptions.t
-    ) =>
-    connector;
-};
+module type Connector = {let make: connectorMaker;};
 
 module Make = (Policies: Policies, Connector: Connector) : T => {
   type constructed;

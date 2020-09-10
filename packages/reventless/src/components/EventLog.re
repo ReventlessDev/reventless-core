@@ -39,10 +39,10 @@ type storage = {
   append: append(string, Js.Json.t),
   replay: replay(string, Js.Json.t),
 };
+type storageMaker =
+  (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage;
 
-module type Storage = {
-  let make: (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage;
-};
+module type Storage = {let make: storageMaker;};
 
 module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
   module Spec = Spec;
