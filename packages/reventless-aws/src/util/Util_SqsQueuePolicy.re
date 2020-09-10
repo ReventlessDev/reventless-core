@@ -31,7 +31,8 @@ let allowResources:
               }
             }|j}
           )
-        ->Js.String.concatMany(",")
+        ->Belt.List.fromArray
+        ->String.concat(",", _)
       );
 
 let allowCloudWatchEvents =
@@ -60,7 +61,7 @@ let make:
       ->Output.all
       ->Output.apply(statementStrs => {
           let statementStr =
-            statementStrs->Array.to_list |> String.concat(",");
+            statementStrs->Belt.List.fromArray->String.concat(",", _);
           {j|{
               "Version": "2012-10-17",
               "Id": "$name",
