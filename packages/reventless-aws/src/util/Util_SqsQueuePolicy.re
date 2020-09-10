@@ -1,20 +1,24 @@
 open Pulumi;
 
 let allowResources:
-  (~queue: PulumiAws.SQS.Queue.t, ~resources: array(Reventless.Adapter.resource)) =>
+  (
+    ~queue: PulumiAws.SQS.Queue.t,
+    ~resources: array(Output.t(Reventless.Adapter.resource))
+  ) =>
   Output.t(string) =
   (~queue, ~resources) =>
-    Output.all(
-      [|queue##arn|]
-      ->Array.append(resources |> Array.map(resource => resource##urn)),
-    )
-    ->Output.apply(arns => {
-        let arnsList = arns |> Array.to_list;
-        let queueArn = arnsList |> List.hd;
-        let topicArns = arnsList |> List.tl;
+    Output.all2((
+      queue##arn,
+      resources
+      ->Output.all
+      ->Output.flatMap(resources =>
+          resources->Belt.Array.map(resource => resource##urn)->Output.all
+        ),
+    ))
+    ->Output.apply(((queueArn, topicArns)) =>
         topicArns
-        |> List.mapi((idx, topicArn) =>
-             {j|{
+        ->Belt.Array.mapWithIndex((idx, topicArn) =>
+            {j|{
               "Sid": "$idx",
               "Effect": "Allow",
               "Principal": "*",
@@ -26,27 +30,26 @@ let allowResources:
                 }
               }
             }|j}
-           )
-        |> String.concat(",");
-      });
+          )
+        ->Js.String.concatMany(",")
+      );
 
 let allowCloudWatchEvents =
-  Output.make(
-    {j|{
+  {j|{
       "Effect": "Allow",
       "Principal": {
         "Service": ["events.amazonaws.com","sqs.amazonaws.com"]
       },
       "Action": "sqs:SendMessage",
       "Resource": "*"
-    }|j},
-  );
+    }|j}
+  ->Output.make;
 
 let make:
   (
     ~name: string,
     ~queue: PulumiAws.SQS.Queue.t,
-    ~statements: list(Output.t(string)),
+    ~statements: array(Output.t(string)),
     ~opts: CustomResourceOptions.t=?,
     unit
   ) =>
@@ -54,7 +57,6 @@ let make:
   (~name, ~queue, ~statements, ~opts=?, _) => {
     let policy =
       statements
-      ->Array.of_list
       ->Output.all
       ->Output.apply(statementStrs => {
           let statementStr =

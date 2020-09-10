@@ -58,50 +58,40 @@ let make =
 
   let topics = serviceNamesAndTopics->Belt.Array.map(snd);
   let _queuePolicy =
-    topics
-    ->Pulumi.Output.all
-    ->Pulumi.Output.apply(topics =>
-        Util.SqsQueuePolicy.(
-          make(
-            ~name,
-            ~queue,
-            ~statements=[
-              allowResources(~queue, ~resources=topics),
-              allowCloudWatchEvents,
-            ],
-            ~opts,
-            (),
-          )
-        )
-      );
+    Util.SqsQueuePolicy.(
+      make(
+        ~name,
+        ~queue,
+        ~statements=[|
+          allowResources(~queue, ~resources=topics),
+          allowCloudWatchEvents,
+        |],
+        ~opts,
+        (),
+      )
+    );
 
   let eventHandlerLambda =
-    policies
-    ->Pulumi.Output.all
-    ->Pulumi.Output.apply(policies =>
-        Lambda.CallbackFunction.make(
-          ~name,
-          ~args=
-            Lambda.CallbackFunction.Args.make(
-              ~callback=
-                EventCollectorConnector_SQS_Runtime.handleQueueEvent(
-                  handleEvents,
-                  queue,
-                ),
-              ~policies,
-              ~memorySize=memorySize->Pulumi.Input.wrap,
-              ~timeout=timeout->Pulumi.Input.wrap,
-              (),
+    Lambda.CallbackFunction.make(
+      ~name,
+      ~args=
+        Lambda.CallbackFunction.Args.make(
+          ~callback=
+            EventCollectorConnector_SQS_Runtime.handleQueueEvent(
+              handleEvents,
+              queue,
             ),
-          ~opts,
+          ~policies,
+          ~memorySize=memorySize->Pulumi.Input.wrap,
+          ~timeout=timeout->Pulumi.Input.wrap,
           (),
-        )
-      );
+        ),
+      ~opts,
+      (),
+    );
 
   let _queueSubscription =
-    eventHandlerLambda->Pulumi.Output.apply(eventHandlerLambda =>
-      queue->SQS.Queue.onEvent(~name, ~handler=eventHandlerLambda, ~opts, ())
-    );
+    queue->SQS.Queue.onEvent(~name, ~handler=eventHandlerLambda, ~opts, ());
 
   {Reventless.EventCollector.resource: queue->Util_SQS.toResource};
 };

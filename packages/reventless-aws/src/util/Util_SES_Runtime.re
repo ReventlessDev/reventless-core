@@ -122,7 +122,11 @@ module IdentityPolicy = {
 
     [@bs.obj]
     external make:
-      (~identity: Pulumi.Input.t(PulumiAws.Aws.arn), ~policy: Js.Json.t) => t =
+      (
+        ~identity: Pulumi.Input.t(PulumiAws.Aws.arn),
+        ~policy: Pulumi.Input.t(Js.Json.t)
+      ) =>
+      t =
       "";
   };
 

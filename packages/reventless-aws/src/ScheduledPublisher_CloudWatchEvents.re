@@ -8,13 +8,13 @@ let make = (~name as _, ~opts) => {
     );
 
   let _policy =
-    role##arn
-    ->Pulumi.Output.apply(roleArn =>
-        PulumiAws.IAM.Policy.make(
-          ~name="CloudWatchEventsPolicy",
-          ~args=
-            PulumiAws.IAM.Policy.Args.makeFromString(
-              ~policy=
+    PulumiAws.IAM.Policy.make(
+      ~name="CloudWatchEventsPolicy",
+      ~args=
+        PulumiAws.IAM.Policy.Args.makeFromString(
+          ~policy=
+            role##arn
+            ->Pulumi.Output.apply(roleArn =>
                 {j|{
                     "Version": "2012-10-17",
                     "Statement": [{
@@ -27,13 +27,13 @@ let make = (~name as _, ~opts) => {
                       "Resource": "$roleArn"
                   }]
                   }|j}
-                ->Pulumi.Input.wrap,
-              (),
-            ),
-          ~opts,
+              )
+            ->Pulumi.Output.asInput,
           (),
-        )
-      );
+        ),
+      ~opts,
+      (),
+    );
 
   Reventless.Scheduler.{
     resource:

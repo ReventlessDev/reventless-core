@@ -62,20 +62,23 @@ let identityWithPolicy:
     ~opts: Pulumi.CustomResourceOptions.t=?,
     unit
   ) =>
-  Pulumi.Output.t(IdentityPolicy.t) =
+  IdentityPolicy.t =
   (~name, ~email, ~opts=?, _unit) => {
     let identity = emailIdentity(~name, ~email, ~opts?, ());
-    sesPolicyDocument(~identity, ~opts?, ())
-    |> Pulumi.Output.apply(_, policyDocument =>
-         IdentityPolicy.make(
-           ~name="identityPolicy" ++ name,
-           ~args=
-             IdentityPolicy.Args.make(
-               ~identity=identity##arn->Pulumi.Output.asInput,
-               ~policy=(policyDocument |> Obj.magic)##json,
-             ),
-           ~opts?,
-           (),
-         )
-       );
+
+    IdentityPolicy.make(
+      ~name="identityPolicy" ++ name,
+      ~args=
+        IdentityPolicy.Args.make(
+          ~identity=identity##arn->Pulumi.Output.asInput,
+          ~policy=
+            sesPolicyDocument(~identity, ~opts?, ())
+            ->Pulumi.Output.apply(policyDocument =>
+                (policyDocument |> Obj.magic)##json
+              )
+            ->Pulumi.Output.asInput,
+        ),
+      ~opts?,
+      (),
+    );
   };
