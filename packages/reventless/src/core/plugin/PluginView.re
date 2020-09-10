@@ -76,5 +76,5 @@ let apply =
 let applyMulti =
   (. states, event, context) =>
     states
-    |> List.map(state => apply(. state, event, context))
-    |> List.flatten;
+    ->Belt.List.map(state => apply(. state, event, context))
+    ->Belt.List.flatten;

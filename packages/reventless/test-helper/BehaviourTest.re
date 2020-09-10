@@ -25,7 +25,9 @@ module Make =
   let apply' = (state, event) => Behaviour.apply(. state, event);
 
   let currentState = events =>
-    List.(fold_left(apply', Behaviour.init(. hd(events)), tl(events)));
+    Belt.List.(
+      events->tailExn->reduce(Behaviour.init(. events->headExn), apply')
+    );
 
   let errors = ref([]);
 
@@ -74,24 +76,17 @@ module Make =
       |> toEqual((0, 1, Some(expectedEvent)));
     } else if ((errors^)->Belt.List.length > 0) {
       "Errors occured: "
-      ++ (
-        errors^
-        |> List.map(err
+      ++ (errors^)
+         ->Belt.List.map(err
              /* NOTE: this process is very fragile!!
                 it relies on decco decoding the error-varints to arrays of string
                 */
              =>
-               (
-                 err
-                 |> Spec.error_encode
-                 |> Js.Json.decodeArray
-                 |> Belt.Option.getExn
-               )[0]
-               |> Js.Json.decodeString
-               |> Belt.Option.getExn
+               err->Spec.error_encode->Js.Json.decodeArray->Belt.Option.getExn[0]
+               ->Js.Json.decodeString
+               ->Belt.Option.getExn
              )
-        |> List.fold_left((a, b) => a ++ b ++ " ", "")
-      )
+         ->Belt.List.reduce("", (a, b) => a ++ b ++ " ")
       |> Jest.fail;
     } else {
       Jest.fail("thenEvent: No event present to validate");

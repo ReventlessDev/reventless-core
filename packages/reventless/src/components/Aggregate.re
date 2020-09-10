@@ -127,7 +127,7 @@ module Make =
         };
 
       let updateState = (stateOpt, events) =>
-        events |> List.fold_left(apply', stateOpt);
+        events->Belt.List.reduce(stateOpt, apply');
 
       let updateMeta = (command': Message.command'(Spec.Id.t, Spec.command)) => {
         ...command'.meta,

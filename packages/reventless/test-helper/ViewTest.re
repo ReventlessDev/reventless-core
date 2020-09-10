@@ -38,7 +38,7 @@ module Make =
     | Unchanged(state) => [state];
 
   let applyActions = actions =>
-    actions |> List.map(applyAction) |> List.flatten;
+    actions->Belt.List.map(applyAction)->Belt.List.flatten;
 
   let update = (event, states) =>
     switch (states) {
@@ -72,7 +72,7 @@ module Make =
   let thenState = (expectedState, statesFn) => {
     let statesFn = statesFn |> unpack;
     let states = statesFn();
-    expect((states |> List.length, states->Belt.List.head))
+    expect((states->Belt.List.length, states->Belt.List.head))
     |> toEqual((1, Some(expectedState)));
   };
 

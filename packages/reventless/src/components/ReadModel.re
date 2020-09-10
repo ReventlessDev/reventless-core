@@ -87,7 +87,7 @@ module Make =
     switch (states) {
     | [] =>
       let newStates = View.init(. event, context);
-      newStates |> List.map(state => Create(state));
+      newStates->Belt.List.map(state => Create(state));
     | [oldState] => View.apply(. oldState, event, context)
     | oldStates => View.applyMulti(. oldStates, event, context)
     };
@@ -156,7 +156,9 @@ module Make =
                    fun
                    | Ok () => {
                        let newStates =
-                         actions |> List.map(applyAction) |> List.flatten;
+                         actions
+                         ->Belt.List.map(applyAction)
+                         ->Belt.List.flatten;
                        handleEvents(newStates, unhandledEvent's, []);
                      }
                    | Error(unhandledActions) =>

@@ -114,29 +114,28 @@ let construct =
     | Bool(bool) => Js.Json.boolean(bool);
 
   let createFilters = filters =>
-    filters
-    |> List.mapi((idx, (key, comparator, value)) => {
-         let valueName = {j|$key$idx|j};
-         (
-           AwsSdk.DynamoDb.DocumentClient.QueryInput.(
-             switch (comparator) {
-             | Equal => {j|#$key = :$valueName|j}
-             | Unequal => {j|#$key <> :$valueName|j}
-             | LessOrEqual => {j|#$key <= :$valueName|j}
-             | Less => {j|#$key < :$valueName|j}
-             | GreaterOrEqual => {j|#$key >= :$valueName|j}
-             | Greater => {j|#$key > :$valueName|j}
-             //| Between => {j|#$filterKey between :$valueName and :$valueName|j}
-             | Exists => {j|attribute_exists( #$key )|j}
-             | NotExists => {j|attribute_not_exists( #$key )|j}
-             | Contains => {j|contains( #$key, :$valueName )|j}
-             | NotContains => {j|NOT contains( #$key, :$valueName )|j}
-             | BeginsWith => {j|begins_with( #$key, :$valueName )|j}
-             }
-           ),
-           (({j|#$key|j}, key), ({j|:$valueName|j}, value |> toJson)),
-         );
-       })
+    filters->Belt.List.mapWithIndex((idx, (key, comparator, value)) => {
+      let valueName = {j|$key$idx|j};
+      (
+        AwsSdk.DynamoDb.DocumentClient.QueryInput.(
+          switch (comparator) {
+          | Equal => {j|#$key = :$valueName|j}
+          | Unequal => {j|#$key <> :$valueName|j}
+          | LessOrEqual => {j|#$key <= :$valueName|j}
+          | Less => {j|#$key < :$valueName|j}
+          | GreaterOrEqual => {j|#$key >= :$valueName|j}
+          | Greater => {j|#$key > :$valueName|j}
+          //| Between => {j|#$filterKey between :$valueName and :$valueName|j}
+          | Exists => {j|attribute_exists( #$key )|j}
+          | NotExists => {j|attribute_not_exists( #$key )|j}
+          | Contains => {j|contains( #$key, :$valueName )|j}
+          | NotContains => {j|NOT contains( #$key, :$valueName )|j}
+          | BeginsWith => {j|begins_with( #$key, :$valueName )|j}
+          }
+        ),
+        (({j|#$key|j}, key), ({j|:$valueName|j}, value |> toJson)),
+      );
+    })
     |> Belt.List.unzip;
   open Js.Promise;
 
