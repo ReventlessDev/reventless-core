@@ -9,3 +9,5 @@ let context = {
   },
   id: "id",
 };
+
+let statusChange = {Message.at: context.meta.time, by: context.meta.user};
