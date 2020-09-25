@@ -4,7 +4,7 @@ module Make =
   module Spec = Spec;
   type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
 
-  type t = unit;
+  type t;
 
   let make:
     (
@@ -13,9 +13,8 @@ module Make =
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    t =
-    (~name, ~commandHandler, ~opts=?, _) => {
-      let _ = (name, commandHandler, opts);
-      ();
+    Component.t(t,CommandGenerator.outputs) =
+    (~name as _, ~commandHandler as _, ~opts as _=?, _unit) => {
+      ()->Obj.magic;
     };
 };

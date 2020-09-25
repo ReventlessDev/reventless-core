@@ -8,7 +8,7 @@ type outputs = {
   "commandTopic": CommandTopic.outputs,
   "eventTopic": EventTopic.outputs,
 };
-type t = outputs;
+type extensionPoint; // TODO: rename to t - after refactoring
 
 type name = string;
 
@@ -19,7 +19,7 @@ type maker =
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>
-  t;
+  Component.t(extensionPoint, outputs);
 
 module type Spec = {
   module Id = Id.String;
@@ -65,7 +65,7 @@ module Make =
   module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter);
 
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct = (Component.t(extensionPoint, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -75,7 +75,7 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    t =
+    Component.t(extensionPoint, outputs) =
     "default";
 
   [@bs.obj]
@@ -84,15 +84,15 @@ module Make =
       ~name: string,
       ~aggregateNames: array(string),
       ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(unit),
-      ~commandTopic: CommandTopic.t,
-      ~eventTopic: EventTopic.t
+      ~commandTopic: Reventless.CommandTopic.outputs,
+      ~eventTopic: Reventless.EventTopic.outputs
     ) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(extensionPoint, outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(extensionPoint, outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -145,14 +145,21 @@ module Make =
   let construct = (~mappings, ~queryCommandTopic, ~scheduler, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+        ~parent=self->Component.toPulumiResource,
         (),
       );
 
     let childName =
       name->Js.String2.replace(".", "")->ComponentType.name(componentType);
 
-    let commandTopic: ref(option(CommandTopic.t)) = ref(None);
+    let commandTopic: ref(
+                        option(
+                          Component.t(
+                            CommandTopic.t,
+                            Reventless.CommandTopic.outputs
+                          )
+                        )
+                      ) = ref(None);
 
     let applyCommandAction =
       fun
@@ -182,7 +189,7 @@ module Make =
     let applyEventAction =
       fun
       | ExtensionPointMapping.AbstractPublishEvent(event') => {
-          let publish = eventTopic##publish;
+          let publish = EventTopic.publish(eventTopic);
           publish(. [|event'|])
           |> Js.Promise.catch(err =>
                err
@@ -199,25 +206,21 @@ module Make =
            );
 
     let outgoingEventHandler =
-      (. event'Json) => {
-        let queue =
-          (commandTopic^)
-          ->Belt.Option.getExn
-          ->Reventless.CommandTopic.toOutputs##connector;
-        let mapOutgoingEvent =
-          Mapper.mapOutgoingEvent(mappings, scheduler, queue);
+    (. event'Json) => {
+      let commandTopic = (commandTopic^) ->Belt.Option.getExn;
+      let queue = (commandTopic->Component.extractOutputs)##connector;
+      let mapOutgoingEvent =
+      Mapper.mapOutgoingEvent(mappings, scheduler, queue);
 
-        event'Json->mapOutgoingEvent->Belt.Array.map(applyEventAction)
-        |> Js.Promise.all
-        |> Js.Promise.then_(_ => Js.Promise.resolve());
+      event'Json->mapOutgoingEvent->Belt.Array.map(applyEventAction)
+      |> Js.Promise.all
+      |> Js.Promise.then_(_ => Js.Promise.resolve());
       };
 
     let incomingCommandsHandler =
       (. _id, cmds'Json) => {
-        let queue =
-          (commandTopic^)
-          ->Belt.Option.getExn
-          ->Reventless.CommandTopic.toOutputs##connector;
+      let commandTopic = (commandTopic^) ->Belt.Option.getExn;
+        let queue = (commandTopic->Component.extractOutputs)##connector;
         let mapIncomingCommands =
           Mapper.mapIncomingCommands(mappings, scheduler, queue);
 
@@ -241,10 +244,10 @@ module Make =
       ~aggregateNames=
         mappings->Belt.Array.map(((module Mapping)) => Mapping.aggregateName),
       ~outgoingEventHandler,
-      ~commandTopic=(commandTopic^)->Belt.Option.getExn,
-      ~eventTopic,
+      ~commandTopic=(commandTopic^)->Belt.Option.getExn->Component.extractOutputs,
+      ~eventTopic=eventTopic->Component.extractOutputs,
     )
-    |> self->setOutputs;
+    -> setOutputs(self, _);
   };
 
   let make: array(module Mapping) => maker =

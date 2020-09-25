@@ -5,7 +5,7 @@ let find: (array('a), string) => option('a) =
     );
 
 let commandTopicConnectorOfAllServices:
-  (array(Service.t), string) => option(Adapter.resource) =
+  (array(Service.outputs), string) => option(Adapter.resource) =
   (services, serviceName) =>
     services
     ->find(serviceName)
@@ -13,20 +13,20 @@ let commandTopicConnectorOfAllServices:
 
 // NOTE: only works with 1 ReadModel per Service !
 let queryDbStorageOfAllServices:
-  (array(Service.t), string) => option(Adapter.resource) =
+  (array(Service.outputs), string) => option(Adapter.resource) =
   (services, serviceName) =>
     services
     ->find(serviceName)
     ->Belt.Option.map(service => service##readModel##queryDb##storage);
 
 let eventCollectorConnectorOfAllEventMappers:
-  (array(EventMapper.t), string) => option(Adapter.resource) =
+  (array(EventMapper.outputs), string) => option(Adapter.resource) =
   (eventMappers, eventMapperName) =>
     eventMappers
     ->find(eventMapperName)
     ->Belt.Option.map(eventMapper => eventMapper##eventCollector##connector);
 
-let bucketNameOfAllTasks: (array(Task.t), string) => option(string) =
+let bucketNameOfAllTasks: (array(Task.outputs), string) => option(string) =
   (tasks, taskName) => {
     tasks
     ->find(taskName)

@@ -8,6 +8,7 @@ class Component extends pulumi.ComponentResource {
 
   setOutputs(outputs) {
     Object.entries(outputs).forEach(([key, value]) => this[key] = value);
+    this[outputKeys] = Object.keys;
   }
 }
 

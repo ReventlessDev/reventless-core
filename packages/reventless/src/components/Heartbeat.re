@@ -1,15 +1,11 @@
 let componentType = ComponentType.Heartbeat;
 
-type outputs = {
-  .
-  "name": string,
-  "cloudwatchEventRule": PulumiAws.Cloudwatch_EventRule.t,
-  "cloudwatchEventTarget": PulumiAws.Cloudwatch_EventTarget.t,
-};
-type t = outputs;
+type outputs = {. "name": string};
+
+type heartbeat; // TODO: rename to t - after refactoring
 
 type constructed;
-type construct = (t, string) => constructed;
+type construct = (Component.t(heartbeat, outputs), string) => constructed;
 
 [@bs.module "./Component"] [@bs.new]
 external make:
@@ -19,31 +15,35 @@ external make:
     ~construct: construct,
     ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
-  t =
+  Component.t(heartbeat, outputs) =
   "default";
 
+[@bs.obj] external makeOutputs: (~name: string) => outputs = "";
+
+type outputsToRegister;
 [@bs.obj]
-external makeOutputs:
+external makeOutputsToRegister:
   (
     ~name: string,
     ~cloudwatchEventRule: PulumiAws.Cloudwatch_EventRule.t,
-    ~cloudwatchEventTarget: PulumiAws.Cloudwatch_EventTarget.t
+    ~cloudwatchEventTarget: PulumiAws.Cloudwatch_EventTarget.t,
+    ~heartbeatLambdaPermission: PulumiAws.Lambda.Permission.t
   ) =>
-  outputs =
+  outputsToRegister =
   "";
 
 [@bs.send]
-external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-[@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
-let setOutputs = (self, outputs) => {
-  self->setOutputs(outputs);
-  self->registerOutputs(outputs);
-};
+external registerOutputs:
+  (Component.t(heartbeat, outputs), outputsToRegister) => constructed =
+  "registerOutputs";
+[@bs.send]
+external setOutputs: (Component.t(heartbeat, outputs), outputs) => unit =
+  "setOutputs";
 
 let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
   let opts =
     Pulumi.CustomResourceOptions.make(
-      ~parent=self->Pulumi.Resource.makeFromJs,
+      ~parent=self->Component.toPulumiResource,
       (),
     );
 
@@ -147,7 +147,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
       )
     );
 
-  let _heartbeatLambdaPermission =
+  let heartbeatLambdaPermission =
     PulumiAws.Lambda.(
       Permission.make(
         ~name=childName,
@@ -164,8 +164,10 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
       )
     );
 
-  makeOutputs(~name, ~cloudwatchEventRule, ~cloudwatchEventTarget)
-  |> self->setOutputs;
+  makeOutputs(~name)->setOutputs(self, _);
+
+  makeOutputsToRegister(~name, ~cloudwatchEventRule, ~cloudwatchEventTarget, ~heartbeatLambdaPermission)
+  ->registerOutputs(self, _);
 };
 
 let make = (~id, ~name, ~timeout=10, ~commandTopicId, ~opts=?, _) =>

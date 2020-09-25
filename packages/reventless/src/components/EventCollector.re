@@ -1,9 +1,8 @@
 let componentType = ComponentType.EventCollector;
 
-type eventHandler = (. Js.Json.t) => Js.Promise.t(unit);
-
 type outputs = {. "connector": Adapter.resource};
-type t = outputs;
+
+type eventHandler = (. Js.Json.t) => Js.Promise.t(unit);
 
 type arn = string;
 module type Policies = {let policies: array(Pulumi.Output.t(arn));};
@@ -15,6 +14,7 @@ module NoPolicies: Policies = {
 };
 
 module type T = {
+  type t;
   let make:
     (
       ~name: string,
@@ -26,7 +26,7 @@ module type T = {
       ~opts: option(Pulumi.ComponentResource.Options.t),
       unit
     ) =>
-    t;
+    Component.t(t, outputs);
 };
 
 type connector = {resource: Adapter.resource};
@@ -46,8 +46,9 @@ type connectorMaker =
 module type Connector = {let make: connectorMaker;};
 
 module Make = (Policies: Policies, Connector: Connector) : T => {
+  type t;
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -57,14 +58,14 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    t =
+    Component.t(t, outputs) =
     "default";
 
   [@bs.obj]
   external makeOutputs: (~connector: Adapter.resource) => outputs = "";
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(t, outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -82,7 +83,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
       ) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+        ~parent=self->Component.toPulumiResource,
         (),
       );
 
@@ -104,7 +105,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
         ~opts,
       );
 
-    makeOutputs(~connector=connector.resource) |> self->setOutputs;
+    makeOutputs(~connector=connector.resource) -> setOutputs(self, _);
   };
 
   let make:
@@ -118,7 +119,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
       ~opts: option(Pulumi.ComponentResource.Options.t),
       unit
     ) =>
-    t =
+    Component.t(t, outputs) =
     (
       ~name,
       ~aggregateNames,

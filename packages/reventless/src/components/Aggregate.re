@@ -7,7 +7,6 @@ type outputs = {
   "eventLog": EventLog.outputs,
   "eventTopic": EventTopic.outputs,
 };
-type t = outputs;
 
 type name = string;
 
@@ -36,7 +35,7 @@ module type T = {
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    t;
+    Component.t(t,outputs);
 };
 
 module Make =
@@ -52,12 +51,12 @@ module Make =
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type nonrec t = t;
+  type t;
 
   type eventsHandler = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct = (t, string, eventsHandler) => constructed;
+  type construct = (Component.t(t,outputs), string, eventsHandler) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -68,7 +67,7 @@ module Make =
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~eventsHandler: eventsHandler
     ) =>
-    t =
+    Component.t(t,outputs) =
     "default";
 
   module CommandGenerator =
@@ -80,17 +79,17 @@ module Make =
   [@bs.obj]
   external makeOutputs:
     (
-      ~commandGenerator: CommandGenerator.t,
-      ~commandTopic: CommandTopic.t,
-      ~eventLog: EventLog.t,
-      ~eventTopic: EventTopic.t
+      ~commandGenerator: Reventless.CommandGenerator.outputs,
+      ~commandTopic: Reventless.CommandTopic.outputs,
+      ~eventLog: Reventless.EventLog.outputs,
+      ~eventTopic: Reventless.EventTopic.outputs
     ) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t,outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(t,outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -273,7 +272,7 @@ module Make =
     (self, name, eventsHandler) => {
       let opts =
         Pulumi.ComponentResource.Options.make(
-          ~parent=self->Pulumi.Resource.makeFromJs,
+          ~parent=self->Component.toPulumiResource,
           (),
         );
 
@@ -284,9 +283,9 @@ module Make =
 
       let execCommands =
         execCommands((
-          eventLog##append,
-          eventLog##replay,
-          eventTopic##publish,
+          EventLog.append(eventLog),
+          EventLog.replay(eventLog),
+          EventTopic.publish(eventTopic),
           eventsHandler,
           Config.atomicCounter##increment,
           Config.atomicCounter##get,
@@ -303,12 +302,12 @@ module Make =
       let commandGenerator =
         CommandGenerator.make(
           ~name=childName,
-          ~commandHandler=commandTopic##publish,
+          ~commandHandler=CommandTopic.publish(commandTopic),
           ~opts,
           (),
         );
 
-      makeOutputs(~commandGenerator, ~commandTopic, ~eventLog, ~eventTopic)
+      makeOutputs(~commandGenerator=commandGenerator->Component.extractOutputs, ~commandTopic=commandTopic->Component.extractOutputs, ~eventLog=eventLog->Component.extractOutputs, ~eventTopic=eventTopic->Component.extractOutputs)
       |> self->setOutputs;
     };
 
@@ -318,7 +317,7 @@ module Make =
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    t =
+    Component.t(t,outputs) =
     (~eventsHandler, ~opts=?, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,

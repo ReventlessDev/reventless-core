@@ -20,7 +20,7 @@ let eventCollectorConnectorOfAllEventMappersExn =
   ->eventCollectorConnectorOfAllEventMappers(eventMapperName)
   ->unwrapResource("EventCollector", eventMapperName);
 
-let bucketNameOfAllTasks: (array(Task.t), string) => option(string) =
+let bucketNameOfAllTasks: (array(Task.outputs), string) => option(string) =
   (tasks, taskName) => {
     tasks
     ->find(taskName)

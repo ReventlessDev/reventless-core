@@ -3,14 +3,16 @@ let componentType = ComponentType.Service;
 type outputs = {
   .
   "name": string,
-  "aggregate": Aggregate.t,
+  "aggregate": Aggregate.outputs,
   "readModel": ReadModel.outputs,
 };
-type t = outputs;
 
-type maker = option(Pulumi.ComponentResource.Options.t) => t;
+type service; // TODO: rename this back to t after refactor
+type maker = option(Pulumi.ComponentResource.Options.t) => Component.t(service,outputs);
 
-module type T = {let make: maker;};
+module type T = {
+  let make: maker;
+  };
 
 module Make =
        (
@@ -32,7 +34,7 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct = (Component.t(service,outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -42,7 +44,7 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    t =
+    Component.t(service,outputs) =
     "default";
 
   module Aggregate =
@@ -60,31 +62,32 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~name: string, ~aggregate: Aggregate.t, ~readModel: ReadModel.t) =>
+    (~name: string, ~aggregate: Reventless.Aggregate.outputs, ~readModel: Reventless.ReadModel.outputs) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(service,outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(service,outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  let construct = (self, _name) => {
+  let construct:construct = (self, _name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+        ~parent=self->Component.toPulumiResource,
         (),
       );
 
     let readModel = ReadModel.make(Some(opts));
 
     let aggregate =
-      Aggregate.make(~eventsHandler=readModel##update, ~opts, ());
+      Aggregate.make(~eventsHandler=readModel->ReadModel.update, ~opts, ());
 
-    makeOutputs(~name=Spec.name, ~aggregate, ~readModel) |> self->setOutputs;
+    makeOutputs(~name=Spec.name, ~aggregate=aggregate->Component.extractOutputs, ~readModel=readModel->Component.extractOutputs)
+    -> setOutputs(self, _);
   };
 
   let make = opts =>

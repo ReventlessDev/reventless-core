@@ -1,4 +1,4 @@
-let mergeServices: array(Service.t) => Pulumi.Output.t(array(Service.t));
-let mergeTasks: ref(array(Task.t)) => Pulumi.Output.t(array(Task.t));
+let mergeServices: array(Service.outputs) => Pulumi.Output.t(array(Service.outputs));
+let mergeTasks: ref(array(Task.outputs)) => Pulumi.Output.t(array(Task.outputs));
 let mergeEventMappers:
-  ref(array(EventMapper.t)) => Pulumi.Output.t(array(EventMapper.t));
+  ref(array(EventMapper.outputs)) => Pulumi.Output.t(array(EventMapper.outputs));

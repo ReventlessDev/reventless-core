@@ -7,7 +7,7 @@ type outputs = {
   "incomingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
   "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
 };
-type t = outputs;
+type extension; // TODO: rename to t - after refactoring
 
 type name = string;
 
@@ -19,7 +19,7 @@ type maker =
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>
-  t;
+  Component.t(extension, outputs);
 
 module type Spec = {
   module Id = Id.String;
@@ -54,7 +54,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
   };
 
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct = (Component.t(extension, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -64,7 +64,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    t =
+    Component.t(extension, outputs) =
     "default";
 
   [@bs.obj]
@@ -79,8 +79,8 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
     "";
 
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(extension, outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(extension, outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -218,7 +218,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ~incomingEventHandler,
       ~outgoingEventHandler,
     )
-    |> self->setOutputs;
+    -> setOutputs(self, _);
   };
 
   let make: array(module Mapping) => maker =

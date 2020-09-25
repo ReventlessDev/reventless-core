@@ -1,16 +1,8 @@
 let componentType = ComponentType.EventTopic;
 
-type publish('data) = (. 'data) => Js.Promise.t(unit);
-
-type functions('id, 'event) = {
-  .
-  "publish": publish(array(Message.event'('id, 'event))),
-};
-
 type outputs = {. "publisher": Adapter.resource};
-external toOutputs: functions('id, 'command) => outputs = "%identity";
 
-type t('id, 'command) = functions('id, 'command);
+type publish('data) = (. 'data) => Js.Promise.t(unit);
 
 exception NotPublishedToPublisher(Js.Promise.error);
 
@@ -26,10 +18,13 @@ module type Spec = {
 module type T = {
   module Spec: Spec;
 
-  type nonrec t = t(Spec.Id.t, Spec.event);
+  type t;
 
   let make:
-    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
+  (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => Component.t(t,outputs);
+
+  let publish: Component.t(t, outputs) =>
+  publish(array(Message.event'(Spec.Id.t, Spec.event)));
 };
 
 type publisher = {
@@ -43,10 +38,10 @@ module type Publisher = {let make: publisherMaker;};
 
 module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type nonrec t = t(Spec.Id.t, Spec.event);
+  type t;
 
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   type nonrec publish =
     publish(array(Message.event'(Spec.Id.t, Spec.event)));
@@ -59,23 +54,24 @@ module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    t =
+    Component.t(t, outputs) =
     "default";
 
   [@bs.obj]
   external makeOutputs: (~publisher: Adapter.resource) => outputs = "";
 
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(t,outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setPublish: (t, publish) => unit = "publish";
+  [@bs.set] external setPublish: (Component.t(t,outputs), publish) => unit = "publish";
+  [@bs.get] external publish: Component.t(t,outputs) => publish = "publish";
 
-  let publish = publisher =>
+  let publishFn = publisher =>
     (. events') => {
       let eventCount = events'->Belt.Array.length;
       events'->Belt.Array.mapWithIndex((idx, event') => {
@@ -109,7 +105,7 @@ module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) =
   let construct = (self, name) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+        ~parent=self->Component.toPulumiResource,
         (),
       );
 
@@ -117,13 +113,13 @@ module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) =
       Publisher.make(~name=name->ComponentType.name(componentType), ~opts);
     let publisherOutputs = publisher.resource;
 
-    self->setPublish(publisher->publish);
+    self->setPublish(publisher->publishFn);
 
     makeOutputs(~publisher=publisherOutputs) |> self->setOutputs;
   };
 
   let make:
-    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => t =
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => Component.t(t,outputs) =
     (~name, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,

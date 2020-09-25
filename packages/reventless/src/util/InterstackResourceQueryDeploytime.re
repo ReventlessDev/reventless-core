@@ -23,7 +23,7 @@ let queryDbStorageOfAllServicesExn = (services, serviceName) =>
 let allResolversMakers = ResourceQueryDeploytime.allResolversMakers;
 
 let bucketOfAllTasksExn:
-  (ref(array(Task.t)), string) =>
+  (ref(array(Task.outputs)), string) =>
   Pulumi.Output.t(PulumiAws.S3.Bucket.bucket) =
   (tasks, taskName) => {
     tasks

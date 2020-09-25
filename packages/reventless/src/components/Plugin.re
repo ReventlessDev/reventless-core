@@ -2,16 +2,17 @@ let componentType = ComponentType.Plugin;
 
 type outputs = {
   .
-  "eventCollector": EventCollector.t,
-  "extensionPoints": Js.Dict.t(ExtensionPoint.t),
-  "extensions": Js.Dict.t(Extension.t),
-  "services": Js.Dict.t(Service.t),
-  "tasks": Js.Dict.t(Task.t),
-  "eventMappers": Js.Dict.t(EventMapper.t),
+  "eventCollector": EventCollector.outputs,
+  "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
+  "extensions": Js.Dict.t(Extension.outputs),
+  "services": Js.Dict.t(Service.outputs),
+  "tasks": Js.Dict.t(Task.outputs),
+  "eventMappers": Js.Dict.t(EventMapper.outputs),
   "resolvers": array(Adapter.resource),
-  "heartbeat": Heartbeat.t,
+  "heartbeat": Heartbeat.outputs,
 };
-type t = outputs;
+
+type plugin; // TODO: rename to t - after refactoring
 
 type maker =
   (
@@ -27,7 +28,7 @@ type maker =
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit
   ) =>
-  t;
+  Component.t(plugin, outputs);
 
 module type T = {let make: maker;};
 
@@ -36,7 +37,7 @@ let toDict = els =>
 
 module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct = (Component.t(plugin, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -46,27 +47,27 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    t =
+    Component.t(plugin, outputs) =
     "default";
 
   [@bs.obj]
   external makeOutputs:
     (
-      ~eventCollector: EventCollector.t,
-      ~extensionPoints: Js.Dict.t(ExtensionPoint.t),
-      ~extensions: Js.Dict.t(Extension.t),
-      ~services: Js.Dict.t(Service.t),
-      ~tasks: Js.Dict.t(Task.t),
-      ~eventMappers: Js.Dict.t(EventMapper.t),
+      ~eventCollector: EventCollector.outputs,
+      ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
+      ~extensions: Js.Dict.t(Extension.outputs),
+      ~services: Js.Dict.t(Service.outputs),
+      ~tasks: Js.Dict.t(Task.outputs),
+      ~eventMappers: Js.Dict.t(EventMapper.outputs),
       ~resolvers: array(Adapter.resource),
-      ~heartbeat: Heartbeat.t
+      ~heartbeat: Heartbeat.outputs
     ) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(plugin, outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(plugin, outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -87,7 +88,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+        ~parent=self->Component.toPulumiResource,
         (),
       );
 
@@ -106,10 +107,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       serviceMakers->Belt.Array.map(serviceMaker =>
         serviceMaker(Some(opts))
       );
+    let servicesOutputs = services->Component.extractMultipleOutputs;
 
     let queryCommandTopic =
       InterstackResourceQueryRuntime.commandTopicConnectorOfAllServicesExn(
-        services->Interstack.mergeServices,
+        servicesOutputs->Interstack.mergeServices,
       );
     open Pulumi.StackReference.Infix;
 
@@ -145,7 +147,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           );
       } else {
         InterstackResourceQueryDeploytime.eventTopicPublisherOfAllServicesExn(
-          services,
+          servicesOutputs,
           name,
         );
       };
@@ -159,6 +161,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           (),
         )
       );
+      let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs;
 
     let extensions =
       extensionMakers->Belt.Array.map(extensionMaker =>
@@ -169,12 +172,13 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           (),
         )
       );
+     let extensionsOutputs = extensions->Component.extractMultipleOutputs;
 
     let eventCollectorId: ref(Pulumi.Output.t(string)) =
       ref("NOT-SET"->Pulumi.Output.make);
 
     let extensionPointsConfig =
-      extensionPoints->Belt.Array.map(extensionPoint =>
+      extensionPointsOutputs->Belt.Array.map(extensionPoint =>
         {
           PluginSpec.name: extensionPoint##name,
           commandTopic:
@@ -184,7 +188,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         }
       );
     let extensionsConfig =
-      extensions->Belt.Array.map(extension =>
+      extensionsOutputs->Belt.Array.map(extension =>
         {
           PluginSpec.name: extension##name,
           eventCollector: (eventCollectorId^)->Pulumi.Output.get,
@@ -202,7 +206,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           let connectToExtensionPoints =
             pluginSpec.extensionPoints
             ->Belt.Array.map(extensionPoint =>
-                extensions
+                extensionsOutputs
                 ->Belt.Array.getBy(extension =>
                     extension##name == extensionPoint.name
                   )
@@ -291,31 +295,31 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         (),
       );
 
-    let allExtensions = extensions->Belt.Array.concat([|pluginExtension|]);
+    let allExtensionsOutputs = extensionsOutputs->Belt.Array.concat([|pluginExtension->Component.extractOutputs|]);
 
     let queryQueryDb =
       InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
-        services->Interstack.mergeServices,
+        servicesOutputs->Interstack.mergeServices,
       );
 
     let queryQueryDbDeploytime =
       InterstackResourceQueryDeploytime.queryDbStorageOfAllServicesExn(
-        services,
+        servicesOutputs,
       );
 
-    let eventMappers = ref([||]);
+    let eventMappersOutputs = ref([||]);
     let queryEventCollector =
       InterstackResourceQueryRuntime.eventCollectorConnectorOfAllEventMappersExn(
-        eventMappers->Interstack.mergeEventMappers,
+        eventMappersOutputs->Interstack.mergeEventMappers,
       );
 
-    let tasks = ref([||]);
+    let tasksOutputs = ref([||]);
     let queryBucketName =
       InterstackResourceQueryRuntime.bucketNameOfTaskExn(
-        tasks->Interstack.mergeTasks,
+        tasksOutputs->Interstack.mergeTasks,
       );
 
-    let tasksWithEventMappers =
+    let tasksOutputsWithEventMappers =
       taskMakers
       ->Belt.Array.map(taskMaker =>
           taskMaker(
@@ -325,11 +329,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             ~queryBucketName,
             ~scheduler,
             ~opts=Some(opts),
-          )
+          )->Component.extractOutputs
         )
-      ->Belt.Array.map(task => {
+      ->Belt.Array.map(taskOutputs => {
           let eventMapperMaker =
-            switch (task##mappings, task##policies) {
+            switch (taskOutputs##mappings, taskOutputs##policies) {
             | (None, _) => None
             | (
                 Some((mappings: (module EventMapping.Mappings))),
@@ -351,19 +355,19 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                 EventMapper.Make((val mappings), EventCollector);
               Some(EventMapper.make);
             };
-          (task, eventMapperMaker);
+          (taskOutputs, eventMapperMaker);
         })
       ->Belt.Array.unzip;
 
-    tasks := tasksWithEventMappers->fst;
+    tasksOutputs := tasksOutputsWithEventMappers->fst;
 
     let taskEventMapperMakers =
-      tasksWithEventMappers
+      tasksOutputsWithEventMappers
       ->snd
       ->Belt.Array.keep(Belt.Option.isSome)
       ->Belt.Array.map(Belt.Option.getExn);
 
-    eventMappers :=
+    eventMappersOutputs :=
       eventMapperMakers->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
         eventMapperMaker(
           ~queryCommandTopic,
@@ -373,7 +377,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           (),
         )
       )
-      |> Belt.Array.concat(
+      -> Belt.Array.concat(
            taskEventMapperMakers->Belt.Array.map(
              (eventMapperMaker: EventMapper.maker) =>
              eventMapperMaker(
@@ -384,10 +388,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                (),
              )
            ),
-         );
+         )
+         ->Component.extractMultipleOutputs;
 
     let resolvers =
-      services
+      servicesOutputs
       ->ResourceQueryDeploytime.allResolversMakers
       ->Belt.Array.map(resolverMaker => resolverMaker(queryQueryDbDeploytime))
       ->Belt.Array.concatMany;
@@ -395,7 +400,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     module Set = Belt.Set.String;
 
     let extensionPointAggregateNames =
-      extensionPoints->Belt.Array.map(extensionPoint =>
+      extensionPointsOutputs->Belt.Array.map(extensionPoint =>
         extensionPoint##aggregateNames->Set.fromArray
       );
     let serviceNameToEx = (exs, getServiceName) => {
@@ -419,16 +424,16 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     };
 
     let serviceNameToExtensionPointsMapping =
-      serviceNameToEx(extensionPoints, extensionPoint =>
+      serviceNameToEx(extensionPointsOutputs, extensionPoint =>
         extensionPoint##aggregateNames
       );
     let outgoingServiceNameToExtensionsMapping =
-      serviceNameToEx(extensions, extension => extension##aggregateNames);
+      serviceNameToEx(extensionsOutputs, extension => extension##aggregateNames);
     let incomingServiceNameToExtensionsMapping =
-      serviceNameToEx(allExtensions, extension => [|extension##name|]);
+      serviceNameToEx(allExtensionsOutputs, extension => [|extension##name|]);
 
     let extensionAggregateNames =
-      extensions->Belt.Array.map(extension =>
+      extensionsOutputs->Belt.Array.map(extension =>
         extension##aggregateNames->Set.fromArray
       );
 
@@ -513,7 +518,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         ~opts=Some(opts),
         (),
       );
-    eventCollectorId :=  eventCollector##connector##id;
+    let eventCollectorOutputs = eventCollector ->Component.extractOutputs;
+    eventCollectorId :=  eventCollectorOutputs##connector##id;
 
     let heartbeat =
       Heartbeat.make(
@@ -526,16 +532,16 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       );
 
     makeOutputs(
-      ~eventCollector,
-      ~extensionPoints=extensionPoints->toDict,
-      ~extensions=extensions->toDict,
-      ~services=services->toDict,
-      ~tasks=(tasks^)->toDict,
-      ~eventMappers=(eventMappers^)->toDict,
+      ~eventCollector=eventCollectorOutputs,
+      ~extensionPoints=extensionPointsOutputs->toDict,
+      ~extensions=extensionsOutputs->toDict,
+      ~services=servicesOutputs->toDict,
+      ~tasks=(tasksOutputs^)->toDict,
+      ~eventMappers=(eventMappersOutputs^)->toDict,
       ~resolvers,
-      ~heartbeat,
+      ~heartbeat=heartbeat->Component.extractOutputs,
     )
-    |> self->setOutputs;
+    -> setOutputs(self, _);
   };
 
   let make: maker =

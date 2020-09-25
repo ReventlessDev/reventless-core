@@ -1,5 +1,15 @@
 let componentType = ComponentType.QueryDb;
 
+type resolversResourcesMaker =
+  InterstackResourceQuery.deploytimeQueryExn => array(Adapter.resource);
+
+type outputs = {
+  .
+  "storage": Adapter.resource,
+  "resolvers": Adapter.resource,
+  "resolversMaker": resolversResourcesMaker,
+};
+
 type saveMode =
   | Init
   | Overwrite;
@@ -19,33 +29,35 @@ type delete('id) =
   (. 'id, option((string, string))) =>
   Js.Promise.t(Belt.Result.t(unit, storageError));
 
-type resolversResourcesMaker =
-  InterstackResourceQuery.deploytimeQueryExn => array(Adapter.resource);
-
+/*
 type functions('id, 'state) = {
   .
   "load": load('id, 'state),
   "save": save('id, 'state),
   "delete": delete('id),
 };
+*/
 
-type outputs = {
-  .
-  "storage": Adapter.resource,
-  "resolvers": Adapter.resource,
-  "resolversMaker": resolversResourcesMaker,
-};
-external toOutputs: functions('id, 'command) => outputs = "%identity";
+// external toOutputs: functions('id, 'command) => outputs = "%identity";
 
-type t('id, 'state) = functions('id, 'state);
+// type t('id, 'state) = functions('id, 'state);
 
 module type T = {
   module Spec: View.Spec;
   module View: View.T with module Spec := Spec;
 
-  type nonrec t = t(Spec.Id.t, View.state);
+  type t;
+  type nonrec load = load(Spec.Id.t, View.state);
+  type nonrec save = save(Spec.Id.t, View.state);
+  type nonrec delete = delete(Spec.Id.t);
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
+  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => Component.t(t, outputs);
+
+  let load: Component.t(t, outputs) => load;
+  let save: Component.t(t, outputs) => save;
+  let delete: Component.t(t, outputs) => delete;
+
+  let outputs: Component.t(t, outputs) => outputs;
 };
 
 type storage = {
@@ -115,14 +127,15 @@ module Make =
   type api = Config.api;
   type role = Config.role;
 
+  //type nonrec t = t(Spec.Id.t, View.state);
+  type t;
+  
   type nonrec load = load(Spec.Id.t, View.state);
   type nonrec save = save(Spec.Id.t, View.state);
   type nonrec delete = delete(Spec.Id.t);
 
-  type nonrec t = t(Spec.Id.t, View.state);
-
   type constructed;
-  type construct = (t, string, api, role) => constructed;
+  type construct = (Component.t(t, outputs), string, api, role) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -134,7 +147,7 @@ module Make =
       ~api: api,
       ~apiRole: role
     ) =>
-    t =
+    Component.t(t, outputs) =
     "default";
 
   [@bs.obj]
@@ -148,16 +161,27 @@ module Make =
     "";
 
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(t, outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setLoad: (t, load) => unit = "load";
-  [@bs.set] external setSave: (t, save) => unit = "save";
-  [@bs.set] external setDelete: (t, delete) => unit = "delete";
+  [@bs.set]
+  external setLoad: (Component.t(t, outputs), load) => unit = "load";
+  [@bs.set]
+  external setSave: (Component.t(t, outputs), save) => unit = "save";
+  [@bs.set]
+  external setDelete: (Component.t(t, outputs), delete) => unit = "delete";
+
+  [@bs.get]
+  external load: Component.t(t, outputs) => load = "load";
+  [@bs.get]
+  external save: Component.t(t, outputs) => save = "save";
+  [@bs.get]
+  external delete: Component.t(t, outputs) => delete = "delete";
+  
 
   let decode = (id, item) =>
     switch (View.state_decode(item)) {
@@ -167,7 +191,7 @@ module Make =
       [];
     };
 
-  let load = storage =>
+  let loadFn = storage =>
     (. id) =>
       storage.load(. id |> Spec.Id.toString)
       |> Js.Promise.then_(result =>
@@ -178,7 +202,7 @@ module Make =
            ->Js.Promise.resolve
          );
 
-  let save = storage =>
+  let saveFn = storage =>
     (. id, state, saveMode) => {
       switch (state |> View.state_encode |> Js.Json.decodeObject) {
       | Some(dict) =>
@@ -194,15 +218,17 @@ module Make =
       };
     };
 
-  let delete = storage =>
+  let deleteFn = storage =>
     (. id, sort) => {
       storage.delete(. id |> Spec.Id.toString, sort);
     };
 
+  let outputs: Component.t(t, outputs) => outputs = component => Component.extractOutputs(component);
+
   let construct = (self, name, api, apiRole) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+        ~parent=self->Component.toPulumiResource,
         (),
       );
 
@@ -218,9 +244,15 @@ module Make =
         ~opts,
       );
 
-    self->setLoad(storage->load);
-    self->setSave(storage->save);
-    self->setDelete(storage->delete);
+    self->setLoad(storage->loadFn);
+    self->setSave(storage->saveFn);
+    self->setDelete(storage->deleteFn);
+    
+    /*
+    let load: Component.t(t, outputs) => load = _component => load(storage);
+    let save: Component.t(t, outputs) => save  = _component => save(storage);
+    let delete: Component.t(t, outputs) => delete  = _component => delete(storage);
+    */
 
     let resolvers =
       Resolvers.make(
@@ -243,7 +275,7 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t =
+  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => Component.t(t, outputs) =
     (~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,

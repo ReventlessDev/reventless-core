@@ -5,18 +5,18 @@ type serviceMakers = array(Service.maker);
 
 type outputs = {
   .
-  "eventCollector": EventCollector.t,
-  "extensionPoints": Js.Dict.t(ExtensionPoint.t),
-  "services": Js.Dict.t(Service.t),
+  "eventCollector": EventCollector.outputs,
+  "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
+  "services": Js.Dict.t(Service.outputs),
 };
-type t = outputs;
+type core;
 
 let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
 
 module Make = (EventCollectorAdapter: EventCollector.Connector) => {
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct = (Component.t(core, outputs), string) => constructed;
 
   [@bs.module "../components/Component"] [@bs.new]
   external make:
@@ -26,22 +26,22 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    t =
+    Component.t(core, outputs) =
     "default";
 
   [@bs.obj]
   external makeOutputs:
     (
-      ~eventCollector: EventCollector.t,
-      ~extensionPoints: Js.Dict.t(ExtensionPoint.t),
-      ~services: Js.Dict.t(Service.t)
+      ~eventCollector: EventCollector.outputs,
+      ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
+      ~services: Js.Dict.t(Service.outputs)
     ) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(core, outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(core, outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -57,7 +57,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+        ~parent=self->Component.toPulumiResource,
         (),
       );
 
@@ -65,14 +65,15 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
       serviceMakers->Belt.Array.map(serviceMaker =>
         serviceMaker(Some(opts))
       );
+    let servicesOutputs = services->Component.extractMultipleOutputs;
 
     let queryCommandTopic =
       InterstackResourceQueryRuntime.commandTopicConnectorOfAllServicesExn(
-        services->Interstack.mergeServices,
+        servicesOutputs->Interstack.mergeServices,
       );
     let queryEventTopic =
       InterstackResourceQueryDeploytime.eventTopicPublisherOfAllServicesExn(
-        services,
+        servicesOutputs,
       );
 
     let extensionPoints =
@@ -84,11 +85,12 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
           (),
         )
       );
+    let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs;
 
     module Set = Belt.Set.String;
 
     let aggregateNames: array(string) =
-      extensionPoints
+      extensionPointsOutputs
       ->Belt.Array.map(extensionPoint =>
           extensionPoint##aggregateNames->Set.fromArray
         )
@@ -97,7 +99,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
 
     let eventHandler =
       (. event'Json) =>
-        extensionPoints->Belt.Array.map(extensionPoint => {
+        extensionPointsOutputs->Belt.Array.map(extensionPoint => {
           let handle = extensionPoint##outgoingEventHandler;
           handle(. event'Json);
         })
@@ -118,11 +120,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
       );
 
     makeOutputs(
-      ~eventCollector,
-      ~extensionPoints=extensionPoints->toDict,
-      ~services=services->toDict,
+      ~eventCollector=eventCollector->Component.extractOutputs,
+      ~extensionPoints=extensionPointsOutputs->toDict,
+      ~services=servicesOutputs->toDict,
     )
-    |> self->setOutputs;
+    -> setOutputs(self, _);
   };
 
   let make:
@@ -131,7 +133,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
       ~serviceMakers: serviceMakers,
       ~scheduler: Scheduler.t
     ) =>
-    t =
+    Component.t(core, outputs) =
     (~extensionPointMakers, ~serviceMakers, ~scheduler) =>
       make(
         ~componentType=componentType->ComponentType.toString,

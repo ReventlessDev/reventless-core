@@ -1,22 +1,24 @@
 let componentType = ComponentType.ReadModel;
 
+type outputs = {. "queryDb": QueryDb.outputs};
+
 type update('id, 'event) = Message.eventsHandler('id, 'event);
 
-type functions('id, 'event) = {. "update": update('id, 'event)};
+// type functions('id, 'event) = {. "update": update('id, 'event)};
 
-type outputs = {. "queryDb": QueryDb.outputs};
-external toOutputs: functions('id, 'event) => outputs = "%identity";
+// external toOutputs: functions('id, 'event) => outputs = "%identity";
 
-type t('id, 'event) = functions('id, 'event);
+// type t('id, 'event) = functions('id, 'event);
 
-type maker('id, 'event) =
-  option(Pulumi.ComponentResource.Options.t) => t('id, 'event);
+type maker('component, 'id, 'event) =
+  option(Pulumi.ComponentResource.Options.t) => Component.t('component, outputs);
 
 module type T = {
   module Spec: View.Spec;
   module View: View.T with module Spec := Spec;
   type t;
 
+  /* Is this necessary? For test? 
   let update:
     (
       QueryDb.load(Spec.Id.t, View.state),
@@ -24,8 +26,10 @@ module type T = {
       QueryDb.delete(Spec.Id.t)
     ) =>
     update(Spec.Id.t, Spec.event);
+    */
+  let update: Component.t(t, outputs) => update(Spec.Id.t, Spec.event);
 
-  let make: maker(Spec.Id.t, Spec.event);
+  let make: maker(t, Spec.Id.t, Spec.event);
 };
 
 module Make =
@@ -44,17 +48,16 @@ module Make =
          : (
            T with
              module Spec = Spec and
-             module View = View and
-             type t = t(Spec.Id.t, Spec.event)
+             module View = View
        ) => {
   module Spec = Spec;
   module View = View;
-  type nonrec t = t(Spec.Id.t, Spec.event);
+  type t;
 
   type update = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct = (Component.t(t,outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -64,22 +67,23 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    t =
+    Component.t(t, outputs) =
     "default";
 
   module QueryDb =
     QueryDb.Make(Config, Spec, View, QueryDbStorage, QueryDbResolvers);
 
-  [@bs.obj] external makeOutputs: (~queryDb: QueryDb.t) => outputs = "";
+  [@bs.obj] external makeOutputs: (~queryDb: Reventless.QueryDb.outputs) => outputs = "";
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(t, outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setUpdate: (t, update) => unit = "update";
+  [@bs.set] external setUpdate: (Component.t(t, outputs), update) => unit = "update";
+  [@bs.get] external update: (Component.t(t, outputs)) => update = "update";
 
   open Reventless.View;
 
@@ -102,7 +106,7 @@ module Make =
 
   open Belt.Result;
 
-  let update = (load, save, delete): update =>
+  let updateFn = (load, save, delete): update =>
     (. id, event's) =>
       Js.Promise.(
         {
@@ -188,14 +192,19 @@ module Make =
   let construct = (self, _) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+        ~parent=self->Component.toPulumiResource,
         (),
       );
     let queryDb = QueryDb.make(~opts, ());
 
-    update(queryDb##load, queryDb##save, queryDb##delete) |> self->setUpdate;
+    updateFn(
+      queryDb->QueryDb.load,
+      queryDb->QueryDb.save,
+      queryDb->QueryDb.delete,
+    )
+    |> self->setUpdate;
 
-    makeOutputs(~queryDb) |> self->setOutputs;
+    makeOutputs(~queryDb=queryDb->Component.extractOutputs) |> self->setOutputs;
   };
 
   let make = opts => {

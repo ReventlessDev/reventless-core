@@ -2,11 +2,11 @@ let componentType = ComponentType.EventMapper;
 
 type outputs = {
   .
-  "eventCollector": EventCollector.t,
   "name": string,
+  "eventCollector": EventCollector.outputs,
 };
-type t = outputs;
 
+type eventMapper; // TODO: rename back to t - after refactoring
 type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
@@ -16,7 +16,7 @@ type maker =
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>
-  t;
+  Component.t(eventMapper, outputs);
 
 module type T = {let make: maker;};
 
@@ -27,7 +27,7 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct = (Component.t(eventMapper, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -37,15 +37,15 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    t =
+    Component.t(eventMapper, outputs) =
     "default";
 
   [@bs.obj]
   external makeOutputs:
-    (~eventCollector: Reventless.EventCollector.t, ~name: string) => outputs =
+    (~eventCollector: Reventless.EventCollector.outputs, ~name: string) => outputs =
     "";
-  [@bs.send] external registerOutputs: (t, outputs) => constructed = "";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  [@bs.send] external registerOutputs: (Component.t(eventMapper, outputs), outputs) => constructed = "registerOutputs";
+  [@bs.send] external setOutputs: (Component.t(eventMapper, outputs), outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -169,7 +169,7 @@ module Make =
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+        ~parent=self->Component.toPulumiResource,
         (),
       );
     let eventCollector =
@@ -187,7 +187,7 @@ module Make =
         (),
       );
 
-    makeOutputs(~eventCollector, ~name) |> self->setOutputs;
+    makeOutputs(~eventCollector=eventCollector->Component.extractOutputs, ~name) -> setOutputs(self, _);
   };
 
   let make:
@@ -199,7 +199,7 @@ module Make =
       ~opts: option(Pulumi.ComponentResource.Options.t),
       unit
     ) =>
-    t =
+    Component.t(eventMapper, outputs) =
     (
       ~queryCommandTopic,
       ~queryEventTopic,

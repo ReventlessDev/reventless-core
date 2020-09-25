@@ -10,7 +10,7 @@ type outputs = {
   "policies": option(module EventCollector.Policies),
 };
 
-type t = outputs;
+type task; // TODO: rename to t - after refactoring
 
 type query =
   (
@@ -49,7 +49,7 @@ type maker =
     ~scheduler: Scheduler.t,
     ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
-  t;
+  Component.t(task, outputs);
 
 type setup =
   (
@@ -64,7 +64,7 @@ type setup =
   outputs;
 
 type constructed;
-type construct = (t, string) => constructed;
+type construct = (Component.t(task, outputs), string) => constructed;
 
 exception ScheduleNotCreated(Scheduler.schedule, string, Js.Promise.error);
 exception ScheduleNotDeleted(string, string, Js.Promise.error);
@@ -77,11 +77,11 @@ external make:
     ~construct: construct,
     ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
-  t =
+  Component.t(task, outputs) =
   "default";
 
-[@bs.send] external registerOutputs: (t, outputs) => constructed = "";
-[@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+[@bs.send] external registerOutputs: (Component.t(task, outputs), outputs) => constructed = "registerOutputs";
+[@bs.send] external setOutputs: (Component.t(task, outputs), outputs) => unit = "setOutputs";
 let setOutputs = (self, outputs) => {
   self->setOutputs(outputs);
   self->registerOutputs(outputs);
@@ -102,7 +102,7 @@ let construct =
     ) => {
   let opts =
     Pulumi.CustomResourceOptions.make(
-      ~parent=self->Pulumi.Resource.makeFromJs,
+      ~parent=self->Component.toPulumiResource,
       (),
     );
 
@@ -185,7 +185,7 @@ let construct =
       |> then_(result =>
            resolve(
              result##_Items
-             ->Belt.Array.map(js => js->Message.stringify->Js.Json.parseExn),
+             ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn),
            )
          )
       |> catch(err => {
@@ -289,7 +289,7 @@ let construct =
     queueMessage(. taskName),
     opts,
   )
-  |> self->setOutputs;
+  -> setOutputs(self, _);
 };
 
 let make =
