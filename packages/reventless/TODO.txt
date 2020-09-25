@@ -1,2 +1,2 @@
-// TODO: use post-install script to link all packages to the dependent's node_modules directory
+// TODO: VPC: Use Component.t type
 
