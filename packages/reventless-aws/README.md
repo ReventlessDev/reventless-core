@@ -1,6 +1,7 @@
 # `reventless-aws`
 
 AWS adapters for Reventless to run Reventless applications on Amazon AWS.
+This package extends `reventless`.
 
 ## Usage
 - Add `reventless-aws` to your dependencies in `package.json`.
