@@ -31,7 +31,7 @@ module type T = {
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    Component.t(t,outputs);
+    Component.t(t, outputs);
 };
 
 type payload = {
@@ -79,7 +79,8 @@ module Make =
   type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
 
   type constructed;
-  type construct = (Component.t(t,outputs), string, api, commandHandler) => constructed;
+  type construct =
+    (Component.t(t, outputs), string, api, commandHandler) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -91,15 +92,18 @@ module Make =
       ~api: api,
       ~commandHandler: commandHandler
     ) =>
-    Component.t(t,outputs) =
+    Component.t(t, outputs) =
     "default";
 
   [@bs.obj]
   external makeOutputs: (~resolvers: array(Adapter.resource)) => outputs = "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t,outputs), outputs) => constructed = "registerOutputs";
-  //[@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(t, outputs), outputs) => unit =
+    "setOutputs";
 
   let generateCommand: commandHandler => commandGenerator =
     commandHandler => {
@@ -168,7 +172,7 @@ module Make =
       );
 
     let outputs = makeOutputs(~resolvers=resolvers.resources);
-    //self->setOutputs(outputs); // NOTE: creates circular reference (promise leaks)
+    self->setOutputs(outputs); // NOTE: creates circular reference (promise leaks)
     self->registerOutputs(outputs);
   };
 
@@ -179,7 +183,7 @@ module Make =
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    Component.t(t,outputs) =
+    Component.t(t, outputs) =
     (~name, ~commandHandler, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
