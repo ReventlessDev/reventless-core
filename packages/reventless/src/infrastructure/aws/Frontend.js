@@ -49,18 +49,18 @@ class Frontend extends pulumi.ComponentResource {
           if (indexJsRegEx.test(item.name)) {
             let fsFilePath = "./" + filePath;
             let indexJsFile = fs.readFileSync(fsFilePath, 'utf8');
-            indexJsFile = indexJsFile.replace(/t.clientId="[\w/:\-_.]+"/, "t.clientId=\"" + clientId + "\"");
-            indexJsFile = indexJsFile.replace(/t.userPoolId="[\w/:\-_.]+"/, "t.userPoolId=\"" + userPoolId + "\"");
-            indexJsFile = indexJsFile.replace(/t.region="[\w/:\-_.]+"/, "t.region=\"" + region + "\"");
-            indexJsFile = indexJsFile.replace(/t.endpoint="[\w/:\-_.]+"/, "t.endpoint=\"" + endpoint + "\"");
-            indexJsFile = indexJsFile.replace(/Nu="[\w/:\-_.]+"/, "Nu=\"" + coreEndpoint + "\"");
-            indexJsFile = indexJsFile.replace(/t.identityPoolId="[\w/:\-_.]+"/, "t.identityPoolId=\"" + identityPoolId + "\"");
-            indexJsFile = indexJsFile.replace(/t.importBucket="[\w/:\-_.]+"/, "t.importBucket=\"" + importerBucket + "\"");
-            indexJsFile = indexJsFile.replace(/t.importBucketRegion="[\w/:\-_.]+"/, "t.importBucketRegion=\"" + importerBucketRegion + "\"");
-            indexJsFile = indexJsFile.replace(/t.exportBucket="[\w/:\-_.]+"/, "t.exportBucket=\"" + exporterBucket + "\"");
-            indexJsFile = indexJsFile.replace(/t.exportBucketRegion="[\w/:\-_.]+"/, "t.exportBucketRegion=\"" + exporterBucketRegion + "\"");
-            indexJsFile = indexJsFile.replace(/t.csvExportBucket="[\w/:\-_.]+"/, "t.csvExportBucket=\"" + csvExporterBucket + "\"");
-            indexJsFile = indexJsFile.replace(/t.csvExportBucketRegion="[\w/:\-_.]+"/, "t.csvExportBucketRegion=\"" + csvExporterBucketRegion + "\"");
+            indexJsFile = indexJsFile.replace(/<%CLIENTID%>/g, clientId);
+            indexJsFile = indexJsFile.replace(/<%USERPOOLID%>/g, userPoolId);
+            indexJsFile = indexJsFile.replace(/<%REGION%>/g, region);
+            indexJsFile = indexJsFile.replace(/<%ENDPOINT%>/g, endpoint);
+            indexJsFile = indexJsFile.replace(/<%COREENDPOINT%>/g, coreEndpoint);
+            indexJsFile = indexJsFile.replace(/<%IDENTITYPOOLID%>/g, identityPoolId);
+            indexJsFile = indexJsFile.replace(/<%IMPORTERBUCKET%>/g, importerBucket);
+            indexJsFile = indexJsFile.replace(/<%IMPORTERBUCKETREGION%>/g, importerBucketRegion);
+            indexJsFile = indexJsFile.replace(/<%EXPORTERBUCKET%>/g, exporterBucket);
+            indexJsFile = indexJsFile.replace(/<%EXPORTERBUCKETREGION%>/g, exporterBucketRegion);
+            indexJsFile = indexJsFile.replace(/<%CSVEXPORTERBUCKET%>/g, csvExporterBucket);
+            indexJsFile = indexJsFile.replace(/<%CSVEXPORTERBUCKETREGION%>/g, csvExporterBucketRegion);
             fs.writeFileSync(fsFilePath, indexJsFile, 'utf8');
           }
           else if (indexHtmlRegEx.test(item.name)) {
