@@ -172,7 +172,7 @@ class Frontend extends pulumi.ComponentResource {
         targetDomain,
         {
           name: domainParts.subdomain,
-          zoneId: hostedZone.zoneId,
+          zoneId: hostedZone.then(hostedZone => hostedZone.zoneId),
           type: "A",
           aliases: [
             {
@@ -192,16 +192,16 @@ class Frontend extends pulumi.ComponentResource {
       policy: siteBucket.bucket.apply(this.publicReadPolicyForBucket),
     }, { parent: siteBucket }); // specify resource parent
 
-		/* OLD:
-		this.bucketName = siteBucket.bucket;
-		this.websiteUrl = siteBucket.websiteEndpoint;
+    /* OLD:
+    this.bucketName = siteBucket.bucket;
+    this.websiteUrl = siteBucket.websiteEndpoint;
 
-		// Register output properties for this component
-		this.registerOutputs({
-			bucketName: this.bucketName,
-			websiteUrl: this.websiteUrl,
-		});
-	*/
+    // Register output properties for this component
+    this.registerOutputs({
+      bucketName: this.bucketName,
+      websiteUrl: this.websiteUrl,
+    });
+  */
 
     this.contentBucketUri = pulumi.interpolate`s3://${siteBucket.bucket}`;
     this.contentBucketWebsiteEndpoint = siteBucket.websiteEndpoint;
