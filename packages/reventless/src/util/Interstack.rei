@@ -1,5 +1,5 @@
 type plugin;
-let coreStackOutput: Pulumi.Output.t(plugin);
+let coreStackOutput: option(Pulumi.Output.t(plugin));
 
 let mergeServices:
   array(Service.outputs) => Pulumi.Output.t(array(Service.outputs));

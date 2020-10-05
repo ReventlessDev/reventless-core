@@ -109,10 +109,19 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       InterstackResourceQueryRuntime.commandTopicConnectorOfAllServicesExn(
         servicesOutputs->Interstack.mergeServices,
       );
+
+    let coreStackOutput =
+      switch (Interstack.coreStackOutput) {
+      | Some(coreStackOutput) => coreStackOutput
+      | None =>
+        Js.Exn.raiseError(
+          "No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
+        )
+      };
     open Pulumi.StackReference.Infix;
 
     let corePluginCommandTopicId =
-      Interstack.coreStackOutput->Pulumi.Output.apply(output =>
+      coreStackOutput->Pulumi.Output.apply(output =>
         output->Obj.magic
         -# "extensionPoints"
         -# PluginExtensionPointSpec.name
@@ -131,7 +140,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
 
     let queryEventTopic = name =>
       if (name == PluginExtensionPointSpec.name) {
-        Interstack.coreStackOutput->Pulumi.Output.apply(core =>
+        coreStackOutput->Pulumi.Output.apply(core =>
           core->Obj.magic
           -# "extensionPoints"
           -# PluginExtensionPointSpec.name

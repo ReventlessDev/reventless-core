@@ -10,9 +10,12 @@ external getEventMapper: plugin => option(Js.Dict.t(EventMapper.outputs)) =
 
 let coreStackOutput =
   Pulumi.Config.make(Some("core"))
-  ->Pulumi.Config.require("stack")
-  ->Pulumi.StackReference.make
-  ->Pulumi.StackReference.requireOutput("core"->Pulumi.Input.wrap);
+  ->Pulumi.Config.get("stack")
+  ->Belt.Option.map(stack =>
+      stack
+      ->Pulumi.StackReference.make
+      ->Pulumi.StackReference.requireOutput("core"->Pulumi.Input.wrap)
+    );
 
 let stackDependencies: Pulumi.Output.t(array(plugin)) =
   Pulumi.Config.(make(Some("interstack"))->getObject("dependencies"))
@@ -22,7 +25,11 @@ let stackDependencies: Pulumi.Output.t(array(plugin)) =
         make(stackName)->requireOutput("plugin"->Pulumi.Input.wrap)
       )
     )
-  ->Belt.Array.concat([|coreStackOutput|])
+  ->Belt.Array.concat(
+      coreStackOutput->Belt.Option.mapWithDefault([||], coreStack =>
+        [|coreStack|]
+      ),
+    )
   ->Pulumi.Output.all;
 
 let getOutputs:
