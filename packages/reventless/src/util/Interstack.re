@@ -1,9 +1,11 @@
 type plugin;
 [@bs.get]
-external getServices: plugin => Js.Dict.t(Service.outputs) = "services";
-[@bs.get] external getTasks: plugin => Js.Dict.t(Task.outputs) = "tasks";
+external getServices: plugin => option(Js.Dict.t(Service.outputs)) =
+  "services";
 [@bs.get]
-external getEventMapper: plugin => Js.Dict.t(EventMapper.outputs) =
+external getTasks: plugin => option(Js.Dict.t(Task.outputs)) = "tasks";
+[@bs.get]
+external getEventMapper: plugin => option(Js.Dict.t(EventMapper.outputs)) =
   "eventMappers";
 
 let coreStackOutput =
@@ -23,11 +25,14 @@ let stackDependencies: Pulumi.Output.t(array(plugin)) =
   ->Belt.Array.concat([|coreStackOutput|])
   ->Pulumi.Output.all;
 
-let getOutputs: (plugin => Js.Dict.t('a)) => Pulumi.Output.t(array('a)) =
+let getOutputs:
+  (plugin => option(Js.Dict.t('a))) => Pulumi.Output.t(array('a)) =
   getOutput =>
     stackDependencies->Pulumi.Output.apply(plugins =>
       plugins
-      ->Belt.Array.map(plugin => plugin->getOutput->Js.Dict.values)
+      ->Belt.Array.map(plugin =>
+          plugin->getOutput->Belt.Option.mapWithDefault([||], Js.Dict.values)
+        )
       ->Belt.Array.concatMany
     );
 
