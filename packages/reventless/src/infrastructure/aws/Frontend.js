@@ -8,7 +8,7 @@ const fs = require("fs");
 // Define a component for serving a static website on S3
 class Frontend extends pulumi.ComponentResource {
 
-  constructor(bucketName, path, clientId, userPoolId, region, endpoint, coreEndpoint, identityPoolId,
+  constructor(bucketName, path, clientId, userPoolId, region, endpoint, coreEndpoint, marketplaceEndpoint, identityPoolId,
     importerBucket, importerBucketRegion, exporterBucket, exporterBucketRegion,
     csvExporterBucket, csvExporterBucketRegion, domain, certificateArn, opts) {
 
@@ -54,6 +54,7 @@ class Frontend extends pulumi.ComponentResource {
             indexJsFile = indexJsFile.replace(/<%REGION%>/g, region);
             indexJsFile = indexJsFile.replace(/<%ENDPOINT%>/g, endpoint);
             indexJsFile = indexJsFile.replace(/<%COREENDPOINT%>/g, coreEndpoint);
+            indexJsFile = indexJsFile.replace(/<%MARKETPLACEENDPOINT%>/g, marketplaceEndpoint);
             indexJsFile = indexJsFile.replace(/<%IDENTITYPOOLID%>/g, identityPoolId);
             indexJsFile = indexJsFile.replace(/<%IMPORTERBUCKET%>/g, importerBucket);
             indexJsFile = indexJsFile.replace(/<%IMPORTERBUCKETREGION%>/g, importerBucketRegion);

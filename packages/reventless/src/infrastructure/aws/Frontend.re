@@ -9,6 +9,7 @@ external make:
     ~region: string,
     ~endpoint: string,
     ~coreEndpoint: string,
+    ~marketplaceEndpoint: string,
     ~identityPoolId: string,
     ~importerBucket: string,
     ~importerBucketRegion: string,
