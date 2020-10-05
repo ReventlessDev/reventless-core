@@ -1,21 +1,21 @@
-type plugin;
-[@bs.get]
-external getServices: plugin => option(Js.Dict.t(Service.outputs)) =
-  "services";
-[@bs.get]
-external getTasks: plugin => option(Js.Dict.t(Task.outputs)) = "tasks";
-[@bs.get]
-external getEventMapper: plugin => option(Js.Dict.t(EventMapper.outputs)) =
-  "eventMappers";
+type plugin = {
+  .
+  "services": option(Js.Dict.t(Service.outputs)),
+  "tasks": option(Js.Dict.t(Task.outputs)),
+  "eventMappers": option(Js.Dict.t(EventMapper.outputs)),
+  "extensionPoints": option(Js.Dict.t(ExtensionPoint.outputs)),
+  "apiUrl": option(string) // this is only present in core & api stack
+};
 
-let coreStackOutput =
+let coreStackReference =
   Pulumi.Config.make(Some("core"))
   ->Pulumi.Config.get("stack")
-  ->Belt.Option.map(stack =>
-      stack
-      ->Pulumi.StackReference.make
-      ->Pulumi.StackReference.requireOutput("core"->Pulumi.Input.wrap)
-    );
+  ->Belt.Option.map(stack => stack->Pulumi.StackReference.make);
+
+let coreStackOutput =
+  coreStackReference->Belt.Option.map(coreStack =>
+    coreStack->Pulumi.StackReference.requireOutput("core"->Pulumi.Input.wrap)
+  );
 
 let stackDependencies: Pulumi.Output.t(array(plugin)) =
   Pulumi.Config.(make(Some("interstack"))->getObject("dependencies"))
@@ -44,14 +44,14 @@ let getOutputs:
     );
 
 let stackDependenciesServices: Pulumi.Output.t(array(Service.outputs)) =
-  getOutputs(getServices);
+  getOutputs(plugin => plugin##services);
 
 let stackDependenciesTasks: Pulumi.Output.t(array(Task.outputs)) =
-  getOutputs(getTasks);
+  getOutputs(plugin => plugin##tasks);
 
 let stackDependenciesEventMappers:
   Pulumi.Output.t(array(EventMapper.outputs)) =
-  getOutputs(getEventMapper);
+  getOutputs(plugin => plugin##eventMappers);
 
 let mergeMany:
   (Pulumi.Output.t(array('a)), array('a)) => Pulumi.Output.t(array('a)) =

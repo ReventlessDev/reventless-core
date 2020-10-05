@@ -121,13 +121,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     open Pulumi.StackReference.Infix;
 
     let corePluginCommandTopicId =
-      coreStackOutput->Pulumi.Output.apply(output =>
-        output->Obj.magic
-        -# "extensionPoints"
-        -# PluginExtensionPointSpec.name
-        -# "commandTopic"
-        -# "connector"
-        -# "id"
+      coreStackOutput->Pulumi.Output.flatMap(output =>
+        (
+          output##extensionPoints->Belt.Option.getExn
+          -# PluginExtensionPointSpec.name
+        )##commandTopic##connector##id
       );
 
     let queryExtensionPointCommandTopicId = name =>
@@ -140,12 +138,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
 
     let queryEventTopic = name =>
       if (name == PluginExtensionPointSpec.name) {
-        coreStackOutput->Pulumi.Output.apply(core =>
-          core->Obj.magic
-          -# "extensionPoints"
-          -# PluginExtensionPointSpec.name
-          -# "eventTopic"
-          -# "publisher"
+        coreStackOutput->Pulumi.Output.apply(output =>
+          (
+            output##extensionPoints->Belt.Option.getExn
+            -# PluginExtensionPointSpec.name
+          )##eventTopic##publisher
         );
       } else {
         InterstackResourceQueryDeploytime.eventTopicPublisherOfAllServicesExn(
