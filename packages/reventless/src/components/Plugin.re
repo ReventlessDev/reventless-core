@@ -66,8 +66,12 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(plugin, outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(plugin, outputs), outputs) => unit = "setOutputs";
+  external registerOutputs:
+    (Component.t(plugin, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(plugin, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -95,14 +99,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     let makeId = (name, version) => {j|$name@$version|j};
     let id = makeId(name, version);
 
-    let coreStack =
-      Pulumi.Config.make(Some("core"))
-      ->Pulumi.Config.get("stack")
-      ->Belt.Option.getExn
-      ->Pulumi.StackReference.make;
-    let coreStackOutput =
-      coreStack->Pulumi.StackReference.getOutput("core")->Belt.Option.getExn;
-
     let services =
       serviceMakers->Belt.Array.map(serviceMaker =>
         serviceMaker(Some(opts))
@@ -116,8 +112,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     open Pulumi.StackReference.Infix;
 
     let corePluginCommandTopicId =
-      coreStackOutput->Pulumi.Output.apply(output =>
-        output
+      Interstack.coreStackOutput->Pulumi.Output.apply(output =>
+        output->Obj.magic
         -# "extensionPoints"
         -# PluginExtensionPointSpec.name
         -# "commandTopic"
@@ -135,16 +131,13 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
 
     let queryEventTopic = name =>
       if (name == PluginExtensionPointSpec.name) {
-        coreStack
-        ->Pulumi.StackReference.getOutput("core")
-        ->Belt.Option.getExn
-        ->Pulumi.Output.apply(core =>
-            core
-            -# "extensionPoints"
-            -# PluginExtensionPointSpec.name
-            -# "eventTopic"
-            -# "publisher"
-          );
+        Interstack.coreStackOutput->Pulumi.Output.apply(core =>
+          core->Obj.magic
+          -# "extensionPoints"
+          -# PluginExtensionPointSpec.name
+          -# "eventTopic"
+          -# "publisher"
+        );
       } else {
         InterstackResourceQueryDeploytime.eventTopicPublisherOfAllServicesExn(
           servicesOutputs,
@@ -161,7 +154,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           (),
         )
       );
-      let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs;
+    let extensionPointsOutputs =
+      extensionPoints->Component.extractMultipleOutputs;
 
     let extensions =
       extensionMakers->Belt.Array.map(extensionMaker =>
@@ -172,7 +166,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           (),
         )
       );
-     let extensionsOutputs = extensions->Component.extractMultipleOutputs;
+    let extensionsOutputs = extensions->Component.extractMultipleOutputs;
 
     let eventCollectorId: ref(Pulumi.Output.t(string)) =
       ref("NOT-SET"->Pulumi.Output.make);
@@ -295,7 +289,10 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         (),
       );
 
-    let allExtensionsOutputs = extensionsOutputs->Belt.Array.concat([|pluginExtension->Component.extractOutputs|]);
+    let allExtensionsOutputs =
+      extensionsOutputs->Belt.Array.concat([|
+        pluginExtension->Component.extractOutputs,
+      |]);
 
     let queryQueryDb =
       InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
@@ -329,7 +326,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             ~queryBucketName,
             ~scheduler,
             ~opts=Some(opts),
-          )->Component.extractOutputs
+          )
+          ->Component.extractOutputs
         )
       ->Belt.Array.map(taskOutputs => {
           let eventMapperMaker =
@@ -368,28 +366,29 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ->Belt.Array.map(Belt.Option.getExn);
 
     eventMappersOutputs :=
-      eventMapperMakers->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
-        eventMapperMaker(
-          ~queryCommandTopic,
-          ~queryEventTopic,
-          ~memorySize=128,
-          ~opts=Some(opts),
-          (),
+      eventMapperMakers
+      ->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
+          eventMapperMaker(
+            ~queryCommandTopic,
+            ~queryEventTopic,
+            ~memorySize=128,
+            ~opts=Some(opts),
+            (),
+          )
         )
-      )
-      -> Belt.Array.concat(
-           taskEventMapperMakers->Belt.Array.map(
-             (eventMapperMaker: EventMapper.maker) =>
-             eventMapperMaker(
-               ~queryCommandTopic,
-               ~queryEventTopic,
-               ~memorySize=1024,
-               ~opts=Some(opts),
-               (),
-             )
-           ),
-         )
-         ->Component.extractMultipleOutputs;
+      ->Belt.Array.concat(
+          taskEventMapperMakers->Belt.Array.map(
+            (eventMapperMaker: EventMapper.maker) =>
+            eventMapperMaker(
+              ~queryCommandTopic,
+              ~queryEventTopic,
+              ~memorySize=1024,
+              ~opts=Some(opts),
+              (),
+            )
+          ),
+        )
+      ->Component.extractMultipleOutputs;
 
     let resolvers =
       servicesOutputs
@@ -428,7 +427,9 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         extensionPoint##aggregateNames
       );
     let outgoingServiceNameToExtensionsMapping =
-      serviceNameToEx(extensionsOutputs, extension => extension##aggregateNames);
+      serviceNameToEx(extensionsOutputs, extension =>
+        extension##aggregateNames
+      );
     let incomingServiceNameToExtensionsMapping =
       serviceNameToEx(allExtensionsOutputs, extension => [|extension##name|]);
 
@@ -518,7 +519,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         ~opts=Some(opts),
         (),
       );
-    let eventCollectorOutputs = eventCollector ->Component.extractOutputs;
+    let eventCollectorOutputs = eventCollector->Component.extractOutputs;
     eventCollectorId :=  eventCollectorOutputs##connector##id;
 
     let heartbeat =
@@ -541,7 +542,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ~resolvers,
       ~heartbeat=heartbeat->Component.extractOutputs,
     )
-    -> setOutputs(self, _);
+    ->setOutputs(self, _);
   };
 
   let make: maker =
