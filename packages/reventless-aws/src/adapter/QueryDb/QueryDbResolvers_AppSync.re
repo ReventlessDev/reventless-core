@@ -178,7 +178,10 @@ let make: QueryDb.resolversMaker(api, role) =
                   ~template=resolveIds(~idsFieldName),
                 ),
               ~responseTemplate=
-                generateTemplate(~tableName, ~template=resolveIdsResult),
+                generateTemplate(
+                  ~tableName,
+                  ~template=resolveIdsResult(~idsFieldName),
+                ),
               ~kind=Unit,
               ~opts,
               (),
