@@ -9,28 +9,30 @@ let make: Reventless.QueryDb.storageMaker(api, role) =
       indexes
       ->Belt.List.toArray
       ->Belt.Array.map(({Reventless.View.index, sortField, projectionType}) =>
-          switch (projectionType) {
-          | `ALL as projectionType
-          | `KEYS_ONLY as projectionType =>
-            DynamoDb.Table.GlobalSecondaryIndex.make(
-              ~name=index,
-              ~hashKey=index,
-              ~rangeKey=?sortField,
-              ~projectionType,
-              (),
-            )
-          | `INCLUDE(includes) =>
-            DynamoDb.Table.GlobalSecondaryIndex.make(
-              ~name=index,
-              ~hashKey=index,
-              ~rangeKey=?sortField,
-              ~projectionType=`INCLUDE,
-              ~nonKeyAttributes=includes,
-              (),
-            )
-          }
+          (
+            switch (projectionType) {
+            | `ALL as projectionType
+            | `KEYS_ONLY as projectionType =>
+              DynamoDb.Table.GlobalSecondaryIndex.make(
+                ~name=index,
+                ~hashKey=index,
+                ~rangeKey=?sortField,
+                ~projectionType,
+                (),
+              )
+            | `INCLUDE(includes) =>
+              DynamoDb.Table.GlobalSecondaryIndex.make(
+                ~name=index,
+                ~hashKey=index,
+                ~rangeKey=?sortField,
+                ~projectionType=`INCLUDE,
+                ~nonKeyAttributes=includes,
+                (),
+              )
+            }
+          )
+          ->Pulumi.Input.wrap
         )
-      ->Pulumi.Input.wrap
       ->Pulumi.Input.wrap;
 
     let attributes =
