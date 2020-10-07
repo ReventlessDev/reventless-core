@@ -10,6 +10,12 @@ type outputs = {
   "eventMappers": Js.Dict.t(EventMapper.outputs),
   "resolvers": array(Adapter.resource),
   "heartbeat": Heartbeat.outputs,
+  "serviceNameToExtensionPointsMapping":
+    Js.Dict.t(array(ExtensionPoint.outputs)),
+  "outgoingServiceNameToExtensionsMapping":
+    Js.Dict.t(array(Extension.outputs)),
+  "incomingServiceNameToExtensionsMapping":
+    Js.Dict.t(array(Extension.outputs)),
 };
 
 type plugin; // TODO: rename to t - after refactoring
@@ -60,7 +66,16 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ~tasks: Js.Dict.t(Task.outputs),
       ~eventMappers: Js.Dict.t(EventMapper.outputs),
       ~resolvers: array(Adapter.resource),
-      ~heartbeat: Heartbeat.outputs
+      ~heartbeat: Heartbeat.outputs,
+      ~serviceNameToExtensionPointsMapping: Js.Dict.t(
+                                              array(ExtensionPoint.outputs),
+                                            ),
+      ~outgoingServiceNameToExtensionsMapping: Js.Dict.t(
+                                                 array(Extension.outputs),
+                                               ),
+      ~incomingServiceNameToExtensionsMapping: Js.Dict.t(
+                                                 array(Extension.outputs),
+                                               )
     ) =>
     outputs =
     "";
@@ -318,14 +333,14 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         },
       );
 
-    module PluginExtension = Extension.Make(PluginExtensionPointSpec);
-    let pluginExtensionMaker =
-      PluginExtension.make(
+    module ConnectPluginExtension = Extension.Make(PluginExtensionPointSpec);
+    let dconnectPluginExtensionMaker =
+      ConnectPluginExtension.make(
         "Connect",
         [|(module ConnectPluginExtensionMapping)|],
       );
-    let pluginExtension =
-      pluginExtensionMaker(
+    let connectPluginExtension =
+      dconnectPluginExtensionMaker(
         ~queryCommandTopic,
         ~queryExtensionPointCommandTopicId,
         ~opts=Some(opts),
@@ -334,7 +349,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
 
     let allExtensionsOutputs =
       extensionsOutputs->Belt.Array.concat([|
-        pluginExtension->Component.extractOutputs,
+        connectPluginExtension->Component.extractOutputs,
       |]);
 
     let queryQueryDb =
@@ -585,6 +600,9 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ~eventMappers=(eventMappersOutputs^)->toDict,
       ~resolvers,
       ~heartbeat=heartbeat->Component.extractOutputs,
+      ~serviceNameToExtensionPointsMapping,
+      ~outgoingServiceNameToExtensionsMapping,
+      ~incomingServiceNameToExtensionsMapping,
     )
     ->setOutputs(self, _);
   };
