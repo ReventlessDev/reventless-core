@@ -177,24 +177,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     let eventCollectorId: ref(Pulumi.Output.t(string)) =
       ref("NOT-SET"->Pulumi.Output.make);
 
-    let extensionPointsConfig =
-      extensionPointsOutputs->Belt.Array.map(extensionPoint =>
-        {
-          PluginSpec.name: extensionPoint##name,
-          commandTopic:
-            extensionPoint##commandTopic##connector##id->Pulumi.Output.get,
-          eventTopic:
-            extensionPoint##eventTopic##publisher##id->Pulumi.Output.get,
-        }
-      );
-    let extensionsConfig =
-      extensionsOutputs->Belt.Array.map(extension =>
-        {
-          PluginSpec.name: extension##name,
-          eventCollector: (eventCollectorId^)->Pulumi.Output.get,
-        }
-      );
-
     let callHandler =
       fun
       | PluginExtensionPointSpec.ConnectPlugin(pluginSpec) => {
@@ -243,7 +225,50 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           Js.Promise.all2((connectToExtensionPoints, connectToExtensions))
           ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
         }
+      // TODO: Try to Unsubscribe from Event-Topic, if extensionpoint's plugin disconnected
       | _ => Js.Promise.resolve();
+    let extensionPointsConfig =
+      extensionPointsOutputs
+      ->Belt.Array.map(extensionPoint =>
+          (
+            extensionPoint##commandTopic##connector##id,
+            extensionPoint##eventTopic##publisher##id,
+          )
+          ->Pulumi.Output.all2
+          ->Pulumi.Output.apply(
+              ((commandTopicConnectorId, eventTopicPublisherId)) =>
+              {
+                PluginSpec.name: extensionPoint##name,
+                commandTopic: commandTopicConnectorId,
+                eventTopic: eventTopicPublisherId,
+              }
+            )
+        )
+      ->Pulumi.Output.all;
+    let extensionsConfig = {
+      extensionsOutputs
+      ->Belt.Array.map(extension =>
+          (eventCollectorId^)
+          ->Pulumi.Output.apply(eventCollectorId =>
+              {
+                PluginSpec.name: extension##name,
+                eventCollector: eventCollectorId,
+              }
+            )
+        )
+      ->Pulumi.Output.all;
+    };
+    let pluginDefinition =
+      (extensionPointsConfig, extensionsConfig)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((extensionPointsConfig, extensionsConfig)) =>
+          {
+            PluginSpec.name,
+            version,
+            extensionPoints: extensionPointsConfig,
+            extensions: extensionsConfig,
+          }
+        );
 
     module PluginExtensionMapping =
       ExtensionMapping.Make(
@@ -266,12 +291,9 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                   when eventId == id => [|
                   PublishExtensionPointCommand(
                     id,
-                    PluginExtensionPointSpec.ConnectPlugin({
-                      PluginSpec.name,
-                      version,
-                      extensionPoints: extensionPointsConfig,
-                      extensions: extensionsConfig,
-                    }),
+                    PluginExtensionPointSpec.ConnectPlugin(
+                      pluginDefinition->Pulumi.Output.get,
+                    ),
                   ),
                 |]
               | PluginConnected(pluginSpec) when eventId != id => [|
