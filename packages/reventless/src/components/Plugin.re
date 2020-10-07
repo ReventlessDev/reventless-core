@@ -176,15 +176,13 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
 
     let eventCollectorId: ref(Pulumi.Output.t(string)) =
       ref("NOT-SET"->Pulumi.Output.make);
+    let eventCollectorUrn: ref(Pulumi.Output.t(string)) =
+      ref("NOT-SET"->Pulumi.Output.make);
 
     let callHandler =
       fun
       | PluginExtensionPointSpec.ConnectPlugin(pluginSpec) => {
-          /* TODO: actually connect given eventTopic to this Plugin.eventCollector*/
-
-          // ExtensionPoint.EventTopic ----> Plugin.EventCollector
-
-          // for every ExtensionPoint of the connected Plugin which has a realted Extension in this Plugin -> connect
+          // for every ExtensionPoint of the connected Plugin which has a related Extension in this Plugin -> connect
           let connectToExtensionPoints =
             pluginSpec.extensionPoints
             ->Belt.Array.map(extensionPoint =>
@@ -192,27 +190,42 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                 ->Belt.Array.getBy(extension =>
                     extension##name == extensionPoint.name
                   )
-                ->Belt.Option.mapWithDefault(Js.Promise.resolve(), _extension =>
-                    (eventCollectorId^)
-                    ->Pulumi.Output.get
-                    /* NOTE: should we raise an error to create a CloudWatchAlarm, when connecting doesn't work? */
-                    /* TODO: connect extensionPoint##eventTopic to thisPlug's eventCollector */
-                    ->Js.log2("TODO call awsSdk with:", _)
-                    ->Js.Promise.resolve
-                    /* END TODO */
-                    ->Js.Promise.catch(
-                        err =>
-                          Js.log2(
-                            "Could not connect Plugins "
-                            ++ (pluginSpec.name ++ ":" ++ extensionPoint.name)
-                            ++ "->"
-                            ++ name
-                            ++ ":",
-                            err,
+                ->Belt.Option.mapWithDefault(
+                    Js.Promise.resolve(),
+                    _extension => {
+                      let eventCollectorUrn =
+                        (eventCollectorUrn^)->Pulumi.Output.get;
+                      AwsSdk.SNS.(
+                        snsClient()
+                        ->subscribe(
+                            ~params=
+                              SubscribeRequest.make(
+                                ~_TopicArn=extensionPoint.eventTopic,
+                                ~_Protocol=`sqs,
+                                ~_Endpoint=eventCollectorUrn,
+                                /* TODO: add dlq in params.redrivePolicy */
+                                (),
+                              ),
                           )
-                          ->Js.Promise.resolve,
-                        _,
                       )
+                      ->AwsSdk.Request.promise
+                      ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+                      ->Js.Promise.catch(
+                          err =>
+                            Js.log2(
+                              "Could not connect Plugins "
+                              ++ (
+                                pluginSpec.name ++ ":" ++ extensionPoint.name
+                              )
+                              ++ "->"
+                              ++ name
+                              ++ ":",
+                              err,
+                            )
+                            ->Js.Promise.resolve,
+                          _,
+                        );
+                    },
                   )
               )
             ->Js.Promise.all
@@ -551,6 +564,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       );
     let eventCollectorOutputs = eventCollector->Component.extractOutputs;
     eventCollectorId :=  eventCollectorOutputs##connector##id;
+    eventCollectorUrn :=  eventCollectorOutputs##connector##urn;
 
     let heartbeat =
       Heartbeat.make(
