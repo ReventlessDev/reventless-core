@@ -270,11 +270,10 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           }
         );
 
-    module PluginExtensionMapping =
+    module ConnectPluginExtensionMapping =
       ExtensionMapping.Make(
         PluginExtensionPointSpec,
         {
-          open ExtensionMapping;
           module Aggregate = ExtensionMapping.NoAggregate;
 
           let mapIncomingEvent:
@@ -308,7 +307,10 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
 
     module PluginExtension = Extension.Make(PluginExtensionPointSpec);
     let pluginExtensionMaker =
-      PluginExtension.make([|(module PluginExtensionMapping)|]);
+      PluginExtension.make(
+        "Connect",
+        [|(module ConnectPluginExtensionMapping)|],
+      );
     let pluginExtension =
       pluginExtensionMaker(
         ~queryCommandTopic,

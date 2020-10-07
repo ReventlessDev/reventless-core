@@ -37,7 +37,7 @@ module type Spec = {
 module type T = {
   module Spec: ExtensionMapping.Spec;
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec;
-  let make: array(module Mapping) => maker;
+  let make: (string, array(module Mapping)) => maker;
 };
 
 module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
@@ -79,8 +79,12 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(extension, outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(extension, outputs), outputs) => unit = "setOutputs";
+  external registerOutputs:
+    (Component.t(extension, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(extension, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -218,11 +222,12 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ~incomingEventHandler,
       ~outgoingEventHandler,
     )
-    -> setOutputs(self, _);
+    ->setOutputs(self, _);
   };
 
-  let make: array(module Mapping) => maker =
+  let make: (string, array(module Mapping)) => maker =
     (
+      nameSuffix,
       mappings,
       ~queryCommandTopic,
       ~queryExtensionPointCommandTopicId,
@@ -231,7 +236,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
     ) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name,
+        ~name=Spec.name ++ "." ++ nameSuffix,
         ~construct=
           construct(
             ~mappings,
