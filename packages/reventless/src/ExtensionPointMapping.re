@@ -133,7 +133,7 @@ module Make =
               }
             | Call(handler, callCommand) => {
                 Js.log2(
-                  {j|ExtensionPointMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Handling call command|j},
+                  {j|ExtensionPointMapping incoming from ExtensionPoint $extensionPointName: Handling call command|j},
                   callCommand->Spec.callCommand_encode->Js.Json.stringify,
                 );
 
@@ -175,7 +175,7 @@ module Make =
             }
           | Call(handler, msg) => {
               Js.log2(
-                {j|ExtensionPointMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Handling call command|j},
+                {j|ExtensionPointMapping outgoing from Aggregate $aggregateName: Handling call command|j},
                 msg->Spec.callCommand_encode->Js.Json.stringify,
               );
 

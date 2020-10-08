@@ -113,7 +113,7 @@ module Make =
               let commandStr =
                 aggregateCmd->Aggregate.command_encode->Js.Json.stringify;
               Js.log(
-                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing Aggregate command: $commandStr id: $id|j},
+                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command: $commandStr id: $id|j},
               );
 
               AbstractPublishAggregateCommand(
@@ -136,7 +136,7 @@ module Make =
           | PublishExtensionPointCommand(id, command) => {
               let commandStr = command->Spec.command_encode->Js.Json.stringify;
               Js.log(
-                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing ExtensionPoint command: $commandStr id: $id|j},
+                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to ExtensionPoint: Publishing command: $commandStr id: $id|j},
               );
 
               AbstractPublishExtensionPointCommand(
@@ -156,7 +156,7 @@ module Make =
             }
           | Call(handler, callCommand) => {
               Js.log2(
-                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Handling call command|j},
+                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName: Handling call command|j},
                 callCommand->Spec.callCommand_encode->Js.Json.stringify,
               );
 
@@ -181,7 +181,7 @@ module Make =
                 let commandStr =
                   command->Spec.command_encode->Js.Json.stringify;
                 Js.log(
-                  {j|ExtensionMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing ExtensionPoint command: $commandStr id: $id|j},
+                  {j|ExtensionMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing command: $commandStr id: $id|j},
                 );
 
                 AbstractPublishExtensionPointCommand(
@@ -202,7 +202,7 @@ module Make =
               }
             | Call(handler, callCommand) => {
                 Js.log2(
-                  {j|ExtensionMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Handling call command|j},
+                  {j|ExtensionMapping outgoing from Aggregate $aggregateName: Handling call command|j},
                   callCommand->Spec.callCommand_encode->Js.Json.stringify,
                 );
 
