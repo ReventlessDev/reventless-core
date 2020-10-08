@@ -189,8 +189,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       );
     let extensionsOutputs = extensions->Component.extractMultipleOutputs;
 
-    let eventCollectorId: ref(Pulumi.Output.t(string)) =
-      ref("NOT-SET"->Pulumi.Output.make);
     let eventCollectorUrn: ref(Pulumi.Output.t(string)) =
       ref("NOT-SET"->Pulumi.Output.make);
 
@@ -274,29 +272,22 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         )
       ->Pulumi.Output.all;
     let extensionsConfig = {
-      extensionsOutputs
-      ->Belt.Array.map(extension =>
-          (eventCollectorId^)
-          ->Pulumi.Output.apply(eventCollectorId =>
-              {
-                PluginSpec.name: extension##name,
-                eventCollector: eventCollectorId,
-              }
-            )
-        )
-      ->Pulumi.Output.all;
+      extensionsOutputs->Belt.Array.map(extension =>
+        {
+          PluginSpec.name: extension##name,
+          extensionPointName: extension##extensionPointName,
+        }
+      );
     };
     let pluginDefinition =
-      (extensionPointsConfig, extensionsConfig)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(((extensionPointsConfig, extensionsConfig)) =>
-          {
-            PluginSpec.name,
-            version,
-            extensionPoints: extensionPointsConfig,
-            extensions: extensionsConfig,
-          }
-        );
+      extensionPointsConfig->Pulumi.Output.apply(extensionPointsConfig =>
+        {
+          PluginSpec.name,
+          version,
+          extensionPoints: extensionPointsConfig,
+          extensions: extensionsConfig,
+        }
+      );
 
     module ConnectPluginExtensionMapping =
       ExtensionMapping.Make(
@@ -580,7 +571,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         (),
       );
     let eventCollectorOutputs = eventCollector->Component.extractOutputs;
-    eventCollectorId :=  eventCollectorOutputs##connector##id;
     eventCollectorUrn :=  eventCollectorOutputs##connector##urn;
 
     let heartbeat =

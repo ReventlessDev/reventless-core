@@ -15,16 +15,10 @@ type extensionPoint = {
 };
 
 [@decco]
-type extensionPoints = array(extensionPoint);
-
-[@decco]
 type extension = {
   name: string,
-  eventCollector: string,
+  extensionPointName: string,
 };
-
-[@decco]
-type extensions = array(extension);
 
 [@decco]
 type plugin = {

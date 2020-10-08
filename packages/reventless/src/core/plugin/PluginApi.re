@@ -1,8 +1,7 @@
 let graphQLSchema = "
 type Extension {
 	name: String!
-	commandTopic: String!
-	eventTopic: String!
+	extensionPointName: String!
 }
 
 type ExtensionPoint {

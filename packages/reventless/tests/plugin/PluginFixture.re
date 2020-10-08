@@ -4,7 +4,9 @@ let plugin1 = {
   name: "test-plugin-1",
   version: "1",
   extensionPoints: [||],
-  extensions: [|{name: "six-sanctions-geos-export", eventCollector: "ec1"}|],
+  extensions: [|
+    {name: "Core.Plugin", extensionPointName: "Core.Plugin.Connect"},
+  |],
 };
 
 let state1: PluginView.state = {
