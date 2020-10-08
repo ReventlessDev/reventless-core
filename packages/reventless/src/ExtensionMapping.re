@@ -110,9 +110,10 @@ module Make =
       ->Belt.Array.map(
           fun
           | PublishAggregateCommand(aggregateId, aggregateCmd) => {
-              Js.log2(
-                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing Aggregate command|j},
-                aggregateCmd->Aggregate.command_encode->Js.Json.stringify,
+              let commandStr =
+                aggregateCmd->Aggregate.command_encode->Js.Json.stringify;
+              Js.log(
+                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing Aggregate command: $commandStr id: $id|j},
               );
 
               AbstractPublishAggregateCommand(
@@ -133,9 +134,9 @@ module Make =
               );
             }
           | PublishExtensionPointCommand(id, command) => {
-              Js.log2(
-                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing ExtensionPoint command|j},
-                command->Spec.command_encode->Js.Json.stringify,
+              let commandStr = command->Spec.command_encode->Js.Json.stringify;
+              Js.log(
+                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing ExtensionPoint command: $commandStr id: $id|j},
               );
 
               AbstractPublishExtensionPointCommand(
@@ -177,9 +178,10 @@ module Make =
         ->Belt.Array.map(
             fun
             | PublishExtensionPointCommand(id, command) => {
-                Js.log2(
-                  {j|ExtensionMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing ExtensionPoint command|j},
-                  command->Spec.command_encode->Js.Json.stringify,
+                let commandStr =
+                  command->Spec.command_encode->Js.Json.stringify;
+                Js.log(
+                  {j|ExtensionMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing ExtensionPoint command: $commandStr id: $id|j},
                 );
 
                 AbstractPublishExtensionPointCommand(

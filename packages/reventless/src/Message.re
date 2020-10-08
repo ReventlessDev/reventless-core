@@ -90,10 +90,10 @@ exception InvalidCommand(Js.Json.t);
 [@bs.val]
 [@bs.scope "JSON"]
 [@deprecated "use Js.Json.stringify() or Js.Json.stringifyAny()"]
-external stringify: Js.t(_) => string = "";
+external stringify: Js.t(_) => string = "stringify";
 
-let log: (string, 'a) => 'a =
-  (str, value) => {
+let log: ('a, string) => 'a =
+  (value, str) => {
     Js.log2(str, value);
     value;
   };

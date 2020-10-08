@@ -530,12 +530,16 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         )
       ->(
           fun
-          | None => Js.log2("Unhandled Event:", event'Json)
+          | None => Js.log("Event Unhandled")
           | _ => ()
         );
 
     let eventHandler =
       (. event'Json) => {
+        Js.log2(
+          "Plugin eventHandler: incoming event:",
+          event'Json->Js.Json.stringify,
+        );
         detectUnhandledEvent(event'Json);
         (
           handleEvent(

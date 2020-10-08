@@ -70,7 +70,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
         _,
       )
     ->Js.Json.stringify
-    ->Message.log("Sending Heartbeat:", _)
+    ->Message.log("Sending Heartbeat:")
     ->AwsSdk.SQS.sendMessage(
         ~queueId=commandTopicId->Pulumi.Output.get,
         ~messageBody=_,
@@ -166,7 +166,12 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
 
   makeOutputs(~name)->setOutputs(self, _);
 
-  makeOutputsToRegister(~name, ~cloudwatchEventRule, ~cloudwatchEventTarget, ~heartbeatLambdaPermission)
+  makeOutputsToRegister(
+    ~name,
+    ~cloudwatchEventRule,
+    ~cloudwatchEventTarget,
+    ~heartbeatLambdaPermission,
+  )
   ->registerOutputs(self, _);
 };
 

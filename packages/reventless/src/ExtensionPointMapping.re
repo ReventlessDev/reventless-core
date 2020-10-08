@@ -108,9 +108,10 @@ module Make =
         ->Belt.Array.map(
             fun
             | PublishCommand(aggregateId, aggregateCmd) => {
-                Js.log2(
-                  {j|ExtensionPointMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command|j},
-                  aggregateCmd->Aggregate.command_encode->Js.Json.stringify,
+                let commandStr =
+                  aggregateCmd->Aggregate.command_encode->Js.Json.stringify;
+                Js.log(
+                  {j|ExtensionPointMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command: $commandStr id: $id|j},
                 );
 
                 AbstractPublishCommand(
@@ -157,9 +158,9 @@ module Make =
       ->Belt.Array.map(
           fun
           | PublishEvent(id, event) => {
-              Js.log2(
-                {j|ExtensionPointMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing event|j},
-                event->Spec.event_encode->Js.Json.stringify,
+              let eventStr = event->Spec.event_encode->Js.Json.stringify;
+              Js.log(
+                {j|ExtensionPointMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing event: $eventStr id: $id|j},
               );
 
               AbstractPublishEvent({
