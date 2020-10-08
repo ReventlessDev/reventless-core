@@ -3,6 +3,7 @@ let componentType = ComponentType.Extension;
 type outputs = {
   .
   "name": string,
+  "extensionPointName": string,
   "aggregateNames": array(string),
   "incomingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
   "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
@@ -71,6 +72,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
   external makeOutputs:
     (
       ~name: string,
+      ~extensionPointName: string,
       ~aggregateNames: array(string),
       ~incomingEventHandler: (. Js.Json.t) => Js.Promise.t(unit),
       ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(unit)
@@ -217,6 +219,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
 
     makeOutputs(
       ~name,
+      ~extensionPointName=Spec.name,
       ~aggregateNames=
         mappings->Belt.Array.map(((module Mapping)) => Mapping.aggregateName),
       ~incomingEventHandler,

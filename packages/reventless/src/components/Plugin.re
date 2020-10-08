@@ -489,7 +489,9 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         extension##aggregateNames
       );
     let incomingServiceNameToExtensionsMapping =
-      serviceNameToEx(allExtensionsOutputs, extension => [|extension##name|]);
+      serviceNameToEx(allExtensionsOutputs, extension =>
+        [|extension##extensionPointName|]
+      );
 
     let extensionAggregateNames =
       extensionsOutputs->Belt.Array.map(extension =>
