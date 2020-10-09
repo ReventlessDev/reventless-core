@@ -195,62 +195,136 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     let callHandler =
       fun
       | PluginExtensionPointSpec.ConnectPlugin(pluginSpec) => {
-          // for every ExtensionPoint of the connected Plugin which has a related Extension in this Plugin -> connect
-          let connectToExtensionPoints =
+          /* Current Plugin recieved `PluginConnected`:
+           *  this means: current plugin was already deployed before and recieved plugin just has been deployed
+           * - connectToExtensionPointsOfTheConnectedPlugin: if the newly deployed (recieved) plugin contains extensionpoints the current plugin relies on: connect current plugin to recieved plugin extension point's eventTopic
+           * - if the newly deployed (recieved) plugin contains extensions the current plugin holds an extensionpoint for: connect recieved extensions to current plugin's extension point
+           */
+          let connectToExtensionPointsOfConnectedPlugin =
+            // TODO: validate if this handling is correct - see connectToExtensionsOfTheConnectedPlugin: if a plugin has several extension for one extPt. it only needs to connect once
             pluginSpec.extensionPoints
             ->Belt.Array.map(extensionPoint =>
-                extensionsOutputs
-                ->Belt.Array.getBy(extension =>
-                    extension##name == extensionPoint.name
-                  )
-                ->Belt.Option.mapWithDefault(
-                    Js.Promise.resolve(),
-                    _extension => {
-                      let eventCollectorUrn =
-                        (eventCollectorUrn^)->Pulumi.Output.get;
-                      AwsSdk.SNS.(
-                        snsClient()
-                        ->subscribe(
-                            ~params=
-                              SubscribeRequest.make(
-                                ~_TopicArn=extensionPoint.eventTopic,
-                                ~_Protocol=`sqs,
-                                ~_Endpoint=eventCollectorUrn,
-                                /* TODO: add dlq in params.redrivePolicy */
-                                (),
-                              ),
+                extensionsOutputs->Belt.Array.keepMap(extension =>
+                  if (extension##extensionPointName == extensionPoint.name) {
+                    let eventCollectorUrn =
+                      (eventCollectorUrn^)->Pulumi.Output.get;
+                    AwsSdk.SNS.(
+                      snsClient()
+                      ->subscribe(
+                          ~params=
+                            SubscribeRequest.make(
+                              ~_TopicArn=extensionPoint.eventTopic,
+                              ~_Protocol=`sqs,
+                              ~_Endpoint=eventCollectorUrn,
+                              /* TODO: add dlq in params.redrivePolicy */
+                              (),
+                            ),
+                        )
+                    )
+                    ->AwsSdk.Request.promise
+                    ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+                    ->Js.Promise.catch(
+                        err =>
+                          Js.log2(
+                            "Could not connect Plugins"
+                            ++ (pluginSpec.name ++ ":" ++ extensionPoint.name)
+                            ++ " (Ext.P.) ->"
+                            ++ name
+                            ++ ":"
+                            ++
+                            extension##name
+                            ++ ": ",
+                            err,
                           )
+                          ->Js.Promise.resolve,
+                        _,
                       )
-                      ->AwsSdk.Request.promise
-                      ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
-                      ->Js.Promise.catch(
-                          err =>
-                            Js.log2(
-                              "Could not connect Plugins "
-                              ++ (
-                                pluginSpec.name ++ ":" ++ extensionPoint.name
-                              )
-                              ++ "->"
-                              ++ name
-                              ++ ":",
-                              err,
-                            )
-                            ->Js.Promise.resolve,
-                          _,
-                        );
-                    },
+                    ->Some;
+                  } else {
+                    None;
+                  }
+                )
+              )
+            ->Belt.Array.concatMany
+            ->Js.Promise.all
+            ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+
+          let connectToExtensionsOfConnectedPlugin = {
+            /* pluginSpec.extensions could hold several extensions
+             * for the same extensionpoint but we only connect once
+             */
+            let connections:
+              array(
+                (
+                  string /*EventTopic*/,
+                  (
+                    string /*extensionPointName*/,
+                    PluginSpec.plugin /*PluginSpec*/,
+                  ),
+                ),
+              ) = {
+              let conns = Js.Dict.empty();
+              extensionPointsOutputs->Belt.Array.forEach(extensionPoint =>
+                if (Util.Array.containsByPredicate(
+                      pluginSpec.extensions, extension =>
+                      extensionPoint##name == extension.extensionPointName
+                    )) {
+                  Js.Dict.set(
+                    conns,
+                    extensionPoint##eventTopic##publisher##id
+                    ->Pulumi.Output.get,
+                    (extensionPoint##name, pluginSpec),
+                  );
+                }
+              );
+              conns->Js.Dict.entries;
+            };
+            connections
+            ->Belt.Array.map(
+                ((eventTopic, (extensionPointName, pluginSpec))) =>
+                AwsSdk.SNS.(
+                  snsClient()
+                  ->subscribe(
+                      ~params=
+                        SubscribeRequest.make(
+                          ~_TopicArn=eventTopic,
+                          ~_Protocol=`sqs,
+                          ~_Endpoint=pluginSpec.eventCollector,
+                          /* TODO: add dlq in params.redrivePolicy */
+                          (),
+                        ),
+                    )
+                )
+                ->AwsSdk.Request.promise
+                ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+                ->Js.Promise.catch(
+                    err =>
+                      Js.log2(
+                        "Could not connect extensionpoint "
+                        ++ extensionPointName
+                        ++ " ["
+                        ++ name
+                        ++ "] to "
+                        ++ pluginSpec.name
+                        ++ ": ",
+                        err,
+                      )
+                      ->Js.Promise.resolve,
+                    _,
                   )
               )
             ->Js.Promise.all
             ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
-
-          let connectToExtensions = {
-            Js.Promise.resolve();
           };
 
-          Js.Promise.all2((connectToExtensionPoints, connectToExtensions))
+          // await connections of extensionpoints & extensions
+          Js.Promise.all2((
+            connectToExtensionPointsOfConnectedPlugin,
+            connectToExtensionsOfConnectedPlugin,
+          ))
           ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
         }
+      // for every ExtensionPoint of the connected Plugin which has a related Extension in this Plugin -> connect
       // TODO: Try to Unsubscribe from Event-Topic, if extensionpoint's plugin disconnected
       | _ => Js.Promise.resolve();
     let extensionPointsConfig =
@@ -280,14 +354,17 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       );
     };
     let pluginDefinition =
-      extensionPointsConfig->Pulumi.Output.apply(extensionPointsConfig =>
-        {
-          PluginSpec.name,
-          version,
-          extensionPoints: extensionPointsConfig,
-          extensions: extensionsConfig,
-        }
-      );
+      (extensionPointsConfig, eventCollectorUrn^)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((extensionPointsConfig, eventCollectorUrn)) =>
+          {
+            PluginSpec.name,
+            version,
+            extensionPoints: extensionPointsConfig,
+            extensions: extensionsConfig,
+            eventCollector: eventCollectorUrn,
+          }
+        );
 
     module ConnectPluginExtensionMapping =
       ExtensionMapping.Make(
@@ -451,20 +528,20 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       extensionPointsOutputs->Belt.Array.map(extensionPoint =>
         extensionPoint##aggregateNames->Set.fromArray
       );
-    let serviceNameToEx = (exs, getServiceName) => {
+    let serviceNameToEx = (exs, getServiceNames) => {
       let dict = Js.Dict.empty();
       exs->Belt.Array.forEachU((. ex) =>
         ex
-        ->getServiceName
-        ->Belt.Array.forEachU((. aggregateName) =>
-            switch (dict->Js.Dict.get(aggregateName)) {
+        ->getServiceNames
+        ->Belt.Array.forEachU((. serviceName) =>
+            switch (dict->Js.Dict.get(serviceName)) {
             | Some(mappedExtensionPoints) =>
               Js.Dict.set(
                 dict,
-                aggregateName,
+                serviceName,
                 mappedExtensionPoints->Belt.Array.concat([|ex|]),
               )
-            | None => Js.Dict.set(dict, aggregateName, [|ex|])
+            | None => Js.Dict.set(dict, serviceName, [|ex|])
             }
           )
       );

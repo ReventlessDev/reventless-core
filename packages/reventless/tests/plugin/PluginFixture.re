@@ -7,6 +7,7 @@ let plugin1 = {
   extensions: [|
     {name: "Core.Plugin", extensionPointName: "Core.Plugin.Connect"},
   |],
+  eventCollector: "URN",
 };
 
 let state1: PluginView.state = {
@@ -29,4 +30,5 @@ let plugin2 = {
     },
   |],
   extensions: [||],
+  eventCollector: "URN",
 };

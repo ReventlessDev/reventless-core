@@ -26,6 +26,7 @@ type plugin = {
   version,
   extensionPoints: array(extensionPoint),
   extensions: array(extension),
+  eventCollector: string,
 };
 
 [@decco]
