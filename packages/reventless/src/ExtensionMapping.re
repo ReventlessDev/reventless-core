@@ -5,16 +5,10 @@ type incomingCommandAction('aggregateCommand, 'extensionPointCommand, 'msg) =
   | PublishAggregateCommand(string, 'aggregateCommand)
   | PublishExtensionPointCommand(string, 'extensionPointCommand)
   | Call(Message.handler('msg), 'msg);
-type incomingCommandActions('aggregateCommand, 'extensionPointCommand, 'msg) =
-  array(
-    incomingCommandAction('aggregateCommand, 'extensionPointCommand, 'msg),
-  );
 
 type outgoingCommandAction('extensionPointCommand, 'msg) =
   | PublishExtensionPointCommand(string, 'extensionPointCommand)
   | Call(Message.handler('msg), 'msg);
-type outgoingCommandActions('extensionPointCommand, 'msg) =
-  array(outgoingCommandAction('extensionPointCommand, 'msg));
 
 module type Spec = {
   let name: string;
@@ -35,10 +29,12 @@ type mapIncomingEvent(
   'extensionPointCallCommand,
 ) =
   (string, 'extensionPointEvent, Message.meta) =>
-  incomingCommandActions(
-    'aggregateCommand,
-    'extensionPointCommand,
-    'extensionPointCallCommand,
+  array(
+    incomingCommandAction(
+      'aggregateCommand,
+      'extensionPointCommand,
+      'extensionPointCallCommand,
+    ),
   );
 
 type mapOutgoingEvent(
@@ -48,19 +44,19 @@ type mapOutgoingEvent(
   'extensionPointCallCommand,
 ) =
   (string, 'aggregateEvent, Message.meta) =>
-  outgoingCommandActions('extensionPointCommand, 'extensionPointCallCommand);
+  array(
+    outgoingCommandAction('extensionPointCommand, 'extensionPointCallCommand),
+  );
 
 /* these actions are internal to the Mapping Functor */
 type abstractIncomingCommandAction =
   | AbstractPublishAggregateCommand(Aggregate.name, Js.Json.t)
   | AbstractPublishExtensionPointCommand(Js.Json.t)
   | AbstractCall(Message.handler(unit));
-type abstractIncomingCommandActions = array(abstractIncomingCommandAction);
 
 type abstractOutgoingCommandAction =
   | AbstractPublishExtensionPointCommand(Js.Json.t)
   | AbstractCall(Message.handler(unit));
-type abstractOutgoingCommandActions = array(abstractOutgoingCommandAction);
 
 module type Impl = {
   module ExtensionPoint: Spec;
@@ -91,9 +87,9 @@ module type T = {
 
   let mapIncomingEvent:
     Message.event'(Id.String.t, ExtensionPoint.event) =>
-    abstractIncomingCommandActions;
+    array(abstractIncomingCommandAction);
 
-  let mapOutgoingEvent: Js.Json.t => abstractOutgoingCommandActions;
+  let mapOutgoingEvent: Js.Json.t => array(abstractOutgoingCommandAction);
 };
 
 module Make =
@@ -104,7 +100,8 @@ module Make =
   let extensionPointName = Spec.name;
 
   let mapIncomingEvent:
-    Message.event'(Id.String.t, Spec.event) => abstractIncomingCommandActions =
+    Message.event'(Id.String.t, Spec.event) =>
+    array(abstractIncomingCommandAction) =
     ({Message.id, event, meta}) =>
       MappingImpl.mapIncomingEvent(id->Id.String.toString, event, meta)
       ->Belt.Array.map(
@@ -164,7 +161,7 @@ module Make =
             },
         );
 
-  let mapOutgoingEvent: Js.Json.t => abstractOutgoingCommandActions =
+  let mapOutgoingEvent: Js.Json.t => array(abstractOutgoingCommandAction) =
     aggregateEvent'Json =>
       switch (
         Message.event'_decode(

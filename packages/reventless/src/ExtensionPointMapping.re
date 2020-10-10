@@ -7,12 +7,10 @@ type callHandler('msg) =
 type commandAction('command, 'msg) =
   | PublishCommand(string, 'command)
   | Call(callHandler('msg), 'msg);
-type commandActions('command, 'msg) = array(commandAction('command, 'msg));
 
 type eventAction('event, 'msg) =
   | PublishEvent(string, 'event)
   | Call(callHandler('msg), 'msg);
-type eventActions('event, 'msg) = array(eventAction('event, 'msg));
 
 module type Spec = {
   let name: string;
@@ -32,7 +30,7 @@ type mapIncomingCommand(
   'extensionPointCallCommand,
 ) =
   (string, 'extensionPointCommand, Message.meta) =>
-  commandActions('aggregateCommand, 'extensionPointCallCommand);
+  array(commandAction('aggregateCommand, 'extensionPointCallCommand));
 
 type mapOutgoingEvent(
   'aggregateId,
@@ -41,7 +39,7 @@ type mapOutgoingEvent(
   'extensionPointCallCommand,
 ) =
   (string, 'aggregateEvent, Message.meta) =>
-  eventActions('extensionPointEvent, 'extensionPointCallCommand);
+  array(eventAction('extensionPointEvent, 'extensionPointCallCommand));
 
 module type Impl = {
   module ExtensionPoint: Spec;
@@ -68,13 +66,10 @@ module type Impl = {
 type abstractCommandAction =
   | AbstractPublishCommand(Aggregate.name, Js.Json.t)
   | AbstractCall(unit => Js.Promise.t(unit));
-type abstractCommandActions = array(abstractCommandAction);
 
 type abstractEventAction('extensionPointEvent) =
   | AbstractPublishEvent(Message.event'(Id.String.t, 'extensionPointEvent))
   | AbstractCall(unit => Js.Promise.t(unit));
-type abstractEventActions('extensionPointEvent) =
-  array(abstractEventAction('extensionPointEvent));
 
 module type T = {
   module ExtensionPoint: Spec;
@@ -87,11 +82,11 @@ module type T = {
       Schedule.create,
       Schedule.delete
     ) =>
-    abstractCommandActions;
+    array(abstractCommandAction);
 
   let mapOutgoingEvent:
     (Js.Json.t, Schedule.create, Schedule.delete) =>
-    abstractEventActions(ExtensionPoint.event);
+    array(abstractEventAction(ExtensionPoint.event));
 };
 
 module Make =

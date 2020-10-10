@@ -4,7 +4,7 @@ type outputs = {
   .
   "name": string,
   "aggregateNames": array(string),
-  "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
+  "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(int),
   "commandTopic": CommandTopic.outputs,
   "eventTopic": EventTopic.outputs,
 };
@@ -65,7 +65,8 @@ module Make =
   module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter);
 
   type constructed;
-  type construct = (Component.t(extensionPoint, outputs), string) => constructed;
+  type construct =
+    (Component.t(extensionPoint, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -83,7 +84,7 @@ module Make =
     (
       ~name: string,
       ~aggregateNames: array(string),
-      ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(unit),
+      ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(int),
       ~commandTopic: Reventless.CommandTopic.outputs,
       ~eventTopic: Reventless.EventTopic.outputs
     ) =>
@@ -91,8 +92,12 @@ module Make =
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(extensionPoint, outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(extensionPoint, outputs), outputs) => unit = "setOutputs";
+  external registerOutputs:
+    (Component.t(extensionPoint, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(extensionPoint, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -106,13 +111,7 @@ module Make =
         )
       ); // TODO: handle multiple mappings for same Aggregate name
 
-    let mapIncomingCommands =
-        (
-          mappings,
-          scheduler,
-          queue,
-          commands': array(Message.command'(Id.String.t, Spec.command)),
-        ) =>
+    let mapIncomingCommands = (commands', mappings, scheduler, queue) =>
       mappings
       ->Belt.Array.map((module Mapping: Mapping) =>
           Mapping.mapIncomingCommands(
@@ -123,8 +122,7 @@ module Make =
         )
       ->Belt.Array.concatMany;
 
-    let mapOutgoingEvent =
-        (mappings: array(module Mapping), scheduler, queue, event'Json) =>
+    let mapOutgoingEvent = (event'Json, mappings, scheduler, queue) =>
       switch (
         event'Json->Message.serviceNameOfMsg->findOutgoingMapping(mappings)
       ) {
@@ -152,14 +150,11 @@ module Make =
     let childName =
       name->Js.String2.replace(".", "")->ComponentType.name(componentType);
 
-    let commandTopic: ref(
-                        option(
-                          Component.t(
-                            CommandTopic.t,
-                            Reventless.CommandTopic.outputs
-                          )
-                        )
-                      ) = ref(None);
+    let commandTopic:
+      ref(
+        option(Component.t(CommandTopic.t, Reventless.CommandTopic.outputs)),
+      ) =
+      ref(None);
 
     let applyCommandAction =
       fun
@@ -206,25 +201,27 @@ module Make =
            );
 
     let outgoingEventHandler =
-    (. event'Json) => {
-      let commandTopic = (commandTopic^) ->Belt.Option.getExn;
-      let queue = (commandTopic->Component.extractOutputs)##connector;
-      let mapOutgoingEvent =
-      Mapper.mapOutgoingEvent(mappings, scheduler, queue);
+      (. event'Json) => {
+        let commandTopic = (commandTopic^)->Belt.Option.getExn;
+        let queue = commandTopic->Component.extractOutputs##connector;
+        let eventActions =
+          event'Json->Mapper.mapOutgoingEvent(mappings, scheduler, queue);
 
-      event'Json->mapOutgoingEvent->Belt.Array.map(applyEventAction)
-      |> Js.Promise.all
-      |> Js.Promise.then_(_ => Js.Promise.resolve());
+        eventActions->Belt.Array.map(applyEventAction)
+        |> Js.Promise.all
+        |> Js.Promise.then_(_ =>
+             Js.Promise.resolve(eventActions->Belt.Array.size)
+           );
       };
 
     let incomingCommandsHandler =
       (. _id, cmds'Json) => {
-      let commandTopic = (commandTopic^) ->Belt.Option.getExn;
-        let queue = (commandTopic->Component.extractOutputs)##connector;
-        let mapIncomingCommands =
-          Mapper.mapIncomingCommands(mappings, scheduler, queue);
+        let commandTopic = (commandTopic^)->Belt.Option.getExn;
+        let queue = commandTopic->Component.extractOutputs##connector;
+        let commandActions =
+          cmds'Json->Mapper.mapIncomingCommands(mappings, scheduler, queue);
 
-        cmds'Json->mapIncomingCommands->Belt.Array.map(applyCommandAction)
+        commandActions->Belt.Array.map(applyCommandAction)
         |> Js.Promise.all
         |> Js.Promise.then_(_ => Js.Promise.resolve());
       };
@@ -244,10 +241,11 @@ module Make =
       ~aggregateNames=
         mappings->Belt.Array.map(((module Mapping)) => Mapping.aggregateName),
       ~outgoingEventHandler,
-      ~commandTopic=(commandTopic^)->Belt.Option.getExn->Component.extractOutputs,
+      ~commandTopic=
+        (commandTopic^)->Belt.Option.getExn->Component.extractOutputs,
       ~eventTopic=eventTopic->Component.extractOutputs,
     )
-    -> setOutputs(self, _);
+    ->setOutputs(self, _);
   };
 
   let make: array(module Mapping) => maker =

@@ -577,20 +577,17 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       event'Json
       ->Message.serviceNameOfMsg
       ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
-      ->Belt.Option.mapWithDefault(Js.Promise.resolve(), exs =>
+      ->Belt.Option.mapWithDefault(Js.Promise.resolve(0), exs =>
           exs
           ->Belt.Array.map(ex => (getEventHandler(ex))(. event'Json))
           ->Js.Promise.all
-          ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+          ->Js.Promise.then_(
+              actions =>
+                Js.Promise.resolve(actions->Belt.Array.reduce(0, (+))),
+              _,
+            )
         );
     };
-
-    let getExtensionPointOutgoingEventHandler = extensionPoint =>
-      extensionPoint##outgoingEventHandler;
-    let getExtensionOutgoingEventHandler = extension =>
-      extension##outgoingEventHandler;
-    let getExtensionIncomingEventHandler = extension =>
-      extension##incomingEventHandler;
 
     let detectUnhandledEvent = event'Json =>
       event'Json
@@ -607,36 +604,38 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         )
       ->(
           fun
-          | None => Js.log("Event Unhandled")
+          | None => Js.log("No mapping matches service name")
           | _ => ()
         );
 
     let eventHandler =
       (. event'Json) => {
-        Js.log2(
+        event'Json->Message.logEvent'Json(
           "Plugin eventHandler: incoming event:",
-          event'Json->Js.Json.stringify,
         );
         detectUnhandledEvent(event'Json);
-        (
+        [|
           handleEvent(
-            event'Json,
-            serviceNameToExtensionPointsMapping,
-            getExtensionPointOutgoingEventHandler,
+            event'Json, serviceNameToExtensionPointsMapping, extensionPoint =>
+            extensionPoint##outgoingEventHandler
           ),
           handleEvent(
-            event'Json,
-            outgoingServiceNameToExtensionsMapping,
-            getExtensionOutgoingEventHandler,
+            event'Json, outgoingServiceNameToExtensionsMapping, extension =>
+            extension##outgoingEventHandler
           ),
           handleEvent(
-            event'Json,
-            incomingServiceNameToExtensionsMapping,
-            getExtensionIncomingEventHandler,
+            event'Json, incomingServiceNameToExtensionsMapping, extension =>
+            extension##incomingEventHandler
           ),
-        )
-        ->Js.Promise.all3
-        ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+        |]
+        ->Js.Promise.all
+        |> Js.Promise.then_(actions =>
+             Js.log2(
+               "Plugin eventHandler created actions:",
+               actions->Belt.Array.reduce(0, (+)),
+             )
+             ->Js.Promise.resolve
+           );
       };
 
     module EventCollector =

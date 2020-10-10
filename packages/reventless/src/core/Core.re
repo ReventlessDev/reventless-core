@@ -40,8 +40,12 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(core, outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(core, outputs), outputs) => unit = "setOutputs";
+  external registerOutputs:
+    (Component.t(core, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(core, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -85,7 +89,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
           (),
         )
       );
-    let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs;
+    let extensionPointsOutputs =
+      extensionPoints->Component.extractMultipleOutputs;
 
     module Set = Belt.Set.String;
 
@@ -98,13 +103,23 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
       ->Belt.Set.String.toArray;
 
     let eventHandler =
-      (. event'Json) =>
+      (. event'Json) => {
+        event'Json->Message.logEvent'Json(
+          "Core eventHandler: outgoing event:",
+        );
         extensionPointsOutputs->Belt.Array.map(extensionPoint => {
           let handle = extensionPoint##outgoingEventHandler;
           handle(. event'Json);
         })
         |> Js.Promise.all
-        |> Js.Promise.then_(_ => Js.Promise.resolve());
+        |> Js.Promise.then_(actions =>
+             Js.log2(
+               "Core eventHandler created actions:",
+               actions->Belt.Array.reduce(0, (+)),
+             )
+             ->Js.Promise.resolve
+           );
+      };
 
     module EventCollector =
       EventCollector.Make(EventCollector.NoPolicies, EventCollectorAdapter);
@@ -124,7 +139,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
       ~extensionPoints=extensionPointsOutputs->toDict,
       ~services=servicesOutputs->toDict,
     )
-    -> setOutputs(self, _);
+    ->setOutputs(self, _);
   };
 
   let make:

@@ -98,6 +98,15 @@ let log: ('a, string) => 'a =
     value;
   };
 
+let logEvent'Json = (event'Json, description) => {
+  let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn;
+  let id = event'->Js.Dict.unsafeGet("event")->Js.Json.decodeString;
+  let event: array(string) = event'->Js.Dict.unsafeGet("event")->Obj.magic;
+  let eventName = event[0];
+  let eventStr = event'Json->Js.Json.stringify;
+  Js.log({j|$description $eventName($id) complete event: $eventStr|j});
+};
+
 let uuid = Uuid.v4;
 
 let now = () => Js.Date.make() |> Js.Date.getTime;
