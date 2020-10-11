@@ -144,7 +144,7 @@ let scanTableAndClean =
 let toTableConfig: Adapter.resource => tableConfig =
   resource => {
     let name = resource##name->Pulumi.Output.get;
-    let (id, sort) = resource->Util.DynamoDb_Runtime.keysFromResource;
+    let (id, sort) = resource->Util_DynamoDb_Runtime.keysFromResource;
 
     {"name": name, "id": id, "sort": sort};
   };
