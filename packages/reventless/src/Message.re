@@ -100,7 +100,7 @@ let log: ('a, string) => 'a =
 
 let logEvent'Json = (event'Json, description) => {
   let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn;
-  let id = event'->Js.Dict.unsafeGet("event")->Js.Json.decodeString;
+  let id = event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString;
   let event: array(string) = event'->Js.Dict.unsafeGet("event")->Obj.magic;
   let eventName = event[0];
   let eventStr = event'Json->Js.Json.stringify;
