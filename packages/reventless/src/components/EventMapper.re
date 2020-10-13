@@ -42,10 +42,16 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~eventCollector: Reventless.EventCollector.outputs, ~name: string) => outputs =
+    (~eventCollector: Reventless.EventCollector.outputs, ~name: string) =>
+    outputs =
     "";
-  [@bs.send] external registerOutputs: (Component.t(eventMapper, outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(eventMapper, outputs), outputs) => unit = "setOutputs";
+  [@bs.send]
+  external registerOutputs:
+    (Component.t(eventMapper, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(eventMapper, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -79,8 +85,9 @@ module Make =
     );
 
   let map = queryCommandTopic =>
-    (. eventJson) => {
-      eventJson->Js.Json.decodeObject->Belt.Option.flatMap(findMapping)
+    (. event'Json) => {
+      event'Json->Message.logEvent'Json("EventMapper.map: incoming event:");
+      event'Json->Js.Json.decodeObject->Belt.Option.flatMap(findMapping)
       |> (
         fun
         | Some((eventObj, eventMeta, mapping)) => {
@@ -117,6 +124,12 @@ module Make =
                       };
                       let queueId =
                         queryCommandTopic(service)##id->Pulumi.Output.get;
+                      let commandStr =
+                        command->commandEncoder->Js.Json.stringify;
+                      let source = eventMeta.service;
+                      Js.log(
+                        {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
+                      );
 
                       {Message.id: commandId, meta: commandMeta, command}
                       |> Message.command'_encode(idEncoder, commandEncoder)
@@ -187,7 +200,11 @@ module Make =
         (),
       );
 
-    makeOutputs(~eventCollector=eventCollector->Component.extractOutputs, ~name) -> setOutputs(self, _);
+    makeOutputs(
+      ~eventCollector=eventCollector->Component.extractOutputs,
+      ~name,
+    )
+    ->setOutputs(self, _);
   };
 
   let make:
