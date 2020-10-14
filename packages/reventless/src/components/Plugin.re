@@ -611,7 +611,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     let eventHandler =
       (. event'Json) => {
         event'Json->Message.logEvent'Json(
-          "Plugin eventHandler: incoming event:",
+          {j|Plugin $id eventHandler: incoming event:|j},
         );
         detectUnhandledEvent(event'Json);
         [|
