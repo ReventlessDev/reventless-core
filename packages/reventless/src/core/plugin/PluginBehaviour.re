@@ -5,9 +5,9 @@ module Spec = PluginSpec;
 [@decco]
 type state =
   | Detected
-  | Connected(plugin)
-  | Disconnected(plugin)
-  | Inactive(plugin);
+  | Connected(pluginDefinition)
+  | Disconnected(pluginDefinition)
+  | Inactive(pluginDefinition);
 
 let resolverConfig =
   Behaviour.{
@@ -34,7 +34,7 @@ let execute: Behaviour.execute(state, command, event, error) =
     switch (state) {
     | Detected =>
       switch (command) {
-      | ConnectPlugin(plugin) => [PluginConnected(plugin)]
+      | ConnectPlugin(pluginDef) => [PluginConnected(pluginDef)]
       | Heartbeat
       | DisconnectPlugin
       | ActivatePlugin

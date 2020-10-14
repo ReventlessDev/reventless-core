@@ -8,31 +8,31 @@ type name = string;
 type version = string;
 
 [@decco]
-type extensionPoint = {
+type extensionPointDefinition = {
   name: string,
   commandTopic: string,
   eventTopic: string,
 };
 
 [@decco]
-type extension = {
+type extensionDefinition = {
   name: string,
   extensionPointName: string,
 };
 
 [@decco]
-type plugin = {
+type pluginDefinition = {
   name,
   version,
-  extensionPoints: array(extensionPoint),
-  extensions: array(extension),
+  extensionPoints: array(extensionPointDefinition),
+  extensions: array(extensionDefinition),
   eventCollector: string,
 };
 
 [@decco]
 type command =
   | Heartbeat
-  | ConnectPlugin(plugin)
+  | ConnectPlugin(pluginDefinition)
   | DisconnectPlugin
   | ActivatePlugin
   | DeactivatePlugin;
@@ -40,7 +40,7 @@ type command =
 [@decco]
 type event =
   | UnknownPluginDetected
-  | PluginConnected(plugin)
+  | PluginConnected(pluginDefinition)
   | PluginReconnected
   | PluginDisconnected
   | PluginActivated

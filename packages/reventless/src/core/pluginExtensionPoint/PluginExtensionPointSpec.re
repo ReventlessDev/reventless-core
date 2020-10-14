@@ -6,13 +6,13 @@ type timeout = int; // in minutes
 [@decco]
 type command =
   | Heartbeat(timeout)
-  | ConnectPlugin(PluginSpec.plugin)
+  | ConnectPlugin(PluginSpec.pluginDefinition)
   | DisconnectPlugin;
 
 [@decco]
 type event =
   | UnknownPluginDetected
-  | PluginConnected(PluginSpec.plugin)
+  | PluginConnected(PluginSpec.pluginDefinition)
   | PluginReconnected
   | PluginDisconnected
   | PluginDeactivated
@@ -22,4 +22,4 @@ type event =
 type callCommand =
   | CreateDisconnectSchedule(string, timeout)
   | DeleteDisconnectSchedule(string)
-  | ConnectPlugin(PluginSpec.plugin);
+  | ConnectPlugin(PluginSpec.pluginDefinition);

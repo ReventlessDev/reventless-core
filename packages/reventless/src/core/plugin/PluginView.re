@@ -11,8 +11,8 @@ type status =
 type state = {
   name,
   version,
-  extensionPoints: array(extensionPoint),
-  extensions: array(extension),
+  extensionPoints: array(extensionPointDefinition),
+  extensions: array(extensionDefinition),
   status,
   since: string,
 };

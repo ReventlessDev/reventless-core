@@ -194,7 +194,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
 
     let callHandler =
       fun
-      | PluginExtensionPointSpec.ConnectPlugin(pluginSpec) => {
+      | PluginExtensionPointSpec.ConnectPlugin(pluginDef) => {
           /* Current Plugin recieved `PluginConnected`:
            *  this means: current plugin was already deployed before and recieved plugin just has been deployed
            * - connectToExtensionPointsOfTheConnectedPlugin: if the newly deployed (recieved) plugin contains extensionpoints the current plugin relies on: connect current plugin to recieved plugin extension point's eventTopic
@@ -202,7 +202,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
            */
           let connectToExtensionPointsOfConnectedPlugin =
             // TODO: validate if this handling is correct - see connectToExtensionsOfTheConnectedPlugin: if a plugin has several extension for one extPt. it only needs to connect once
-            pluginSpec.extensionPoints
+            pluginDef.extensionPoints
             ->Belt.Array.map(extensionPoint =>
                 extensionsOutputs->Belt.Array.keepMap(extension =>
                   if (extension##extensionPointName == extensionPoint.name) {
@@ -227,7 +227,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                         err =>
                           Js.log2(
                             "Could not connect Plugins"
-                            ++ (pluginSpec.name ++ ":" ++ extensionPoint.name)
+                            ++ (pluginDef.name ++ ":" ++ extensionPoint.name)
                             ++ " (Ext.P.) ->"
                             ++ name
                             ++ ":"
@@ -250,7 +250,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
 
           let connectToExtensionsOfConnectedPlugin = {
-            /* pluginSpec.extensions could hold several extensions
+            /* pluginDef.extensions could hold several extensions
              * for the same extensionpoint but we only connect once
              */
             let connections:
@@ -258,22 +258,22 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                 (
                   string /*EventTopic*/,
                   (
-                    string /*extensionPointName*/,
-                    PluginSpec.plugin /*PluginSpec*/,
+                    string /* extensionPointName */,
+                    PluginSpec.pluginDefinition /* pluginDefinition */,
                   ),
                 ),
               ) = {
               let conns = Js.Dict.empty();
               extensionPointsOutputs->Belt.Array.forEach(extensionPoint =>
                 if (Util.Array.containsByPredicate(
-                      pluginSpec.extensions, extension =>
+                      pluginDef.extensions, extension =>
                       extensionPoint##name == extension.extensionPointName
                     )) {
                   Js.Dict.set(
                     conns,
                     extensionPoint##eventTopic##publisher##id
                     ->Pulumi.Output.get,
-                    (extensionPoint##name, pluginSpec),
+                    (extensionPoint##name, pluginDef),
                   );
                 }
               );
@@ -281,7 +281,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             };
             connections
             ->Belt.Array.map(
-                ((eventTopic, (extensionPointName, pluginSpec))) =>
+                ((eventTopic, (extensionPointName, pluginDef))) =>
                 AwsSdk.SNS.(
                   snsClient()
                   ->subscribe(
@@ -289,7 +289,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                         SubscribeRequest.make(
                           ~_TopicArn=eventTopic,
                           ~_Protocol=`sqs,
-                          ~_Endpoint=pluginSpec.eventCollector,
+                          ~_Endpoint=pluginDef.eventCollector,
                           /* TODO: add dlq in params.redrivePolicy */
                           (),
                         ),
@@ -305,7 +305,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                         ++ " ["
                         ++ name
                         ++ "] to "
-                        ++ pluginSpec.name
+                        ++ pluginDef.name
                         ++ ": ",
                         err,
                       )
@@ -391,8 +391,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                     ),
                   ),
                 |]
-              | PluginConnected(pluginSpec) when eventId != id => [|
-                  Call(callHandler, ConnectPlugin(pluginSpec)),
+              | PluginConnected(pluginDef) when eventId != id => [|
+                  Call(callHandler, ConnectPlugin(pluginDef)),
                 |]
               | _ => [||]
               };
