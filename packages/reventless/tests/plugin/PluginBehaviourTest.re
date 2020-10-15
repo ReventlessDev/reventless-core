@@ -21,18 +21,18 @@ describe("Plugin Aggregate", () => {
 
   test("connected", () =>
     givenEvents([UnknownPluginDetected])
-    |> whenCmd(ConnectPlugin(plugin1))
-    |> thenEvents([PluginConnected(plugin1)])
+    |> whenCmd(ConnectPlugin(pluginDefinition))
+    |> thenEvents([PluginConnected(pluginDefinition)])
   );
 
   test("ignored further connect when connected", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(plugin1)])
-    |> whenCmd(ConnectPlugin(plugin1))
+    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
+    |> whenCmd(ConnectPlugin(pluginDefinition))
     |> thenEvents([])
   );
 
   test("disconnected", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(plugin1)])
+    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
     |> whenCmd(DisconnectPlugin)
     |> thenEvents([PluginDisconnected])
   );
@@ -40,7 +40,7 @@ describe("Plugin Aggregate", () => {
   test("re-connected by heartbeat", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDisconnected,
     ])
     |> whenCmd(Heartbeat)
@@ -50,15 +50,15 @@ describe("Plugin Aggregate", () => {
   test("ignore further connect when disconnected", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDisconnected,
     ])
-    |> whenCmd(ConnectPlugin(plugin1))
+    |> whenCmd(ConnectPlugin(pluginDefinition))
     |> thenEvents([])
   );
 
   test("deactivated", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(plugin1)])
+    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
     |> whenCmd(DeactivatePlugin)
     |> thenEvents([PluginDeactivated])
   );
@@ -66,7 +66,7 @@ describe("Plugin Aggregate", () => {
   test("deactivated when disconnected", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDisconnected,
     ])
     |> whenCmd(DeactivatePlugin)
@@ -76,7 +76,7 @@ describe("Plugin Aggregate", () => {
   test("re-activated after deactivated when disconnected", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDisconnected,
       PluginDeactivated,
     ])
@@ -87,17 +87,17 @@ describe("Plugin Aggregate", () => {
   test("ignore further connect when inactive", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDeactivated,
     ])
-    |> whenCmd(ConnectPlugin(plugin1))
+    |> whenCmd(ConnectPlugin(pluginDefinition))
     |> thenEvents([])
   );
 
   test("re-activated", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDeactivated,
     ])
     |> whenCmd(ActivatePlugin)
@@ -107,7 +107,7 @@ describe("Plugin Aggregate", () => {
   test("re-connected by heartbeat after re-activated", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDeactivated,
       PluginActivated,
     ])
@@ -118,11 +118,11 @@ describe("Plugin Aggregate", () => {
   test("ignore further connect after re-activated", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDeactivated,
       PluginActivated,
     ])
-    |> whenCmd(ConnectPlugin(plugin1))
+    |> whenCmd(ConnectPlugin(pluginDefinition))
     |> thenEvents([])
   );
 });

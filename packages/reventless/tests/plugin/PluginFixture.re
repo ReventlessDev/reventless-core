@@ -1,6 +1,6 @@
 open PluginSpec;
 
-let plugin1 = {
+let pluginDefinition = {
   name: "test-plugin-1",
   version: "1",
   extensionPoints: [||],
@@ -10,16 +10,16 @@ let plugin1 = {
   eventCollector: "URN",
 };
 
-let state1: PluginView.state = {
-  name: plugin1.name,
-  version: plugin1.version,
-  extensionPoints: plugin1.extensionPoints,
-  extensions: plugin1.extensions,
+let state: PluginView.state = {
+  name: pluginDefinition.name,
+  version: pluginDefinition.version,
+  extensionPoints: pluginDefinition.extensionPoints,
+  extensions: pluginDefinition.extensions,
   status: Connected,
   since: TestFixtures.context.meta.time,
 };
 
-let plugin2 = {
+let pluginDefinition2 = {
   name: "test-plugin-2",
   version: "1",
   extensionPoints: [|

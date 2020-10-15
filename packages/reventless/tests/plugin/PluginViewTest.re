@@ -20,40 +20,40 @@ describe("Plugin: View", () => {
 
   test("connected", () =>
     givenEvents([UnknownPluginDetected])
-    |> whenEvent(PluginConnected(plugin1))
-    |> thenState({...state1, status: Connected})
+    |> whenEvent(PluginConnected(pluginDefinition))
+    |> thenState({...state, status: Connected})
   );
 
   test("disconnected", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(plugin1)])
+    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
     |> whenEvent(PluginDisconnected)
-    |> thenState({...state1, status: Disconnected})
+    |> thenState({...state, status: Disconnected})
   );
 
   test("deactivated", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(plugin1)])
+    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
     |> whenEvent(PluginDeactivated)
-    |> thenState({...state1, status: Inactive})
+    |> thenState({...state, status: Inactive})
   );
 
   test("activated", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDeactivated,
     ])
     |> whenEvent(PluginActivated)
-    |> thenState({...state1, status: Disconnected})
+    |> thenState({...state, status: Disconnected})
   );
 
   test("re-connected after activated", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(plugin1),
+      PluginConnected(pluginDefinition),
       PluginDeactivated,
       PluginActivated,
     ])
     |> whenEvent(PluginReconnected)
-    |> thenState({...state1, status: Connected})
+    |> thenState({...state, status: Connected})
   );
 });
