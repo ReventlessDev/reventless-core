@@ -16,7 +16,7 @@ describe("Plugin Aggregate", () => {
   test("Heartbeat again", () =>
     givenEvents([UnknownPluginDetected])
     |> whenCmd(Heartbeat)
-    |> thenEvents([])
+    |> thenEvents([UnknownPluginDetected])
   );
 
   test("ConnectPlugin", () =>
