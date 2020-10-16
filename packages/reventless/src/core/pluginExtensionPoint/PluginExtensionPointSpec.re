@@ -13,10 +13,10 @@ type command =
 type event =
   | UnknownPluginDetected
   | PluginConnected(PluginSpec.pluginDefinition)
-  | PluginReconnected
-  | PluginDisconnected
-  | PluginDeactivated
-  | PluginActivated;
+  | PluginReconnected(PluginSpec.pluginDefinition)
+  | PluginDisconnected(PluginSpec.pluginDefinition)
+  | PluginDeactivated(PluginSpec.pluginDefinition)
+  | PluginActivated(PluginSpec.pluginDefinition);
 
 [@decco]
 type callCommand =

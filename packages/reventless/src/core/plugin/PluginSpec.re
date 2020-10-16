@@ -41,10 +41,10 @@ type command =
 type event =
   | UnknownPluginDetected
   | PluginConnected(pluginDefinition)
-  | PluginReconnected
-  | PluginDisconnected
-  | PluginActivated
-  | PluginDeactivated;
+  | PluginReconnected(pluginDefinition)
+  | PluginDisconnected(pluginDefinition)
+  | PluginActivated(pluginDefinition)
+  | PluginDeactivated(pluginDefinition);
 
 [@decco]
 type error =

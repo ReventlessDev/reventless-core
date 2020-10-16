@@ -41,8 +41,8 @@ module Impl = {
           PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout + 1),
         ),
       |]
-    | PluginExtensionPointSpec.ConnectPlugin(plugin) => [|
-        PublishCommand(id, Aggregate.ConnectPlugin(plugin)),
+    | PluginExtensionPointSpec.ConnectPlugin(pluginDefinition) => [|
+        PublishCommand(id, Aggregate.ConnectPlugin(pluginDefinition)),
       |]
     | PluginExtensionPointSpec.DisconnectPlugin => [|
         PublishCommand(id, Aggregate.DisconnectPlugin),
@@ -58,20 +58,35 @@ module Impl = {
     | Aggregate.UnknownPluginDetected => [|
         PublishEvent(id, PluginExtensionPointSpec.UnknownPluginDetected),
       |]
-    | Aggregate.PluginConnected(plugin) => [|
-        PublishEvent(id, PluginExtensionPointSpec.PluginConnected(plugin)),
+    | Aggregate.PluginConnected(pluginDefinition) => [|
+        PublishEvent(
+          id,
+          PluginExtensionPointSpec.PluginConnected(pluginDefinition),
+        ),
       |]
-    | Aggregate.PluginReconnected => [|
-        PublishEvent(id, PluginExtensionPointSpec.PluginReconnected),
+    | Aggregate.PluginReconnected(pluginDefinition) => [|
+        PublishEvent(
+          id,
+          PluginExtensionPointSpec.PluginReconnected(pluginDefinition),
+        ),
       |]
-    | Aggregate.PluginDisconnected => [|
-        PublishEvent(id, PluginExtensionPointSpec.PluginDisconnected),
+    | Aggregate.PluginDisconnected(pluginDefinition) => [|
+        PublishEvent(
+          id,
+          PluginExtensionPointSpec.PluginDisconnected(pluginDefinition),
+        ),
       |]
-    | Aggregate.PluginDeactivated => [|
-        PublishEvent(id, PluginExtensionPointSpec.PluginDeactivated),
+    | Aggregate.PluginDeactivated(pluginDefinition) => [|
+        PublishEvent(
+          id,
+          PluginExtensionPointSpec.PluginDeactivated(pluginDefinition),
+        ),
       |]
-    | Aggregate.PluginActivated => [|
-        PublishEvent(id, PluginExtensionPointSpec.PluginActivated),
+    | Aggregate.PluginActivated(pluginDefinition) => [|
+        PublishEvent(
+          id,
+          PluginExtensionPointSpec.PluginActivated(pluginDefinition),
+        ),
       |]
     };
 };

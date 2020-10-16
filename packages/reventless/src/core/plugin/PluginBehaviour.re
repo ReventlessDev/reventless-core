@@ -34,31 +34,33 @@ let execute: Behaviour.execute(state, command, event, error) =
     switch (state) {
     | Detected =>
       switch (command) {
-      | ConnectPlugin(pluginDef) => [PluginConnected(pluginDef)]
+      | ConnectPlugin(pluginDefinition) => [
+          PluginConnected(pluginDefinition),
+        ]
       | Heartbeat
       | DisconnectPlugin
       | ActivatePlugin
       | DeactivatePlugin => []
       }
-    | Connected(_) =>
+    | Connected(pluginDefinition) =>
       switch (command) {
-      | DisconnectPlugin => [PluginDisconnected]
-      | DeactivatePlugin => [PluginDeactivated]
+      | DisconnectPlugin => [PluginDisconnected(pluginDefinition)]
+      | DeactivatePlugin => [PluginDeactivated(pluginDefinition)]
       | Heartbeat
       | ConnectPlugin(_)
       | ActivatePlugin => []
       }
-    | Disconnected(_) =>
+    | Disconnected(pluginDefinition) =>
       switch (command) {
-      | Heartbeat => [PluginReconnected]
-      | DeactivatePlugin => [PluginDeactivated]
+      | Heartbeat => [PluginReconnected(pluginDefinition)]
+      | DeactivatePlugin => [PluginDeactivated(pluginDefinition)]
       | ConnectPlugin(_)
       | DisconnectPlugin
       | ActivatePlugin => []
       }
-    | Inactive(_) =>
+    | Inactive(pluginDefinition) =>
       switch (command) {
-      | ActivatePlugin => [PluginActivated]
+      | ActivatePlugin => [PluginActivated(pluginDefinition)]
       | Heartbeat
       | ConnectPlugin(_)
       | DisconnectPlugin
@@ -72,10 +74,10 @@ let init: Behaviour.init(state, event) =
     switch (event) {
     | UnknownPluginDetected => Detected
     | PluginConnected(_)
-    | PluginReconnected
-    | PluginDisconnected
-    | PluginActivated
-    | PluginDeactivated =>
+    | PluginReconnected(_)
+    | PluginDisconnected(_)
+    | PluginActivated(_)
+    | PluginDeactivated(_) =>
       raise(Reventless.Message.InvalidEvent(event_encode(event)))
     };
 
@@ -84,42 +86,42 @@ let apply: Behaviour.apply(state, event) =
     switch (state) {
     | Detected =>
       switch (event) {
-      | PluginConnected(plugin) => Connected(plugin)
+      | PluginConnected(pluginDefinition) => Connected(pluginDefinition)
       | UnknownPluginDetected
-      | PluginReconnected
-      | PluginDisconnected
-      | PluginActivated
-      | PluginDeactivated =>
+      | PluginReconnected(_)
+      | PluginDisconnected(_)
+      | PluginActivated(_)
+      | PluginDeactivated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
-    | Connected(plugin) =>
+    | Connected(pluginDefinition) =>
       switch (event) {
-      | PluginDisconnected => Disconnected(plugin)
-      | PluginDeactivated => Inactive(plugin)
+      | PluginDisconnected(_) => Disconnected(pluginDefinition)
+      | PluginDeactivated(_) => Inactive(pluginDefinition)
       | UnknownPluginDetected
       | PluginConnected(_)
-      | PluginReconnected
-      | PluginActivated =>
+      | PluginReconnected(_)
+      | PluginActivated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
-    | Disconnected(plugin) =>
+    | Disconnected(pluginDefinition) =>
       switch (event) {
-      | PluginReconnected => Connected(plugin)
-      | PluginDeactivated => Inactive(plugin)
+      | PluginReconnected(_) => Connected(pluginDefinition)
+      | PluginDeactivated(_) => Inactive(pluginDefinition)
       | UnknownPluginDetected
       | PluginConnected(_)
-      | PluginDisconnected
-      | PluginActivated =>
+      | PluginDisconnected(_)
+      | PluginActivated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
-    | Inactive(plugin) =>
+    | Inactive(pluginDefinition) =>
       switch (event) {
-      | PluginActivated => Disconnected(plugin)
+      | PluginActivated(_) => Disconnected(pluginDefinition)
       | UnknownPluginDetected
       | PluginConnected(_)
-      | PluginReconnected
-      | PluginDisconnected
-      | PluginDeactivated =>
+      | PluginReconnected(_)
+      | PluginDisconnected(_)
+      | PluginDeactivated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
     };

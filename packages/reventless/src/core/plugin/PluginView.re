@@ -40,10 +40,10 @@ let init =
           since: context.meta.time,
         },
       ]
-    | PluginReconnected
-    | PluginDisconnected
-    | PluginActivated
-    | PluginDeactivated =>
+    | PluginReconnected(_)
+    | PluginDisconnected(_)
+    | PluginActivated(_)
+    | PluginDeactivated(_) =>
       raise(Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)))
     };
 
@@ -61,14 +61,14 @@ let apply =
           since: context.meta.time,
         }),
       ]
-    | PluginReconnected => [
+    | PluginReconnected(_) => [
         Update({...state, status: Connected, since: context.meta.time}),
       ]
-    | PluginDisconnected
-    | PluginActivated => [
+    | PluginDisconnected(_)
+    | PluginActivated(_) => [
         Update({...state, status: Disconnected, since: context.meta.time}),
       ]
-    | PluginDeactivated => [
+    | PluginDeactivated(_) => [
         Update({...state, status: Inactive, since: context.meta.time}),
       ]
     };

@@ -6,54 +6,54 @@ open PluginSpec;
 open PluginFixture;
 
 describe("Plugin: View", () => {
-  test("detected", () =>
+  test("UnknownPluginDetected", () =>
     givenEvents([])  //
     |> whenEvent(UnknownPluginDetected)
     |> thenNoState
   );
 
-  test("already detected", () =>
+  test("UnknownPluginDetected (already detected)", () =>
     givenEvents([UnknownPluginDetected])
     |> whenEvent(UnknownPluginDetected)
     |> thenNoState
   );
 
-  test("connected", () =>
+  test("PluginConnected", () =>
     givenEvents([UnknownPluginDetected])
     |> whenEvent(PluginConnected(pluginDefinition))
     |> thenState({...state, status: Connected})
   );
 
-  test("disconnected", () =>
+  test("PluginDisconnected", () =>
     givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
-    |> whenEvent(PluginDisconnected)
+    |> whenEvent(PluginDisconnected(pluginDefinition))
     |> thenState({...state, status: Disconnected})
   );
 
-  test("deactivated", () =>
+  test("PluginDeactivated", () =>
     givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
-    |> whenEvent(PluginDeactivated)
+    |> whenEvent(PluginDeactivated(pluginDefinition))
     |> thenState({...state, status: Inactive})
   );
 
-  test("activated", () =>
+  test("PluginActivated", () =>
     givenEvents([
       UnknownPluginDetected,
       PluginConnected(pluginDefinition),
-      PluginDeactivated,
+      PluginDeactivated(pluginDefinition),
     ])
-    |> whenEvent(PluginActivated)
+    |> whenEvent(PluginActivated(pluginDefinition))
     |> thenState({...state, status: Disconnected})
   );
 
-  test("re-connected after activated", () =>
+  test("PluginReconnected (after activated)", () =>
     givenEvents([
       UnknownPluginDetected,
       PluginConnected(pluginDefinition),
-      PluginDeactivated,
-      PluginActivated,
+      PluginDeactivated(pluginDefinition),
+      PluginActivated(pluginDefinition),
     ])
-    |> whenEvent(PluginReconnected)
+    |> whenEvent(PluginReconnected(pluginDefinition))
     |> thenState({...state, status: Connected})
   );
 });
