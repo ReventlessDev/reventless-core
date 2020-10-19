@@ -15,6 +15,11 @@ type Mutation {
 	activatePlugin(id: ID!): String!
 }
 
+type StatusChange {
+  at: String!
+  by: String!
+}
+
 type Plugin {
 	id: ID!
 	name: String!
