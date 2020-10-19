@@ -1,3 +1,4 @@
+// TODO: refactor to smaller code parts for a better overview
 let componentType = ComponentType.Plugin;
 
 type outputs = {
