@@ -15,8 +15,7 @@ type name = string;
 type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
-    ~queryExtensionPointCommandTopicId: string =>
-                                        Js.Promise.t(option(string)),
+    ~pluginExtensionPointCommandTopicId: Pulumi.Output.t(string),
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>
@@ -135,7 +134,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       (
         ~mappings,
         ~queryCommandTopic,
-        ~queryExtensionPointCommandTopicId,
+        ~pluginExtensionPointCommandTopicId,
         self,
         name,
       ) => {
@@ -152,8 +151,31 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
           command'Json,
           queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
         )
-      | ExtensionMapping.AbstractPublishExtensionPointCommand(command'Json) =>
-        queryExtensionPointCommandTopicId(Spec.name)
+      | ExtensionMapping.AbstractPublishExtensionPointCommand(
+          extensionPointName,
+          command'Json,
+        ) => {
+          // TODO: IMPLEMENT
+          Js.log4(
+            "SendCommand for extension point:",
+            extensionPointName,
+            command'Json->Js.Json.stringify,
+            pluginExtensionPointCommandTopicId->Pulumi.Output.get,
+          );
+          let sendCommandCommand: PluginExtensionPointSpec.command =
+            PluginExtensionPointSpec.SendCommand({
+              PluginExtensionPointSpec.extensionPoint: extensionPointName,
+              command: command'Json->Js.Json.stringify,
+            });
+          let sendCommandJson =
+            sendCommandCommand->PluginExtensionPointSpec.command_encode;
+
+          publishCommand(
+            sendCommandJson,
+            pluginExtensionPointCommandTopicId->Pulumi.Output.get,
+          );
+        }
+      /*queryExtensionPointCommandTopicId(Spec.name)
         ->Js.Promise.then_(
             extensionPointCommandTopic =>
               extensionPointCommandTopic->Belt.Option.mapWithDefaultU(
@@ -162,6 +184,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
               ),
             _,
           )
+          */
       | AbstractCall(handler) =>
         handler()
         |> Js.Promise.catch(err =>
@@ -172,16 +195,41 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
 
     let applyOutgoingCommandAction =
       fun
-      | ExtensionMapping.AbstractPublishExtensionPointCommand(command'Json) =>
-        queryExtensionPointCommandTopicId(Spec.name)
-        ->Js.Promise.then_(
-            extensionPointCommandTopic =>
-              extensionPointCommandTopic->Belt.Option.mapWithDefaultU(
-                Js.Promise.resolve(), (. extensionPointCommandTopic) =>
-                publishCommand(command'Json, extensionPointCommandTopic)
-              ),
-            _,
-          )
+      | ExtensionMapping.AbstractPublishExtensionPointCommand(
+          extensionPointName,
+          command'Json,
+        ) => {
+          // TODO: IMPLEMENT
+          Js.log4(
+            "SendCommand for extension point:",
+            extensionPointName,
+            command'Json->Js.Json.stringify,
+            pluginExtensionPointCommandTopicId->Pulumi.Output.get,
+          );
+          let sendCommandCommand: PluginExtensionPointSpec.command =
+            PluginExtensionPointSpec.SendCommand({
+              PluginExtensionPointSpec.extensionPoint: extensionPointName,
+              command: command'Json->Js.Json.stringify,
+            });
+          let sendCommandJson =
+            sendCommandCommand->PluginExtensionPointSpec.command_encode;
+
+          publishCommand(
+            sendCommandJson,
+            pluginExtensionPointCommandTopicId->Pulumi.Output.get,
+          );
+        }
+      /*
+       queryExtensionPointCommandTopicId(Spec.name)
+       ->Js.Promise.then_(
+           extensionPointCommandTopic =>
+             extensionPointCommandTopic->Belt.Option.mapWithDefaultU(
+               Js.Promise.resolve(), (. extensionPointCommandTopic) =>
+               publishCommand(command'Json, extensionPointCommandTopic)
+             ),
+           _,
+         )
+         */
       | AbstractCall(handler) =>
         handler()
         |> Js.Promise.catch(err =>
@@ -239,7 +287,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       nameSuffix,
       mappings,
       ~queryCommandTopic,
-      ~queryExtensionPointCommandTopicId,
+      ~pluginExtensionPointCommandTopicId,
       ~opts,
       _,
     ) =>
@@ -250,7 +298,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
           construct(
             ~mappings,
             ~queryCommandTopic,
-            ~queryExtensionPointCommandTopicId,
+            ~pluginExtensionPointCommandTopicId,
           ),
         ~opts,
       );

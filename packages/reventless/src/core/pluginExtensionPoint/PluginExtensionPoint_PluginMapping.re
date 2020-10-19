@@ -23,6 +23,13 @@ let callHandler =
     })
   | PluginExtensionPointSpec.DeleteDisconnectSchedule(id) =>
     deleteSchedule(. id)
+  | SendCommand({extensionPoint, command}) =>
+    Js.log3(
+      "TODO: IMPLEMENT CallCommand handling for SendCommand:",
+      extensionPoint,
+      command,
+    )
+    ->Js.Promise.resolve
   | _ => Js.Promise.resolve()
   };
 
@@ -50,6 +57,9 @@ module Impl = {
           callHandler,
           PluginExtensionPointSpec.DeleteDisconnectSchedule(id),
         ),
+      |]
+    | SendCommand(publishCommandDefinition) => [|
+        Call(callHandler, SendCommand(publishCommandDefinition)),
       |]
     };
 

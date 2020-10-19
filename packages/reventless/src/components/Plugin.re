@@ -144,13 +144,15 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         )##commandTopic##connector##id
       );
 
-    let queryExtensionPointCommandTopicId = name =>
-      if (name == PluginExtensionPointSpec.name) {
-        corePluginCommandTopicId->Pulumi.Output.get->Some->Js.Promise.resolve;
-      } else {
-        Some("NOT IMPLEMENTED YET !")
-        ->Js.Promise.resolve; // TODO
-      };
+    /*
+     let queryExtensionPointCommandTopicId = name =>
+       if (name == PluginExtensionPointSpec.name) {
+         corePluginCommandTopicId->Pulumi.Output.get->Some->Js.Promise.resolve;
+       } else {
+         Some("NOT IMPLEMENTED YET !")
+         ->Js.Promise.resolve; // TODO
+       };
+       */
 
     let queryEventTopic = name =>
       if (name == PluginExtensionPointSpec.name) {
@@ -183,7 +185,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       extensionMakers->Belt.Array.map(extensionMaker =>
         extensionMaker(
           ~queryCommandTopic,
-          ~queryExtensionPointCommandTopicId,
+          ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
           ~opts=Some(opts),
           (),
         )
@@ -411,7 +413,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     let connectPluginExtension =
       dconnectPluginExtensionMaker(
         ~queryCommandTopic,
-        ~queryExtensionPointCommandTopicId,
+        ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
         ~opts=Some(opts),
         (),
       );

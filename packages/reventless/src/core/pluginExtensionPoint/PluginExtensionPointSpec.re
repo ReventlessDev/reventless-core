@@ -4,10 +4,17 @@ let name = "Core.Plugin";
 type timeout = int; // in minutes
 
 [@decco]
+type publishCommandDefinition = {
+  extensionPoint: string,
+  command: string,
+};
+
+[@decco]
 type command =
   | Heartbeat(timeout)
   | ConnectPlugin(PluginSpec.pluginDefinition)
-  | DisconnectPlugin;
+  | DisconnectPlugin
+  | SendCommand(publishCommandDefinition);
 
 [@decco]
 type event =
@@ -22,4 +29,5 @@ type event =
 type callCommand =
   | CreateDisconnectSchedule(string, timeout)
   | DeleteDisconnectSchedule(string)
-  | ConnectPlugin(PluginSpec.pluginDefinition);
+  | ConnectPlugin(PluginSpec.pluginDefinition)
+  | SendCommand(publishCommandDefinition);

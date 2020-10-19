@@ -51,11 +51,11 @@ type mapOutgoingEvent(
 /* these actions are internal to the Mapping Functor */
 type abstractIncomingCommandAction =
   | AbstractPublishAggregateCommand(Aggregate.name, Js.Json.t)
-  | AbstractPublishExtensionPointCommand(Js.Json.t)
+  | AbstractPublishExtensionPointCommand(extensionPointName, Js.Json.t)
   | AbstractCall(Message.handler(unit));
 
 type abstractOutgoingCommandAction =
-  | AbstractPublishExtensionPointCommand(Js.Json.t)
+  | AbstractPublishExtensionPointCommand(extensionPointName, Js.Json.t)
   | AbstractCall(Message.handler(unit));
 
 module type Impl = {
@@ -137,6 +137,7 @@ module Make =
               );
 
               AbstractPublishExtensionPointCommand(
+                Spec.name,
                 Message.command'_encode(
                   Id.String.t_encode,
                   Spec.command_encode,
@@ -182,6 +183,7 @@ module Make =
                 );
 
                 AbstractPublishExtensionPointCommand(
+                  Spec.name,
                   Message.command'_encode(
                     Id.String.t_encode,
                     Spec.command_encode,
