@@ -175,16 +175,6 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
             pluginExtensionPointCommandTopicId->Pulumi.Output.get,
           );
         }
-      /*queryExtensionPointCommandTopicId(Spec.name)
-        ->Js.Promise.then_(
-            extensionPointCommandTopic =>
-              extensionPointCommandTopic->Belt.Option.mapWithDefaultU(
-                Js.Promise.resolve(), (. extensionPointCommandTopic) =>
-                publishCommand(command'Json, extensionPointCommandTopic)
-              ),
-            _,
-          )
-          */
       | AbstractCall(handler) =>
         handler()
         |> Js.Promise.catch(err =>
@@ -219,17 +209,6 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
             pluginExtensionPointCommandTopicId->Pulumi.Output.get,
           );
         }
-      /*
-       queryExtensionPointCommandTopicId(Spec.name)
-       ->Js.Promise.then_(
-           extensionPointCommandTopic =>
-             extensionPointCommandTopic->Belt.Option.mapWithDefaultU(
-               Js.Promise.resolve(), (. extensionPointCommandTopic) =>
-               publishCommand(command'Json, extensionPointCommandTopic)
-             ),
-           _,
-         )
-         */
       | AbstractCall(handler) =>
         handler()
         |> Js.Promise.catch(err =>

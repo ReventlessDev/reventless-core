@@ -253,9 +253,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
 
           let connectToExtensionsOfConnectedPlugin = {
-            /* pluginDef.extensions could hold several extensions
-             * for the same extensionpoint but we only connect once
-             */
             let connections:
               array(
                 (
