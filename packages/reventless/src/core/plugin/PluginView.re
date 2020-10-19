@@ -14,7 +14,7 @@ type state = {
   extensionPoints: array(extensionPointDefinition),
   extensions: array(extensionDefinition),
   status,
-  since: string,
+  statusChange: Message.statusChange,
 };
 
 let name = None;
@@ -27,7 +27,7 @@ let sortConfig = None;
 let indexes = [];
 
 let init =
-  (. event, context: Message.context) =>
+  (. event, {Message.meta: {time, user}}) =>
     switch (event) {
     | UnknownPluginDetected => []
     | PluginConnected({name, version, extensionPoints, extensions}) => [
@@ -37,7 +37,10 @@ let init =
           extensionPoints,
           extensions,
           status: Connected,
-          since: context.meta.time,
+          statusChange: {
+            at: time,
+            by: user,
+          },
         },
       ]
     | PluginReconnected(_)
@@ -48,7 +51,7 @@ let init =
     };
 
 let apply =
-  (. state, event, context: Message.context) =>
+  (. state, event, {Message.meta: {time, user}}) =>
     switch (event) {
     | UnknownPluginDetected => []
     | PluginConnected({name, version, extensionPoints, extensions}) => [
@@ -58,18 +61,42 @@ let apply =
           extensionPoints,
           extensions,
           status: Connected,
-          since: context.meta.time,
+          statusChange: {
+            at: time,
+            by: user,
+          },
         }),
       ]
     | PluginReconnected(_) => [
-        Update({...state, status: Connected, since: context.meta.time}),
+        Update({
+          ...state,
+          status: Connected,
+          statusChange: {
+            at: time,
+            by: user,
+          },
+        }),
       ]
     | PluginDisconnected(_)
     | PluginActivated(_) => [
-        Update({...state, status: Disconnected, since: context.meta.time}),
+        Update({
+          ...state,
+          status: Disconnected,
+          statusChange: {
+            at: time,
+            by: user,
+          },
+        }),
       ]
     | PluginDeactivated(_) => [
-        Update({...state, status: Inactive, since: context.meta.time}),
+        Update({
+          ...state,
+          status: Inactive,
+          statusChange: {
+            at: time,
+            by: user,
+          },
+        }),
       ]
     };
 

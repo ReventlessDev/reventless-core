@@ -22,7 +22,7 @@ type Plugin {
 	extensionPoints: [ExtensionPoint!]!
 	extensions: [Extension!]!
 	status: [String!]!
-	since: String!
+  statusChange: StatusChange!
 }
 
 type Plugins {
