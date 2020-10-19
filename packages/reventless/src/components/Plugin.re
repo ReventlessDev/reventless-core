@@ -189,8 +189,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       );
     let extensionsOutputs = extensions->Component.extractMultipleOutputs;
 
-    let eventCollectorUrn: ref(Pulumi.Output.t(string)) =
-      ref("NOT-SET"->Pulumi.Output.make);
+    let (eventCollectorUrn, setEventCollectorUrn) =
+      Util.Pulumi.Output.Async.make();
 
     let callHandler =
       fun
@@ -207,7 +207,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                 extensionsOutputs->Belt.Array.keepMap(extension =>
                   if (extension##extensionPointName == extensionPoint.name) {
                     let eventCollectorUrn =
-                      (eventCollectorUrn^)->Pulumi.Output.get;
+                      eventCollectorUrn->Pulumi.Output.get;
                     AwsSdk.SNS.(
                       snsClient()
                       ->subscribe(
@@ -354,7 +354,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       );
     };
     let pluginDefinition =
-      (extensionPointsConfig, eventCollectorUrn^)
+      (extensionPointsConfig, eventCollectorUrn)
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply(((extensionPointsConfig, eventCollectorUrn)) =>
           {
@@ -651,7 +651,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         (),
       );
     let eventCollectorOutputs = eventCollector->Component.extractOutputs;
-    eventCollectorUrn :=  eventCollectorOutputs##connector##urn;
+    setEventCollectorUrn(. eventCollectorOutputs##connector##urn);
 
     let heartbeat =
       Heartbeat.make(
