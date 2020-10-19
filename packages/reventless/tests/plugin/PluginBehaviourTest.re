@@ -25,6 +25,12 @@ describe("Plugin Aggregate", () => {
     |> thenEvents([PluginConnected(pluginDefinition)])
   );
 
+  test("ConnectPlugin (after multiple Heartbeats)", () =>
+    givenEvents([UnknownPluginDetected, UnknownPluginDetected])
+    |> whenCmd(ConnectPlugin(pluginDefinition))
+    |> thenEvents([PluginConnected(pluginDefinition)])
+  );
+
   test("ConnectPlugin again", () =>
     givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
     |> whenCmd(ConnectPlugin(pluginDefinition))

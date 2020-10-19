@@ -87,7 +87,7 @@ let apply: Behaviour.apply(state, event) =
     | Detected =>
       switch (event) {
       | PluginConnected(pluginDefinition) => Connected(pluginDefinition)
-      | UnknownPluginDetected
+      | UnknownPluginDetected => state
       | PluginReconnected(_)
       | PluginDisconnected(_)
       | PluginActivated(_)
