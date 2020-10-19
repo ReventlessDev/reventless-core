@@ -16,7 +16,7 @@ let state: PluginView.state = {
   extensionPoints: pluginDefinition.extensionPoints,
   extensions: pluginDefinition.extensions,
   status: Connected,
-  since: TestFixtures.context.meta.time,
+  statusChange: TestFixtures.statusChange,
 };
 
 let pluginDefinition2 = {
