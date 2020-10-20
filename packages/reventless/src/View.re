@@ -1,15 +1,16 @@
 /** resolve single id field */
 type resolveIdConfig = {
+  idFieldName: string,
   fieldName: string,
   tableName: string,
-  idFieldName: string,
+  index: option(string),
 };
 
 /** resolve id list field */
 type resolveIdsConfig = {
+  idsFieldName: string,
   fieldName: string,
   tableName: string,
-  idsFieldName: string,
 };
 
 type index = {
