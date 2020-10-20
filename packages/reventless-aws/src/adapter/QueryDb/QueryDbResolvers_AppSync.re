@@ -143,25 +143,53 @@ let make: QueryDb.resolversMaker(api, role) =
 
         let idResolvers =
           resolveIdConfigs->Belt.List.map(config => {
-            let {View.fieldName, tableName, idFieldName} = config;
-
-            Resolver.make(
-              ~name=name ++ idFieldName->String.capitalize,
-              ~api,
-              ~dataSourceName,
-              ~_type=name->Pulumi.Input.wrap,
-              ~field=fieldName->Pulumi.Input.wrap,
-              ~requestTemplate=
-                generateTemplate(
-                  ~tableName,
-                  ~template=resolveId(~idFieldName),
-                ),
-              ~responseTemplate=
-                generateTemplate(~tableName, ~template=resolveIdResult),
-              ~kind=Unit,
-              ~opts,
-              (),
-            );
+            let {View.idFieldName, fieldName, tableName, index} = config;
+            switch (index) {
+            | None =>
+              Resolver.make(
+                ~name=name ++ idFieldName->String.capitalize,
+                ~api,
+                ~dataSourceName,
+                ~_type=name->Pulumi.Input.wrap,
+                ~field=fieldName->Pulumi.Input.wrap,
+                ~requestTemplate=
+                  generateTemplate(
+                    ~tableName,
+                    ~template=resolveId(~idFieldName),
+                  ),
+                ~responseTemplate=
+                  generateTemplate(~tableName, ~template=resolveIdResult),
+                ~kind=Unit,
+                ~opts,
+                (),
+              )
+            | Some(index) =>
+              let resolverDataSource =
+                DataSource.makeDynamoDBDataSourceWithTableName(
+                  ~name=name ++ idFieldName->String.capitalize ++ "Resolver",
+                  ~api,
+                  ~tableName=
+                    queryQueryDb(tableName)
+                    ->Pulumi.Output.flatMap(qdb => qdb##name),
+                  ~serviceRole=apiRole,
+                  ~opts,
+                  (),
+                );
+              Resolver.make(
+                ~name=name ++ idFieldName->String.capitalize,
+                ~api,
+                ~dataSourceName=
+                  resolverDataSource##name->Pulumi.Output.asInput,
+                ~_type=name->Pulumi.Input.wrap,
+                ~field=fieldName->Pulumi.Input.wrap,
+                ~requestTemplate=
+                  resolveIdByIndex(~idFieldName, ~index)->Pulumi.Input.wrap,
+                ~responseTemplate=firstResult->Pulumi.Input.wrap,
+                ~kind=Unit,
+                ~opts,
+                (),
+              );
+            };
           });
         let idsResolvers =
           resolveIdsConfigs->Belt.List.map(config => {
