@@ -11,6 +11,7 @@ type resolveIdsConfig = {
   idsFieldName: string,
   fieldName: string,
   tableName: string,
+  sortField: option(string),
 };
 
 type index = {
