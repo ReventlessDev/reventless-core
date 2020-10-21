@@ -193,7 +193,7 @@ let make: QueryDb.resolversMaker(api, role) =
           });
         let idsResolvers =
           resolveIdsConfigs->Belt.List.map(config => {
-            let {View.fieldName, tableName, idsFieldName} = config;
+            let {View.fieldName, tableName, idsFieldName, sortField} = config;
             Resolver.make(
               ~name=name ++ idsFieldName->String.capitalize,
               ~api,
@@ -203,7 +203,7 @@ let make: QueryDb.resolversMaker(api, role) =
               ~requestTemplate=
                 generateTemplate(
                   ~tableName,
-                  ~template=resolveIds(~idsFieldName),
+                  ~template=resolveIds(~idsFieldName, ~sortField),
                 ),
               ~responseTemplate=
                 generateTemplate(
