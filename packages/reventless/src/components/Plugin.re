@@ -195,6 +195,31 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     let (eventCollectorUrn, setEventCollectorUrn) =
       Util.Pulumi.Output.Async.make();
 
+    let publishEvent = (eventStr, service, queueArn) =>
+      AwsSdk.SQS.sendMessage(
+        ~queueId=queueArn->AwsSdk.SQS.arn2Url,
+        ~messageBody=
+          {
+            Message.id,
+            meta: Message.generateMeta(~service, ()),
+            event: eventStr,
+          }
+          ->Message.event'_encode(Js.Json.string, Js.Json.string, _)
+          ->Js.Json.stringify,
+        (),
+      )
+      ->Js.Promise.then_(
+          _ =>
+            Js.log2("Plugin: published event", eventStr)->Js.Promise.resolve,
+          _,
+        )
+      ->Js.Promise.catch(
+          err =>
+            Js.log2("Plugin: Error on publish event:", err)
+            ->Js.Promise.resolve,
+          _,
+        );
+
     let callHandler =
       fun
       | PluginExtensionPointSpec.ConnectPlugin(
@@ -206,8 +231,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         ) => {
           /* Current Plugin received `PluginConnected`:
            *  this means: current plugin was already deployed before and received plugin just has been deployed
-           * - connectToExtensionPointsOfTheConnectedPlugin: if the newly deployed (recieved) plugin contains extensionpoints the current plugin relies on: connect current plugin to recieved plugin extension point's eventTopic
-           * - if the newly deployed (recieved) plugin contains extensions the current plugin holds an extensionpoint for: connect recieved extensions to current plugin's extension point
+           * - connectToExtensionPoints: if the newly deployed (received) plugin contains extensionpoints the current plugin relies on: connect current plugin to received plugin extension point's eventTopic
+           * - if the newly deployed (received) plugin contains extensions the current plugin holds an extensionpoint for: connect received extensions to current plugin's extension point
            */
           let connectToExtensionPoints =
             // TODO: validate if this handling is correct - see connectToExtensionsOfTheConnectedPlugin: if a plugin has several extension for one extPt. it only needs to connect once
@@ -233,8 +258,9 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                     ->AwsSdk.Request.promise
                     ->Js.Promise.then_(
                         subscriptionResponse =>
-                          Js.log(
-                            {j|connectToExtensionPoints: $name->$pluginName:$extensionPointName subscriptionResponse: $subscriptionResponse|j},
+                          Js.log2(
+                            {j|connectToExtensionPoints: $name->$pluginName:$extensionPointName, subscriptionResponse:|j},
+                            subscriptionResponse,
                           )
                           ->Js.Promise.resolve,
                         _,
@@ -272,6 +298,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                   string /*EventTopic*/,
                   (
                     string /* extensionPointName */,
+                    string /* initEvent */,
                     PluginSpec.pluginDefinition /* pluginDefinition */,
                   ),
                 ),
@@ -284,7 +311,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                   conns->Js.Dict.set(
                     extensionPoint##eventTopic##publisher##id
                     ->Pulumi.Output.get,
-                    (extensionPoint##name, pluginDef),
+                    (
+                      extensionPoint##name,
+                      extensionPoint##initEvent,
+                      pluginDef,
+                    ),
                   );
                 }
               );
@@ -295,7 +326,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                 (
                   (
                     eventTopic,
-                    (extensionPointName, {name: pluginName, eventCollector}),
+                    (
+                      extensionPointName,
+                      initEvent,
+                      {name: pluginName, eventCollector},
+                    ),
                   ),
                 ) =>
                 AwsSdk.SNS.(
@@ -314,8 +349,9 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                 ->AwsSdk.Request.promise
                 ->Js.Promise.then_(
                     subscriptionResponse =>
-                      Js.log(
-                        {j|connectToExtensions: $pluginName->$name:$extensionPointName subscriptionResponse: $subscriptionResponse|j},
+                      Js.log2(
+                        {j|connectToExtensions: $pluginName->$name:$extensionPointName, subscriptionResponse:|j},
+                        subscriptionResponse,
                       )
                       ->Js.Promise.resolve,
                     _,
@@ -333,6 +369,15 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                         err,
                       )
                       ->Js.Promise.resolve,
+                    _,
+                  )
+                ->Js.Promise.then_(
+                    _ =>
+                      publishEvent(
+                        initEvent,
+                        extensionPointName,
+                        eventCollector,
+                      ),
                     _,
                   )
               )
@@ -400,10 +445,10 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
               PluginExtensionPointSpec.command,
               PluginExtensionPointSpec.callCommand,
             ) =
-            (eventId, event, _meta) =>
+            (pluginId, event, _meta) =>
               switch (event) {
               | PluginExtensionPointSpec.UnknownPluginDetected
-                  when eventId == id => [|
+                  when pluginId == id => [|
                   PublishExtensionPointCommand(
                     id,
                     PluginExtensionPointSpec.ConnectPlugin(
@@ -411,7 +456,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                     ),
                   ),
                 |]
-              | PluginConnected(pluginDef) when eventId != id => [|
+              | PluginConnected(pluginDef) when pluginId != id => [|
                   Call(callHandler, ConnectPlugin(pluginDef)),
                 |]
               | _ => [||]

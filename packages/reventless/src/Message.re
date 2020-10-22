@@ -134,7 +134,7 @@ type context = {
 
 type errorHandler('error, 'command) = ('error, 'command, context) => unit;
 
-let generateMeta = (service, ip, user) => {
+let generateMeta = (~service, ~ip="", ~user="", ()) => {
   let msgId = uuid();
   {service, ip, user, time: nowAsISOString(), msgId, correlationId: msgId};
 };

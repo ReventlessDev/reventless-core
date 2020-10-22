@@ -12,7 +12,12 @@ let callHandler =
       payload:
         {
           Message.id,
-          meta: Message.generateMeta("Core.Plugin", "", "Scheduler"),
+          meta:
+            Message.generateMeta(
+              ~service="Core.Plugin",
+              ~user="Scheduler",
+              (),
+            ),
           command: PluginExtensionPointSpec.DisconnectPlugin,
         }
         |> Message.command'_encode(
