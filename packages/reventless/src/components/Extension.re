@@ -141,6 +141,29 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
     let mapIncomingEvent = Mapper.mapIncomingEvent(mappings);
     let mapOutgoingEvent = Mapper.mapOutgoingEvent(mappings);
 
+    let forwardCommand = (id, meta, extensionPointName, command'Json) =>
+      publishCommand(
+        PluginExtensionPointSpec.(
+          Message.command'_encode(
+            Id.String.t_encode,
+            command_encode,
+            {
+              id: id->Id.String.makeFromString,
+              meta: {
+                ...meta,
+                msgId: Message.uuid(),
+              },
+              command:
+                ForwardCommand({
+                  extensionPointName,
+                  command: command'Json->Js.Json.stringify,
+                }),
+            },
+          )
+        ),
+        pluginExtensionPointCommandTopicId->Pulumi.Output.get,
+      );
+
     let applyIncomingCommandAction =
       fun
       | ExtensionMapping.AbstractPublishAggregateCommand(
@@ -151,30 +174,20 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
           command'Json,
           queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
         )
+      | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(
+          command'Json,
+        ) =>
+        publishCommand(
+          command'Json,
+          pluginExtensionPointCommandTopicId->Pulumi.Output.get,
+        )
       | ExtensionMapping.AbstractPublishExtensionPointCommand(
           extensionPointName,
+          id,
+          meta,
           command'Json,
-        ) => {
-          // TODO: IMPLEMENT
-          Js.log4(
-            "SendCommand for extension point:",
-            extensionPointName,
-            command'Json->Js.Json.stringify,
-            pluginExtensionPointCommandTopicId->Pulumi.Output.get,
-          );
-          let sendCommandCommand: PluginExtensionPointSpec.command =
-            PluginExtensionPointSpec.SendCommand({
-              PluginExtensionPointSpec.extensionPoint: extensionPointName,
-              command: command'Json->Js.Json.stringify,
-            });
-          let sendCommandJson =
-            sendCommandCommand->PluginExtensionPointSpec.command_encode;
-
-          publishCommand(
-            sendCommandJson,
-            pluginExtensionPointCommandTopicId->Pulumi.Output.get,
-          );
-        }
+        ) =>
+        forwardCommand(id, meta, extensionPointName, command'Json)
       | AbstractCall(handler) =>
         handler()
         |> Js.Promise.catch(err =>
@@ -185,30 +198,20 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
 
     let applyOutgoingCommandAction =
       fun
+      | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(
+          command'Json,
+        ) =>
+        publishCommand(
+          command'Json,
+          pluginExtensionPointCommandTopicId->Pulumi.Output.get,
+        )
       | ExtensionMapping.AbstractPublishExtensionPointCommand(
           extensionPointName,
+          id,
+          meta,
           command'Json,
-        ) => {
-          // TODO: IMPLEMENT
-          Js.log4(
-            "SendCommand for extension point:",
-            extensionPointName,
-            command'Json->Js.Json.stringify,
-            pluginExtensionPointCommandTopicId->Pulumi.Output.get,
-          );
-          let sendCommandCommand: PluginExtensionPointSpec.command =
-            PluginExtensionPointSpec.SendCommand({
-              PluginExtensionPointSpec.extensionPoint: extensionPointName,
-              command: command'Json->Js.Json.stringify,
-            });
-          let sendCommandJson =
-            sendCommandCommand->PluginExtensionPointSpec.command_encode;
-
-          publishCommand(
-            sendCommandJson,
-            pluginExtensionPointCommandTopicId->Pulumi.Output.get,
-          );
-        }
+        ) =>
+        forwardCommand(id, meta, extensionPointName, command'Json)
       | AbstractCall(handler) =>
         handler()
         |> Js.Promise.catch(err =>

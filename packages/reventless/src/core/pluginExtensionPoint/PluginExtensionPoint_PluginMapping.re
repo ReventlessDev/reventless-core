@@ -23,14 +23,14 @@ let callHandler =
     })
   | PluginExtensionPointSpec.DeleteDisconnectSchedule(id) =>
     deleteSchedule(. id)
-  | SendCommand({extensionPoint, command}) =>
+  | ForwardCommand({extensionPointName, command}) =>
     // TODO: query all Plugins from ReadModel
     // TODO: find first Plugin which holds an extension point named like the one in the command
     // TODO: get queue id for extension point
     // TODO: send command
     Js.log3(
-      "TODO: IMPLEMENT CallCommand handling for SendCommand:",
-      extensionPoint,
+      "TODO: IMPLEMENT CallCommand handling for ForwardCommand:",
+      extensionPointName,
       command,
     )
     ->Js.Promise.resolve
@@ -62,8 +62,8 @@ module Impl = {
           PluginExtensionPointSpec.DeleteDisconnectSchedule(id),
         ),
       |]
-    | SendCommand(publishCommandDefinition) => [|
-        Call(callHandler, SendCommand(publishCommandDefinition)),
+    | ForwardCommand(publishCommandDefinition) => [|
+        Call(callHandler, ForwardCommand(publishCommandDefinition)),
       |]
     };
 
