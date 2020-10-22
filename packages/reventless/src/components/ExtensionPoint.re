@@ -4,7 +4,7 @@ type outputs = {
   .
   "name": string,
   "aggregateNames": array(string),
-  "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(int),
+  "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
   "commandTopic": CommandTopic.outputs,
   "eventTopic": EventTopic.outputs,
 };
@@ -84,7 +84,7 @@ module Make =
     (
       ~name: string,
       ~aggregateNames: array(string),
-      ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(int),
+      ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(unit),
       ~commandTopic: Reventless.CommandTopic.outputs,
       ~eventTopic: Reventless.EventTopic.outputs
     ) =>
@@ -209,9 +209,7 @@ module Make =
 
         eventActions->Belt.Array.map(applyEventAction)
         |> Js.Promise.all
-        |> Js.Promise.then_(_ =>
-             Js.Promise.resolve(eventActions->Belt.Array.size)
-           );
+        |> Js.Promise.then_(_ => Js.Promise.resolve());
       };
 
     let incomingCommandsHandler =

@@ -577,15 +577,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       event'Json
       ->Message.serviceNameOfMsg
       ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
-      ->Belt.Option.mapWithDefault(Js.Promise.resolve(0), exs =>
+      ->Belt.Option.mapWithDefault(Js.Promise.resolve(), exs =>
           exs
           ->Belt.Array.map(ex => (getEventHandler(ex))(. event'Json))
           ->Js.Promise.all
-          ->Js.Promise.then_(
-              actions =>
-                Js.Promise.resolve(actions->Belt.Array.reduce(0, (+))),
-              _,
-            )
+          ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
         );
     };
 
@@ -629,13 +625,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           ),
         |]
         ->Js.Promise.all
-        |> Js.Promise.then_(actions =>
-             Js.log2(
-               "Plugin eventHandler created actions:",
-               actions->Belt.Array.reduce(0, (+)),
-             )
-             ->Js.Promise.resolve
-           );
+        ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
       };
 
     module EventCollector =

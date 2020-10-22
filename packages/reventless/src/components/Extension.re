@@ -5,8 +5,8 @@ type outputs = {
   "name": string,
   "extensionPointName": string,
   "aggregateNames": array(string),
-  "incomingEventHandler": (. Js.Json.t) => Js.Promise.t(int),
-  "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(int),
+  "incomingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
+  "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
 };
 type extension; // TODO: rename to t - after refactoring
 
@@ -73,8 +73,8 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ~name: string,
       ~extensionPointName: string,
       ~aggregateNames: array(string),
-      ~incomingEventHandler: (. Js.Json.t) => Js.Promise.t(int),
-      ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(int)
+      ~incomingEventHandler: (. Js.Json.t) => Js.Promise.t(unit),
+      ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(unit)
     ) =>
     outputs =
     "";
@@ -234,12 +234,10 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
           let commandActions = event'->mapIncomingEvent;
           commandActions->Belt.Array.map(applyIncomingCommandAction)
           |> Js.Promise.all
-          |> Js.Promise.then_(_ =>
-               Js.Promise.resolve(commandActions->Belt.Array.size)
-             );
+          |> Js.Promise.then_(_ => Js.Promise.resolve());
         | Error(msg) =>
           Js.log2("Could not decode event':", msg);
-          Js.Promise.resolve(0);
+          Js.Promise.resolve();
         };
       };
 
@@ -248,9 +246,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
         let commandActions = event'Json->mapOutgoingEvent;
         commandActions->Belt.Array.map(applyOutgoingCommandAction)
         |> Js.Promise.all
-        |> Js.Promise.then_(_ =>
-             Js.Promise.resolve(commandActions->Belt.Array.size)
-           );
+        |> Js.Promise.then_(_ => Js.Promise.resolve());
       };
 
     makeOutputs(

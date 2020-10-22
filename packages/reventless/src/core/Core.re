@@ -107,18 +107,13 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
         event'Json->Message.logEvent'Json(
           "Core eventHandler: outgoing event:",
         );
-        extensionPointsOutputs->Belt.Array.map(extensionPoint => {
-          let handle = extensionPoint##outgoingEventHandler;
-          handle(. event'Json);
-        })
-        |> Js.Promise.all
-        |> Js.Promise.then_(actions =>
-             Js.log2(
-               "Core eventHandler created actions:",
-               actions->Belt.Array.reduce(0, (+)),
-             )
-             ->Js.Promise.resolve
-           );
+        extensionPointsOutputs
+        ->Belt.Array.map(extensionPoint => {
+            let handle = extensionPoint##outgoingEventHandler;
+            handle(. event'Json);
+          })
+        ->Js.Promise.all
+        ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
       };
 
     module EventCollector =
