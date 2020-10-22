@@ -21,8 +21,7 @@ let callHandler =
            )
         |> Js.Json.stringify,
     })
-  | PluginExtensionPointSpec.DeleteDisconnectSchedule(id) =>
-    deleteSchedule(. id)
+  | DeleteDisconnectSchedule(id) => deleteSchedule(. id)
   | ForwardCommand({extensionPointName, command}) =>
     // TODO: query all Plugins from ReadModel
     // TODO: find first Plugin which holds an extension point named like the one in the command
@@ -47,23 +46,17 @@ module Impl = {
     | PluginExtensionPointSpec.Heartbeat(timeout) => [|
         PublishCommand(id, Aggregate.Heartbeat),
         // Re-create timeout (+1 minute to avoid toggling)
-        Call(
-          callHandler,
-          PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout + 1),
-        ),
+        Call(callHandler, CreateDisconnectSchedule(id, timeout + 1)),
       |]
-    | PluginExtensionPointSpec.ConnectPlugin(pluginDefinition) => [|
-        PublishCommand(id, Aggregate.ConnectPlugin(pluginDefinition)),
+    | ConnectPlugin(pluginDefinition) => [|
+        PublishCommand(id, ConnectPlugin(pluginDefinition)),
       |]
-    | PluginExtensionPointSpec.DisconnectPlugin => [|
-        PublishCommand(id, Aggregate.DisconnectPlugin),
-        Call(
-          callHandler,
-          PluginExtensionPointSpec.DeleteDisconnectSchedule(id),
-        ),
+    | DisconnectPlugin => [|
+        PublishCommand(id, DisconnectPlugin),
+        Call(callHandler, DeleteDisconnectSchedule(id)),
       |]
-    | ForwardCommand(publishCommandDefinition) => [|
-        Call(callHandler, ForwardCommand(publishCommandDefinition)),
+    | ForwardCommand(forwardCommand) => [|
+        Call(callHandler, ForwardCommand(forwardCommand)),
       |]
     };
 
@@ -72,35 +65,20 @@ module Impl = {
     | Aggregate.UnknownPluginDetected => [|
         PublishEvent(id, PluginExtensionPointSpec.UnknownPluginDetected),
       |]
-    | Aggregate.PluginConnected(pluginDefinition) => [|
-        PublishEvent(
-          id,
-          PluginExtensionPointSpec.PluginConnected(pluginDefinition),
-        ),
+    | PluginConnected(pluginDefinition) => [|
+        PublishEvent(id, PluginConnected(pluginDefinition)),
       |]
-    | Aggregate.PluginReconnected(pluginDefinition) => [|
-        PublishEvent(
-          id,
-          PluginExtensionPointSpec.PluginReconnected(pluginDefinition),
-        ),
+    | PluginReconnected(pluginDefinition) => [|
+        PublishEvent(id, PluginReconnected(pluginDefinition)),
       |]
-    | Aggregate.PluginDisconnected(pluginDefinition) => [|
-        PublishEvent(
-          id,
-          PluginExtensionPointSpec.PluginDisconnected(pluginDefinition),
-        ),
+    | PluginDisconnected(pluginDefinition) => [|
+        PublishEvent(id, PluginDisconnected(pluginDefinition)),
       |]
-    | Aggregate.PluginDeactivated(pluginDefinition) => [|
-        PublishEvent(
-          id,
-          PluginExtensionPointSpec.PluginDeactivated(pluginDefinition),
-        ),
+    | PluginDeactivated(pluginDefinition) => [|
+        PublishEvent(id, PluginDeactivated(pluginDefinition)),
       |]
-    | Aggregate.PluginActivated(pluginDefinition) => [|
-        PublishEvent(
-          id,
-          PluginExtensionPointSpec.PluginActivated(pluginDefinition),
-        ),
+    | PluginActivated(pluginDefinition) => [|
+        PublishEvent(id, PluginActivated(pluginDefinition)),
       |]
     };
 };
