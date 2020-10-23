@@ -31,5 +31,3 @@ type callCommand =
   | DeleteDisconnectSchedule(string)
   | ConnectPlugin(PluginSpec.pluginDefinition)
   | ForwardCommand(forwardCommand);
-
-let initEvent = UnknownPluginDetected; // is never used !
