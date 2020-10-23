@@ -1,13 +1,21 @@
 type extensionPointName = string;
 
+type forwardCommand = {
+  extensionPointName: string,
+  id: string,
+  commandJson: Js.Json.t,
+};
+
 /* these actions are needed for Impl */
 type incomingCommandAction('aggregateCommand, 'extensionPointCommand, 'msg) =
   | PublishAggregateCommand(string, 'aggregateCommand)
   | PublishExtensionPointCommand(string, 'extensionPointCommand)
+  | ForwardCommand(forwardCommand)
   | Call(Message.handler('msg), 'msg);
 
 type outgoingCommandAction('extensionPointCommand, 'msg) =
   | PublishExtensionPointCommand(string, 'extensionPointCommand)
+  | ForwardCommand(forwardCommand)
   | Call(Message.handler('msg), 'msg);
 
 module type Spec = {
@@ -111,24 +119,26 @@ module Make =
   let aggregateName = Aggregate.name;
   let extensionPointName = Spec.name;
 
-  let encodeExtensionPointCommand = (command, ~from, ~action, ~id, ~meta) => {
-    let commandStr = command->Spec.command_encode->Js.Json.stringify;
+  let encodeExtensionPointCommandJson =
+      (commandJson, ~from, ~extensionPointName, ~action, ~id, ~meta) => {
+    let commandStr = commandJson->Js.Json.stringify;
     Js.log(
       {j|ExtensionMapping $from to ExtensionPoint $extensionPointName: $action: $commandStr id: $id|j},
     );
-    Message.command'_encode(
-      Id.String.t_encode,
-      Spec.command_encode,
-      {
-        id: id->Id.String.makeFromString,
-        meta: {
-          ...meta,
-          msgId: Message.uuid(),
-        },
-        command,
-      },
-    );
+
+    [|
+      ("id", id->Js.Json.string),
+      ("meta", {...meta, msgId: Message.uuid()}->Message.meta_encode),
+      ("command", commandJson),
+    |]
+    ->Js.Dict.fromArray
+    ->Js.Json.object_;
   };
+
+  let encodeExtensionPointCommand = (command, ~from, ~action, ~id, ~meta) =>
+    command
+    ->Spec.command_encode
+    ->encodeExtensionPointCommandJson(~from, ~action, ~id, ~meta);
 
   let mapIncomingEvent:
     Message.event'(Id.String.t, Spec.event) =>
@@ -166,6 +176,7 @@ module Make =
               AbstractPublishPluginExtensionPointCommand(
                 command->encodeExtensionPointCommand(
                   ~from={j|incoming from ExtensionPoint $extensionPointName|j},
+                  ~extensionPointName,
                   ~action="Publish PluginExtensionPoint command",
                   ~id,
                   ~meta,
@@ -179,6 +190,21 @@ module Make =
                 meta,
                 command->encodeExtensionPointCommand(
                   ~from={j|incoming from ExtensionPoint $extensionPointName|j},
+                  ~extensionPointName,
+                  ~action="Forward ExtensionPoint command",
+                  ~id,
+                  ~meta,
+                ),
+              );
+            }
+          | ForwardCommand({extensionPointName, id, commandJson}) => {
+              AbstractPublishExtensionPointCommand(
+                extensionPointName,
+                id,
+                meta,
+                commandJson->encodeExtensionPointCommandJson(
+                  ~from={j|incoming from ExtensionPoint $extensionPointName|j},
+                  ~extensionPointName,
                   ~action="Forward ExtensionPoint command",
                   ~id,
                   ~meta,
@@ -213,6 +239,7 @@ module Make =
                 AbstractPublishPluginExtensionPointCommand(
                   command->encodeExtensionPointCommand(
                     ~from={j|outgoing from Aggregate $aggregateName|j},
+                    ~extensionPointName,
                     ~action="Publish PluginExtensionPoint command",
                     ~id,
                     ~meta={...meta, service: Spec.name},
@@ -226,9 +253,24 @@ module Make =
                   meta,
                   command->encodeExtensionPointCommand(
                     ~from={j|outgoing from Aggregate $aggregateName|j},
+                    ~extensionPointName,
                     ~action="Forward ExtensionPoint command",
                     ~id,
                     ~meta={...meta, service: Spec.name},
+                  ),
+                );
+              }
+            | ForwardCommand({extensionPointName, id, commandJson}) => {
+                AbstractPublishExtensionPointCommand(
+                  extensionPointName,
+                  id,
+                  meta,
+                  commandJson->encodeExtensionPointCommandJson(
+                    ~from={j|outgoing from Aggregate $aggregateName|j},
+                    ~extensionPointName,
+                    ~action="Forward ExtensionPoint command",
+                    ~id,
+                    ~meta,
                   ),
                 );
               }
