@@ -21,8 +21,6 @@ module type Spec = {
   type event;
   [@decco]
   type callCommand;
-
-  let initEvent: event;
 };
 
 type mapIncomingCommand(

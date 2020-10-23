@@ -195,31 +195,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
     let (eventCollectorUrn, setEventCollectorUrn) =
       Util.Pulumi.Output.Async.make();
 
-    let publishEvent = (eventStr, service, queueArn) =>
-      AwsSdk.SQS.sendMessage(
-        ~queueId=queueArn->AwsSdk.SQS.arn2Url,
-        ~messageBody=
-          {
-            Message.id,
-            meta: Message.generateMeta(~service, ()),
-            event: eventStr,
-          }
-          ->Message.event'_encode(Js.Json.string, Js.Json.string, _)
-          ->Js.Json.stringify,
-        (),
-      )
-      ->Js.Promise.then_(
-          _ =>
-            Js.log2("Plugin: published event", eventStr)->Js.Promise.resolve,
-          _,
-        )
-      ->Js.Promise.catch(
-          err =>
-            Js.log2("Plugin: Error on publish event:", err)
-            ->Js.Promise.resolve,
-          _,
-        );
-
     let callHandler =
       fun
       | PluginExtensionPointSpec.ConnectPlugin(
@@ -298,7 +273,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                   string /*EventTopic*/,
                   (
                     string /* extensionPointName */,
-                    string /* initEvent */,
                     PluginSpec.pluginDefinition /* pluginDefinition */,
                   ),
                 ),
@@ -311,11 +285,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                   conns->Js.Dict.set(
                     extensionPoint##eventTopic##publisher##id
                     ->Pulumi.Output.get,
-                    (
-                      extensionPoint##name,
-                      extensionPoint##initEvent,
-                      pluginDef,
-                    ),
+                    (extensionPoint##name, pluginDef),
                   );
                 }
               );
@@ -326,11 +296,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                 (
                   (
                     eventTopic,
-                    (
-                      extensionPointName,
-                      initEvent,
-                      {name: pluginName, eventCollector},
-                    ),
+                    (extensionPointName, {name: pluginName, eventCollector}),
                   ),
                 ) =>
                 AwsSdk.SNS.(
@@ -369,15 +335,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
                         err,
                       )
                       ->Js.Promise.resolve,
-                    _,
-                  )
-                ->Js.Promise.then_(
-                    _ =>
-                      publishEvent(
-                        initEvent,
-                        extensionPointName,
-                        eventCollector,
-                      ),
                     _,
                   )
               )
@@ -479,11 +436,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         ~opts=Some(opts),
         (),
       );
-
-    let allExtensionsOutputs =
-      extensionsOutputs->Belt.Array.concat([|
-        connectPluginExtension->Component.extractOutputs,
-      |]);
 
     let queryQueryDb =
       InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
@@ -613,6 +565,11 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       dict;
     };
 
+    let incomingServiceNameToPluginConnectExtensionsMapping =
+      serviceNameToEx(
+        [|connectPluginExtension->Component.extractOutputs|], extension =>
+        [|extension##extensionPointName|]
+      );
     let serviceNameToExtensionPointsMapping =
       serviceNameToEx(extensionPointsOutputs, extensionPoint =>
         extensionPoint##aggregateNames
@@ -622,7 +579,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         extension##aggregateNames
       );
     let incomingServiceNameToExtensionsMapping =
-      serviceNameToEx(allExtensionsOutputs, extension =>
+      serviceNameToEx(extensionsOutputs, extension =>
         [|extension##extensionPointName|]
       );
 
@@ -675,22 +632,34 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           {j|Plugin $id eventHandler: incoming event:|j},
         );
         detectUnhandledEvent(event'Json);
-        [|
-          handleEvent(
-            event'Json, serviceNameToExtensionPointsMapping, extensionPoint =>
-            extensionPoint##outgoingEventHandler
-          ),
-          handleEvent(
-            event'Json, outgoingServiceNameToExtensionsMapping, extension =>
-            extension##outgoingEventHandler
-          ),
-          handleEvent(
-            event'Json, incomingServiceNameToExtensionsMapping, extension =>
-            extension##incomingEventHandler
-          ),
-        |]
-        ->Js.Promise.all
-        ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+        handleEvent(
+          event'Json,
+          incomingServiceNameToPluginConnectExtensionsMapping,
+          extension =>
+          extension##incomingEventHandler
+        )
+        ->Js.Promise.then_(
+            _ =>
+              [|
+                handleEvent(
+                  event'Json,
+                  serviceNameToExtensionPointsMapping,
+                  extensionPoint =>
+                  extensionPoint##outgoingEventHandler
+                ),
+                handleEvent(
+                  event'Json, outgoingServiceNameToExtensionsMapping, extension =>
+                  extension##outgoingEventHandler
+                ),
+                handleEvent(
+                  event'Json, incomingServiceNameToExtensionsMapping, extension =>
+                  extension##incomingEventHandler
+                ),
+              |]
+              ->Js.Promise.all
+              ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
+            _,
+          );
       };
 
     module EventCollector =

@@ -7,7 +7,6 @@ type outputs = {
   "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
   "commandTopic": CommandTopic.outputs,
   "eventTopic": EventTopic.outputs,
-  "initEvent": string,
 };
 type extensionPoint; // TODO: rename to t - after refactoring
 
@@ -87,8 +86,7 @@ module Make =
       ~aggregateNames: array(string),
       ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(unit),
       ~commandTopic: Reventless.CommandTopic.outputs,
-      ~eventTopic: Reventless.EventTopic.outputs,
-      ~initEvent: string
+      ~eventTopic: Reventless.EventTopic.outputs
     ) =>
     outputs =
     "";
@@ -244,7 +242,6 @@ module Make =
       ~commandTopic=
         (commandTopic^)->Belt.Option.getExn->Component.extractOutputs,
       ~eventTopic=eventTopic->Component.extractOutputs,
-      ~initEvent=Spec.initEvent->Spec.event_encode->Js.Json.stringify,
     )
     ->setOutputs(self, _);
   };
