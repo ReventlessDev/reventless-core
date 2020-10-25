@@ -32,17 +32,12 @@ let create: (Scheduler.t, Adapter.resource) => create =
       let createSchedule = scheduler##createSchedule;
       createSchedule(. target, schedule)
       |> Js.Promise.then_(_ =>
-           Js.log4(
-             "ExtensionPoint.createSchedule: created",
-             schedule,
-             queueId,
-             target,
-           )
+           Js.log4("Schedule.create: created", schedule, queueId, target)
            |> Js.Promise.resolve
          )
       |> Js.Promise.catch(err => {
            Js.log4(
-             "Task.createSchedule: couldn't create",
+             "Schedule.create: couldn't create",
              schedule,
              queueId,
              err,
@@ -64,16 +59,11 @@ let delete: (Scheduler.t, Adapter.resource) => delete =
       let deleteSchedule = scheduler##deleteSchedule;
       deleteSchedule(. target, name)
       |> Js.Promise.then_(_ =>
-           Js.log3("ExtensionPoint.deleteSchedule: deleted", name, queueId)
+           Js.log3("Schedule.delete: deleted", name, queueId)
            |> Js.Promise.resolve
          )
       |> Js.Promise.catch(err => {
-           Js.log4(
-             "ExtensionPoint.deleteSchedule: couldn't delete",
-             name,
-             queueId,
-             err,
-           );
+           Js.log4("Schedule.delete: couldn't delete", name, queueId, err);
            ScheduleNotDeleted(name, queueId, err)->Js.Promise.reject;
          });
     };

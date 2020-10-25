@@ -80,8 +80,12 @@ external make:
   Component.t(task, outputs) =
   "default";
 
-[@bs.send] external registerOutputs: (Component.t(task, outputs), outputs) => constructed = "registerOutputs";
-[@bs.send] external setOutputs: (Component.t(task, outputs), outputs) => unit = "setOutputs";
+[@bs.send]
+external registerOutputs: (Component.t(task, outputs), outputs) => constructed =
+  "registerOutputs";
+[@bs.send]
+external setOutputs: (Component.t(task, outputs), outputs) => unit =
+  "setOutputs";
 let setOutputs = (self, outputs) => {
   self->setOutputs(outputs);
   self->registerOutputs(outputs);
@@ -206,70 +210,17 @@ let construct =
       |> catch(err => resolve(Js.log2("Task.publishCommand error:", err)));
     };
 
-  let forTaskQueue = (name, queueId) =>
-    name ++ "-" ++ (queueId |> Js.String.split("-"))[1];
-
   let createSchedule =
     (. taskName) =>
-      (. schedule: Scheduler.schedule) => {
-        let eventCollector = queryEventCollector(taskName);
-        let queueId = eventCollector##name->OutputFailsafeRuntime.get;
-        let name = schedule.name->forTaskQueue(queueId);
-        let schedule = {...schedule, name};
-        let target =
-          Scheduler.{
-            id: eventCollector##name |> Pulumi.Output.get,
-            urn: eventCollector##urn |> Pulumi.Output.get,
-          };
-        let createSchedule = scheduler##createSchedule;
-        createSchedule(. target, schedule)
-        |> Js.Promise.then_(_ =>
-             Js.log4(
-               "Task.createSchedule: created",
-               schedule,
-               queueId,
-               target,
-             )
-             |> Js.Promise.resolve
-           )
-        |> Js.Promise.catch(err => {
-             Js.log4(
-               "Task.createSchedule: couldn't create",
-               schedule,
-               queueId,
-               err,
-             );
-             ScheduleNotCreated(schedule, queueId, err)->Js.Promise.reject;
-           });
-      };
+      (. schedule: Scheduler.schedule) =>
+        (Schedule.create(scheduler, queryEventCollector(taskName)))(.
+          schedule,
+        );
 
   let deleteSchedule =
     (. taskName) =>
-      (. name) => {
-        let eventCollector = queryEventCollector(taskName);
-        let queueId = eventCollector##name->OutputFailsafeRuntime.get;
-        let name = name->forTaskQueue(queueId);
-        let target =
-          Scheduler.{
-            id: eventCollector##name |> Pulumi.Output.get,
-            urn: eventCollector##urn |> Pulumi.Output.get,
-          };
-        let deleteSchedule = scheduler##deleteSchedule;
-        deleteSchedule(. target, name)
-        |> Js.Promise.then_(_ =>
-             Js.log3("Task.deleteSchedule: deleted", name, queueId)
-             |> Js.Promise.resolve
-           )
-        |> Js.Promise.catch(err => {
-             Js.log4(
-               "Task.deleteSchedule: couldn't delete",
-               name,
-               queueId,
-               err,
-             );
-             ScheduleNotDeleted(name, queueId, err)->Js.Promise.reject;
-           });
-      };
+      (. name) =>
+        (Schedule.delete(scheduler, queryEventCollector(taskName)))(. name);
 
   let queueMessage =
     (. taskName) =>
@@ -289,7 +240,7 @@ let construct =
     queueMessage(. taskName),
     opts,
   )
-  -> setOutputs(self, _);
+  ->setOutputs(self, _);
 };
 
 let make =
