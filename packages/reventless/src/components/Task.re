@@ -37,11 +37,10 @@ type queueMessage =
 type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
-    ~queryQueryDb: InterstackResourceQuery.runtimeQueryExn,
     ~queryEventCollector: InterstackResourceQuery.runtimeQueryExn,
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
-    ~query: QueryDb.query,
+    ~queryByServiceName: QueryDb.query,
     ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   Component.t(task, outputs);
@@ -94,7 +93,7 @@ let construct =
       ~queryEventCollector,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
-      ~query: QueryDb.query,
+      ~queryByServiceName: QueryDb.query,
       self,
       _,
     ) => {
@@ -106,7 +105,14 @@ let construct =
 
   let query =
     (. serviceName, key, value, filterConfigs, ascending, limit) =>
-      query(~serviceName, ~key, ~value, ~filterConfigs, ~ascending, ~limit);
+      queryByServiceName(
+        ~serviceName,
+        ~key,
+        ~value,
+        ~filterConfigs,
+        ~ascending,
+        ~limit,
+      );
 
   let publishCommand =
     (. queueName, messageBody) => {
@@ -163,7 +169,7 @@ let make =
       ~queryEventCollector,
       ~queryBucketName,
       ~scheduler,
-      ~query,
+      ~queryByServiceName,
       ~opts,
     ) => {
   make(
@@ -177,7 +183,7 @@ let make =
         ~queryEventCollector,
         ~queryBucketName,
         ~scheduler,
-        ~query,
+        ~queryByServiceName,
       ),
     ~opts,
   );

@@ -32,7 +32,7 @@ type maker =
     ~taskMakers: array(Task.maker),
     ~eventMapperMakers: array(EventMapper.maker),
     ~scheduler: Scheduler.t,
-    ~query: QueryDb.query,
+    ~queryByServiceNameMaker: ResourceQuery.runtimeQueryExn => QueryDb.query,
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit
   ) =>
@@ -104,7 +104,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         ~taskMakers: array(Task.maker),
         ~eventMapperMakers: array(EventMapper.maker),
         ~scheduler: Scheduler.t,
-        ~query: QueryDb.query,
+        ~queryByServiceNameMaker:
+           ResourceQuery.runtimeQueryExn => QueryDb.query,
         self,
         name,
       ) => {
@@ -456,11 +457,10 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ->Belt.Array.map(taskMaker =>
           taskMaker(
             ~queryCommandTopic,
-            ~queryQueryDb,
             ~queryEventCollector,
             ~queryBucketName,
             ~scheduler,
-            ~query,
+            ~queryByServiceName=queryByServiceNameMaker(queryQueryDb),
             ~opts=Some(opts),
           )
           ->Component.extractOutputs
@@ -710,7 +710,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ~taskMakers,
       ~eventMapperMakers,
       ~scheduler,
-      ~query,
+      ~queryByServiceNameMaker,
       ~opts=?,
       _unit,
     ) =>
@@ -727,7 +727,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             ~taskMakers,
             ~eventMapperMakers,
             ~scheduler,
-            ~query,
+            ~queryByServiceNameMaker,
           ),
         ~opts,
       );

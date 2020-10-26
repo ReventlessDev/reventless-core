@@ -100,7 +100,7 @@ let queryByTableName =
      });
 };
 
-let query = queryQueryDb =>
+let queryByServiceNameMaker = queryQueryDb =>
   (. serviceName, key, value, filterConfigs, ascending, limit) =>
     queryByTableName(
       ~tableName=
