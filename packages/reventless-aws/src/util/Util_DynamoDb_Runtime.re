@@ -100,14 +100,22 @@ let queryByTableName =
      });
 };
 
-let queryByServiceNameMaker = queryQueryDb =>
-  (. serviceName, key, value, filterConfigs, ascending, limit) =>
-    queryByTableName(
-      ~tableName=
-        queryQueryDb(serviceName)##name->Reventless.OutputFailsafeRuntime.get,
+let queryByServiceNameMaker =
+    (
+      queryQueryDb,
+      ~serviceName,
       ~key,
       ~value,
       ~filterConfigs,
       ~ascending,
       ~limit,
-    );
+    ) =>
+  queryByTableName(
+    ~tableName=
+      queryQueryDb(serviceName)##name->Reventless.OutputFailsafeRuntime.get,
+    ~key,
+    ~value,
+    ~filterConfigs,
+    ~ascending,
+    ~limit,
+  );
