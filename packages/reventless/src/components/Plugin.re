@@ -534,10 +534,16 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
 
     module Set = Belt.Set.String;
 
-    let extensionPointAggregateNames =
-      extensionPointsOutputs->Belt.Array.map(extensionPoint =>
-        extensionPoint##aggregateNames->Set.fromArray
+    let collectAggregateNames = exs =>
+      exs->Belt.Array.map(ex =>
+        ex##aggregateNames
+        ->Set.fromArray
+        ->Set.remove(ExtensionMapping.NoAggregate.name)
       );
+
+    let extensionPointAggregateNames =
+      extensionPointsOutputs->collectAggregateNames;
+
     let serviceNameToEx = (exs, getServiceNames) => {
       let dict = Js.Dict.empty();
       exs->Belt.Array.forEachU((. ex) =>
@@ -576,10 +582,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         [|extension##extensionPointName|]
       );
 
-    let extensionAggregateNames =
-      extensionsOutputs->Belt.Array.map(extension =>
-        extension##aggregateNames->Set.fromArray
-      );
+    let extensionAggregateNames = extensionsOutputs->collectAggregateNames;
 
     let aggregateNames: array(string) =
       extensionPointAggregateNames

@@ -253,7 +253,10 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ~name,
       ~extensionPointName=Spec.name,
       ~aggregateNames=
-        mappings->Belt.Array.map(((module Mapping)) => Mapping.aggregateName),
+        mappings->Belt.Array.keepMap(((module Mapping)) =>
+          Mapping.aggregateName == ExtensionMapping.NoAggregate.name
+            ? None : Some(Mapping.aggregateName)
+        ),
       ~incomingEventHandler,
       ~outgoingEventHandler,
     )
