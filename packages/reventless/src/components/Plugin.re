@@ -32,6 +32,7 @@ type maker =
     ~taskMakers: array(Task.maker),
     ~eventMapperMakers: array(EventMapper.maker),
     ~scheduler: Scheduler.t,
+    ~query: QueryDb.query,
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit
   ) =>
@@ -103,6 +104,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         ~taskMakers: array(Task.maker),
         ~eventMapperMakers: array(EventMapper.maker),
         ~scheduler: Scheduler.t,
+        ~query: QueryDb.query,
         self,
         name,
       ) => {
@@ -143,16 +145,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
           -# PluginExtensionPointSpec.name
         )##commandTopic##connector##id
       );
-
-    /*
-     let queryExtensionPointCommandTopicId = name =>
-       if (name == PluginExtensionPointSpec.name) {
-         corePluginCommandTopicId->Pulumi.Output.get->Some->Js.Promise.resolve;
-       } else {
-         Some("NOT IMPLEMENTED YET !")
-         ->Js.Promise.resolve; // TODO
-       };
-       */
 
     let queryEventTopic = name =>
       if (name == PluginExtensionPointSpec.name) {
@@ -468,6 +460,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             ~queryEventCollector,
             ~queryBucketName,
             ~scheduler,
+            ~query,
             ~opts=Some(opts),
           )
           ->Component.extractOutputs
@@ -714,6 +707,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ~taskMakers,
       ~eventMapperMakers,
       ~scheduler,
+      ~query,
       ~opts=?,
       _unit,
     ) =>
@@ -730,6 +724,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             ~taskMakers,
             ~eventMapperMakers,
             ~scheduler,
+            ~query,
           ),
         ~opts,
       );

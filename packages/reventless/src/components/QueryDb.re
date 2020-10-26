@@ -20,6 +20,24 @@ type storageError =
   | NotDeletedFromStorage(Js.Promise.error)
   | StaleState;
 
+type value =
+  | String(string)
+  | Int(int)
+  | Bool(bool);
+type comparator =
+  | Equal
+  | Unequal
+  | LessOrEqual
+  | Less
+  | GreaterOrEqual
+  | Greater
+  | Exists
+  | NotExists
+  | Contains
+  | NotContains
+  | BeginsWith;
+type filterConfig = (string, comparator, value);
+
 type load('id, 'state) =
   (. 'id) => Js.Promise.t(Belt.Result.t(list('state), storageError));
 type save('id, 'state) =
@@ -30,13 +48,13 @@ type delete('id) =
   Js.Promise.t(Belt.Result.t(unit, storageError));
 
 /*
-type functions('id, 'state) = {
-  .
-  "load": load('id, 'state),
-  "save": save('id, 'state),
-  "delete": delete('id),
-};
-*/
+ type functions('id, 'state) = {
+   .
+   "load": load('id, 'state),
+   "save": save('id, 'state),
+   "delete": delete('id),
+ };
+ */
 
 // external toOutputs: functions('id, 'command) => outputs = "%identity";
 
@@ -51,7 +69,9 @@ module type T = {
   type nonrec save = save(Spec.Id.t, View.state);
   type nonrec delete = delete(Spec.Id.t);
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => Component.t(t, outputs);
+  let make:
+    (~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    Component.t(t, outputs);
 
   let load: Component.t(t, outputs) => load;
   let save: Component.t(t, outputs) => save;
@@ -84,6 +104,17 @@ module type Storage = {
 
   let make: storageMaker(api, role);
 };
+
+type query =
+  (
+    ~serviceName: string,
+    ~key: string,
+    ~value: value,
+    ~filterConfigs: list(filterConfig),
+    ~ascending: bool,
+    ~limit: int
+  ) =>
+  Js.Promise.t(array(Js.Json.t));
 
 type resolvers = {
   resources: array(Adapter.resource),
@@ -129,13 +160,14 @@ module Make =
 
   //type nonrec t = t(Spec.Id.t, View.state);
   type t;
-  
+
   type nonrec load = load(Spec.Id.t, View.state);
   type nonrec save = save(Spec.Id.t, View.state);
   type nonrec delete = delete(Spec.Id.t);
 
   type constructed;
-  type construct = (Component.t(t, outputs), string, api, role) => constructed;
+  type construct =
+    (Component.t(t, outputs), string, api, role) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -161,8 +193,11 @@ module Make =
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(t, outputs), outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(t, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -175,13 +210,9 @@ module Make =
   [@bs.set]
   external setDelete: (Component.t(t, outputs), delete) => unit = "delete";
 
-  [@bs.get]
-  external load: Component.t(t, outputs) => load = "load";
-  [@bs.get]
-  external save: Component.t(t, outputs) => save = "save";
-  [@bs.get]
-  external delete: Component.t(t, outputs) => delete = "delete";
-  
+  [@bs.get] external load: Component.t(t, outputs) => load = "load";
+  [@bs.get] external save: Component.t(t, outputs) => save = "save";
+  [@bs.get] external delete: Component.t(t, outputs) => delete = "delete";
 
   let decode = (id, item) =>
     switch (View.state_decode(item)) {
@@ -223,7 +254,8 @@ module Make =
       storage.delete(. id |> Spec.Id.toString, sort);
     };
 
-  let outputs: Component.t(t, outputs) => outputs = component => Component.extractOutputs(component);
+  let outputs: Component.t(t, outputs) => outputs =
+    component => Component.extractOutputs(component);
 
   let construct = (self, name, api, apiRole) => {
     let opts =
@@ -247,12 +279,12 @@ module Make =
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);
     self->setDelete(storage->deleteFn);
-    
+
     /*
-    let load: Component.t(t, outputs) => load = _component => load(storage);
-    let save: Component.t(t, outputs) => save  = _component => save(storage);
-    let delete: Component.t(t, outputs) => delete  = _component => delete(storage);
-    */
+     let load: Component.t(t, outputs) => load = _component => load(storage);
+     let save: Component.t(t, outputs) => save  = _component => save(storage);
+     let delete: Component.t(t, outputs) => delete  = _component => delete(storage);
+     */
 
     let resolvers =
       Resolvers.make(
@@ -275,7 +307,9 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => Component.t(t, outputs) =
+  let make:
+    (~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    Component.t(t, outputs) =
     (~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,

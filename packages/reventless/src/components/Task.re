@@ -14,16 +14,10 @@ type task; // TODO: rename to t - after refactoring
 
 type query =
   (
-    . /*~tableName:*/ string,
+    . /*~serviceName:*/ string,
     /*~key:*/ string,
-    /*~value:*/ AwsSdk.DynamoDb.DocumentClient.QueryInput.value,
-    /*~filters:*/ list(
-      (
-        string,
-        AwsSdk.DynamoDb.DocumentClient.QueryInput.comparator,
-        AwsSdk.DynamoDb.DocumentClient.QueryInput.value,
-      ),
-    ),
+    /*~value:*/ QueryDb.value,
+    /*~filters:*/ list((string, QueryDb.comparator, QueryDb.value)),
     /*~ascending*/ bool,
     /*~limit*/ int
   ) =>
@@ -47,6 +41,7 @@ type maker =
     ~queryEventCollector: InterstackResourceQuery.runtimeQueryExn,
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
+    ~query: QueryDb.query,
     ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   Component.t(task, outputs);
@@ -91,16 +86,15 @@ let setOutputs = (self, outputs) => {
   self->registerOutputs(outputs);
 };
 
-[@bs.val] [@bs.scope "JSON"] external parseJs: string => Js.t(_) = "parse";
 let construct =
     (
       ~taskName,
       ~setup: setup,
       ~queryCommandTopic,
-      ~queryQueryDb,
       ~queryEventCollector,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
+      ~query: QueryDb.query,
       self,
       _,
     ) => {
@@ -110,104 +104,22 @@ let construct =
       (),
     );
 
-  let toJson =
-    fun
-    | AwsSdk.DynamoDb.DocumentClient.QueryInput.String(str) =>
-      Js.Json.string(str)
-    | Int(int) => Js.Json.number(float_of_int(int))
-    | Bool(bool) => Js.Json.boolean(bool);
-
-  let createFilters = filters =>
-    filters->Belt.List.mapWithIndex((idx, (key, comparator, value)) => {
-      let valueName = {j|$key$idx|j};
-      (
-        AwsSdk.DynamoDb.DocumentClient.QueryInput.(
-          switch (comparator) {
-          | Equal => {j|#$key = :$valueName|j}
-          | Unequal => {j|#$key <> :$valueName|j}
-          | LessOrEqual => {j|#$key <= :$valueName|j}
-          | Less => {j|#$key < :$valueName|j}
-          | GreaterOrEqual => {j|#$key >= :$valueName|j}
-          | Greater => {j|#$key > :$valueName|j}
-          //| Between => {j|#$filterKey between :$valueName and :$valueName|j}
-          | Exists => {j|attribute_exists( #$key )|j}
-          | NotExists => {j|attribute_not_exists( #$key )|j}
-          | Contains => {j|contains( #$key, :$valueName )|j}
-          | NotContains => {j|NOT contains( #$key, :$valueName )|j}
-          | BeginsWith => {j|begins_with( #$key, :$valueName )|j}
-          }
-        ),
-        (({j|#$key|j}, key), ({j|:$valueName|j}, value |> toJson)),
-      );
-    })
-    |> Belt.List.unzip;
-  open Js.Promise;
-
   let query =
-    (. serviceName, key, value, filterConfigs, ascending, limit) => {
-      let tableName =
-        queryQueryDb(serviceName)##name->OutputFailsafeRuntime.get;
-
-      let (filterExpressions, filterNamesValues) =
-        filterConfigs |> createFilters;
-      let filterExpression =
-        switch (filterExpressions) {
-        | [] => None
-        | filterExpressions =>
-          Some(filterExpressions |> String.concat(" AND "))
-        };
-
-      let (filterNames, filterValues) = filterNamesValues |> Belt.List.unzip;
-      let attributeValues =
-        [(":value", value |> toJson)]
-        @ filterValues
-        |> Js.Dict.fromList
-        |> Js.Json.object_
-        |> Js.Json.stringify
-        |> parseJs;
-
-      let attributeNames = [("#key", key)] @ filterNames |> Js.Dict.fromList;
-
-      let params =
-        AwsSdk.DynamoDb.DocumentClient.QueryInput.make(
-          ~_TableName=tableName,
-          ~_IndexName=?
-            if (key == "id") {
-              None;
-            } else {
-              Some(key);
-            },
-          ~_KeyConditionExpression="#key = :value",
-          ~_FilterExpression=?filterExpression,
-          ~_ExpressionAttributeNames=attributeNames,
-          ~_ExpressionAttributeValues=attributeValues,
-          ~_ScanIndexForward=ascending,
-          ~_Limit=limit,
-          (),
-        );
-      AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params)
-      |> then_(result =>
-           resolve(
-             result##_Items
-             ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn),
-           )
-         )
-      |> catch(err => {
-           Js.log2("Task.query error:", err);
-           resolve([||]);
-         });
-    };
+    (. serviceName, key, value, filterConfigs, ascending, limit) =>
+      query(~serviceName, ~key, ~value, ~filterConfigs, ~ascending, ~limit);
 
   let publishCommand =
     (. queueName, messageBody) => {
       let queueId =
         queryCommandTopic(queueName)##id->OutputFailsafeRuntime.get;
       AwsSdk.SQS.sendMessage(~queueId, ~messageBody, ())
-      |> then_(res => {
+      |> Js.Promise.then_(res => {
            Js.log({j|Task.publishCommand successfull: $messageBody|j});
-           res |> resolve;
+           res |> Js.Promise.resolve;
          })
-      |> catch(err => resolve(Js.log2("Task.publishCommand error:", err)));
+      |> Js.Promise.catch(err =>
+           Js.Promise.resolve(Js.log2("Task.publishCommand error:", err))
+         );
     };
 
   let createSchedule =
@@ -248,10 +160,10 @@ let make =
       ~name,
       ~setup,
       ~queryCommandTopic,
-      ~queryQueryDb,
       ~queryEventCollector,
       ~queryBucketName,
       ~scheduler,
+      ~query,
       ~opts,
     ) => {
   make(
@@ -262,10 +174,10 @@ let make =
         ~taskName=name,
         ~setup,
         ~queryCommandTopic,
-        ~queryQueryDb,
         ~queryEventCollector,
         ~queryBucketName,
         ~scheduler,
+        ~query,
       ),
     ~opts,
   );
