@@ -118,7 +118,7 @@ let scanTableAndClean =
 
   AwsSdk.DynamoDb.DocumentClient.scan(
     ~params=
-      AwsSdk.DynamoDb.DocumentClient.ScanParams.make(
+      AwsSdk.DynamoDb.DocumentClient.ScanInput.make(
         ~_TableName=tableConfig##name,
         ~_ProjectionExpression=projectionExpression,
         ~_ExpressionAttributeNames=expressionAttributeNames,
