@@ -207,7 +207,7 @@ module Make =
                   ~extensionPointName,
                   ~action="Forward ExtensionPoint command",
                   ~id,
-                  ~meta,
+                  ~meta={...meta, service: extensionPointName},
                 ),
               );
             }
@@ -270,7 +270,7 @@ module Make =
                     ~extensionPointName,
                     ~action="Forward ExtensionPoint command",
                     ~id,
-                    ~meta,
+                    ~meta={...meta, service: extensionPointName},
                   ),
                 );
               }

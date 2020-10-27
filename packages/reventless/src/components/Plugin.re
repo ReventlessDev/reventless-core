@@ -3,6 +3,8 @@ let componentType = ComponentType.Plugin;
 
 type outputs = {
   .
+  "id": string,
+  "version": string,
   "eventCollector": EventCollector.outputs,
   "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
   "extensions": Js.Dict.t(Extension.outputs),
@@ -61,6 +63,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
   [@bs.obj]
   external makeOutputs:
     (
+      ~id: string,
+      ~version: string,
       ~eventCollector: EventCollector.outputs,
       ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
       ~extensions: Js.Dict.t(Extension.outputs),
@@ -684,6 +688,8 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       );
 
     makeOutputs(
+      ~id,
+      ~version,
       ~eventCollector=eventCollectorOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
       ~extensions=extensionsOutputs->toDict,
