@@ -5,6 +5,7 @@ type serviceMakers = array(Service.maker);
 
 type outputs = {
   .
+  "version": string,
   "eventCollector": EventCollector.outputs,
   "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
   "services": Js.Dict.t(Service.outputs),
@@ -36,6 +37,7 @@ module Make =
   [@bs.obj]
   external makeOutputs:
     (
+      ~version: string,
       ~eventCollector: EventCollector.outputs,
       ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
       ~services: Js.Dict.t(Service.outputs)
@@ -57,6 +59,7 @@ module Make =
 
   let construct =
       (
+        ~version,
         ~extensionPointMakers: extensionPointMakers,
         ~serviceMakers: serviceMakers,
         ~scheduler: Scheduler.t,
@@ -148,6 +151,7 @@ module Make =
       );
 
     makeOutputs(
+      ~version,
       ~eventCollector=eventCollector->Component.extractOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
       ~services=servicesOutputs->toDict,
@@ -157,17 +161,23 @@ module Make =
 
   let make:
     (
+      ~version: string,
       ~extensionPointMakers: extensionPointMakers,
       ~serviceMakers: serviceMakers,
       ~scheduler: Scheduler.t
     ) =>
     Component.t(core, outputs) =
-    (~extensionPointMakers, ~serviceMakers, ~scheduler) =>
+    (~version, ~extensionPointMakers, ~serviceMakers, ~scheduler) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name="Core",
         ~construct=
-          construct(~extensionPointMakers, ~serviceMakers, ~scheduler),
+          construct(
+            ~version,
+            ~extensionPointMakers,
+            ~serviceMakers,
+            ~scheduler,
+          ),
         ~opts=None,
       );
 };
