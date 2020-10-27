@@ -38,7 +38,7 @@ type mapOutgoingEvent(
   'extensionPointEvent,
   'extensionPointCallCommand,
 ) =
-  (string, 'aggregateEvent, Message.meta) =>
+  (string, 'aggregateEvent, Message.meta, PluginSpec.pluginDefinition) =>
   array(eventAction('extensionPointEvent, 'extensionPointCallCommand));
 
 module type Impl = {
@@ -85,7 +85,12 @@ module type T = {
     array(abstractCommandAction);
 
   let mapOutgoingEvent:
-    (Js.Json.t, Schedule.create, Schedule.delete) =>
+    (
+      Js.Json.t,
+      Schedule.create,
+      Schedule.delete,
+      PluginSpec.pluginDefinition
+    ) =>
     array(abstractEventAction(ExtensionPoint.event));
 };
 
@@ -140,7 +145,8 @@ module Make =
       )
     ->Belt.Array.concatMany;
 
-  let mapOutgoingEvent = (aggregateEvent'Json, createSchedule, deleteSchedule) =>
+  let mapOutgoingEvent =
+      (aggregateEvent'Json, createSchedule, deleteSchedule, pluginDef) =>
     switch (
       Message.event'_decode(
         Aggregate.Id.t_decode,
@@ -149,7 +155,12 @@ module Make =
       )
     ) {
     | Ok({id, meta, event}) =>
-      MappingImpl.mapOutgoingEvent(id->Aggregate.Id.toString, event, meta)
+      MappingImpl.mapOutgoingEvent(
+        id->Aggregate.Id.toString,
+        event,
+        meta,
+        pluginDef,
+      )
       ->Belt.Array.map(
           fun
           | PublishEvent(id, event) => {

@@ -399,7 +399,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
               PluginExtensionPointSpec.command,
               PluginExtensionPointSpec.callCommand,
             ) =
-            (pluginId, event, _meta) =>
+            (pluginId, event, _meta, _pluginDef) =>
               switch (event) {
               | PluginExtensionPointSpec.UnknownPluginDetected
                   when pluginId == id => [|
@@ -416,7 +416,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
               | _ => [||]
               };
 
-          let mapOutgoingEvent = (_id, _event, _meta) => [||];
+          let mapOutgoingEvent = (_id, _event, _meta, _pluginDef) => [||];
         },
       );
 
@@ -601,7 +601,12 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
       ->Belt.Option.mapWithDefault(Js.Promise.resolve(), exs =>
           exs
-          ->Belt.Array.map(ex => (getEventHandler(ex))(. event'Json))
+          ->Belt.Array.map(ex =>
+              (getEventHandler(ex))(.
+                event'Json,
+                pluginDefinition->Pulumi.Output.get,
+              )
+            )
           ->Js.Promise.all
           ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
         );

@@ -4,7 +4,8 @@ type outputs = {
   .
   "name": string,
   "aggregateNames": array(string),
-  "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
+  "outgoingEventHandler":
+    (. Js.Json.t, PluginSpec.pluginDefinition) => Js.Promise.t(unit),
   "commandTopic": CommandTopic.outputs,
   "eventTopic": EventTopic.outputs,
 };
@@ -84,7 +85,8 @@ module Make =
     (
       ~name: string,
       ~aggregateNames: array(string),
-      ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(unit),
+      ~outgoingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
+                             Js.Promise.t(unit),
       ~commandTopic: Reventless.CommandTopic.outputs,
       ~eventTopic: Reventless.EventTopic.outputs
     ) =>
@@ -201,11 +203,16 @@ module Make =
            );
 
     let outgoingEventHandler =
-      (. event'Json) => {
+      (. event'Json, pluginDef) => {
         let commandTopic = (commandTopic^)->Belt.Option.getExn;
         let queue = commandTopic->Component.extractOutputs##connector;
         let eventActions =
-          event'Json->Mapper.mapOutgoingEvent(mappings, scheduler, queue);
+          event'Json->Mapper.mapOutgoingEvent(
+            mappings,
+            scheduler,
+            queue,
+            pluginDef,
+          );
 
         eventActions->Belt.Array.map(applyEventAction)
         |> Js.Promise.all

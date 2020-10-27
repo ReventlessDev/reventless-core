@@ -102,6 +102,14 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
       ->Belt.Array.reduce(Set.empty, Set.union)
       ->Belt.Set.String.toArray;
 
+    let fakePluginDefinition: PluginSpec.pluginDefinition = {
+      name: "Core",
+      version: "FAKE",
+      extensionPoints: [||],
+      extensions: [||],
+      eventCollector: "NOT-SET",
+    };
+
     let eventHandler =
       (. event'Json) => {
         event'Json->Message.logEvent'Json(
@@ -110,7 +118,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
         extensionPointsOutputs
         ->Belt.Array.map(extensionPoint => {
             let handle = extensionPoint##outgoingEventHandler;
-            handle(. event'Json);
+            handle(. event'Json, fakePluginDefinition);
           })
         ->Js.Promise.all
         ->Js.Promise.then_(_ => Js.Promise.resolve(), _);

@@ -36,7 +36,7 @@ type mapIncomingEvent(
   'extensionPointCommand,
   'extensionPointCallCommand,
 ) =
-  (string, 'extensionPointEvent, Message.meta) =>
+  (string, 'extensionPointEvent, Message.meta, PluginSpec.pluginDefinition) =>
   array(
     incomingCommandAction(
       'aggregateCommand,
@@ -51,7 +51,7 @@ type mapOutgoingEvent(
   'extensionPointCommand,
   'extensionPointCallCommand,
 ) =
-  (string, 'aggregateEvent, Message.meta) =>
+  (string, 'aggregateEvent, Message.meta, PluginSpec.pluginDefinition) =>
   array(
     outgoingCommandAction('extensionPointCommand, 'extensionPointCallCommand),
   );
@@ -106,10 +106,15 @@ module type T = {
   let aggregateName: string;
 
   let mapIncomingEvent:
-    Message.event'(Id.String.t, ExtensionPoint.event) =>
+    (
+      Message.event'(Id.String.t, ExtensionPoint.event),
+      PluginSpec.pluginDefinition
+    ) =>
     array(abstractIncomingCommandAction);
 
-  let mapOutgoingEvent: Js.Json.t => array(abstractOutgoingCommandAction);
+  let mapOutgoingEvent:
+    (Js.Json.t, PluginSpec.pluginDefinition) =>
+    array(abstractOutgoingCommandAction);
 };
 
 module Make =
@@ -141,10 +146,15 @@ module Make =
     ->encodeExtensionPointCommandJson(~from, ~action, ~id, ~meta);
 
   let mapIncomingEvent:
-    Message.event'(Id.String.t, Spec.event) =>
+    (Message.event'(Id.String.t, Spec.event), PluginSpec.pluginDefinition) =>
     array(abstractIncomingCommandAction) =
-    ({Message.id, event, meta}) =>
-      MappingImpl.mapIncomingEvent(id->Id.String.toString, event, meta)
+    ({Message.id, event, meta}, pluginDef) =>
+      MappingImpl.mapIncomingEvent(
+        id->Id.String.toString,
+        event,
+        meta,
+        pluginDef,
+      )
       ->Belt.Array.map(
           fun
           | PublishAggregateCommand(aggregateId, aggregateCmd) => {
@@ -221,8 +231,10 @@ module Make =
             },
         );
 
-  let mapOutgoingEvent: Js.Json.t => array(abstractOutgoingCommandAction) =
-    aggregateEvent'Json =>
+  let mapOutgoingEvent:
+    (Js.Json.t, PluginSpec.pluginDefinition) =>
+    array(abstractOutgoingCommandAction) =
+    (aggregateEvent'Json, pluginDef) =>
       switch (
         Message.event'_decode(
           Aggregate.Id.t_decode,
@@ -231,7 +243,12 @@ module Make =
         )
       ) {
       | Ok({id, meta, event}) =>
-        MappingImpl.mapOutgoingEvent(id->Aggregate.Id.toString, event, meta)
+        MappingImpl.mapOutgoingEvent(
+          id->Aggregate.Id.toString,
+          event,
+          meta,
+          pluginDef,
+        )
         ->Belt.Array.map(
             fun
             | PublishExtensionPointCommand(id, command)

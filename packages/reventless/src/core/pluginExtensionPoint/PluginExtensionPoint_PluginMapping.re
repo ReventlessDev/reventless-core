@@ -46,7 +46,7 @@ module Impl = {
 
   module Aggregate = PluginSpec;
 
-  let mapIncomingCommand = (id, cmd, _meta) =>
+  let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
     switch (cmd) {
     | PluginExtensionPointSpec.Heartbeat(timeout) => [|
         PublishCommand(id, Aggregate.Heartbeat),
@@ -65,7 +65,7 @@ module Impl = {
       |]
     };
 
-  let mapOutgoingEvent = (id, event, _meta) =>
+  let mapOutgoingEvent = (id, event, _meta, _pluginDef) =>
     switch (event) {
     | Aggregate.UnknownPluginDetected => [|
         PublishEvent(id, PluginExtensionPointSpec.UnknownPluginDetected),

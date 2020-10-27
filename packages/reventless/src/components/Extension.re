@@ -5,8 +5,10 @@ type outputs = {
   "name": string,
   "extensionPointName": string,
   "aggregateNames": array(string),
-  "incomingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
-  "outgoingEventHandler": (. Js.Json.t) => Js.Promise.t(unit),
+  "incomingEventHandler":
+    (. Js.Json.t, PluginSpec.pluginDefinition) => Js.Promise.t(unit),
+  "outgoingEventHandler":
+    (. Js.Json.t, PluginSpec.pluginDefinition) => Js.Promise.t(unit),
 };
 type extension; // TODO: rename to t - after refactoring
 
@@ -73,8 +75,10 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ~name: string,
       ~extensionPointName: string,
       ~aggregateNames: array(string),
-      ~incomingEventHandler: (. Js.Json.t) => Js.Promise.t(unit),
-      ~outgoingEventHandler: (. Js.Json.t) => Js.Promise.t(unit)
+      ~incomingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
+                             Js.Promise.t(unit),
+      ~outgoingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
+                             Js.Promise.t(unit)
     ) =>
     outputs =
     "";
@@ -100,10 +104,14 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ); // TODO: handle multiple mappings for same Aggregate name
 
     let mapIncomingEvent =
-        (mappings, event': Message.event'(Id.String.t, Spec.event)) =>
+        (
+          mappings,
+          event': Message.event'(Id.String.t, Spec.event),
+          pluginDef,
+        ) =>
       mappings
       ->Belt.Array.map((module Mapping: Mapping) =>
-          Mapping.mapIncomingEvent(event')
+          Mapping.mapIncomingEvent(event', pluginDef)
         )
       ->Belt.Array.concatMany;
 
@@ -221,7 +229,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
            );
 
     let incomingEventHandler =
-      (. event'Json) => {
+      (. event'Json, pluginDef) => {
         let event' =
           Message.event'_decode(
             Id.String.t_decode,
@@ -231,7 +239,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
 
         switch (event') {
         | Belt.Result.Ok(event') =>
-          let commandActions = event'->mapIncomingEvent;
+          let commandActions = mapIncomingEvent(event', pluginDef);
           commandActions->Belt.Array.map(applyIncomingCommandAction)
           |> Js.Promise.all
           |> Js.Promise.then_(_ => Js.Promise.resolve());
@@ -242,8 +250,8 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       };
 
     let outgoingEventHandler =
-      (. event'Json) => {
-        let commandActions = event'Json->mapOutgoingEvent;
+      (. event'Json, pluginDef) => {
+        let commandActions = mapOutgoingEvent(event'Json, pluginDef);
         commandActions->Belt.Array.map(applyOutgoingCommandAction)
         |> Js.Promise.all
         |> Js.Promise.then_(_ => Js.Promise.resolve());
