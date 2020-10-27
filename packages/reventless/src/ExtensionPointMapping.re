@@ -1,7 +1,8 @@
 type extensionPointName = string;
 
 type callHandler('msg) =
-  (Schedule.create, Schedule.delete, 'msg) => Js.Promise.t(unit);
+  (Schedule.create, Schedule.delete, QueryDb.queryEngine, 'msg) =>
+  Js.Promise.t(unit);
 
 /* these actions are needed for Impl */
 type commandAction('command, 'msg) =
@@ -29,7 +30,7 @@ type mapIncomingCommand(
   'aggregateCommand,
   'extensionPointCallCommand,
 ) =
-  (string, 'extensionPointCommand, Message.meta, QueryDb.queryEngine) =>
+  (string, 'extensionPointCommand, Message.meta) =>
   array(commandAction('aggregateCommand, 'extensionPointCallCommand));
 
 type mapOutgoingEvent(
@@ -90,7 +91,8 @@ module type T = {
       Js.Json.t,
       Schedule.create,
       Schedule.delete,
-      PluginSpec.pluginDefinition
+      PluginSpec.pluginDefinition,
+      QueryDb.queryEngine
     ) =>
     array(abstractEventAction(ExtensionPoint.event));
 };
@@ -106,12 +108,7 @@ module Make =
       (commands', createSchedule, deleteSchedule, queryEngine) =>
     commands'
     ->Belt.Array.map(({Message.id, command, meta}) =>
-        MappingImpl.mapIncomingCommand(
-          id->Id.String.toString,
-          command,
-          meta,
-          queryEngine,
-        )
+        MappingImpl.mapIncomingCommand(id->Id.String.toString, command, meta)
         ->Belt.Array.map(
             fun
             | PublishCommand(aggregateId, aggregateCmd) => {
@@ -145,7 +142,13 @@ module Make =
                 );
 
                 AbstractCall(
-                  () => handler(createSchedule, deleteSchedule, callCommand),
+                  () =>
+                    handler(
+                      createSchedule,
+                      deleteSchedule,
+                      queryEngine,
+                      callCommand,
+                    ),
                 );
               },
           )
@@ -153,7 +156,13 @@ module Make =
     ->Belt.Array.concatMany;
 
   let mapOutgoingEvent =
-      (aggregateEvent'Json, createSchedule, deleteSchedule, pluginDef) =>
+      (
+        aggregateEvent'Json,
+        createSchedule,
+        deleteSchedule,
+        pluginDef,
+        queryEngine,
+      ) =>
     switch (
       Message.event'_decode(
         Aggregate.Id.t_decode,
@@ -193,7 +202,8 @@ module Make =
               );
 
               AbstractCall(
-                () => handler(createSchedule, deleteSchedule, msg),
+                () =>
+                  handler(createSchedule, deleteSchedule, queryEngine, msg),
               );
             },
         )

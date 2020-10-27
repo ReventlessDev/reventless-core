@@ -216,6 +216,7 @@ module Make =
             scheduler,
             queue,
             pluginDef,
+            queryEngine,
           );
 
         eventActions->Belt.Array.map(applyEventAction)

@@ -2,6 +2,7 @@ let callHandler =
     (
       createSchedule: Schedule.create,
       deleteSchedule: Schedule.delete,
+      queryEngine: QueryDb.queryEngine,
       callCommand,
     ) =>
   switch (callCommand) {
@@ -28,16 +29,80 @@ let callHandler =
     })
   | DeleteDisconnectSchedule(id) => deleteSchedule(. id)
   | ForwardCommand({extensionPointName, command}) =>
-    // TODO: query all Plugins from ReadModel
-    // TODO: find first Plugin which holds an extension point named like the one in the command
-    // TODO: get queue id for extension point
-    // TODO: send command
-    Js.log3(
-      "TODO: IMPLEMENT CallCommand handling for ForwardCommand:",
-      extensionPointName,
-      command,
+    queryEngine.scan(
+      ~serviceName=PluginSpec.name,
+      ~filterConfigs=[
+        ("extensionPoints", Contains, String(extensionPointName)),
+      ],
+      ~limit=1,
     )
-    ->Js.Promise.resolve
+    ->Js.Promise.then_(
+        fun
+        | [||] =>
+          Js.log2(
+            "ForwardCommand: Couldn't find Plugin with ExtensionPoint",
+            extensionPointName,
+          )
+          ->Js.Promise.resolve
+        | plugins => {
+            let plugin = plugins->Belt.Array.getExn(0);
+            plugin
+            ->PluginView.state_decode
+            ->(
+                fun
+                | Belt.Result.Ok((plugin: PluginView.state)) => {
+                    plugin.extensionPoints
+                    ->Belt.Array.getBy(extensionPoint =>
+                        extensionPoint.name == extensionPointName
+                      )
+                    ->(
+                        fun
+                        | Some(extensionPoint) =>
+                          command
+                          ->AwsSdk.SQS.sendMessage(
+                              ~queueId=extensionPoint.PluginSpec.commandTopic,
+                              ~messageBody=_,
+                              (),
+                            )
+                          ->Js.Promise.then_(
+                              _ =>
+                                Js.log3(
+                                  "ForwardCommand: published command to",
+                                  plugin.name,
+                                  extensionPoint.PluginSpec.commandTopic,
+                                )
+                                ->Js.Promise.resolve,
+                              _,
+                            )
+                          ->Js.Promise.catch(
+                              err =>
+                                Js.log2(
+                                  "PluginExtensionPoint_PluginMapping: Error on publish command:",
+                                  err,
+                                )
+                                ->Js.Promise.resolve,
+                              _,
+                            )
+                        | None =>
+                          Js.log3(
+                            "ForwardCommand: Couldn't find ExtensionPoint",
+                            extensionPointName,
+                            plugin,
+                          )
+                          ->Js.Promise.resolve
+                      );
+                  }
+                | Error(err) =>
+                  Js.log3(
+                    "ForwardCommand: Couldn't decode Plugin",
+                    plugin,
+                    err,
+                  )
+                  ->Js.Promise.resolve
+              );
+          },
+        _,
+      )
   | _ => Js.Promise.resolve()
   };
 
@@ -46,7 +111,7 @@ module Impl = {
 
   module Aggregate = PluginSpec;
 
-  let mapIncomingCommand = (id, cmd, _meta: Message.meta, _queryEngine) =>
+  let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
     switch (cmd) {
     | PluginExtensionPointSpec.Heartbeat(timeout) => [|
         PublishCommand(id, Aggregate.Heartbeat),
