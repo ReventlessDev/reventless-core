@@ -12,6 +12,7 @@ type state = {
   name,
   version,
   extensionPoints: array(extensionPointDefinition),
+  extensionPointNames: array(string),
   extensions: array(extensionDefinition),
   status,
   statusChange: Message.statusChange,
@@ -26,6 +27,11 @@ let sortConfig = None;
 
 let indexes = [];
 
+let extractNames =
+  Belt.Array.map(_, (extensionPoint: extensionPointDefinition) =>
+    extensionPoint.name
+  );
+
 let init =
   (. event, {Message.meta: {time, user}}) =>
     switch (event) {
@@ -35,6 +41,7 @@ let init =
           name,
           version,
           extensionPoints,
+          extensionPointNames: extensionPoints->extractNames,
           extensions,
           status: Connected,
           statusChange: {
@@ -59,6 +66,7 @@ let apply =
           name,
           version,
           extensionPoints,
+          extensionPointNames: extensionPoints->extractNames,
           extensions,
           status: Connected,
           statusChange: {

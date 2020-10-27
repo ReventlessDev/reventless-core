@@ -32,7 +32,8 @@ let callHandler =
     queryEngine.scan(
       ~serviceName=PluginSpec.name,
       ~filterConfigs=[
-        ("extensionPoints", Contains, String(extensionPointName)),
+        ("extensionPointNames", Contains, String(extensionPointName)),
+        ("status", Contains, String("Connected")),
       ],
       ~limit=1,
     )

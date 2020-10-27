@@ -14,6 +14,8 @@ let state: PluginView.state = {
   name: pluginDefinition.name,
   version: pluginDefinition.version,
   extensionPoints: pluginDefinition.extensionPoints,
+  extensionPointNames:
+    pluginDefinition.extensionPoints->PluginView.extractNames,
   extensions: pluginDefinition.extensions,
   status: Connected,
   statusChange: TestFixtures.statusChange,
