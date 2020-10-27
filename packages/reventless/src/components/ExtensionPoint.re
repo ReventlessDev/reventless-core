@@ -17,6 +17,7 @@ type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
     ~scheduler: Scheduler.t,
+    ~queryEngine: QueryDb.queryEngine,
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>
@@ -113,13 +114,15 @@ module Make =
         )
       ); // TODO: handle multiple mappings for same Aggregate name
 
-    let mapIncomingCommands = (commands', mappings, scheduler, queue) =>
+    let mapIncomingCommands =
+        (commands', mappings, scheduler, queryEngine, queue) =>
       mappings
       ->Belt.Array.map((module Mapping: Mapping) =>
           Mapping.mapIncomingCommands(
             commands',
             Schedule.create(scheduler, queue),
             Schedule.delete(scheduler, queue),
+            queryEngine,
           )
         )
       ->Belt.Array.concatMany;
@@ -142,7 +145,8 @@ module Make =
       };
   };
 
-  let construct = (~mappings, ~queryCommandTopic, ~scheduler, self, name) => {
+  let construct =
+      (~mappings, ~queryCommandTopic, ~scheduler, ~queryEngine, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -224,7 +228,12 @@ module Make =
         let commandTopic = (commandTopic^)->Belt.Option.getExn;
         let queue = commandTopic->Component.extractOutputs##connector;
         let commandActions =
-          cmds'Json->Mapper.mapIncomingCommands(mappings, scheduler, queue);
+          cmds'Json->Mapper.mapIncomingCommands(
+            mappings,
+            scheduler,
+            queryEngine,
+            queue,
+          );
 
         commandActions->Belt.Array.map(applyCommandAction)
         |> Js.Promise.all
@@ -254,11 +263,12 @@ module Make =
   };
 
   let make: array(module Mapping) => maker =
-    (mappings, ~queryCommandTopic, ~scheduler, ~opts, _) =>
+    (mappings, ~queryCommandTopic, ~scheduler, ~queryEngine, ~opts, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~mappings, ~queryCommandTopic, ~scheduler),
+        ~construct=
+          construct(~mappings, ~queryCommandTopic, ~scheduler, ~queryEngine),
         ~opts,
       );
 };

@@ -34,7 +34,6 @@ type maker =
     ~taskMakers: array(Task.maker),
     ~eventMapperMakers: array(EventMapper.maker),
     ~scheduler: Scheduler.t,
-    ~queryByServiceNameMaker: ResourceQuery.runtimeQueryExn => QueryDb.query,
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit
   ) =>
@@ -45,7 +44,12 @@ module type T = {let make: maker;};
 let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
 
-module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
+module Make =
+       (
+         EventCollectorAdapter: EventCollector.Connector,
+         QueryEngine: QueryDb.QueryEngine,
+       )
+       : T => {
   type constructed;
   type construct = (Component.t(plugin, outputs), string) => constructed;
 
@@ -108,8 +112,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         ~taskMakers: array(Task.maker),
         ~eventMapperMakers: array(EventMapper.maker),
         ~scheduler: Scheduler.t,
-        ~queryByServiceNameMaker:
-           ResourceQuery.runtimeQueryExn => QueryDb.query,
         self,
         name,
       ) => {
@@ -166,11 +168,22 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         );
       };
 
+    let queryQueryDb =
+      InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
+        servicesOutputs->Interstack.mergeServices,
+      );
+
+    let queryQueryDbDeploytime =
+      InterstackResourceQueryDeploytime.queryDbStorageOfAllServicesExn(
+        servicesOutputs,
+      );
+
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
         extensionPointMaker(
           ~queryCommandTopic,
           ~scheduler,
+          ~queryEngine=QueryEngine.make(queryQueryDb),
           ~opts=Some(opts),
           (),
         )
@@ -434,16 +447,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
         (),
       );
 
-    let queryQueryDb =
-      InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
-        servicesOutputs->Interstack.mergeServices,
-      );
-
-    let queryQueryDbDeploytime =
-      InterstackResourceQueryDeploytime.queryDbStorageOfAllServicesExn(
-        servicesOutputs,
-      );
-
     let eventMappersOutputs = ref([||]);
     let queryEventCollector =
       InterstackResourceQueryRuntime.eventCollectorConnectorOfAllEventMappersExn(
@@ -464,7 +467,7 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             ~queryEventCollector,
             ~queryBucketName,
             ~scheduler,
-            ~queryByServiceName=queryByServiceNameMaker(queryQueryDb),
+            ~queryEngine=QueryEngine.make(queryQueryDb),
             ~opts=Some(opts),
           )
           ->Component.extractOutputs
@@ -721,7 +724,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
       ~taskMakers,
       ~eventMapperMakers,
       ~scheduler,
-      ~queryByServiceNameMaker,
       ~opts=?,
       _unit,
     ) =>
@@ -738,7 +740,6 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) : T => {
             ~taskMakers,
             ~eventMapperMakers,
             ~scheduler,
-            ~queryByServiceNameMaker,
           ),
         ~opts,
       );

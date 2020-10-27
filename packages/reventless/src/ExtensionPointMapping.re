@@ -29,7 +29,7 @@ type mapIncomingCommand(
   'aggregateCommand,
   'extensionPointCallCommand,
 ) =
-  (string, 'extensionPointCommand, Message.meta) =>
+  (string, 'extensionPointCommand, Message.meta, QueryDb.queryEngine) =>
   array(commandAction('aggregateCommand, 'extensionPointCallCommand));
 
 type mapOutgoingEvent(
@@ -80,7 +80,8 @@ module type T = {
     (
       array(Message.command'(Id.String.t, ExtensionPoint.command)),
       Schedule.create,
-      Schedule.delete
+      Schedule.delete,
+      QueryDb.queryEngine
     ) =>
     array(abstractCommandAction);
 
@@ -101,10 +102,16 @@ module Make =
   let aggregateName = Aggregate.name;
   let extensionPointName = Spec.name;
 
-  let mapIncomingCommands = (commands', createSchedule, deleteSchedule) =>
+  let mapIncomingCommands =
+      (commands', createSchedule, deleteSchedule, queryEngine) =>
     commands'
     ->Belt.Array.map(({Message.id, command, meta}) =>
-        MappingImpl.mapIncomingCommand(id->Id.String.toString, command, meta)
+        MappingImpl.mapIncomingCommand(
+          id->Id.String.toString,
+          command,
+          meta,
+          queryEngine,
+        )
         ->Belt.Array.map(
             fun
             | PublishCommand(aggregateId, aggregateCmd) => {

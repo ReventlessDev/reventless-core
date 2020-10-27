@@ -14,7 +14,11 @@ type core;
 let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
 
-module Make = (EventCollectorAdapter: EventCollector.Connector) => {
+module Make =
+       (
+         EventCollectorAdapter: EventCollector.Connector,
+         QueryEngine: QueryDb.QueryEngine,
+       ) => {
   type constructed;
   type construct = (Component.t(core, outputs), string) => constructed;
 
@@ -80,11 +84,17 @@ module Make = (EventCollectorAdapter: EventCollector.Connector) => {
         servicesOutputs,
       );
 
+    let queryQueryDb =
+      InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
+        servicesOutputs->Interstack.mergeServices,
+      );
+
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
         extensionPointMaker(
           ~queryCommandTopic,
           ~scheduler,
+          ~queryEngine=QueryEngine.make(queryQueryDb),
           ~opts=Some(opts),
           (),
         )

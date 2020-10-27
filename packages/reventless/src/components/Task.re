@@ -40,7 +40,7 @@ type maker =
     ~queryEventCollector: InterstackResourceQuery.runtimeQueryExn,
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
-    ~queryByServiceName: QueryDb.query,
+    ~queryEngine: QueryDb.queryEngine,
     ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   Component.t(task, outputs);
@@ -93,7 +93,7 @@ let construct =
       ~queryEventCollector,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
-      ~queryByServiceName: QueryDb.query,
+      ~queryEngine: QueryDb.queryEngine,
       self,
       _,
     ) => {
@@ -105,7 +105,7 @@ let construct =
 
   let query =
     (. serviceName, key, value, filterConfigs, ascending, limit) =>
-      queryByServiceName(
+      queryEngine.query(
         ~serviceName,
         ~key,
         ~value,
@@ -169,7 +169,7 @@ let make =
       ~queryEventCollector,
       ~queryBucketName,
       ~scheduler,
-      ~queryByServiceName,
+      ~queryEngine,
       ~opts,
     ) => {
   make(
@@ -183,7 +183,7 @@ let make =
         ~queryEventCollector,
         ~queryBucketName,
         ~scheduler,
-        ~queryByServiceName,
+        ~queryEngine,
       ),
     ~opts,
   );

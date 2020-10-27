@@ -20,24 +20,6 @@ type storageError =
   | NotDeletedFromStorage(Js.Promise.error)
   | StaleState;
 
-type value =
-  | String(string)
-  | Int(int)
-  | Bool(bool);
-type comparator =
-  | Equal
-  | Unequal
-  | LessOrEqual
-  | Less
-  | GreaterOrEqual
-  | Greater
-  | Exists
-  | NotExists
-  | Contains
-  | NotContains
-  | BeginsWith;
-type filterConfig = (string, comparator, value);
-
 type load('id, 'state) =
   (. 'id) => Js.Promise.t(Belt.Result.t(list('state), storageError));
 type save('id, 'state) =
@@ -105,6 +87,24 @@ module type Storage = {
   let make: storageMaker(api, role);
 };
 
+type value =
+  | String(string)
+  | Int(int)
+  | Bool(bool);
+type comparator =
+  | Equal
+  | Unequal
+  | LessOrEqual
+  | Less
+  | GreaterOrEqual
+  | Greater
+  | Exists
+  | NotExists
+  | Contains
+  | NotContains
+  | BeginsWith;
+type filterConfig = (string, comparator, value);
+
 type query =
   (
     ~serviceName: string,
@@ -115,6 +115,19 @@ type query =
     ~limit: int
   ) =>
   Js.Promise.t(array(Js.Json.t));
+
+type scan =
+  (~serviceName: string, ~filterConfigs: list(filterConfig), ~limit: int) =>
+  Js.Promise.t(array(Js.Json.t));
+
+type queryEngine = {
+  scan,
+  query,
+};
+
+module type QueryEngine = {
+  let make: ResourceQuery.runtimeQueryExn => queryEngine;
+};
 
 type resolvers = {
   resources: array(Adapter.resource),
