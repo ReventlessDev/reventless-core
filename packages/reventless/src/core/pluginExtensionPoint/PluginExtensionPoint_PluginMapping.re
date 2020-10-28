@@ -35,7 +35,7 @@ let callHandler =
         ("extensionPointNames", Contains, String(extensionPointName)),
         ("status", Contains, String("Connected")),
       ],
-      ~limit=1,
+      ~limit=1000,
     )
     ->Js.Promise.then_(
         fun
