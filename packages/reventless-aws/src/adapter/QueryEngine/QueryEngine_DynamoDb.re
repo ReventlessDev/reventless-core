@@ -140,12 +140,17 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
 };
 
 let scanByServiceNameMaker =
-    (queryQueryDb, ~serviceName, ~filterConfigs, ~limit) =>
-  scanByTableName(
-    ~tableName=queryQueryDb(serviceName)##name->OutputFailsafeRuntime.get,
-    ~filterConfigs,
-    ~limit,
+    (queryQueryDb, ~serviceName, ~filterConfigs, ~limit) => {
+  let tableName = queryQueryDb(serviceName)##name->OutputFailsafeRuntime.get;
+  Js.log(
+    {j|scanByServiceNameMaker: tableName for $serviceName: $tableName|j},
   );
+  Js.log2("scanByServiceNameMaker: filterConfigs:", filterConfigs);
+  Js.log2("scanByServiceNameMaker: limit:", limit);
+  let result = scanByTableName(~tableName, ~filterConfigs, ~limit);
+  Js.log2("scanByServiceNameMaker: result:", result);
+  result;
+};
 
 let make: ResourceQuery.runtimeQueryExn => QueryDb.queryEngine =
   queryQueryDb => {
