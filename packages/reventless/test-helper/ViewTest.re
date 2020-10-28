@@ -30,24 +30,38 @@ module Make =
        : (T with module Spec = Spec and type state := View.state) => {
   module Spec = Spec;
 
-  let applyAction =
-    fun
-    | Reventless.View.Create(state) => [state]
+  let transformState = (oldState, action) =>
+    switch (action) {
+    | Reventless.View.Create(_)
+    | Unchanged(_) => [oldState]
     | Update(newState) => [newState]
     | Delete(_) => []
-    | Unchanged(state) => [state];
+    };
 
-  let applyActions = actions =>
-    actions->Belt.List.map(applyAction)->Belt.List.flatten;
+  let createState = action =>
+    switch (action) {
+    | Reventless.View.Create(newState) => [newState]
+    | _ => []
+    };
+
+  let applyActions = (actions, oldStates) =>
+    oldStates
+    ->Belt.List.zip(actions)
+    ->Belt.List.map(((oldState, action)) =>
+        oldState->transformState(action)
+      )
+    ->Belt.List.concat(actions->Belt.List.map(createState))
+    ->Belt.List.flatten;
 
   let update = (event, states) =>
     switch (states) {
     | [] => View.init(. event, TestFixtures.context)
     | [oldState] =>
-      View.apply(. oldState, event, TestFixtures.context) |> applyActions
+      View.apply(. oldState, event, TestFixtures.context)
+      ->applyActions([oldState])
     | oldStates =>
       View.applyMulti(. oldStates, event, TestFixtures.context)
-      |> applyActions
+      ->applyActions(oldStates)
     };
 
   let givenEvents = events => {
@@ -60,26 +74,26 @@ module Make =
   };
 
   open Jest.Expect;
-  let whenEvent = (event, state) => expect(() =>
-                                       update(event, state)
-                                     );
+  let whenEvent = (event, states) => expect(() =>
+                                        update(event, states)
+                                      );
 
   let thenStates = (expectedStates, states) => {
-    let states = states |> unpack;
+    let states = states->unpack;
     expect(states()) |> toEqual(expectedStates);
   };
 
   let thenState = (expectedState, statesFn) => {
-    let statesFn = statesFn |> unpack;
+    let statesFn = statesFn->unpack;
     let states = statesFn();
     expect((states->Belt.List.length, states->Belt.List.head))
     |> toEqual((1, Some(expectedState)));
   };
 
   let thenNoState = states => {
-    let states = states |> unpack;
+    let states = states->unpack;
     expect(states()) |> toEqual([]);
   };
 
-  let thenThrow = states => states |> toThrow;
+  let thenThrow = states => states->toThrow;
 };
