@@ -390,7 +390,8 @@ module Make =
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply(((extensionPointsConfig, eventCollectorUrn)) =>
           {
-            PluginSpec.name,
+            PluginSpec.id,
+            name,
             version,
             extensionPoints: extensionPointsConfig,
             extensions: extensionsConfig,

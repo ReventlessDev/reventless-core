@@ -1,6 +1,7 @@
 open PluginSpec;
 
 let pluginDefinition = {
+  id: "test-plugin-1@1",
   name: "test-plugin-1",
   version: "1",
   extensionPoints: [||],
@@ -22,6 +23,7 @@ let state: PluginView.state = {
 };
 
 let pluginDefinition2 = {
+  id: "test-plugin-2@1",
   name: "test-plugin-2",
   version: "1",
   extensionPoints: [|

@@ -116,6 +116,7 @@ module Make =
       ->Belt.Set.String.toArray;
 
     let fakePluginDefinition: PluginSpec.pluginDefinition = {
+      id: "Core@FAKE",
       name: "Core",
       version: "FAKE",
       extensionPoints: [||],

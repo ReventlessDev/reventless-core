@@ -22,6 +22,7 @@ type extensionDefinition = {
 
 [@decco]
 type pluginDefinition = {
+  id: string,
   name,
   version,
   extensionPoints: array(extensionPointDefinition),
