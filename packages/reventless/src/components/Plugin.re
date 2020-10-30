@@ -266,10 +266,12 @@ module Make =
                     )
                     ->Js.Promise.all2
                     ->Js.Promise.then_(
-                        ((subscriptionResponse, _)) =>
-                          Js.log2(
+                        ((subscriptionResponse, addPermissionResponse)) =>
+                          Js.log4(
                             {j|connectToExtensionPoints: $name->$pluginName:$extensionPointName, subscriptionResponse:|j},
                             subscriptionResponse,
+                            "addPermissionResponse:",
+                            addPermissionResponse,
                           )
                           ->Js.Promise.resolve,
                         _,
