@@ -5,9 +5,7 @@ exception ScheduleNotCreated(Scheduler.schedule, string, Js.Promise.error);
 exception ScheduleNotDeleted(string, string, Js.Promise.error);
 
 let forQueue = (name, queueId) =>
-  name->Js.String2.replaceByRe([%re "/[^.\-_a-zA-Z0-9]/g"], "_")
-  ++ "-"
-  ++ (queueId |> Js.String.split("-"))[1];
+  name->AWS.validateName ++ "-" ++ (queueId |> Js.String.split("-"))[1];
 
 let minutesFromNow = minutes => {
   open MomentRe;

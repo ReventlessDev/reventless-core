@@ -227,27 +227,46 @@ module Make =
                   if (extension##extensionPointName == extensionPointName) {
                     let eventCollectorUrn =
                       eventCollectorUrn->Pulumi.Output.get;
-                    AwsSdk.SNS.(
-                      snsClient()
-                      ->subscribe(
-                          ~params=
-                            SubscribeRequest.make(
-                              ~_TopicArn=eventTopic,
-                              ~_Protocol=`sqs,
-                              ~_Endpoint=eventCollectorUrn,
-                              ~_Attributes=
-                                SubscribeRequest.Attributes.make(
-                                  ~_RawMessageDelivery=true,
-                                  /* TODO: add dlq in RedrivePolicy */
-                                  (),
-                                ),
-                              (),
-                            ),
-                        )
+                    // TODO: remove AWS specific code into adapter
+                    (
+                      AwsSdk.SNS.(
+                        snsClient()
+                        ->subscribe(
+                            ~params=
+                              SubscribeRequest.make(
+                                ~_TopicArn=eventTopic,
+                                ~_Protocol=`sqs,
+                                ~_Endpoint=eventCollectorUrn,
+                                ~_Attributes=
+                                  SubscribeRequest.Attributes.make(
+                                    ~_RawMessageDelivery=true,
+                                    /* TODO: add dlq in RedrivePolicy */
+                                    (),
+                                  ),
+                                (),
+                              ),
+                          )
+                      )
+                      ->AwsSdk.Request.promise,
+                      AwsSdk.SQS.(
+                        sqsClient()
+                        ->addPermission(
+                            ~params=
+                              AddPermissionRequest.make(
+                                ~_AWSAccountIds=[|"*"|],
+                                ~_Actions=[|"sqs:SendMessage"|],
+                                ~_Label=
+                                  (extensionPointName ++ "-" ++ id)
+                                  ->AWS.validateName,
+                                ~_QueueUrl=eventCollectorUrn->arn2Url,
+                              ),
+                          )
+                      )
+                      ->AwsSdk.Request.promise,
                     )
-                    ->AwsSdk.Request.promise
+                    ->Js.Promise.all2
                     ->Js.Promise.then_(
-                        subscriptionResponse =>
+                        ((subscriptionResponse, _)) =>
                           Js.log2(
                             {j|connectToExtensionPoints: $name->$pluginName:$extensionPointName, subscriptionResponse:|j},
                             subscriptionResponse,
