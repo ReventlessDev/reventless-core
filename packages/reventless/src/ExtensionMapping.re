@@ -208,12 +208,14 @@ module Make =
               );
             }
           | ForwardCommand({extensionPointName, id, commandJson}) => {
+              let fromExtensionPointName = Spec.name;
               AbstractPublishExtensionPointCommand(
                 extensionPointName,
                 id,
                 meta,
                 commandJson->encodeExtensionPointCommandJson(
-                  ~from={j|incoming from ExtensionPoint $extensionPointName|j},
+                  ~from=
+                    {j|incoming from ExtensionPoint $fromExtensionPointName|j},
                   ~extensionPointName,
                   ~action="Forward ExtensionPoint command",
                   ~id,

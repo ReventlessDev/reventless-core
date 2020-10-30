@@ -99,12 +99,19 @@ let log: ('a, string) => 'a =
   };
 
 let logEvent'Json = (event'Json, description) => {
-  let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn;
-  let id = event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString;
-  let event: array(string) = event'->Js.Dict.unsafeGet("event")->Obj.magic;
-  let eventName = event[0];
   let eventStr = event'Json->Js.Json.stringify;
-  Js.log({j|$description $eventName($id) complete event: $eventStr|j});
+  try (
+    {
+      let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn;
+      let id = event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString;
+      let event: array(string) =
+        event'->Js.Dict.unsafeGet("event")->Obj.magic;
+      let eventName = event[0];
+      Js.log({j|$description $eventName($id) complete event: $eventStr|j});
+    }
+  ) {
+  | _ => Js.log2("Couldn't log event:", eventStr)
+  };
 };
 
 let uuid = Uuid.v4;
