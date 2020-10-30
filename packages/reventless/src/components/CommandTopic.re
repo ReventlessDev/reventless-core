@@ -28,9 +28,11 @@ module type T = {
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    Component.t(t,outputs);
+    Component.t(t, outputs);
 
-  let publish: Component.t(t,outputs) => publish(Message.command'(Spec.Id.t, Spec.command));
+  let publish:
+    Component.t(t, outputs) =>
+    publish(Message.command'(Spec.Id.t, Spec.command));
 };
 
 type connector = {
@@ -59,7 +61,8 @@ module Make =
   type t;
 
   type constructed;
-  type construct = (Component.t(t,outputs), string, commandsHandler) => constructed;
+  type construct =
+    (Component.t(t, outputs), string, commandsHandler) => constructed;
 
   type nonrec publish = publish(Message.command'(Spec.Id.t, Spec.command));
 
@@ -72,22 +75,26 @@ module Make =
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~commandsHandler: commandsHandler
     ) =>
-    Component.t(t,outputs) =
+    Component.t(t, outputs) =
     "default";
 
   [@bs.obj]
   external makeOutputs: (~connector: Adapter.resource) => outputs = "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t,outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(t,outputs), outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(t, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setPublish: (Component.t(t,outputs), publish) => unit = "publish";
-  [@bs.get] external publish: Component.t(t,outputs) => publish = "publish";
+  [@bs.set]
+  external setPublish: (Component.t(t, outputs), publish) => unit = "publish";
+  [@bs.get] external publish: Component.t(t, outputs) => publish = "publish";
 
   let publishFn = connector =>
     (. command') => {
@@ -172,7 +179,10 @@ module Make =
           commandsHandler(. id, commands')
           |> Js.Promise.catch(err =>
                failwith(
-                 {j|CommandTopic.handleCommand: Error: Couldn't handle $commandCount command(s) for id $id: $err|j},
+                 {j|CommandTopic.handleCommand: Error: Couldn't handle $commandCount command(s) for id $id: |j}
+                 ++ err
+                    ->Js.Json.stringifyAny
+                    ->Belt.Option.getWithDefault("unknown error"),
                )
                |> Js.Promise.reject
              );
@@ -198,7 +208,7 @@ module Make =
 
     self->setPublish(connector->publishFn);
 
-    makeOutputs(~connector=connector.resource) -> setOutputs(self, _);
+    makeOutputs(~connector=connector.resource)->setOutputs(self, _);
   };
 
   let make:
@@ -210,7 +220,7 @@ module Make =
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    Component.t(t,outputs) =
+    Component.t(t, outputs) =
     (~name, ~commandsHandler, ~memorySize=256, ~timeout=30, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,

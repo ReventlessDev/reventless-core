@@ -35,7 +35,7 @@ module type T = {
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    Component.t(t,outputs);
+    Component.t(t, outputs);
 };
 
 module Make =
@@ -56,7 +56,8 @@ module Make =
   type eventsHandler = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct = (Component.t(t,outputs), string, eventsHandler) => constructed;
+  type construct =
+    (Component.t(t, outputs), string, eventsHandler) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -67,7 +68,7 @@ module Make =
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~eventsHandler: eventsHandler
     ) =>
-    Component.t(t,outputs) =
+    Component.t(t, outputs) =
     "default";
 
   module CommandGenerator =
@@ -88,8 +89,11 @@ module Make =
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t,outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(t,outputs), outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(t, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -241,7 +245,10 @@ module Make =
                   |> Js.Promise.catch(err =>
                        Js.Promise.reject(
                          failwith(
-                           {j|Aggregate.execCommand($id): eventLogAppend error: $err|j},
+                           {j|Aggregate.execCommand($id): eventLogAppend error: |j}
+                           ++ err
+                              ->Js.Json.stringifyAny
+                              ->Belt.Option.getWithDefault("unknown error"),
                          ),
                        )
                      ),
@@ -249,7 +256,10 @@ module Make =
                   |> Js.Promise.catch(err =>
                        Js.Promise.reject(
                          failwith(
-                           {j|Aggregate.execCommand($id): eventsHandler error: $err|j},
+                           {j|Aggregate.execCommand($id): eventsHandler error: |j}
+                           ++ err
+                              ->Js.Json.stringifyAny
+                              ->Belt.Option.getWithDefault("unknown error"),
                          ),
                        )
                      ),
@@ -259,7 +269,10 @@ module Make =
                      |> Js.Promise.catch(err =>
                           Js.Promise.reject(
                             failwith(
-                              {j|Aggregate.execCommand($id): eventTopicPublish error: $err|j},
+                              {j|Aggregate.execCommand($id): eventTopicPublish error: |j}
+                              ++ err
+                                 ->Js.Json.stringifyAny
+                                 ->Belt.Option.getWithDefault("unknown error"),
                             ),
                           )
                         )
@@ -307,7 +320,12 @@ module Make =
           (),
         );
 
-      makeOutputs(~commandGenerator=commandGenerator->Component.extractOutputs, ~commandTopic=commandTopic->Component.extractOutputs, ~eventLog=eventLog->Component.extractOutputs, ~eventTopic=eventTopic->Component.extractOutputs)
+      makeOutputs(
+        ~commandGenerator=commandGenerator->Component.extractOutputs,
+        ~commandTopic=commandTopic->Component.extractOutputs,
+        ~eventLog=eventLog->Component.extractOutputs,
+        ~eventTopic=eventTopic->Component.extractOutputs,
+      )
       |> self->setOutputs;
     };
 
@@ -317,7 +335,7 @@ module Make =
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    Component.t(t,outputs) =
+    Component.t(t, outputs) =
     (~eventsHandler, ~opts=?, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
