@@ -235,7 +235,12 @@ module Make =
                               ~_TopicArn=eventTopic,
                               ~_Protocol=`sqs,
                               ~_Endpoint=eventCollectorUrn,
-                              /* TODO: add dlq in params.redrivePolicy */
+                              ~_Attributes=
+                                SubscribeRequest.Attributes.make(
+                                  ~_RawMessageDelivery=true,
+                                  /* TODO: add dlq in RedrivePolicy */
+                                  (),
+                                ),
                               (),
                             ),
                         )
@@ -317,7 +322,12 @@ module Make =
                           ~_TopicArn=eventTopic,
                           ~_Protocol=`sqs,
                           ~_Endpoint=eventCollector,
-                          /* TODO: add dlq in params.redrivePolicy */
+                          ~_Attributes=
+                            SubscribeRequest.Attributes.make(
+                              ~_RawMessageDelivery=true,
+                              /* TODO: add dlq in RedrivePolicy */
+                              (),
+                            ),
                           (),
                         ),
                     )
