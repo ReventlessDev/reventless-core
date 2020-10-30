@@ -1,5 +1,20 @@
 open Pulumi;
 
+let allowResource = (queueArn, idx, sourceArn) => {j|
+  {
+    "Sid": "$idx",
+    "Effect": "Allow",
+    "Principal": "*",
+    "Action": "sqs:SendMessage",
+    "Resource": "$queueArn",
+    "Condition": {
+      "ArnEquals": {
+        "aws:SourceArn": "$sourceArn"
+      }
+    }
+  }
+|j};
+
 let allowResources:
   (
     ~queue: PulumiAws.SQS.Queue.t,
@@ -17,20 +32,7 @@ let allowResources:
     ))
     ->Output.apply(((queueArn, topicArns)) =>
         topicArns
-        ->Belt.Array.mapWithIndex((idx, topicArn) =>
-            {j|{
-              "Sid": "$idx",
-              "Effect": "Allow",
-              "Principal": "*",
-              "Action": "sqs:SendMessage",
-              "Resource": "$queueArn",
-              "Condition": {
-                "ArnEquals": {
-                  "aws:SourceArn": "$topicArn"
-                }
-              }
-            }|j}
-          )
+        ->Belt.Array.mapWithIndex(allowResource(queueArn))
         ->Belt.List.fromArray
         ->String.concat(",", _)
       );
