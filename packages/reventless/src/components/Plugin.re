@@ -239,7 +239,7 @@ module Make =
                                 ~_Endpoint=eventCollectorUrn,
                                 ~_Attributes=
                                   SubscribeRequest.Attributes.make(
-                                    ~_RawMessageDelivery=true,
+                                    ~_RawMessageDelivery="true",
                                     /* TODO: add dlq in RedrivePolicy */
                                     (),
                                   ),
@@ -345,7 +345,7 @@ module Make =
                           ~_Endpoint=eventCollector,
                           ~_Attributes=
                             SubscribeRequest.Attributes.make(
-                              ~_RawMessageDelivery=true,
+                              ~_RawMessageDelivery="true",
                               /* TODO: add dlq in RedrivePolicy */
                               (),
                             ),
