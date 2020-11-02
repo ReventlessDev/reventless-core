@@ -204,184 +204,119 @@ module Make =
 
     let (eventCollectorUrn, setEventCollectorUrn) =
       Util.Pulumi.Output.Async.make();
+    let subscribe = (extensionPointName, eventTopic, pluginId, eventCollector) =>
+      (
+        AwsSdk.SNS.(
+          snsClient()
+          ->subscribe(
+              ~params=
+                SubscribeRequest.make(
+                  ~_TopicArn=eventTopic,
+                  ~_Protocol=`sqs,
+                  ~_Endpoint=eventCollector,
+                  ~_Attributes=
+                    SubscribeRequest.Attributes.make(
+                      ~_RawMessageDelivery="true",
+                      /* TODO: add dlq in RedrivePolicy */
+                      (),
+                    ),
+                  (),
+                ),
+            )
+        )
+        ->AwsSdk.Request.promise,
+        AwsSdk.SQS.(
+          sqsClient()
+          ->addPermission(
+              ~params=
+                AddPermissionRequest.make(
+                  ~_AWSAccountIds=[|"*"|],
+                  ~_Actions=[|"sqs:SendMessage"|],
+                  ~_Label=(extensionPointName ++ "-" ++ id)->AWS.validateName,
+                  ~_QueueUrl=eventCollector->arn2Url,
+                ),
+            )
+        )
+        ->AwsSdk.Request.promise,
+      )
+      ->Js.Promise.all2
+      ->Js.Promise.then_(
+          ((subscriptionResponse, addPermissionResponse)) => {
+            Js.log({j|Connected: $extensionPointName->$pluginId:|j});
+            Js.log2("  subscriptionResponse:", subscriptionResponse);
+            Js.log2("  addPermissionResponse:", addPermissionResponse);
+            Js.Promise.resolve();
+          },
+          _,
+        )
+      ->Js.Promise.catch(
+          err =>
+            Js.log2(
+              {j|Could not connect $extensionPointName->$pluginId:|j},
+              err,
+            )
+            ->Js.Promise.resolve,
+          _,
+        );
 
     let callHandler =
       fun
-      | PluginExtensionPointSpec.ConnectPlugin(
-          {
-            extensionPoints: pluginExtensionPoints,
-            name: pluginName,
-            extensions: pluginExtensions,
-          } as pluginDef,
-        ) => {
+      | PluginExtensionPointSpec.ConnectPlugin({
+          id: pluginId,
+          extensionPoints: pluginExtensionPoints,
+          extensions: pluginExtensions,
+        }) => {
           /* Current Plugin received `PluginConnected`:
            *  this means: current plugin was already deployed before and received plugin just has been deployed
-           * - connectToExtensionPoints: if the newly deployed (received) plugin contains extensionpoints the current plugin relies on: connect current plugin to received plugin extension point's eventTopic
-           * - if the newly deployed (received) plugin contains extensions the current plugin holds an extensionpoint for: connect received extensions to current plugin's extension point
+           * - connectToExtensionPoints: if the newly deployed (received) plugin contains extensionpoints
+           *    the current plugin relies on: connect current plugin to received plugin extension point's eventTopic
+           * - if the newly deployed (received) plugin contains extensions the current plugin holds an extensionpoint for:
+           *    connect received extensions to current plugin's extension point
            */
           let connectToExtensionPoints =
-            // TODO: validate if this handling is correct - see connectToExtensionsOfTheConnectedPlugin: if a plugin has several extension for one extPt. it only needs to connect once
             pluginExtensionPoints
-            ->Belt.Array.map(({name: extensionPointName, eventTopic}) =>
-                extensionsOutputs->Belt.Array.keepMap(extension =>
-                  if (extension##extensionPointName == extensionPointName) {
-                    let eventCollectorUrn =
-                      eventCollectorUrn->Pulumi.Output.get;
-                    // TODO: remove AWS specific code into adapter
-                    (
-                      AwsSdk.SNS.(
-                        snsClient()
-                        ->subscribe(
-                            ~params=
-                              SubscribeRequest.make(
-                                ~_TopicArn=eventTopic,
-                                ~_Protocol=`sqs,
-                                ~_Endpoint=eventCollectorUrn,
-                                ~_Attributes=
-                                  SubscribeRequest.Attributes.make(
-                                    ~_RawMessageDelivery="true",
-                                    /* TODO: add dlq in RedrivePolicy */
-                                    (),
-                                  ),
-                                (),
-                              ),
-                          )
-                      )
-                      ->AwsSdk.Request.promise,
-                      AwsSdk.SQS.(
-                        sqsClient()
-                        ->addPermission(
-                            ~params=
-                              AddPermissionRequest.make(
-                                ~_AWSAccountIds=[|"*"|],
-                                ~_Actions=[|"sqs:SendMessage"|],
-                                ~_Label=
-                                  (extensionPointName ++ "-" ++ id)
-                                  ->AWS.validateName,
-                                ~_QueueUrl=eventCollectorUrn->arn2Url,
-                              ),
-                          )
-                      )
-                      ->AwsSdk.Request.promise,
+            ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
+                extensionsOutputs
+                ->Belt.Array.keep(extension =>
+                    extension##extensionPointName == extensionPointName
+                  )
+                ->Belt.Array.length
+                > 0
+                  ? Some(
+                      subscribe(
+                        extensionPointName,
+                        eventTopic,
+                        pluginId,
+                        eventCollectorUrn->Pulumi.Output.get,
+                      ),
                     )
-                    ->Js.Promise.all2
-                    ->Js.Promise.then_(
-                        ((subscriptionResponse, addPermissionResponse)) =>
-                          Js.log4(
-                            {j|connectToExtensionPoints: $name->$pluginName:$extensionPointName, subscriptionResponse:|j},
-                            subscriptionResponse,
-                            "addPermissionResponse:",
-                            addPermissionResponse,
-                          )
-                          ->Js.Promise.resolve,
-                        _,
-                      )
-                    ->Js.Promise.catch(
-                        err =>
-                          Js.log2(
-                            "Could not connect To ExtensionPoint "
-                            ++ (pluginName ++ ":" ++ extensionPointName)
-                            ++ " (Ext.P.) ->"
-                            ++ name
-                            ++ ":"
-                            ++
-                            extension##name
-                            ++ ": ",
-                            err,
-                          )
-                          ->Js.Promise.resolve,
-                        _,
-                      )
-                    ->Some;
-                  } else {
-                    None;
-                  }
-                )
+                  : None
               )
-            ->Belt.Array.concatMany
             ->Js.Promise.all
             ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
 
-          let connectToExtensions = {
-            let connections:
-              array(
-                (
-                  string /*EventTopic*/,
-                  (
-                    string /* extensionPointName */,
-                    PluginSpec.pluginDefinition /* pluginDefinition */,
-                  ),
-                ),
-              ) = {
-              let conns = Js.Dict.empty();
-              extensionPointsOutputs->Belt.Array.forEach(extensionPoint =>
-                if (Util.Array.containsByPredicate(pluginExtensions, extension =>
-                      extensionPoint##name == extension.extensionPointName
-                    )) {
-                  conns->Js.Dict.set(
-                    extensionPoint##eventTopic##publisher##id
-                    ->Pulumi.Output.get,
-                    (extensionPoint##name, pluginDef),
-                  );
-                }
-              );
-              conns->Js.Dict.entries;
-            };
-            connections
-            ->Belt.Array.map(
-                (
-                  (
-                    eventTopic,
-                    (extensionPointName, {name: pluginName, eventCollector}),
-                  ),
-                ) =>
-                AwsSdk.SNS.(
-                  snsClient()
-                  ->subscribe(
-                      ~params=
-                        SubscribeRequest.make(
-                          ~_TopicArn=eventTopic,
-                          ~_Protocol=`sqs,
-                          ~_Endpoint=eventCollector,
-                          ~_Attributes=
-                            SubscribeRequest.Attributes.make(
-                              ~_RawMessageDelivery="true",
-                              /* TODO: add dlq in RedrivePolicy */
-                              (),
-                            ),
-                          (),
-                        ),
+          let connectToExtensions =
+            extensionPointsOutputs
+            ->Belt.Array.keepMap(extensionPoint =>
+                pluginExtensions
+                ->Belt.Array.keep(({extensionPointName}) =>
+                    extensionPoint##name == extensionPointName
+                  )
+                ->Belt.Array.length
+                > 0
+                  ? Some(
+                      subscribe(
+                        extensionPoint##name,
+                        extensionPoint##eventTopic##publisher##id
+                        ->Pulumi.Output.get,
+                        pluginId,
+                        eventCollectorUrn->Pulumi.Output.get,
+                      ),
                     )
-                )
-                ->AwsSdk.Request.promise
-                ->Js.Promise.then_(
-                    subscriptionResponse =>
-                      Js.log2(
-                        {j|connectToExtensions: $pluginName->$name:$extensionPointName, subscriptionResponse:|j},
-                        subscriptionResponse,
-                      )
-                      ->Js.Promise.resolve,
-                    _,
-                  )
-                ->Js.Promise.catch(
-                    err =>
-                      Js.log2(
-                        "Could not connect To Extension "
-                        ++ extensionPointName
-                        ++ " ["
-                        ++ name
-                        ++ "] to "
-                        ++ pluginDef.name
-                        ++ ": ",
-                        err,
-                      )
-                      ->Js.Promise.resolve,
-                    _,
-                  )
+                  : None
               )
             ->Js.Promise.all
             ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
-          };
 
           // await connections of extensionpoints & extensions
           Js.Promise.all2((connectToExtensionPoints, connectToExtensions))
