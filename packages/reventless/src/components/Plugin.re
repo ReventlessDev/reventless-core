@@ -231,7 +231,7 @@ module Make =
               ~params=
                 AddPermissionRequest.make(
                   ~_AWSAccountIds=[|"*"|],
-                  ~_Actions=[|"sqs:SendMessage"|],
+                  ~_Actions=[|"SendMessage"|],
                   ~_Label=(extensionPointName ++ "-" ++ id)->AWS.validateName,
                   ~_QueueUrl=eventCollector->arn2Url,
                 ),
