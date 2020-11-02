@@ -230,7 +230,7 @@ module Make =
           ->addPermission(
               ~params=
                 AddPermissionRequest.make(
-                  ~_AWSAccountIds=[|"*"|],
+                  ~_AWSAccountIds=[|"000000000000"|],
                   ~_Actions=[|"SendMessage"|],
                   ~_Label=(extensionPointName ++ "-" ++ id)->AWS.validateName,
                   ~_QueueUrl=eventCollector->arn2Url,
