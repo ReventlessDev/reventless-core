@@ -204,60 +204,117 @@ module Make =
 
     let (eventCollectorUrn, setEventCollectorUrn) =
       Util.Pulumi.Output.Async.make();
-    let subscribe = (extensionPointName, eventTopic, pluginId, eventCollector) =>
-      (
-        AwsSdk.SNS.(
-          snsClient()
-          ->subscribe(
-              ~params=
-                SubscribeRequest.make(
-                  ~_TopicArn=eventTopic,
-                  ~_Protocol=`sqs,
-                  ~_Endpoint=eventCollector,
-                  ~_Attributes=
-                    SubscribeRequest.Attributes.make(
-                      ~_RawMessageDelivery="true",
-                      /* TODO: add dlq in RedrivePolicy */
-                      (),
-                    ),
-                  (),
-                ),
-            )
+
+    let subscribe = (extensionPointName, eventTopic, pluginId, eventCollector) => {
+      AwsSdk.(
+        (
+          SNS.(
+            snsClient()
+            ->subscribe(
+                ~params=
+                  SubscribeRequest.make(
+                    ~_TopicArn=eventTopic,
+                    ~_Protocol=`sqs,
+                    ~_Endpoint=eventCollector,
+                    ~_Attributes=
+                      SubscribeRequest.Attributes.make(
+                        ~_RawMessageDelivery="true",
+                        /* TODO: add dlq in RedrivePolicy */
+                        (),
+                      ),
+                    (),
+                  ),
+              )
+          )
+          ->Request.promise,
+          SQS.(
+            sqsClient()
+            ->getQueueAttributes(
+                ~params=
+                  GetQueueAttributesRequest.make(
+                    ~_AttributeNames=[|"Policy"|],
+                    ~_QueueUrl=eventCollector->arn2Url,
+                  ),
+              )
+            ->Request.promise
+            ->Js.Promise.then_(
+                response => {
+                  open SQS.GetQueueAttributesResponse;
+                  let sid =
+                    (extensionPointName ++ "-" ++ id)->AWS.validateName;
+                  let attributes = response->getAttributes;
+                  let policy = attributes->getPolicy->unsafeParsePolicy;
+                  Js.log2("old Policy:", policy);
+                  let statements = policy##_Statement;
+                  Js.log2("old Statements:", statements);
+
+                  let newStatements =
+                    statements
+                    ->Belt.Array.keep(statement => statement##_Sid != sid)
+                    ->Belt.Array.concat([|
+                        IAM.Policy.Statement.make(
+                          ~_Sid=sid,
+                          ~_Effect="Allow",
+                          ~_Principal="*",
+                          ~_Action="SendMessage",
+                          ~_Resource=eventCollector,
+                        ),
+                      |]);
+                  Js.log2("new Statements:", newStatements);
+                  let newPolicy =
+                    IAM.Policy.make(
+                      ~_Version=policy##_Version,
+                      ~_Id=policy##_Id,
+                      ~_Statement=newStatements,
+                    );
+                  Js.log2("new Policy:", newPolicy);
+                  newPolicy
+                  ->Js.Json.stringifyAny
+                  ->(
+                      fun
+                      | Some(newPolicy) =>
+                        sqsClient()
+                        ->setQueueAttributes(
+                            ~params=
+                              SetQueueAttributesRequest.make(
+                                ~_Attributes=
+                                  SetQueueAttributesRequest.Attributes.make(
+                                    ~_Policy=newPolicy,
+                                  ),
+                                ~_QueueUrl=eventCollector->arn2Url,
+                              ),
+                          )
+                        ->Request.promise
+                        ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+                      | None =>
+                        Js.log2("Couldn't stringify policy:", newPolicy)
+                        ->Js.Promise.resolve
+                    );
+                },
+                _,
+              )
+          ),
         )
-        ->AwsSdk.Request.promise,
-        AwsSdk.SQS.(
-          sqsClient()
-          ->addPermission(
-              ~params=
-                AddPermissionRequest.make(
-                  ~_AWSAccountIds=[|"000000000000"|],
-                  ~_Actions=[|"SendMessage"|],
-                  ~_Label=(extensionPointName ++ "-" ++ id)->AWS.validateName,
-                  ~_QueueUrl=eventCollector->arn2Url,
-                ),
-            )
-        )
-        ->AwsSdk.Request.promise,
-      )
-      ->Js.Promise.all2
-      ->Js.Promise.then_(
-          ((subscriptionResponse, addPermissionResponse)) => {
-            Js.log({j|Connected: $extensionPointName->$pluginId:|j});
-            Js.log2("  subscriptionResponse:", subscriptionResponse);
-            Js.log2("  addPermissionResponse:", addPermissionResponse);
-            Js.Promise.resolve();
-          },
-          _,
-        )
-      ->Js.Promise.catch(
-          err =>
-            Js.log2(
-              {j|Could not connect $extensionPointName->$pluginId:|j},
-              err,
-            )
-            ->Js.Promise.resolve,
-          _,
-        );
+        ->Js.Promise.all2
+        ->Js.Promise.then_(
+            ((subscriptionResponse, _)) => {
+              Js.log({j|Connected: $extensionPointName->$pluginId:|j});
+              Js.log2("  subscriptionResponse:", subscriptionResponse);
+              Js.Promise.resolve();
+            },
+            _,
+          )
+        ->Js.Promise.catch(
+            err =>
+              Js.log2(
+                {j|Could not connect $extensionPointName->$pluginId:|j},
+                err,
+              )
+              ->Js.Promise.resolve,
+            _,
+          )
+      );
+    };
 
     let callHandler =
       fun
