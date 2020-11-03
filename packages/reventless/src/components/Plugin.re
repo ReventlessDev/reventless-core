@@ -364,7 +364,8 @@ module Make =
           | None => Js.log("Couldn't stringify policy")->Js.Promise.resolve
         );
 
-    let subscribe = (extensionPointName, eventTopic, pluginId, eventCollector) => {
+    let subscribe =
+        (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
       let sid = (extensionPointName ++ "-" ++ id)->AWS.validateName;
       (
         subscribeQueueToTopic(eventCollector, eventTopic),
@@ -380,7 +381,7 @@ module Make =
       ->Js.Promise.all2
       ->Js.Promise.then_(
           ((subscriptionResponse, _)) => {
-            Js.log({j|Connected: $extensionPointName->$pluginId:|j});
+            Js.log({j|$action: $extensionPointName->$pluginId:|j});
             Js.log2("  subscriptionResponse:", subscriptionResponse);
             Js.Promise.resolve();
           },
@@ -389,7 +390,7 @@ module Make =
       ->Js.Promise.catch(
           err =>
             Js.log2(
-              {j|Could not connect $extensionPointName->$pluginId:|j},
+              {j|Could not $action: $extensionPointName->$pluginId:|j},
               err,
             )
             ->Js.Promise.resolve,
@@ -398,7 +399,7 @@ module Make =
     };
 
     let unsubscribe =
-        (extensionPointName, eventTopic, pluginId, eventCollector) => {
+        (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
       let sid = (extensionPointName ++ "-" ++ id)->AWS.validateName;
       (
         unsubscribeQueueFromTopic(eventCollector, eventTopic),
@@ -412,14 +413,14 @@ module Make =
       ->Js.Promise.all2
       ->Js.Promise.then_(
           _ =>
-            Js.log({j|Disonnected: $extensionPointName->$pluginId:|j})
+            Js.log({j|$action: $extensionPointName->$pluginId|j})
             ->Js.Promise.resolve,
           _,
         )
       ->Js.Promise.catch(
           err =>
             Js.log2(
-              {j|Could not disconnect $extensionPointName->$pluginId:|j},
+              {j|Could not $action: $extensionPointName->$pluginId:|j},
               err,
             )
             ->Js.Promise.resolve,
@@ -433,6 +434,7 @@ module Make =
           id: pluginId,
           extensionPoints: pluginExtensionPoints,
           extensions: pluginExtensions,
+          eventCollector: pluginEventCollector,
         }) => {
           /* Current Plugin received `PluginConnected`:
            *  this means: current plugin was already deployed before and received plugin just has been deployed
@@ -452,6 +454,7 @@ module Make =
                 > 0
                   ? Some(
                       subscribe(
+                        "connectToExtensionPoints",
                         extensionPointName,
                         eventTopic,
                         pluginId,
@@ -474,11 +477,12 @@ module Make =
                 > 0
                   ? Some(
                       subscribe(
+                        "connectToExtensions",
                         extensionPoint##name,
                         extensionPoint##eventTopic##publisher##id
                         ->Pulumi.Output.get,
                         pluginId,
-                        eventCollectorUrn->Pulumi.Output.get,
+                        pluginEventCollector,
                       ),
                     )
                   : None
@@ -494,6 +498,7 @@ module Make =
           id: pluginId,
           extensionPoints: pluginExtensionPoints,
           extensions: pluginExtensions,
+          eventCollector: pluginEventCollector,
         }) => {
           let disconnectFromExtensionPoints =
             pluginExtensionPoints
@@ -506,6 +511,7 @@ module Make =
                 > 0
                   ? Some(
                       unsubscribe(
+                        "disconnectFromExtensionPoints",
                         extensionPointName,
                         eventTopic,
                         pluginId,
@@ -528,11 +534,12 @@ module Make =
                 > 0
                   ? Some(
                       unsubscribe(
+                        "disconnectFromExtensions",
                         extensionPoint##name,
                         extensionPoint##eventTopic##publisher##id
                         ->Pulumi.Output.get,
                         pluginId,
-                        eventCollectorUrn->Pulumi.Output.get,
+                        pluginEventCollector,
                       ),
                     )
                   : None
