@@ -256,14 +256,14 @@ module Make =
           )
       );
     };
-
-    let addStatement = (policy: IAM.Policy.t, sid, queueArn) => {
-      let statements = policy##_Statement;
-      Js.log2(
-        "addStatement: old Statements:",
-        statements->Js.Json.stringifyAny,
+    let log = (statements, description) =>
+      statements->Belt.Array.forEachWithIndex((idx, statement) =>
+        Js.log2({j|$description[$idx]:|j}, statement->Js.Json.stringifyAny)
       );
 
+    let addStatement = (policy: IAM.Policy.t, sid, queueArn, topicArn) => {
+      let statements = policy##_Statement;
+      statements->log("addStatement: old Statements:");
       let newStatements =
         statements
         ->Belt.Array.keep(statement => statement##_Sid != sid)
@@ -274,46 +274,29 @@ module Make =
               ~_Principal="*",
               ~_Action="sqs:SendMessage",
               ~_Resource=queueArn,
+              ~_Condition=IAM.Policy.Statement.Condition.make(topicArn),
+              (),
             ),
           |]);
-      Js.log2(
-        "addStatement: new Statements:",
-        newStatements->Js.Json.stringifyAny,
+      newStatements->log("addStatement: new Statements:");
+      IAM.Policy.make(
+        ~_Version=policy##_Version,
+        ~_Id=policy##_Id,
+        ~_Statement=newStatements,
       );
-      let newPolicy =
-        IAM.Policy.make(
-          ~_Version=policy##_Version,
-          ~_Id=policy##_Id,
-          ~_Statement=newStatements,
-        );
-      Js.log2("addStatement: new Policy:", newPolicy->Js.Json.stringifyAny);
-      newPolicy;
     };
 
     let removeStatement = (policy, sid) => {
       let statements = policy##_Statement;
-      Js.log2(
-        "removeStatement: old Statements:",
-        statements->Js.Json.stringifyAny,
-      );
-
+      statements->log("removeStatement: old Statements:");
       let newStatements =
         statements->Belt.Array.keep(statement => statement##_Sid != sid);
-      Js.log2(
-        "removeStatement: new Statements:",
-        newStatements->Js.Json.stringifyAny,
+      newStatements->log("removeStatement: new Statements:");
+      IAM.Policy.make(
+        ~_Version=policy##_Version,
+        ~_Id=policy##_Id,
+        ~_Statement=newStatements,
       );
-      let newPolicy =
-        IAM.Policy.make(
-          ~_Version=policy##_Version,
-          ~_Id=policy##_Id,
-          ~_Statement=newStatements,
-        );
-      Js.log2(
-        "removeStatement: new Policy:",
-        newPolicy->Js.Json.stringifyAny,
-      );
-      newPolicy;
     };
 
     let getQueuePolicy = queueArn =>
@@ -328,14 +311,14 @@ module Make =
           )
         ->Request.promise
         ->Js.Promise.then_(
-            response => {
-              open SQS.GetQueueAttributesResponse;
-              let attributes = response->getAttributes;
-              Js.log2("old Attributes:", attributes->Js.Json.stringifyAny);
-              let policy = attributes->getPolicy->unsafeParsePolicy;
-              Js.log2("old Policy:", policy->Js.Json.stringifyAny);
-              policy->Js.Promise.resolve;
-            },
+            response =>
+              SQS.GetQueueAttributesResponse.(
+                response
+                ->getAttributes
+                ->getPolicy
+                ->unsafeParsePolicy
+                ->Js.Promise.resolve
+              ),
             _,
           )
       );
@@ -373,7 +356,7 @@ module Make =
         ->Js.Promise.then_(
             policy =>
               eventCollector->setQueuePolicy(
-                policy->addStatement(sid, eventCollector),
+                policy->addStatement(sid, eventCollector, eventTopic),
               ),
             _,
           ),
