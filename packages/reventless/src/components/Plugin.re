@@ -227,7 +227,6 @@ module Make =
       ->Request.promise;
 
     let unsubscribeQueueFromTopic = (queueArn, topicArn) => {
-      let endPoint = queueArn->SQS.arn2Url;
       SNS.(
         snsClient()
         ->listSubscriptionsByTopic(
@@ -240,10 +239,10 @@ module Make =
               response##_Subscriptions
               ->Message.log("unsubscribeQueueFromTopic: Subscriptions:")
               ->Belt.Array.getBy(subscription =>
-                  subscription##_Endpoint == endPoint
+                  subscription##_Endpoint == queueArn
                 )
               ->Message.log(
-                  {j|unsubscribeQueueFromTopic: Subscription with Endpoint $endPoint:|j},
+                  {j|unsubscribeQueueFromTopic: Subscription with Endpoint $queueArn:|j},
                 )
               ->Belt.Option.map(subscription =>
                   snsClient()
