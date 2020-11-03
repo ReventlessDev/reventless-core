@@ -259,7 +259,10 @@ module Make =
 
     let addStatement = (policy: IAM.Policy.t, sid, queueArn) => {
       let statements = policy##_Statement;
-      Js.log2("addStatement: old Statements:", statements);
+      Js.log2(
+        "addStatement: old Statements:",
+        statements->Js.Json.stringifyAny,
+      );
 
       let newStatements =
         statements
@@ -269,35 +272,47 @@ module Make =
               ~_Sid=sid,
               ~_Effect="Allow",
               ~_Principal="*",
-              ~_Action="SendMessage",
+              ~_Action="sqs:SendMessage",
               ~_Resource=queueArn,
             ),
           |]);
-      Js.log2("addStatement: new Statements:", newStatements);
+      Js.log2(
+        "addStatement: new Statements:",
+        newStatements->Js.Json.stringifyAny,
+      );
       let newPolicy =
         IAM.Policy.make(
           ~_Version=policy##_Version,
           ~_Id=policy##_Id,
           ~_Statement=newStatements,
         );
-      Js.log2("addStatement: new Policy:", newPolicy);
+      Js.log2("addStatement: new Policy:", newPolicy->Js.Json.stringifyAny);
       newPolicy;
     };
 
     let removeStatement = (policy, sid) => {
       let statements = policy##_Statement;
-      Js.log2("removeStatement: old Statements:", statements);
+      Js.log2(
+        "removeStatement: old Statements:",
+        statements->Js.Json.stringifyAny,
+      );
 
       let newStatements =
         statements->Belt.Array.keep(statement => statement##_Sid != sid);
-      Js.log2("removeStatement: new Statements:", newStatements);
+      Js.log2(
+        "removeStatement: new Statements:",
+        newStatements->Js.Json.stringifyAny,
+      );
       let newPolicy =
         IAM.Policy.make(
           ~_Version=policy##_Version,
           ~_Id=policy##_Id,
           ~_Statement=newStatements,
         );
-      Js.log2("removeStatement: new Policy:", newPolicy);
+      Js.log2(
+        "removeStatement: new Policy:",
+        newPolicy->Js.Json.stringifyAny,
+      );
       newPolicy;
     };
 
@@ -316,9 +331,9 @@ module Make =
             response => {
               open SQS.GetQueueAttributesResponse;
               let attributes = response->getAttributes;
-              Js.log2("old Attributes:", attributes);
+              Js.log2("old Attributes:", attributes->Js.Json.stringifyAny);
               let policy = attributes->getPolicy->unsafeParsePolicy;
-              Js.log2("old Policy:", policy);
+              Js.log2("old Policy:", policy->Js.Json.stringifyAny);
               policy->Js.Promise.resolve;
             },
             _,
