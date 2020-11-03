@@ -204,122 +204,217 @@ module Make =
 
     let (eventCollectorUrn, setEventCollectorUrn) =
       Util.Pulumi.Output.Async.make();
-
-    let subscribe = (extensionPointName, eventTopic, pluginId, eventCollector) => {
-      AwsSdk.(
-        (
-          SNS.(
-            snsClient()
-            ->subscribe(
-                ~params=
-                  SubscribeRequest.make(
-                    ~_TopicArn=eventTopic,
-                    ~_Protocol=`sqs,
-                    ~_Endpoint=eventCollector,
-                    ~_Attributes=
-                      SubscribeRequest.Attributes.make(
-                        ~_RawMessageDelivery="true",
-                        /* TODO: add dlq in RedrivePolicy */
-                        (),
-                      ),
+    open AwsSdk;
+    let subscribeQueueToTopic = (queueArn, topicArn) =>
+      SNS.(
+        snsClient()
+        ->subscribe(
+            ~params=
+              SubscribeRequest.make(
+                ~_TopicArn=topicArn,
+                ~_Protocol=`sqs,
+                ~_Endpoint=queueArn,
+                ~_Attributes=
+                  SubscribeRequest.Attributes.make(
+                    ~_RawMessageDelivery="true",
+                    /* TODO: add dlq in RedrivePolicy */
                     (),
                   ),
-              )
+                (),
+              ),
           )
-          ->Request.promise,
-          SQS.(
-            sqsClient()
-            ->getQueueAttributes(
-                ~params=
-                  GetQueueAttributesRequest.make(
-                    ~_AttributeNames=[|"Policy"|],
-                    ~_QueueUrl=eventCollector->arn2Url,
-                  ),
-              )
-            ->Request.promise
-            ->Js.Promise.then_(
-                response => {
-                  open SQS.GetQueueAttributesResponse;
-                  let sid =
-                    (extensionPointName ++ "-" ++ id)->AWS.validateName;
-                  let attributes = response->getAttributes;
-                  Js.log2("old Attributes:", attributes);
-                  let policy = attributes->getPolicy->unsafeParsePolicy;
-                  Js.log2("old Policy:", policy);
-                  let statements = policy##_Statement;
-                  Js.log2("old Statements:", statements);
+      )
+      ->Request.promise;
 
-                  let newStatements =
-                    statements
-                    ->Belt.Array.keep(statement => statement##_Sid != sid)
-                    ->Belt.Array.concat([|
-                        IAM.Policy.Statement.make(
-                          ~_Sid=sid,
-                          ~_Effect="Allow",
-                          ~_Principal="*",
-                          ~_Action="SendMessage",
-                          ~_Resource=eventCollector,
-                        ),
-                      |]);
-                  Js.log2("new Statements:", newStatements);
-                  let newPolicy =
-                    IAM.Policy.make(
-                      ~_Version=policy##_Version,
-                      ~_Id=policy##_Id,
-                      ~_Statement=newStatements,
-                    );
-                  Js.log2("new Policy:", newPolicy);
-                  newPolicy
-                  ->Js.Json.stringifyAny
-                  ->(
-                      fun
-                      | Some(newPolicy) =>
-                        sqsClient()
-                        ->setQueueAttributes(
-                            ~params=
-                              SetQueueAttributesRequest.make(
-                                ~_Attributes=
-                                  SetQueueAttributesRequest.Attributes.make(
-                                    ~_Policy=newPolicy,
-                                  ),
-                                ~_QueueUrl=eventCollector->arn2Url,
-                              ),
-                          )
-                        ->Request.promise
-                        ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
-                      | None =>
-                        Js.log2("Couldn't stringify policy:", newPolicy)
-                        ->Js.Promise.resolve
-                    );
-                },
-                _,
-              )
-          ),
-        )
-        ->Js.Promise.all2
+    let unsubscribeQueueFromTopic = (queueArn, topicArn) => {
+      SNS.(
+        snsClient()
+        ->listSubscriptionsByTopic(
+            ~params=
+              ListSubscriptionsByTopicRequest.make(~_TopicArn=topicArn, ()),
+          ) // TODO: handle paging of subscriptions
+        ->Request.promise
         ->Js.Promise.then_(
-            ((subscriptionResponse, _)) => {
-              Js.log({j|Connected: $extensionPointName->$pluginId:|j});
-              Js.log2("  subscriptionResponse:", subscriptionResponse);
-              Js.Promise.resolve();
-            },
-            _,
-          )
-        ->Js.Promise.catch(
-            err =>
-              Js.log2(
-                {j|Could not connect $extensionPointName->$pluginId:|j},
-                err,
-              )
-              ->Js.Promise.resolve,
+            response =>
+              response##_Subscriptions
+              ->Belt.Array.getBy(subscription =>
+                  subscription##_Endpoint == queueArn->SQS.arn2Url
+                )
+              ->Belt.Option.map(subscription =>
+                  snsClient()
+                  ->unsubscribe(
+                      ~params=
+                        UnsubscribeRequest.make(
+                          ~_SubscriptionArn=subscription##_SubscriptionArn,
+                        ),
+                    )
+                  ->Request.promise
+                  ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+                )
+              ->Belt.Option.getWithDefault(Js.Promise.resolve()),
             _,
           )
       );
     };
 
+    let addStatement = (policy: IAM.Policy.t, sid, queueArn) => {
+      let statements = policy##_Statement;
+      Js.log2("addStatement: old Statements:", statements);
+
+      let newStatements =
+        statements
+        ->Belt.Array.keep(statement => statement##_Sid != sid)
+        ->Belt.Array.concat([|
+            IAM.Policy.Statement.make(
+              ~_Sid=sid,
+              ~_Effect="Allow",
+              ~_Principal="*",
+              ~_Action="SendMessage",
+              ~_Resource=queueArn,
+            ),
+          |]);
+      Js.log2("addStatement: new Statements:", newStatements);
+      let newPolicy =
+        IAM.Policy.make(
+          ~_Version=policy##_Version,
+          ~_Id=policy##_Id,
+          ~_Statement=newStatements,
+        );
+      Js.log2("addStatement: new Policy:", newPolicy);
+      newPolicy;
+    };
+
+    let removeStatement = (policy, sid) => {
+      let statements = policy##_Statement;
+      Js.log2("removeStatement: old Statements:", statements);
+
+      let newStatements =
+        statements->Belt.Array.keep(statement => statement##_Sid != sid);
+      Js.log2("removeStatement: new Statements:", newStatements);
+      let newPolicy =
+        IAM.Policy.make(
+          ~_Version=policy##_Version,
+          ~_Id=policy##_Id,
+          ~_Statement=newStatements,
+        );
+      Js.log2("removeStatement: new Policy:", newPolicy);
+      newPolicy;
+    };
+
+    let getQueuePolicy = queueArn =>
+      SQS.(
+        sqsClient()
+        ->getQueueAttributes(
+            ~params=
+              GetQueueAttributesRequest.make(
+                ~_AttributeNames=[|"Policy"|],
+                ~_QueueUrl=queueArn->arn2Url,
+              ),
+          )
+        ->Request.promise
+        ->Js.Promise.then_(
+            response => {
+              open SQS.GetQueueAttributesResponse;
+              let attributes = response->getAttributes;
+              Js.log2("old Attributes:", attributes);
+              let policy = attributes->getPolicy->unsafeParsePolicy;
+              Js.log2("old Policy:", policy);
+              policy->Js.Promise.resolve;
+            },
+            _,
+          )
+      );
+
+    let setQueuePolicy = (queueArn, policy: IAM.Policy.t) =>
+      policy
+      ->Js.Json.stringifyAny
+      ->(
+          fun
+          | Some(newPolicy) =>
+            SQS.(
+              sqsClient()
+              ->setQueueAttributes(
+                  ~params=
+                    SetQueueAttributesRequest.make(
+                      ~_Attributes=
+                        SetQueueAttributesRequest.Attributes.make(
+                          ~_Policy=newPolicy,
+                        ),
+                      ~_QueueUrl=queueArn->arn2Url,
+                    ),
+                )
+            )
+            ->Request.promise
+            ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+          | None => Js.log("Couldn't stringify policy")->Js.Promise.resolve
+        );
+
+    let subscribe = (extensionPointName, eventTopic, pluginId, eventCollector) => {
+      let sid = (extensionPointName ++ "-" ++ id)->AWS.validateName;
+      (
+        subscribeQueueToTopic(eventCollector, eventTopic),
+        getQueuePolicy(eventCollector)
+        ->Js.Promise.then_(
+            policy =>
+              eventCollector->setQueuePolicy(
+                policy->addStatement(sid, eventCollector),
+              ),
+            _,
+          ),
+      )
+      ->Js.Promise.all2
+      ->Js.Promise.then_(
+          ((subscriptionResponse, _)) => {
+            Js.log({j|Connected: $extensionPointName->$pluginId:|j});
+            Js.log2("  subscriptionResponse:", subscriptionResponse);
+            Js.Promise.resolve();
+          },
+          _,
+        )
+      ->Js.Promise.catch(
+          err =>
+            Js.log2(
+              {j|Could not connect $extensionPointName->$pluginId:|j},
+              err,
+            )
+            ->Js.Promise.resolve,
+          _,
+        );
+    };
+
+    let unsubscribe =
+        (extensionPointName, eventTopic, pluginId, eventCollector) => {
+      let sid = (extensionPointName ++ "-" ++ id)->AWS.validateName;
+      (
+        unsubscribeQueueFromTopic(eventCollector, eventTopic),
+        getQueuePolicy(eventCollector)
+        ->Js.Promise.then_(
+            policy =>
+              eventCollector->setQueuePolicy(policy->removeStatement(sid)),
+            _,
+          ),
+      )
+      ->Js.Promise.all2
+      ->Js.Promise.then_(
+          _ =>
+            Js.log({j|Disonnected: $extensionPointName->$pluginId:|j})
+            ->Js.Promise.resolve,
+          _,
+        )
+      ->Js.Promise.catch(
+          err =>
+            Js.log2(
+              {j|Could not disconnect $extensionPointName->$pluginId:|j},
+              err,
+            )
+            ->Js.Promise.resolve,
+          _,
+        );
+    };
+
     let callHandler =
       fun
-      | PluginExtensionPointSpec.ConnectPlugin({
+      | PluginExtensionPointSpec.DoConnectPlugin({
           id: pluginId,
           extensionPoints: pluginExtensionPoints,
           extensions: pluginExtensions,
@@ -380,8 +475,62 @@ module Make =
           Js.Promise.all2((connectToExtensionPoints, connectToExtensions))
           ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
         }
-      // for every ExtensionPoint of the connected Plugin which has a related Extension in this Plugin -> connect
-      // TODO: Try to Unsubscribe from Event-Topic, if extensionpoint's plugin disconnected
+      | DoDisconnectPlugin({
+          id: pluginId,
+          extensionPoints: pluginExtensionPoints,
+          extensions: pluginExtensions,
+        }) => {
+          let disconnectFromExtensionPoints =
+            pluginExtensionPoints
+            ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
+                extensionsOutputs
+                ->Belt.Array.keep(extension =>
+                    extension##extensionPointName == extensionPointName
+                  )
+                ->Belt.Array.length
+                > 0
+                  ? Some(
+                      unsubscribe(
+                        extensionPointName,
+                        eventTopic,
+                        pluginId,
+                        eventCollectorUrn->Pulumi.Output.get,
+                      ),
+                    )
+                  : None
+              )
+            ->Js.Promise.all
+            ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+
+          let disconnectFromExtensions =
+            extensionPointsOutputs
+            ->Belt.Array.keepMap(extensionPoint =>
+                pluginExtensions
+                ->Belt.Array.keep(({extensionPointName}) =>
+                    extensionPoint##name == extensionPointName
+                  )
+                ->Belt.Array.length
+                > 0
+                  ? Some(
+                      unsubscribe(
+                        extensionPoint##name,
+                        extensionPoint##eventTopic##publisher##id
+                        ->Pulumi.Output.get,
+                        pluginId,
+                        eventCollectorUrn->Pulumi.Output.get,
+                      ),
+                    )
+                  : None
+              )
+            ->Js.Promise.all
+            ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+
+          Js.Promise.all2((
+            disconnectFromExtensionPoints,
+            disconnectFromExtensions,
+          ))
+          ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+        }
       | _ => Js.Promise.resolve();
     let extensionPointsConfig =
       extensionPointsOutputs
@@ -448,8 +597,13 @@ module Make =
                     ),
                   ),
                 |]
-              | PluginConnected(pluginDef) when pluginId != id => [|
-                  Call(callHandler, ConnectPlugin(pluginDef)),
+              | PluginConnected(pluginDef)
+              | PluginReconnected(pluginDef) when pluginId != id => [|
+                  Call(callHandler, DoConnectPlugin(pluginDef)),
+                |]
+              | PluginDeactivated(pluginDef)
+              | PluginDisconnected(pluginDef) when pluginId != id => [|
+                  Call(callHandler, DoDisconnectPlugin(pluginDef)),
                 |]
               | _ => [||]
               };

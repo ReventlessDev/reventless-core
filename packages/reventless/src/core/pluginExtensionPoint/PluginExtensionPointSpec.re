@@ -29,5 +29,6 @@ type event =
 type callCommand =
   | CreateDisconnectSchedule(string, timeout)
   | DeleteDisconnectSchedule(string)
-  | ConnectPlugin(PluginSpec.pluginDefinition)
+  | DoConnectPlugin(PluginSpec.pluginDefinition)
+  | DoDisconnectPlugin(PluginSpec.pluginDefinition)
   | ForwardCommand(forwardCommand);
