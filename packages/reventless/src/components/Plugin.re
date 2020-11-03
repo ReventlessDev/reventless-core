@@ -243,6 +243,7 @@ module Make =
                   let sid =
                     (extensionPointName ++ "-" ++ id)->AWS.validateName;
                   let attributes = response->getAttributes;
+                  Js.log2("old Attributes:", attributes);
                   let policy = attributes->getPolicy->unsafeParsePolicy;
                   Js.log2("old Policy:", policy);
                   let statements = policy##_Statement;
