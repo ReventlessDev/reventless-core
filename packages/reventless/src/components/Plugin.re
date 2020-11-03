@@ -249,7 +249,15 @@ module Make =
                         ),
                     )
                   ->Request.promise
-                  ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+                  ->Js.Promise.then_(
+                      _ =>
+                        Js.log2(
+                          "unsubscribed:",
+                          subscription##_SubscriptionArn,
+                        )
+                        ->Js.Promise.resolve,
+                      _,
+                    )
                 )
               ->Belt.Option.getWithDefault(Js.Promise.resolve()),
             _,
@@ -349,7 +357,9 @@ module Make =
 
     let subscribe =
         (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
-      let sid = (extensionPointName ++ "-" ++ id)->AWS.validateName;
+      let eventTopicName = eventTopic->AWS.arn2Name;
+      let eventCollectorName = eventCollector->AWS.arn2Name;
+      let sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
       (
         subscribeQueueToTopic(eventCollector, eventTopic),
         getQueuePolicy(eventCollector)
@@ -364,8 +374,13 @@ module Make =
       ->Js.Promise.all2
       ->Js.Promise.then_(
           ((subscriptionResponse, _)) => {
-            Js.log({j|$action: $extensionPointName->$pluginId:|j});
-            Js.log2("  subscriptionResponse:", subscriptionResponse);
+            Js.log(
+              {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
+            );
+            Js.log2(
+              "  subscription:",
+              subscriptionResponse##_SubscriptionArn,
+            );
             Js.Promise.resolve();
           },
           _,
@@ -373,7 +388,7 @@ module Make =
       ->Js.Promise.catch(
           err =>
             Js.log2(
-              {j|Could not $action: $extensionPointName->$pluginId:|j},
+              {j|Could not $action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName):|j},
               err,
             )
             ->Js.Promise.resolve,
@@ -383,7 +398,9 @@ module Make =
 
     let unsubscribe =
         (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
-      let sid = (extensionPointName ++ "-" ++ id)->AWS.validateName;
+      let eventTopicName = eventTopic->AWS.arn2Name;
+      let eventCollectorName = eventCollector->AWS.arn2Name;
+      let sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
       (
         unsubscribeQueueFromTopic(eventCollector, eventTopic),
         getQueuePolicy(eventCollector)
@@ -396,14 +413,16 @@ module Make =
       ->Js.Promise.all2
       ->Js.Promise.then_(
           _ =>
-            Js.log({j|$action: $extensionPointName->$pluginId|j})
+            Js.log(
+              {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
+            )
             ->Js.Promise.resolve,
           _,
         )
       ->Js.Promise.catch(
           err =>
             Js.log2(
-              {j|Could not $action: $extensionPointName->$pluginId:|j},
+              {j|Could not $action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName):|j},
               err,
             )
             ->Js.Promise.resolve,
