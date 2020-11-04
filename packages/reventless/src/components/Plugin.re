@@ -237,12 +237,8 @@ module Make =
         ->Js.Promise.then_(
             response =>
               response##_Subscriptions
-              ->Message.log("unsubscribeQueueFromTopic: Subscriptions:")
               ->Belt.Array.getBy(subscription =>
                   subscription##_Endpoint == queueArn
-                )
-              ->Message.log(
-                  {j|unsubscribeQueueFromTopic: Subscription with Endpoint $queueArn:|j},
                 )
               ->Belt.Option.map(subscription =>
                   snsClient()
@@ -268,16 +264,10 @@ module Make =
           )
       );
     };
-    let log = (statements, description) =>
-      statements->Belt.Array.forEachWithIndex((idx, statement) =>
-        Js.log2({j|$description[$idx]:|j}, statement->Js.Json.stringifyAny)
-      );
 
     let addStatement = (policy: IAM.Policy.t, sid, queueArn, topicArn) => {
-      let statements = policy##_Statement;
-      statements->log("addStatement: old Statements:");
       let newStatements =
-        statements
+        policy##_Statement
         ->Belt.Array.keep(statement => statement##_Sid != sid)
         ->Belt.Array.concat([|
             IAM.Policy.Statement.make(
@@ -290,7 +280,6 @@ module Make =
               (),
             ),
           |]);
-      newStatements->log("addStatement: new Statements:");
       IAM.Policy.make(
         ~_Version=policy##_Version,
         ~_Id=policy##_Id,
@@ -299,11 +288,9 @@ module Make =
     };
 
     let removeStatement = (policy, sid) => {
-      let statements = policy##_Statement;
-      statements->log("removeStatement: old Statements:");
       let newStatements =
-        statements->Belt.Array.keep(statement => statement##_Sid != sid);
-      newStatements->log("removeStatement: new Statements:");
+        policy##_Statement
+        ->Belt.Array.keep(statement => statement##_Sid != sid);
       IAM.Policy.make(
         ~_Version=policy##_Version,
         ~_Id=policy##_Id,
