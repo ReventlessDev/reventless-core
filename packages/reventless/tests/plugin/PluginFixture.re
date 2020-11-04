@@ -1,14 +1,14 @@
 open PluginSpec;
 
 let pluginDefinition = {
-  id: "test-plugin-1@1",
-  name: "test-plugin-1",
+  id: "id@1",
+  name: "name",
   version: "1",
   extensionPoints: [||],
   extensions: [|
-    {name: "Core.Plugin", extensionPointName: "Core.Plugin.Connect"},
+    {name: "Core.Plugin.Test", extensionPointName: "Core.Plugin"},
   |],
-  eventCollector: "URN",
+  eventCollector: "eventCollector",
 };
 
 let state: PluginView.state = {
@@ -22,17 +22,19 @@ let state: PluginView.state = {
   statusChange: TestFixtures.statusChange,
 };
 
+let extensionPointNames2 = [|"Test"|];
 let pluginDefinition2 = {
-  id: "test-plugin-2@1",
-  name: "test-plugin-2",
+  id: "id2@1",
+  name: "name2",
   version: "1",
-  extensionPoints: [|
-    {
-      name: "six-sanctions-geos-export",
-      commandTopic: "ct1",
-      eventTopic: "et1",
-    },
-  |],
+  extensionPoints:
+    extensionPointNames2->Belt.Array.mapWithIndex((idx, name) =>
+      {
+        name,
+        commandTopic: {j|commandTopic$idx|j},
+        eventTopic: {j|eventTopic$idx|j},
+      }
+    ),
   extensions: [||],
-  eventCollector: "URN",
+  eventCollector: "eventCollector",
 };
