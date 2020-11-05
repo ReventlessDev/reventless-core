@@ -288,9 +288,12 @@ module Make =
     };
 
     let removeStatement = (policy, sid) => {
+      let statements = policy##_Statement;
       let newStatements =
-        policy##_Statement
-        ->Belt.Array.keep(statement => statement##_Sid != sid);
+        statements->Belt.Array.keep(statement => statement##_Sid != sid);
+      let removedStatements =
+        newStatements->Belt.Array.length - statements->Belt.Array.length;
+      Js.log({j|removeStatement: removed $removedStatements with Sid $sid|j});
       IAM.Policy.make(
         ~_Version=policy##_Version,
         ~_Id=policy##_Id,
@@ -392,22 +395,38 @@ module Make =
       let eventTopicName = eventTopic->AWS.arn2Name;
       let eventCollectorName = eventCollector->AWS.arn2Name;
       let sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
-      (
-        unsubscribeQueueFromTopic(eventCollector, eventTopic),
-        getQueuePolicy(eventCollector)
-        ->Js.Promise.then_(
-            policy =>
-              eventCollector->setQueuePolicy(policy->removeStatement(sid)),
-            _,
-          ),
-      )
-      ->Js.Promise.all2
+
+      getQueuePolicy(eventCollector)
       ->Js.Promise.then_(
-          _ =>
-            Js.log(
-              {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
+          policy => {
+            let newPolicy = policy->removeStatement(sid);
+            let stillSubscribed =
+              newPolicy##_Statement
+              ->Belt.Array.some(statement =>
+                  statement##_Condition
+                  ->Js.Json.stringify
+                  ->Js.String2.includes(eventCollector)
+                );
+            (
+              eventCollector->setQueuePolicy(newPolicy),
+              stillSubscribed
+                ? Js.log2(
+                    "unsubscribe: other version is still subscribed from",
+                    eventCollector,
+                  )
+                  ->Js.Promise.resolve
+                : unsubscribeQueueFromTopic(eventCollector, eventTopic),
             )
-            ->Js.Promise.resolve,
+            ->Js.Promise.all2
+            ->Js.Promise.then_(
+                _ =>
+                  Js.log(
+                    {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
+                  )
+                  ->Js.Promise.resolve,
+                _,
+              );
+          },
           _,
         )
       ->Js.Promise.catch(
