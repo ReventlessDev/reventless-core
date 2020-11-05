@@ -292,7 +292,7 @@ module Make =
       let newStatements =
         statements->Belt.Array.keep(statement => statement##_Sid != sid);
       let removedStatements =
-        newStatements->Belt.Array.length - statements->Belt.Array.length;
+        statements->Belt.Array.length - newStatements->Belt.Array.length;
       Js.log({j|removeStatement: removed $removedStatements with Sid $sid|j});
       IAM.Policy.make(
         ~_Version=policy##_Version,
@@ -404,9 +404,14 @@ module Make =
               newPolicy##_Statement
               ->Belt.Array.some(statement =>
                   statement##_Condition
-                  ->Js.Json.stringify
-                  ->Js.String2.includes(eventCollector)
+                  ->Belt.Option.map(condition =>
+                      condition
+                      ->Js.Json.stringify
+                      ->Js.String2.includes(eventCollector)
+                    )
+                  ->Belt.Option.getWithDefault(false)
                 );
+
             (
               eventCollector->setQueuePolicy(newPolicy),
               stillSubscribed
