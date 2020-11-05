@@ -280,6 +280,7 @@ module Make =
               (),
             ),
           |]);
+      Js.log({j|addStatement: added 1 statement with Sid $sid|j});
       IAM.Policy.make(
         ~_Version=policy##_Version,
         ~_Id=policy##_Id,
@@ -293,7 +294,9 @@ module Make =
         statements->Belt.Array.keep(statement => statement##_Sid != sid);
       let removedStatements =
         statements->Belt.Array.length - newStatements->Belt.Array.length;
-      Js.log({j|removeStatement: removed $removedStatements with Sid $sid|j});
+      Js.log(
+        {j|removeStatement: removed $removedStatements statement(s) with Sid $sid|j},
+      );
       IAM.Policy.make(
         ~_Version=policy##_Version,
         ~_Id=policy##_Id,
