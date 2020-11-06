@@ -44,6 +44,8 @@ module type T = {let make: maker;};
 let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
 
+let makeId = (name, version) => {j|$name@$version|j};
+
 module Make =
        (
          EventCollectorAdapter: EventCollector.Connector,
@@ -121,7 +123,6 @@ module Make =
         (),
       );
 
-    let makeId = (name, version) => {j|$name@$version|j};
     let id = makeId(name, version);
 
     let services =
