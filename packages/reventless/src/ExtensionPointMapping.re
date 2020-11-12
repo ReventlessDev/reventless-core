@@ -26,7 +26,6 @@ module type Spec = {
 
 type mapIncomingCommand(
   'extensionPointCommand,
-  'aggregateId,
   'aggregateCommand,
   'extensionPointCallCommand,
 ) =
@@ -34,7 +33,6 @@ type mapIncomingCommand(
   array(commandAction('aggregateCommand, 'extensionPointCallCommand));
 
 type mapOutgoingEvent(
-  'aggregateId,
   'aggregateEvent,
   'extensionPointEvent,
   'extensionPointCallCommand,
@@ -49,14 +47,12 @@ module type Impl = {
   let mapIncomingCommand:
     mapIncomingCommand(
       ExtensionPoint.command,
-      Aggregate.Id.t,
       Aggregate.command,
       ExtensionPoint.callCommand,
     );
 
   let mapOutgoingEvent:
     mapOutgoingEvent(
-      Aggregate.Id.t,
       Aggregate.event,
       ExtensionPoint.event,
       ExtensionPoint.callCommand,
