@@ -150,16 +150,16 @@ module Make =
       coreStackOutput->Pulumi.Output.flatMap(output =>
         (
           output##extensionPoints->Belt.Option.getExn
-          -# PluginExtensionPointSpec.name
+          -# ReventlessSpec.PluginExtensionPointSpec.name
         )##commandTopic##connector##id
       );
 
     let queryEventTopic = name =>
-      if (name == PluginExtensionPointSpec.name) {
+      if (name == ReventlessSpec.PluginExtensionPointSpec.name) {
         coreStackOutput->Pulumi.Output.apply(output =>
           (
             output##extensionPoints->Belt.Option.getExn
-            -# PluginExtensionPointSpec.name
+            -# ReventlessSpec.PluginExtensionPointSpec.name
           )##eventTopic##publisher
         );
       } else {
@@ -451,7 +451,7 @@ module Make =
 
     let callHandler =
       fun
-      | PluginExtensionPointSpec.DoConnectPlugin({
+      | ReventlessSpec.PluginExtensionPointSpec.DoConnectPlugin({
           id: pluginId,
           extensionPoints: pluginExtensionPoints,
           extensions: pluginExtensions,
@@ -617,25 +617,25 @@ module Make =
 
     module ConnectPluginExtensionMapping =
       ExtensionMapping.Make(
-        PluginExtensionPointSpec,
+        ReventlessSpec.PluginExtensionPointSpec,
         {
           module Aggregate = ExtensionMapping.NoAggregate;
 
           let mapIncomingEvent:
             ExtensionMapping.mapIncomingEvent(
-              PluginExtensionPointSpec.event,
+              ReventlessSpec.PluginExtensionPointSpec.event,
               Aggregate.Id.t,
               Aggregate.command,
-              PluginExtensionPointSpec.command,
-              PluginExtensionPointSpec.callCommand,
+              ReventlessSpec.PluginExtensionPointSpec.command,
+              ReventlessSpec.PluginExtensionPointSpec.callCommand,
             ) =
             (pluginId, event, _meta, _pluginDef) =>
               switch (event) {
-              | PluginExtensionPointSpec.UnknownPluginDetected
+              | ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected
                   when pluginId == id => [|
                   PublishExtensionPointCommand(
                     id,
-                    PluginExtensionPointSpec.ConnectPlugin(
+                    ReventlessSpec.PluginExtensionPointSpec.ConnectPlugin(
                       pluginDefinition->Pulumi.Output.get,
                     ),
                   ),
@@ -655,7 +655,8 @@ module Make =
         },
       );
 
-    module ConnectPluginExtension = Extension.Make(PluginExtensionPointSpec);
+    module ConnectPluginExtension =
+      Extension.Make(ReventlessSpec.PluginExtensionPointSpec);
     let connectPluginExtensionMaker =
       ConnectPluginExtension.make(
         "Connect",
@@ -818,7 +819,7 @@ module Make =
       ->Belt.Array.concat(extensionAggregateNames)
       ->Belt.Array.reduce(Set.empty, Set.union)
       ->Belt.Set.String.toArray
-      ->Belt.Array.concat([|PluginExtensionPointSpec.name|]);
+      ->Belt.Array.concat([|ReventlessSpec.PluginExtensionPointSpec.name|]);
 
     let handleEvent = (event'Json, dict, getEventHandler) => {
       event'Json

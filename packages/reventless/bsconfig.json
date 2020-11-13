@@ -32,6 +32,7 @@
     "bs-moment",
     "@aantron/repromise",
     "@glennsl/bs-jest",
+    "@reventless-universe/reventless-spec",
     "@reventless-universe/bs-aws-sdk",
     "@reventless-universe/bs-fast-csv",
     "@reventless-universe/bs-hash-obj",

@@ -182,7 +182,7 @@ module Make =
               );
             }
           | PublishExtensionPointCommand(id, command)
-              when Spec.name == PluginExtensionPointSpec.name => {
+              when Spec.name == PluginSpec.name => {
               AbstractPublishPluginExtensionPointCommand(
                 command->encodeExtensionPointCommand(
                   ~from={j|incoming from ExtensionPoint $extensionPointName|j},
@@ -254,7 +254,7 @@ module Make =
         ->Belt.Array.map(
             fun
             | PublishExtensionPointCommand(id, command)
-                when Spec.name == PluginExtensionPointSpec.name => {
+                when Spec.name == ReventlessSpec.PluginExtensionPointSpec.name => {
                 AbstractPublishPluginExtensionPointCommand(
                   command->encodeExtensionPointCommand(
                     ~from={j|outgoing from Aggregate $aggregateName|j},

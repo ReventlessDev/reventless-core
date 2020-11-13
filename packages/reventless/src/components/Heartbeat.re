@@ -55,18 +55,18 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
     {
       Message.id: id->Id.String.makeFromString,
       meta: {
-        service: PluginExtensionPointSpec.name,
+        service: ReventlessSpec.PluginExtensionPointSpec.name,
         time: Message.nowAsISOString(),
         ip: "",
         user: "Heartbeat",
         msgId,
         correlationId: msgId,
       },
-      command: PluginExtensionPointSpec.Heartbeat(timeout),
+      command: ReventlessSpec.PluginExtensionPointSpec.Heartbeat(timeout),
     }
     ->Message.command'_encode(
         Id.String.t_encode,
-        PluginExtensionPointSpec.command_encode,
+        ReventlessSpec.PluginExtensionPointSpec.command_encode,
         _,
       )
     ->Js.Json.stringify

@@ -1,5 +1,7 @@
 let name = "Core.Plugin";
 
+include PluginTypes;
+
 [@decco]
 type timeout = int; // in minutes
 
@@ -12,23 +14,23 @@ type forwardCommand = {
 [@decco]
 type command =
   | Heartbeat(timeout)
-  | ConnectPlugin(PluginSpec.pluginDefinition)
+  | ConnectPlugin(pluginDefinition)
   | DisconnectPlugin
   | ForwardCommand(forwardCommand);
 
 [@decco]
 type event =
   | UnknownPluginDetected
-  | PluginConnected(PluginSpec.pluginDefinition)
-  | PluginReconnected(PluginSpec.pluginDefinition)
-  | PluginDisconnected(PluginSpec.pluginDefinition)
-  | PluginDeactivated(PluginSpec.pluginDefinition)
-  | PluginActivated(PluginSpec.pluginDefinition);
+  | PluginConnected(pluginDefinition)
+  | PluginReconnected(pluginDefinition)
+  | PluginDisconnected(pluginDefinition)
+  | PluginDeactivated(pluginDefinition)
+  | PluginActivated(pluginDefinition);
 
 [@decco]
 type callCommand =
   | CreateDisconnectSchedule(string, timeout)
   | DeleteDisconnectSchedule(string)
-  | DoConnectPlugin(PluginSpec.pluginDefinition)
-  | DoDisconnectPlugin(PluginSpec.pluginDefinition)
+  | DoConnectPlugin(pluginDefinition)
+  | DoDisconnectPlugin(pluginDefinition)
   | ForwardCommand(forwardCommand);

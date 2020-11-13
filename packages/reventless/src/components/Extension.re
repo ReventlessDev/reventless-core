@@ -151,7 +151,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
 
     let forwardCommand = (id, meta, extensionPointName, command'Json) =>
       publishCommand(
-        PluginExtensionPointSpec.(
+        ReventlessSpec.PluginExtensionPointSpec.(
           Message.command'_encode(
             Id.String.t_encode,
             command_encode,

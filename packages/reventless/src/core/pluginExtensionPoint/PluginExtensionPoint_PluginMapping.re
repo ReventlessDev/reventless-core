@@ -6,7 +6,10 @@ let callHandler =
       callCommand,
     ) =>
   switch (callCommand) {
-  | PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
+  | ReventlessSpec.PluginExtensionPointSpec.CreateDisconnectSchedule(
+      id,
+      timeout,
+    ) =>
     createSchedule(. {
       name: id, // TODO: prefix with Pulumi.Pulumi.getStackName()
       rate: timeout->Schedule.minutesFromNow,
@@ -19,11 +22,11 @@ let callHandler =
               ~user="Scheduler",
               (),
             ),
-          command: PluginExtensionPointSpec.DisconnectPlugin,
+          command: ReventlessSpec.PluginExtensionPointSpec.DisconnectPlugin,
         }
         |> Message.command'_encode(
              Decco.stringToJson,
-             PluginExtensionPointSpec.command_encode,
+             ReventlessSpec.PluginExtensionPointSpec.command_encode,
            )
         |> Js.Json.stringify,
     })
@@ -61,7 +64,7 @@ let callHandler =
                         | Some(extensionPoint) =>
                           command
                           ->AwsSdk.SQS.sendMessage(
-                              ~queueId=extensionPoint.PluginSpec.commandTopic,
+                              ~queueId=extensionPoint.commandTopic,
                               ~messageBody=_,
                               (),
                             )
@@ -114,7 +117,7 @@ module Impl = {
 
   let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
     switch (cmd) {
-    | PluginExtensionPointSpec.Heartbeat(timeout) => [|
+    | ReventlessSpec.PluginExtensionPointSpec.Heartbeat(timeout) => [|
         PublishCommand(id, Aggregate.Heartbeat),
         // Re-create timeout (+1 minute to avoid toggling)
         Call(callHandler, CreateDisconnectSchedule(id, timeout + 1)),
@@ -134,7 +137,10 @@ module Impl = {
   let mapOutgoingEvent = (id, event, _meta, _pluginDef) =>
     switch (event) {
     | Aggregate.UnknownPluginDetected => [|
-        PublishEvent(id, PluginExtensionPointSpec.UnknownPluginDetected),
+        PublishEvent(
+          id,
+          ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected,
+        ),
       |]
     | PluginConnected(pluginDefinition) => [|
         PublishEvent(id, PluginConnected(pluginDefinition)),
@@ -154,4 +160,5 @@ module Impl = {
     };
 };
 
-module Mapping = ExtensionPointMapping.Make(PluginExtensionPointSpec, Impl);
+module Mapping =
+  ExtensionPointMapping.Make(ReventlessSpec.PluginExtensionPointSpec, Impl);

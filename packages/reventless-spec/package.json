@@ -1,0 +1,27 @@
+{
+  "name": "@reventless-universe/reventless-spec",
+  "version": "0.1.0",
+  "description": "Specifications for Reventless",
+  "author": "Atos",
+  "license": "proprietary",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:reventless-universe/reventless-universe.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "scripts": {
+    "build": "bsb -make-world",
+    "start": "bsb -make-world -w",
+    "clean": "bsb -clean-world",
+    "rebuild": "npm run clean && npm run build"
+  },
+  "dependencies": {
+    "@ryb73/decco": "0.0.12"
+  },
+  "devDependencies": {},
+  "peerDependencies": {
+    "bs-platform": "^5.2.1"
+  }
+}

@@ -10,9 +10,9 @@ module Make =
          CommandTopicAdapter: CommandTopic.Connector,
          EventTopicAdapter: EventTopic.Publisher,
        )
-       : (T with module Spec := PluginExtensionPointSpec) => {
+       : (T with module Spec := ReventlessSpec.PluginExtensionPointSpec) => {
   include ExtensionPoint.Make(
-            PluginExtensionPointSpec,
+            ReventlessSpec.PluginExtensionPointSpec,
             CommandTopicAdapter,
             EventTopicAdapter,
           );
