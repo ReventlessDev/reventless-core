@@ -1,6 +1,6 @@
 {
   "name": "@reventless-universe/reventless-spec",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Specifications for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -20,7 +20,6 @@
   "dependencies": {
     "@ryb73/decco": "0.0.12"
   },
-  "devDependencies": {},
   "peerDependencies": {
     "bs-platform": "^5.2.1"
   }
