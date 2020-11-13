@@ -15,12 +15,16 @@ module type Spec = {
 
 type mapIncomingEvent(
   'extensionPointEvent,
-  'aggregateId,
   'aggregateCommand,
   'extensionPointCommand,
   'extensionPointCallCommand,
 ) =
-  (string, 'extensionPointEvent, Message.meta, PluginSpec.pluginDefinition) =>
+  (
+    string,
+    'extensionPointEvent,
+    Message.meta,
+    ReventlessSpec.PluginExtensionPointSpec.pluginDefinition
+  ) =>
   array(
     incomingCommandAction(
       'aggregateCommand,
@@ -30,12 +34,16 @@ type mapIncomingEvent(
   );
 
 type mapOutgoingEvent(
-  'aggregateId,
   'aggregateEvent,
   'extensionPointCommand,
   'extensionPointCallCommand,
 ) =
-  (string, 'aggregateEvent, Message.meta, PluginSpec.pluginDefinition) =>
+  (
+    string,
+    'aggregateEvent,
+    Message.meta,
+    ReventlessSpec.PluginExtensionPointSpec.pluginDefinition
+  ) =>
   array(
     outgoingCommandAction('extensionPointCommand, 'extensionPointCallCommand),
   );
@@ -69,7 +77,6 @@ module type Impl = {
   let mapIncomingEvent:
     mapIncomingEvent(
       ExtensionPoint.event,
-      Aggregate.Id.t,
       Aggregate.command,
       ExtensionPoint.command,
       ExtensionPoint.callCommand,
@@ -77,7 +84,6 @@ module type Impl = {
 
   let mapOutgoingEvent:
     mapOutgoingEvent(
-      Aggregate.Id.t,
       Aggregate.event,
       ExtensionPoint.command,
       ExtensionPoint.callCommand,
