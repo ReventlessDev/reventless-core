@@ -1,22 +1,6 @@
+include ReventlessSpec.ExtensionMappingTypes;
+
 type extensionPointName = string;
-
-type forwardCommand = {
-  extensionPointName: string,
-  id: string,
-  commandJson: Js.Json.t,
-};
-
-/* these actions are needed for Impl */
-type incomingCommandAction('aggregateCommand, 'extensionPointCommand, 'msg) =
-  | PublishAggregateCommand(string, 'aggregateCommand)
-  | PublishExtensionPointCommand(string, 'extensionPointCommand)
-  | ForwardCommand(forwardCommand)
-  | Call(Message.handler('msg), 'msg);
-
-type outgoingCommandAction('extensionPointCommand, 'msg) =
-  | PublishExtensionPointCommand(string, 'extensionPointCommand)
-  | ForwardCommand(forwardCommand)
-  | Call(Message.handler('msg), 'msg);
 
 module type Spec = {
   let name: string;
@@ -307,19 +291,4 @@ module Make =
           "ExtensionPointMapping.Make.mapOutgoing: Decode failure: " // TODO improve message
         )
       };
-};
-
-module NoAggregate: Aggregate.Spec = {
-  let name = "NoAggregate";
-
-  module Id = Id.String;
-
-  [@decco]
-  type command = unit;
-
-  [@decco]
-  type event = unit;
-
-  [@decco]
-  type error = unit;
 };
