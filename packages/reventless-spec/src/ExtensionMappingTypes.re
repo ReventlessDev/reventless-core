@@ -16,6 +16,41 @@ type outgoingCommandAction('extensionPointCommand, 'msg) =
   | ForwardCommand(forwardCommand)
   | Call('msg => Js.Promise.t(unit), 'msg);
 
+type mapIncomingEvent(
+  'extensionPointEvent,
+  'aggregateCommand,
+  'extensionPointCommand,
+  'extensionPointCallCommand,
+) =
+  (
+    string,
+    'extensionPointEvent,
+    Message.meta,
+    PluginExtensionPointSpec.pluginDefinition
+  ) =>
+  array(
+    incomingCommandAction(
+      'aggregateCommand,
+      'extensionPointCommand,
+      'extensionPointCallCommand,
+    ),
+  );
+
+type mapOutgoingEvent(
+  'aggregateEvent,
+  'extensionPointCommand,
+  'extensionPointCallCommand,
+) =
+  (
+    string,
+    'aggregateEvent,
+    Message.meta,
+    PluginExtensionPointSpec.pluginDefinition
+  ) =>
+  array(
+    outgoingCommandAction('extensionPointCommand, 'extensionPointCallCommand),
+  );
+
 module NoAggregate = {
   let name = "NoAggregate";
 

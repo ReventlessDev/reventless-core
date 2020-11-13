@@ -624,7 +624,6 @@ module Make =
           let mapIncomingEvent:
             ExtensionMapping.mapIncomingEvent(
               ReventlessSpec.PluginExtensionPointSpec.event,
-              Aggregate.Id.t,
               Aggregate.command,
               ReventlessSpec.PluginExtensionPointSpec.command,
               ReventlessSpec.PluginExtensionPointSpec.callCommand,

@@ -13,41 +13,6 @@ module type Spec = {
   type callCommand;
 };
 
-type mapIncomingEvent(
-  'extensionPointEvent,
-  'aggregateCommand,
-  'extensionPointCommand,
-  'extensionPointCallCommand,
-) =
-  (
-    string,
-    'extensionPointEvent,
-    Message.meta,
-    ReventlessSpec.PluginExtensionPointSpec.pluginDefinition
-  ) =>
-  array(
-    incomingCommandAction(
-      'aggregateCommand,
-      'extensionPointCommand,
-      'extensionPointCallCommand,
-    ),
-  );
-
-type mapOutgoingEvent(
-  'aggregateEvent,
-  'extensionPointCommand,
-  'extensionPointCallCommand,
-) =
-  (
-    string,
-    'aggregateEvent,
-    Message.meta,
-    ReventlessSpec.PluginExtensionPointSpec.pluginDefinition
-  ) =>
-  array(
-    outgoingCommandAction('extensionPointCommand, 'extensionPointCallCommand),
-  );
-
 /* these actions are internal to the Mapping Functor */
 type abstractIncomingCommandAction =
   | AbstractPublishAggregateCommand(Aggregate.name, Js.Json.t)
