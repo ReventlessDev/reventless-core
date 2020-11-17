@@ -116,7 +116,7 @@ module Make =
               let commandStr =
                 aggregateCmd->Aggregate.command_encode->Js.Json.stringify;
               Js.log(
-                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command: $commandStr id: $id|j},
+                {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command: $commandStr id: $aggregateId|j},
               );
 
               AbstractPublishAggregateCommand(
