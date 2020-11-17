@@ -22,7 +22,7 @@ type t =
 
 let toString =
   fun
-use  | Aggregate => "Aggregate"
+  | Aggregate => "Aggregate"
   | AtomicCounter => "AtomicCounter"
   | Plugin => "Plugin"
   | CommandGenerator => "CommandGenerator"
