@@ -46,7 +46,7 @@ let make: Reventless.CommandGenerator.resolversMaker(api) =
 
     let dataSourceRole =
       IAM.Role.makeWithDefaultPolicy(
-        ~name,
+        ~name=name ++ "DS",
         ~service="appsync.amazonaws.com"->Pulumi.Output.make,
         ~opts,
         (),
@@ -54,7 +54,7 @@ let make: Reventless.CommandGenerator.resolversMaker(api) =
 
     let _dataSourcePolicy =
       IAM.RolePolicy.make(
-        ~name,
+        ~name=name ++ "DS",
         ~action="lambda:InvokeFunction",
         ~resource=[|commandGeneratorArn|],
         ~role=dataSourceRole##id,
