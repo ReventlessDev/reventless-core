@@ -22,16 +22,16 @@ type t =
 
 let toString =
   fun
-  | Aggregate => "Aggregate"
+  | Aggregate => "Aggr"
   | AtomicCounter => "AtomicCounter"
   | Plugin => "Plugin"
-  | CommandGenerator => "CommandGenerator"
-  | CommandTopic => "CommandTopic"
-  | EventCollector => "EventCollector"
+  | CommandGenerator => "CmdGen"
+  | CommandTopic => "CmdTopic"
+  | EventCollector => "EventColl"
   | EventLog => "EventLog"
   | EventMapper => "EventMapper"
   | EventTopic => "EventTopic"
-  | ExtensionPoint => "ExtensionPoint"
+  | ExtensionPoint => "ExtPoint"
   | Extension => "Extension"
   | QueryDb => "QueryDB"
   | ReadModel => "ReadModel"

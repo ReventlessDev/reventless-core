@@ -28,8 +28,6 @@ let make: Reventless.CommandTopic.connectorMaker =
         make(~name, ~queue, ~statements=[|allowCloudWatchEvents|], ~opts, ())
       );
 
-    let name = name ++ "Handler";
-
     let handler =
       Lambda.CallbackFunction.(
         make(
