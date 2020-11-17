@@ -22,16 +22,16 @@ type t =
 
 let toString =
   fun
-  | Aggregate => "Aggr"
+use  | Aggregate => "Aggregate"
   | AtomicCounter => "AtomicCounter"
   | Plugin => "Plugin"
-  | CommandGenerator => "CmdGen"
-  | CommandTopic => "CmdTopic"
-  | EventCollector => "EventColl"
+  | CommandGenerator => "CommandGenerator"
+  | CommandTopic => "CommandTopic"
+  | EventCollector => "EventCollector"
   | EventLog => "EventLog"
   | EventMapper => "EventMapper"
   | EventTopic => "EventTopic"
-  | ExtensionPoint => "ExtPoint"
+  | ExtensionPoint => "ExtensionPoint"
   | Extension => "Extension"
   | QueryDb => "QueryDB"
   | ReadModel => "ReadModel"
@@ -67,4 +67,27 @@ let ofString =
   | "Heartbeat" => Heartbeat->Some
   | _ => None;
 
-let name = (name, t) => name ++ t->toString;
+let toName =
+  fun
+  | Aggregate => "Aggr"
+  | AtomicCounter => "AtomicCounter"
+  | Plugin => "Plugin"
+  | CommandGenerator => "CmdGen"
+  | CommandTopic => "CmdTopic"
+  | EventCollector => "EventColl"
+  | EventLog => "EventLog"
+  | EventMapper => "EventMapper"
+  | EventTopic => "EventTopic"
+  | ExtensionPoint => "ExtPoint"
+  | Extension => "Extension"
+  | QueryDb => "QueryDB"
+  | ReadModel => "ReadModel"
+  | ReadModels => "ReadModels"
+  | Scheduler => "Scheduler"
+  | Service => "Service"
+  | Task => "Task"
+  | Vpc => "Vpc"
+  | Core => "Core"
+  | Heartbeat => "Heartbeat";
+
+let name = (name, t) => name ++ t->toName;

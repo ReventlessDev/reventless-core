@@ -112,7 +112,7 @@ module Make = (ScheduledPublisher: ScheduledPublisher) : T => {
     (~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=componentType->ComponentType.toString,
+        ~name=componentType->ComponentType.toName,
         ~construct,
         ~opts,
       );

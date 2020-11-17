@@ -76,7 +76,7 @@ module Make = (Counter: Counter) : T => {
     (~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=componentType->ComponentType.toString,
+        ~name=componentType->ComponentType.toName,
         ~construct,
         ~opts,
       );

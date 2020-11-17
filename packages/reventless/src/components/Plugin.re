@@ -897,7 +897,7 @@ module Make =
 
     let eventCollector =
       EventCollector.make(
-        ~name=name ++ componentType->ComponentType.toString,
+        ~name=name ++ componentType->ComponentType.toName,
         ~aggregateNames,
         ~eventHandler,
         ~queryEventTopic,
@@ -910,7 +910,7 @@ module Make =
     let heartbeat =
       Heartbeat.make(
         ~id,
-        ~name=name ++ componentType->ComponentType.toString,
+        ~name=name ++ componentType->ComponentType.toName,
         ~timeout,
         ~commandTopicId=corePluginCommandTopicId,
         ~opts,

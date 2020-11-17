@@ -52,7 +52,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       type callCommand = Spec.callCommand = {
     include Spec;
     module Id = Id.String;
-    let name = name ++ componentType->ComponentType.toString;
+    let name = name ++ componentType->ComponentType.toName;
   };
 
   type constructed;
