@@ -137,7 +137,7 @@ module Make =
               );
             }
           | PublishExtensionPointCommand(id, command)
-              when Spec.name == PluginSpec.name => {
+              when Spec.name == ReventlessSpec.PluginExtensionPointSpec.name => {
               AbstractPublishPluginExtensionPointCommand(
                 command->encodeExtensionPointCommand(
                   ~from={j|incoming from ExtensionPoint $extensionPointName|j},
