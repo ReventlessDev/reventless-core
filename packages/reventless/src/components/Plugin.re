@@ -281,7 +281,7 @@ module Make =
               (),
             ),
           |]);
-      Js.log({j|addStatement: added 1 statement with Sid $sid|j});
+      Js.log({j|addStatement: adding 1 statement with Sid $sid|j});
       IAM.Policy.make(
         ~_Version=policy##_Version,
         ~_Id=policy##_Id,
@@ -296,7 +296,7 @@ module Make =
       let removedStatements =
         statements->Belt.Array.length - newStatements->Belt.Array.length;
       Js.log(
-        {j|removeStatement: removed $removedStatements statement(s) with Sid $sid|j},
+        {j|removeStatement: removing $removedStatements statement(s) with Sid $sid|j},
       );
       IAM.Policy.make(
         ~_Version=policy##_Version,
@@ -376,7 +376,7 @@ module Make =
               {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
             );
             Js.log2(
-              "  subscription:",
+              "  subscription finished:",
               subscriptionResponse##_SubscriptionArn,
             );
             Js.Promise.resolve();

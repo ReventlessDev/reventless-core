@@ -14,13 +14,17 @@ type resolveIdsConfig = {
   sortField: option(string),
 };
 
+type authorization = {
+  tableName: string,
+  group: string,
+};
 type index = {
   index: string,
   _type: string,
   sortField: option(string),
   deletable: bool, // TODO: not used anymore
   projectionType: [ | `KEYS_ONLY | `ALL | `INCLUDE(array(string))],
-  authorization: option(string),
+  authorization: option(authorization),
 };
 
 type sortConfig('state) = {

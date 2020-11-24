@@ -82,13 +82,13 @@ let make: QueryDb.resolversMaker(api, role) =
                 ~opts,
                 (),
               )
-            | Some(group) =>
+            | Some({tableName, group}) =>
               let authDataSource =
                 DataSource.makeDynamoDBDataSourceWithTableName(
                   ~name=name ++ "Auth",
                   ~api,
                   ~tableName=
-                    queryQueryDb(group)
+                    queryQueryDb(tableName)
                     ->Pulumi.Output.flatMap(qdb => qdb##name),
                   ~serviceRole=apiRole,
                   ~opts,
