@@ -103,7 +103,7 @@ let make: QueryDb.resolversMaker(api, role) =
                     authorizeIndexedAccessRequest(~index, ~group)
                     ->Pulumi.Input.wrap,
                   ~responseMappingTemplate=
-                    authorizeIndexedAccessResponse(index)->Pulumi.Input.wrap,
+                    authorizeIndexedAccessResponse(~group)->Pulumi.Input.wrap,
                   ~opts,
                   (),
                 );
