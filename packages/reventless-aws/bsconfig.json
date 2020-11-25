@@ -27,6 +27,7 @@
     "@reventless-universe/bs-aws-sdk",
     "@reventless-universe/bs-pulumi-aws",
     "@reventless-universe/bs-pulumi-pulumi",
+    "@reventless-universe/reventless-spec",
     "@reventless-universe/reventless"
   ]
 }

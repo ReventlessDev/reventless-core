@@ -26,7 +26,8 @@ type mapIncomingEvent(
     string,
     'extensionPointEvent,
     Message.meta,
-    PluginExtensionPointSpec.pluginDefinition
+    PluginExtensionPointSpec.pluginDefinition,
+    QueryEngine.t
   ) =>
   array(
     incomingCommandAction(

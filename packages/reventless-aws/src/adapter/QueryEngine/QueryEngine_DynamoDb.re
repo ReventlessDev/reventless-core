@@ -2,7 +2,7 @@ open Reventless;
 
 let toJson =
   fun
-  | QueryDb.String(str) => Js.Json.string(str)
+  | ReventlessSpec.QueryEngine.String(str) => Js.Json.string(str)
   | Int(int) => Js.Json.number(float_of_int(int))
   | Bool(bool) => Js.Json.boolean(bool);
 
@@ -13,7 +13,7 @@ let createFilters = filters =>
     let valueName = {j|$key$idx|j};
     (
       switch (comparator) {
-      | QueryDb.Equal => {j|#$key = :$valueName|j}
+      | ReventlessSpec.QueryEngine.Equal => {j|#$key = :$valueName|j}
       | Unequal => {j|#$key <> :$valueName|j}
       | LessOrEqual => {j|#$key <= :$valueName|j}
       | Less => {j|#$key < :$valueName|j}
@@ -147,7 +147,7 @@ let scanByServiceNameMaker =
     ~limit,
   );
 
-let make: ResourceQuery.runtimeQueryExn => QueryDb.queryEngine =
+let make: ResourceQuery.runtimeQueryExn => ReventlessSpec.QueryEngine.t =
   queryQueryDb => {
     scan: scanByServiceNameMaker(queryQueryDb),
     query: queryByServiceNameMaker(queryQueryDb),
