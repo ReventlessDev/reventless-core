@@ -49,7 +49,7 @@ let makeId = (name, version) => {j|$name@$version|j};
 module Make =
        (
          EventCollectorAdapter: EventCollector.Connector,
-         QueryEngine: QueryDb.QueryEngine,
+         QueryEngineAdapter: QueryDb.QueryEngineAdapter,
        )
        : T => {
   type constructed;
@@ -179,12 +179,14 @@ module Make =
         servicesOutputs,
       );
 
+    let queryEngine = QueryEngineAdapter.make(queryQueryDb);
+
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
         extensionPointMaker(
           ~queryCommandTopic,
           ~scheduler,
-          ~queryEngine=QueryEngine.make(queryQueryDb),
+          ~queryEngine,
           ~opts=Some(opts),
           (),
         )
@@ -628,7 +630,7 @@ module Make =
               ReventlessSpec.PluginExtensionPointSpec.command,
               ReventlessSpec.PluginExtensionPointSpec.callCommand,
             ) =
-            (pluginId, event, _meta, _pluginDef) =>
+            (pluginId, event, _meta, _pluginDef, _queryEngine) =>
               switch (event) {
               | ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected
                   when pluginId == id => [|
@@ -689,7 +691,7 @@ module Make =
             ~queryEventCollector,
             ~queryBucketName,
             ~scheduler,
-            ~queryEngine=QueryEngine.make(queryQueryDb),
+            ~queryEngine,
             ~opts=Some(opts),
           )
           ->Component.extractOutputs

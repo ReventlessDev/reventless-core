@@ -18,7 +18,7 @@ let toDict = els =>
 module Make =
        (
          EventCollectorAdapter: EventCollector.Connector,
-         QueryEngine: QueryDb.QueryEngine,
+         QueryEngineAdapter: QueryDb.QueryEngineAdapter,
        ) => {
   type constructed;
   type construct = (Component.t(core, outputs), string) => constructed;
@@ -97,7 +97,7 @@ module Make =
         extensionPointMaker(
           ~queryCommandTopic,
           ~scheduler,
-          ~queryEngine=QueryEngine.make(queryQueryDb),
+          ~queryEngine=QueryEngineAdapter.make(queryQueryDb),
           ~opts=Some(opts),
           (),
         )

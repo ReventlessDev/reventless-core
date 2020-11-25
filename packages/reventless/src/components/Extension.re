@@ -75,7 +75,11 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ~name: string,
       ~extensionPointName: string,
       ~aggregateNames: array(string),
-      ~incomingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
+      ~incomingEventHandler: (
+                               . Js.Json.t,
+                               PluginSpec.pluginDefinition,
+                               ReventlessSpec.QueryEngine.t
+                             ) =>
                              Js.Promise.t(unit),
       ~outgoingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
                              Js.Promise.t(unit)
@@ -108,10 +112,11 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
           mappings,
           event': Message.event'(Id.String.t, Spec.event),
           pluginDef,
+          queryEngine,
         ) =>
       mappings
       ->Belt.Array.map((module Mapping: Mapping) =>
-          Mapping.mapIncomingEvent(event', pluginDef)
+          Mapping.mapIncomingEvent(event', pluginDef, queryEngine)
         )
       ->Belt.Array.concatMany;
 
@@ -229,7 +234,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
            );
 
     let incomingEventHandler =
-      (. event'Json, pluginDef) => {
+      (. event'Json, pluginDef, queryEngine) => {
         let event' =
           Message.event'_decode(
             Id.String.t_decode,
@@ -239,7 +244,8 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
 
         switch (event') {
         | Belt.Result.Ok(event') =>
-          let commandActions = mapIncomingEvent(event', pluginDef);
+          let commandActions =
+            mapIncomingEvent(event', pluginDef, queryEngine);
           commandActions->Belt.Array.map(applyIncomingCommandAction)
           |> Js.Promise.all
           |> Js.Promise.then_(_ => Js.Promise.resolve());

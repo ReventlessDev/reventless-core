@@ -17,7 +17,7 @@ type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
     ~scheduler: Scheduler.t,
-    ~queryEngine: QueryDb.queryEngine,
+    ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>

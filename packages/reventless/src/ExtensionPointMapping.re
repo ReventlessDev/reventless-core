@@ -1,7 +1,7 @@
 type extensionPointName = string;
 
 type callHandler('msg) =
-  (Schedule.create, Schedule.delete, QueryDb.queryEngine, 'msg) =>
+  (Schedule.create, Schedule.delete, ReventlessSpec.QueryEngine.t, 'msg) =>
   Js.Promise.t(unit);
 
 /* these actions are needed for Impl */
@@ -37,7 +37,7 @@ type mapOutgoingEvent(
   'extensionPointEvent,
   'extensionPointCallCommand,
 ) =
-  (string, 'aggregateEvent, Message.meta, PluginSpec.pluginDefinition) =>
+  (string, 'aggregateEvent, Message.meta, ReventlessSpec.QueryEngine.t) =>
   array(eventAction('extensionPointEvent, 'extensionPointCallCommand));
 
 module type Impl = {
@@ -78,7 +78,7 @@ module type T = {
       array(Message.command'(Id.String.t, ExtensionPoint.command)),
       Schedule.create,
       Schedule.delete,
-      QueryDb.queryEngine
+      ReventlessSpec.QueryEngine.t
     ) =>
     array(abstractCommandAction);
 
@@ -88,7 +88,7 @@ module type T = {
       Schedule.create,
       Schedule.delete,
       PluginSpec.pluginDefinition,
-      QueryDb.queryEngine
+      ReventlessSpec.QueryEngine.t
     ) =>
     array(abstractEventAction(ExtensionPoint.event));
 };
@@ -156,7 +156,7 @@ module Make =
         aggregateEvent'Json,
         createSchedule,
         deleteSchedule,
-        pluginDef,
+        _pluginDef,
         queryEngine,
       ) =>
     switch (
@@ -171,7 +171,8 @@ module Make =
         id->Aggregate.Id.toString,
         event,
         meta,
-        pluginDef,
+        // pluginDef, // ignored for now
+        queryEngine,
       )
       ->Belt.Array.map(
           fun

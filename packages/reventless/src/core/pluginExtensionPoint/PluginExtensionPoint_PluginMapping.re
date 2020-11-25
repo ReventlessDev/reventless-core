@@ -2,7 +2,7 @@ let callHandler =
     (
       createSchedule: Schedule.create,
       deleteSchedule: Schedule.delete,
-      queryEngine: QueryDb.queryEngine,
+      queryEngine: ReventlessSpec.QueryEngine.t,
       callCommand,
     ) =>
   switch (callCommand) {
@@ -134,7 +134,7 @@ module Impl = {
       |]
     };
 
-  let mapOutgoingEvent = (id, event, _meta, _pluginDef) =>
+  let mapOutgoingEvent = (id, event, _meta, _queryEngine) =>
     switch (event) {
     | Aggregate.UnknownPluginDetected => [|
         PublishEvent(

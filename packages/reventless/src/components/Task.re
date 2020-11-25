@@ -12,12 +12,14 @@ type outputs = {
 
 type task; // TODO: rename to t - after refactoring
 
+open ReventlessSpec;
+
 type query =
   (
     . /*~serviceName:*/ string,
     /*~key:*/ string,
-    /*~value:*/ QueryDb.value,
-    /*~filters:*/ list((string, QueryDb.comparator, QueryDb.value)),
+    /*~value:*/ QueryEngine.value,
+    /*~filters:*/ list((string, QueryEngine.comparator, QueryEngine.value)),
     /*~ascending*/ bool,
     /*~limit*/ int
   ) =>
@@ -40,7 +42,7 @@ type maker =
     ~queryEventCollector: InterstackResourceQuery.runtimeQueryExn,
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
-    ~queryEngine: QueryDb.queryEngine,
+    ~queryEngine: QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   Component.t(task, outputs);
@@ -93,7 +95,7 @@ let construct =
       ~queryEventCollector,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
-      ~queryEngine: QueryDb.queryEngine,
+      ~queryEngine: QueryEngine.t,
       self,
       _,
     ) => {

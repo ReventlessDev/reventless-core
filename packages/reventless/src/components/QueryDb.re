@@ -87,46 +87,8 @@ module type Storage = {
   let make: storageMaker(api, role);
 };
 
-type value =
-  | String(string)
-  | Int(int)
-  | Bool(bool);
-type comparator =
-  | Equal
-  | Unequal
-  | LessOrEqual
-  | Less
-  | GreaterOrEqual
-  | Greater
-  | Exists
-  | NotExists
-  | Contains
-  | NotContains
-  | BeginsWith;
-type filterConfig = (string, comparator, value);
-
-type query =
-  (
-    ~serviceName: string,
-    ~key: string,
-    ~value: value,
-    ~filterConfigs: list(filterConfig),
-    ~ascending: bool,
-    ~limit: int
-  ) =>
-  Js.Promise.t(array(Js.Json.t));
-
-type scan =
-  (~serviceName: string, ~filterConfigs: list(filterConfig), ~limit: int) =>
-  Js.Promise.t(array(Js.Json.t));
-
-type queryEngine = {
-  scan,
-  query,
-};
-
-module type QueryEngine = {
-  let make: ResourceQuery.runtimeQueryExn => queryEngine;
+module type QueryEngineAdapter = {
+  let make: ResourceQuery.runtimeQueryExn => ReventlessSpec.QueryEngine.t;
 };
 
 type resolvers = {
