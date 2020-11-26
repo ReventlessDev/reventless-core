@@ -31,22 +31,29 @@ let createFilters = filters =>
   |> Belt.List.unzip;
 
 let queryByTableName =
-    (~tableName, ~key, ~value, ~filterConfigs, ~ascending, ~limit) => {
-  let (filterExpressions, filterNamesValues) = filterConfigs |> createFilters;
+    (
+      ~tableName,
+      ~key="id",
+      ~id,
+      ~filterConfigs=[],
+      ~ascending=true,
+      ~limit=1,
+      (),
+    ) => {
+  let (filterExpressions, filterNamesValues) = filterConfigs->createFilters;
   let filterExpression =
     switch (filterExpressions) {
     | [] => None
-    | filterExpressions => Some(filterExpressions |> String.concat(" AND "))
+    | filterExpressions => Some(filterExpressions->String.concat(" AND ", _))
     };
 
-  let (filterNames, filterValues) = filterNamesValues |> Belt.List.unzip;
+  let (filterNames, filterValues) = filterNamesValues->Belt.List.unzip;
   let attributeValues =
-    [(":value", value |> toJson)]
-    @ filterValues
-    |> Js.Dict.fromList
-    |> Js.Json.object_
-    |> Js.Json.stringify
-    |> parseJs;
+    ([(":value", id->toJson)] @ filterValues)
+    ->Js.Dict.fromList
+    ->Js.Json.object_
+    ->Js.Json.stringify
+    ->parseJs;
 
   let attributeNames = [("#key", key)] @ filterNames |> Js.Dict.fromList;
 
@@ -68,36 +75,22 @@ let queryByTableName =
       (),
     );
   AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params)
-  |> Js.Promise.then_(result =>
-       Js.Promise.resolve(
-         result##_Items
-         ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn),
-       )
-     )
-  |> Js.Promise.catch(err => {
-       Js.log2("Task.query error:", err);
-       Js.Promise.resolve([||]);
-     });
+  ->Js.Promise.then_(
+      result =>
+        Js.Promise.resolve(
+          result##_Items
+          ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn),
+        ),
+      _,
+    )
+  ->Js.Promise.catch(
+      err => {
+        Js.log2("Task.query error:", err);
+        Js.Promise.resolve([||]);
+      },
+      _,
+    );
 };
-
-let queryByServiceNameMaker =
-    (
-      queryQueryDb,
-      ~serviceName,
-      ~key,
-      ~value,
-      ~filterConfigs,
-      ~ascending,
-      ~limit,
-    ) =>
-  queryByTableName(
-    ~tableName=queryQueryDb(serviceName)##name->OutputFailsafeRuntime.get,
-    ~key,
-    ~value,
-    ~filterConfigs,
-    ~ascending,
-    ~limit,
-  );
 
 let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
   let (filterExpressions, filterNamesValues) = filterConfigs |> createFilters;
@@ -139,16 +132,14 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
      });
 };
 
-let scanByServiceNameMaker =
-    (queryQueryDb, ~serviceName, ~filterConfigs, ~limit) =>
-  scanByTableName(
-    ~tableName=queryQueryDb(serviceName)##name->OutputFailsafeRuntime.get,
-    ~filterConfigs,
-    ~limit,
-  );
-
 let make: ResourceQuery.runtimeQueryExn => ReventlessSpec.QueryEngine.t =
   queryQueryDb => {
-    scan: scanByServiceNameMaker(queryQueryDb),
-    query: queryByServiceNameMaker(queryQueryDb),
+    scan: (~serviceName) =>
+      scanByTableName(
+        ~tableName=queryQueryDb(serviceName)##name->OutputFailsafeRuntime.get,
+      ),
+    query: (~serviceName) =>
+      queryByTableName(
+        ~tableName=queryQueryDb(serviceName)##name->OutputFailsafeRuntime.get,
+      ),
   };
