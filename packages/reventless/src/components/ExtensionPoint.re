@@ -166,24 +166,28 @@ module Make =
       fun
       | ExtensionPointMapping.AbstractPublishCommand(aggregateName, cmdJson) =>
         cmdJson
-        |> Js.Json.stringify
-        |> AwsSdk.SQS.sendMessage(
-             ~queueId=queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
-             ~messageBody=_,
-             (),
-           )
-        |> Js.Promise.catch(err =>
-             err
-             |> Js.log2("ExtensionPoint: Error on publish command:")
-             |> Js.Promise.resolve
-           )
+        ->Js.Json.stringify
+        ->AwsSdk.SQS.sendMessage(
+            ~queueId=queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
+            ~messageBody=_,
+            (),
+          )
+        ->Js.Promise.catch(
+            err =>
+              err
+              |> Js.log2("ExtensionPoint: Error on publish command:")
+              |> Js.Promise.resolve,
+            _,
+          )
       | AbstractCall(handler) =>
         handler()
-        |> Js.Promise.catch(err =>
-             err
-             |> Js.log2("ExtensionPoint: Error on calling handler:")
-             |> Js.Promise.resolve
-           );
+        ->Js.Promise.catch(
+            err =>
+              err
+              ->Js.log2("ExtensionPoint: Error on calling handler:")
+              ->Js.Promise.resolve,
+            _,
+          );
 
     let eventTopic = EventTopic.make(~name=childName, ~opts, ());
 
@@ -192,19 +196,40 @@ module Make =
       | ExtensionPointMapping.AbstractPublishEvent(event') => {
           let publish = EventTopic.publish(eventTopic);
           publish(. [|event'|])
-          |> Js.Promise.catch(err =>
-               err
-               |> Js.log2("ExtensionPoint: Error on publish command:")
-               |> Js.Promise.resolve
-             );
+          ->Js.Promise.catch(
+              err =>
+                err
+                ->Js.log2("ExtensionPoint: Error on publish command:")
+                ->Js.Promise.resolve,
+              _,
+            );
+        }
+      | ExtensionPointMapping.AbstractPublishEventAsync(promise) => {
+          let publish = EventTopic.publish(eventTopic);
+          promise->Js.Promise.then_(
+                     event' =>
+                       publish(. [|event'|])
+                       ->Js.Promise.catch(
+                           err =>
+                             err
+                             ->Js.log2(
+                                 "ExtensionPoint: Error on publish command:",
+                               )
+                             ->Js.Promise.resolve,
+                           _,
+                         ),
+                     _,
+                   );
         }
       | AbstractCall(handler) =>
         handler()
-        |> Js.Promise.catch(err =>
-             err
-             |> Js.log2("ExtensionPoint: Error on calling handler:")
-             |> Js.Promise.resolve
-           );
+        ->Js.Promise.catch(
+            err =>
+              err
+              ->Js.log2("ExtensionPoint: Error on calling handler:")
+              ->Js.Promise.resolve,
+            _,
+          );
 
     let outgoingEventHandler =
       (. event'Json, pluginDef) => {

@@ -11,6 +11,7 @@ type commandAction('command, 'msg) =
 
 type eventAction('event, 'msg) =
   | PublishEvent(string, 'event)
+  | PublishEventAsync(Js.Promise.t((string, 'event)))
   | Call(callHandler('msg), 'msg);
 
 module type Spec = {
@@ -66,6 +67,9 @@ type abstractCommandAction =
 
 type abstractEventAction('extensionPointEvent) =
   | AbstractPublishEvent(Message.event'(Id.String.t, 'extensionPointEvent))
+  | AbstractPublishEventAsync(
+      Js.Promise.t(Message.event'(Id.String.t, 'extensionPointEvent)),
+    )
   | AbstractCall(unit => Js.Promise.t(unit));
 
 module type T = {
@@ -179,7 +183,7 @@ module Make =
           | PublishEvent(id, event) => {
               let eventStr = event->Spec.event_encode->Js.Json.stringify;
               Js.log(
-                {j|ExtensionPointMapping outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing event: $eventStr id: $id|j},
+                {j|ExtensionPointMapping: outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing event: $eventStr id: $id|j},
               );
 
               AbstractPublishEvent({
@@ -192,9 +196,34 @@ module Make =
                 },
               });
             }
+          | PublishEventAsync(promise) => {
+              let promise' =
+                promise->Js.Promise.then_(
+                           ((id, event)) => {
+                             let eventStr =
+                               event->Spec.event_encode->Js.Json.stringify;
+                             Js.log(
+                               {j|ExtensionPointMapping: async outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing event: $eventStr id: $id|j},
+                             );
+                             {
+                               Message.id: id->Id.String.makeFromString,
+                               event,
+                               meta: {
+                                 ...meta,
+                                 service: Spec.name,
+                                 msgId: Message.uuid(),
+                               },
+                             }
+                             ->Js.Promise.resolve;
+                           },
+                           _,
+                         );
+
+              AbstractPublishEventAsync(promise');
+            }
           | Call(handler, msg) => {
               Js.log2(
-                {j|ExtensionPointMapping outgoing from Aggregate $aggregateName: Handling call command|j},
+                {j|ExtensionPointMapping: outgoing from Aggregate $aggregateName: Handling call command|j},
                 msg->Spec.callCommand_encode->Js.Json.stringify,
               );
 
