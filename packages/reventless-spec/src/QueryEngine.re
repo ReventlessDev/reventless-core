@@ -19,11 +19,12 @@ type filterConfig = (string, comparator, value);
 type query =
   (
     ~serviceName: string,
-    ~key: string,
-    ~value: value,
-    ~filterConfigs: list(filterConfig),
-    ~ascending: bool,
-    ~limit: int
+    ~key: string=?,
+    ~id: value,
+    ~filterConfigs: list(filterConfig)=?,
+    ~ascending: bool=?,
+    ~limit: int=?,
+    unit
   ) =>
   Js.Promise.t(array(Js.Json.t));
 
