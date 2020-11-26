@@ -14,17 +14,6 @@ type task; // TODO: rename to t - after refactoring
 
 open ReventlessSpec;
 
-type query =
-  (
-    . /*~serviceName:*/ string,
-    /*~key:*/ string,
-    /*~value:*/ QueryEngine.value,
-    /*~filters:*/ list((string, QueryEngine.comparator, QueryEngine.value)),
-    /*~ascending*/ bool,
-    /*~limit*/ int
-  ) =>
-  Js.Promise.t(array(Js.Json.t));
-
 type publishCommand =
   (. /*~queueName:*/ string, /*~message:*/ string) => Js.Promise.t(unit);
 
@@ -49,7 +38,7 @@ type maker =
 
 type setup =
   (
-    . query,
+    . QueryEngine.t,
     publishCommand,
     queryBucketName,
     createSchedule,
@@ -105,17 +94,6 @@ let construct =
       (),
     );
 
-  let query =
-    (. serviceName, key, value, filterConfigs, ascending, limit) =>
-      queryEngine.query(
-        ~serviceName,
-        ~key,
-        ~value,
-        ~filterConfigs,
-        ~ascending,
-        ~limit,
-      );
-
   let publishCommand =
     (. queueName, messageBody) => {
       let queueId =
@@ -152,7 +130,7 @@ let construct =
       };
 
   setup(.
-    query,
+    queryEngine,
     publishCommand,
     queryBucketName,
     createSchedule(. taskName),
