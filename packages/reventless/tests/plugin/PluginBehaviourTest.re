@@ -6,14 +6,14 @@ open PluginTest;
 open PluginSpec;
 open PluginFixture;
 
-describe("Plugin Aggregate", () => {
+describe("PluginBehaviour:", () => {
   test("Heartbeat (first)", () =>
     givenEvents([])
     |> whenCmd(Heartbeat)
     |> thenEvents([UnknownPluginDetected])
   );
 
-  test("Heartbeat again", () =>
+  test("Heartbeat (again)", () =>
     givenEvents([UnknownPluginDetected])
     |> whenCmd(Heartbeat)
     |> thenEvents([UnknownPluginDetected])
@@ -31,10 +31,10 @@ describe("Plugin Aggregate", () => {
     |> thenEvents([PluginConnected(pluginDefinition)])
   );
 
-  test("ConnectPlugin again", () =>
+  test("ConnectPlugin (again)", () =>
     givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
     |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenEvents([])
+    |> thenError(PluginIsConnected)
   );
 
   test("DisconnectPlugin", () =>
@@ -60,7 +60,7 @@ describe("Plugin Aggregate", () => {
       PluginDisconnected(pluginDefinition),
     ])
     |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenEvents([])
+    |> thenError(PluginIsDisconnected)
   );
 
   test("DeactivatePlugin", () =>
@@ -97,7 +97,7 @@ describe("Plugin Aggregate", () => {
       PluginDeactivated(pluginDefinition),
     ])
     |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenEvents([])
+    |> thenError(PluginIsInactive)
   );
 
   test("ActivatePlugin again", () =>
@@ -129,6 +129,6 @@ describe("Plugin Aggregate", () => {
       PluginActivated(pluginDefinition),
     ])
     |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenEvents([])
+    |> thenError(PluginIsDisconnected)
   );
 });

@@ -24,13 +24,11 @@ let create: Behaviour.create(command, event, error) =
     | ConnectPlugin(_)
     | DisconnectPlugin
     | ActivatePlugin
-    | DeactivatePlugin =>
-      error(PluginDoesNotExist, command, context);
-      [];
+    | DeactivatePlugin => error(PluginNotExisting, command, context)
     };
 
 let execute: Behaviour.execute(state, command, event, error) =
-  (. state, command, _, _, _) => {
+  (. state, command, context, error, _) => {
     switch (state) {
     | Detected =>
       switch (command) {
@@ -48,7 +46,7 @@ let execute: Behaviour.execute(state, command, event, error) =
       | DeactivatePlugin => [PluginDeactivated(pluginDefinition)]
       | Heartbeat
       | ConnectPlugin(_)
-      | ActivatePlugin => []
+      | ActivatePlugin => error(PluginIsConnected, command, context)
       }
     | Disconnected(pluginDefinition) =>
       switch (command) {
@@ -56,7 +54,7 @@ let execute: Behaviour.execute(state, command, event, error) =
       | DeactivatePlugin => [PluginDeactivated(pluginDefinition)]
       | ConnectPlugin(_)
       | DisconnectPlugin
-      | ActivatePlugin => []
+      | ActivatePlugin => error(PluginIsDisconnected, command, context)
       }
     | Inactive(pluginDefinition) =>
       switch (command) {
@@ -64,7 +62,7 @@ let execute: Behaviour.execute(state, command, event, error) =
       | Heartbeat
       | ConnectPlugin(_)
       | DisconnectPlugin
-      | DeactivatePlugin => []
+      | DeactivatePlugin => error(PluginIsInactive, command, context)
       }
     };
   };

@@ -23,5 +23,7 @@ type event =
 
 [@decco]
 type error =
-  | PluginDoesNotExist
-  | PluginAlreadyExists;
+  | PluginNotExisting
+  | PluginIsConnected
+  | PluginIsDisconnected
+  | PluginIsInactive;
