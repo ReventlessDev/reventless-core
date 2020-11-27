@@ -31,9 +31,10 @@ module Make =
 
   let errors = ref([]);
 
-  let errorHandler: Message.errorHandler(Spec.error, Spec.command) =
+  let errorHandler: Message.errorHandler(Spec.error, Spec.command, Spec.event) =
     (error, _, _) => {
       errors := errors^ @ [error];
+      [];
     };
 
   let exec = (command, count, history): list(Spec.event) => {

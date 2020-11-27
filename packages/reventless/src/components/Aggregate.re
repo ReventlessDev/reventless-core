@@ -109,6 +109,7 @@ module Make =
     Js.log(
       {j|Behaviour error $errorJson in $serviceName($id): Command: $commandJson|j},
     );
+    [];
   };
 
   let execCommands =

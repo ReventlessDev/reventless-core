@@ -15,7 +15,7 @@ type create('command, 'event, 'error) =
   (
     . 'command,
     Message.context,
-    Message.errorHandler('error, 'command),
+    Message.errorHandler('error, 'command, 'event),
     option(int)
   ) =>
   list('event);
@@ -25,7 +25,7 @@ type execute('state, 'command, 'event, 'error) =
     . 'state,
     'command,
     Message.context,
-    Message.errorHandler('error, 'command),
+    Message.errorHandler('error, 'command, 'event),
     option(int)
   ) =>
   list('event);

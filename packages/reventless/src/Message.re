@@ -128,7 +128,8 @@ type context = {
   meta,
 };
 
-type errorHandler('error, 'command) = ('error, 'command, context) => unit;
+type errorHandler('error, 'command, 'event) =
+  ('error, 'command, context) => list('event);
 
 let generateMeta = (~service, ~ip="", ~user="", ()) => {
   let msgId = uuid();
