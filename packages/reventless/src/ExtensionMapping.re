@@ -16,6 +16,9 @@ module type Spec = {
 /* these actions are internal to the Mapping Functor */
 type abstractIncomingCommandAction =
   | AbstractPublishAggregateCommand(Aggregate.name, Js.Json.t)
+  | AbstractPublishAggregateCommandAsync(
+      Js.Promise.t((Aggregate.name, Js.Json.t)),
+    )
   | AbstractPublishPluginExtensionPointCommand(Js.Json.t)
   | AbstractPublishExtensionPointCommand(
       extensionPointName,
@@ -134,6 +137,40 @@ module Make =
                 },
               ),
             );
+          }
+        | PublishAggregateCommandAsync(promise) => {
+            let promise' =
+              promise->Js.Promise.then_(
+                         ((aggregateId, aggregateCmd)) => {
+                           let commandStr =
+                             aggregateCmd
+                             ->Aggregate.command_encode
+                             ->Js.Json.stringify;
+                           Js.log(
+                             {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command: $commandStr id: $aggregateId|j},
+                           );
+                           (
+                             aggregateName,
+                             Message.command'_encode(
+                               Aggregate.Id.t_encode,
+                               Aggregate.command_encode,
+                               {
+                                 id: aggregateId->Aggregate.Id.makeFromString,
+                                 meta: {
+                                   ...meta,
+                                   service: Aggregate.name,
+                                   msgId: Message.uuid(),
+                                 },
+                                 command: aggregateCmd,
+                               },
+                             ),
+                           )
+                           ->Js.Promise.resolve;
+                         },
+                         _,
+                       );
+
+            AbstractPublishAggregateCommandAsync(promise');
           }
         | PublishExtensionPointCommand(id, command)
             when Spec.name == ReventlessSpec.PluginExtensionPointSpec.name => {

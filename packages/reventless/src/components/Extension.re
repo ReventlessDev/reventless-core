@@ -187,6 +187,16 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
           command'Json,
           queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
         )
+      | ExtensionMapping.AbstractPublishAggregateCommandAsync(promise) =>
+        promise->Js.Promise.then_(
+                   ((aggregateName, command'Json)) =>
+                     publishCommand(
+                       command'Json,
+                       queryCommandTopic(aggregateName)##id
+                       ->Pulumi.Output.get,
+                     ),
+                   _,
+                 )
       | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(
           command'Json,
         ) =>
