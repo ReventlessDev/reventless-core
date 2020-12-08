@@ -18,6 +18,7 @@ type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
     ~pluginExtensionPointCommandTopicId: Pulumi.Output.t(string),
+    ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
   ) =>
@@ -75,11 +76,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ~name: string,
       ~extensionPointName: string,
       ~aggregateNames: array(string),
-      ~incomingEventHandler: (
-                               . Js.Json.t,
-                               PluginSpec.pluginDefinition,
-                               ReventlessSpec.QueryEngine.t
-                             ) =>
+      ~incomingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
                              Js.Promise.t(unit),
       ~outgoingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
                              Js.Promise.t(unit)
@@ -148,6 +145,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
         ~mappings,
         ~queryCommandTopic,
         ~pluginExtensionPointCommandTopicId,
+        ~queryEngine,
         self,
         name,
       ) => {
@@ -244,7 +242,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
            );
 
     let incomingEventHandler =
-      (. event'Json, pluginDef, queryEngine) => {
+      (. event'Json, pluginDef) => {
         let event' =
           Message.event'_decode(
             Id.String.t_decode,
@@ -293,6 +291,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       mappings,
       ~queryCommandTopic,
       ~pluginExtensionPointCommandTopicId,
+      ~queryEngine,
       ~opts,
       _,
     ) =>
@@ -304,6 +303,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
             ~mappings,
             ~queryCommandTopic,
             ~pluginExtensionPointCommandTopicId,
+            ~queryEngine,
           ),
         ~opts,
       );

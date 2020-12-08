@@ -199,6 +199,7 @@ module Make =
         extensionMaker(
           ~queryCommandTopic,
           ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
+          ~queryEngine,
           ~opts=Some(opts),
           (),
         )
@@ -667,6 +668,7 @@ module Make =
       connectPluginExtensionMaker(
         ~queryCommandTopic,
         ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
+        ~queryEngine,
         ~opts=Some(opts),
         (),
       );
