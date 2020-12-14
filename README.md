@@ -1,97 +1,334 @@
-# Reventless-Universe
+# Reventless UI
 
-This is a mono-repo, which contains all necessary packages for the Reventless framework.
+## Core
 
-For individual Readmes per package see inside the package's directory `./packages/*`:
+## Generic Components
 
-- [bs-aws-sdk](packages/bs-aws-sdk/README.md)
-- [bs-fast-csv](packages/bs-fast-csv/README.md)
-- [bs-hash-obj](packages/bs-hash-obj/README.md)
-- [bs-node-streams](packages/bs-node-streams/README.md)
-- [bs-pulumi-aws](packages/bs-pulumi-aws/README.md)
-- [bs-pulumi-pulumi](packages/bs-pulumi-pulumi/README.md)
-- [bs-ssh2](packages/bs-ssh2/README.md)
-- [bs-uuid](packages/bs-uuid/README.md)
-- [reventless](packages/reventless/README.md)
+This project aims to provide the most commonly types of components in a generic way.
 
-## Setup
+Currently based on [Material-UI](https://material-ui.com/) and [bs-material-ui](https://github.com/jsiebern/bs-material-ui/).
 
-This repo uses [Lerna](https://lerna.js.org/) to manage all the packages.
+### Concepts
 
-1. install general devDependencies by invoking `npm install` in the repository's root directory
-2. invoke `lerna bootstrap` (if lerna is globally installed - otherwise `npm run bootstrap`) to download all dependencies of the packages in this repository and link them together
-3. Done!
-   You can find the separate packages inside of `./packages/PkgName`. Change to the desired directory and work on the package like you would usually do.
+- A _component_ shall do only **one** thing well. (see [Unix Philosphy](https://en.wikipedia.org/wiki/Unix_philosophy#:~:text=The%20Unix%20philosophy%20is%20documented,by%20adding%20new%20%22features%22.))
+- For common logic [**Hooks**](https://reactjs.org/docs/hooks-intro.html) shall be used.
+- Components should not assume specific types for data to be displayed (only common, shared types)
+- Use [Storybook](https://storybook.js.org/) to showcase and test components in isolation.
 
-## Basic Usage Of Lerna
+### What's included in this project?
 
-> A tool for managing JavaScript projects with multiple packages.
+#### Components
 
-### Starting A New Package From Scratch
+- [x] [Table](#tedtable)
+- [x] [FilterBox](#filterbox)
+- [x] [JsonSchemaForm](#jsonschemaform)
+- [x] [Details](#details)
 
-Use the [wizard](#lerna-wizard) or [`lerna create`](https://github.com/lerna/lerna/tree/master/commands/create#readme) command to create a new directory in `./packages/` and bootstrap some files (like package.json).
+#### Hooks
 
-### Linking Local Packages
+- [x] [SortedArrayHook](#sortedarrayhook)
+- [x] [PagedArrayHook](#pagedarrayhook)
+- [x] [FilteredArrayHook](#filteredarrayhook)
 
-If you work on a package (`A`), and you have a local package (`D` for dependency), that you want to make use of in `A`. [Local package means `D` is developed inside of this mono-repo, managed by lerna and not necessarily published to npm]. Add `D` to the dependencies in `package.json` of `A`. (mind to match the version) Then call `lerna bootstrap` and you're done.
+### Usage
 
-### [Lerna Wizard](https://github.com/webuniverseio/lerna-wizard)
+- Generate a new Personal Token on GitHub: `Settings > Developer Settings > Personal access tokens > generate new token`
+- install `reventless-react` by adding the follwing line to your dependencies in `package.json`:
 
-> Command line wizard for lerna
-
-You can use the lerna wizard by running `npm run wizard` in the monorepo's root directoy. The wizard can help / guide you through the usage of lerna.
-
-### [Lerna Update Wizard](https://github.com/Anifacted/lerna-update-wizard)
-
-> A command line tool for bulk-updating lerna package dependencies
-
-You can use the lerna update wizard by running `npm run update` in the monorepo's root directory. This wizard can help / guide you through manipulations of dependencies.
-
-#### Features
-
-- Update dependencies across packages
-- Add new dependencies across packages
-- Deduplicate dependencies across packages
-- Add/Update multiple dependencies in one session
-- Auto-generate Git branch & commit
-- Non-interactive Mode
-
-## Publish A Package In Github Registry
-
-All the packages in this Monorepo can be published using the Github Registry. Therefore, a "Personal Access Token" with the privileges for "repo", "write:packages" and "read:packages" must be created in the "Github Settings". After that you can login into the registry on your local machine, using the following command:
-
-```sh
-npm login --registry=https://npm.pkg.github.com --scope=@reventless-universe
+```json
+"reventless-react": "git+https://[INSERT PERSONAL TOKEN HERE]:x-oauth-basic@github.com/Reventless-Universe/reventless-react.git"
 ```
 
-You will be prompted to enter your Github username, password and your public email. Instead of the password use the Personal Access Token you just created.
+- add `reventless-react` to your dependencies in `bsconfig.json`
+- run `npm install`
 
-After that you are able to run `npm install @reventless-universe/<package>` and publish packages with `npm publish`.
+### Components
 
-## Dependencies of packages in this repository
+#### Table
 
-How to read the following table:
+A table which is sortable and pagable, displaying an array of records.
 
-- packages are listed top to bottom
-- dependencies are listed left to right
+##### Usage of Table
 
-| Package / dep    | bs-aws-sdk | bs-fast-csv | bs-hash-obj | bs-node-streams | bs-pulumi-aws | bs-pulumi-pulumi | bs-ssh2 | bs-uuid |
-| ---------------- | :--------: | :---------: | :---------: | :-------------: | :-----------: | :--------------: | :-----: | :-----: |
-| bs-aws-sdk       |            |             |             |        x        |               |                  |         |         |
-| bs-fast-csv      |            |             |             |        x        |               |                  |         |         |
-| bs-hash-obj      |            |             |             |                 |               |                  |         |         |
-| bs-node-streams  |            |             |             |                 |               |                  |         |         |
-| bs-pulumi-aws    |            |             |             |                 |               |        x         |         |         |
-| bs-pulumi-pulumi |            |             |             |                 |               |                  |         |         |
-| bs-ssh2          |            |             |             |        x        |               |                  |         |         |
-| bs-uuid          |            |             |             |                 |               |                  |         |         |
-| reventless       |     x      |      x      |      x      |        x        |       x       |        x         |    x    |    x    |
+```reason
+type person = {
+  firstName: string,
+  lastName: string,
+  avatarCredentials: string,
+};
 
-Therefore there is a natural order in which package updates should be published:
+let data: array(person) = ...;
+let columns =
+  Table.(
+    [|
+      makeColumnDescriptor(
+        ~header="First Name"->React.string,
+        ~value=person => person.firstName,
+        ~render=firstName => React.string(firstName),
+        ~compare=Compare.str,
+        (),
+      ),
+      makeColumnDescriptor(
+        ~header="Full Name"->React.string,
+        ~value=person => (person.firstName, person.lastName),
+        ~render=((first, last)) => React.string(first ++ " " ++ last),
+        ~compare=((f1, l1), (f2, l2)) => Compare.str(f1 ++ l1, f2 ++ l2),
+        (),
+      ),
+      makeColumnDescriptor(
+        ~value=person => person.avatarCredentials,
+        ~render=avatar => <MaterialUi_Avatar> avatar </MaterialUi_Avatar>,
+        ~header=React.string("Avatar"),
+        (),
+      ),
+      makeColumnDescriptor(
+        ~value=person => person.firstName ++ person.lastName,
+        ~render=
+          id =>
+            <button onClick={_ => Js.log2("edit", id)}>
+              {React.string("Edit")}
+            </button>,
+        ~header=React.null,
+        (),
+      ),
+    |]
+  );
 
-| 0                | 1             | 2          |
-| ---------------- | ------------- | ---------- |
-| bs-hash-obj      | bs-aws-sdk    | reventless |
-| bs-node-streams  | bs-fast-csv   |            |
-| bs-pulumi-pulumi | bs-pulumi-aws |            |
-| bs-uuid          | bs-ssh2       |            |
+<Table
+      data
+      columns
+      calculateKey={person => person.firstName ++ person.lastName}
+      />
+```
+
+#### FilterBox
+
+A box with customizable input fields, which can be used to filter generic data by a set of predicate functions. The `FilterBox` component is ideally used in combination with the `Table` component or any other type of table.
+
+##### Usage of FilterBox
+
+```reason
+type person = {
+  firstName: string,
+  lastName: string,
+  age: int,
+};
+
+let contains = (base, searchValue) => {
+  base
+  ->Js.String.toLowerCase
+  ->Js.String.includes(searchValue->Js.String.toLowerCase, _);
+};
+
+let data: array(person) = ...;
+
+// Initialize the fields the FilterBox should contain, to filter the data. Available fields are "Text", "Int", "Float", "Range", and "Dropdown".
+let fields =
+  FilterBox.(
+    [|
+      Text({
+        name: "First Name",
+        size: `V6,
+        defaultValue: "",
+        options: (),
+        filter: (person, searchValue) =>
+          person.firstName->contains(searchValue),
+      }),
+      Dropdown({
+        name: "Last Name",
+        size: `V6,
+        defaultValue: "",
+        options: {
+          options: [|"Berger", "Krankl", "Wolf"|],
+        },
+        filter: (person, searchValue) => person.lastName == searchValue,
+      }),
+      Range({
+        name: "Age",
+        size: `V6,
+        defaultValue: (0, 100),
+        options: {
+          min: 0,
+          max: 100,
+        },
+        filter: (person, searchValue) => {
+          let (min, max) = searchValue;
+          person.age >= min && person.age <= max;
+        },
+      }),
+    |]
+  );
+
+let (filteredData, setFilteredData) = React.useState(() => data);
+
+<>
+  <FilterBox data fields setFilteredData />
+  // For example: The FilterBox can be used in combination with the Table or any other component, as long as a React state is used.
+  <Table calculateKey columns=userColumns data=filteredData />
+</>;
+```
+
+#### JsonSchemaForm
+
+A generic form which can be customized using JSON-Schema. The data as well as the UI are defined in seperate JSON-Schema configurations.
+
+##### Usage of JsonSchemaForm
+
+```reason
+let schema = {j|
+  {
+    "type": "object",
+    "title": "Person",
+    "properties": {
+      "firstName": {
+        "title": "First Name",
+        "type": "string"
+      },
+      "lastName": {
+        "title": "Last Name",
+        "type": "string"
+      },
+      "age": {
+        "title": "Age",
+        "type": "number"
+      }
+    }
+  }
+|j}->Js.Json.parseExn;
+
+let uiSchema = {j|
+  {
+    "firstName": {
+      "ui:autofocus": true,
+      "ui:emptyValue": "",
+      "ui:autocomplete": "given-name"
+    },
+    "lastName": {
+      "ui:emptyValue": "",
+      "ui:autocomplete": "family-name"
+    },
+    "age": {
+      "ui:widget": "updown"
+    }
+  }
+|j}->Js.Json.parseExn;
+
+<JsonSchemaForm schema uiSchema />
+```
+
+#### Details
+
+A generic view to display key,value pairs.
+
+##### Usage of Details
+
+```reason
+type data = { name: string, age: int, children: array(string), avatarUrl: string};
+
+let data = {
+  name: "Max",
+  age: 42,
+  children: [| "R2D2", "C3PO" |],
+  avatarUrl: "https://pbs.twimg.com/profile_images/747517697034952704/gHvVahDG.jpg"
+  };
+
+let header = "Details of " ++ data.name;
+
+let toFields = data => {
+    open Details.Field;
+    fields()
+    ->text("Name", data.name)
+    ->text("Age", data.age->Js.Int.toString)
+    ->list("Children", data.kids, "No known children")
+    ->element("Avatar", <img width="100" src={data.avatarUrl} />)
+  };
+
+<Details data toFields header />
+
+```
+
+### Hooks
+
+#### SortedArrayHook
+
+This hook takes an array of any data, an array of comparators, optionally some default values and returns a new sorted array as well as functions to modify the sorting behaviour.
+
+##### Usage of SortedArrayHook
+
+Currently only `sortinSources` of type `Local(...)` get sorted. `Remote(...)` isn't implemented yet.
+
+_Tip: The `Compare` module holds some comperators for the most common types (`string`, `int`, `float`)._
+
+```reason
+type person = {
+  firstName: string,
+  lastName: string,
+  age: int,
+  country: string,
+  avatarCredentials: string,
+};
+
+let data: array(person) = ...;
+let comparators:
+  array(source(('data, 'data) => int, remoteQuery('data))) = [|
+  Local((a, b) => Compare.str(b.firstName, a.firstName)),
+  Local((a, b) => Compare.str(b.lastName, a.lastName)),
+  Local((a, b) => Compare.int(b.age, a.age)),
+|];
+let defaultSortIndex: int = 0;
+let defaultSortDirection: SortedArrayHook.sortDirection = Asc;
+
+let (result, setSortedColumn, sortColumn, sortDirection) =
+  SortedArrayHook.use(data, comparators, defaultSortIndex, defaultSortDirection);
+```
+
+#### PagedArrayHook
+
+This hook takes an array of any data, optionally some default values and returns a new array containing only a subset of the default data according to the pagination settings used together with functions to modify the pagination and some status data.
+
+##### Usage of PagedArrayHook
+
+```reason
+let data: array('a) = ...;
+let defaultPage: int = 1;
+let defaultRowsPerPage: int = 25;
+
+let (data, setPage, setRowsPerPage, currentPage, rowsPerPage, totalRows) =
+    PagedArrayHook.use(
+      data,
+      defaultPage,
+      defaultRowsPerPage,
+    );
+
+/* to jump to the next page */
+setPage(currentPage+1);
+
+/* to jump to the middle of all records in the current paging options */
+setPage(totalRows / rowsPerPage / 2);
+
+/* to display half of all datasets */
+setRowsPerPage(totalRows / 2);
+```
+
+#### FilteredArrayHook
+
+This hook can be used to filter an array of a generic type by a set of predicate functions.
+
+##### Usage of FilteredArrayHook
+
+```reason
+type person = {
+  firstName: string,
+  lastName: string,
+  avatarCredentials: string,
+};
+
+let data: array(person) = ...;
+let filters = [|
+  person => person.firstName == "Jonathan",
+  person => person.lastName == "Myers",
+  person => person.age <= 100 && person.age >= 0,
+|];
+
+let filteredData = FilteredArrayHook.use(data, ~filters);
+```
