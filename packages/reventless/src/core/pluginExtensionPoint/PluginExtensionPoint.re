@@ -17,5 +17,5 @@ module Make =
             EventTopicAdapter,
           );
 
-  let make = make([|(module PluginExtensionPoint_PluginMapping.Mapping)|]);
+  let make = make([|(module PluginExtensionPoint_Plugin.Mapping)|]);
 };
