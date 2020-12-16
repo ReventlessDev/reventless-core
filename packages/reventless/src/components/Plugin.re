@@ -209,6 +209,7 @@ module Make =
     let (eventCollectorUrn, setEventCollectorUrn) =
       Util.Pulumi.Output.Async.make();
     open AwsSdk;
+
     let subscribeQueueToTopic = (queueArn, topicArn) =>
       SNS.(
         snsClient()
@@ -228,7 +229,13 @@ module Make =
               ),
           )
       )
-      ->Request.promise;
+      ->Request.promise
+      ->Js.Promise.then_(
+          subscriptionResponse =>
+            Js.log2("subscribed:", subscriptionResponse##_SubscriptionArn)
+            ->Js.Promise.resolve,
+          _,
+        );
 
     let unsubscribeQueueFromTopic = (queueArn, topicArn) => {
       SNS.(
@@ -356,34 +363,36 @@ module Make =
           | None => Js.log("Couldn't stringify policy")->Js.Promise.resolve
         );
 
+    let _addPermission = (sid, eventCollector, eventTopic) =>
+      getQueuePolicy(eventCollector)
+      ->Js.Promise.then_(
+          policy =>
+            eventCollector->setQueuePolicy(
+              policy->addStatement(sid, eventCollector, eventTopic),
+            ),
+          _,
+        );
+
+    let _removePermission = (sid, eventCollector) =>
+      getQueuePolicy(eventCollector)
+      ->Js.Promise.then_(
+          policy =>
+            eventCollector->setQueuePolicy(policy->removeStatement(sid)),
+          _,
+        );
+
     let subscribe =
         (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
       let eventTopicName = eventTopic->AWS.arn2Name;
       let eventCollectorName = eventCollector->AWS.arn2Name;
-      let sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
-      (
-        subscribeQueueToTopic(eventCollector, eventTopic),
-        getQueuePolicy(eventCollector)
-        ->Js.Promise.then_(
-            policy =>
-              eventCollector->setQueuePolicy(
-                policy->addStatement(sid, eventCollector, eventTopic),
-              ),
-            _,
-          ),
-      )
-      ->Js.Promise.all2
+      let _sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
+      subscribeQueueToTopic(eventCollector, eventTopic)
       ->Js.Promise.then_(
-          ((subscriptionResponse, _)) => {
+          _ =>
             Js.log(
               {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
-            );
-            Js.log2(
-              "  subscription finished:",
-              subscriptionResponse##_SubscriptionArn,
-            );
-            Js.Promise.resolve();
-          },
+            )
+            ->Js.Promise.resolve,
           _,
         )
       ->Js.Promise.catch(
@@ -401,44 +410,15 @@ module Make =
         (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
       let eventTopicName = eventTopic->AWS.arn2Name;
       let eventCollectorName = eventCollector->AWS.arn2Name;
-      let sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
+      let _sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
 
-      getQueuePolicy(eventCollector)
+      unsubscribeQueueFromTopic(eventCollector, eventTopic)
       ->Js.Promise.then_(
-          policy => {
-            let newPolicy = policy->removeStatement(sid);
-            let stillSubscribed =
-              newPolicy##_Statement
-              ->Belt.Array.some(statement =>
-                  statement##_Condition
-                  ->Belt.Option.map(condition =>
-                      condition
-                      ->Js.Json.stringify
-                      ->Js.String2.includes(eventCollector)
-                    )
-                  ->Belt.Option.getWithDefault(false)
-                );
-
-            (
-              eventCollector->setQueuePolicy(newPolicy),
-              stillSubscribed
-                ? Js.log2(
-                    "unsubscribe: other version is still subscribed from",
-                    eventCollector,
-                  )
-                  ->Js.Promise.resolve
-                : unsubscribeQueueFromTopic(eventCollector, eventTopic),
+          _ =>
+            Js.log(
+              {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
             )
-            ->Js.Promise.all2
-            ->Js.Promise.then_(
-                _ =>
-                  Js.log(
-                    {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
-                  )
-                  ->Js.Promise.resolve,
-                _,
-              );
-          },
+            ->Js.Promise.resolve,
           _,
         )
       ->Js.Promise.catch(
@@ -578,6 +558,7 @@ module Make =
           ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
         }
       | _ => Js.Promise.resolve();
+
     let extensionPointsConfig =
       extensionPointsOutputs
       ->Belt.Array.map(extensionPoint =>
@@ -596,6 +577,7 @@ module Make =
             )
         )
       ->Pulumi.Output.all;
+
     let extensionsConfig = {
       extensionsOutputs->Belt.Array.map(extension =>
         {
@@ -604,6 +586,7 @@ module Make =
         }
       );
     };
+
     let pluginDefinition =
       (extensionPointsConfig, eventCollectorUrn)
       ->Pulumi.Output.all2
