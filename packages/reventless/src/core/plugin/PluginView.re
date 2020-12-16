@@ -11,11 +11,25 @@ type status =
 type state = {
   name,
   version,
+  eventCollector: string,
   extensionPoints: array(extensionPointDefinition),
   extensionPointNames: array(string),
+  extensionNames: array(string),
   extensions: array(extensionDefinition),
   status,
   statusChange: Message.statusChange,
+};
+
+type queryResult = {
+  id: string,
+  name,
+  version,
+  eventCollector: string,
+  extensionPoints: array(extensionPointDefinition),
+  extensionPointNames: array(string),
+  extensionNames: array(string),
+  extensions: array(extensionDefinition),
+  status,
 };
 
 let name = None;
@@ -27,21 +41,33 @@ let sortConfig = None;
 
 let indexes = [];
 
-let extractNames =
+let extractExtensionPointNames =
   Belt.Array.map(_, (extensionPoint: extensionPointDefinition) =>
     extensionPoint.name
+  );
+let extractExtensionNames =
+  Belt.Array.map(_, (extension: extensionDefinition) =>
+    extension.extensionPointName
   );
 
 let init =
   (. event, {Message.meta: {time, user}}) =>
     switch (event) {
     | UnknownPluginDetected => []
-    | PluginConnected({name, version, extensionPoints, extensions}) => [
+    | PluginConnected({
+        name,
+        version,
+        eventCollector,
+        extensionPoints,
+        extensions,
+      }) => [
         {
           name,
           version,
+          eventCollector,
           extensionPoints,
-          extensionPointNames: extensionPoints->extractNames,
+          extensionPointNames: extensionPoints->extractExtensionPointNames,
+          extensionNames: extensions->extractExtensionNames,
           extensions,
           status: Connected,
           statusChange: {
@@ -61,12 +87,20 @@ let apply =
   (. state, event, {Message.meta: {time, user}}) =>
     switch (event) {
     | UnknownPluginDetected => []
-    | PluginConnected({name, version, extensionPoints, extensions}) => [
+    | PluginConnected({
+        name,
+        version,
+        eventCollector,
+        extensionPoints,
+        extensions,
+      }) => [
         Update({
           name,
           version,
+          eventCollector,
           extensionPoints,
-          extensionPointNames: extensionPoints->extractNames,
+          extensionPointNames: extensionPoints->extractExtensionPointNames,
+          extensionNames: extensions->extractExtensionNames,
           extensions,
           status: Connected,
           statusChange: {

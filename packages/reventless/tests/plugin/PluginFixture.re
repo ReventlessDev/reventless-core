@@ -14,15 +14,18 @@ let pluginDefinition = {
 let state: PluginView.state = {
   name: pluginDefinition.name,
   version: pluginDefinition.version,
+  eventCollector: pluginDefinition.eventCollector,
   extensionPoints: pluginDefinition.extensionPoints,
   extensionPointNames:
-    pluginDefinition.extensionPoints->PluginView.extractNames,
+    pluginDefinition.extensionPoints->PluginView.extractExtensionPointNames,
+  extensionNames:
+    pluginDefinition.extensions->PluginView.extractExtensionNames,
   extensions: pluginDefinition.extensions,
   status: Connected,
   statusChange: TestFixtures.statusChange,
 };
 
-let extensionPointNames2 = [|"Test"|];
+let extensionPointNames2 = [|"Test.Test"|];
 let pluginDefinition2 = {
   id: "id2@1",
   name: "name2",
