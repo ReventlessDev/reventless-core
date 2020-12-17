@@ -6,14 +6,14 @@ let allowAllResourcesSendMessage = queue =>
       let account = queueArn->Util_SQS.arn2Account;
       {j|
         {
-          "Sid": "allowAllResourceSendMessage",
+          "Sid": "allowAllResourcesSendMessage",
           "Effect": "Allow",
           "Principal": "*",
           "Action": "sqs:SendMessage",
           "Resource": "$queueArn",
           "Condition": {
             "StringEquals": {
-              "aws:SourceOwner": "$account"
+              "aws:SourceAccount": "$account"
             }
           }
         }
@@ -25,7 +25,7 @@ let allowAllSnsTopicsSendMessage = queue =>
       let account = queueArn->Util_SQS.arn2Account;
       {j|
         {
-          "Sid": "allowAllResourceSendMessage",
+          "Sid": "allowAllSnsTopicsSendMessage",
           "Effect": "Allow",
           "Principal": {
               "Service": [
@@ -36,7 +36,7 @@ let allowAllSnsTopicsSendMessage = queue =>
           "Resource": "$queueArn",
           "Condition": {
             "StringEquals": {
-              "aws:SourceOwner": "$account"
+              "aws:SourceAccount": "$account"
             }
           }
         }
