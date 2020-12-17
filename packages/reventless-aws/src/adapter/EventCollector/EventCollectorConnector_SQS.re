@@ -56,23 +56,21 @@ let make: Reventless.EventCollector.connectorMaker =
         )
       );
 
-    let topics = serviceNamesAndTopics->Belt.Array.map(snd);
+    let _topics = serviceNamesAndTopics->Belt.Array.map(snd);
 
-    /*
-         let _queuePolicy =
-           Util.SqsQueuePolicy.(
-             make(
-               ~name,
-               ~queue,
-               ~statements=[|
-                 allowResources(~queue, ~resources=topics),
-                 allowCloudWatchEvents,
-               |],
-               ~opts,
-               (),
-             )
-           );
-     */
+    let _queuePolicy =
+      Util.SqsQueuePolicy.(
+        make(
+          ~name,
+          ~queue,
+          ~statements=[|
+            allowAllSnsTopicsSendMessage(queue),
+            allowCloudWatchEvents,
+          |],
+          ~opts,
+          (),
+        )
+      );
 
     let eventHandlerLambda =
       policies // Pulumi.Output cannot be pushed into policies parameter !

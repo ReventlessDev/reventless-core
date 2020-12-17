@@ -1,6 +1,48 @@
 open Pulumi;
 
-let allowResource = (queueArn, idx, sourceArn) => {j|
+let allowAllResourcesSendMessage = queue =>
+  queue##arn
+  ->Output.apply(queueArn => {
+      let account = queueArn->Util_SQS.arn2Account;
+      {j|
+        {
+          "Sid": "allowAllResourceSendMessage",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "sqs:SendMessage",
+          "Resource": "$queueArn",
+          "Condition": {
+            "StringEquals": {
+              "aws:SourceOwner": "$account"
+            }
+          }
+        }
+      |j};
+    });
+let allowAllSnsTopicsSendMessage = queue =>
+  queue##arn
+  ->Output.apply(queueArn => {
+      let account = queueArn->Util_SQS.arn2Account;
+      {j|
+        {
+          "Sid": "allowAllResourceSendMessage",
+          "Effect": "Allow",
+          "Principal": {
+              "Service": [
+                "sns.amazonaws.com"
+              ]
+            },
+          "Action": "sqs:SendMessage",
+          "Resource": "$queueArn",
+          "Condition": {
+            "StringEquals": {
+              "aws:SourceOwner": "$account"
+            }
+          }
+        }
+      |j};
+    });
+let allowResourceSendMessage = (queueArn, idx, sourceArn) => {j|
   {
     "Sid": "$idx",
     "Effect": "Allow",
@@ -15,7 +57,7 @@ let allowResource = (queueArn, idx, sourceArn) => {j|
   }
 |j};
 
-let allowResources:
+let allowResourcesSendMessage:
   (
     ~queue: PulumiAws.SQS.Queue.t,
     ~resources: array(Output.t(Reventless.Adapter.resource))
@@ -32,7 +74,7 @@ let allowResources:
     ))
     ->Output.apply(((queueArn, topicArns)) =>
         topicArns
-        ->Belt.Array.mapWithIndex(allowResource(queueArn))
+        ->Belt.Array.mapWithIndex(allowResourceSendMessage(queueArn))
         ->Belt.List.fromArray
         ->String.concat(",", _)
       );
