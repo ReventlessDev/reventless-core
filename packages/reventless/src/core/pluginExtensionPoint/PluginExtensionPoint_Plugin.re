@@ -117,10 +117,12 @@ module Impl = {
 
   let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>
     switch (cmd) {
-    | ReventlessSpec.PluginExtensionPointSpec.Heartbeat(timeout) => [|
+    | ReventlessSpec.PluginExtensionPointSpec.Heartbeat(interval) => [|
         PublishCommand(id, Aggregate.Heartbeat),
-        // Re-create timeout (+1 minute to avoid toggling)
-        Call(callHandler, CreateDisconnectSchedule(id, timeout + 1)),
+        // Re-create timeout (+2 minute to avoid toggling)
+        // 1 minute because Schedules can only be created by minute
+        // 1 additional minute to allow additional latency
+        Call(callHandler, CreateDisconnectSchedule(id, interval + 2)),
       |]
     | ConnectPlugin(pluginDefinition) => [|
         PublishCommand(id, ConnectPlugin(pluginDefinition)),
