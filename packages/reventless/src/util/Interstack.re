@@ -5,7 +5,7 @@ type plugin = {
   "eventMappers": option(Js.Dict.t(EventMapper.outputs)),
   "extensionPoints": option(Js.Dict.t(ExtensionPoint.outputs)),
   "apiUrl": option(string) // this is only present in core & api stack
-};
+}; // TODO: add type core and use it for coreStackReference
 
 let coreStackReference =
   Pulumi.Config.make(Some("core"))

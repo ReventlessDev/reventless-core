@@ -5,6 +5,7 @@ type outputs = {
   .
   "id": string,
   "version": string,
+  "heartbeatInterval": int,
   "eventCollector": EventCollector.outputs,
   "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
   "extensions": Js.Dict.t(Extension.outputs),
@@ -27,7 +28,7 @@ type maker =
   (
     ~name: string,
     ~version: string,
-    ~timeout: int,
+    ~heartbeatInterval: int,
     ~extensionPointMakers: array(ExtensionPoint.maker),
     ~extensionMakers: array(Extension.maker),
     ~serviceMakers: array(Service.maker),
@@ -71,6 +72,7 @@ module Make =
     (
       ~id: string,
       ~version: string,
+      ~heartbeatInterval: int,
       ~eventCollector: EventCollector.outputs,
       ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
       ~extensions: Js.Dict.t(Extension.outputs),
@@ -107,7 +109,7 @@ module Make =
   let construct =
       (
         ~version: string,
-        ~timeout: int,
+        ~heartbeatInterval: int,
         ~extensionPointMakers: array(ExtensionPoint.maker),
         ~extensionMakers: array(Extension.maker),
         ~serviceMakers: array(Service.maker),
@@ -898,7 +900,7 @@ module Make =
       Heartbeat.make(
         ~id,
         ~name=name ++ componentType->ComponentType.toName,
-        ~timeout,
+        ~timeout=heartbeatInterval,
         ~commandTopicId=corePluginCommandTopicId,
         ~opts,
         (),
@@ -907,6 +909,7 @@ module Make =
     makeOutputs(
       ~id,
       ~version,
+      ~heartbeatInterval,
       ~eventCollector=eventCollectorOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
       ~extensions=extensionsOutputs->toDict,
@@ -926,7 +929,7 @@ module Make =
     (
       ~name,
       ~version,
-      ~timeout,
+      ~heartbeatInterval,
       ~extensionPointMakers,
       ~extensionMakers,
       ~serviceMakers,
@@ -942,7 +945,7 @@ module Make =
         ~construct=
           construct(
             ~version,
-            ~timeout,
+            ~heartbeatInterval,
             ~extensionPointMakers,
             ~extensionMakers,
             ~serviceMakers,
