@@ -1,3 +1,5 @@
+open Belt.Result;
+
 let componentType = ComponentType.Aggregate;
 
 type outputs = {
@@ -149,29 +151,37 @@ module Make =
       eventLogReplay(. id)
       |> Js.Promise.then_(history => {
            let processCommand =
-               (promise, command': Message.command'(Spec.Id.t, Spec.command)) => {
-             let countPromise =
-               Behaviour.atomicCounter->Belt.Option.flatMap(
-                 ({name, shouldIncrement}) =>
-                 if (shouldIncrement(command'.command)) {
-                   Some(
-                     atomicCounterIncrement(.
-                       name,
-                       command'.id |> Spec.Id.toString,
-                       command'.meta.correlationId,
-                     ),
-                   );
-                 } else {
-                   Some(
-                     atomicCounterGet(.
-                       name,
-                       command'.id |> Spec.Id.toString,
-                     ),
-                   );
-                 }
-               )
-               |> sequencePromiseOption;
-             Js.Promise.all2((promise, countPromise))
+               (accP, command': Message.command'(Spec.Id.t, Spec.command)) => {
+             let countPO =
+               Behaviour.atomicCounter
+               ->Belt.Option.flatMap(({name, shouldIncrement}) =>
+                   if (shouldIncrement(command'.command)) {
+                     Some(
+                       atomicCounterIncrement(.
+                         name,
+                         command'.id |> Spec.Id.toString,
+                         command'.meta.correlationId,
+                       ),
+                     );
+                   } else {
+                     Some(
+                       atomicCounterGet(.
+                         name,
+                         command'.id |> Spec.Id.toString,
+                       ),
+                     );
+                   }
+                 )
+               ->sequencePromiseOption;
+             Js.Promise.all2((accP, countPO))
+             |> Js.Promise.then_(
+                  fun
+                  | (Ok(p1), Some(Ok(p2))) =>
+                    (p1, Some(p2))->Js.Promise.resolve
+                  | (Ok(p1), None) => (p1, None)->Js.Promise.resolve
+                  | (Ok(_), Some(Error(err))) => Js.Exn.raiseError(err)
+                  | _ => Js.Exn.raiseError("unknown error"),
+                )
              |> Js.Promise.then_((((stateOpt, events), count)) => {
                   switch (count) {
                   | Some(count) =>
@@ -202,10 +212,11 @@ module Make =
                         );
                         [];
                       };
-                    Js.Promise.resolve((
+                    Ok((
                       updateState(stateOpt, newEvents),
                       events @ [(newEvents, command' |> updateMeta)],
-                    ));
+                    ))
+                    ->Js.Promise.resolve;
                   | None =>
                     let newEvents =
                       Behaviour.create(.
@@ -217,21 +228,24 @@ module Make =
                         errorHandler,
                         count,
                       );
-                    Js.Promise.resolve((
+
+                    Ok((
                       updateState(None, newEvents),
                       events @ [(newEvents, command' |> updateMeta)],
-                    ));
+                    ))
+                    ->Js.Promise.resolve;
                   };
                 });
            };
 
            commands'->Belt.Array.reduce(
-             (updateState(None, history->Belt.List.fromArray), [])
+             Ok((updateState(None, history->Belt.List.fromArray), []))
              ->Js.Promise.resolve,
              processCommand,
            )
-           |> Js.Promise.then_(((_, newEvents)) => {
-                let newEvents' =
+           |> Js.Promise.then_(
+                fun
+                | Ok((_, newEvents)) =>
                   newEvents
                   ->Belt.List.map(((events, meta)) =>
                       events->Belt.List.map(event =>
@@ -239,46 +253,43 @@ module Make =
                       )
                     )
                   ->Belt.List.flatten
-                  ->Belt.List.toArray;
-
+                  ->Belt.List.toArray
+                  ->Js.Promise.resolve
+                | _ => Js.Exn.raiseError(""),
+              )
+           |> Js.Promise.then_(newEvents' =>
                 Js.Promise.all2((
                   eventLogAppend(. history->Belt.Array.length, id, newEvents')
                   |> Js.Promise.catch(err =>
-                       Js.Promise.reject(
-                         failwith(
-                           {j|Aggregate.execCommand($id): eventLogAppend error: |j}
-                           ++ err
-                              ->Js.Json.stringifyAny
-                              ->Belt.Option.getWithDefault("unknown error"),
-                         ),
+                       failwith(
+                         {j|Aggregate.execCommand($id): eventLogAppend error: |j}
+                         ++ err
+                            ->Js.Json.stringifyAny
+                            ->Belt.Option.getWithDefault("unknown error"),
                        )
                      ),
                   eventsHandler(. id, newEvents')
                   |> Js.Promise.catch(err =>
-                       Js.Promise.reject(
-                         failwith(
-                           {j|Aggregate.execCommand($id): eventsHandler error: |j}
-                           ++ err
-                              ->Js.Json.stringifyAny
-                              ->Belt.Option.getWithDefault("unknown error"),
-                         ),
+                       failwith(
+                         {j|Aggregate.execCommand($id): eventsHandler error: |j}
+                         ++ err
+                            ->Js.Json.stringifyAny
+                            ->Belt.Option.getWithDefault("unknown error"),
                        )
                      ),
                 ))
                 |> Js.Promise.then_(_ =>
                      eventTopicPublish(. newEvents')
                      |> Js.Promise.catch(err =>
-                          Js.Promise.reject(
-                            failwith(
-                              {j|Aggregate.execCommand($id): eventTopicPublish error: |j}
-                              ++ err
-                                 ->Js.Json.stringifyAny
-                                 ->Belt.Option.getWithDefault("unknown error"),
-                            ),
+                          failwith(
+                            {j|Aggregate.execCommand($id): eventTopicPublish error: |j}
+                            ++ err
+                               ->Js.Json.stringifyAny
+                               ->Belt.Option.getWithDefault("unknown error"),
                           )
                         )
-                   );
-              });
+                   )
+              );
          });
     };
 

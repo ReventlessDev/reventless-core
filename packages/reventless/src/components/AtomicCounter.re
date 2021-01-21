@@ -1,8 +1,11 @@
 let componentType = ComponentType.AtomicCounter;
 
 type increment =
-  (. /*~name*/ string, /*~id*/ string, /*~ref*/ string) => Js.Promise.t(int);
-type get = (. /*~name*/ string, /*~id*/ string) => Js.Promise.t(int);
+  (. /*~name*/ string, /*~id*/ string, /*~ref*/ string) =>
+  Js.Promise.t(Belt.Result.t(int, string));
+type get =
+  (. /*~name*/ string, /*~id*/ string) =>
+  Js.Promise.t(Belt.Result.t(int, string));
 
 type functions = {
   .
