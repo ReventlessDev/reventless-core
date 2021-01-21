@@ -106,10 +106,13 @@ let increment = table =>
                       |> then_(
                            fun
                            | Ok () =>
-                             Error(
-                               "successfull after failed updateCount"
-                               ->msg("deleteReference"),
-                             )
+                             {
+                               let message =
+                                 "successfull after failed updateCount"
+                                 ->msg("deleteReference");
+                               Js.log(message);
+                               Error(message);
+                             }
                              ->resolve
                            | Error(err) => {
                                Js.log(err->errMsg("deleteReference"));

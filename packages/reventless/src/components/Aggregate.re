@@ -145,14 +145,60 @@ module Make =
         fun
         | Some(promise) =>
           promise
-          |> Js.Promise.then_(value => Js.Promise.resolve(Some(value)))
-        | None => Js.Promise.resolve(None);
+          |> Js.Promise.then_(value => Some(value)->Js.Promise.resolve)
+        | None => None->Js.Promise.resolve;
 
       eventLogReplay(. id)
       |> Js.Promise.then_(history => {
            let processCommand =
                (accP, command': Message.command'(Spec.Id.t, Spec.command)) => {
-             let countPO =
+             let runBehaviour = (((stateO, events), count)) =>
+               switch (stateO) {
+               | Some(state) =>
+                 let newEvents =
+                   try (
+                     Behaviour.execute(.
+                       state,
+                       command'.command,
+                       {
+                         id: command'.id |> Spec.Id.toString,
+                         meta: command'.meta,
+                       },
+                       errorHandler,
+                       count,
+                     )
+                   ) {
+                   | Message.InvalidEvent(event) =>
+                     Js.log2(
+                       "Aggregate.processCommand: InvalidEvent",
+                       event |> Js.Json.stringify,
+                     );
+                     [];
+                   };
+                 Ok((
+                   updateState(stateO, newEvents),
+                   events @ [(newEvents, command' |> updateMeta)],
+                 ))
+                 ->Js.Promise.resolve;
+               | None =>
+                 let newEvents =
+                   Behaviour.create(.
+                     command'.command,
+                     {
+                       id: command'.id |> Spec.Id.toString,
+                       meta: command'.meta,
+                     },
+                     errorHandler,
+                     count,
+                   );
+                 Ok((
+                   updateState(None, newEvents),
+                   events @ [(newEvents, command' |> updateMeta)],
+                 ))
+                 ->Js.Promise.resolve;
+               };
+
+             let count = () =>
                Behaviour.atomicCounter
                ->Belt.Option.flatMap(({name, shouldIncrement}) =>
                    if (shouldIncrement(command'.command)) {
@@ -173,69 +219,37 @@ module Make =
                    }
                  )
                ->sequencePromiseOption;
-             Js.Promise.all2((accP, countPO))
+
+             accP
+             |> Js.Promise.then_(acc =>
+                  (
+                    switch (acc) {
+                    | Ok(_) => (acc->Js.Promise.resolve, count())
+                    | Error(_) => (
+                        acc->Js.Promise.resolve,
+                        None->Js.Promise.resolve,
+                      )
+                    }
+                  )
+                  ->Js.Promise.all2
+                )
              |> Js.Promise.then_(
                   fun
-                  | (Ok(p1), Some(Ok(p2))) =>
-                    (p1, Some(p2))->Js.Promise.resolve
-                  | (Ok(p1), None) => (p1, None)->Js.Promise.resolve
-                  | (Ok(_), Some(Error(err))) => Js.Exn.raiseError(err)
-                  | _ => Js.Exn.raiseError("unknown error"),
-                )
-             |> Js.Promise.then_((((stateOpt, events), count)) => {
-                  switch (count) {
-                  | Some(count) =>
-                    Js.log(
-                      {j|Aggregate.processCommand: AtomicCounter for $name($id) count: $count|j},
-                    )
-                  | None => ()
-                  };
-                  switch (stateOpt) {
-                  | Some(state) =>
-                    let newEvents =
-                      try (
-                        Behaviour.execute(.
-                          state,
-                          command'.command,
-                          {
-                            id: command'.id |> Spec.Id.toString,
-                            meta: command'.meta,
-                          },
-                          errorHandler,
-                          count,
-                        )
-                      ) {
-                      | Message.InvalidEvent(event) =>
-                        Js.log2(
-                          "Aggregate.processCommand: InvalidEvent",
-                          event |> Js.Json.stringify,
-                        );
-                        [];
-                      };
-                    Ok((
-                      updateState(stateOpt, newEvents),
-                      events @ [(newEvents, command' |> updateMeta)],
-                    ))
-                    ->Js.Promise.resolve;
-                  | None =>
-                    let newEvents =
-                      Behaviour.create(.
-                        command'.command,
-                        {
-                          id: command'.id |> Spec.Id.toString,
-                          meta: command'.meta,
-                        },
-                        errorHandler,
-                        count,
+                  | (Ok(acc), Some(Ok(count))) => {
+                      Js.log(
+                        {j|Aggregate.processCommand: AtomicCounter for $name($id) count: $count|j},
                       );
-
-                    Ok((
-                      updateState(None, newEvents),
-                      events @ [(newEvents, command' |> updateMeta)],
-                    ))
-                    ->Js.Promise.resolve;
-                  };
-                });
+                      runBehaviour((acc, Some(count)));
+                    }
+                  | (Ok(p1), None) => runBehaviour((p1, None))
+                  | (Ok(_), Some(Error(err) as error)) => {
+                      Js.log(
+                        {j|Aggregate.processCommand: counting failed: $err|j},
+                      );
+                      error->Js.Promise.resolve;
+                    }
+                  | (Error(_) as error, _) => error->Js.Promise.resolve,
+                );
            };
 
            commands'->Belt.Array.reduce(
