@@ -44,7 +44,7 @@ let putReference = (~tableName, ~referenceId) => {
     PutItemInput.make(
       ~_TableName=tableName,
       ~_Item=referenceItem(~referenceId),
-      ~_ConditionExpression="attribute_not_exists(id))",
+      ~_ConditionExpression="attribute_not_exists(id)",
       (),
     ),
   )
