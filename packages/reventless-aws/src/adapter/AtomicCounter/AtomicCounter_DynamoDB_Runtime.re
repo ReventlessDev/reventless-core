@@ -4,16 +4,14 @@ open Belt.Result;
 
 let get = table =>
   (. name, id) => {
-    let counterId = id ++ "-" ++ name;
+    let counterId = {j|$name-$id|j};
     query(
       ~params=
         QueryInput.make(
           ~_TableName=table##name->Pulumi.Output.get,
           ~_ConsistentRead=true,
-          ~_KeyConditionExpression="id=:id AND #reference=:count",
-          ~_ExpressionAttributeNames=
-            [("#reference", "reference")]->Js.Dict.fromList,
-          ~_ExpressionAttributeValues={":id": counterId, ":count": "count"},
+          ~_KeyConditionExpression="id=:id",
+          ~_ExpressionAttributeValues={":id": counterId},
           (),
         ),
     )
@@ -23,7 +21,6 @@ let get = table =>
              QueryOutput.t({
                .
                "id": string,
-               "reference": string,
                "count": int,
              }),
          ) =>
@@ -39,22 +36,15 @@ let get = table =>
        });
   };
 
-let referenceItem = (~counterId, ~reference) =>
-  Js.Json.(
-    [("id", string(counterId)), ("reference", string(reference))]
-    ->Js.Dict.fromList
-    ->object_
-  );
+let referenceItem = (~referenceId) =>
+  Js.Json.([("id", string(referenceId))]->Js.Dict.fromList->object_);
 
-let putReference = (~tableName, ~counterId, ~reference) => {
+let putReference = (~tableName, ~referenceId) => {
   put(
     PutItemInput.make(
       ~_TableName=tableName,
-      ~_Item=referenceItem(~counterId, ~reference),
-      ~_ConditionExpression=
-        "attribute_not_exists(id) and attribute_not_exists(#reference)",
-      ~_ExpressionAttributeNames=
-        [("#reference", "reference")]->Js.Dict.fromList,
+      ~_Item=referenceItem(~referenceId),
+      ~_ConditionExpression="attribute_not_exists(id))",
       (),
     ),
   )
@@ -66,7 +56,7 @@ let updateCount = (~tableName, ~counterId) =>
   update(
     UpdateInput.make(
       ~_TableName=tableName,
-      ~_Key={"id": counterId, "reference": "count"},
+      ~_Key={"id": counterId},
       ~_UpdateExpression="ADD #count :inc",
       ~_ExpressionAttributeNames=[("#count", "count")]->Js.Dict.fromList,
       ~_ExpressionAttributeValues={":inc": 1},
@@ -79,20 +69,21 @@ let updateCount = (~tableName, ~counterId) =>
      )
   |> catch(err => Error(err->AwsSdk.Error.ofPromise##code)->resolve);
 
-let deleteReference = (~tableName, ~counterId, ~reference) =>
-  delete(~tableName, ~key={"id": counterId, "reference": reference})
+let deleteReference = (~tableName, ~referenceId) =>
+  delete(~tableName, ~key={"id": referenceId})
   |> then_(_ => resolve(Ok()))
   |> catch(err => Error(err->AwsSdk.Error.ofPromise##code)->resolve);
 
 let increment = table =>
   (. name, id, reference: string) => {
     let tableName = table##name->Pulumi.Output.get;
-    let counterId = id ++ "-" ++ name;
+    let counterId = {j|$name-$id|j};
+    let referenceId = {j|$counterId-$reference|j};
 
-    let msg = (message, kind) => {j|AtomicCounter.increment: $kind $message for $counterId reference: $reference|j};
+    let msg = (message, kind) => {j|AtomicCounter.increment: $kind $message for $id reference: $reference|j};
     let errMsg = (err, kind) => ("error:" ++ err)->msg(kind);
 
-    putReference(~tableName, ~counterId, ~reference)
+    putReference(~tableName, ~referenceId)
     |> then_(
          fun
          | Ok () => {
@@ -102,7 +93,7 @@ let increment = table =>
                   | Ok(_) as result => result->resolve
                   | Error(err) => {
                       Js.log(err->errMsg("updateCount"));
-                      deleteReference(~tableName, ~counterId, ~reference)
+                      deleteReference(~tableName, ~referenceId)
                       |> then_(
                            fun
                            | Ok () =>
