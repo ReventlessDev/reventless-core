@@ -114,6 +114,9 @@ module Make =
     [];
   };
 
+  let stringify = err =>
+    err->Js.Json.stringifyAny->Belt.Option.getWithDefault("unknown");
+
   let execCommands =
       (
         (
@@ -269,50 +272,51 @@ module Make =
                   ->Belt.List.flatten
                   ->Belt.List.toArray
                   ->Js.Promise.resolve
-                | _ => Js.Exn.raiseError(""),
+                | Error(error) => Js.Exn.raiseError(error),
               )
            |> Js.Promise.then_(
                 fun
-                | [||] => Js.Promise.resolve()
-                | generatedEvents' =>
-                  eventsHandler(. id, generatedEvents')
-                  |> Js.Promise.catch(err => {
-                       let error =
-                         {j|Aggregate.execCommand($id): eventsHandler Error: |j}
-                         ++ err
-                            ->Js.Json.stringifyAny
-                            ->Belt.Option.getWithDefault("unknown");
-                       Js.log(error);
-                       Js.Exn.raiseError(error);
-                     })
-                  |> Js.Promise.then_(_ =>
-                       eventLogAppend(.
-                         history->Belt.Array.length,
-                         id,
-                         generatedEvents',
+                | [||] =>
+                  Js.log({j|Aggregate.execCommand($id): no Event generated|j})
+                  ->Js.Promise.resolve
+                | generatedEvents' => {
+                    let count = generatedEvents'->Belt.Array.length;
+                    Js.log(
+                      {j|Aggregate.execCommand($id): $count Event generated|j},
+                    );
+                    eventsHandler(. id, generatedEvents')
+                    |> Js.Promise.catch(err => {
+                         let error =
+                           {j|Aggregate.execCommand($id): eventsHandler Error: |j}
+                           ++ err->stringify;
+                         Js.log(error);
+                         Js.Exn.raiseError(error);
+                       })
+                    |> Js.Promise.then_(_ =>
+                         eventLogAppend(.
+                           history->Belt.Array.length,
+                           id,
+                           generatedEvents',
+                         )
+                         |> Js.Promise.catch(err => {
+                              let error =
+                                {j|Aggregate.execCommand($id): eventLogAppend Error: |j}
+                                ++ err->stringify;
+                              Js.log(error);
+                              Js.Exn.raiseError(error);
+                            })
                        )
-                     )
-                  |> Js.Promise.catch(err => {
-                       let error =
-                         {j|Aggregate.execCommand($id): eventLogAppend Error: |j}
-                         ++ err
-                            ->Js.Json.stringifyAny
-                            ->Belt.Option.getWithDefault("unknown");
-                       Js.log(error);
-                       Js.Exn.raiseError(error);
-                     })
-                  |> Js.Promise.then_(_ =>
-                       eventTopicPublish(. generatedEvents')
-                     )
-                  |> Js.Promise.catch(err => {
-                       let error =
-                         {j|Aggregate.execCommand($id): eventTopicPublish Error: |j}
-                         ++ err
-                            ->Js.Json.stringifyAny
-                            ->Belt.Option.getWithDefault("unknown");
-                       Js.log(error);
-                       Js.Exn.raiseError(error);
-                     }),
+                    |> Js.Promise.then_(_ =>
+                         eventTopicPublish(. generatedEvents')
+                         |> Js.Promise.catch(err => {
+                              let error =
+                                {j|Aggregate.execCommand($id): eventTopicPublish Error: |j}
+                                ++ err->stringify;
+                              Js.log(error);
+                              Js.Exn.raiseError(error);
+                            })
+                       );
+                  },
               );
          });
     };
