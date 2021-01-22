@@ -276,14 +276,15 @@ module Make =
                 | [||] => Js.Promise.resolve()
                 | generatedEvents' =>
                   eventsHandler(. id, generatedEvents')
-                  |> Js.Promise.catch(err =>
-                       Js.Exn.raiseError(
-                         {j|Aggregate.execCommand($id): eventsHandler error: |j}
+                  |> Js.Promise.catch(err => {
+                       let error =
+                         {j|Aggregate.execCommand($id): eventsHandler Error: |j}
                          ++ err
                             ->Js.Json.stringifyAny
-                            ->Belt.Option.getWithDefault("unknown error"),
-                       )
-                     )
+                            ->Belt.Option.getWithDefault("unknown");
+                       Js.log(error);
+                       Js.Exn.raiseError(error);
+                     })
                   |> Js.Promise.then_(_ =>
                        eventLogAppend(.
                          history->Belt.Array.length,
@@ -291,25 +292,27 @@ module Make =
                          generatedEvents',
                        )
                      )
-                  |> Js.Promise.catch(err =>
-                       Js.Exn.raiseError(
-                         {j|Aggregate.execCommand($id): eventLogAppend error: |j}
+                  |> Js.Promise.catch(err => {
+                       let error =
+                         {j|Aggregate.execCommand($id): eventLogAppend Error: |j}
                          ++ err
                             ->Js.Json.stringifyAny
-                            ->Belt.Option.getWithDefault("unknown error"),
-                       )
-                     )
+                            ->Belt.Option.getWithDefault("unknown");
+                       Js.log(error);
+                       Js.Exn.raiseError(error);
+                     })
                   |> Js.Promise.then_(_ =>
                        eventTopicPublish(. generatedEvents')
                      )
-                  |> Js.Promise.catch(err =>
-                       Js.Exn.raiseError(
-                         {j|Aggregate.execCommand($id): eventTopicPublish error: |j}
+                  |> Js.Promise.catch(err => {
+                       let error =
+                         {j|Aggregate.execCommand($id): eventTopicPublish Error: |j}
                          ++ err
                             ->Js.Json.stringifyAny
-                            ->Belt.Option.getWithDefault("unknown error"),
-                       )
-                     ),
+                            ->Belt.Option.getWithDefault("unknown");
+                       Js.log(error);
+                       Js.Exn.raiseError(error);
+                     }),
               );
          });
     };

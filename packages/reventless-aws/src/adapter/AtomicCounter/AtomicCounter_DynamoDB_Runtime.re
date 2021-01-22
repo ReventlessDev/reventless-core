@@ -31,7 +31,7 @@ let get = table =>
        )
     |> catch(err => {
          let error = err->AwsSdk.Error.ofPromise##code;
-         Js.log({j|AtomicCounter.get: error:$error for $counterId|j});
+         Js.log({j|AtomicCounter.get: Error:$error for $counterId|j});
          Error(error)->resolve;
        });
   };
@@ -81,7 +81,7 @@ let increment = table =>
     let referenceId = {j|$counterId-$reference|j};
 
     let msg = (message, kind) => {j|AtomicCounter.increment: $kind $message for $id reference: $reference|j};
-    let errMsg = (err, kind) => ("error:" ++ err)->msg(kind);
+    let errMsg = (err, kind) => ("Error:" ++ err)->msg(kind);
 
     putReference(~tableName, ~referenceId)
     |> then_(
@@ -108,7 +108,7 @@ let increment = table =>
                            | Error(err) => {
                                Js.log(err->errMsg("deleteReference"));
                                Error(
-                                 "failed after failed updateCount -> SEVERE ERROR !!!"
+                                 "failed after failed updateCount -> SEVERE Error !!!"
                                  ->msg("deleteReference"),
                                )
                                ->resolve;

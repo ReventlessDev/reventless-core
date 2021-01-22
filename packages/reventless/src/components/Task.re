@@ -104,7 +104,7 @@ let construct =
            res |> Js.Promise.resolve;
          })
       |> Js.Promise.catch(err =>
-           Js.Promise.resolve(Js.log2("Task.publishCommand error:", err))
+           Js.Promise.resolve(Js.log2("Task.publishCommand Error:", err))
          );
     };
 

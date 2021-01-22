@@ -178,13 +178,12 @@ module Make =
           ->ignore;
           commandsHandler(. id, commands')
           |> Js.Promise.catch(err =>
-               failwith(
+               Js.Exn.raiseError(
                  {j|CommandTopic.handleCommand: Error: Couldn't handle $commandCount command(s) for id $id: |j}
                  ++ err
                     ->Js.Json.stringifyAny
                     ->Belt.Option.getWithDefault("unknown error"),
                )
-               |> Js.Promise.reject
              );
         })
       |> Js.Promise.all
