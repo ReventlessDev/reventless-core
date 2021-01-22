@@ -155,7 +155,7 @@ module Make =
              let runBehaviour = (((stateO, events), count)) =>
                switch (stateO) {
                | Some(state) =>
-                 let newEvents =
+                 let generatedEvents =
                    try (
                      Behaviour.execute(.
                        state,
@@ -176,12 +176,12 @@ module Make =
                      [];
                    };
                  Ok((
-                   updateState(stateO, newEvents),
-                   events @ [(newEvents, command' |> updateMeta)],
+                   updateState(stateO, generatedEvents),
+                   events @ [(generatedEvents, command' |> updateMeta)],
                  ))
                  ->Js.Promise.resolve;
                | None =>
-                 let newEvents =
+                 let generatedEvents =
                    Behaviour.create(.
                      command'.command,
                      {
@@ -192,8 +192,8 @@ module Make =
                      count,
                    );
                  Ok((
-                   updateState(None, newEvents),
-                   events @ [(newEvents, command' |> updateMeta)],
+                   updateState(None, generatedEvents),
+                   events @ [(generatedEvents, command' |> updateMeta)],
                  ))
                  ->Js.Promise.resolve;
                };
@@ -259,8 +259,8 @@ module Make =
            )
            |> Js.Promise.then_(
                 fun
-                | Ok((_, newEvents)) =>
-                  newEvents
+                | Ok((_, generatedEventsWithMeta)) =>
+                  generatedEventsWithMeta
                   ->Belt.List.map(((events, meta)) =>
                       events->Belt.List.map(event =>
                         {Message.id, meta, event}
@@ -271,38 +271,45 @@ module Make =
                   ->Js.Promise.resolve
                 | _ => Js.Exn.raiseError(""),
               )
-           |> Js.Promise.then_(newEvents' =>
-                Js.Promise.all2((
-                  eventLogAppend(. history->Belt.Array.length, id, newEvents')
+           |> Js.Promise.then_(
+                fun
+                | [||] => Js.Promise.resolve()
+                | generatedEvents' =>
+                  eventsHandler(. id, generatedEvents')
                   |> Js.Promise.catch(err =>
-                       failwith(
-                         {j|Aggregate.execCommand($id): eventLogAppend error: |j}
-                         ++ err
-                            ->Js.Json.stringifyAny
-                            ->Belt.Option.getWithDefault("unknown error"),
-                       )
-                     ),
-                  eventsHandler(. id, newEvents')
-                  |> Js.Promise.catch(err =>
-                       failwith(
+                       Js.Exn.raiseError(
                          {j|Aggregate.execCommand($id): eventsHandler error: |j}
                          ++ err
                             ->Js.Json.stringifyAny
                             ->Belt.Option.getWithDefault("unknown error"),
                        )
+                     )
+                  |> Js.Promise.then_(_ =>
+                       eventLogAppend(.
+                         history->Belt.Array.length,
+                         id,
+                         generatedEvents',
+                       )
+                     )
+                  |> Js.Promise.catch(err =>
+                       Js.Exn.raiseError(
+                         {j|Aggregate.execCommand($id): eventLogAppend error: |j}
+                         ++ err
+                            ->Js.Json.stringifyAny
+                            ->Belt.Option.getWithDefault("unknown error"),
+                       )
+                     )
+                  |> Js.Promise.then_(_ =>
+                       eventTopicPublish(. generatedEvents')
+                     )
+                  |> Js.Promise.catch(err =>
+                       Js.Exn.raiseError(
+                         {j|Aggregate.execCommand($id): eventTopicPublish error: |j}
+                         ++ err
+                            ->Js.Json.stringifyAny
+                            ->Belt.Option.getWithDefault("unknown error"),
+                       )
                      ),
-                ))
-                |> Js.Promise.then_(_ =>
-                     eventTopicPublish(. newEvents')
-                     |> Js.Promise.catch(err =>
-                          failwith(
-                            {j|Aggregate.execCommand($id): eventTopicPublish error: |j}
-                            ++ err
-                               ->Js.Json.stringifyAny
-                               ->Belt.Option.getWithDefault("unknown error"),
-                          )
-                        )
-                   )
               );
          });
     };
