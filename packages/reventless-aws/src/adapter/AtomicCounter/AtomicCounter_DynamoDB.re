@@ -8,6 +8,13 @@ let make = (~name, ~opts) => {
             ~attributes=[|{"name": "id", "type": "S"}|]->Pulumi.Input.wrap,
             ~hashKey="id"->Pulumi.Input.wrap,
             ~billingMode=`PAY_PER_REQUEST,
+            ~ttl=
+              Args.TableTtl.make(
+                ~attributeName="ttl"->Pulumi.Input.wrap,
+                ~enabled=true->Pulumi.Input.wrap,
+                (),
+              )
+              ->Pulumi.Input.wrap,
             (),
           ),
         ~opts,
