@@ -11,22 +11,23 @@ type update('id, 'event) = Message.eventsHandler('id, 'event);
 // type t('id, 'event) = functions('id, 'event);
 
 type maker('component, 'id, 'event) =
-  option(Pulumi.ComponentResource.Options.t) => Component.t('component, outputs);
+  option(Pulumi.ComponentResource.Options.t) =>
+  Component.t('component, outputs);
 
 module type T = {
   module Spec: View.Spec;
   module View: View.T with module Spec := Spec;
   type t;
 
-  /* Is this necessary? For test? 
-  let update:
-    (
-      QueryDb.load(Spec.Id.t, View.state),
-      QueryDb.save(Spec.Id.t, View.state),
-      QueryDb.delete(Spec.Id.t)
-    ) =>
-    update(Spec.Id.t, Spec.event);
-    */
+  /* Is this necessary? For test?
+     let update:
+       (
+         QueryDb.load(Spec.Id.t, View.state),
+         QueryDb.save(Spec.Id.t, View.state),
+         QueryDb.delete(Spec.Id.t)
+       ) =>
+       update(Spec.Id.t, Spec.event);
+       */
   let update: Component.t(t, outputs) => update(Spec.Id.t, Spec.event);
 
   let make: maker(t, Spec.Id.t, Spec.event);
@@ -44,12 +45,7 @@ module Make =
            QueryDb.Resolvers with
              type api = Config.api and type role = Config.role,
        )
-
-         : (
-           T with
-             module Spec = Spec and
-             module View = View
-       ) => {
+       : (T with module Spec = Spec and module View = View) => {
   module Spec = Spec;
   module View = View;
   type t;
@@ -57,7 +53,7 @@ module Make =
   type update = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct = (Component.t(t,outputs), string) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -73,17 +69,22 @@ module Make =
   module QueryDb =
     QueryDb.Make(Config, Spec, View, QueryDbStorage, QueryDbResolvers);
 
-  [@bs.obj] external makeOutputs: (~queryDb: Reventless.QueryDb.outputs) => outputs = "";
+  [@bs.obj]
+  external makeOutputs: (~queryDb: Reventless.QueryDb.outputs) => outputs = "";
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(t, outputs), outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(t, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setUpdate: (Component.t(t, outputs), update) => unit = "update";
-  [@bs.get] external update: (Component.t(t, outputs)) => update = "update";
+  [@bs.set]
+  external setUpdate: (Component.t(t, outputs), update) => unit = "update";
+  [@bs.get] external update: Component.t(t, outputs) => update = "update";
 
   open Reventless.View;
 
@@ -131,8 +132,12 @@ module Make =
               action->handleAction
               |> then_(
                    fun
-                   | Error(Reventless.QueryDb.StaleState) =>
-                     Error([])->resolve
+                   | Error(Reventless.QueryDb.StaleState) => {
+                       Js.log(
+                         "ReadModel.handleActions: retrying due to StaleState",
+                       );
+                       Error([])->resolve;
+                     }
                    | Error(_) => Error(actions)->resolve
                    | Ok () => handleActions(unhandledActions),
                  );
@@ -204,7 +209,8 @@ module Make =
     )
     |> self->setUpdate;
 
-    makeOutputs(~queryDb=queryDb->Component.extractOutputs) |> self->setOutputs;
+    makeOutputs(~queryDb=queryDb->Component.extractOutputs)
+    |> self->setOutputs;
   };
 
   let make = opts => {
