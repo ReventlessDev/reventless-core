@@ -40,7 +40,7 @@ let referenceItem = (~referenceId) =>
   Js.Json.([("id", string(referenceId))]->Js.Dict.fromList->object_);
 
 let putReference = (~tableName, ~referenceId) => {
-  put(
+  AtomicCounter_DynamoDB_Runtime_DocumentClient.put(
     PutItemInput.make(
       ~_TableName=tableName,
       ~_Item=referenceItem(~referenceId),
