@@ -2,6 +2,12 @@ open AwsSdk.DynamoDb.DocumentClient;
 open Js.Promise;
 open Belt.Result;
 
+let errorMessage = err =>
+  err->AwsSdk.Error.ofPromise##code
+  ++ ":"
+  ++
+  err->AwsSdk.Error.ofPromise##message;
+
 let get = table =>
   (. name, id) => {
     let counterId = {j|$name-$id|j};
@@ -30,7 +36,7 @@ let get = table =>
          }
        )
     |> catch(err => {
-         let error = err->AwsSdk.Error.ofPromise##code;
+         let error = err->errorMessage;
          Js.log({j|AtomicCounter.get: Error:$error for $counterId|j});
          Error(error)->resolve;
        });
@@ -64,7 +70,7 @@ let putReference = (~tableName, ~referenceId) => {
     ),
   )
   |> then_(_ => resolve(Ok()))
-  |> catch(err => Error(err->AwsSdk.Error.ofPromise##code)->resolve);
+  |> catch(err => Error(err->errorMessage)->resolve);
 };
 
 let updateCount = (~tableName, ~counterId) =>
@@ -82,12 +88,12 @@ let updateCount = (~tableName, ~counterId) =>
   |> then_((updateOutput: UpdateOutput.t({. count: int})) =>
        Ok(updateOutput##_Attributes##count) |> resolve
      )
-  |> catch(err => Error(err->AwsSdk.Error.ofPromise##code)->resolve);
+  |> catch(err => Error(err->errorMessage)->resolve);
 
 let deleteReference = (~tableName, ~referenceId) =>
   delete(~tableName, ~key={"id": referenceId})
   |> then_(_ => resolve(Ok()))
-  |> catch(err => Error(err->AwsSdk.Error.ofPromise##code)->resolve);
+  |> catch(err => Error(err->errorMessage)->resolve);
 
 let increment = table =>
   (. name, id, reference: string) => {
@@ -149,7 +155,27 @@ let increment = table =>
            }
          | Error(err) => {
              Js.log(err->errMsg("putReference"));
-             Error("failed"->msg("putReference"))->resolve;
+             deleteReference(~tableName, ~referenceId)
+             |> then_(
+                  fun
+                  | Ok () =>
+                    {
+                      let message =
+                        "successfull after failed putReference"
+                        ->msg("deleteReference");
+                      Js.log(message);
+                      Error(message);
+                    }
+                    ->resolve
+                  | Error(err) => {
+                      Js.log(err->errMsg("deleteReference"));
+                      Error(
+                        "failed after failed putReference -> SEVERE Error !!!"
+                        ->msg("deleteReference"),
+                      )
+                      ->resolve;
+                    },
+                );
            },
        );
   };

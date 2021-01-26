@@ -9,11 +9,11 @@ let documentClient =
             DynamoDb_DynamoDb.make(
               ~options=
                 DynamoDb_DynamoDb.Options.make(
-                  ~maxRetries=3,
+                  ~maxRetries=0,
                   ~httpOptions=
                     Request.HttpOptions.make(
                       ~connectTimeout=1000,
-                      ~timeout=5000,
+                      ~timeout=10000,
                     ),
                   (),
                 ),
