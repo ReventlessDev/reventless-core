@@ -114,10 +114,13 @@ module Make =
     [];
   };
 
-  let stringify = err =>
-    err->Js.Json.stringifyAny->Belt.Option.getWithDefault("unknown");
   let eventName: Message.event'(Spec.Id.t, Spec.event) => string =
     event' => event'.event->Spec.event_encode->Obj.magic[0];
+
+  let errorMessage = (id, kind, err) =>
+    {j|Aggregate.execCommand($id): $kind Error: |j}
+    ++
+    err->AwsSdk.Error.ofPromise##message;
 
   let execCommands =
       (
@@ -247,10 +250,7 @@ module Make =
                       runBehaviour((acc, Some(count)));
                     }
                   | (Ok(p1), None) => runBehaviour((p1, None))
-                  | (Ok(_), Some(Error(err) as error)) => {
-                      Js.log(
-                        {j|Aggregate.processCommand: counting failed: $err|j},
-                      );
+                  | (Ok(_), Some(Error(_) as error)) => {
                       error->Js.Promise.resolve;
                     }
                   | (Error(_) as error, _) => error->Js.Promise.resolve,
@@ -291,9 +291,9 @@ module Make =
                     );
                     eventsHandler(. id, generatedEvents')
                     |> Js.Promise.catch(err => {
-                         let msg = {j|Aggregate.execCommand($id): eventsHandler Error: |j};
-                         Js.log2(msg, err);
-                         Js.Exn.raiseError(msg ++ err->stringify);
+                         let msg = errorMessage(id, "eventsHandler", err);
+                         Js.log(msg);
+                         Js.Exn.raiseError(msg);
                        })
                     |> Js.Promise.then_(_ =>
                          eventLogAppend(.
@@ -302,17 +302,19 @@ module Make =
                            generatedEvents',
                          )
                          |> Js.Promise.catch(err => {
-                              let msg = {j|Aggregate.execCommand($id): eventLogAppend Error: |j};
-                              Js.log2(msg, err);
-                              Js.Exn.raiseError(msg ++ err->stringify);
+                              let msg =
+                                errorMessage(id, "eventLogAppend", err);
+                              Js.log(msg);
+                              Js.Exn.raiseError(msg);
                             })
                        )
                     |> Js.Promise.then_(_ =>
                          eventTopicPublish(. generatedEvents')
                          |> Js.Promise.catch(err => {
-                              let msg = {j|Aggregate.execCommand($id): eventTopicPublish Error: |j};
-                              Js.log2(msg, err);
-                              Js.Exn.raiseError(msg ++ err->stringify);
+                              let msg =
+                                errorMessage(id, "eventTopicPublish", err);
+                              Js.log(msg);
+                              Js.Exn.raiseError(msg);
                             })
                        );
                   },
