@@ -11,7 +11,7 @@ type action('id, 'command) =
       Js.Promise.t(
         (
           string,
-          ('id, 'command),
+          array(('id, 'command)),
           Message.encoder('id),
           Message.encoder('command),
         ),

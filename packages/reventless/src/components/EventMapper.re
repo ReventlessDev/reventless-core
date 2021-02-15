@@ -63,18 +63,19 @@ module Make =
     |> (
       fun
       | Some(Belt.Result.Ok(eventMeta)) =>
-        EventMappings.mappings->Js.Dict.get(eventMeta.service)
-        |> (
-          fun
-          | None => {
-              Js.log2(
-                "EventMapper.map: No mapping available for service:",
-                eventMeta.service,
-              );
-              None;
-            }
-          | Some(mapping) => Some((eventObj, eventMeta, mapping))
-        )
+        EventMappings.mappings
+        ->Js.Dict.get(eventMeta.service)
+        ->(
+            fun
+            | None => {
+                Js.log2(
+                  "EventMapper.map: No mapping available for service:",
+                  eventMeta.service,
+                );
+                None;
+              }
+            | Some(mapping) => Some((eventObj, eventMeta, mapping))
+          )
       | Some(Error(err)) => {
           Js.log2("EventMapper.map: Couldn't decode meta:", err);
           None;
@@ -114,15 +115,20 @@ module Make =
                 {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
               );
 
-              {Message.id: commandId, meta: commandMeta, command}
-              |> Message.command'_encode(idEncoder, commandEncoder)
-              |> Js.Json.stringify
-              |> AwsSdk.SQS.sendMessage(~queueId, ~messageBody=_, ())
-              |> Js.Promise.catch(err =>
-                   err
-                   |> Js.log2("EventMapper: Error on publish command:")
-                   |> Js.Promise.resolve
-                 );
+              Message.command'_encode(
+                idEncoder,
+                commandEncoder,
+                {Message.id: commandId, meta: commandMeta, command},
+              )
+              ->Js.Json.stringify
+              ->AwsSdk.SQS.sendMessage(~queueId, ~messageBody=_, ())
+              ->Js.Promise.catch(
+                  err =>
+                    err
+                    ->Js.log2("EventMapper: Error on publish command:")
+                    ->Js.Promise.resolve,
+                  _,
+                );
             };
 
             module Mapping = (val mapping);
@@ -157,24 +163,43 @@ module Make =
                       )
                     | EventMapping.PublishToQueueAsync(promise) =>
                       promise->Js.Promise.then_(
-                                 data => publish(idx, data),
+                                 ((service, cmds, idEncoder, commandEncoder)) =>
+                                   cmds
+                                   ->Belt.Array.map(((commandId, command)) =>
+                                       publish(
+                                         idx,
+                                         (
+                                           service,
+                                           (commandId, command),
+                                           idEncoder,
+                                           commandEncoder,
+                                         ),
+                                       )
+                                     )
+                                   ->Js.Promise.all
+                                   ->Js.Promise.then_(
+                                       _ => Js.Promise.resolve(),
+                                       _,
+                                     ),
                                  _,
                                )
                     | Call(commandHandler, command) =>
                       command
-                      |> commandHandler
-                      |> Js.Promise.catch(err =>
-                           err
-                           |> Js.log2(
-                                "EventMapper: Error in commandHandler:",
-                              )
-                           |> Js.Promise.resolve
-                         )
+                      ->commandHandler
+                      ->Js.Promise.catch(
+                          err =>
+                            err
+                            |> Js.log2(
+                                 "EventMapper: Error in commandHandler:",
+                               )
+                            |> Js.Promise.resolve,
+                          _,
+                        )
                     | Nothing => Js.Promise.resolve()
                     }
                   )
-                |> Js.Promise.all
-                |> Js.Promise.then_(_ => Js.Promise.resolve())
+                ->Js.Promise.all
+                ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
               | (None, _)
               | (_, None) =>
                 Js.Promise.resolve(Js.log("EventMapper.map: Invalid event"))
