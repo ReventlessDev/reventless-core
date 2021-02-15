@@ -723,6 +723,7 @@ module Make =
       eventMapperMakers
       ->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
           eventMapperMaker(
+            ~queryEngine,
             ~queryCommandTopic,
             ~queryEventTopic,
             ~memorySize=128,
@@ -734,6 +735,7 @@ module Make =
           taskEventMapperMakers->Belt.Array.map(
             (eventMapperMaker: EventMapper.maker) =>
             eventMapperMaker(
+              ~queryEngine,
               ~queryCommandTopic,
               ~queryEventTopic,
               ~memorySize=1024,

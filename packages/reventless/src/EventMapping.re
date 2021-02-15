@@ -28,7 +28,7 @@ module type T = {
   let eventIdDecoder: Message.decoder(eventId);
   let eventDecoder: Message.decoder(event);
 
-  let map: (. eventId, event) => array(action);
+  let map: (. eventId, event, ReventlessSpec.QueryEngine.t) => array(action);
 };
 
 module type Mappings = {

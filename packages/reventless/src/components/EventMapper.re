@@ -9,6 +9,7 @@ type outputs = {
 type eventMapper; // TODO: rename back to t - after refactoring
 type maker =
   (
+    ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
     ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
     ~memorySize: int,
@@ -84,7 +85,7 @@ module Make =
         }
     );
 
-  let map = queryCommandTopic =>
+  let map = (queryCommandTopic, queryEngine) =>
     (. event'Json) => {
       event'Json->Message.logEvent'Json("EventMapper.map: incoming event:");
       event'Json->Js.Json.decodeObject->Belt.Option.flatMap(findMapping)
@@ -136,7 +137,7 @@ module Make =
             |> (
               fun
               | (Some(Ok(eventId)), Some(Ok(event))) =>
-                Mapping.map(. eventId, event)
+                Mapping.map(. eventId, event, queryEngine)
                 ->Belt.Array.mapWithIndex((idx, action) =>
                     switch (action) {
                     | EventMapping.PublishToQueue(
@@ -190,6 +191,7 @@ module Make =
 
   let construct =
       (
+        ~queryEngine,
         ~queryCommandTopic,
         ~queryEventTopic,
         ~memorySize,
@@ -209,7 +211,7 @@ module Make =
           EventMappings.mappings
           ->Js.Dict.entries
           ->Belt.Array.map(((eventService, _)) => eventService),
-        ~eventHandler=map(queryCommandTopic),
+        ~eventHandler=map(queryCommandTopic, queryEngine),
         ~queryEventTopic,
         ~memorySize,
         ~timeout,
@@ -226,6 +228,7 @@ module Make =
 
   let make:
     (
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
       ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
       ~memorySize: int,
@@ -235,6 +238,7 @@ module Make =
     ) =>
     Component.t(eventMapper, outputs) =
     (
+      ~queryEngine,
       ~queryCommandTopic,
       ~queryEventTopic,
       ~memorySize,
@@ -247,6 +251,7 @@ module Make =
         ~name=EventMappings.name,
         ~construct=
           construct(
+            ~queryEngine,
             ~queryCommandTopic,
             ~queryEventTopic,
             ~memorySize,
