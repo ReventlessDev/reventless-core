@@ -7,6 +7,16 @@ type action('id, 'command) =
       Message.encoder('id),
       Message.encoder('command),
     )
+  | PublishToQueueAsync(
+      Js.Promise.t(
+        (
+          string,
+          ('id, 'command),
+          Message.encoder('id),
+          Message.encoder('command),
+        ),
+      ),
+    )
   | Call(Message.handler('command), 'command)
   | Nothing; // TODO: Since mappings changed to return array(action), this could be removed because it means the same like an empty array of actions
 

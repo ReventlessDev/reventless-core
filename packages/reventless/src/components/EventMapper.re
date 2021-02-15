@@ -91,6 +91,39 @@ module Make =
       |> (
         fun
         | Some((eventObj, eventMeta, mapping)) => {
+            let publish =
+                (
+                  idx,
+                  (service, (commandId, command), idEncoder, commandEncoder),
+                ) => {
+              let commandMeta = {
+                ...eventMeta,
+                service,
+                correlationId:
+                  // original correlationId only for first action to avoid counting problems
+                  // TODO: think about different solution, e.g. AtomicCounter with explicit
+                  // count parameter (instead of always counting by 1)
+                  idx == 0 ? eventMeta.correlationId : Message.uuid(),
+                msgId: Message.uuid(),
+              };
+              let queueId = queryCommandTopic(service)##id->Pulumi.Output.get;
+              let commandStr = command->commandEncoder->Js.Json.stringify;
+              let source = eventMeta.service;
+              Js.log(
+                {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
+              );
+
+              {Message.id: commandId, meta: commandMeta, command}
+              |> Message.command'_encode(idEncoder, commandEncoder)
+              |> Js.Json.stringify
+              |> AwsSdk.SQS.sendMessage(~queueId, ~messageBody=_, ())
+              |> Js.Promise.catch(err =>
+                   err
+                   |> Js.log2("EventMapper: Error on publish command:")
+                   |> Js.Promise.resolve
+                 );
+            };
+
             module Mapping = (val mapping);
             (
               eventObj
@@ -112,36 +145,20 @@ module Make =
                         idEncoder,
                         commandEncoder,
                       ) =>
-                      let commandMeta = {
-                        ...eventMeta,
-                        service,
-                        correlationId:
-                          // original correlationId only for first action to avoid counting problems
-                          // TODO: think about different solution, e.g. AtomicCounter with explicit
-                          // count parameter (instead of always counting by 1)
-                          idx == 0 ? eventMeta.correlationId : Message.uuid(),
-                        msgId: Message.uuid(),
-                      };
-                      let queueId =
-                        queryCommandTopic(service)##id->Pulumi.Output.get;
-                      let commandStr =
-                        command->commandEncoder->Js.Json.stringify;
-                      let source = eventMeta.service;
-                      Js.log(
-                        {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
-                      );
-
-                      {Message.id: commandId, meta: commandMeta, command}
-                      |> Message.command'_encode(idEncoder, commandEncoder)
-                      |> Js.Json.stringify
-                      |> AwsSdk.SQS.sendMessage(~queueId, ~messageBody=_, ())
-                      |> Js.Promise.catch(err =>
-                           err
-                           |> Js.log2(
-                                "EventMapper: Error on publish command:",
-                              )
-                           |> Js.Promise.resolve
-                         );
+                      publish(
+                        idx,
+                        (
+                          service,
+                          (commandId, command),
+                          idEncoder,
+                          commandEncoder,
+                        ),
+                      )
+                    | EventMapping.PublishToQueueAsync(promise) =>
+                      promise->Js.Promise.then_(
+                                 data => publish(idx, data),
+                                 _,
+                               )
                     | Call(commandHandler, command) =>
                       command
                       |> commandHandler
