@@ -195,6 +195,21 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
                      ),
                    _,
                  )
+      | ExtensionMapping.AbstractPublishAggregateCommandsAsync(promise) =>
+        promise->Js.Promise.then_(
+                   tupels =>
+                     tupels
+                     ->Belt.Array.map(((aggregateName, command'Json)) =>
+                         publishCommand(
+                           command'Json,
+                           queryCommandTopic(aggregateName)##id
+                           ->Pulumi.Output.get,
+                         )
+                       )
+                     ->Js.Promise.all
+                     ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
+                   _,
+                 )
       | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(
           command'Json,
         ) =>

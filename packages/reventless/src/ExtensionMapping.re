@@ -19,6 +19,9 @@ type abstractIncomingCommandAction =
   | AbstractPublishAggregateCommandAsync(
       Js.Promise.t((Aggregate.name, Js.Json.t)),
     )
+  | AbstractPublishAggregateCommandsAsync(
+      Js.Promise.t(array((Aggregate.name, Js.Json.t))),
+    )
   | AbstractPublishPluginExtensionPointCommand(Js.Json.t)
   | AbstractPublishExtensionPointCommand(
       extensionPointName,
@@ -169,8 +172,43 @@ module Make =
                          },
                          _,
                        );
-
             AbstractPublishAggregateCommandAsync(promise');
+          }
+        | PublishAggregateCommandsAsync(promise) => {
+            let promise' =
+              promise->Js.Promise.then_(
+                         tupels =>
+                           tupels
+                           ->Belt.Array.map(((aggregateId, aggregateCmd)) => {
+                               let commandStr =
+                                 aggregateCmd
+                                 ->Aggregate.command_encode
+                                 ->Js.Json.stringify;
+                               Js.log(
+                                 {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command: $commandStr id: $aggregateId|j},
+                               );
+                               (
+                                 aggregateName,
+                                 Message.command'_encode(
+                                   Aggregate.Id.t_encode,
+                                   Aggregate.command_encode,
+                                   {
+                                     id:
+                                       aggregateId->Aggregate.Id.makeFromString,
+                                     meta: {
+                                       ...meta,
+                                       service: Aggregate.name,
+                                       msgId: Message.uuid(),
+                                     },
+                                     command: aggregateCmd,
+                                   },
+                                 ),
+                               );
+                             })
+                           ->Js.Promise.resolve,
+                         _,
+                       );
+            AbstractPublishAggregateCommandsAsync(promise');
           }
         | PublishExtensionPointCommand(id, command)
             when Spec.name == ReventlessSpec.PluginExtensionPointSpec.name => {

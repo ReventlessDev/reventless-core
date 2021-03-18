@@ -8,6 +8,9 @@ type forwardCommand = {
 type incomingCommandAction('aggregateCommand, 'extensionPointCommand, 'msg) =
   | PublishAggregateCommand(string, 'aggregateCommand)
   | PublishAggregateCommandAsync(Js.Promise.t((string, 'aggregateCommand)))
+  | PublishAggregateCommandsAsync(
+      Js.Promise.t(array((string, 'aggregateCommand))),
+    )
   | PublishExtensionPointCommand(string, 'extensionPointCommand)
   | ForwardCommand(forwardCommand)
   | Call('msg => Js.Promise.t(unit), 'msg);
