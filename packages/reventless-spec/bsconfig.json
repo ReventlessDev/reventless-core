@@ -1,5 +1,5 @@
 {
-  "name": "@reventless-universe/reventless-spec",
+  "name": "@reventless/reventless-spec",
   "namespace": "ReventlessSpec",
   "suffix": ".bs.js",
   "refmt": 3,

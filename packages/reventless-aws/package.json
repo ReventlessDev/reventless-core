@@ -1,15 +1,15 @@
 {
-  "name": "@reventless-universe/reventless-aws",
+  "name": "@reventless/reventless-aws",
   "version": "0.1.158",
   "description": "AWS adapters for Reventless",
   "author": "Atos",
   "license": "proprietary",
   "repository": {
     "type": "git",
-    "url": "git@github.com:reventless-universe/reventless-universe.git"
+    "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
+    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
   },
   "scripts": {
     "build": "bsb -make-world",
@@ -26,11 +26,11 @@
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
   },
   "dependencies": {
-    "@reventless-universe/bs-aws-sdk": "^0.1.18",
-    "@reventless-universe/bs-pulumi-aws": "^0.1.25",
-    "@reventless-universe/bs-pulumi-pulumi": "^0.1.5",
-    "@reventless-universe/reventless": "^0.1.172",
-    "@reventless-universe/reventless-spec": "^0.1.7"
+    "@reventless/bs-aws-sdk": "^0.1.18",
+    "@reventless/bs-pulumi-aws": "^0.1.25",
+    "@reventless/bs-pulumi-pulumi": "^0.1.5",
+    "@reventless/reventless": "^0.1.172",
+    "@reventless/reventless-spec": "^0.1.7"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",

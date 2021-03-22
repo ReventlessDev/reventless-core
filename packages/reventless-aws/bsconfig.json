@@ -1,5 +1,5 @@
 {
-  "name": "@reventless-universe/reventless-aws",
+  "name": "@reventless/reventless-aws",
   "version": "0.1.1",
   "namespace": "ReventlessAws",
   "suffix": ".bs.js",
@@ -24,10 +24,10 @@
   ],
   "bs-dependencies": [
     "@glennsl/bs-jest",
-    "@reventless-universe/bs-aws-sdk",
-    "@reventless-universe/bs-pulumi-aws",
-    "@reventless-universe/bs-pulumi-pulumi",
-    "@reventless-universe/reventless-spec",
-    "@reventless-universe/reventless"
+    "@reventless/bs-aws-sdk",
+    "@reventless/bs-pulumi-aws",
+    "@reventless/bs-pulumi-pulumi",
+    "@reventless/reventless-spec",
+    "@reventless/reventless"
   ]
 }
