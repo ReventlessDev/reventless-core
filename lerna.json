@@ -9,7 +9,7 @@
       "hoist": false
     },
     "publish": {
-      "registry": "https://npm.pkg.github.com"
+      "registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
     }
   }
 }
