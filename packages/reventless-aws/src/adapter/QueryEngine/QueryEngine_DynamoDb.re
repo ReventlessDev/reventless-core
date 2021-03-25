@@ -119,7 +119,7 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
       ~_Limit=limit,
       (),
     );
-  AwsSdk.DynamoDb.DocumentClient.scan(~params)  // TODO scanRecursive
+  AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params)
   |> Js.Promise.then_(result =>
        Js.Promise.resolve(
          result##_Items
