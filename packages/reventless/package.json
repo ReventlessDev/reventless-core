@@ -64,5 +64,6 @@
   },
   "peerDependencies": {
     "bs-platform": "^5.2.1"
-  }
+  },
+  "gitHead": "1016edd2eceed939132c050a8ec292dc898a405f"
 }
