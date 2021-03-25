@@ -18,7 +18,8 @@ type rate =
   | Hours(int)
   | Days(int)
   | Daily(hour, minute)
-  | Weekdays(hour, minute);
+  | Weekdays(hour, minute)
+  | WeekdaysAndSaturday(hour, minute);
 
 [@decco]
 type schedule = {

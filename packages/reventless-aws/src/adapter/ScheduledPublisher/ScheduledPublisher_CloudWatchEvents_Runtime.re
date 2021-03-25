@@ -19,7 +19,8 @@ let toScheduleExpression =
       {j|rate($days day$plural)|j};
     }
   | Daily(hour, minute) => {j|cron($minute $hour * * * *)|j}
-  | Weekdays(hour, minute) => {j|cron($minute $hour ? * MON-FRI *)|j};
+  | Weekdays(hour, minute) => {j|cron($minute $hour ? * MON-FRI *)|j}
+  | WeekdaysAndSaturday(hour, minute) => {j|cron($minute $hour ? * MON-SAT *)|j};
 
 let createSchedule = role =>
   (. {id, urn}, schedule) => {
