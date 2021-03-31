@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-aws",
-  "version": "0.1.161",
+  "version": "0.1.162",
   "description": "AWS adapters for Reventless",
   "author": "Atos",
   "license": "proprietary",
