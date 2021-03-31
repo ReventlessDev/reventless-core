@@ -138,7 +138,8 @@ let increment = table =>
                     },
                 );
            }
-         | Error("ConditionalCheckFailedException") => {
+         | Error(err) =>
+           if (err->Js.String2.includes("ConditionalCheckFailedException")) {
              Js.log("ConditionalCheckFailedException"->msg("putReference"));
              table->get(. name, id)
              |> then_(
@@ -152,8 +153,7 @@ let increment = table =>
                       ->resolve;
                     },
                 );
-           }
-         | Error(err) => {
+           } else {
              Js.log(err->errMsg("putReference"));
              deleteReference(~tableName, ~referenceId)
              |> then_(
