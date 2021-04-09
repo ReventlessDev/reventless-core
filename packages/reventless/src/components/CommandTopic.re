@@ -104,18 +104,19 @@ module Make =
           Spec.command_encode,
           command',
         );
+      let jsonStr = json->Js.Json.stringify;
       let resourceName = connector.resource##name->Pulumi.Output.get;
 
       connector.publish(. json)
       |> Js.Promise.catch(e => {
            Js.log(
-             {j|CommandTopic: Couldn't publish command $json to $resourceName|j},
+             {j|CommandTopic: Couldn't publish command $jsonStr to $resourceName|j},
            );
            NotPublishedToConnector(e)->Js.Promise.reject;
          })
       |> Js.Promise.then_(_ =>
            Js.log(
-             {j|CommandTopic: Published command: $json to $resourceName|j},
+             {j|CommandTopic: Published command: $jsonStr to $resourceName|j},
            )
            ->Js.Promise.resolve
          );
@@ -177,11 +178,12 @@ module Make =
             )
           ->ignore;
           commandsHandler(. id, commands')
-          |> Js.Promise.catch(_ =>
+          |> Js.Promise.catch(err => {
+               let error = err->AwsSdk.Error.ofPromise##message;
                Js.Exn.raiseError(
-                 {j|CommandTopic.handleCommand: Error: Couldn't handle $commandCount command(s) for id $id|j},
-               )
-             );
+                 {j|CommandTopic.handleCommand: Error: Couldn't handle $commandCount command(s) for id $id: $error|j},
+               );
+             });
         })
       |> Js.Promise.all
       |> Js.Promise.then_(_ => Js.Promise.resolve());
