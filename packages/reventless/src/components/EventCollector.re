@@ -6,9 +6,10 @@ type eventHandler = (. Js.Json.t) => Js.Promise.t(unit);
 
 type arn = string;
 module type Policies = {let policies: array(Pulumi.Output.t(arn));};
-module NoPolicies: Policies = {
+module DefaultPolicies: Policies = {
   let policies = [|
     Pulumi.Output.make(PulumiAws.Lambda.Policy.awsLambdaFullAccess),
+    Pulumi.Output.make(PulumiAws.SNS.Policy.amazonSNSFullAccess),
     Pulumi.Output.make(PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess),
   |];
 };
@@ -64,8 +65,11 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
   [@bs.obj]
   external makeOutputs: (~connector: Adapter.resource) => outputs = "";
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(t, outputs), outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(t, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -105,7 +109,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
         ~opts,
       );
 
-    makeOutputs(~connector=connector.resource) -> setOutputs(self, _);
+    makeOutputs(~connector=connector.resource)->setOutputs(self, _);
   };
 
   let make:

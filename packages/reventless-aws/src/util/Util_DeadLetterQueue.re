@@ -26,6 +26,7 @@ let handler =
         ~callback,
         ~policies=[|
           PulumiAws.Lambda.Policy.awsLambdaFullAccess,
+          PulumiAws.SNS.Policy.amazonSNSFullAccess,
           PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess,
         |],
         (),

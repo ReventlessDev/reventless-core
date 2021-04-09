@@ -117,6 +117,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
             ~callback=heartBeatCallback,
             ~policies=[|
               PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess,
+              PulumiAws.SNS.Policy.amazonSNSFullAccess,
               PulumiAws.Lambda.Policy.awsLambdaFullAccess,
             |],
             (),

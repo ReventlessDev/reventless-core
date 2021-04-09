@@ -702,7 +702,7 @@ module Make =
               module EventCollector =
                 EventCollector.Make
                   // TODO: general EventCollector
-                  (EventCollector.NoPolicies, EventCollectorAdapter);
+                  (EventCollector.DefaultPolicies, EventCollectorAdapter);
               module EventMapper =
                 EventMapper.Make((val mappings), EventCollector);
               Some(EventMapper.make);
@@ -884,7 +884,10 @@ module Make =
       };
 
     module EventCollector =
-      EventCollector.Make(EventCollector.NoPolicies, EventCollectorAdapter);
+      EventCollector.Make(
+        EventCollector.DefaultPolicies,
+        EventCollectorAdapter,
+      );
 
     let eventCollector =
       EventCollector.make(

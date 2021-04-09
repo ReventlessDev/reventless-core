@@ -41,6 +41,7 @@ let make: Reventless.CommandTopic.connectorMaker =
                 ),
               ~policies=[|
                 SQS.QueuePolicy.amazonSQSFullAccess,
+                PulumiAws.SNS.Policy.amazonSNSFullAccess,
                 Lambda.Policy.awsLambdaFullAccess,
               |],
               ~memorySize=memorySize->Pulumi.Input.wrap,

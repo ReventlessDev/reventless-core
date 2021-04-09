@@ -139,7 +139,7 @@ module Make =
       };
 
     module EventCollector =
-      EventCollector.Make(EventCollector.NoPolicies, EventCollectorAdapter);
+      EventCollector.Make(EventCollector.DefaultPolicies, EventCollectorAdapter);
 
     let eventCollector =
       EventCollector.make(
