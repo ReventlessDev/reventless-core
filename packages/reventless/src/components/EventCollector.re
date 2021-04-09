@@ -9,6 +9,7 @@ module type Policies = {let policies: array(Pulumi.Output.t(arn));};
 module DefaultPolicies: Policies = {
   let policies = [|
     Pulumi.Output.make(PulumiAws.Lambda.Policy.awsLambdaFullAccess),
+    Pulumi.Output.make(PulumiAws.Lambda.Policy.cloudWatchLogsFullAccess),
     Pulumi.Output.make(PulumiAws.SNS.Policy.amazonSNSFullAccess),
     Pulumi.Output.make(PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess),
   |];

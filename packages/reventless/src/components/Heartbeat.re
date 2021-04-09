@@ -119,6 +119,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
               PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess,
               PulumiAws.SNS.Policy.amazonSNSFullAccess,
               PulumiAws.Lambda.Policy.awsLambdaFullAccess,
+              PulumiAws.Lambda.Policy.cloudWatchLogsFullAccess,
             |],
             (),
             /* TODO: add deadLetterConfig after extraction to ReventlessAws:
