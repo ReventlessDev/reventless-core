@@ -115,12 +115,7 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
         ~args=
           CallbackFunction.Args.make(
             ~callback=heartBeatCallback,
-            ~policies=[|
-              PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess,
-              PulumiAws.SNS.Policy.amazonSNSFullAccess,
-              PulumiAws.Lambda.Policy.awsLambdaFullAccess,
-              PulumiAws.Lambda.Policy.cloudWatchLogsFullAccess,
-            |],
+            ~policies=PulumiAws.Lambda.Policy.defaultPolicies,
             (),
             /* TODO: add deadLetterConfig after extraction to ReventlessAws:
                ~deadLetterConfig=

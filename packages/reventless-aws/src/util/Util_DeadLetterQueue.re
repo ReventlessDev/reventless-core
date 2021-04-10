@@ -24,12 +24,7 @@ let handler =
     ~args=
       PulumiAws.Lambda.CallbackFunction.Args.make(
         ~callback,
-        ~policies=[|
-          PulumiAws.Lambda.Policy.awsLambdaFullAccess,
-          PulumiAws.Lambda.Policy.cloudWatchLogsFullAccess,
-          PulumiAws.SNS.Policy.amazonSNSFullAccess,
-          PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess,
-        |],
+        ~policies=PulumiAws.Lambda.Policy.defaultPolicies,
         (),
       ),
     ~opts=

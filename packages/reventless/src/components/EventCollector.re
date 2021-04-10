@@ -7,12 +7,10 @@ type eventHandler = (. Js.Json.t) => Js.Promise.t(unit);
 type arn = string;
 module type Policies = {let policies: array(Pulumi.Output.t(arn));};
 module DefaultPolicies: Policies = {
-  let policies = [|
-    Pulumi.Output.make(PulumiAws.Lambda.Policy.awsLambdaFullAccess),
-    Pulumi.Output.make(PulumiAws.Lambda.Policy.cloudWatchLogsFullAccess),
-    Pulumi.Output.make(PulumiAws.SNS.Policy.amazonSNSFullAccess),
-    Pulumi.Output.make(PulumiAws.SQS.QueuePolicy.amazonSQSFullAccess),
-  |];
+  let policies =
+    PulumiAws.Lambda.Policy.defaultPolicies->Belt.Array.map(policy =>
+      Pulumi.Output.make(policy)
+    );
 };
 
 module type T = {
