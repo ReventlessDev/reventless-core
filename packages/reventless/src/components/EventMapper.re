@@ -97,6 +97,7 @@ module Make =
                 (
                   idx,
                   (service, (commandId, command), idEncoder, commandEncoder),
+                  delay,
                 ) => {
               let commandMeta = {
                 ...eventMeta,
@@ -121,7 +122,7 @@ module Make =
                 {Message.id: commandId, meta: commandMeta, command},
               )
               ->Js.Json.stringify
-              ->AwsSdk.SQS.sendMessage(~queueId, ~messageBody=_, ())
+              ->AwsSdk.SQS.sendMessage(~queueId, ~messageBody=_, ~delay, ())
               ->Js.Promise.catch(
                   err =>
                     err
@@ -160,6 +161,24 @@ module Make =
                           idEncoder,
                           commandEncoder,
                         ),
+                        0,
+                      )
+                    | EventMapping.PublishToQueueDelayed(
+                        service,
+                        (commandId, command),
+                        idEncoder,
+                        commandEncoder,
+                        delay,
+                      ) =>
+                      publish(
+                        idx,
+                        (
+                          service,
+                          (commandId, command),
+                          idEncoder,
+                          commandEncoder,
+                        ),
+                        delay,
                       )
                     | EventMapping.PublishToQueueAsync(promise) =>
                       promise->Js.Promise.then_(
@@ -174,6 +193,7 @@ module Make =
                                            idEncoder,
                                            commandEncoder,
                                          ),
+                                         0,
                                        )
                                      )
                                    ->Js.Promise.all

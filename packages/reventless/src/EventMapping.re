@@ -7,6 +7,13 @@ type action('id, 'command) =
       Message.encoder('id),
       Message.encoder('command),
     )
+  | PublishToQueueDelayed(
+      string,
+      ('id, 'command),
+      Message.encoder('id),
+      Message.encoder('command),
+      int,
+    )
   | PublishToQueueAsync(
       Js.Promise.t(
         (
