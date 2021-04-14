@@ -738,7 +738,7 @@ module Make =
               ~queryEngine,
               ~queryCommandTopic,
               ~queryEventTopic,
-              ~memorySize=1024,
+              ~memorySize=2048,
               ~opts=Some(opts),
               (),
             )
