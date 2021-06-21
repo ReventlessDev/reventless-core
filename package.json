@@ -10,7 +10,7 @@
   "scripts": {
     "start": "lerna run build --scope reventless",
     "wizard": "lerna-wizard",
-    "update": "lerna update",
+    "update": "lernaupdate",
     "bootstrap": "lerna bootstrap",
     "build": "lerna run build",
     "rebuild": "lerna run rebuild",
