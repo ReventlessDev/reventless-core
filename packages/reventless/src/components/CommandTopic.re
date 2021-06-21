@@ -218,7 +218,7 @@ module Make =
       unit
     ) =>
     Component.t(t, outputs) =
-    (~name, ~commandsHandler, ~memorySize=256, ~timeout=60, ~opts=?, _) => {
+    (~name, ~commandsHandler, ~memorySize=256, ~timeout=30, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name,

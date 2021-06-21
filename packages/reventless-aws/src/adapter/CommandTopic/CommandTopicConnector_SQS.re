@@ -9,7 +9,7 @@ let make: Reventless.CommandTopic.connectorMaker =
           SQS.Queue.Args.make(
             ~fifoQueue=true->Pulumi.Input.wrap,
             ~contentBasedDeduplication=true->Pulumi.Input.wrap,
-            ~visibilityTimeoutSeconds=timeout->Pulumi.Input.wrap,
+            ~visibilityTimeoutSeconds=(6 * timeout)->Pulumi.Input.wrap,
             ~redrivePolicy=
               Util_DeadLetterQueue.queue##arn
               ->Pulumi.Output.apply(dlqArn =>
