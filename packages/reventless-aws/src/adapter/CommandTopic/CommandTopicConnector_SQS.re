@@ -15,7 +15,7 @@ let make: Reventless.CommandTopic.connectorMaker =
               ->Pulumi.Output.apply(dlqArn =>
                   SQS.Queue.Args.RedrivePolicy.make(
                     ~deadLetterTargetArn=dlqArn,
-                    ~maxReceiveCount=3,
+                    ~maxReceiveCount=5,
                   )
                 )
               ->Pulumi.Output.asInput,
