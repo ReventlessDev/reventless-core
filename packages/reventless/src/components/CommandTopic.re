@@ -2,7 +2,8 @@ let componentType = ComponentType.CommandTopic;
 
 type outputs = {. "connector": Adapter.resource};
 
-type publish('data) = (. 'data) => Js.Promise.t(unit);
+type publish('id, 'command) =
+  (. Message.command'('id, 'command)) => Js.Promise.t(unit);
 
 exception NotPublishedToConnector(Js.Promise.error);
 
@@ -30,14 +31,12 @@ module type T = {
     ) =>
     Component.t(t, outputs);
 
-  let publish:
-    Component.t(t, outputs) =>
-    publish(Message.command'(Spec.Id.t, Spec.command));
+  let publish: Component.t(t, outputs) => publish(Spec.Id.t, Spec.command);
 };
 
 type connector = {
   resource: Adapter.resource,
-  publish: publish(Js.Json.t),
+  publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
 };
 type connectorMaker =
   (
@@ -64,7 +63,7 @@ module Make =
   type construct =
     (Component.t(t, outputs), string, commandsHandler) => constructed;
 
-  type nonrec publish = publish(Message.command'(Spec.Id.t, Spec.command));
+  type nonrec publish = publish(Spec.Id.t, Spec.command);
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -107,7 +106,7 @@ module Make =
       let jsonStr = json->Js.Json.stringify;
       let resourceName = connector.resource##name->Pulumi.Output.get;
 
-      connector.publish(. json)
+      connector.publish(. command'.id->Spec.Id.toString, command'.meta, json)
       |> Js.Promise.catch(e => {
            Js.log(
              {j|CommandTopic: Couldn't publish command $jsonStr to $resourceName|j},

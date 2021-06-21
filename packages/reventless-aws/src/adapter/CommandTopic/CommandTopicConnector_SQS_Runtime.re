@@ -17,9 +17,7 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
   handleCommands(. jsons)
   |> Js.Promise.then_(_ =>
        records->Belt.Array.map(record =>
-         queue->Util_SQS_Runtime.deleteMessage(
-           record##receiptHandle,
-         )
+         queue->Util_SQS_Runtime.deleteMessage(record##receiptHandle)
        )
        |> Js.Promise.all
        |> Js.Promise.then_(_ => Js.Promise.resolve())
@@ -27,5 +25,9 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
 };
 
 let publish = queue =>
-  (. json) =>
-    queue->Util_SQS_Runtime.sendMessage(json |> Js.Json.stringify);
+  (. id, meta: Reventless.Message.meta, json) =>
+    queue->Util_SQS_Runtime.sendFifoMessage(
+      ~messageBody=json->Js.Json.stringify,
+      ~messageGroupId=id,
+      ~messageDeduplicationId=meta.msgId,
+    );
