@@ -41,7 +41,6 @@ let make: Reventless.CommandTopic.connectorMaker =
                   handleCommands,
                   queue,
                 ),
-              ~policies=Lambda.Policy.defaultPolicies,
               ~memorySize=memorySize->Pulumi.Input.wrap,
               ~timeout=timeout->Pulumi.Input.wrap,
               (),
