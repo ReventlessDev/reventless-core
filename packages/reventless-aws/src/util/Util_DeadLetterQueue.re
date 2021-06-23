@@ -44,4 +44,5 @@ let handler =
   );
 
 let subscription = queue->SQS.Queue.onEvent(~name, ~handler, ());
-let fifoSubscription = fifoQueue->SQS.Queue.onEvent(~name, ~handler, ());
+let fifoSubscription =
+  fifoQueue->SQS.Queue.onEvent(~name="FIFO" ++ name, ~handler, ());
