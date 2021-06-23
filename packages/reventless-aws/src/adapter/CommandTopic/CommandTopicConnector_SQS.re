@@ -4,7 +4,7 @@ let make: Reventless.CommandTopic.connectorMaker =
   (~name, ~handleCommands, ~memorySize, ~timeout, ~opts) => {
     let queue =
       SQS.Queue.make(
-        ~name=name ++ ".fifo",
+        ~name,
         ~args=
           SQS.Queue.Args.make(
             ~fifoQueue=true->Pulumi.Input.wrap,
