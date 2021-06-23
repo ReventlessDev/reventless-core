@@ -11,7 +11,7 @@ let make: Reventless.CommandTopic.connectorMaker =
             ~contentBasedDeduplication=true->Pulumi.Input.wrap,
             ~visibilityTimeoutSeconds=(6 * timeout)->Pulumi.Input.wrap,
             ~redrivePolicy=
-              Util_DeadLetterQueue.queue##arn
+              Util_DeadLetterQueue.fifoQueue##arn
               ->Pulumi.Output.apply(dlqArn =>
                   SQS.Queue.Args.RedrivePolicy.make(
                     ~deadLetterTargetArn=dlqArn,
