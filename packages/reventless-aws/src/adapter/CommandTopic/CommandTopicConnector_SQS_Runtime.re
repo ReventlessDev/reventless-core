@@ -25,9 +25,8 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
 };
 
 let publish = queue =>
-  (. id, meta: Reventless.Message.meta, json) =>
+  (. id, _meta: Reventless.Message.meta, json) =>
     queue->Util_SQS_Runtime.sendFifoMessage(
       ~messageBody=json->Js.Json.stringify,
       ~messageGroupId=id,
-      ~messageDeduplicationId=meta.msgId,
     );

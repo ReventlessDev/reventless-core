@@ -6,17 +6,11 @@ let sendMessage = (queue: PulumiAws.SQS.Queue.t, messageBody) =>
   );
 
 let sendFifoMessage =
-    (
-      queue: PulumiAws.SQS.Queue.t,
-      ~messageBody,
-      ~messageGroupId,
-      ~messageDeduplicationId,
-    ) =>
+    (queue: PulumiAws.SQS.Queue.t, ~messageBody, ~messageGroupId) =>
   AwsSdk.SQS.sendMessage(
     ~queueId=queue##id->Pulumi.Output.get,
     ~messageBody,
     ~messageGroupId,
-    ~messageDeduplicationId,
     (),
   );
 
