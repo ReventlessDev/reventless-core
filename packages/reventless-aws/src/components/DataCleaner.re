@@ -199,7 +199,6 @@ let make =
       ~args=
         Args.make(
           ~callback=cleanerFn(tablesToClean),
-          ~policies=PulumiAws.Lambda.Policy.defaultPolicies,
           ~memorySize=1024->Pulumi.Input.wrap,
           (),
         ),

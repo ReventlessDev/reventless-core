@@ -19,7 +19,6 @@ let make: Reventless.CommandGenerator.resolversMaker(api) =
               CommandGeneratorResolvers_AppSync_Runtime.generateCommand(
                 commandGenerator,
               ),
-            ~policies=Lambda.Policy.defaultPolicies,
             (),
           ),
         ~opts,
