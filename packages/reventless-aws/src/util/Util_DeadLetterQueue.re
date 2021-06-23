@@ -13,7 +13,7 @@ let queue =
 
 let fifoQueue =
   SQS.Queue.make(
-    ~name="DeadLetterQueue",
+    ~name="FIFODeadLetterQueue",
     ~args=
       SQS.Queue.Args.make(
         ~fifoQueue=true->Pulumi.Input.wrap,
