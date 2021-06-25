@@ -1,3 +1,6 @@
 let publish = topic =>
-  (. json) =>
-    topic->Util_SNS_Runtime.publish(json |> Js.Json.stringify);
+  (. id, _meta, json) =>
+    topic->Util_SNS_Runtime.publishFifo(
+      ~messageGroupId=id,
+      ~message=json |> Js.Json.stringify,
+    );
