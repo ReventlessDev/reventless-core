@@ -30,6 +30,11 @@ module Make =
   type constructed;
   type construct = (Component.t(eventMapper, outputs), string) => constructed;
 
+  module type Mapping =
+    EventMapping.T with
+      type targetId = EventMappings.Target.Id.t and
+      type targetCommand = EventMappings.Target.command;
+
   [@bs.module "./Component"] [@bs.new]
   external make:
     (
@@ -58,180 +63,140 @@ module Make =
     self->registerOutputs(outputs);
   };
 
+  module Target = EventMappings.Target;
+  let service = Target.name;
+
   let findMapping = eventObj =>
-    eventObj->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
-    |> (
-      fun
-      | Some(Belt.Result.Ok(eventMeta)) =>
-        EventMappings.mappings
-        ->Js.Dict.get(eventMeta.service)
-        ->(
-            fun
-            | None => {
-                Js.log2(
-                  "EventMapper.map: No mapping available for service:",
-                  eventMeta.service,
-                );
-                None;
-              }
-            | Some(mapping) => Some((eventObj, eventMeta, mapping))
-          )
-      | Some(Error(err)) => {
-          Js.log2("EventMapper.map: Couldn't decode meta:", err);
-          None;
-        }
-      | _ => {
-          Js.log("EventMapper.map: Invalid JSON object");
-          None;
-        }
-    );
+    switch (
+      eventObj->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
+    ) {
+    | Some(Belt.Result.Ok(eventMeta)) =>
+      EventMappings.mappings
+      ->Belt.Array.getBy((module Mapping: Mapping) =>
+          Mapping.Source.name == eventMeta.service
+        )
+      ->(
+          fun
+          | None => {
+              Js.log2(
+                "EventMapper.map: No mapping available for service:",
+                eventMeta.service,
+              );
+              None;
+            }
+          | Some(mapping) => Some((eventObj, eventMeta, mapping))
+        )
+    | Some(Error(err)) =>
+      Js.log2("EventMapper.map: Couldn't decode meta:", err);
+      None;
+    | _ =>
+      Js.log("EventMapper.map: Invalid JSON object");
+      None;
+    };
 
   let map = (queryCommandTopic, queryEngine) =>
     (. event'Json) => {
       event'Json->Message.logEvent'Json("EventMapper.map: incoming event:");
-      event'Json->Js.Json.decodeObject->Belt.Option.flatMap(findMapping)
-      |> (
-        fun
-        | Some((eventObj, eventMeta, mapping)) => {
-            let publish =
-                (
-                  idx,
-                  (service, (commandId, command), idEncoder, commandEncoder),
-                  delay,
-                ) => {
-              let commandMeta = {
-                ...eventMeta,
-                service,
-                correlationId:
-                  // original correlationId only for first action to avoid counting problems
-                  // TODO: think about different solution, e.g. AtomicCounter with explicit
-                  // count parameter (instead of always counting by 1)
-                  idx == 0 ? eventMeta.correlationId : Message.uuid(),
-                msgId: Message.uuid(),
-              };
-              let queueId = queryCommandTopic(service)##id->Pulumi.Output.get;
-              let commandStr = command->commandEncoder->Js.Json.stringify;
-              let source = eventMeta.service;
-              Js.log(
-                {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
-              );
+      switch (
+        event'Json->Js.Json.decodeObject->Belt.Option.flatMap(findMapping)
+      ) {
+      | Some((eventObj, eventMeta, mapping)) =>
+        let publish = (idx, commandId, command, delay) => {
+          let commandMeta = {
+            ...eventMeta,
+            service,
+            correlationId:
+              // original correlationId only for first action to avoid counting problems
+              // TODO: think about different solution, e.g. AtomicCounter with explicit
+              // count parameter (instead of always counting by 1)
+              idx == 0 ? eventMeta.correlationId : Message.uuid(),
+            msgId: Message.uuid(),
+          };
+          let queueId = queryCommandTopic(service)##id->Pulumi.Output.get;
+          let commandStr = command->Target.command_encode->Js.Json.stringify;
+          let source = eventMeta.service;
+          Js.log(
+            {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
+          );
 
-              Message.command'_encode(
-                idEncoder,
-                commandEncoder,
-                {Message.id: commandId, meta: commandMeta, command},
-              )
-              ->Js.Json.stringify
-              ->AwsSdk.SQS.sendMessage(~queueId, ~messageBody=_, ~delay, ())
-              ->Js.Promise.catch(
-                  err =>
-                    err
-                    ->Js.log2("EventMapper: Error on publish command:")
-                    ->Js.Promise.resolve,
-                  _,
-                );
-            };
-
-            module Mapping = (val mapping);
-            (
-              eventObj
-              ->Js.Dict.get("id")
-              ->Belt.Option.map(Mapping.eventIdDecoder),
-              eventObj
-              ->Js.Dict.get("event")
-              ->Belt.Option.map(Mapping.eventDecoder),
+          Message.command'_encode(
+            Target.Id.t_encode,
+            Target.command_encode,
+            {Message.id: commandId, meta: commandMeta, command},
+          )
+          ->Js.Json.stringify
+          ->AwsSdk.SQS.sendMessage(
+              ~queueId,
+              ~messageGroupId=commandId->EventMappings.Target.Id.toString,
+              ~messageBody=_,
+              ~delay,
+              (),
             )
-            |> (
-              fun
-              | (Some(Ok(eventId)), Some(Ok(event))) =>
-                Mapping.map(. eventId, event, queryEngine)
-                ->Belt.Array.mapWithIndex((idx, action) =>
-                    switch (action) {
-                    | EventMapping.PublishToQueue(
-                        service,
-                        (commandId, command),
-                        idEncoder,
-                        commandEncoder,
-                      ) =>
-                      publish(
-                        idx,
-                        (
-                          service,
-                          (commandId, command),
-                          idEncoder,
-                          commandEncoder,
-                        ),
-                        0,
-                      )
-                    | EventMapping.PublishToQueueDelayed(
-                        service,
-                        (commandId, command),
-                        idEncoder,
-                        commandEncoder,
-                        delay,
-                      ) =>
-                      publish(
-                        idx,
-                        (
-                          service,
-                          (commandId, command),
-                          idEncoder,
-                          commandEncoder,
-                        ),
-                        delay,
-                      )
-                    | EventMapping.PublishToQueueAsync(promise) =>
-                      promise->Js.Promise.then_(
-                                 ((service, cmds, idEncoder, commandEncoder)) =>
-                                   cmds
-                                   ->Belt.Array.map(((commandId, command)) =>
-                                       publish(
-                                         idx,
-                                         (
-                                           service,
-                                           (commandId, command),
-                                           idEncoder,
-                                           commandEncoder,
-                                         ),
-                                         0,
-                                       )
-                                     )
-                                   ->Js.Promise.all
-                                   ->Js.Promise.then_(
-                                       _ => Js.Promise.resolve(),
-                                       _,
-                                     ),
-                                 _,
-                               )
-                    | Call(commandHandler, command) =>
-                      command
-                      ->commandHandler
-                      ->Js.Promise.catch(
-                          err =>
-                            err
-                            |> Js.log2(
-                                 "EventMapper: Error in commandHandler:",
-                               )
-                            |> Js.Promise.resolve,
-                          _,
-                        )
-                    | Nothing => Js.Promise.resolve()
-                    }
-                  )
-                ->Js.Promise.all
-                ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
-              | (None, _)
-              | (_, None) =>
-                Js.Promise.resolve(Js.log("EventMapper.map: Invalid event"))
-              | (_, Some(Error(err)))
-              | (Some(Error(err)), _) =>
-                Js.Promise.resolve(
-                  Js.log2("EventMapper.map: Couldn't decode event:", err),
-                )
+          ->Js.Promise.catch(
+              err =>
+                err
+                ->Js.log2("EventMapper: Error on publish command:")
+                ->Js.Promise.resolve,
+              _,
             );
-          }
-        | None => Js.Promise.resolve()
-      );
+        };
+
+        module Mapping = (val mapping);
+
+        let idDecoded =
+          eventObj
+          ->Js.Dict.get("id")
+          ->Belt.Option.map(Mapping.Source.Id.t_decode);
+        let eventDecoded =
+          eventObj
+          ->Js.Dict.get("event")
+          ->Belt.Option.map(Mapping.Source.event_decode);
+
+        switch (idDecoded, eventDecoded) {
+        | (Some(Ok(eventId)), Some(Ok(event))) =>
+          Mapping.map(. eventId, event, queryEngine)
+          ->Belt.Array.mapWithIndex((idx, action) =>
+              switch (action) {
+              | EventMapping.Publish(commandId, command) =>
+                publish(idx, commandId, command, 0)
+              | EventMapping.PublishDelayed(commandId, command, delay) =>
+                publish(idx, commandId, command, delay)
+              | EventMapping.PublishAsync(promise) =>
+                promise->Js.Promise.then_(
+                           cmds =>
+                             cmds
+                             ->Belt.Array.map(((commandId, command)) =>
+                                 publish(idx, commandId, command, 0)
+                               )
+                             ->Js.Promise.all
+                             ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
+                           _,
+                         )
+              | Call(commandHandler, command) =>
+                command
+                ->commandHandler
+                ->Js.Promise.catch(
+                    err =>
+                      err
+                      |> Js.log2("EventMapper: Error in commandHandler:")
+                      |> Js.Promise.resolve,
+                    _,
+                  )
+              }
+            )
+          ->Js.Promise.all
+          ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+        | (None, _)
+        | (_, None) =>
+          Js.Promise.resolve(Js.log("EventMapper.map: Invalid event"))
+        | (_, Some(Error(err)))
+        | (Some(Error(err)), _) =>
+          Js.Promise.resolve(
+            Js.log2("EventMapper.map: Couldn't decode event:", err),
+          )
+        };
+      | None => Js.Promise.resolve()
+      };
     };
 
   let construct =
@@ -251,11 +216,11 @@ module Make =
       );
     let eventCollector =
       EventCollector.make(
-        ~name=EventMappings.name,
+        ~name=EventMappings.Target.name,
         ~aggregateNames=
-          EventMappings.mappings
-          ->Js.Dict.entries
-          ->Belt.Array.map(((eventService, _)) => eventService),
+          EventMappings.mappings->Belt.Array.map((module Mapping: Mapping) =>
+            Mapping.Source.name
+          ),
         ~eventHandler=map(queryCommandTopic, queryEngine),
         ~queryEventTopic,
         ~memorySize,
@@ -293,7 +258,7 @@ module Make =
     ) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=EventMappings.name,
+        ~name=EventMappings.Target.name,
         ~construct=
           construct(
             ~queryEngine,
