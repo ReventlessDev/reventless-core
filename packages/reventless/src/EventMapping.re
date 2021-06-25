@@ -1,49 +1,26 @@
-type aggregateName = string;
-
 type action('id, 'command) =
-  | PublishToQueue(
-      string,
-      ('id, 'command),
-      Message.encoder('id),
-      Message.encoder('command),
-    )
-  | PublishToQueueDelayed(
-      string,
-      ('id, 'command),
-      Message.encoder('id),
-      Message.encoder('command),
-      int,
-    )
-  | PublishToQueueAsync(
-      Js.Promise.t(
-        (
-          string,
-          array(('id, 'command)),
-          Message.encoder('id),
-          Message.encoder('command),
-        ),
-      ),
-    )
-  | Call(Message.handler('command), 'command)
-  | Nothing; // TODO: Since mappings changed to return array(action), this could be removed because it means the same like an empty array of actions
+  | Publish('id, 'command)
+  | PublishDelayed('id, 'command, int)
+  | PublishAsync(Js.Promise.t(array(('id, 'command))))
+  | Call(Message.handler('command), 'command);
 
 module type T = {
-  type eventId;
-  type event;
-  type action;
+  module Source: Aggregate.Spec;
 
-  let eventIdDecoder: Message.decoder(eventId);
-  let eventDecoder: Message.decoder(event);
+  type targetId;
+  type targetCommand;
 
-  let map: (. eventId, event, ReventlessSpec.QueryEngine.t) => array(action);
+  let map:
+    (. Source.Id.t, Source.event, ReventlessSpec.QueryEngine.t) =>
+    array(action(targetId, targetCommand));
 };
 
 module type Mappings = {
-  type commandId;
-  type command;
-
-  let name: aggregateName;
+  module Target: Aggregate.Spec;
 
   let mappings:
-    Js.Dict.t(module T with type action = action(commandId, command));
+    array(
+      module T with
+        type targetId = Target.Id.t and type targetCommand = Target.command,
+    );
 };
