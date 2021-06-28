@@ -6,7 +6,7 @@ type outputs = {
   .
   "name": string,
   "bucket": option(PulumiAws.S3.Bucket.bucket),
-  "mappings": option(module EventMapping.Mappings),
+  "mappings": option(module ReventlessSpec.EventMapping.Mappings),
   "policies": option(module EventCollector.Policies),
 };
 

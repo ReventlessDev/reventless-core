@@ -52,7 +52,7 @@ type applyMulti('state, 'event) =
   (. list('state), 'event, Message.context) => list(action('state));
 
 module type Spec = {
-  module Id: Id.T;
+  module Id: ReventlessSpec.Id.T;
 
   let name: string;
 

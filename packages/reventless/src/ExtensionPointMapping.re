@@ -43,7 +43,7 @@ type mapOutgoingEvent(
 
 module type Impl = {
   module ExtensionPoint: Spec;
-  module Aggregate: Aggregate.Spec;
+  module Aggregate: ReventlessSpec.AggregateSpec.T;
 
   let mapIncomingCommand:
     mapIncomingCommand(

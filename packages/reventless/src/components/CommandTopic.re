@@ -8,7 +8,7 @@ type publish('id, 'command) =
 exception NotPublishedToConnector(Js.Promise.error);
 
 module type Spec = {
-  module Id: Id.T;
+  module Id: ReventlessSpec.Id.T;
 
   [@decco]
   type command;

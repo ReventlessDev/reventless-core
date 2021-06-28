@@ -8,16 +8,15 @@ type outputs = {
 };
 
 type service; // TODO: rename this back to t after refactor
-type maker = option(Pulumi.ComponentResource.Options.t) => Component.t(service,outputs);
+type maker =
+  option(Pulumi.ComponentResource.Options.t) => Component.t(service, outputs);
 
-module type T = {
-  let make: maker;
-  };
+module type T = {let make: maker;};
 
 module Make =
        (
          Config: Config.T,
-         Spec: Aggregate.Spec,
+         Spec: ReventlessSpec.AggregateSpec.T,
          Behaviour: Behaviour.T with module Spec := Spec,
          View: View.T with module Spec := Spec,
          CommandGeneratorResolvers:
@@ -34,7 +33,7 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct = (Component.t(service,outputs), string) => constructed;
+  type construct = (Component.t(service, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -44,7 +43,7 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(service,outputs) =
+    Component.t(service, outputs) =
     "default";
 
   module Aggregate =
@@ -62,33 +61,46 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~name: string, ~aggregate: Reventless.Aggregate.outputs, ~readModel: Reventless.ReadModel.outputs) =>
+    (
+      ~name: string,
+      ~aggregate: Reventless.Aggregate.outputs,
+      ~readModel: Reventless.ReadModel.outputs
+    ) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(service,outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(service,outputs), outputs) => unit = "setOutputs";
+  external registerOutputs:
+    (Component.t(service, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(service, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  let construct:construct = (self, _name) => {
-    let opts =
-      Pulumi.ComponentResource.Options.make(
-        ~parent=self->Component.toPulumiResource,
-        (),
-      );
+  let construct: construct =
+    (self, _name) => {
+      let opts =
+        Pulumi.ComponentResource.Options.make(
+          ~parent=self->Component.toPulumiResource,
+          (),
+        );
 
-    let readModel = ReadModel.make(Some(opts));
+      let readModel = ReadModel.make(Some(opts));
 
-    let aggregate =
-      Aggregate.make(~eventsHandler=readModel->ReadModel.update, ~opts, ());
+      let aggregate =
+        Aggregate.make(~eventsHandler=readModel->ReadModel.update, ~opts, ());
 
-    makeOutputs(~name=Spec.name, ~aggregate=aggregate->Component.extractOutputs, ~readModel=readModel->Component.extractOutputs)
-    -> setOutputs(self, _);
-  };
+      makeOutputs(
+        ~name=Spec.name,
+        ~aggregate=aggregate->Component.extractOutputs,
+        ~readModel=readModel->Component.extractOutputs,
+      )
+      ->setOutputs(self, _);
+    };
 
   let make = opts =>
     make(

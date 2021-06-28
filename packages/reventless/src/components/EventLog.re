@@ -5,28 +5,31 @@ type outputs = {. "storage": Adapter.resource};
 exception ReplayError(string);
 
 type append('id, 'event) =
-(. int, 'id, array('event)) => Js.Promise.t(unit);
+  (. int, 'id, array('event)) => Js.Promise.t(unit);
 type replay('id, 'event) = (. 'id) => Js.Promise.t(array('event));
 
-  module type Spec = {
-    module Id: Id.T;
+module type Spec = {
+  module Id: ReventlessSpec.Id.T;
 
-    let name: string;
+  let name: string;
 
-    [@decco]
-    type event;
-    };
+  [@decco]
+  type event;
+};
 
-    module type T = {
-      module Spec: Spec;
-      type t;
+module type T = {
+  module Spec: Spec;
+  type t;
 
-      let make:
-      (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => Component.t(t,outputs);
+  let make:
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    Component.t(t, outputs);
 
-      let append: Component.t(t,outputs) =>append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
-      let replay: Component.t(t,outputs) =>replay(Spec.Id.t, Spec.event);
-      };
+  let append:
+    Component.t(t, outputs) =>
+    append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
+  let replay: Component.t(t, outputs) => replay(Spec.Id.t, Spec.event);
+};
 
 type storage = {
   resource: Adapter.resource,
@@ -43,7 +46,7 @@ module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
   type t;
 
   type constructed;
-  type construct = (Component.t(t,outputs), string) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   type nonrec append =
     append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
@@ -57,21 +60,26 @@ module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t,outputs) =
+    Component.t(t, outputs) =
     "default";
 
   [@bs.obj] external makeOutputs: (~storage: Adapter.resource) => outputs = "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t,outputs), outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (Component.t(t,outputs), outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(t, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setAppend: (Component.t(t, outputs), append) => unit = "append";
-  [@bs.set] external setReplay: (Component.t(t, outputs), replay) => unit = "replay";
+  [@bs.set]
+  external setAppend: (Component.t(t, outputs), append) => unit = "append";
+  [@bs.set]
+  external setReplay: (Component.t(t, outputs), replay) => unit = "replay";
   [@bs.get] external append: Component.t(t, outputs) => append = "append";
   [@bs.get] external replay: Component.t(t, outputs) => replay = "replay";
 
@@ -174,7 +182,8 @@ module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
   };
 
   let make:
-    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => Component.t(t, outputs) =
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    Component.t(t, outputs) =
     (~name, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,

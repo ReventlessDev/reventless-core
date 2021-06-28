@@ -1,14 +1,4 @@
-module type T = {
-  [@decco]
-  type t;
-  type input;
-  let make: input => t;
-  let makeFromString: string => t;
-  let toString: t => string;
-  let cmp: (t, t) => int;
-};
-
-module String: T = {
+module String: ReventlessSpec.Id.T = {
   [@decco]
   type t = string;
   type input = string;

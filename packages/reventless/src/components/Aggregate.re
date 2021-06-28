@@ -12,23 +12,8 @@ type outputs = {
 
 type name = string;
 
-module type Spec = {
-  module Id: Id.T;
-
-  let name: string;
-
-  [@decco]
-  type command;
-
-  [@decco]
-  type event;
-
-  [@decco]
-  type error;
-};
-
 module type T = {
-  module Spec: Spec;
+  module Spec: ReventlessSpec.AggregateSpec.T;
   type t;
 
   let make:
@@ -43,7 +28,7 @@ module type T = {
 module Make =
        (
          Config: Config.T,
-         Spec: Spec,
+         Spec: ReventlessSpec.AggregateSpec.T,
          Behaviour: Behaviour.T with module Spec := Spec,
          CommandGeneratorResolvers:
            CommandGenerator.Resolvers with type api := Config.api,

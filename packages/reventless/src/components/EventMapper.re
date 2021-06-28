@@ -23,7 +23,7 @@ module type T = {let make: maker;};
 
 module Make =
        (
-         EventMappings: EventMapping.Mappings,
+         EventMappings: ReventlessSpec.EventMapping.Mappings,
          EventCollector: EventCollector.T,
        )
        : T => {
@@ -31,7 +31,7 @@ module Make =
   type construct = (Component.t(eventMapper, outputs), string) => constructed;
 
   module type Mapping =
-    EventMapping.T with
+    ReventlessSpec.EventMapping.T with
       type targetId = EventMappings.Target.Id.t and
       type targetCommand = EventMappings.Target.command;
 
@@ -157,11 +157,11 @@ module Make =
           Mapping.map(. eventId, event, queryEngine)
           ->Belt.Array.mapWithIndex((idx, action) =>
               switch (action) {
-              | EventMapping.Publish(commandId, command) =>
+              | ReventlessSpec.EventMapping.Publish(commandId, command) =>
                 publish(idx, commandId, command, 0)
-              | EventMapping.PublishDelayed(commandId, command, delay) =>
+              | PublishDelayed(commandId, command, delay) =>
                 publish(idx, commandId, command, delay)
-              | EventMapping.PublishAsync(promise) =>
+              | PublishAsync(promise) =>
                 promise->Js.Promise.then_(
                            cmds =>
                              cmds

@@ -1,7 +1,7 @@
 module Make =
        (
          Config: Config.T,
-         Spec: Reventless.Aggregate.Spec,
+         Spec: ReventlessSpec.AggregateSpec.T,
          Behaviour: Reventless.Behaviour.T with module Spec := Spec,
        )
        : Reventless.Aggregate.T =>
