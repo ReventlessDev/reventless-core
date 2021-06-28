@@ -15,14 +15,14 @@ module type Spec = {
 
 /* these actions are internal to the Mapping Functor */
 type abstractIncomingCommandAction =
-  | AbstractPublishAggregateCommand(Aggregate.name, Js.Json.t)
+  | AbstractPublishAggregateCommand(Aggregate.name, string, Js.Json.t)
   | AbstractPublishAggregateCommandAsync(
-      Js.Promise.t((Aggregate.name, Js.Json.t)),
+      Js.Promise.t((Aggregate.name, string, Js.Json.t)),
     )
   | AbstractPublishAggregateCommandsAsync(
-      Js.Promise.t(array((Aggregate.name, Js.Json.t))),
+      Js.Promise.t(array((Aggregate.name, string, Js.Json.t))),
     )
-  | AbstractPublishPluginExtensionPointCommand(Js.Json.t)
+  | AbstractPublishPluginExtensionPointCommand(string, Js.Json.t)
   | AbstractPublishExtensionPointCommand(
       extensionPointName,
       string,
@@ -32,7 +32,7 @@ type abstractIncomingCommandAction =
   | AbstractCall(Message.handler(unit));
 
 type abstractOutgoingCommandAction =
-  | AbstractPublishPluginExtensionPointCommand(Js.Json.t)
+  | AbstractPublishPluginExtensionPointCommand(string, Js.Json.t)
   | AbstractPublishExtensionPointCommand(
       extensionPointName,
       string,
@@ -126,6 +126,7 @@ module Make =
 
             AbstractPublishAggregateCommand(
               aggregateName,
+              aggregateId,
               Message.command'_encode(
                 Aggregate.Id.t_encode,
                 Aggregate.command_encode,
@@ -154,6 +155,7 @@ module Make =
                            );
                            (
                              aggregateName,
+                             aggregateId,
                              Message.command'_encode(
                                Aggregate.Id.t_encode,
                                Aggregate.command_encode,
@@ -189,6 +191,7 @@ module Make =
                                );
                                (
                                  aggregateName,
+                                 aggregateId,
                                  Message.command'_encode(
                                    Aggregate.Id.t_encode,
                                    Aggregate.command_encode,
@@ -213,6 +216,7 @@ module Make =
         | PublishExtensionPointCommand(id, command)
             when Spec.name == ReventlessSpec.PluginExtensionPointSpec.name => {
             AbstractPublishPluginExtensionPointCommand(
+              id,
               command->encodeExtensionPointCommand(
                 ~from={j|incoming from ExtensionPoint $extensionPointName|j},
                 ~extensionPointName,
@@ -282,6 +286,7 @@ module Make =
           | PublishExtensionPointCommand(id, command)
               when Spec.name == ReventlessSpec.PluginExtensionPointSpec.name => {
               AbstractPublishPluginExtensionPointCommand(
+                id,
                 command->encodeExtensionPointCommand(
                   ~from={j|outgoing from Aggregate $aggregateName|j},
                   ~extensionPointName,

@@ -130,10 +130,15 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       };
   };
 
-  let publishCommand = (cmdJson, queueId) =>
+  let publishCommand = (id, cmdJson, queueId) =>
     cmdJson
     |> Js.Json.stringify
-    |> AwsSdk.SQS.sendMessage(~queueId, ~messageBody=_, ())
+    |> AwsSdk.SQS.sendMessage(
+         ~queueId,
+         ~messageGroupId=id,
+         ~messageBody=_,
+         (),
+       )
     |> Js.Promise.catch(err =>
          err
          |> Js.log2("Extension: Error on publish command:")
@@ -154,6 +159,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
 
     let forwardCommand = (id, meta, extensionPointName, command'Json) =>
       publishCommand(
+        id,
         ReventlessSpec.PluginExtensionPointSpec.(
           Message.command'_encode(
             Id.String.t_encode,
@@ -167,6 +173,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
               command:
                 ForwardCommand({
                   extensionPointName,
+                  id,
                   command: command'Json->Js.Json.stringify,
                 }),
             },
@@ -179,16 +186,19 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       fun
       | ExtensionMapping.AbstractPublishAggregateCommand(
           aggregateName,
+          id,
           command'Json,
         ) =>
         publishCommand(
+          id,
           command'Json,
           queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
         )
       | ExtensionMapping.AbstractPublishAggregateCommandAsync(promise) =>
         promise->Js.Promise.then_(
-                   ((aggregateName, command'Json)) =>
+                   ((aggregateName, id, command'Json)) =>
                      publishCommand(
+                       id,
                        command'Json,
                        queryCommandTopic(aggregateName)##id
                        ->Pulumi.Output.get,
@@ -199,8 +209,9 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
         promise->Js.Promise.then_(
                    tupels =>
                      tupels
-                     ->Belt.Array.map(((aggregateName, command'Json)) =>
+                     ->Belt.Array.map(((aggregateName, id, command'Json)) =>
                          publishCommand(
+                           id,
                            command'Json,
                            queryCommandTopic(aggregateName)##id
                            ->Pulumi.Output.get,
@@ -211,9 +222,11 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
                    _,
                  )
       | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(
+          id,
           command'Json,
         ) =>
         publishCommand(
+          id,
           command'Json,
           pluginExtensionPointCommandTopicId->Pulumi.Output.get,
         )
@@ -235,9 +248,11 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
     let applyOutgoingCommandAction =
       fun
       | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(
+          id,
           command'Json,
         ) =>
         publishCommand(
+          id,
           command'Json,
           pluginExtensionPointCommandTopicId->Pulumi.Output.get,
         )

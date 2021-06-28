@@ -1,5 +1,10 @@
 let forwardCommand =
-    (command, extensionPointName, queryEngine: ReventlessSpec.QueryEngine.t) =>
+    (
+      id,
+      command,
+      extensionPointName,
+      queryEngine: ReventlessSpec.QueryEngine.t,
+    ) =>
   queryEngine.scan(
     ~serviceName=PluginSpec.name,
     ~filterConfigs=[
@@ -33,6 +38,7 @@ let forwardCommand =
                         command
                         ->AwsSdk.SQS.sendMessage(
                             ~queueId=extensionPoint.commandTopic,
+                            ~messageGroupId=id,
                             ~messageBody=_,
                             (),
                           )
@@ -105,8 +111,8 @@ let callHandler =
         |> Js.Json.stringify,
     })
   | DeleteDisconnectSchedule(id) => deleteSchedule(. id)
-  | ForwardCommand({command, extensionPointName}) =>
-    forwardCommand(command, extensionPointName, queryEngine)
+  | ForwardCommand({id, command, extensionPointName}) =>
+    forwardCommand(id, command, extensionPointName, queryEngine)
   | _ => Js.Promise.resolve()
   };
 
