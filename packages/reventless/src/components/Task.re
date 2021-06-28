@@ -15,7 +15,8 @@ type task; // TODO: rename to t - after refactoring
 open ReventlessSpec;
 
 type publishCommand =
-  (. /*~queueName:*/ string, /*~message:*/ string) => Js.Promise.t(unit);
+  (. /*~queueName:*/ string, /*~id:*/ string, /*~message:*/ string) =>
+  Js.Promise.t(unit);
 
 type queryBucketName = string => string;
 
@@ -23,7 +24,8 @@ type createSchedule = (. Scheduler.schedule) => Js.Promise.t(unit);
 type deleteSchedule = (. /*~name:*/ string) => Js.Promise.t(unit);
 
 type queueMessage =
-  (. /*~delay:*/ int, /*~message:*/ string) => Js.Promise.t(unit);
+  (. /*~delay:*/ int, /*~id:*/ string, /*~message:*/ string) =>
+  Js.Promise.t(unit);
 
 type maker =
   (
@@ -95,10 +97,10 @@ let construct =
     );
 
   let publishCommand =
-    (. queueName, messageBody) => {
+    (. queueName, id, messageBody) => {
       let queueId =
         queryCommandTopic(queueName)##id->OutputFailsafeRuntime.get;
-      AwsSdk.SQS.sendMessage(~queueId, ~messageBody, ())
+      AwsSdk.SQS.sendMessage(~queueId, ~messageGroupId=id, ~messageBody, ())
       |> Js.Promise.then_(res => {
            Js.log({j|Task.publishCommand successfull: $messageBody|j});
            res |> Js.Promise.resolve;
@@ -122,11 +124,17 @@ let construct =
 
   let queueMessage =
     (. taskName) =>
-      (. delay, messageBody) => {
+      (. delay, id, messageBody) => {
         let eventCollector = queryEventCollector(taskName);
         let queueId = eventCollector##id->OutputFailsafeRuntime.get;
         Js.log4("Task.queueMessage:", delay, messageBody, queueId);
-        AwsSdk.SQS.sendMessage(~queueId, ~messageBody, ~delay, ());
+        AwsSdk.SQS.sendMessage(
+          ~queueId,
+          ~messageGroupId=id,
+          ~messageBody,
+          ~delay,
+          (),
+        );
       };
 
   setup(.
