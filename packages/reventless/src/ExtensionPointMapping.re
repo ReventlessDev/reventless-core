@@ -62,7 +62,7 @@ module type Impl = {
 
 /* these actions are internal to the Mapping Functor */
 type abstractCommandAction =
-  | AbstractPublishCommand(Aggregate.name, Js.Json.t)
+  | AbstractPublishCommand(Aggregate.name, string, Js.Json.t)
   | AbstractCall(unit => Js.Promise.t(unit));
 
 type abstractEventAction('extensionPointEvent) =
@@ -120,6 +120,7 @@ module Make =
 
                 AbstractPublishCommand(
                   aggregateName,
+                  aggregateId,
                   Message.command'_encode(
                     Aggregate.Id.t_encode,
                     Aggregate.command_encode,

@@ -164,11 +164,16 @@ module Make =
 
     let applyCommandAction =
       fun
-      | ExtensionPointMapping.AbstractPublishCommand(aggregateName, cmdJson) =>
+      | ExtensionPointMapping.AbstractPublishCommand(
+          aggregateName,
+          id,
+          cmdJson,
+        ) =>
         cmdJson
         ->Js.Json.stringify
         ->AwsSdk.SQS.sendMessage(
             ~queueId=queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
+            ~messageGroupId=id,
             ~messageBody=_,
             (),
           )

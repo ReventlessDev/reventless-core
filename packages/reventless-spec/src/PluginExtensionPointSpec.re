@@ -8,6 +8,7 @@ type timeout = int; // in minutes
 [@decco]
 type forwardCommand = {
   extensionPointName: string,
+  id: string,
   command: string,
 };
 

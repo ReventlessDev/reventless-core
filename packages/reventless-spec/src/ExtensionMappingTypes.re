@@ -4,19 +4,21 @@ type forwardCommand = {
   commandJson: Js.Json.t,
 };
 
+type id = string;
+
 /* these actions are needed for Impl */
 type incomingCommandAction('aggregateCommand, 'extensionPointCommand, 'msg) =
-  | PublishAggregateCommand(string, 'aggregateCommand)
-  | PublishAggregateCommandAsync(Js.Promise.t((string, 'aggregateCommand)))
+  | PublishAggregateCommand(id, 'aggregateCommand)
+  | PublishAggregateCommandAsync(Js.Promise.t((id, 'aggregateCommand)))
   | PublishAggregateCommandsAsync(
-      Js.Promise.t(array((string, 'aggregateCommand))),
+      Js.Promise.t(array((id, 'aggregateCommand))),
     )
-  | PublishExtensionPointCommand(string, 'extensionPointCommand)
+  | PublishExtensionPointCommand(id, 'extensionPointCommand)
   | ForwardCommand(forwardCommand)
   | Call('msg => Js.Promise.t(unit), 'msg);
 
 type outgoingCommandAction('extensionPointCommand, 'msg) =
-  | PublishExtensionPointCommand(string, 'extensionPointCommand)
+  | PublishExtensionPointCommand(id, 'extensionPointCommand)
   | ForwardCommand(forwardCommand)
   | Call('msg => Js.Promise.t(unit), 'msg);
 
