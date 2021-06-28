@@ -1,5 +1,5 @@
 module type T = {
-  module Id: ReventlessSpec.Id.T;
+  module Id: Id.T;
 
   let name: string;
 
