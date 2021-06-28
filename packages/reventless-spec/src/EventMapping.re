@@ -2,10 +2,10 @@ type action('id, 'command) =
   | Publish('id, 'command)
   | PublishDelayed('id, 'command, int)
   | PublishAsync(Js.Promise.t(array(('id, 'command))))
-  | Call(Message.handler('command), 'command);
+  | Call('command => Js.Promise.t(unit), 'command);
 
 module type T = {
-  module Source: Aggregate.Spec;
+  module Source: AggregateSpec.T;
 
   type targetId;
   type targetCommand;
@@ -16,7 +16,7 @@ module type T = {
 };
 
 module type Mappings = {
-  module Target: Aggregate.Spec;
+  module Target: AggregateSpec.T;
 
   let mappings:
     array(

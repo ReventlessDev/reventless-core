@@ -1,4 +1,4 @@
-include ReventlessSpec.ExtensionMappingTypes;
+include ReventlessSpec.ExtensionMapping;
 
 type extensionPointName = string;
 
@@ -43,7 +43,7 @@ type abstractOutgoingCommandAction =
 
 module type Impl = {
   module ExtensionPoint: Spec;
-  module Aggregate: Aggregate.Spec;
+  module Aggregate: ReventlessSpec.AggregateSpec.T;
 
   let mapIncomingEvent:
     mapIncomingEvent(

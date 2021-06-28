@@ -8,7 +8,7 @@ type publish('id, 'event) =
 exception NotPublishedToPublisher(Js.Promise.error);
 
 module type Spec = {
-  module Id: Id.T;
+  module Id: ReventlessSpec.Id.T;
 
   let name: string;
 

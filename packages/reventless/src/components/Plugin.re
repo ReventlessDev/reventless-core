@@ -576,7 +576,9 @@ module Make =
             switch (taskOutputs##mappings, taskOutputs##policies) {
             | (None, _) => None
             | (
-                Some((mappings: (module EventMapping.Mappings))),
+                Some(
+                  (mappings: (module ReventlessSpec.EventMapping.Mappings)),
+                ),
                 Some((policies: (module EventCollector.Policies))),
               ) =>
               module EventCollector =
@@ -586,7 +588,12 @@ module Make =
               module EventMapper =
                 EventMapper.Make((val mappings), EventCollector);
               Some(EventMapper.make);
-            | (Some((mappings: (module EventMapping.Mappings))), None) =>
+            | (
+                Some(
+                  (mappings: (module ReventlessSpec.EventMapping.Mappings)),
+                ),
+                None,
+              ) =>
               module EventCollector =
                 EventCollector.Make
                   // TODO: general EventCollector

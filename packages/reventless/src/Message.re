@@ -1,5 +1,5 @@
 module type Service = {
-  module Id: Id.T;
+  module Id: ReventlessSpec.Id.T;
 
   [@decco]
   type id = Id.t;

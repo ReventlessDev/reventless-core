@@ -1,7 +1,7 @@
 module Make =
        (
          Config: Config.T,
-         Spec: Reventless.Aggregate.Spec,
+         Spec: ReventlessSpec.AggregateSpec.T,
          View: Reventless.View.T with module Spec := Spec,
        )
        : Reventless.ReadModel.T =>
