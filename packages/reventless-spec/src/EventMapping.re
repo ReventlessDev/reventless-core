@@ -1,26 +1,28 @@
+/** see ReventlessSpec.AggregateSpec.T */
+module type Source = {
+  let name: string;
+  module Id: Id.T;
+  [@decco]
+  type event;
+};
+
+/** see ReventlessSpec.AggregateSpec.T */
+module type Target = {
+  let name: string;
+  module Id: Id.T;
+  [@decco]
+  type command;
+};
+
 type action('id, 'command) =
   | Publish('id, 'command)
   | PublishDelayed('id, 'command, int)
-  | PublishAsync(Js.Promise.t(array(('id, 'command))))
-  | Call('command => Js.Promise.t(unit), 'command);
+  | PublishAsync(Js.Promise.t(array(('id, 'command))));
 
 module type T = {
-  module Source: AggregateSpec.T;
-
-  type targetId;
-  type targetCommand;
-
+  module Source: Source;
+  module Target: Target;
   let map:
-    (. Source.Id.t, Source.event, ReventlessSpec.QueryEngine.t) =>
-    array(action(targetId, targetCommand));
-};
-
-module type Mappings = {
-  module Target: AggregateSpec.T;
-
-  let mappings:
-    array(
-      module T with
-        type targetId = Target.Id.t and type targetCommand = Target.command,
-    );
+    (. Source.Id.t, Source.event, QueryEngine.t) =>
+    array(action(Target.Id.t, Target.command));
 };
