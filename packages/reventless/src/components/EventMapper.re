@@ -19,21 +19,24 @@ type maker =
   ) =>
   Component.t(eventMapper, outputs);
 
-module type T = {let make: maker;};
+module type T = {
+  module Target: ReventlessSpec.EventMapping.Target;
+  module type Mapping =
+    ReventlessSpec.EventMapping.T with module Target := Target;
+  let make: array(module Mapping) => maker;
+};
 
 module Make =
        (
-         EventMappings: ReventlessSpec.EventMapping.Mappings,
+         Target: ReventlessSpec.EventMapping.Target,
          EventCollector: EventCollector.T,
        )
-       : T => {
+       : (T with module Target := Target) => {
   type constructed;
   type construct = (Component.t(eventMapper, outputs), string) => constructed;
 
   module type Mapping =
-    ReventlessSpec.EventMapping.T with
-      type targetId = EventMappings.Target.Id.t and
-      type targetCommand = EventMappings.Target.command;
+    ReventlessSpec.EventMapping.T with module Target := Target;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -63,43 +66,45 @@ module Make =
     self->registerOutputs(outputs);
   };
 
-  module Target = EventMappings.Target;
+  module Target = Target;
+
   let service = Target.name;
 
-  let findMapping = eventObj =>
-    switch (
-      eventObj->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
-    ) {
-    | Some(Belt.Result.Ok(eventMeta)) =>
-      EventMappings.mappings
-      ->Belt.Array.getBy((module Mapping: Mapping) =>
-          Mapping.Source.name == eventMeta.service
-        )
-      ->(
-          fun
-          | None => {
-              Js.log2(
-                "EventMapper.map: No mapping available for service:",
-                eventMeta.service,
-              );
-              None;
-            }
-          | Some(mapping) => Some((eventObj, eventMeta, mapping))
-        )
-    | Some(Error(err)) =>
-      Js.log2("EventMapper.map: Couldn't decode meta:", err);
-      None;
-    | _ =>
-      Js.log("EventMapper.map: Invalid JSON object");
-      None;
-    };
+  let findMapping = (mappings, eventObj) => {
+    eventObj->Belt.Option.flatMapU((. eventObj') => {
+      let meta =
+        eventObj'->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode);
 
-  let map = (queryCommandTopic, queryEngine) =>
+      switch (meta) {
+      | Some(Belt.Result.Ok(eventMeta)) =>
+        let mapping =
+          mappings->Belt.Array.getBy((module Mapping: Mapping) =>
+            Mapping.Source.name == eventMeta.service
+          );
+        switch (mapping) {
+        | None =>
+          Js.log2(
+            "EventMapper.map: No mapping available for service:",
+            eventMeta.service,
+          );
+          None;
+        | Some(mapping) => Some((eventObj', eventMeta, mapping))
+        };
+      | Some(Error(err)) =>
+        Js.log2("EventMapper.map: Couldn't decode meta:", err);
+        None;
+      | _ =>
+        Js.log("EventMapper.map: Invalid JSON object");
+        None;
+      };
+    });
+  };
+
+  let map = (mappings, queryCommandTopic, queryEngine) =>
     (. event'Json) => {
       event'Json->Message.logEvent'Json("EventMapper.map: incoming event:");
-      switch (
-        event'Json->Js.Json.decodeObject->Belt.Option.flatMap(findMapping)
-      ) {
+      let event' = event'Json->Js.Json.decodeObject;
+      switch (findMapping(mappings, event')) {
       | Some((eventObj, eventMeta, mapping)) =>
         let publish = (idx, commandId, command, delay) => {
           let commandMeta = {
@@ -127,7 +132,7 @@ module Make =
           ->Js.Json.stringify
           ->AwsSdk.SQS.sendMessage(
               ~queueId,
-              ~messageGroupId=commandId->EventMappings.Target.Id.toString,
+              ~messageGroupId=commandId->Target.Id.toString,
               ~messageBody=_,
               ~delay,
               (),
@@ -172,16 +177,6 @@ module Make =
                              ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
                            _,
                          )
-              | Call(commandHandler, command) =>
-                command
-                ->commandHandler
-                ->Js.Promise.catch(
-                    err =>
-                      err
-                      |> Js.log2("EventMapper: Error in commandHandler:")
-                      |> Js.Promise.resolve,
-                    _,
-                  )
               }
             )
           ->Js.Promise.all
@@ -201,6 +196,7 @@ module Make =
 
   let construct =
       (
+        ~mappings,
         ~queryEngine,
         ~queryCommandTopic,
         ~queryEventTopic,
@@ -216,12 +212,12 @@ module Make =
       );
     let eventCollector =
       EventCollector.make(
-        ~name=EventMappings.Target.name,
+        ~name=Target.name,
         ~aggregateNames=
-          EventMappings.mappings->Belt.Array.map((module Mapping: Mapping) =>
+          mappings->Belt.Array.map((module Mapping: Mapping) =>
             Mapping.Source.name
           ),
-        ~eventHandler=map(queryCommandTopic, queryEngine),
+        ~eventHandler=map(mappings, queryCommandTopic, queryEngine),
         ~queryEventTopic,
         ~memorySize,
         ~timeout,
@@ -238,6 +234,7 @@ module Make =
 
   let make:
     (
+      array(module Mapping),
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
       ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
@@ -248,19 +245,21 @@ module Make =
     ) =>
     Component.t(eventMapper, outputs) =
     (
+      mappings,
       ~queryEngine,
       ~queryCommandTopic,
       ~queryEventTopic,
       ~memorySize,
-      ~timeout: int=180,
+      ~timeout=180,
       ~opts,
       _unit,
     ) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=EventMappings.Target.name,
+        ~name=Target.name,
         ~construct=
           construct(
+            ~mappings,
             ~queryEngine,
             ~queryCommandTopic,
             ~queryEventTopic,

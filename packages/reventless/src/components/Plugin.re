@@ -685,34 +685,39 @@ module Make =
         )
       ->Belt.Array.map(taskOutputs => {
           let eventMapperMaker =
-            switch (taskOutputs##mappings, taskOutputs##policies) {
+            /* FIXME: uncomment and introduce concept for EventMapping for Tasks
+               switch (taskOutputs##mappings, taskOutputs##policies) {
+                 */
+            switch (None, None) {
             | (None, _) => None
             | (
-                Some(
-                  (mappings: (module ReventlessSpec.EventMapping.Mappings)),
-                ),
+                Some((mappings: (module ReventlessSpec.EventMapping.T))),
                 Some((policies: (module EventCollector.Policies))),
               ) =>
               module EventCollector =
                 EventCollector.Make
                   // TODO: general EventCollector
                   ((val policies), EventCollectorAdapter);
-              module EventMapper =
-                EventMapper.Make((val mappings), EventCollector);
-              Some(EventMapper.make);
+              /* FIXME: uncomment & fix
+                 module EventMapper =
+                   EventMapper.Make((val mappings), EventCollector);
+                 Some(EventMapper.make);
+                 */
+              None;
             | (
-                Some(
-                  (mappings: (module ReventlessSpec.EventMapping.Mappings)),
-                ),
+                Some((mappings: (module ReventlessSpec.EventMapping.T))),
                 None,
               ) =>
               module EventCollector =
                 EventCollector.Make
                   // TODO: general EventCollector
                   (EventCollector.DefaultPolicies, EventCollectorAdapter);
-              module EventMapper =
-                EventMapper.Make((val mappings), EventCollector);
-              Some(EventMapper.make);
+              /* FIXME: uncomment & fix
+                 module EventMapper =
+                   EventMapper.Make((val mappings), EventCollector);
+                 Some(EventMapper.make);
+                 */
+              None;
             };
           (taskOutputs, eventMapperMaker);
         })
