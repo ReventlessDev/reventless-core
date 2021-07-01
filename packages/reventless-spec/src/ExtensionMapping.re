@@ -58,6 +58,37 @@ type mapOutgoingEvent(
     outgoingCommandAction('extensionPointCommand, 'extensionPointCallCommand),
   );
 
+module type Spec = {
+  let name: string;
+
+  [@decco]
+  type command;
+  [@decco]
+  type event;
+  [@decco]
+  type callCommand;
+};
+
+module type Mapping = {
+  module ExtensionPoint: Spec;
+  module Aggregate: ReventlessSpec.AggregateSpec.T;
+
+  let mapIncomingEvent:
+    mapIncomingEvent(
+      ExtensionPoint.event,
+      Aggregate.command,
+      ExtensionPoint.command,
+      ExtensionPoint.callCommand,
+    );
+
+  let mapOutgoingEvent:
+    mapOutgoingEvent(
+      Aggregate.event,
+      ExtensionPoint.command,
+      ExtensionPoint.callCommand,
+    );
+};
+
 module NoAggregate = {
   let name = "NoAggregate";
 
