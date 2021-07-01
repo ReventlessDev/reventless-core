@@ -1,17 +1,6 @@
-include ReventlessSpec.ExtensionMapping;
+open ReventlessSpec.ExtensionMapping;
 
 type extensionPointName = string;
-
-module type Spec = {
-  let name: string;
-
-  [@decco]
-  type command;
-  [@decco]
-  type event;
-  [@decco]
-  type callCommand;
-};
 
 /* these actions are internal to the Mapping Functor */
 type abstractIncomingCommandAction =
@@ -41,26 +30,6 @@ type abstractOutgoingCommandAction =
     )
   | AbstractCall(Message.handler(unit));
 
-module type Impl = {
-  module ExtensionPoint: Spec;
-  module Aggregate: ReventlessSpec.AggregateSpec.T;
-
-  let mapIncomingEvent:
-    mapIncomingEvent(
-      ExtensionPoint.event,
-      Aggregate.command,
-      ExtensionPoint.command,
-      ExtensionPoint.callCommand,
-    );
-
-  let mapOutgoingEvent:
-    mapOutgoingEvent(
-      Aggregate.event,
-      ExtensionPoint.command,
-      ExtensionPoint.callCommand,
-    );
-};
-
 module type T = {
   module ExtensionPoint: Spec;
 
@@ -80,7 +49,7 @@ module type T = {
 };
 
 module Make =
-       (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
+       (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Spec)
        : (T with module ExtensionPoint := Spec) => {
   module Aggregate = MappingImpl.Aggregate;
   let aggregateName = Aggregate.name;

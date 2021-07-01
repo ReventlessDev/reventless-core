@@ -24,37 +24,16 @@ type maker =
   ) =>
   Component.t(extension, outputs);
 
-module type Spec = {
-  module Id = Id.String;
-
-  let name: string;
-
-  [@decco]
-  type command;
-  [@decco]
-  type event;
-  [@decco]
-  type callCommand;
-};
+open ReventlessSpec.ExtensionMapping;
 
 module type T = {
-  module Spec: ExtensionMapping.Spec;
+  module Spec: Spec;
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec;
   let make: (string, array(module Mapping)) => maker;
 };
 
-module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
+module Make = (Spec: Spec) : (T with module Spec := Spec) => {
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec;
-
-  module SpecWithId:
-    Spec with
-      type command = Spec.command and
-      type event = Spec.event and
-      type callCommand = Spec.callCommand = {
-    include Spec;
-    module Id = Id.String;
-    let name = name ++ componentType->ComponentType.toName;
-  };
 
   type constructed;
   type construct = (Component.t(extension, outputs), string) => constructed;
@@ -160,24 +139,22 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
     let forwardCommand = (id, meta, extensionPointName, command'Json) =>
       publishCommand(
         id,
-        ReventlessSpec.PluginExtensionPointSpec.(
-          Message.command'_encode(
-            Id.String.t_encode,
-            command_encode,
-            {
-              id: id->Id.String.makeFromString,
-              meta: {
-                ...meta,
-                msgId: Message.uuid(),
-              },
-              command:
-                ForwardCommand({
-                  extensionPointName,
-                  id,
-                  command: command'Json->Js.Json.stringify,
-                }),
+        Message.command'_encode(
+          Id.String.t_encode,
+          ReventlessSpec.PluginExtensionPointSpec.command_encode,
+          {
+            id: id->Id.String.makeFromString,
+            meta: {
+              ...meta,
+              msgId: Message.uuid(),
             },
-          )
+            command:
+              ForwardCommand({
+                extensionPointName,
+                id,
+                command: command'Json->Js.Json.stringify,
+              }),
+          },
         ),
         pluginExtensionPointCommandTopicId->Pulumi.Output.get,
       );
@@ -306,7 +283,7 @@ module Make = (Spec: ExtensionMapping.Spec) : (T with module Spec := Spec) => {
       ~extensionPointName=Spec.name,
       ~aggregateNames=
         mappings->Belt.Array.keepMap(((module Mapping)) =>
-          Mapping.aggregateName == ExtensionMapping.NoAggregate.name
+          Mapping.aggregateName == NoAggregate.name
             ? None : Some(Mapping.aggregateName)
         ),
       ~incomingEventHandler,

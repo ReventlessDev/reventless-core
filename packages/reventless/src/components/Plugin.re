@@ -493,10 +493,10 @@ module Make =
       ExtensionMapping.Make(
         ReventlessSpec.PluginExtensionPointSpec,
         {
-          module Aggregate = ExtensionMapping.NoAggregate;
+          module Aggregate = ReventlessSpec.ExtensionMapping.NoAggregate;
 
           let mapIncomingEvent:
-            ExtensionMapping.mapIncomingEvent(
+            ReventlessSpec.ExtensionMapping.mapIncomingEvent(
               ReventlessSpec.PluginExtensionPointSpec.event,
               Aggregate.command,
               ReventlessSpec.PluginExtensionPointSpec.command,
@@ -658,7 +658,7 @@ module Make =
       exs->Belt.Array.map(ex =>
         ex##aggregateNames
         ->Set.fromArray
-        ->Set.remove(ExtensionMapping.NoAggregate.name)
+        ->Set.remove(ReventlessSpec.ExtensionMapping.NoAggregate.name)
       );
 
     let extensionPointAggregateNames =
