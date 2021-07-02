@@ -6,8 +6,6 @@ type outputs = {
   .
   "name": string,
   "bucket": option(PulumiAws.S3.Bucket.bucket),
-  "mappings": option(module ReventlessSpec.EventMapping.T), // FIXME: this is incorrect: Previously several Aggregates' events could be mapped to a Task
-  "policies": option(module EventCollector.Policies),
 };
 
 type task; // TODO: rename to t - after refactoring
@@ -30,12 +28,21 @@ type maker =
   (
     ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
     ~queryEventCollector: InterstackResourceQuery.runtimeQueryExn,
+    ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   Component.t(task, outputs);
+
+type createSideEffectHandler =
+  (
+    ~name: string,
+    ~sideEffects: SideEffectHandler.sideEffects,
+    (module SideEffectHandler.T)
+  ) =>
+  SideEffectHandler.sideEffectHandlerComponent;
 
 type setup =
   (
@@ -45,6 +52,7 @@ type setup =
     createSchedule,
     deleteSchedule,
     queueMessage,
+    createSideEffectHandler,
     Pulumi.CustomResourceOptions.t
   ) =>
   outputs;
@@ -88,6 +96,7 @@ let construct =
       ~setup: setup,
       ~queryCommandTopic,
       ~queryEventCollector,
+      ~queryEventTopic,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
       ~queryEngine: ReventlessSpec.QueryEngine.t,
@@ -141,6 +150,24 @@ let construct =
         );
       };
 
+  let createSideEffectHandler: createSideEffectHandler =
+    (~name, ~sideEffects, (module SideEffectHandler)) =>
+      SideEffectHandler.make(
+        ~name,
+        ~sideEffects,
+        ~queryEngine,
+        ~queryEventTopic,
+        ~memorySize=2048,
+        ~opts=
+          Some(
+            Pulumi.ComponentResource.Options.make(
+              ~parent=self->Component.toPulumiResource,
+              (),
+            ),
+          ),
+        (),
+      );
+
   setup(.
     queryEngine,
     publishCommand,
@@ -148,6 +175,7 @@ let construct =
     createSchedule(. taskName),
     deleteSchedule(. taskName),
     queueMessage(. taskName),
+    createSideEffectHandler,
     opts,
   )
   ->setOutputs(self, _);
@@ -159,6 +187,7 @@ let make =
       ~setup,
       ~queryCommandTopic,
       ~queryEventCollector,
+      ~queryEventTopic,
       ~queryBucketName,
       ~scheduler,
       ~queryEngine,
@@ -173,6 +202,7 @@ let make =
         ~setup,
         ~queryCommandTopic,
         ~queryEventCollector,
+        ~queryEventTopic,
         ~queryBucketName,
         ~scheduler,
         ~queryEngine,
