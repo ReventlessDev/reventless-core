@@ -672,66 +672,19 @@ module Make =
         tasksOutputs->Interstack.mergeTasks,
       );
 
-    let tasksOutputsWithEventMappers =
-      taskMakers
-      ->Belt.Array.map(taskMaker =>
-          taskMaker(
-            ~queryCommandTopic,
-            ~queryEventCollector,
-            ~queryBucketName,
-            ~scheduler,
-            ~queryEngine,
-            ~opts=Some(opts),
-          )
-          ->Component.extractOutputs
+    tasksOutputs :=
+      taskMakers->Belt.Array.map(taskMaker =>
+        taskMaker(
+          ~queryCommandTopic,
+          ~queryEventCollector,
+          ~queryEventTopic,
+          ~queryBucketName,
+          ~scheduler,
+          ~queryEngine,
+          ~opts=Some(opts),
         )
-      ->Belt.Array.map(taskOutputs => {
-          let eventMapperMaker =
-            /* FIXME: uncomment and introduce concept for EventMapping for Tasks
-               switch (taskOutputs##mappings, taskOutputs##policies) {
-                 */
-            switch (None, None) {
-            | (None, _) => None
-            | (
-                Some((mappings: (module ReventlessSpec.EventMapping.T))),
-                Some((policies: (module EventCollector.Policies))),
-              ) =>
-              module EventCollector =
-                EventCollector.Make
-                  // TODO: general EventCollector
-                  ((val policies), EventCollectorAdapter);
-              /* FIXME: uncomment & fix
-                 module EventMapper =
-                   EventMapper.Make((val mappings), EventCollector);
-                 Some(EventMapper.make);
-                 */
-              None;
-            | (
-                Some((mappings: (module ReventlessSpec.EventMapping.T))),
-                None,
-              ) =>
-              module EventCollector =
-                EventCollector.Make
-                  // TODO: general EventCollector
-                  (EventCollector.DefaultPolicies, EventCollectorAdapter);
-              /* FIXME: uncomment & fix
-                 module EventMapper =
-                   EventMapper.Make((val mappings), EventCollector);
-                 Some(EventMapper.make);
-                 */
-              None;
-            };
-          (taskOutputs, eventMapperMaker);
-        })
-      ->Belt.Array.unzip;
-
-    tasksOutputs := tasksOutputsWithEventMappers->fst;
-
-    let taskEventMapperMakers =
-      tasksOutputsWithEventMappers
-      ->snd
-      ->Belt.Array.keep(Belt.Option.isSome)
-      ->Belt.Array.map(Belt.Option.getExn);
+        ->Component.extractOutputs
+      );
 
     eventMappersOutputs :=
       eventMapperMakers
@@ -744,19 +697,6 @@ module Make =
             ~opts=Some(opts),
             (),
           )
-        )
-      ->Belt.Array.concat(
-          taskEventMapperMakers->Belt.Array.map(
-            (eventMapperMaker: EventMapper.maker) =>
-            eventMapperMaker(
-              ~queryEngine,
-              ~queryCommandTopic,
-              ~queryEventTopic,
-              ~memorySize=2048,
-              ~opts=Some(opts),
-              (),
-            )
-          ),
         )
       ->Component.extractMultipleOutputs;
 

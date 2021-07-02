@@ -15,6 +15,7 @@ type t =
   | ReadModels
   | Scheduler
   | Service
+  | SideEffectHandler
   | Task
   | Vpc
   | Core
@@ -38,6 +39,7 @@ let toString =
   | ReadModels => "ReadModels"
   | Scheduler => "Scheduler"
   | Service => "Service"
+  | SideEffectHandler => "SideEffectHandler"
   | Task => "Task"
   | Vpc => "Vpc"
   | Core => "Core"
@@ -61,6 +63,7 @@ let ofString =
   | "ReadModels" => ReadModels->Some
   | "Scheduler" => Scheduler->Some
   | "Service" => Service->Some
+  | "SideEffectHandler" => SideEffectHandler->Some
   | "Task" => Task->Some
   | "Vpc" => Vpc->Some
   | "Core" => Core->Some
@@ -85,6 +88,7 @@ let toName =
   | ReadModels => "ReadModels"
   | Scheduler => "Scheduler"
   | Service => "Service"
+  | SideEffectHandler => "SideEffectHandler"
   | Task => "Task"
   | Vpc => "Vpc"
   | Core => "Core"
