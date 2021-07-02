@@ -1,6 +1,6 @@
 let name = "Core.Plugin";
 
-include PluginTypes;
+include Plugin;
 
 [@decco]
 type timeout = int; // in minutes

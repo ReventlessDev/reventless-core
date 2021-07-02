@@ -60,7 +60,7 @@ let allowResourceSendMessage = (queueArn, idx, sourceArn) => {j|
 let allowResourcesSendMessage:
   (
     ~queue: PulumiAws.SQS.Queue.t,
-    ~resources: array(Output.t(Reventless.Adapter.resource))
+    ~resources: array(Output.t(ReventlessSpec.Adapter.resource))
   ) =>
   Output.t(string) =
   (~queue, ~resources) =>

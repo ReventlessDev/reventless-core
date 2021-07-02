@@ -1,5 +1,5 @@
 module type T = {
-  module Spec: ExtensionPointMapping.Spec;
+  module Spec: ReventlessSpec.ExtensionPointMapping.Spec;
   module type Mapping =
     ExtensionPointMapping.T with module ExtensionPoint := Spec;
   let make: ExtensionPoint.maker;

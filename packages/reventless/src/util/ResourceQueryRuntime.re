@@ -1,3 +1,5 @@
+open ReventlessSpec.Adapter;
+
 let find: (array('a), string) => option('a) =
   (resources, name) =>
     resources->Belt.Array.reduce(None, (result, resource) =>
@@ -5,7 +7,7 @@ let find: (array('a), string) => option('a) =
     );
 
 let commandTopicConnectorOfAllServices:
-  (array(Service.outputs), string) => option(Adapter.resource) =
+  (array(Service.outputs), string) => option(resource) =
   (services, serviceName) =>
     services
     ->find(serviceName)
@@ -13,14 +15,14 @@ let commandTopicConnectorOfAllServices:
 
 // NOTE: only works with 1 ReadModel per Service !
 let queryDbStorageOfAllServices:
-  (array(Service.outputs), string) => option(Adapter.resource) =
+  (array(Service.outputs), string) => option(resource) =
   (services, serviceName) =>
     services
     ->find(serviceName)
     ->Belt.Option.map(service => service##readModel##queryDb##storage);
 
 let eventCollectorConnectorOfAllEventMappers:
-  (array(EventMapper.outputs), string) => option(Adapter.resource) =
+  (array(EventMapper.outputs), string) => option(resource) =
   (eventMappers, eventMapperName) =>
     eventMappers
     ->find(eventMapperName)

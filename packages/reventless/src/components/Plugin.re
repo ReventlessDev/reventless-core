@@ -1,4 +1,6 @@
 // TODO: refactor to smaller code parts for a better overview
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.Plugin;
 
 type outputs = {
@@ -12,7 +14,7 @@ type outputs = {
   "services": Js.Dict.t(Service.outputs),
   "tasks": Js.Dict.t(Task.outputs),
   "eventMappers": Js.Dict.t(EventMapper.outputs),
-  "resolvers": array(Adapter.resource),
+  "resolvers": array(resource),
   "heartbeat": Heartbeat.outputs,
   "serviceNameToExtensionPointsMapping":
     Js.Dict.t(array(ExtensionPoint.outputs)),
@@ -79,7 +81,7 @@ module Make =
       ~services: Js.Dict.t(Service.outputs),
       ~tasks: Js.Dict.t(Task.outputs),
       ~eventMappers: Js.Dict.t(EventMapper.outputs),
-      ~resolvers: array(Adapter.resource),
+      ~resolvers: array(resource),
       ~heartbeat: Heartbeat.outputs,
       ~serviceNameToExtensionPointsMapping: Js.Dict.t(
                                               array(ExtensionPoint.outputs),

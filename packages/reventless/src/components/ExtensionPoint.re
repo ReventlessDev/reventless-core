@@ -37,7 +37,7 @@ module type Spec = {
 };
 
 module type T = {
-  module Spec: ExtensionPointMapping.Spec;
+  module Spec: ReventlessSpec.ExtensionPointMapping.Spec;
   module type Mapping =
     ExtensionPointMapping.T with module ExtensionPoint := Spec;
   let make: array(module Mapping) => maker;
@@ -45,7 +45,7 @@ module type T = {
 
 module Make =
        (
-         Spec: ExtensionPointMapping.Spec,
+         Spec: ReventlessSpec.ExtensionPointMapping.Spec,
          CommandTopicAdapter: CommandTopic.Connector,
          EventTopicAdapter: EventTopic.Publisher,
        )

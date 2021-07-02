@@ -1,6 +1,8 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.EventLog;
 
-type outputs = {. "storage": Adapter.resource};
+type outputs = {. "storage": resource};
 
 exception ReplayError(string);
 
@@ -32,7 +34,7 @@ module type T = {
 };
 
 type storage = {
-  resource: Adapter.resource,
+  resource,
   append: append(string, Js.Json.t),
   replay: replay(string, Js.Json.t),
 };
@@ -63,7 +65,7 @@ module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
     Component.t(t, outputs) =
     "default";
 
-  [@bs.obj] external makeOutputs: (~storage: Adapter.resource) => outputs = "";
+  [@bs.obj] external makeOutputs: (~storage: resource) => outputs = "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =

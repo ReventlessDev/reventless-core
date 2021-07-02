@@ -1,8 +1,6 @@
-type create = (. Scheduler.schedule) => Js.Promise.t(unit);
-type delete = (. /*~name:*/ string) => Js.Promise.t(unit);
-
-exception ScheduleNotCreated(Scheduler.schedule, string, Js.Promise.error);
-exception ScheduleNotDeleted(string, string, Js.Promise.error);
+open ReventlessSpec.Schedule;
+open ReventlessSpec.Scheduler;
+open ReventlessSpec.Adapter;
 
 let forQueue = (name, queueId) =>
   name->AWS.validateName ++ "-" ++ (queueId |> Js.String.split("-"))[1];
@@ -13,20 +11,19 @@ let minutesFromNow = minutes => {
   let m =
     momentNow()
     ->Moment.add(~duration=duration(minutes->float_of_int, `minutes));
-  Scheduler.Single(m->year, m->month + 1, m->date, m->hour, m->minute);
+  Single(m->year, m->month + 1, m->date, m->hour, m->minute);
 };
 
-let create: (Scheduler.t, Adapter.resource) => create =
+let create: (Scheduler.t, resource) => create =
   (scheduler, queue) =>
-    (. schedule: Scheduler.schedule) => {
+    (. schedule: schedule) => {
       let queueId = queue##name->OutputFailsafeRuntime.get;
       let name = schedule.name->forQueue(queueId);
       let schedule = {...schedule, name};
-      let target =
-        Scheduler.{
-          id: queue##name |> Pulumi.Output.get,
-          urn: queue##urn |> Pulumi.Output.get,
-        };
+      let target = {
+        id: queue##name |> Pulumi.Output.get,
+        urn: queue##urn |> Pulumi.Output.get,
+      };
       let createSchedule = scheduler##createSchedule;
       createSchedule(. target, schedule)
       |> Js.Promise.then_(_ =>
@@ -44,16 +41,15 @@ let create: (Scheduler.t, Adapter.resource) => create =
          });
     };
 
-let delete: (Scheduler.t, Adapter.resource) => delete =
+let delete: (Scheduler.t, resource) => delete =
   (scheduler, queue) =>
     (. name) => {
       let queueId = queue##name->OutputFailsafeRuntime.get;
       let name = name->forQueue(queueId);
-      let target =
-        Scheduler.{
-          id: queue##name |> Pulumi.Output.get,
-          urn: queue##urn |> Pulumi.Output.get,
-        };
+      let target = {
+        id: queue##name |> Pulumi.Output.get,
+        urn: queue##urn |> Pulumi.Output.get,
+      };
       let deleteSchedule = scheduler##deleteSchedule;
       deleteSchedule(. target, name)
       |> Js.Promise.then_(_ =>

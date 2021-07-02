@@ -1,6 +1,8 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.CommandGenerator;
 
-type outputs = {. "connector": Adapter.resource};
+type outputs = {. "connector": resource};
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T;
@@ -46,7 +48,7 @@ type payload = {
 };
 type commandGenerator = payload => Js.Promise.t(string);
 
-type resolvers = {resources: array(Adapter.resource)};
+type resolvers = {resources: array(resource)};
 type resolversMaker('api) =
   (
     ~name: string,
@@ -96,7 +98,7 @@ module Make =
     "default";
 
   [@bs.obj]
-  external makeOutputs: (~resolvers: array(Adapter.resource)) => outputs = "";
+  external makeOutputs: (~resolvers: array(resource)) => outputs = "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =

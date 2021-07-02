@@ -9,7 +9,7 @@ let delete = (table: PulumiAws.DynamoDb.Table.t, id) =>
 let queryById = (table: PulumiAws.DynamoDb.Table.t, id) =>
   queryByIdWithTableName(table##name->Pulumi.Output.get, id);
 
-let keysFromResource = (resource: Reventless.Adapter.resource) =>
+let keysFromResource = (resource: ReventlessSpec.Adapter.resource) =>
   switch (resource##info |> Pulumi.Output.get |> Js.String.split(",")) {
   | [||] =>
     Js.Exn.raiseError(

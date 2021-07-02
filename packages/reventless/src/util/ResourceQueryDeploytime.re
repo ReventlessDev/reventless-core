@@ -1,3 +1,5 @@
+open ReventlessSpec.Adapter;
+
 let find: (array('a), string) => option('a) =
   (resources, name) =>
     resources->Belt.Array.reduce(None, (result, resource) =>
@@ -5,7 +7,7 @@ let find: (array('a), string) => option('a) =
     );
 
 let eventTopicPublisherOfAllServices:
-  (array(Service.outputs), string) => option(Adapter.resource) =
+  (array(Service.outputs), string) => option(resource) =
   (services, serviceName) =>
     services
     ->find(serviceName)
@@ -31,7 +33,7 @@ let allResolversMakers:
     ->Belt.Array.map(queryDbOfService)
     ->Belt.Array.map(queryDb => queryDb##resolversMaker);
 
-let queryDbStorageOfService: Service.outputs => Adapter.resource =
+let queryDbStorageOfService: Service.outputs => resource =
   service => service->queryDbOfService##storage;
 
 // NOTE: only works with 1 ReadModel per Service !
@@ -42,7 +44,7 @@ let queryDbStorageOfAllServicesExn = (services, serviceName) =>
   ->ResourceQuery.unwrapResource("QueryDb", serviceName);
 
 let allEventLogStorages:
-  (array(Service.outputs), string => bool) => array(Adapter.resource) =
+  (array(Service.outputs), string => bool) => array(resource) =
   (services, keep) =>
     services->Belt.Array.keepMap(service =>
       keep(service##name)
@@ -50,7 +52,7 @@ let allEventLogStorages:
     );
 
 let allQueryDbStorages:
-  (array(Service.outputs), string => bool) => array(Adapter.resource) =
+  (array(Service.outputs), string => bool) => array(resource) =
   (services, keep) =>
     services->Belt.Array.keepMap(service =>
       keep(service##name) ? Some(service##readModel##queryDb##storage) : None

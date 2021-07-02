@@ -1,3 +1,5 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.AtomicCounter;
 
 type increment =
@@ -13,7 +15,7 @@ type functions = {
   "get": get,
 };
 
-type outputs = {. "counter": Adapter.resource};
+type outputs = {. "counter": resource};
 external toOutputs: functions => outputs = "%identity";
 
 type t = functions;
@@ -23,7 +25,7 @@ module type T = {
 };
 
 type counter = {
-  resource: Adapter.resource,
+  resource,
   increment,
   get,
 };
@@ -47,7 +49,7 @@ module Make = (Counter: Counter) : T => {
     t =
     "default";
 
-  [@bs.obj] external makeOutputs: (~counter: Adapter.resource) => outputs = "";
+  [@bs.obj] external makeOutputs: (~counter: resource) => outputs = "";
 
   [@bs.send]
   external registerOutputs: (t, outputs) => constructed = "registerOutputs";
