@@ -100,7 +100,7 @@ module Make =
     });
   };
 
-  let map = (mappings, queryCommandTopic, queryEngine) =>
+  let eventHandler = (mappings, queryCommandTopic, queryEngine) =>
     (. event'Json) => {
       event'Json->Message.logEvent'Json("EventMapper.map: incoming event:");
       let event' = event'Json->Js.Json.decodeObject;
@@ -217,7 +217,7 @@ module Make =
           mappings->Belt.Array.map((module Mapping: Mapping) =>
             Mapping.Source.name
           ),
-        ~eventHandler=map(mappings, queryCommandTopic, queryEngine),
+        ~eventHandler=eventHandler(mappings, queryCommandTopic, queryEngine),
         ~queryEventTopic,
         ~memorySize,
         ~timeout,
