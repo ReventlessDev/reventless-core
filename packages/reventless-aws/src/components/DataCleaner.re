@@ -1,6 +1,7 @@
 let mode = `production; // opposed to `debug
 open PulumiAws.Lambda;
 open Reventless;
+open ReventlessSpec.Adapter;
 
 type tableConfig = {
   .
@@ -141,7 +142,7 @@ let scanTableAndClean =
      );
 };
 
-let toTableConfig: Adapter.resource => tableConfig =
+let toTableConfig: resource => tableConfig =
   resource => {
     let name = resource##name->Pulumi.Output.get;
     let (id, sort) = resource->Util_DynamoDb_Runtime.keysFromResource;
@@ -149,7 +150,7 @@ let toTableConfig: Adapter.resource => tableConfig =
     {"name": name, "id": id, "sort": sort};
   };
 
-let cleanerFn: array(Adapter.resource) => eventHandler(event, string) =
+let cleanerFn: array(resource) => eventHandler(event, string) =
   (tablesToClean, _event, _context) => {
     tablesToClean
     ->Belt.Array.map(toTableConfig)
@@ -191,8 +192,7 @@ let stackName = prefix =>
   ++ "-"
   ++ Pulumi.Pulumi.getStackName();
 
-let make =
-    (~prefix: option(string), ~tablesToClean: array(Adapter.resource)) => {
+let make = (~prefix: option(string), ~tablesToClean: array(resource)) => {
   CallbackFunction.(
     make(
       ~name="DataCleaner-" ++ stackName(prefix),

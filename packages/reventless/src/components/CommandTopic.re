@@ -1,6 +1,8 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.CommandTopic;
 
-type outputs = {. "connector": Adapter.resource};
+type outputs = {. "connector": resource};
 
 type publish('id, 'command) =
   (. Message.command'('id, 'command)) => Js.Promise.t(unit);
@@ -35,7 +37,7 @@ module type T = {
 };
 
 type connector = {
-  resource: Adapter.resource,
+  resource,
   publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
 };
 type connectorMaker =
@@ -77,8 +79,7 @@ module Make =
     Component.t(t, outputs) =
     "default";
 
-  [@bs.obj]
-  external makeOutputs: (~connector: Adapter.resource) => outputs = "";
+  [@bs.obj] external makeOutputs: (~connector: resource) => outputs = "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =

@@ -1,6 +1,8 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.EventCollector;
 
-type outputs = {. "connector": Adapter.resource};
+type outputs = {. "connector": resource};
 
 type eventHandler = (. Js.Json.t) => Js.Promise.t(unit);
 
@@ -29,7 +31,7 @@ module type T = {
     Component.t(t, outputs);
 };
 
-type connector = {resource: Adapter.resource};
+type connector = {resource};
 type connectorMaker =
   (
     ~name: string,
@@ -61,8 +63,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
     Component.t(t, outputs) =
     "default";
 
-  [@bs.obj]
-  external makeOutputs: (~connector: Adapter.resource) => outputs = "";
+  [@bs.obj] external makeOutputs: (~connector: resource) => outputs = "";
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
     "registerOutputs";

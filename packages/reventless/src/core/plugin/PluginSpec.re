@@ -2,7 +2,7 @@ let name = "Plugin";
 
 module Id = Id.String;
 
-include ReventlessSpec.PluginTypes;
+include ReventlessSpec.Plugin;
 
 [@decco]
 type command =

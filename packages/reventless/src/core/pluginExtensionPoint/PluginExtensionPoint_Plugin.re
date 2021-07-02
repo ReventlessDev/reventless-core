@@ -1,3 +1,5 @@
+open ReventlessSpec.ExtensionPointMapping;
+
 let forwardCommand =
     (
       id,
@@ -80,8 +82,8 @@ let forwardCommand =
 
 let callHandler =
     (
-      createSchedule: Schedule.create,
-      deleteSchedule: Schedule.delete,
+      createSchedule: ReventlessSpec.Schedule.create,
+      deleteSchedule: ReventlessSpec.Schedule.delete,
       queryEngine: ReventlessSpec.QueryEngine.t,
       callCommand,
     ) =>
@@ -117,8 +119,6 @@ let callHandler =
   };
 
 module Impl = {
-  open ExtensionPointMapping;
-
   module Aggregate = PluginSpec;
 
   let mapIncomingCommand = (id, cmd, _meta: Message.meta) =>

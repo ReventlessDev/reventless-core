@@ -12,15 +12,14 @@ type outputs = {
 
 type task; // TODO: rename to t - after refactoring
 
-open ReventlessSpec;
-
 type publishCommand =
   (. /*~queueName:*/ string, /*~id:*/ string, /*~message:*/ string) =>
   Js.Promise.t(unit);
 
 type queryBucketName = string => string;
 
-type createSchedule = (. Scheduler.schedule) => Js.Promise.t(unit);
+type createSchedule =
+  (. ReventlessSpec.Scheduler.schedule) => Js.Promise.t(unit);
 type deleteSchedule = (. /*~name:*/ string) => Js.Promise.t(unit);
 
 type queueMessage =
@@ -33,14 +32,14 @@ type maker =
     ~queryEventCollector: InterstackResourceQuery.runtimeQueryExn,
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
-    ~queryEngine: QueryEngine.t,
+    ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   Component.t(task, outputs);
 
 type setup =
   (
-    . QueryEngine.t,
+    . ReventlessSpec.QueryEngine.t,
     publishCommand,
     queryBucketName,
     createSchedule,
@@ -53,7 +52,12 @@ type setup =
 type constructed;
 type construct = (Component.t(task, outputs), string) => constructed;
 
-exception ScheduleNotCreated(Scheduler.schedule, string, Js.Promise.error);
+exception
+  ScheduleNotCreated(
+    ReventlessSpec.Scheduler.schedule,
+    string,
+    Js.Promise.error,
+  );
 exception ScheduleNotDeleted(string, string, Js.Promise.error);
 
 [@bs.module "./Component"] [@bs.new]
@@ -86,7 +90,7 @@ let construct =
       ~queryEventCollector,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
-      ~queryEngine: QueryEngine.t,
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
       self,
       _,
     ) => {
@@ -112,7 +116,7 @@ let construct =
 
   let createSchedule =
     (. taskName) =>
-      (. schedule: Scheduler.schedule) =>
+      (. schedule: ReventlessSpec.Scheduler.schedule) =>
         (Schedule.create(scheduler, queryEventCollector(taskName)))(.
           schedule,
         );

@@ -1,12 +1,14 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.QueryDb;
 
 type resolversResourcesMaker =
-  InterstackResourceQuery.deploytimeQueryExn => array(Adapter.resource);
+  InterstackResourceQuery.deploytimeQueryExn => array(resource);
 
 type outputs = {
   .
-  "storage": Adapter.resource,
-  "resolvers": Adapter.resource,
+  "storage": resource,
+  "resolvers": resource,
   "resolversMaker": resolversResourcesMaker,
 };
 
@@ -63,7 +65,7 @@ module type T = {
 };
 
 type storage = {
-  resource: Adapter.resource,
+  resource,
   dataSourceName: Pulumi.Output.t(string), // TODO create in API
   load: load(string, Js.Json.t),
   save: save(string, Js.Json.t),
@@ -92,7 +94,7 @@ module type QueryEngineAdapter = {
 };
 
 type resolvers = {
-  resources: array(Adapter.resource),
+  resources: array(resource),
   resourcesMaker: resolversResourcesMaker,
 };
 type resolversMaker('api, 'role) =
@@ -160,8 +162,8 @@ module Make =
   [@bs.obj]
   external makeOutputs:
     (
-      ~storage: Adapter.resource,
-      ~resolvers: array(Adapter.resource),
+      ~storage: resource,
+      ~resolvers: array(resource),
       ~resolversMaker: resolversResourcesMaker
     ) =>
     outputs =

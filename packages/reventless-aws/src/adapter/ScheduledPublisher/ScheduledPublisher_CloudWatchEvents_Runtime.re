@@ -1,4 +1,4 @@
-open Reventless.Scheduler;
+open ReventlessSpec.Scheduler;
 open AwsSdk.CloudWatchEvents;
 
 let plural = count => count == 1 ? "" : "s";

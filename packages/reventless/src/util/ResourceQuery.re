@@ -1,6 +1,8 @@
-type runtimeQueryExn = string => Adapter.resource;
+open ReventlessSpec.Adapter;
 
-type deploytimeQueryExn = string => Adapter.resource;
+type runtimeQueryExn = string => resource;
+
+type deploytimeQueryExn = string => resource;
 
 let unwrapResource = (resource, resourceType, name) =>
   switch (resource) {

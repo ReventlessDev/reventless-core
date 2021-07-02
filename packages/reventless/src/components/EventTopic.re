@@ -1,6 +1,8 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.EventTopic;
 
-type outputs = {. "publisher": Adapter.resource};
+type outputs = {. "publisher": resource};
 
 type publish('id, 'event) =
   (. array(Message.event'('id, 'event))) => Js.Promise.t(unit);
@@ -29,7 +31,7 @@ module type T = {
 };
 
 type publisher = {
-  resource: Adapter.resource,
+  resource,
   publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
 };
 type publisherMaker =
@@ -57,8 +59,7 @@ module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) =
     Component.t(t, outputs) =
     "default";
 
-  [@bs.obj]
-  external makeOutputs: (~publisher: Adapter.resource) => outputs = "";
+  [@bs.obj] external makeOutputs: (~publisher: resource) => outputs = "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
