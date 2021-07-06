@@ -49,7 +49,9 @@ module Make =
          CommandTopicAdapter: CommandTopic.Connector,
          EventTopicAdapter: EventTopic.Publisher,
        )
-       : (T with module Spec := Spec) => {
+       : (T with module Spec = Spec) => {
+  module Spec = Spec;
+
   module type Mapping =
     ExtensionPointMapping.T with module ExtensionPoint := Spec;
 
