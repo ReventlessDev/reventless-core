@@ -3,7 +3,7 @@ module Make =
     (
       Reventless.EventCollector.Make(
         Reventless.EventCollector.DefaultPolicies,
-        ReventlessAws.EventCollectorConnector_SQS,
+        EventCollectorConnector_SQS,
       )
     ),
   );
