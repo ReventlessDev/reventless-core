@@ -7,3 +7,8 @@ module Make =
       )
     ),
   );
+
+module MakeWithPolicies = (Policies: Reventless.EventCollector.Policies) =>
+  Reventless.SideEffectHandler.Make(
+    (Reventless.EventCollector.Make(Policies, EventCollectorConnector_SQS)),
+  );
