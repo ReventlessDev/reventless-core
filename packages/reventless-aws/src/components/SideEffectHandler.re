@@ -1,4 +1,4 @@
-module Make =
+module SideEffectHandler =
   Reventless.SideEffectHandler.Make(
     (
       Reventless.EventCollector.Make(
@@ -7,6 +7,8 @@ module Make =
       )
     ),
   );
+
+include SideEffectHandler;
 
 module MakeWithPolicies = (Policies: Reventless.EventCollector.Policies) =>
   Reventless.SideEffectHandler.Make(
