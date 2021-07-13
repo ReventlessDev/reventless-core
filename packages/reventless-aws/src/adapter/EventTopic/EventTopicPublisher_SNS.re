@@ -7,7 +7,6 @@ let make: Reventless.EventTopic.publisherMaker =
         ~name,
         ~args=
           SNS.Topic.Args.make(
-            ~name=(name ++ ".fifo")->Pulumi.Input.wrap, // TODO: workaround until Pulumi supports FIFO Topics
             ~fifoTopic=true->Pulumi.Input.wrap,
             ~contentBasedDeduplication=true->Pulumi.Input.wrap,
             (),
