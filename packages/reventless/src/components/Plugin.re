@@ -660,17 +660,16 @@ module Make =
         (),
       );
 
-    let eventMappersOutputs = ref([||]);
-    let queryEventCollector =
-      InterstackResourceQueryRuntime.eventCollectorConnectorOfAllEventMappersExn(
-        eventMappersOutputs->Interstack.mergeEventMappers,
-      );
-
     let tasksOutputs = ref([||]);
     let queryBucketName =
       InterstackResourceQueryRuntime.bucketNameOfTaskExn(
         tasksOutputs->Interstack.mergeTasks,
       );
+    let queryEventCollector = name =>
+      (tasksOutputs^)
+      ->Belt.Array.keepMap(output => output##sideEffectHandler)
+      ->Belt.Array.getBy(sideEffectHandler => sideEffectHandler##name == name)
+      ->Belt.Option.getExn##eventCollector##connector;
 
     tasksOutputs :=
       taskMakers->Belt.Array.map(taskMaker =>
@@ -686,7 +685,7 @@ module Make =
         ->Component.extractOutputs
       );
 
-    eventMappersOutputs :=
+    let eventMappersOutputs =
       eventMapperMakers
       ->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
           eventMapperMaker(
@@ -874,7 +873,7 @@ module Make =
       ~extensions=extensionsOutputs->toDict,
       ~services=servicesOutputs->toDict,
       ~tasks=(tasksOutputs^)->toDict,
-      ~eventMappers=(eventMappersOutputs^)->toDict,
+      ~eventMappers=eventMappersOutputs->toDict,
       ~resolvers,
       ~heartbeat=heartbeat->Component.extractOutputs,
       ~serviceNameToExtensionPointsMapping,

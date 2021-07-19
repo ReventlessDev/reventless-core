@@ -6,6 +6,7 @@ type outputs = {
   .
   "name": string,
   "bucket": option(PulumiAws.S3.Bucket.bucket),
+  "sideEffectHandler": option(SideEffectHandler.outputs),
 };
 
 type task; // TODO: rename to t - after refactoring
