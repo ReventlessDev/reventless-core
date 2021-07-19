@@ -43,7 +43,7 @@ type createSideEffectHandler =
     ~sideEffects: SideEffectHandler.sideEffects,
     (module SideEffectHandler.T)
   ) =>
-  SideEffectHandler.sideEffectHandlerComponent;
+  SideEffectHandler.outputs;
 
 type setup =
   (
@@ -167,7 +167,8 @@ let construct =
             ),
           ),
         (),
-      );
+      )
+      ->Component.extractOutputs;
 
   setup(.
     queryEngine,
