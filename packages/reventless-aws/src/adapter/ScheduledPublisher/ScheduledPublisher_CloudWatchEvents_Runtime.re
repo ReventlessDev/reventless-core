@@ -32,7 +32,7 @@ let createSchedule = role =>
       (),
     )
     |> Js.Promise.then_(_ =>
-         putTarget(
+         putTargetFifo(
            ~rule=schedule.name,
            ~arn=urn,
            ~id,
