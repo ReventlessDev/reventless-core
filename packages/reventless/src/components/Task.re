@@ -11,8 +11,11 @@ type outputs = {
 
 type task; // TODO: rename to t - after refactoring
 
-type publishCommand =
-  (. /*~queueName:*/ string, /*~id:*/ string, /*~message:*/ string) =>
+type publishCommands =
+  (
+    . /*~queueName:*/ string,
+    array((/*~id:*/ string, /*~message:*/ string))
+  ) =>
   Js.Promise.t(unit);
 
 type queryBucketName = string => string;
@@ -48,7 +51,7 @@ type createSideEffectHandler =
 type setup =
   (
     . ReventlessSpec.QueryEngine.t,
-    publishCommand,
+    publishCommands,
     queryBucketName,
     createSchedule,
     deleteSchedule,
@@ -110,17 +113,26 @@ let construct =
       (),
     );
 
-  let publishCommand =
-    (. queueName, id, messageBody) => {
+  let publishCommands =
+    (. queueName, entries) => {
       let queueId =
         queryCommandTopic(queueName)##id->OutputFailsafeRuntime.get;
-      AwsSdk.SQS.sendMessage(~queueId, ~messageGroupId=id, ~messageBody, ())
+      let entryMakers =
+        entries->Belt.Array.map(((id, messageBody)) =>
+          AwsSdk.SQS.makeBatchEntryMaker(~id, ~messageBody)
+        );
+      entryMakers->AwsSdk.SQS.sendMessageBatch(~queueId)
       |> Js.Promise.then_(res => {
-           Js.log({j|Task.publishCommand successfull: $messageBody|j});
+           entryMakers->Belt.Array.forEach(entryMaker =>
+             Js.log2(
+               "Task.publishCommands successfull:",
+               entryMaker()##_MessageBody,
+             )
+           );
            res |> Js.Promise.resolve;
          })
       |> Js.Promise.catch(err =>
-           Js.Promise.resolve(Js.log2("Task.publishCommand Error:", err))
+           Js.Promise.resolve(Js.log2("Task.publishCommands Error:", err))
          );
     };
 
@@ -172,7 +184,7 @@ let construct =
 
   setup(.
     queryEngine,
-    publishCommand,
+    publishCommands,
     queryBucketName,
     createSchedule(. taskName),
     deleteSchedule(. taskName),
