@@ -150,7 +150,8 @@ module Make = (Spec: Spec, Connector: Connector) : (T with module Spec = Spec) =
     };
 
   let handleCommands = commandsHandler =>
-    (. jsons) =>
+    (. jsons) => {
+      Js.log("starting CommandTopic.handleCommands");
       jsons
       ->Belt.Array.keepMap(json =>
           switch (
@@ -176,6 +177,10 @@ module Make = (Spec: Spec, Connector: Connector) : (T with module Spec = Spec) =
             )
           ->ignore;
           commandsHandler(. id, commands')
+          |> Js.Promise.then_(res => {
+               Js.log({j|finished commandsHandler for id $id|j});
+               res->Js.Promise.resolve;
+             })
           |> Js.Promise.catch(err => {
                let error = err->AwsSdk.Error.ofPromise##message;
                Js.Exn.raiseError(
@@ -184,7 +189,11 @@ module Make = (Spec: Spec, Connector: Connector) : (T with module Spec = Spec) =
              });
         })
       |> Js.Promise.all
-      |> Js.Promise.then_(_ => Js.Promise.resolve());
+      |> Js.Promise.then_(_ => {
+           Js.log("finished CommandTopic.handleCommands");
+           Js.Promise.resolve();
+         });
+    };
 
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
     let opts =

@@ -141,6 +141,7 @@ module Make =
           |> Js.Promise.then_(value => Some(value)->Js.Promise.resolve)
         | None => None->Js.Promise.resolve;
 
+      Js.log("starting Aggregate.execCommands");
       eventLogReplay(. id)
       |> Js.Promise.then_(history => {
            let processCommand =
@@ -242,6 +243,7 @@ module Make =
                 );
            };
 
+           Js.log({j|finished eventLogReplay for id $id|j});
            commands'->Belt.Array.reduce(
              Ok((updateState(None, history->Belt.List.fromArray), []))
              ->Js.Promise.resolve,
@@ -280,7 +282,8 @@ module Make =
                          Js.log(msg);
                          Js.Exn.raiseError(msg);
                        })
-                    |> Js.Promise.then_(_ =>
+                    |> Js.Promise.then_(_ => {
+                         Js.log({j|finished eventsHandler for id $id|j});
                          eventLogAppend(.
                            history->Belt.Array.length,
                            id,
@@ -291,17 +294,18 @@ module Make =
                                 errorMessage(id, "eventLogAppend", err);
                               Js.log(msg);
                               Js.Exn.raiseError(msg);
-                            })
-                       )
-                    |> Js.Promise.then_(_ =>
+                            });
+                       })
+                    |> Js.Promise.then_(_ => {
+                         Js.log({j|finished eventLogAppend for id $id|j});
                          eventTopicPublish(. generatedEvents')
                          |> Js.Promise.catch(err => {
                               let msg =
                                 errorMessage(id, "eventTopicPublish", err);
                               Js.log(msg);
                               Js.Exn.raiseError(msg);
-                            })
-                       );
+                            });
+                       });
                   },
               );
          });
