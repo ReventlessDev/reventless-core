@@ -14,7 +14,7 @@ type task; // TODO: rename to t - after refactoring
 type publishCommands =
   (
     . /*~queueName:*/ string,
-    array((/*~id:*/ string, /*~message:*/ string))
+    array((/*~id:*/ string, /*~meta*/ Message.meta, /*~message:*/ string))
   ) =>
   Js.Promise.t(unit);
 
@@ -118,8 +118,12 @@ let construct =
       let queueId =
         queryCommandTopic(queueName)##id->OutputFailsafeRuntime.get;
       let entryMakers =
-        entries->Belt.Array.map(((id, messageBody)) =>
-          AwsSdk.SQS.makeBatchEntryMaker(~id, ~messageBody)
+        entries->Belt.Array.map(((id, meta: Message.meta, messageBody)) =>
+          AwsSdk.SQS.makeBatchEntryMaker(
+            ~groupId=id,
+            ~messageBody,
+            ~messageId=meta.msgId,
+          )
         );
       entryMakers->AwsSdk.SQS.sendMessageBatch(~queueId)
       |> Js.Promise.then_(res => {
