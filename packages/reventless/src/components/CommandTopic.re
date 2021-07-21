@@ -226,7 +226,7 @@ module Make = (Spec: Spec, Connector: Connector) : (T with module Spec = Spec) =
       unit
     ) =>
     Component.t(t, outputs) =
-    (~name, ~commandsHandler, ~memorySize=256, ~timeout=30, ~opts=?, _) => {
+    (~name, ~commandsHandler, ~memorySize=512, ~timeout=30, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name,
