@@ -17,6 +17,8 @@ let make: Reventless.EventCollector.connectorMaker =
         ~args=
           SQS.Queue.Args.make(
             ~fifoQueue=true->Pulumi.Input.wrap,
+            ~deduplicationScope=`messageGroup,
+            ~fifoThroughputLimit=`perMessageGroupId,
             ~contentBasedDeduplication=true->Pulumi.Input.wrap,
             ~visibilityTimeoutSeconds=timeout->Pulumi.Input.wrap,
             ~redrivePolicy=
