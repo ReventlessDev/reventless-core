@@ -1,0 +1,27 @@
+{
+  "name": "doc",
+  "version": "0.0.0",
+  "description": "documentation for reventless",
+  "keywords": [
+    "reventless",
+    "documentation",
+    "doc"
+  ],
+  "author": "Christoph Wanasek <christoph.wanasek@atos.net>",
+  "homepage": "https://gitlab.com/reventless/reventless-universe#readme",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "",
+  "directories": {},
+  "files": [],
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@gitlab.com/reventless/reventless-universe.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1"
+  },
+  "bugs": {
+    "url": "https://gitlab.com/reventless/reventless-universe/issues"
+  }
+}
