@@ -115,26 +115,21 @@ let construct =
 
   let publishCommands =
     (. queueName, entries) => {
-      let queueId =
-        queryCommandTopic(queueName)##id->OutputFailsafeRuntime.get;
-      let entryMakers =
-        entries->Belt.Array.map(((id, meta: Message.meta, messageBody)) =>
-          AwsSdk.SQS.makeBatchEntryMaker(
+      let count = entries->Belt.Array.size;
+      entries
+      ->Belt.Array.mapWithIndex((idx, (id, meta: Message.meta, messageBody)) => {
+          Js.log({j|Task.publishCommands $idx/$count: $messageBody|j});
+          AwsSdk.SQS.makeBatchEntry(
             ~groupId=id,
             ~messageBody,
             ~messageId=meta.msgId,
-          )
-        );
-      entryMakers->AwsSdk.SQS.sendMessageBatch(~queueId)
-      |> Js.Promise.then_(res => {
-           entryMakers->Belt.Array.forEach(entryMaker =>
-             Js.log2(
-               "Task.publishCommands successfull:",
-               entryMaker()##_MessageBody,
-             )
-           );
-           res |> Js.Promise.resolve;
-         })
+            ~delay=None,
+          );
+        })
+      ->AwsSdk.SQS.sendMessageBatch(
+          ~queueId=
+            queryCommandTopic(queueName)##id->OutputFailsafeRuntime.get,
+        )
       |> Js.Promise.catch(err =>
            Js.Promise.resolve(Js.log2("Task.publishCommands Error:", err))
          );

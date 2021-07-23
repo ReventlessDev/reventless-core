@@ -130,7 +130,7 @@ module Make =
 
       let updateMeta = (command': Message.command'(Spec.Id.t, Spec.command)) => {
         ...command'.meta,
-        time: Js.Date.make()->Js.Date.toISOString,
+        time: Message.nowAsISOString(),
         msgId: Message.uuid(),
       };
 

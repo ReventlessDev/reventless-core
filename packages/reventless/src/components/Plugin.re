@@ -800,40 +800,50 @@ module Make =
           | _ => ()
         );
 
-    let eventHandler =
-      (. event'Json) => {
-        event'Json->Message.logEvent'Json(
-          {j|Plugin $id eventHandler: incoming event:|j},
-        );
-        detectUnhandledEvent(event'Json);
-        handleEvent(
-          event'Json,
-          incomingServiceNameToPluginConnectExtensionsMapping,
-          extension =>
-          extension##incomingEventHandler
-        )
-        ->Js.Promise.then_(
-            _ =>
-              [|
-                handleEvent(
-                  event'Json,
-                  serviceNameToExtensionPointsMapping,
-                  extensionPoint =>
-                  extensionPoint##outgoingEventHandler
-                ),
-                handleEvent(
-                  event'Json, outgoingServiceNameToExtensionsMapping, extension =>
-                  extension##outgoingEventHandler
-                ),
-                handleEvent(
-                  event'Json, incomingServiceNameToExtensionsMapping, extension =>
-                  extension##incomingEventHandler
-                ),
-              |]
-              ->Js.Promise.all
-              ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
-            _,
-          );
+    let eventsHandler =
+      (. events'Json) => {
+        let count = events'Json->Belt.Array.size;
+        events'Json
+        ->Belt.Array.mapWithIndex((idx, event'Json) => {
+            event'Json->Message.logEvent'Json(
+              {j|Plugin $id eventsHandler: incoming event $idx/$count:|j},
+            );
+            detectUnhandledEvent(event'Json);
+            handleEvent(
+              event'Json,
+              incomingServiceNameToPluginConnectExtensionsMapping,
+              extension =>
+              extension##incomingEventHandler
+            )
+            ->Js.Promise.then_(
+                _ =>
+                  [|
+                    handleEvent(
+                      event'Json,
+                      serviceNameToExtensionPointsMapping,
+                      extensionPoint =>
+                      extensionPoint##outgoingEventHandler
+                    ),
+                    handleEvent(
+                      event'Json,
+                      outgoingServiceNameToExtensionsMapping,
+                      extension =>
+                      extension##outgoingEventHandler
+                    ),
+                    handleEvent(
+                      event'Json,
+                      incomingServiceNameToExtensionsMapping,
+                      extension =>
+                      extension##incomingEventHandler
+                    ),
+                  |]
+                  ->Js.Promise.all
+                  ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
+                _,
+              );
+          })
+        ->Js.Promise.all
+        ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
       };
 
     module EventCollector =
@@ -846,7 +856,7 @@ module Make =
       EventCollector.make(
         ~name=name ++ componentType->ComponentType.toName,
         ~aggregateNames,
-        ~eventHandler,
+        ~eventsHandler,
         ~queryEventTopic,
         ~opts=Some(opts),
         (),
