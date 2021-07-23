@@ -105,9 +105,9 @@ let logEvent'Json = (event'Json, description) => {
 
 let uuid = Uuid.v4;
 
-let now = () => Js.Date.make() |> Js.Date.getTime;
+let now = () => Js.Date.make()->Js.Date.getTime;
 
-let nowAsISOString = () => Js.Date.make() |> Js.Date.toISOString;
+let nowAsISOString = () => Js.Date.make()->Js.Date.toISOString;
 
 type hrtime = (int, int);
 [@bs.val] [@bs.scope "process"] external hrtime: unit => hrtime = "hrtime";
@@ -115,9 +115,9 @@ type hrtime = (int, int);
 let hrtimeToString: (~hrtime: hrtime, ~now: float) => string =
   (~hrtime, ~now) => {
     let (_, mil) = hrtime;
-    let milString = mil |> string_of_int;
-    let milLength = milString |> String.length;
-    (now |> Js.Float.toString)
+    let milString = mil->string_of_int;
+    let milLength = milString->String.length;
+    now->Js.Float.toString
     ++ "-"
     ++ String.make(9 - milLength, '0')
     ++ milString;

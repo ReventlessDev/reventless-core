@@ -118,7 +118,7 @@ module Make =
               |> Js.Array.shift
               |> Js.Option.getWithDefault(""),
             user: payload##meta##user,
-            time: Js.Date.make() |> Js.Date.toISOString,
+            time: Message.nowAsISOString(),
             msgId,
             correlationId: msgId,
           };

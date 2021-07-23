@@ -4,7 +4,7 @@ let componentType = ComponentType.EventCollector;
 
 type outputs = {. "connector": resource};
 
-type eventHandler = (. Js.Json.t) => Js.Promise.t(unit);
+type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
 type arn = string;
 module type Policies = {let policies: array(Pulumi.Output.t(arn));};
@@ -21,7 +21,7 @@ module type T = {
     (
       ~name: string,
       ~aggregateNames: array(string),
-      ~eventHandler: eventHandler,
+      ~eventsHandler: eventsHandler,
       ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
       ~memorySize: int=?,
       ~timeout: int=?,
@@ -38,7 +38,7 @@ type connectorMaker =
     ~eventServices: array(string),
     ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
     ~policies: array(Pulumi.Output.t(arn)),
-    ~handleEvents: (. array(Js.Json.t)) => Js.Promise.t(unit),
+    ~handleEvents: eventsHandler,
     ~memorySize: int,
     ~timeout: int,
     ~opts: Pulumi.CustomResourceOptions.t
@@ -78,7 +78,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
   let construct =
       (
         ~aggregateNames,
-        ~eventHandler,
+        ~eventsHandler,
         ~queryEventTopic,
         ~memorySize,
         ~timeout,
@@ -91,19 +91,13 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
         (),
       );
 
-    let handleEvents =
-      (. jsons) =>
-        jsons->Belt.Array.map(json => eventHandler(. json))
-        |> Js.Promise.all
-        |> Js.Promise.then_(_ => Js.Promise.resolve());
-
     let connector =
       Connector.make(
         ~name=name->ComponentType.name(componentType),
         ~eventServices=aggregateNames,
         ~queryEventTopic,
         ~policies=Policies.policies,
-        ~handleEvents,
+        ~handleEvents=eventsHandler,
         ~memorySize,
         ~timeout,
         ~opts,
@@ -116,7 +110,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
     (
       ~name: string,
       ~aggregateNames: array(string),
-      ~eventHandler: (. Js.Json.t) => Js.Promise.t(unit),
+      ~eventsHandler: eventsHandler,
       ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
       ~memorySize: int=?,
       ~timeout: int=?,
@@ -127,7 +121,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
     (
       ~name,
       ~aggregateNames,
-      ~eventHandler,
+      ~eventsHandler,
       ~queryEventTopic,
       ~memorySize=128,
       ~timeout=30,
@@ -140,7 +134,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
         ~construct=
           construct(
             ~aggregateNames,
-            ~eventHandler,
+            ~eventsHandler,
             ~queryEventTopic,
             ~memorySize,
             ~timeout,

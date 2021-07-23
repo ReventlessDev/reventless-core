@@ -89,48 +89,56 @@ module Make = (EventCollector: EventCollector.T) : T => {
     });
   };
 
-  let eventHandler = (sideEffects, queryEngine) =>
-    (. event'Json) => {
-      event'Json->Message.logEvent'Json("SideEffects.map: incoming event:");
-      let event' = event'Json->Js.Json.decodeObject;
-      switch (findSideEffect(sideEffects, event')) {
-      | Some((eventObj, eventMeta, sideEffect)) =>
-        module SideEffect = (val sideEffect);
+  let eventsHandler = (sideEffects, queryEngine) =>
+    (. events'Json) => {
+      let count = events'Json->Belt.Array.size;
+      events'Json
+      ->Belt.Array.mapWithIndex((idx, event'Json) => {
+          event'Json->Message.logEvent'Json(
+            {j|SideEffectHandler: incoming event $idx/$count:|j},
+          );
+          let event' = event'Json->Js.Json.decodeObject;
+          switch (findSideEffect(sideEffects, event')) {
+          | Some((eventObj, eventMeta, sideEffect)) =>
+            module SideEffect = (val sideEffect);
 
-        let idDecoded =
-          eventObj
-          ->Js.Dict.get("id")
-          ->Belt.Option.map(SideEffect.Source.Id.t_decode);
-        let eventDecoded =
-          eventObj
-          ->Js.Dict.get("event")
-          ->Belt.Option.map(SideEffect.Source.event_decode);
+            let idDecoded =
+              eventObj
+              ->Js.Dict.get("id")
+              ->Belt.Option.map(SideEffect.Source.Id.t_decode);
+            let eventDecoded =
+              eventObj
+              ->Js.Dict.get("event")
+              ->Belt.Option.map(SideEffect.Source.event_decode);
 
-        switch (idDecoded, eventDecoded) {
-        | (Some(Ok(eventId)), Some(Ok(event))) =>
-          SideEffect.execute(. eventId, eventMeta, event, queryEngine)
-          ->Js.Promise.catch(
-              err =>
-                Js.log2("SideEffect: Error while processing:", err)
-                ->Js.Promise.resolve,
-              _,
-            )
-        | (None, _)
-        | (_, None) =>
-          Js.Promise.resolve(
-            Js.log("SideEffectHandler.eventHandler: Invalid event"),
-          )
-        | (_, Some(Error(err)))
-        | (Some(Error(err)), _) =>
-          Js.Promise.resolve(
-            Js.log2(
-              "SideEffectHandler.eventHandler: Couldn't decode event:",
-              err,
-            ),
-          )
-        };
-      | None => Js.Promise.resolve()
-      };
+            switch (idDecoded, eventDecoded) {
+            | (Some(Ok(eventId)), Some(Ok(event))) =>
+              SideEffect.execute(. eventId, eventMeta, event, queryEngine)
+              ->Js.Promise.catch(
+                  err =>
+                    Js.log2("SideEffect: Error while processing:", err)
+                    ->Js.Promise.resolve,
+                  _,
+                )
+            | (None, _)
+            | (_, None) =>
+              Js.Promise.resolve(
+                Js.log("SideEffectHandler.eventHandler: Invalid event"),
+              )
+            | (_, Some(Error(err)))
+            | (Some(Error(err)), _) =>
+              Js.Promise.resolve(
+                Js.log2(
+                  "SideEffectHandler.eventHandler: Couldn't decode event:",
+                  err,
+                ),
+              )
+            };
+          | None => Js.Promise.resolve()
+          };
+        })
+      ->Js.Promise.all
+      ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
   let construct =
@@ -156,7 +164,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
             (module SideEffect: ReventlessSpec.SideEffect.T) =>
             SideEffect.Source.name
           ),
-        ~eventHandler=eventHandler(sideEffects, queryEngine),
+        ~eventsHandler=eventsHandler(sideEffects, queryEngine),
         ~queryEventTopic,
         ~memorySize,
         ~timeout,

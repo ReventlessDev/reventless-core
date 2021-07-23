@@ -124,28 +124,37 @@ module Make =
       eventCollector: "NOT-SET",
     };
 
-    let eventHandler =
-      (. event'Json) => {
-        event'Json->Message.logEvent'Json(
-          "Core eventHandler: outgoing event:",
-        );
-        extensionPointsOutputs
-        ->Belt.Array.map(extensionPoint => {
-            let handle = extensionPoint##outgoingEventHandler;
-            handle(. event'Json, fakePluginDefinition);
+    let eventsHandler =
+      (. events'Json) => {
+        let count = events'Json->Belt.Array.size;
+        events'Json
+        ->Belt.Array.mapWithIndex((idx, event'Json) => {
+            event'Json->Message.logEvent'Json(
+              {j|Core eventHandler: outgoing event $idx/$count:|j},
+            );
+            extensionPointsOutputs
+            ->Belt.Array.map(extensionPoint => {
+                let handle = extensionPoint##outgoingEventHandler;
+                handle(. event'Json, fakePluginDefinition);
+              })
+            ->Js.Promise.all
+            ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
           })
         ->Js.Promise.all
         ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
       };
 
     module EventCollector =
-      EventCollector.Make(EventCollector.DefaultPolicies, EventCollectorAdapter);
+      EventCollector.Make(
+        EventCollector.DefaultPolicies,
+        EventCollectorAdapter,
+      );
 
     let eventCollector =
       EventCollector.make(
         ~name="Core",
         ~aggregateNames,
-        ~eventHandler,
+        ~eventsHandler,
         ~queryEventTopic,
         ~opts=Some(opts),
         (),

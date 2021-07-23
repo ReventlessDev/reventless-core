@@ -100,98 +100,114 @@ module Make =
     });
   };
 
-  let eventHandler = (mappings, queryCommandTopic, queryEngine) =>
-    (. event'Json) => {
-      event'Json->Message.logEvent'Json("EventMapper.map: incoming event:");
-      let event' = event'Json->Js.Json.decodeObject;
-      switch (findMapping(mappings, event')) {
-      | Some((eventObj, eventMeta, mapping)) =>
-        let publish = (idx, commandId, command, delay) => {
-          let commandMeta = {
-            ...eventMeta,
-            service,
-            correlationId:
-              // original correlationId only for first action to avoid counting problems
-              // TODO: think about different solution, e.g. AtomicCounter with explicit
-              // count parameter (instead of always counting by 1)
-              idx == 0 ? eventMeta.correlationId : Message.uuid(),
-            msgId: Message.uuid(),
-          };
-          let queueId = queryCommandTopic(service)##id->Pulumi.Output.get;
-          let commandStr = command->Target.command_encode->Js.Json.stringify;
-          let source = eventMeta.service;
-          Js.log(
-            {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
+  let eventsHandler = (mappings, queryCommandTopic, queryEngine) =>
+    (. events'Json) => {
+      let count = events'Json->Belt.Array.size;
+      events'Json
+      ->Belt.Array.mapWithIndex((idx, event'Json) => {
+          event'Json->Message.logEvent'Json(
+            {j|EventMapper.eventsHandler: incoming event $idx/$count:|j},
           );
+          let event' = event'Json->Js.Json.decodeObject;
+          switch (findMapping(mappings, event')) {
+          | Some((eventObj, eventMeta, mapping)) =>
+            let makeEntry = (idx, commandId, command, delay) => {
+              let commandMeta = {
+                ...eventMeta,
+                service,
+                correlationId:
+                  // original correlationId only for first action to avoid counting problems
+                  // TODO: think about different solution, e.g. AtomicCounter with explicit
+                  // count parameter (instead of always counting by 1)
+                  idx == 0 ? eventMeta.correlationId : Message.uuid(),
+                msgId: Message.uuid(),
+                time: Message.nowAsISOString(),
+              };
+              let commandStr =
+                command->Target.command_encode->Js.Json.stringify;
+              let source = eventMeta.service;
+              Js.log(
+                {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
+              );
+              let messageBody =
+                Message.command'_encode(
+                  Target.Id.t_encode,
+                  Target.command_encode,
+                  {Message.id: commandId, meta: commandMeta, command},
+                )
+                ->Js.Json.stringify;
+              AwsSdk.SQS.makeBatchEntry(
+                ~groupId=commandId->Target.Id.toString,
+                ~messageId=commandMeta.msgId,
+                ~messageBody,
+                ~delay,
+              );
+            };
+            module Mapping = (val mapping);
+            let idDecoded =
+              eventObj
+              ->Js.Dict.get("id")
+              ->Belt.Option.map(Mapping.Source.Id.t_decode);
+            let eventDecoded =
+              eventObj
+              ->Js.Dict.get("event")
+              ->Belt.Option.map(Mapping.Source.event_decode);
 
-          Message.command'_encode(
-            Target.Id.t_encode,
-            Target.command_encode,
-            {Message.id: commandId, meta: commandMeta, command},
-          )
-          ->Js.Json.stringify
-          ->AwsSdk.SQS.sendMessage(
-              ~queueId,
-              ~messageGroupId=commandId->Target.Id.toString,
-              ~messageBody=_,
-              ~delay,
-              (),
-            )
-          ->Js.Promise.catch(
-              err =>
-                err
-                ->Js.log2("EventMapper: Error on publish command:")
-                ->Js.Promise.resolve,
-              _,
-            );
-        };
-
-        module Mapping = (val mapping);
-
-        let idDecoded =
-          eventObj
-          ->Js.Dict.get("id")
-          ->Belt.Option.map(Mapping.Source.Id.t_decode);
-        let eventDecoded =
-          eventObj
-          ->Js.Dict.get("event")
-          ->Belt.Option.map(Mapping.Source.event_decode);
-
-        switch (idDecoded, eventDecoded) {
-        | (Some(Ok(eventId)), Some(Ok(event))) =>
-          Mapping.map(. eventId, event, queryEngine)
-          ->Belt.Array.mapWithIndex((idx, action) =>
-              switch (action) {
-              | ReventlessSpec.EventMapping.Publish(commandId, command) =>
-                publish(idx, commandId, command, 0)
-              | PublishDelayed(commandId, command, delay) =>
-                publish(idx, commandId, command, delay)
-              | PublishAsync(promise) =>
-                promise->Js.Promise.then_(
-                           cmds =>
-                             cmds
-                             ->Belt.Array.map(((commandId, command)) =>
-                                 publish(idx, commandId, command, 0)
-                               )
-                             ->Js.Promise.all
-                             ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
-                           _,
-                         )
-              }
-            )
-          ->Js.Promise.all
-          ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
-        | (None, _)
-        | (_, None) =>
-          Js.Promise.resolve(Js.log("EventMapper.map: Invalid event"))
-        | (_, Some(Error(err)))
-        | (Some(Error(err)), _) =>
-          Js.Promise.resolve(
-            Js.log2("EventMapper.map: Couldn't decode event:", err),
-          )
-        };
-      | None => Js.Promise.resolve()
-      };
+            switch (idDecoded, eventDecoded) {
+            | (Some(Ok(eventId)), Some(Ok(event))) =>
+              Mapping.map(. eventId, event, queryEngine)
+              ->Belt.Array.mapWithIndex((idx, action) =>
+                  switch (action) {
+                  | ReventlessSpec.EventMapping.Publish(commandId, command) =>
+                    [|makeEntry(idx, commandId, command, None)|]
+                    ->Js.Promise.resolve
+                  | PublishDelayed(commandId, command, delay) =>
+                    [|makeEntry(idx, commandId, command, Some(delay))|]
+                    ->Js.Promise.resolve
+                  | PublishAsync(promise) =>
+                    promise->Js.Promise.then_(
+                               cmds =>
+                                 cmds
+                                 ->Belt.Array.map(((commandId, command)) =>
+                                     makeEntry(0, commandId, command, None)
+                                   )
+                                 ->Js.Promise.resolve,
+                               _,
+                             )
+                  }
+                )
+              ->Some
+            | (None, _)
+            | (_, None) =>
+              Js.log("EventMapper.map: Invalid event");
+              None;
+            | (_, Some(Error(err)))
+            | (Some(Error(err)), _) =>
+              Js.log2("EventMapper.map: Couldn't decode event:", err);
+              None;
+            };
+          | None => None
+          };
+        })
+      ->Belt.Array.keepMap(entry => entry)
+      ->Belt.Array.concatMany
+      ->Js.Promise.all
+      ->Js.Promise.then_(
+          entries =>
+            entries
+            ->Belt.Array.concatMany
+            ->AwsSdk.SQS.sendMessageBatch(
+                ~queueId=queryCommandTopic(service)##id->Pulumi.Output.get,
+              ),
+          _,
+        )
+      ->Js.Promise.catch(
+          err =>
+            err
+            ->Js.log2("EventMapper: Error on sendMessageBatch:", _)
+            ->Js.Promise.resolve,
+          _,
+        );
     };
 
   let construct =
@@ -217,7 +233,8 @@ module Make =
           mappings->Belt.Array.map((module Mapping: Mapping) =>
             Mapping.Source.name
           ),
-        ~eventHandler=eventHandler(mappings, queryCommandTopic, queryEngine),
+        ~eventsHandler=
+          eventsHandler(mappings, queryCommandTopic, queryEngine),
         ~queryEventTopic,
         ~memorySize,
         ~timeout,
