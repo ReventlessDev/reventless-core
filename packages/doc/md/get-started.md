@@ -10,7 +10,7 @@ draft: true
 
 ### Basics
 
-When implementing a system based on Reventless you should only think about `commands` and `events` as these provide easy to understand reasoning for anything happening.  
+When implementing a system based on Reventless you should only think about `commands` and `events`. These provide easy to understand reasoning for anything happening.  
 Great care should go into naming these according to the [ubiquitous language](https://www.martinfowler.com/bliki/UbiquitousLanguage.html) of the project / context. 
 
 `Aggregate`s are the entities in you system.
@@ -60,7 +60,7 @@ The foundation of any platform built using Reventless is a Core-Stack. This is t
 > **TODO**: complete this area and below!
 
 
-## Create a new service
+## Create a new Plugin
 
 ### `Plugin`
 Deployment-unit
@@ -70,6 +70,9 @@ Deployment-unit
 
 ### `ReadModel`
 
+#### Update API Schema
+
+### `Aggregate` #2
 
 ### `EventMapper`
 
