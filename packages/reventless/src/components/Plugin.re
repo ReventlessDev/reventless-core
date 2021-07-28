@@ -212,72 +212,6 @@ module Make =
       Util.Pulumi.Output.Async.make();
     open AwsSdk;
 
-    let subscribeQueueToTopic = (queueArn, topicArn) =>
-      SNS.(
-        snsClient()
-        ->subscribe(
-            ~params=
-              SubscribeRequest.make(
-                ~_TopicArn=topicArn,
-                ~_Protocol=`sqs,
-                ~_Endpoint=queueArn,
-                ~_Attributes=
-                  SubscribeRequest.Attributes.make(
-                    ~_RawMessageDelivery="true",
-                    /* TODO: add dlq in RedrivePolicy */
-                    (),
-                  ),
-                (),
-              ),
-          )
-      )
-      ->Request.promise
-      ->Js.Promise.then_(
-          subscriptionResponse =>
-            Js.log2("subscribed:", subscriptionResponse##_SubscriptionArn)
-            ->Js.Promise.resolve,
-          _,
-        );
-
-    let unsubscribeQueueFromTopic = (queueArn, topicArn) => {
-      SNS.(
-        snsClient()
-        ->listSubscriptionsByTopic(
-            ~params=
-              ListSubscriptionsByTopicRequest.make(~_TopicArn=topicArn, ()),
-          ) // TODO: handle paging of subscriptions
-        ->Request.promise
-        ->Js.Promise.then_(
-            response =>
-              response##_Subscriptions
-              ->Belt.Array.getBy(subscription =>
-                  subscription##_Endpoint == queueArn
-                )
-              ->Belt.Option.map(subscription =>
-                  snsClient()
-                  ->unsubscribe(
-                      ~params=
-                        UnsubscribeRequest.make(
-                          ~_SubscriptionArn=subscription##_SubscriptionArn,
-                        ),
-                    )
-                  ->Request.promise
-                  ->Js.Promise.then_(
-                      _ =>
-                        Js.log2(
-                          "unsubscribed:",
-                          subscription##_SubscriptionArn,
-                        )
-                        ->Js.Promise.resolve,
-                      _,
-                    )
-                )
-              ->Belt.Option.getWithDefault(Js.Promise.resolve()),
-            _,
-          )
-      );
-    };
-
     let addStatement = (policy: IAM.Policy.t, sid, queueArn, topicArn) => {
       let newStatements =
         policy##_Statement
@@ -317,69 +251,21 @@ module Make =
       );
     };
 
-    let getQueuePolicy = queueArn =>
-      SQS.(
-        sqsClient()
-        ->getQueueAttributes(
-            ~params=
-              GetQueueAttributesRequest.make(
-                ~_AttributeNames=[|"Policy"|],
-                ~_QueueUrl=queueArn->arn2Url,
-              ),
-          )
-        ->Request.promise
-        ->Js.Promise.then_(
-            response =>
-              SQS.GetQueueAttributesResponse.(
-                response
-                ->getAttributes
-                ->getPolicy
-                ->unsafeParsePolicy
-                ->Js.Promise.resolve
-              ),
-            _,
-          )
-      );
-
-    let setQueuePolicy = (queueArn, policy: IAM.Policy.t) =>
-      policy
-      ->Js.Json.stringifyAny
-      ->(
-          fun
-          | Some(newPolicy) =>
-            SQS.(
-              sqsClient()
-              ->setQueueAttributes(
-                  ~params=
-                    SetQueueAttributesRequest.make(
-                      ~_Attributes=
-                        SetQueueAttributesRequest.Attributes.make(
-                          ~_Policy=newPolicy,
-                        ),
-                      ~_QueueUrl=queueArn->arn2Url,
-                    ),
-                )
-            )
-            ->Request.promise
-            ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
-          | None => Js.log("Couldn't stringify policy")->Js.Promise.resolve
-        );
-
     let _addPermission = (sid, eventCollector, eventTopic) =>
-      getQueuePolicy(eventCollector)
+      SQS.getQueuePolicy(eventCollector)
       ->Js.Promise.then_(
           policy =>
-            eventCollector->setQueuePolicy(
+            eventCollector->SQS.setQueuePolicy(
               policy->addStatement(sid, eventCollector, eventTopic),
             ),
           _,
         );
 
     let _removePermission = (sid, eventCollector) =>
-      getQueuePolicy(eventCollector)
+      SQS.getQueuePolicy(eventCollector)
       ->Js.Promise.then_(
           policy =>
-            eventCollector->setQueuePolicy(policy->removeStatement(sid)),
+            eventCollector->SQS.setQueuePolicy(policy->removeStatement(sid)),
           _,
         );
 
@@ -388,7 +274,7 @@ module Make =
       let eventTopicName = eventTopic->AWS.arn2Name;
       let eventCollectorName = eventCollector->AWS.arn2Name;
       let _sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
-      subscribeQueueToTopic(eventCollector, eventTopic)
+      SNS.subscribeQueueToTopic(eventCollector, eventTopic)
       ->Js.Promise.then_(
           _ =>
             Js.log(
@@ -414,7 +300,7 @@ module Make =
       let eventCollectorName = eventCollector->AWS.arn2Name;
       let _sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
 
-      unsubscribeQueueFromTopic(eventCollector, eventTopic)
+      SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic)
       ->Js.Promise.then_(
           _ =>
             Js.log(
