@@ -517,10 +517,12 @@ module Make =
               | PluginReconnected(pluginDef) when pluginId != id => [|
                   Call(callHandler, DoConnectPlugin(pluginDef)),
                 |]
-              | PluginDeactivated(pluginDef)
-              | PluginDisconnected(pluginDef) when pluginId != id => [|
+              | PluginDeactivated(pluginDef) when pluginId != id => [|
                   Call(callHandler, DoDisconnectPlugin(pluginDef)),
                 |]
+              // don't disconnect because a newer version might be already connected
+              // if the old version gets destroyed, then the subscription is also destroyed
+              | PluginDisconnected(_) => [||]
               | _ => [||]
               };
 
