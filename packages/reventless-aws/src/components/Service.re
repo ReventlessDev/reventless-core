@@ -13,7 +13,7 @@ module Make =
     View,
     CommandGeneratorResolvers.AppSync,
     CommandTopicConnector.SQS,
-    EventLogStorage.DynamoDb,
+    EventLogStorage.DynamoDbStream,
     EventTopicPublisher.SNS,
     QueryDbStorage.DynamoDb,
     QueryDbResolvers.AppSync,
