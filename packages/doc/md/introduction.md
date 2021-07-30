@@ -8,10 +8,21 @@ draft: true
 
 Reventless is a methodology, a programming model and a cloud provider agnostic Framework for creating event-based, serverless micro-services.
 
+## The Reventless Mindset
+
+> Create value fast and iterate to improve.
+
+other Suggestion:
+> Create value fast and ship with confidence.
+
+
 ## The Reventless Methodology
 
-- gater requirementss in an efficient and customer centric manner
+- gather requirements in an efficient and customer centric manner
+    * customer centric
+    * low effort requirement specification
 - use of a common (ubiquitous) language / vocabulary across all stake holders to foster better communication and understanding
+    * improved communication efficiency
 
 ## The Reventless Programming Model
 
@@ -27,10 +38,7 @@ Reventless is a methodology, a programming model and a cloud provider agnostic F
 - effortless configuration
 - focus on business logic
 - type driven
-
-## The Reventless Mindset
-
-> Create value fast and iterate to improve.
+- behaviour driven test support
 
 ## Reventless stands on the shoulders of giants
 
