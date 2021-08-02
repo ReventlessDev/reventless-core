@@ -27,9 +27,18 @@ other Suggestion:
 ## The Reventless Programming Model
 
 - everything evolves around commands & events (which are part of the ubiquitous language)
+    * improved communication efficiency
+    * reduced complexity (in high level view(s))
+    * reduce mental overhead
+    * better tracability of actions & triggers in the system
 - enable developers to focus on the value generating business logic and reduce repetitive coding tasks
+    * reduce mental overhead
 - hirarchical component model guides towards best-practice architectural patterns
+    * guides to best-practice architectural patterns
+    * reduce mental overhead
 - declarative definition of interaction between different parts of the system
+    * improve communication between developer(s / teams)
+    * enable to introduce changes, while keeping other partes of the system stable
 
 ## The Reventless Framework
 
