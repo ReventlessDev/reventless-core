@@ -49,6 +49,7 @@ other Suggestions:
 
 - serverless
     * "pay as you go", very low operational costs
+    * automatically scaling up & down
 - cloud provider agnostic
     * no vendor lock-in
 - highly adaptable through effortless configuration
