@@ -6,48 +6,65 @@ draft: true
 
 # Introduction to Reventless
 
-Reventless is a methodology, a programming model and a cloud provider agnostic Framework for creating event-based, serverless micro-services.
+Reventless is a methodology, a programming model and a cloud provider agnostic framework for creating event-based, serverless micro-services.
 
 ## The Reventless Mindset
 
-> Create value fast and iterate to improve.
+> Focus on business value and ship fast.
 
-other Suggestion:
+other Suggestions:
+> Create value fast and iterate to improve.
 > Create value fast and ship with confidence.
 
 
 ## The Reventless Methodology
 
 - gather requirements in an efficient and customer centric manner
-    * customer centric
+    * Event Storming workshop (online or on site) with all relevant stakeholders, especially domain experts
     * low effort requirement specification
-- use of a common (ubiquitous) language / vocabulary across all stake holders to foster better communication and understanding
+    * zero waste: requirements are easily translated to formalized spezifications that are directly run by the framework
+- use of a common (ubiquitous) language / vocabulary across all stakeholders to foster better communication and understanding
     * improved communication efficiency
+- focus on business centric tests
+    * high quality through behaviour driven test
+    * very readable tests in common language to discuss with customers and users
 
 ## The Reventless Programming Model
 
 - everything evolves around commands & events (which are part of the ubiquitous language)
     * improved communication efficiency
     * reduced complexity (in high level view(s))
-    * reduce mental overhead
     * better tracability of actions & triggers in the system
 - enable developers to focus on the value generating business logic and reduce repetitive coding tasks
     * reduce mental overhead
 - hirarchical component model guides towards best-practice architectural patterns
-    * guides to best-practice architectural patterns
-    * reduce mental overhead
+    * helps to utilize best-practice architectural patterns
+    * allows teams to develop and deploy services independently
 - declarative definition of interaction between different parts of the system
-    * improve communication between developer(s / teams)
+    * improve communication between developers / teams
     * enable to introduce changes, while keeping other partes of the system stable
 
 ## The Reventless Framework
 
+- serverless
+    * "pay as you go", very low operational costs
 - cloud provider agnostic
-- highly adaptable
-- effortless configuration
+    * no vendor lock-in
+- highly adaptable through effortless configuration
+    * easily adapt the infrastructure to your requirements
 - focus on business logic
+    * improved time to market
+    * no cloud experts needed for application development
+    * benefit from future framework improvements and optimizations
 - type driven
+    * whole system: backend, API, frontend
+    * great refactoring support, avoid most errors when evolving applications
+- full stack approach
+    * same programming language for whole system
+    * easy for developers to switch between frontend & backend
+    * reuse backend business functionality for frontend
 - behaviour driven test support
+    * test framework makes it easy to achieve high quality applications
 
 ## Reventless stands on the shoulders of giants
 
