@@ -14,6 +14,7 @@ Reventless is a methodology, a programming model and a cloud provider agnostic f
 
 other Suggestions:
 > Create value fast and iterate to improve.
+
 > Create value fast and ship with confidence.
 
 
