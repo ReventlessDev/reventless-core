@@ -1,4 +1,4 @@
-let make: Reventless.EventLog.storageMaker =
+let make: Reventless.EventLog.Adapter.storageMaker =
   (~name, ~opts) => {
     let table =
       PulumiAws.DynamoDb.Table.make(
@@ -20,7 +20,7 @@ let make: Reventless.EventLog.storageMaker =
         (),
       );
 
-    Reventless.EventLog.{
+    {
       resource: table->Util_DynamoDb.toResource,
       append: table->EventLogStorage_DynamoDb_Runtime.append,
       replay: table->EventLogStorage_DynamoDb_Runtime.replay,

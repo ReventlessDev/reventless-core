@@ -20,19 +20,12 @@ type publishCommands =
 
 type queryBucketName = string => string;
 
-type createSchedule =
-  (. ReventlessSpec.Scheduler.schedule) => Js.Promise.t(unit);
-type deleteSchedule = (. /*~name:*/ string) => Js.Promise.t(unit);
-
 type queueMessage =
   (. /*~delay:*/ int, /*~id:*/ string, /*~message:*/ string) =>
   Js.Promise.t(unit);
 
 type maker =
   (
-    ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
-    ~queryEventCollector: InterstackResourceQuery.runtimeQueryExn,
-    ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
@@ -53,8 +46,8 @@ type setup =
     . ReventlessSpec.QueryEngine.t,
     publishCommands,
     queryBucketName,
-    createSchedule,
-    deleteSchedule,
+    ReventlessSpec.Schedule.create,
+    ReventlessSpec.Schedule.delete,
     queueMessage,
     createSideEffectHandler,
     Pulumi.CustomResourceOptions.t
@@ -63,14 +56,6 @@ type setup =
 
 type constructed;
 type construct = (Component.t(task, outputs), string) => constructed;
-
-exception
-  ScheduleNotCreated(
-    ReventlessSpec.Scheduler.schedule,
-    string,
-    Js.Promise.error,
-  );
-exception ScheduleNotDeleted(string, string, Js.Promise.error);
 
 [@bs.module "./Component"] [@bs.new]
 external make:
@@ -98,9 +83,6 @@ let construct =
     (
       ~taskName,
       ~setup: setup,
-      ~queryCommandTopic,
-      ~queryEventCollector,
-      ~queryEventTopic,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
       ~queryEngine: ReventlessSpec.QueryEngine.t,
@@ -128,7 +110,8 @@ let construct =
         })
       ->AwsSdk.SQS.sendMessageBatch(
           ~queueId=
-            queryCommandTopic(queueName)##id->OutputFailsafeRuntime.get,
+            queueName->CommandTopic.Adapter.getResource##id
+            ->OutputFailsafeRuntime.get,
         )
       |> Js.Promise.catch(err =>
            Js.Promise.resolve(Js.log2("Task.publishCommands Error:", err))
@@ -137,21 +120,34 @@ let construct =
 
   let createSchedule =
     (. taskName) =>
-      (. schedule: ReventlessSpec.Scheduler.schedule) =>
-        (Schedule.create(scheduler, queryEventCollector(taskName)))(.
+      (. schedule: ReventlessSpec.Schedule.schedule) =>
+        (
+          Schedule.create(
+            scheduler,
+            taskName->EventCollector.Adapter.getResource,
+          )
+        )(.
           schedule,
         );
 
   let deleteSchedule =
     (. taskName) =>
       (. name) =>
-        (Schedule.delete(scheduler, queryEventCollector(taskName)))(. name);
+        (
+          Schedule.delete(
+            scheduler,
+            taskName->EventCollector.Adapter.getResource,
+          )
+        )(.
+          name,
+        );
 
   let queueMessage =
     (. taskName) =>
       (. delay, id, messageBody) => {
-        let eventCollector = queryEventCollector(taskName);
-        let queueId = eventCollector##id->OutputFailsafeRuntime.get;
+        let queueId =
+          taskName->EventCollector.Adapter.getResource##id
+          ->OutputFailsafeRuntime.get;
         Js.log4("Task.queueMessage:", delay, messageBody, queueId);
         AwsSdk.SQS.sendMessage(
           ~queueId,
@@ -168,8 +164,6 @@ let construct =
         ~name,
         ~sideEffects,
         ~queryEngine,
-        ~queryEventTopic,
-        ~memorySize=2048,
         ~opts=
           Some(
             Pulumi.ComponentResource.Options.make(
@@ -194,18 +188,7 @@ let construct =
   ->setOutputs(self, _);
 };
 
-let make =
-    (
-      ~name,
-      ~setup,
-      ~queryCommandTopic,
-      ~queryEventCollector,
-      ~queryEventTopic,
-      ~queryBucketName,
-      ~scheduler,
-      ~queryEngine,
-      ~opts,
-    ) => {
+let make = (~name, ~setup, ~queryBucketName, ~scheduler, ~queryEngine, ~opts) => {
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name=name->ComponentType.name(componentType),
@@ -213,9 +196,6 @@ let make =
       construct(
         ~taskName=name,
         ~setup,
-        ~queryCommandTopic,
-        ~queryEventCollector,
-        ~queryEventTopic,
         ~queryBucketName,
         ~scheduler,
         ~queryEngine,

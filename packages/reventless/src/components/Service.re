@@ -20,15 +20,15 @@ module Make =
          Behaviour: Behaviour.T with module Spec := Spec,
          View: View.T with module Spec := Spec,
          CommandGeneratorResolvers:
-           CommandGenerator.Resolvers with type api := Config.api,
-         CommandTopicConnector: CommandTopic.Connector,
-         EventLogStorage: EventLog.Storage,
-         EventTopicPublisher: EventTopic.Publisher,
+           CommandGenerator.Adapter.Resolvers with type api := Config.api,
+         CommandTopicConnector: CommandTopic.Adapter.Connector,
+         EventLogStorage: EventLog.Adapter.Storage,
+         EventTopicPublisher: EventTopic.Adapter.Publisher,
          QueryDbStorage:
-           QueryDb.Storage with
+           QueryDb.Adapter.Storage with
              type api = Config.api and type role = Config.role,
          QueryDbResolvers:
-           QueryDb.Resolvers with
+           QueryDb.Adapter.Resolvers with
              type api = Config.api and type role = Config.role,
        )
        : T => {

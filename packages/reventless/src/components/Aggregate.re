@@ -31,10 +31,10 @@ module Make =
          Spec: ReventlessSpec.AggregateSpec.T,
          Behaviour: Behaviour.T with module Spec := Spec,
          CommandGeneratorResolvers:
-           CommandGenerator.Resolvers with type api := Config.api,
-         CommandTopicConnector: CommandTopic.Connector,
-         EventLogStorage: EventLog.Storage,
-         EventTopicPublisher: EventTopic.Publisher,
+           CommandGenerator.Adapter.Resolvers with type api := Config.api,
+         CommandTopicConnector: CommandTopic.Adapter.Connector,
+         EventLogStorage: EventLog.Adapter.Storage,
+         EventTopicPublisher: EventTopic.Adapter.Publisher,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;

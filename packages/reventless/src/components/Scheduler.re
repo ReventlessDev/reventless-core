@@ -1,7 +1,16 @@
-open ReventlessSpec.Scheduler;
+open ReventlessSpec.Schedule;
 open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.Scheduler;
+
+type createSchedule = (. target, schedule) => Js.Promise.t(unit);
+type deleteSchedule = (. target, string) => Js.Promise.t(unit);
+
+type functions = {
+  .
+  "createSchedule": createSchedule,
+  "deleteSchedule": deleteSchedule,
+};
 
 type outputs = {.};
 external toOutputs: functions => outputs = "%identity";
@@ -12,17 +21,21 @@ module type T = {
   let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
 };
 
-type scheduledPublisher = {
-  resource,
-  createSchedule,
-  deleteSchedule,
+module Adapter = {
+  let publisher = "Publisher";
+  type scheduledPublisher = {
+    resource,
+    create: createSchedule,
+    delete: deleteSchedule,
+  };
+  type scheduledPublisherMaker =
+    (~name: string, ~opts: Pulumi.CustomResourceOptions.t) =>
+    scheduledPublisher;
+
+  module type ScheduledPublisher = {let make: scheduledPublisherMaker;};
 };
-type scheduledPublisherMaker =
-  (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => scheduledPublisher;
 
-module type ScheduledPublisher = {let make: scheduledPublisherMaker;};
-
-module Make = (ScheduledPublisher: ScheduledPublisher) : T => {
+module Make = (ScheduledPublisher: Adapter.ScheduledPublisher) : T => {
   type constructed;
   type construct = (t, string) => constructed;
 
@@ -62,8 +75,8 @@ module Make = (ScheduledPublisher: ScheduledPublisher) : T => {
 
     let scheduledPublisher = ScheduledPublisher.make(~name, ~opts);
 
-    self->setCreateSchedule(scheduledPublisher.createSchedule);
-    self->setDeleteSchedule(scheduledPublisher.deleteSchedule);
+    self->setCreateSchedule(scheduledPublisher.create);
+    self->setDeleteSchedule(scheduledPublisher.delete);
 
     makeOutputs(~scheduledPublisher=scheduledPublisher.resource)
     |> self->setOutputs;

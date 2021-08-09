@@ -39,10 +39,10 @@ module Make =
          Spec: View.Spec,
          View: View.T with module Spec := Spec,
          QueryDbStorage:
-           QueryDb.Storage with
+           QueryDb.Adapter.Storage with
              type api = Config.api and type role = Config.role,
          QueryDbResolvers:
-           QueryDb.Resolvers with
+           QueryDb.Adapter.Resolvers with
              type api = Config.api and type role = Config.role,
        )
        : (T with module Spec = Spec and module View = View) => {
@@ -200,6 +200,7 @@ module Make =
         ~parent=self->Component.toPulumiResource,
         (),
       );
+
     let queryDb = QueryDb.make(~opts, ());
 
     updateFn(

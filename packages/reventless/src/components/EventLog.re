@@ -33,17 +33,31 @@ module type T = {
   let replay: Component.t(t, outputs) => replay(Spec.Id.t, Spec.event);
 };
 
-type storage = {
-  resource,
-  append: append(string, Js.Json.t),
-  replay: replay(string, Js.Json.t),
+module Adapter = {
+  let storage = "Storage";
+  type storage = {
+    resource,
+    append: append(string, Js.Json.t),
+    replay: replay(string, Js.Json.t),
+  };
+  type storageMaker =
+    (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage;
+
+  module type Storage = {let make: storageMaker;};
+
+  let getResource = aggregateName =>
+    Resources.getExn(
+      ~adapter=storage,
+      ~name=
+        aggregateName
+        ->ComponentType.name(ComponentType.Aggregate)
+        ->ComponentType.name(componentType),
+    );
 };
-type storageMaker =
-  (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage;
 
-module type Storage = {let make: storageMaker;};
-
-module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
+module Make =
+       (Spec: Spec, Storage: Adapter.Storage)
+       : (T with module Spec = Spec) => {
   module Spec = Spec;
   type t;
 
@@ -115,7 +129,7 @@ module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
         )
         |> (
           data =>
-            storage.append(. sequenceNr, id |> Spec.Id.toString, data)
+            storage.Adapter.append(. sequenceNr, id |> Spec.Id.toString, data)
             |> Js.Promise.catch(err => {
                  let serviceName = Spec.name;
                  let resourceName = storage.resource##name->Pulumi.Output.get;
@@ -132,37 +146,37 @@ module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
         raise(exn);
       };
 
+  let decodeEvent = json =>
+    Js.Json.decodeObject(json)
+    ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
+    ->Belt.Option.map(json => (json, Spec.event_decode(json)))
+    ->Belt.Option.map(
+        fun
+        | (_, Belt.Result.Ok(event)) => event
+        | (json, Error(err)) => {
+            let eventStr = json |> Js.Json.stringify;
+            let message = err.message;
+            Js.Exn.raiseError(
+              {j|EventLog.replay: Error: Couldn't decode $eventStr: $message|j},
+            );
+          },
+      )
+    ->(
+        fun
+        | Some(event) => event
+        | None => {
+            let eventStr = json |> Js.Json.stringify;
+            Js.Exn.raiseError(
+              {j|EventLog.replay: Error: Couldn't decodeObject $eventStr|j},
+            );
+          }
+      );
+
   let replayFn = storage =>
     (. id) => {
-      storage.replay(. id |> Spec.Id.toString)
+      storage.Adapter.replay(. id |> Spec.Id.toString)
       |> Js.Promise.then_(jsons =>
-           jsons->Belt.Array.map(json =>
-             Js.Json.decodeObject(json)
-             ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
-             ->Belt.Option.map(json => (json, Spec.event_decode(json)))
-             ->Belt.Option.map(
-                 fun
-                 | (_, Belt.Result.Ok(event)) => event
-                 | (json, Error(err)) => {
-                     let eventStr = json |> Js.Json.stringify;
-                     let message = err.message;
-                     Js.Exn.raiseError(
-                       {j|EventLog.replay: Error: Couldn't decode $eventStr: $message|j},
-                     );
-                   },
-               )
-             ->(
-                 fun
-                 | Some(event) => event
-                 | None => {
-                     let eventStr = json |> Js.Json.stringify;
-                     Js.Exn.raiseError(
-                       {j|EventLog.replay: Error: Couldn't decodeObject $eventStr|j},
-                     );
-                   }
-               )
-           )
-           |> Js.Promise.resolve
+           jsons->Belt.Array.map(decodeEvent)->Js.Promise.resolve
          );
     };
 
@@ -175,6 +189,11 @@ module Make = (Spec: Spec, Storage: Storage) : (T with module Spec = Spec) => {
 
     let storage =
       Storage.make(~name=name->ComponentType.name(componentType), ~opts);
+    Resources.set(
+      ~adapter=Adapter.storage,
+      ~name,
+      ~resource=storage.resource,
+    );
     let storageOutputs = storage.resource;
 
     self->setAppend(storage->appendFn);

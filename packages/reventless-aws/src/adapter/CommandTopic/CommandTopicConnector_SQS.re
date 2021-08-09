@@ -1,6 +1,6 @@
 open PulumiAws;
 
-let make: Reventless.CommandTopic.connectorMaker =
+let make: Reventless.CommandTopic.Adapter.connectorMaker =
   (~name, ~handleCommands, ~memorySize, ~timeout, ~opts) => {
     let queue =
       SQS.Queue.make(
@@ -54,7 +54,7 @@ let make: Reventless.CommandTopic.connectorMaker =
     let _queueSubscription =
       queue->SQS.Queue.onEvent(~name, ~handler, ~opts, ());
 
-    Reventless.CommandTopic.{
+    {
       resource: queue->Util_SQS.toResource,
       publish: queue->CommandTopicConnector_SQS_Runtime.publish,
     };

@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.CommandGenerator;
 
-type outputs = {. "connector": resource};
+type outputs = {. "resolvers": array(resource)};
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T;
@@ -48,21 +48,24 @@ type payload = {
 };
 type commandGenerator = payload => Js.Promise.t(string);
 
-type resolvers = {resources: array(resource)};
-type resolversMaker('api) =
-  (
-    ~name: string,
-    ~api: 'api,
-    ~fields: array(string),
-    ~commandGenerator: commandGenerator,
-    ~opts: Pulumi.CustomResourceOptions.t
-  ) =>
-  resolvers;
+module Adapter = {
+  let resolvers = "Resolvers";
+  type resolvers = {resources: array(resource)};
+  type resolversMaker('api) =
+    (
+      ~name: string,
+      ~api: 'api,
+      ~fields: array(string),
+      ~commandGenerator: commandGenerator,
+      ~opts: Pulumi.CustomResourceOptions.t
+    ) =>
+    resolvers;
 
-module type Resolvers = {
-  type api;
+  module type Resolvers = {
+    type api;
 
-  let make: resolversMaker(api);
+    let make: resolversMaker(api);
+  };
 };
 
 module Make =
@@ -70,7 +73,7 @@ module Make =
          Config: Config.T,
          Spec: Spec,
          Behaviour: Behaviour.T with module Spec := Spec,
-         Resolvers: Resolvers with type api := Config.api,
+         Resolvers: Adapter.Resolvers with type api := Config.api,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
@@ -170,6 +173,18 @@ module Make =
         ~commandGenerator=generateCommand(commandHandler),
         ~opts,
       );
+    resolvers.resources
+    ->Belt.Array.map(resource =>
+        resource##info
+        ->Pulumi.Output.apply(resourceInfo =>
+            Resources.set(
+              ~adapter=Adapter.resolvers ++ "." ++ resourceInfo,
+              ~name=name->ComponentType.name(componentType),
+              ~resource,
+            )
+          )
+      )
+    ->ignore;
 
     let outputs = makeOutputs(~resolvers=resolvers.resources);
     //self->setOutputs(outputs); // NOTE: creates circular reference (promise leaks)

@@ -7,8 +7,8 @@ module type T = {
 
 module Make =
        (
-         CommandTopicAdapter: CommandTopic.Connector,
-         EventTopicAdapter: EventTopic.Publisher,
+         CommandTopicAdapter: CommandTopic.Adapter.Connector,
+         EventTopicAdapter: EventTopic.Adapter.Publisher,
        )
        : (T with module Spec := ReventlessSpec.PluginExtensionPointSpec) => {
   include ExtensionPoint.Make(

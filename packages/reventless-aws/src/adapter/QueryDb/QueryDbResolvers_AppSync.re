@@ -4,7 +4,7 @@ open Reventless;
 type api = Pulumi.Output.t(PulumiAws.AppSync.GraphQLApi.t);
 type role = Pulumi.Output.t(PulumiAws.IAM.Role.t);
 
-let make: QueryDb.resolversMaker(api, role) =
+let make: QueryDb.Adapter.resolversMaker(api, role) =
   (
     ~name: string,
     ~api: api,
@@ -63,7 +63,7 @@ let make: QueryDb.resolversMaker(api, role) =
       );
 
     let resourcesMaker: QueryDb.resolversResourcesMaker =
-      queryQueryDb => {
+      () => {
         let resolversByIndex =
           indexes->Belt.List.map(({View.index, authorization}) => {
             let name = name ++ "By" ++ index->String.capitalize;
@@ -87,9 +87,7 @@ let make: QueryDb.resolversMaker(api, role) =
                 DataSource.makeDynamoDBDataSourceWithTableName(
                   ~name=name ++ "Auth",
                   ~api,
-                  ~tableName=
-                    queryQueryDb(tableName)
-                    ->Pulumi.Output.flatMap(qdb => qdb##name),
+                  ~tableName=tableName->QueryDb.Adapter.getResource##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),
@@ -136,8 +134,7 @@ let make: QueryDb.resolversMaker(api, role) =
           (~tableName: string, ~template: string => string) =>
           Pulumi.Input.t(string) =
           (~tableName, ~template) =>
-            queryQueryDb(tableName)
-            ->Pulumi.Output.flatMap(qdb => qdb##name)
+            tableName->QueryDb.Adapter.getResource##name
             ->Pulumi.Output.apply(realTableName => template(realTableName))
             ->Pulumi.Output.asInput;
 
@@ -171,9 +168,7 @@ let make: QueryDb.resolversMaker(api, role) =
                 DataSource.makeDynamoDBDataSourceWithTableName(
                   ~name=name ++ idFieldName->String.capitalize ++ "Resolver",
                   ~api,
-                  ~tableName=
-                    queryQueryDb(tableName)
-                    ->Pulumi.Output.flatMap(qdb => qdb##name),
+                  ~tableName=tableName->QueryDb.Adapter.getResource##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),
@@ -228,5 +223,5 @@ let make: QueryDb.resolversMaker(api, role) =
 
     let resources = resolvers->Belt.Array.map(Util_AppSync.toResource);
 
-    {QueryDb.resources, resourcesMaker};
+    {resources, resourcesMaker};
   };

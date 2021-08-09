@@ -2,8 +2,7 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.QueryDb;
 
-type resolversResourcesMaker =
-  InterstackResourceQuery.deploytimeQueryExn => array(resource);
+type resolversResourcesMaker = unit => array(resource);
 
 type outputs = {
   .
@@ -64,58 +63,68 @@ module type T = {
   let outputs: Component.t(t, outputs) => outputs;
 };
 
-type storage = {
-  resource,
-  dataSourceName: Pulumi.Output.t(string), // TODO create in API
-  load: load(string, Js.Json.t),
-  save: save(string, Js.Json.t),
-  delete: delete(string),
-};
-type storageMaker('api, 'role) =
-  (
-    ~name: string,
-    ~indexes: list(View.index),
-    ~sortField: option(string),
-    ~api: 'api,
-    ~apiRole: 'role,
-    ~opts: Pulumi.CustomResourceOptions.t
-  ) =>
-  storage;
+module Adapter = {
+  let storage = "Storage";
+  type storage = {
+    resource,
+    dataSourceName: Pulumi.Output.t(string), // TODO create in API
+    load: load(string, Js.Json.t),
+    save: save(string, Js.Json.t),
+    delete: delete(string),
+  };
+  type storageMaker('api, 'role) =
+    (
+      ~name: string,
+      ~indexes: list(View.index),
+      ~sortField: option(string),
+      ~api: 'api,
+      ~apiRole: 'role,
+      ~opts: Pulumi.CustomResourceOptions.t
+    ) =>
+    storage;
 
-module type Storage = {
-  type api;
-  type role;
+  module type Storage = {
+    type api;
+    type role;
 
-  let make: storageMaker(api, role);
-};
+    let make: storageMaker(api, role);
+  };
 
-module type QueryEngineAdapter = {
-  let make: ResourceQuery.runtimeQueryExn => ReventlessSpec.QueryEngine.t;
-};
+  module type QueryEngineAdapter = {
+    let make: unit => ReventlessSpec.QueryEngine.t;
+  };
 
-type resolvers = {
-  resources: array(resource),
-  resourcesMaker: resolversResourcesMaker,
-};
-type resolversMaker('api, 'role) =
-  (
-    ~name: string,
-    ~api: 'api,
-    ~apiRole: 'role,
-    ~dataSourceName: Pulumi.Output.t(string),
-    ~indexes: list(View.index),
-    ~sortField: option(string),
-    ~resolveIdConfigs: list(View.resolveIdConfig),
-    ~resolveIdsConfigs: list(View.resolveIdsConfig),
-    ~opts: Pulumi.CustomResourceOptions.t
-  ) =>
-  resolvers;
+  let resolvers = "Resolvers";
+  type resolvers = {
+    resources: array(resource),
+    resourcesMaker: resolversResourcesMaker,
+  };
+  type resolversMaker('api, 'role) =
+    (
+      ~name: string,
+      ~api: 'api,
+      ~apiRole: 'role,
+      ~dataSourceName: Pulumi.Output.t(string),
+      ~indexes: list(View.index),
+      ~sortField: option(string),
+      ~resolveIdConfigs: list(View.resolveIdConfig),
+      ~resolveIdsConfigs: list(View.resolveIdsConfig),
+      ~opts: Pulumi.CustomResourceOptions.t
+    ) =>
+    resolvers;
 
-module type Resolvers = {
-  type api;
-  type role;
+  module type Resolvers = {
+    type api;
+    type role;
 
-  let make: resolversMaker(api, role);
+    let make: resolversMaker(api, role);
+  };
+
+  let getResource = name =>
+    Resources.getExn(
+      ~adapter=resolvers,
+      ~name=name->ComponentType.name(componentType),
+    );
 };
 
 module Make =
@@ -124,9 +133,11 @@ module Make =
          Spec: View.Spec,
          View: View.T with module Spec := Spec,
          Storage:
-           Storage with type api = Config.api and type role = Config.role,
+           Adapter.Storage with
+             type api = Config.api and type role = Config.role,
          Resolvers:
-           Resolvers with type api = Config.api and type role = Config.role,
+           Adapter.Resolvers with
+             type api = Config.api and type role = Config.role,
        )
        : (T with module Spec = Spec and module View = View) => {
   module Spec = Spec;
@@ -135,7 +146,6 @@ module Make =
   type api = Config.api;
   type role = Config.role;
 
-  //type nonrec t = t(Spec.Id.t, View.state);
   type t;
 
   type nonrec load = load(Spec.Id.t, View.state);
@@ -201,7 +211,7 @@ module Make =
 
   let loadFn = storage =>
     (. id) =>
-      storage.load(. id |> Spec.Id.toString)
+      storage.Adapter.load(. id->Spec.Id.toString)
       |> Js.Promise.then_(result =>
            result
            ->Belt.Result.map(states =>
@@ -212,23 +222,23 @@ module Make =
 
   let saveFn = storage =>
     (. id, state, saveMode) => {
-      switch (state |> View.state_encode |> Js.Json.decodeObject) {
+      switch (state->View.state_encode->Js.Json.decodeObject) {
       | Some(dict) =>
         dict->Js.Dict.set("id", Spec.Id.t_encode(id));
         let json = Js.Json.object_(dict);
-        storage.save(. id |> Spec.Id.toString, json, saveMode);
+        storage.Adapter.save(. id->Spec.Id.toString, json, saveMode);
       | None =>
         Js.log("QueryDB.save: Error: Couldn't decodeObject");
         Belt.Result.Error(
           NotSavedToStorage("Couldn't decodeObject"->Obj.magic),
         )
-        |> Js.Promise.resolve;
+        ->Js.Promise.resolve;
       };
     };
 
   let deleteFn = storage =>
     (. id, sort) => {
-      storage.delete(. id |> Spec.Id.toString, sort);
+      storage.Adapter.delete(. id->Spec.Id.toString, sort);
     };
 
   let outputs: Component.t(t, outputs) => outputs =
@@ -252,6 +262,11 @@ module Make =
         ~apiRole,
         ~opts,
       );
+    Resources.set(
+      ~adapter=Adapter.storage,
+      ~name=name->ComponentType.name(componentType),
+      ~resource=storage.resource,
+    );
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);
@@ -275,6 +290,18 @@ module Make =
         ~resolveIdsConfigs=View.resolveIdsConfigs,
         ~opts,
       );
+    resolvers.resources
+    ->Belt.Array.map(resource =>
+        resource##info
+        ->Pulumi.Output.apply(resourceInfo =>
+            Resources.set(
+              ~adapter=Adapter.resolvers ++ "." ++ resourceInfo,
+              ~name=name->ComponentType.name(componentType),
+              ~resource,
+            )
+          )
+      )
+    ->ignore;
 
     makeOutputs(
       ~storage=storage.resource,

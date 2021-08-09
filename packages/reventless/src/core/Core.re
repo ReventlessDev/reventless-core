@@ -17,8 +17,8 @@ let toDict = els =>
 
 module Make =
        (
-         EventCollectorAdapter: EventCollector.Connector,
-         QueryEngineAdapter: QueryDb.QueryEngineAdapter,
+         EventCollectorAdapter: EventCollector.Adapter.Connector,
+         QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
        ) => {
   type constructed;
   type construct = (Component.t(core, outputs), string) => constructed;
@@ -78,26 +78,11 @@ module Make =
       );
     let servicesOutputs = services->Component.extractMultipleOutputs;
 
-    let queryCommandTopic =
-      InterstackResourceQueryRuntime.commandTopicConnectorOfAllServicesExn(
-        servicesOutputs->Interstack.mergeServices,
-      );
-    let queryEventTopic =
-      InterstackResourceQueryDeploytime.eventTopicPublisherOfAllServicesExn(
-        servicesOutputs,
-      );
-
-    let queryQueryDb =
-      InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
-        servicesOutputs->Interstack.mergeServices,
-      );
-
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
         extensionPointMaker(
-          ~queryCommandTopic,
           ~scheduler,
-          ~queryEngine=QueryEngineAdapter.make(queryQueryDb),
+          ~queryEngine=QueryEngineAdapter.make(),
           ~opts=Some(opts),
           (),
         )
@@ -152,10 +137,9 @@ module Make =
 
     let eventCollector =
       EventCollector.make(
-        ~name="Core",
+        ~name=componentType->ComponentType.toName,
         ~aggregateNames,
         ~eventsHandler,
-        ~queryEventTopic,
         ~opts=Some(opts),
         (),
       );
