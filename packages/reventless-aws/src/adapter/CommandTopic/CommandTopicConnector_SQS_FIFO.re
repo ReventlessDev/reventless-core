@@ -7,6 +7,8 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
         ~name,
         ~args=
           SQS.Queue.Args.make(
+            ~fifoQueue=true->Pulumi.Input.wrap,
+            ~contentBasedDeduplication=true->Pulumi.Input.wrap,
             ~visibilityTimeoutSeconds=(6 * timeout)->Pulumi.Input.wrap,
             ~redrivePolicy=
               Util_DeadLetterQueue.fifoQueue##arn
@@ -35,7 +37,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
           ~args=
             Args.make(
               ~callback=
-                CommandTopicConnector_SQS_Runtime.handleQueueEvent(
+                CommandTopicConnector_SQS_FIFO_Runtime.handleQueueEvent(
                   handleCommands,
                   queue,
                 ),
@@ -54,6 +56,6 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
 
     {
       resource: queue->Util_SQS.toResource,
-      publish: queue->CommandTopicConnector_SQS_Runtime.publish,
+      publish: queue->CommandTopicConnector_SQS_FIFO_Runtime.publish,
     };
   };
