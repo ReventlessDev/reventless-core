@@ -7,7 +7,7 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
       | json => Some(json)
       | exception err =>
         Js.log3(
-          "CommandTopicConnector_SQS.handleQueueEvent: Couldn't parse command:",
+          "CommandTopicConnector_SQS_FIFO_Runtime.handleQueueEvent: Couldn't parse command:",
           commandStr,
           err,
         );
@@ -25,5 +25,8 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
 };
 
 let publish = queue =>
-  (. _id, _meta: Reventless.Message.meta, json) =>
-    queue->Util_SQS_Runtime.sendMessage(json->Js.Json.stringify);
+  (. id, _meta: Reventless.Message.meta, json) =>
+    queue->Util_SQS_Runtime.sendFifoMessage(
+      ~messageBody=json->Js.Json.stringify,
+      ~messageGroupId=id,
+    );
