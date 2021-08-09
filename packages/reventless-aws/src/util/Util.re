@@ -5,6 +5,7 @@ module CognitoGroupUser_Runtime = Util_CognitoGroupUser_Runtime;
 module DeadLetterQueue = Util_DeadLetterQueue;
 module DynamoDb = Util_DynamoDb;
 module DynamoDb_Runtime = Util_DynamoDb_Runtime;
+module DynamoDbStream = Util_DynamoDbStream;
 module Kinesis_Runtime = Util_Kinesis_Runtime;
 module S3_Runtime = Util_S3_Runtime;
 module SES_Runtime = Util_SES_Runtime;

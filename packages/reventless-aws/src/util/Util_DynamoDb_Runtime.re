@@ -19,13 +19,3 @@ let keysFromResource = (resource: ReventlessSpec.Adapter.resource) =>
   | [|id, ""|] => (id, None)
   | parts => (parts[0], Some(parts[1]))
   };
-
-let streamArnFromResource = (resource: ReventlessSpec.Adapter.resource) =>
-  switch (resource##info |> Pulumi.Output.get |> Js.String.split(",")) {
-  | parts when parts->Belt.Array.length < 3 || parts[2]->Js.String2.trim == "" =>
-    Js.Exn.raiseError(
-      "No streamArn field given for table "
-      ++ resource##name->Pulumi.Output.get,
-    )
-  | parts => parts[2]
-  };
