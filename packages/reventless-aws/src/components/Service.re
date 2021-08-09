@@ -12,9 +12,9 @@ module Make =
     Behaviour,
     View,
     CommandGeneratorResolvers.AppSync,
-    CommandTopicConnector.SQS,
+    CommandTopicConnector.SQS_FIFO,
     EventLogStorage.DynamoDbStream,
-    EventTopicPublisher.SNS,
+    EventTopicPublisher.DynamoDbStream,
     QueryDbStorage.DynamoDb,
     QueryDbResolvers.AppSync,
   );

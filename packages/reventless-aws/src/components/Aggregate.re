@@ -10,7 +10,7 @@ module Make =
     Spec,
     Behaviour,
     CommandGeneratorResolvers.AppSync,
-    CommandTopicConnector.SQS,
-    EventLogStorage.DynamoDb,
-    EventTopicPublisher.SNS,
+    CommandTopicConnector.SQS_FIFO,
+    EventLogStorage.DynamoDbStream,
+    EventTopicPublisher.DynamoDbStream,
   );
