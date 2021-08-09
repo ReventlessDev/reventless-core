@@ -3,7 +3,7 @@ module SideEffectHandler =
     (
       Reventless.EventCollector.Make(
         Reventless.EventCollector.DefaultPolicies,
-        EventCollectorConnector_SQS_FIFO,
+        EventCollectorConnector.DynamoDbStream,
       )
     ),
   );
@@ -15,7 +15,7 @@ module MakeWithPolicies = (Policies: Reventless.EventCollector.Policies) =>
     (
       Reventless.EventCollector.Make(
         Policies,
-        EventCollectorConnector_SQS_FIFO,
+        EventCollectorConnector.DynamoDbStream,
       )
     ),
   );
