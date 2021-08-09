@@ -22,7 +22,7 @@ let make = (~name, ~opts) => {
       )
     );
 
-  Reventless.AtomicCounter.{
+  Reventless.AtomicCounter.Adapter.{
     resource: table->Util_DynamoDb.toResource,
     increment: table->AtomicCounter_DynamoDB_Runtime.increment,
     get: table->AtomicCounter_DynamoDB_Runtime.get,

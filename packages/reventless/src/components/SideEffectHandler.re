@@ -14,8 +14,7 @@ type sideEffects = array(module ReventlessSpec.SideEffect.T);
 type maker =
   (
     ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
-    ~memorySize: int,
+    ~memorySize: int=?,
     ~timeout: int=?,
     ~opts: option(Pulumi.ComponentResource.Options.t),
     unit
@@ -142,15 +141,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
     };
 
   let construct =
-      (
-        ~name,
-        ~sideEffects,
-        ~queryEngine,
-        ~queryEventTopic,
-        ~memorySize,
-        ~timeout,
-        self,
-      ) => {
+      (~name, ~sideEffects, ~queryEngine, ~memorySize, ~timeout, self) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -158,14 +149,13 @@ module Make = (EventCollector: EventCollector.T) : T => {
       );
     let eventCollector =
       EventCollector.make(
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~aggregateNames=
           sideEffects->Belt.Array.map(
             (module SideEffect: ReventlessSpec.SideEffect.T) =>
             SideEffect.Source.name
           ),
         ~eventsHandler=eventsHandler(sideEffects, queryEngine),
-        ~queryEventTopic,
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
@@ -184,8 +174,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ~name: string,
       ~sideEffects: array(module ReventlessSpec.SideEffect.T),
       ~queryEngine: ReventlessSpec.QueryEngine.t,
-      ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
-      ~memorySize: int,
+      ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       unit
@@ -195,8 +184,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ~name,
       ~sideEffects,
       ~queryEngine,
-      ~queryEventTopic,
-      ~memorySize,
+      ~memorySize=2048,
       ~timeout=180,
       ~opts,
       _unit,
@@ -205,14 +193,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~componentType=componentType->ComponentType.toString,
         ~name,
         ~construct=
-          construct(
-            ~name,
-            ~sideEffects,
-            ~queryEngine,
-            ~queryEventTopic,
-            ~memorySize,
-            ~timeout,
-          ),
+          construct(~name, ~sideEffects, ~queryEngine, ~memorySize, ~timeout),
         ~opts,
       );
     };

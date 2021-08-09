@@ -51,8 +51,8 @@ let makeId = (name, version) => {j|$name@$version|j};
 
 module Make =
        (
-         EventCollectorAdapter: EventCollector.Connector,
-         QueryEngineAdapter: QueryDb.QueryEngineAdapter,
+         EventCollectorAdapter: EventCollector.Adapter.Connector,
+         QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
        )
        : T => {
   type constructed;
@@ -135,11 +135,6 @@ module Make =
       );
     let servicesOutputs = services->Component.extractMultipleOutputs;
 
-    let queryCommandTopic =
-      InterstackResourceQueryRuntime.commandTopicConnectorOfAllServicesExn(
-        servicesOutputs->Interstack.mergeServices,
-      );
-
     let coreStackOutput =
       switch (Interstack.coreStackOutput) {
       | Some(coreStackOutput) => coreStackOutput
@@ -158,42 +153,11 @@ module Make =
         )##commandTopic##connector##id
       );
 
-    let queryEventTopic = name =>
-      if (name == ReventlessSpec.PluginExtensionPointSpec.name) {
-        coreStackOutput->Pulumi.Output.apply(output =>
-          (
-            output##extensionPoints->Belt.Option.getExn
-            -# ReventlessSpec.PluginExtensionPointSpec.name
-          )##eventTopic##publisher
-        );
-      } else {
-        InterstackResourceQueryDeploytime.eventTopicPublisherOfAllServicesExn(
-          servicesOutputs,
-          name,
-        );
-      };
-
-    let queryQueryDb =
-      InterstackResourceQueryRuntime.queryDbStorageOfAllServicesExn(
-        servicesOutputs->Interstack.mergeServices,
-      );
-
-    let queryQueryDbDeploytime =
-      InterstackResourceQueryDeploytime.queryDbStorageOfAllServicesExn(
-        servicesOutputs,
-      );
-
-    let queryEngine = QueryEngineAdapter.make(queryQueryDb);
+    let queryEngine = QueryEngineAdapter.make();
 
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
-        extensionPointMaker(
-          ~queryCommandTopic,
-          ~scheduler,
-          ~queryEngine,
-          ~opts=Some(opts),
-          (),
-        )
+        extensionPointMaker(~scheduler, ~queryEngine, ~opts=Some(opts), ())
       );
     let extensionPointsOutputs =
       extensionPoints->Component.extractMultipleOutputs;
@@ -201,7 +165,6 @@ module Make =
     let extensions =
       extensionMakers->Belt.Array.map(extensionMaker =>
         extensionMaker(
-          ~queryCommandTopic,
           ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
           ~queryEngine,
           ~opts=Some(opts),
@@ -653,7 +616,6 @@ module Make =
       );
     let connectPluginExtension =
       connectPluginExtensionMaker(
-        ~queryCommandTopic,
         ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
         ~queryEngine,
         ~opts=Some(opts),
@@ -665,18 +627,10 @@ module Make =
       InterstackResourceQueryRuntime.bucketNameOfTaskExn(
         tasksOutputs->Interstack.mergeTasks,
       );
-    let queryEventCollector = name =>
-      (tasksOutputs^)
-      ->Belt.Array.keepMap(output => output##sideEffectHandler)
-      ->Belt.Array.getBy(sideEffectHandler => sideEffectHandler##name == name)
-      ->Belt.Option.getExn##eventCollector##connector;
 
     tasksOutputs :=
       taskMakers->Belt.Array.map(taskMaker =>
         taskMaker(
-          ~queryCommandTopic,
-          ~queryEventCollector,
-          ~queryEventTopic,
           ~queryBucketName,
           ~scheduler,
           ~queryEngine,
@@ -690,8 +644,6 @@ module Make =
       ->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
           eventMapperMaker(
             ~queryEngine,
-            ~queryCommandTopic,
-            ~queryEventTopic,
             ~memorySize=128,
             ~opts=Some(opts),
             (),
@@ -702,7 +654,7 @@ module Make =
     let resolvers =
       servicesOutputs
       ->ResourceQueryDeploytime.allResolversMakers
-      ->Belt.Array.map(resolverMaker => resolverMaker(queryQueryDbDeploytime))
+      ->Belt.Array.map(resolverMaker => resolverMaker())
       ->Belt.Array.concatMany;
 
     module Set = Belt.Set.String;
@@ -854,15 +806,16 @@ module Make =
 
     let eventCollector =
       EventCollector.make(
-        ~name=name ++ componentType->ComponentType.toName,
+        ~name=name->ComponentType.name(componentType),
         ~aggregateNames,
         ~eventsHandler,
-        ~queryEventTopic,
         ~opts=Some(opts),
         (),
       );
     let eventCollectorOutputs = eventCollector->Component.extractOutputs;
-    setEventCollectorUrn(. eventCollectorOutputs##connector##urn);
+    setEventCollectorUrn(.
+      eventCollectorOutputs##connector->Belt.Option.getExn##urn,
+    );
 
     let heartbeat =
       Heartbeat.make(

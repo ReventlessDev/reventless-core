@@ -30,16 +30,30 @@ module type T = {
   let publish: Component.t(t, outputs) => publish(Spec.Id.t, Spec.event);
 };
 
-type publisher = {
-  resource,
-  publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
+module Adapter = {
+  let publisher = "Publisher";
+  type publisher = {
+    resource,
+    publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
+  };
+  type publisherMaker =
+    (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => publisher;
+
+  module type Publisher = {let make: publisherMaker;};
+
+  let getResource = aggregateName =>
+    Resources.getExn(
+      ~adapter=publisher,
+      ~name=
+        aggregateName
+        ->ComponentType.name(ComponentType.Aggregate)
+        ->ComponentType.name(componentType),
+    );
 };
-type publisherMaker =
-  (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => publisher;
 
-module type Publisher = {let make: publisherMaker;};
-
-module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) => {
+module Make =
+       (Spec: Spec, Publisher: Adapter.Publisher)
+       : (T with module Spec = Spec) => {
   module Spec = Spec;
   type t;
 
@@ -87,7 +101,7 @@ module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) =
         let event = json->Js.Json.stringify;
         let eventName: string = event'.event->Spec.event_encode->Obj.magic[0];
         let idx = idx + 1;
-        let resourceName = publisher.resource##name->Pulumi.Output.get;
+        let resourceName = publisher.Adapter.resource##name->Pulumi.Output.get;
 
         publisher.publish(. id->Spec.Id.toString, event'.meta, json)
         |> Js.Promise.catch(e => {
@@ -116,6 +130,11 @@ module Make = (Spec: Spec, Publisher: Publisher) : (T with module Spec = Spec) =
 
     let publisher =
       Publisher.make(~name=name->ComponentType.name(componentType), ~opts);
+    Resources.set(
+      ~adapter=Adapter.publisher,
+      ~name,
+      ~resource=publisher.resource,
+    );
     let publisherOutputs = publisher.resource;
 
     self->setPublish(publisher->publishFn);

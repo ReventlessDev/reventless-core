@@ -1,10 +1,9 @@
 open PulumiAws;
 
-let make: Reventless.EventCollector.connectorMaker =
+let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
     ~name,
-    ~eventServices,
-    ~queryEventTopic: Reventless.InterstackResourceQuery.deploytimeQueryExn,
+    ~aggregateNames,
     ~policies,
     ~handleEvents,
     ~memorySize,
@@ -37,8 +36,11 @@ let make: Reventless.EventCollector.connectorMaker =
       );
 
     let serviceNamesAndTopics =
-      eventServices->Belt.Array.map(eventService =>
-        (eventService, queryEventTopic(eventService))
+      aggregateNames->Belt.Array.map(aggregateName =>
+        (
+          aggregateName,
+          aggregateName->Reventless.EventTopic.Adapter.getResource,
+        )
       );
 
     let _topicSubscriptions =
@@ -49,10 +51,7 @@ let make: Reventless.EventCollector.connectorMaker =
             SNS.TopicSubscription.Args.make(
               ~endpoint=queue##arn->Pulumi.Output.asInput,
               ~protocol=`sqs,
-              ~topic=
-                topic
-                ->Pulumi.Output.flatMap(topic => topic##urn)
-                ->Pulumi.Output.asInput,
+              ~topic=topic##urn->Pulumi.Output.asInput,
               ~rawMessageDelivery=true->Pulumi.Input.wrap,
               (),
             ),
@@ -110,5 +109,5 @@ let make: Reventless.EventCollector.connectorMaker =
         )
       );
 
-    {Reventless.EventCollector.resource: queue->Util_SQS.toResource};
+    {resource: Some(queue->Util_SQS.toResource)};
   };

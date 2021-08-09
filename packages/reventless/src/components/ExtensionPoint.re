@@ -15,7 +15,6 @@ type name = string;
 
 type maker =
   (
-    ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
@@ -46,8 +45,8 @@ module type T = {
 module Make =
        (
          Spec: ReventlessSpec.ExtensionPointMapping.Spec,
-         CommandTopicAdapter: CommandTopic.Connector,
-         EventTopicAdapter: EventTopic.Publisher,
+         CommandTopicAdapter: CommandTopic.Adapter.Connector,
+         EventTopicAdapter: EventTopic.Adapter.Publisher,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
@@ -147,8 +146,7 @@ module Make =
       };
   };
 
-  let construct =
-      (~mappings, ~queryCommandTopic, ~scheduler, ~queryEngine, self, name) => {
+  let construct = (~mappings, ~scheduler, ~queryEngine, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -174,7 +172,9 @@ module Make =
         cmdJson
         ->Js.Json.stringify
         ->AwsSdk.SQS.sendMessage(
-            ~queueId=queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
+            ~queueId=
+              aggregateName->Reventless.CommandTopic.Adapter.getResource##id
+              ->Pulumi.Output.get,
             ~messageGroupId=id,
             ~messageBody=_,
             (),
@@ -296,12 +296,11 @@ module Make =
   };
 
   let make: array(module Mapping) => maker =
-    (mappings, ~queryCommandTopic, ~scheduler, ~queryEngine, ~opts, _) =>
+    (mappings, ~scheduler, ~queryEngine, ~opts, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=
-          construct(~mappings, ~queryCommandTopic, ~scheduler, ~queryEngine),
+        ~construct=construct(~mappings, ~scheduler, ~queryEngine),
         ~opts,
       );
 };

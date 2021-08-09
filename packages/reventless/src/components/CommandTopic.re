@@ -36,23 +36,37 @@ module type T = {
   let publish: Component.t(t, outputs) => publish(Spec.Id.t, Spec.command);
 };
 
-type connector = {
-  resource,
-  publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
+module Adapter = {
+  let connector = "Connector";
+  type connector = {
+    resource,
+    publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
+  };
+  type connectorMaker =
+    (
+      ~name: string,
+      ~handleCommands: (. array(Js.Json.t)) => Js.Promise.t(unit),
+      ~memorySize: int,
+      ~timeout: int,
+      ~opts: Pulumi.CustomResourceOptions.t
+    ) =>
+    connector;
+
+  module type Connector = {let make: connectorMaker;};
+
+  let getResource = aggregateName =>
+    Resources.getExn(
+      ~adapter=connector,
+      ~name=
+        aggregateName
+        ->ComponentType.name(ComponentType.Aggregate)
+        ->ComponentType.name(componentType),
+    );
 };
-type connectorMaker =
-  (
-    ~name: string,
-    ~handleCommands: (. array(Js.Json.t)) => Js.Promise.t(unit),
-    ~memorySize: int,
-    ~timeout: int,
-    ~opts: Pulumi.CustomResourceOptions.t
-  ) =>
-  connector;
 
-module type Connector = {let make: connectorMaker;};
-
-module Make = (Spec: Spec, Connector: Connector) : (T with module Spec = Spec) => {
+module Make =
+       (Spec: Spec, Connector: Adapter.Connector)
+       : (T with module Spec = Spec) => {
   module Spec = Spec;
 
   type commandsHandler = Message.commandsHandler(Spec.Id.t, Spec.command);
@@ -103,7 +117,7 @@ module Make = (Spec: Spec, Connector: Connector) : (T with module Spec = Spec) =
           command',
         );
       let jsonStr = json->Js.Json.stringify;
-      let resourceName = connector.resource##name->Pulumi.Output.get;
+      let resourceName = connector.Adapter.resource##name->Pulumi.Output.get;
 
       connector.publish(. command'.id->Spec.Id.toString, command'.meta, json)
       |> Js.Promise.catch(e => {
@@ -210,6 +224,11 @@ module Make = (Spec: Spec, Connector: Connector) : (T with module Spec = Spec) =
         ~timeout,
         ~opts,
       );
+    Resources.set(
+      ~adapter=Adapter.connector,
+      ~name,
+      ~resource=connector.resource,
+    );
 
     self->setPublish(connector->publishFn);
 

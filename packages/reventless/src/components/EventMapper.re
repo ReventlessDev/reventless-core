@@ -10,8 +10,6 @@ type eventMapper; // TODO: rename back to t - after refactoring
 type maker =
   (
     ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
-    ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
     ~memorySize: int,
     ~timeout: int=?,
     ~opts: option(Pulumi.ComponentResource.Options.t),
@@ -100,7 +98,7 @@ module Make =
     });
   };
 
-  let eventsHandler = (mappings, queryCommandTopic, queryEngine) =>
+  let eventsHandler = (mappings, queryEngine) =>
     (. events'Json) => {
       let count = events'Json->Belt.Array.size;
       events'Json
@@ -197,7 +195,9 @@ module Make =
             entries
             ->Belt.Array.concatMany
             ->AwsSdk.SQS.sendMessageBatch(
-                ~queueId=queryCommandTopic(service)##id->Pulumi.Output.get,
+                ~queueId=
+                  service->CommandTopic.Adapter.getResource##id
+                  ->Pulumi.Output.get,
               ),
           _,
         )
@@ -210,17 +210,7 @@ module Make =
         );
     };
 
-  let construct =
-      (
-        ~mappings,
-        ~queryEngine,
-        ~queryCommandTopic,
-        ~queryEventTopic,
-        ~memorySize,
-        ~timeout,
-        self,
-        name,
-      ) => {
+  let construct = (~mappings, ~queryEngine, ~memorySize, ~timeout, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -228,14 +218,12 @@ module Make =
       );
     let eventCollector =
       EventCollector.make(
-        ~name=Target.name,
+        ~name=Target.name->ComponentType.name(componentType),
         ~aggregateNames=
           mappings->Belt.Array.map((module Mapping: Mapping) =>
             Mapping.Source.name
           ),
-        ~eventsHandler=
-          eventsHandler(mappings, queryCommandTopic, queryEngine),
-        ~queryEventTopic,
+        ~eventsHandler=eventsHandler(mappings, queryEngine),
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
@@ -253,36 +241,17 @@ module Make =
     (
       array(module Mapping),
       ~queryEngine: ReventlessSpec.QueryEngine.t,
-      ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
-      ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
       ~memorySize: int,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       unit
     ) =>
     Component.t(eventMapper, outputs) =
-    (
-      mappings,
-      ~queryEngine,
-      ~queryCommandTopic,
-      ~queryEventTopic,
-      ~memorySize,
-      ~timeout=180,
-      ~opts,
-      _unit,
-    ) => {
+    (mappings, ~queryEngine, ~memorySize, ~timeout=180, ~opts, _unit) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Target.name,
-        ~construct=
-          construct(
-            ~mappings,
-            ~queryEngine,
-            ~queryCommandTopic,
-            ~queryEventTopic,
-            ~memorySize,
-            ~timeout,
-          ),
+        ~construct=construct(~mappings, ~queryEngine, ~memorySize, ~timeout),
         ~opts,
       );
     };

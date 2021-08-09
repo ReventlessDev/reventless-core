@@ -24,17 +24,21 @@ module type T = {
   let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
 };
 
-type counter = {
-  resource,
-  increment,
-  get,
+module Adapter = {
+  let counter = "Counter";
+  type counter = {
+    resource,
+    increment,
+    get,
+  };
+
+  module type Counter = {
+    let make:
+      (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => counter;
+  };
 };
 
-module type Counter = {
-  let make: (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => counter;
-};
-
-module Make = (Counter: Counter) : T => {
+module Make = (Counter: Adapter.Counter) : T => {
   type constructed;
   type construct = (t, string) => constructed;
 

@@ -2,7 +2,7 @@ open PulumiAws;
 
 type api = Pulumi.Output.t(AppSync.GraphQLApi.t);
 
-let make: Reventless.CommandGenerator.resolversMaker(api) =
+let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
   (
     ~name: string,
     ~api: api,
@@ -118,5 +118,5 @@ let make: Reventless.CommandGenerator.resolversMaker(api) =
 
     let resources = resolvers->Belt.Array.map(Util_AppSync.toResource);
 
-    {Reventless.CommandGenerator.resources: resources};
+    {resources: resources};
   };

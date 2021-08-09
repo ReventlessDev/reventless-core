@@ -26,7 +26,9 @@ let eventCollectorConnectorOfAllEventMappers:
   (eventMappers, eventMapperName) =>
     eventMappers
     ->find(eventMapperName)
-    ->Belt.Option.map(eventMapper => eventMapper##eventCollector##connector);
+    ->Belt.Option.flatMap(eventMapper =>
+        eventMapper##eventCollector##connector
+      );
 
 let bucketNameOfAllTasks: (array(Task.outputs), string) => option(string) =
   (tasks, taskName) => {

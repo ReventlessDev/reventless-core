@@ -1,5 +1,4 @@
 open ReventlessSpec.Schedule;
-open ReventlessSpec.Scheduler;
 open ReventlessSpec.Adapter;
 
 let forQueue = (name, queueId) =>
@@ -14,6 +13,9 @@ let minutesFromNow = minutes => {
   Single(m->year, m->month + 1, m->date, m->hour, m->minute);
 };
 
+exception ScheduleNotCreated(schedule, string, Js.Promise.error);
+exception ScheduleNotDeleted(string, string, Js.Promise.error);
+
 let create: (Scheduler.t, resource) => create =
   (scheduler, queue) =>
     (. schedule: schedule) => {
@@ -21,14 +23,14 @@ let create: (Scheduler.t, resource) => create =
       let name = schedule.name->forQueue(queueId);
       let schedule = {...schedule, name};
       let target = {
-        id: queue##name |> Pulumi.Output.get,
-        urn: queue##urn |> Pulumi.Output.get,
+        id: queue##name->Pulumi.Output.get,
+        urn: queue##urn->Pulumi.Output.get,
       };
       let createSchedule = scheduler##createSchedule;
       createSchedule(. target, schedule)
       |> Js.Promise.then_(_ =>
            Js.log4("Schedule.create: created", schedule, queueId, target)
-           |> Js.Promise.resolve
+           ->Js.Promise.resolve
          )
       |> Js.Promise.catch(err => {
            Js.log4(
@@ -47,14 +49,14 @@ let delete: (Scheduler.t, resource) => delete =
       let queueId = queue##name->OutputFailsafeRuntime.get;
       let name = name->forQueue(queueId);
       let target = {
-        id: queue##name |> Pulumi.Output.get,
-        urn: queue##urn |> Pulumi.Output.get,
+        id: queue##name->Pulumi.Output.get,
+        urn: queue##urn->Pulumi.Output.get,
       };
       let deleteSchedule = scheduler##deleteSchedule;
       deleteSchedule(. target, name)
       |> Js.Promise.then_(_ =>
            Js.log3("Schedule.delete: deleted", name, queueId)
-           |> Js.Promise.resolve
+           ->Js.Promise.resolve
          )
       |> Js.Promise.catch(err => {
            Js.log4("Schedule.delete: couldn't delete", name, queueId, err);

@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.EventCollector;
 
-type outputs = {. "connector": resource};
+type outputs = {. "connector": option(resource)};
 
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
@@ -22,7 +22,6 @@ module type T = {
       ~name: string,
       ~aggregateNames: array(string),
       ~eventsHandler: eventsHandler,
-      ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
@@ -31,23 +30,31 @@ module type T = {
     Component.t(t, outputs);
 };
 
-type connector = {resource};
-type connectorMaker =
-  (
-    ~name: string,
-    ~eventServices: array(string),
-    ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
-    ~policies: array(Pulumi.Output.t(arn)),
-    ~handleEvents: eventsHandler,
-    ~memorySize: int,
-    ~timeout: int,
-    ~opts: Pulumi.CustomResourceOptions.t
-  ) =>
-  connector;
+module Adapter = {
+  let connector = "Connector";
+  type connector = {resource: option(resource)};
+  type connectorMaker =
+    (
+      ~name: string,
+      ~aggregateNames: array(string),
+      ~policies: array(Pulumi.Output.t(arn)),
+      ~handleEvents: eventsHandler,
+      ~memorySize: int,
+      ~timeout: int,
+      ~opts: Pulumi.CustomResourceOptions.t
+    ) =>
+    connector;
 
-module type Connector = {let make: connectorMaker;};
+  module type Connector = {let make: connectorMaker;};
 
-module Make = (Policies: Policies, Connector: Connector) : T => {
+  let getResource = name =>
+    Resources.getExn(
+      ~adapter=connector,
+      ~name=name->ComponentType.name(componentType),
+    );
+};
+
+module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
   type t;
   type constructed;
   type construct = (Component.t(t, outputs), string) => constructed;
@@ -63,7 +70,8 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
     Component.t(t, outputs) =
     "default";
 
-  [@bs.obj] external makeOutputs: (~connector: resource) => outputs = "";
+  [@bs.obj]
+  external makeOutputs: (~connector: option(resource)) => outputs = "";
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
     "registerOutputs";
@@ -76,15 +84,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
   };
 
   let construct =
-      (
-        ~aggregateNames,
-        ~eventsHandler,
-        ~queryEventTopic,
-        ~memorySize,
-        ~timeout,
-        self,
-        name,
-      ) => {
+      (~aggregateNames, ~eventsHandler, ~memorySize, ~timeout, self, name) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -94,14 +94,22 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
     let connector =
       Connector.make(
         ~name=name->ComponentType.name(componentType),
-        ~eventServices=aggregateNames,
-        ~queryEventTopic,
+        ~aggregateNames,
         ~policies=Policies.policies,
         ~handleEvents=eventsHandler,
         ~memorySize,
         ~timeout,
         ~opts,
       );
+    switch (connector.resource) {
+    | Some(resource) =>
+      Resources.set(
+        ~adapter=Adapter.connector,
+        ~name=name->ComponentType.name(componentType),
+        ~resource,
+      )
+    | None => Js.log2("No resource created for EventColllector", name)
+    };
 
     makeOutputs(~connector=connector.resource)->setOutputs(self, _);
   };
@@ -111,7 +119,6 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
       ~name: string,
       ~aggregateNames: array(string),
       ~eventsHandler: eventsHandler,
-      ~queryEventTopic: InterstackResourceQuery.deploytimeQueryExn,
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
@@ -122,7 +129,6 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
       ~name,
       ~aggregateNames,
       ~eventsHandler,
-      ~queryEventTopic,
       ~memorySize=128,
       ~timeout=30,
       ~opts,
@@ -132,13 +138,7 @@ module Make = (Policies: Policies, Connector: Connector) : T => {
         ~componentType=componentType->ComponentType.toString,
         ~name,
         ~construct=
-          construct(
-            ~aggregateNames,
-            ~eventsHandler,
-            ~queryEventTopic,
-            ~memorySize,
-            ~timeout,
-          ),
+          construct(~aggregateNames, ~eventsHandler, ~memorySize, ~timeout),
         ~opts,
       );
 };

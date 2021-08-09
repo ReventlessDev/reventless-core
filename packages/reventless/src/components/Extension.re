@@ -16,7 +16,6 @@ type name = string;
 
 type maker =
   (
-    ~queryCommandTopic: InterstackResourceQuery.runtimeQueryExn,
     ~pluginExtensionPointCommandTopicId: Pulumi.Output.t(string),
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
@@ -127,7 +126,6 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
   let construct =
       (
         ~mappings,
-        ~queryCommandTopic,
         ~pluginExtensionPointCommandTopicId,
         ~queryEngine,
         self,
@@ -169,7 +167,8 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
         publishCommand(
           id,
           command'Json,
-          queryCommandTopic(aggregateName)##id->Pulumi.Output.get,
+          aggregateName->CommandTopic.Adapter.getResource##id
+          ->Pulumi.Output.get,
         )
       | ExtensionMapping.AbstractPublishAggregateCommandAsync(promise) =>
         promise->Js.Promise.then_(
@@ -177,7 +176,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
                      publishCommand(
                        id,
                        command'Json,
-                       queryCommandTopic(aggregateName)##id
+                       aggregateName->CommandTopic.Adapter.getResource##id
                        ->Pulumi.Output.get,
                      ),
                    _,
@@ -190,7 +189,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
                          publishCommand(
                            id,
                            command'Json,
-                           queryCommandTopic(aggregateName)##id
+                           aggregateName->CommandTopic.Adapter.getResource##id
                            ->Pulumi.Output.get,
                          )
                        )
@@ -296,7 +295,6 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
     (
       nameSuffix,
       mappings,
-      ~queryCommandTopic,
       ~pluginExtensionPointCommandTopicId,
       ~queryEngine,
       ~opts,
@@ -308,7 +306,6 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
         ~construct=
           construct(
             ~mappings,
-            ~queryCommandTopic,
             ~pluginExtensionPointCommandTopicId,
             ~queryEngine,
           ),
