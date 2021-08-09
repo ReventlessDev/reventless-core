@@ -6,7 +6,7 @@ module Make =
     (
       Reventless.EventCollector.Make(
         Reventless.EventCollector.DefaultPolicies,
-        EventCollectorConnector.SQS,
+        EventCollectorConnector.SQS_FIFO,
       )
     ),
   );

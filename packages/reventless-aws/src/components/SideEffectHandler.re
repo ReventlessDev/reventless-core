@@ -3,7 +3,7 @@ module SideEffectHandler =
     (
       Reventless.EventCollector.Make(
         Reventless.EventCollector.DefaultPolicies,
-        EventCollectorConnector_SQS,
+        EventCollectorConnector_SQS_FIFO,
       )
     ),
   );
@@ -12,5 +12,10 @@ include SideEffectHandler;
 
 module MakeWithPolicies = (Policies: Reventless.EventCollector.Policies) =>
   Reventless.SideEffectHandler.Make(
-    (Reventless.EventCollector.Make(Policies, EventCollectorConnector_SQS)),
+    (
+      Reventless.EventCollector.Make(
+        Policies,
+        EventCollectorConnector_SQS_FIFO,
+      )
+    ),
   );

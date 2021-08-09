@@ -7,7 +7,7 @@ let handleQueueEvent = (handleEvents, queue, queueEvent, _) => {
       | json => Some(json)
       | exception err =>
         Js.log3(
-          "EventCollectorConnector_SQS_FIFO_Runtime.handleQueueEvent: Couldn't parse event:",
+          "EventCollectorConnector_SQS.handleQueueEvent: Couldn't parse event:",
           eventStr,
           err,
         );
