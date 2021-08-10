@@ -41,6 +41,8 @@ module Adapter = {
 
   module type Publisher = {let make: publisherMaker;};
 
+  let setResource = (resource, name) =>
+    Resources.set(~adapter=publisher, ~name, ~resource);
   let getResource = aggregateName =>
     Resources.getExn(
       ~adapter=publisher,
@@ -128,13 +130,8 @@ module Make =
         (),
       );
 
-    let publisher =
-      Publisher.make(~name=name->ComponentType.name(componentType), ~opts);
-    Resources.set(
-      ~adapter=Adapter.publisher,
-      ~name,
-      ~resource=publisher.resource,
-    );
+    let publisher = Publisher.make(~name, ~opts);
+    publisher.resource->Adapter.setResource(name);
     let publisherOutputs = publisher.resource;
 
     self->setPublish(publisher->publishFn);
@@ -148,7 +145,7 @@ module Make =
     (~name, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~construct,
         ~opts,
       );

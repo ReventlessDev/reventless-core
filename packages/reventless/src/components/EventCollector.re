@@ -47,6 +47,8 @@ module Adapter = {
 
   module type Connector = {let make: connectorMaker;};
 
+  let setResource = (resource, name) =>
+    Resources.set(~adapter=connector, ~name, ~resource);
   let getResource = name =>
     Resources.getExn(
       ~adapter=connector,
@@ -93,7 +95,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
 
     let connector =
       Connector.make(
-        ~name=name->ComponentType.name(componentType),
+        ~name,
         ~aggregateNames,
         ~policies=Policies.policies,
         ~handleEvents=eventsHandler,
@@ -102,12 +104,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~opts,
       );
     switch (connector.resource) {
-    | Some(resource) =>
-      Resources.set(
-        ~adapter=Adapter.connector,
-        ~name=name->ComponentType.name(componentType),
-        ~resource,
-      )
+    | Some(resource) => resource->Adapter.setResource(name)
     | None => Js.log2("No resource created for EventColllector", name)
     };
 
@@ -136,7 +133,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     ) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~construct=
           construct(~aggregateNames, ~eventsHandler, ~memorySize, ~timeout),
         ~opts,
