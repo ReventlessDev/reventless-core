@@ -94,7 +94,6 @@ module Adapter = {
 
   module type QueryEngineAdapter = {let make: queryEngineMaker;};
 
-  let resolvers = "Resolvers";
   type resolvers = {
     resources: array(resource),
     resourcesMaker: resolversResourcesMaker,
@@ -120,9 +119,11 @@ module Adapter = {
     let make: resolversMaker(api, role);
   };
 
+  let setResource = (resource, name) =>
+    Resources.set(~adapter=storage, ~name, ~resource);
   let getResource = name =>
     Resources.getExn(
-      ~adapter=resolvers,
+      ~adapter=storage,
       ~name=name->ComponentType.name(componentType),
     );
 };
@@ -253,20 +254,17 @@ module Make =
 
     let sortField =
       View.sortConfig->Belt.Option.map(config => config.sortField);
+    let storageName = name->ComponentType.name(componentType);
     let storage =
       Storage.make(
-        ~name=name->ComponentType.name(componentType),
+        ~name=storageName,
         ~indexes=View.indexes,
         ~sortField,
         ~api,
         ~apiRole,
         ~opts,
       );
-    Resources.set(
-      ~adapter=Adapter.storage,
-      ~name=name->ComponentType.name(componentType),
-      ~resource=storage.resource,
-    );
+    storage.resource->Adapter.setResource(storageName);
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);
@@ -290,18 +288,6 @@ module Make =
         ~resolveIdsConfigs=View.resolveIdsConfigs,
         ~opts,
       );
-    resolvers.resources
-    ->Belt.Array.map(resource =>
-        resource##info
-        ->Pulumi.Output.apply(resourceInfo =>
-            Resources.set(
-              ~adapter=Adapter.resolvers ++ "." ++ resourceInfo,
-              ~name=name->ComponentType.name(componentType),
-              ~resource,
-            )
-          )
-      )
-    ->ignore;
 
     makeOutputs(
       ~storage=storage.resource,
@@ -317,7 +303,7 @@ module Make =
     (~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=View.name |> Js.Option.getWithDefault(Spec.name),
+        ~name=View.name->Belt.Option.getWithDefault(Spec.name),
         ~construct,
         ~opts,
         ~api=Config.api,

@@ -49,7 +49,6 @@ type payload = {
 type commandGenerator = payload => Js.Promise.t(string);
 
 module Adapter = {
-  let resolvers = "Resolvers";
   type resolvers = {resources: array(resource)};
   type resolversMaker('api) =
     (
@@ -167,24 +166,12 @@ module Make =
 
     let resolvers =
       Resolvers.make(
-        ~name=name->ComponentType.name(componentType),
+        ~name,
         ~api,
         ~fields=Behaviour.resolverConfig.fields,
         ~commandGenerator=generateCommand(commandHandler),
         ~opts,
       );
-    resolvers.resources
-    ->Belt.Array.map(resource =>
-        resource##info
-        ->Pulumi.Output.apply(resourceInfo =>
-            Resources.set(
-              ~adapter=Adapter.resolvers ++ "." ++ resourceInfo,
-              ~name=name->ComponentType.name(componentType),
-              ~resource,
-            )
-          )
-      )
-    ->ignore;
 
     let outputs = makeOutputs(~resolvers=resolvers.resources);
     //self->setOutputs(outputs); // NOTE: creates circular reference (promise leaks)
@@ -202,7 +189,7 @@ module Make =
     (~name, ~commandHandler, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~construct,
         ~opts,
         ~api=Config.api,
