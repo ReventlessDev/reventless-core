@@ -1,4 +1,4 @@
-let service = "SNS";
+let service = "SNS_FIFO";
 
 let toResource = (topic: PulumiAws.SNS.Topic.t) =>
   Reventless.Adapter.resource(

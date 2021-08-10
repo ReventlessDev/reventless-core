@@ -35,34 +35,8 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         (),
       );
 
-    let serviceNamesAndTopics =
-      aggregateNames->Belt.Array.map(aggregateName =>
-        (
-          aggregateName,
-          aggregateName->Reventless.EventTopic.Adapter.getResource,
-        )
-      );
-
-    let _topicSubscriptions =
-      serviceNamesAndTopics->Belt.Array.map(((eventService, topic)) =>
-        SNS.TopicSubscription.make(
-          ~name=eventService ++ "2" ++ name,
-          ~args=
-            SNS.TopicSubscription.Args.make(
-              ~endpoint=queue##arn->Pulumi.Output.asInput,
-              ~protocol=`sqs,
-              ~topic=topic##urn->Pulumi.Output.asInput,
-              ~rawMessageDelivery=true->Pulumi.Input.wrap,
-              (),
-            ),
-          ~opts=Some(opts),
-        )
-      );
-
-    let _topics = serviceNamesAndTopics->Belt.Array.map(snd);
-
     let _queuePolicy =
-      Util.SqsQueuePolicy.(
+      Util_SqsQueuePolicy.(
         make(
           ~name,
           ~queue,
@@ -109,5 +83,54 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         )
       );
 
-    {resource: Some(queue->Util_SQS.toResource)};
+    let (snsFifoTopics, otherTopics) =
+      aggregateNames
+      ->Belt.Array.map(aggregateName =>
+          (
+            aggregateName,
+            aggregateName->Reventless.EventTopic.Adapter.getResource,
+          )
+        )
+      ->Belt.Array.map(((aggregateName, topic)) =>
+          (topic##service, (aggregateName, topic))
+        )
+      ->Belt.Array.partition(((service, _)) =>
+          service == Util_SNS_FIFO.service
+        );
+
+    let _snsTopicSubscriptions =
+      snsFifoTopics->Belt.Array.map(((_, (aggregateName, topic))) =>
+        SNS.TopicSubscription.make(
+          ~name=aggregateName ++ "2" ++ name,
+          ~args=
+            SNS.TopicSubscription.Args.make(
+              ~endpoint=queue##arn->Pulumi.Output.asInput,
+              ~protocol=`sqs,
+              ~topic=topic##urn->Pulumi.Output.asInput,
+              ~rawMessageDelivery=true->Pulumi.Input.wrap,
+              (),
+            ),
+          ~opts=Some(opts),
+        )
+      );
+
+    let _eventSourceMappings =
+      otherTopics->Belt.Array.map(((_, (aggregateName, topic))) =>
+        EventSourceMapping.make(
+          ~name=aggregateName ++ "2" ++ name,
+          ~args=
+            EventSourceMapping.Args.make(
+              ~functionName=
+                eventHandlerLambda
+                ->Pulumi.Output.flatMap(lambda => lambda##arn)
+                ->Pulumi.Output.asInput,
+              ~eventSourceArn=topic##urn->Pulumi.Output.asInput,
+              ~startingPosition=`TRIM_HORIZON,
+              (),
+            ),
+          ~opts=Some(opts),
+        )
+      );
+
+    {resource: Some(queue->Util_SQS_FIFO.toResource)};
   };

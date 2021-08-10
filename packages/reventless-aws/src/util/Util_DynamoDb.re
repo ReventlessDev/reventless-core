@@ -1,3 +1,5 @@
+let service = "DynamoDb";
+
 let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
   (table##hashKey, table##rangeKey, table##streamArn)
   ->Pulumi.Output.all3
@@ -11,7 +13,7 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
 
 let toResource = (table: PulumiAws.DynamoDb.Table.t) =>
   Reventless.Adapter.resource(
-    ~service="DynamoDb",
+    ~service,
     ~name=table##name,
     ~id=table##id,
     ~urn=table##arn,
