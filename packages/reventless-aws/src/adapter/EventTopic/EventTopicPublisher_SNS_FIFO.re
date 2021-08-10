@@ -16,7 +16,7 @@ let make: Reventless.EventTopic.Adapter.publisherMaker =
       );
 
     {
-      resource: topic->Util_SNS.toResource,
+      resource: topic->Util_SNS_FIFO.toResource,
       publish: topic->EventTopicPublisher_SNS_FIFO_Runtime.publish,
     };
   };
