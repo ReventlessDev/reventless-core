@@ -90,9 +90,9 @@ module Adapter = {
     let make: storageMaker(api, role);
   };
 
-  module type QueryEngineAdapter = {
-    let make: unit => ReventlessSpec.QueryEngine.t;
-  };
+  type queryEngineMaker = unit => ReventlessSpec.QueryEngine.t;
+
+  module type QueryEngineAdapter = {let make: queryEngineMaker;};
 
   let resolvers = "Resolvers";
   type resolvers = {
