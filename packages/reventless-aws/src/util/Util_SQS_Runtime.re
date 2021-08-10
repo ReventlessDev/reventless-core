@@ -19,3 +19,13 @@ let deleteMessage = (queue: PulumiAws.SQS.Queue.t, receiptHandle) =>
     ~queueId=queue##id->Pulumi.Output.get,
     ~receiptHandle,
   );
+
+let parseSqsRecord = record => {
+  let eventStr = record##body;
+  switch (eventStr->Js.Json.parseExn) {
+  | json => Some(json)
+  | exception err =>
+    Js.log3("parseSqsRecord: Couldn't parse event:", eventStr, err);
+    None;
+  };
+};

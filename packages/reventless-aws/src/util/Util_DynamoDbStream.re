@@ -1,13 +1,14 @@
-let streamArnFromDynamoDbTableResource =
-    (resource: ReventlessSpec.Adapter.resource) =>
-  resource##info
+let service = "DynamoDbStream";
+
+let streamArnFromDynamoDbTableResource = table =>
+  table##info
   ->Pulumi.Output.apply(resourceInfo =>
       switch (resourceInfo |> Js.String.split(",")) {
       | parts
           when parts->Belt.Array.length < 3 || parts[2]->Js.String2.trim == "" =>
         Js.Exn.raiseError(
           "No streamArn field given for table "
-          ++ resource##name->Pulumi.Output.get,
+          ++ table##name->Pulumi.Output.get,
         )
       | parts => parts[2]
       }
@@ -17,7 +18,7 @@ let toResource = (table: ReventlessSpec.Adapter.resource) => {
   let streamArn = table->streamArnFromDynamoDbTableResource;
 
   Reventless.Adapter.resource(
-    ~service="DynamoDbStream",
+    ~service,
     ~name=table##name,
     ~id=streamArn,
     ~urn=streamArn,
