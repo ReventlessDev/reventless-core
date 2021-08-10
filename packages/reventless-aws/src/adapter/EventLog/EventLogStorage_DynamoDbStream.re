@@ -23,7 +23,7 @@ let make: Reventless.EventLog.Adapter.storageMaker =
       );
 
     {
-      resource: table->Util_DynamoDb.toResource,
+      resource: table->Util_DynamoDb.toResource->Util_DynamoDbStream.toResource,
       append: table->EventLogStorage_DynamoDb_Runtime.append,
       replay: table->EventLogStorage_DynamoDb_Runtime.replay,
     };
