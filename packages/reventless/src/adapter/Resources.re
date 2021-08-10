@@ -26,7 +26,7 @@ let getExn = (~adapter, ~name) =>
       fun
       | Some(resource) => resource
       | None => {
-          let resources = resources->Js.Json.stringifyAny;
+          let resources = resources->Js.Dict.keys;
           Js.Exn.raiseError(
             {j|Resource doesn't exist: $adapter $name, resources: $resources|j},
           );
