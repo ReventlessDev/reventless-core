@@ -14,7 +14,7 @@ let make: EventTopic.Adapter.publisherMaker =
     {
       resource:
         if (eventLogResource##service == Util_DynamoDbStream.service) {
-          eventLogResource->Util_DynamoDbStream.toResource;
+          eventLogResource->Util_DynamoDbStream.toStreamResource;
         } else {
           Js.Exn.raiseError(
             "EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_"
