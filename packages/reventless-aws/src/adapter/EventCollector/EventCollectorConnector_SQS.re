@@ -17,7 +17,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           SQS.Queue.Args.make(
             ~visibilityTimeoutSeconds=timeout->Pulumi.Input.wrap,
             ~redrivePolicy=
-              Util_DeadLetterQueue.fifoQueue##arn
+              Util_DeadLetterQueue.queue##arn
               ->Pulumi.Output.apply(dlqArn =>
                   SQS.Queue.Args.RedrivePolicy.make(
                     ~deadLetterTargetArn=dlqArn,
