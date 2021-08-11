@@ -56,7 +56,8 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct = (Component.t(plugin, outputs), string) => constructed;
+  type construct =
+    (Component.t(plugin, outputs), string) => Pulumi.Output.t(constructed);
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -135,614 +136,626 @@ module Make =
       );
     let servicesOutputs = services->Component.extractMultipleOutputs;
 
-    let coreStackOutput =
+    (
       switch (Interstack.coreStackOutput) {
       | Some(coreStackOutput) => coreStackOutput
       | None =>
         Js.Exn.raiseError(
           "No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
         )
-      };
-    open Pulumi.StackReference.Infix;
-
-    let corePluginExtensionPoint =
-      coreStackOutput->Pulumi.Output.map(output => {
-        let extensionPoint =
-          output##extensionPoints->Belt.Option.getExn
+      }
+    )
+    ->Pulumi.Output.apply(coreStackOutput => {
+        open Pulumi.StackReference.Infix;
+        let corePluginExtensionPoint =
+          coreStackOutput##extensionPoints->Belt.Option.getExn
           -# ReventlessSpec.PluginExtensionPointSpec.name;
-        extensionPoint##commandTopic##connector
+
+        corePluginExtensionPoint##commandTopic##connector
         ->ExtensionPoint.setCommandTopicConnectorResource(
             ReventlessSpec.PluginExtensionPointSpec.name,
           );
-        extensionPoint##eventTopic##publisher
+        corePluginExtensionPoint##eventTopic##publisher
         ->ExtensionPoint.setEventTopicPublisherResource(
             ReventlessSpec.PluginExtensionPointSpec.name,
           );
-        extensionPoint;
-      });
 
-    let corePluginCommandTopicId =
-      corePluginExtensionPoint->Pulumi.Output.flatMap(extensionPoint =>
-        extensionPoint##commandTopic##connector##id
-      );
+        let corePluginCommandTopicId =
+          corePluginExtensionPoint##commandTopic##connector##id;
 
-    let queryEngine = QueryEngineAdapter.make();
+        let queryEngine = QueryEngineAdapter.make();
 
-    let extensionPoints =
-      extensionPointMakers->Belt.Array.map(extensionPointMaker =>
-        extensionPointMaker(~scheduler, ~queryEngine, ~opts=Some(opts), ())
-      );
-    let extensionPointsOutputs =
-      extensionPoints->Component.extractMultipleOutputs;
-
-    let extensions =
-      extensionMakers->Belt.Array.map(extensionMaker =>
-        extensionMaker(
-          ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
-          ~queryEngine,
-          ~opts=Some(opts),
-          (),
-        )
-      );
-    let extensionsOutputs = extensions->Component.extractMultipleOutputs;
-
-    let (eventCollectorUrn, setEventCollectorUrn) =
-      Util.Pulumi.Output.Async.make();
-    open AwsSdk;
-
-    let addStatement = (policy: IAM.Policy.t, sid, queueArn, topicArn) => {
-      let newStatements =
-        policy##_Statement
-        ->Belt.Array.keep(statement => statement##_Sid != sid)
-        ->Belt.Array.concat([|
-            IAM.Policy.Statement.make(
-              ~_Sid=sid,
-              ~_Effect="Allow",
-              ~_Principal="*",
-              ~_Action="sqs:SendMessage",
-              ~_Resource=queueArn,
-              ~_Condition=IAM.Policy.Statement.Condition.make(topicArn),
+        let extensionPoints =
+          extensionPointMakers->Belt.Array.map(extensionPointMaker =>
+            extensionPointMaker(
+              ~scheduler,
+              ~queryEngine,
+              ~opts=Some(opts),
               (),
-            ),
-          |]);
-      Js.log({j|addStatement: adding 1 statement with Sid $sid|j});
-      IAM.Policy.make(
-        ~_Version=policy##_Version,
-        ~_Id=policy##_Id,
-        ~_Statement=newStatements,
-      );
-    };
-
-    let removeStatement = (policy, sid) => {
-      let statements = policy##_Statement;
-      let newStatements =
-        statements->Belt.Array.keep(statement => statement##_Sid != sid);
-      let removedStatements =
-        statements->Belt.Array.length - newStatements->Belt.Array.length;
-      Js.log(
-        {j|removeStatement: removing $removedStatements statement(s) with Sid $sid|j},
-      );
-      IAM.Policy.make(
-        ~_Version=policy##_Version,
-        ~_Id=policy##_Id,
-        ~_Statement=newStatements,
-      );
-    };
-
-    let _addPermission = (sid, eventCollector, eventTopic) =>
-      SQS.getQueuePolicy(eventCollector)
-      ->Js.Promise.then_(
-          policy =>
-            eventCollector->SQS.setQueuePolicy(
-              policy->addStatement(sid, eventCollector, eventTopic),
-            ),
-          _,
-        );
-
-    let _removePermission = (sid, eventCollector) =>
-      SQS.getQueuePolicy(eventCollector)
-      ->Js.Promise.then_(
-          policy =>
-            eventCollector->SQS.setQueuePolicy(policy->removeStatement(sid)),
-          _,
-        );
-
-    let subscribe =
-        (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
-      let eventTopicName = eventTopic->AWS.arn2Name;
-      let eventCollectorName = eventCollector->AWS.arn2Name;
-      let _sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
-      SNS.subscribeQueueToTopic(eventCollector, eventTopic)
-      ->Js.Promise.then_(
-          _ =>
-            Js.log(
-              {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
             )
-            ->Js.Promise.resolve,
-          _,
-        )
-      ->Js.Promise.catch(
-          err =>
-            Js.log2(
-              {j|Could not $action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName):|j},
-              err,
+          );
+        let extensionPointsOutputs =
+          extensionPoints->Component.extractMultipleOutputs;
+
+        let extensions =
+          extensionMakers->Belt.Array.map(extensionMaker =>
+            extensionMaker(
+              ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
+              ~queryEngine,
+              ~opts=Some(opts),
+              (),
             )
-            ->Js.Promise.resolve,
-          _,
-        );
-    };
+          );
+        let extensionsOutputs = extensions->Component.extractMultipleOutputs;
 
-    let unsubscribe =
-        (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
-      let eventTopicName = eventTopic->AWS.arn2Name;
-      let eventCollectorName = eventCollector->AWS.arn2Name;
-      let _sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
+        let (eventCollectorUrn, setEventCollectorUrn) =
+          Util.Pulumi.Output.Async.make();
+        open AwsSdk;
 
-      SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic)
-      ->Js.Promise.then_(
-          _ =>
-            Js.log(
-              {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
+        let addStatement = (policy: IAM.Policy.t, sid, queueArn, topicArn) => {
+          let newStatements =
+            policy##_Statement
+            ->Belt.Array.keep(statement => statement##_Sid != sid)
+            ->Belt.Array.concat([|
+                IAM.Policy.Statement.make(
+                  ~_Sid=sid,
+                  ~_Effect="Allow",
+                  ~_Principal="*",
+                  ~_Action="sqs:SendMessage",
+                  ~_Resource=queueArn,
+                  ~_Condition=IAM.Policy.Statement.Condition.make(topicArn),
+                  (),
+                ),
+              |]);
+          Js.log({j|addStatement: adding 1 statement with Sid $sid|j});
+          IAM.Policy.make(
+            ~_Version=policy##_Version,
+            ~_Id=policy##_Id,
+            ~_Statement=newStatements,
+          );
+        };
+
+        let removeStatement = (policy, sid) => {
+          let statements = policy##_Statement;
+          let newStatements =
+            statements->Belt.Array.keep(statement => statement##_Sid != sid);
+          let removedStatements =
+            statements->Belt.Array.length - newStatements->Belt.Array.length;
+          Js.log(
+            {j|removeStatement: removing $removedStatements statement(s) with Sid $sid|j},
+          );
+          IAM.Policy.make(
+            ~_Version=policy##_Version,
+            ~_Id=policy##_Id,
+            ~_Statement=newStatements,
+          );
+        };
+
+        let _addPermission = (sid, eventCollector, eventTopic) =>
+          SQS.getQueuePolicy(eventCollector)
+          ->Js.Promise.then_(
+              policy =>
+                eventCollector->SQS.setQueuePolicy(
+                  policy->addStatement(sid, eventCollector, eventTopic),
+                ),
+              _,
+            );
+
+        let _removePermission = (sid, eventCollector) =>
+          SQS.getQueuePolicy(eventCollector)
+          ->Js.Promise.then_(
+              policy =>
+                eventCollector->SQS.setQueuePolicy(
+                  policy->removeStatement(sid),
+                ),
+              _,
+            );
+
+        let subscribe =
+            (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
+          let eventTopicName = eventTopic->AWS.arn2Name;
+          let eventCollectorName = eventCollector->AWS.arn2Name;
+          let _sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
+          SNS.subscribeQueueToTopic(eventCollector, eventTopic)
+          ->Js.Promise.then_(
+              _ =>
+                Js.log(
+                  {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
+                )
+                ->Js.Promise.resolve,
+              _,
             )
-            ->Js.Promise.resolve,
-          _,
-        )
-      ->Js.Promise.catch(
-          err =>
-            Js.log2(
-              {j|Could not $action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName):|j},
-              err,
+          ->Js.Promise.catch(
+              err =>
+                Js.log2(
+                  {j|Could not $action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName):|j},
+                  err,
+                )
+                ->Js.Promise.resolve,
+              _,
+            );
+        };
+
+        let unsubscribe =
+            (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
+          let eventTopicName = eventTopic->AWS.arn2Name;
+          let eventCollectorName = eventCollector->AWS.arn2Name;
+          let _sid = (extensionPointName ++ "-" ++ pluginId)->AWS.validateName;
+
+          SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic)
+          ->Js.Promise.then_(
+              _ =>
+                Js.log(
+                  {j|$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)|j},
+                )
+                ->Js.Promise.resolve,
+              _,
             )
-            ->Js.Promise.resolve,
-          _,
-        );
-    };
+          ->Js.Promise.catch(
+              err =>
+                Js.log2(
+                  {j|Could not $action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName):|j},
+                  err,
+                )
+                ->Js.Promise.resolve,
+              _,
+            );
+        };
 
-    let callHandler =
-      fun
-      | ReventlessSpec.PluginExtensionPointSpec.DoConnectPlugin({
-          id: pluginId,
-          extensionPoints: pluginExtensionPoints,
-          extensions: pluginExtensions,
-          eventCollector: pluginEventCollector,
-        }) => {
-          /* Current Plugin received `PluginConnected`:
-           *  this means: current plugin was already deployed before and received plugin just has been deployed
-           * - connectToExtensionPoints: if the newly deployed (received) plugin contains extensionpoints
-           *    the current plugin relies on: connect current plugin to received plugin extension point's eventTopic
-           * - if the newly deployed (received) plugin contains extensions the current plugin holds an extensionpoint for:
-           *    connect received extensions to current plugin's extension point
-           */
-          let connectToExtensionPoints =
-            pluginExtensionPoints
-            ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
-                extensionsOutputs
-                ->Belt.Array.keep(extension =>
-                    extension##extensionPointName == extensionPointName
+        let callHandler =
+          fun
+          | ReventlessSpec.PluginExtensionPointSpec.DoConnectPlugin({
+              id: pluginId,
+              extensionPoints: pluginExtensionPoints,
+              extensions: pluginExtensions,
+              eventCollector: pluginEventCollector,
+            }) => {
+              /* Current Plugin received `PluginConnected`:
+               *  this means: current plugin was already deployed before and received plugin just has been deployed
+               * - connectToExtensionPoints: if the newly deployed (received) plugin contains extensionpoints
+               *    the current plugin relies on: connect current plugin to received plugin extension point's eventTopic
+               * - if the newly deployed (received) plugin contains extensions the current plugin holds an extensionpoint for:
+               *    connect received extensions to current plugin's extension point
+               */
+              let connectToExtensionPoints =
+                pluginExtensionPoints
+                ->Belt.Array.keepMap(
+                    ({name: extensionPointName, eventTopic}) =>
+                    extensionsOutputs
+                    ->Belt.Array.keep(extension =>
+                        extension##extensionPointName == extensionPointName
+                      )
+                    ->Belt.Array.length
+                    > 0
+                      ? Some(
+                          subscribe(
+                            "connectToExtensionPoints",
+                            extensionPointName,
+                            eventTopic,
+                            id,
+                            eventCollectorUrn->Pulumi.Output.get,
+                          ),
+                        )
+                      : None
                   )
-                ->Belt.Array.length
-                > 0
-                  ? Some(
-                      subscribe(
-                        "connectToExtensionPoints",
-                        extensionPointName,
-                        eventTopic,
-                        id,
-                        eventCollectorUrn->Pulumi.Output.get,
-                      ),
-                    )
-                  : None
-              )
-            ->Js.Promise.all
-            ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+                ->Js.Promise.all
+                ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
 
-          let connectToExtensions =
-            extensionPointsOutputs
-            ->Belt.Array.keepMap(extensionPoint =>
-                pluginExtensions
-                ->Belt.Array.keep(({extensionPointName}) =>
-                    extensionPoint##name == extensionPointName
+              let connectToExtensions =
+                extensionPointsOutputs
+                ->Belt.Array.keepMap(extensionPoint =>
+                    pluginExtensions
+                    ->Belt.Array.keep(({extensionPointName}) =>
+                        extensionPoint##name == extensionPointName
+                      )
+                    ->Belt.Array.length
+                    > 0
+                      ? Some(
+                          subscribe(
+                            "connectToExtensions",
+                            extensionPoint##name,
+                            extensionPoint##eventTopic##publisher##id
+                            ->Pulumi.Output.get,
+                            pluginId,
+                            pluginEventCollector,
+                          ),
+                        )
+                      : None
                   )
-                ->Belt.Array.length
-                > 0
-                  ? Some(
-                      subscribe(
-                        "connectToExtensions",
-                        extensionPoint##name,
-                        extensionPoint##eventTopic##publisher##id
-                        ->Pulumi.Output.get,
-                        pluginId,
-                        pluginEventCollector,
-                      ),
-                    )
-                  : None
-              )
-            ->Js.Promise.all
-            ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+                ->Js.Promise.all
+                ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
 
-          // await connections of extensionpoints & extensions
-          Js.Promise.all2((connectToExtensionPoints, connectToExtensions))
-          ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
-        }
-      | DoDisconnectPlugin({
-          id: pluginId,
-          extensionPoints: pluginExtensionPoints,
-          extensions: pluginExtensions,
-          eventCollector: pluginEventCollector,
-        }) => {
-          let disconnectFromExtensionPoints =
-            pluginExtensionPoints
-            ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
-                extensionsOutputs
-                ->Belt.Array.keep(extension =>
-                    extension##extensionPointName == extensionPointName
+              // await connections of extensionpoints & extensions
+              Js.Promise.all2((connectToExtensionPoints, connectToExtensions))
+              ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+            }
+          | DoDisconnectPlugin({
+              id: pluginId,
+              extensionPoints: pluginExtensionPoints,
+              extensions: pluginExtensions,
+              eventCollector: pluginEventCollector,
+            }) => {
+              let disconnectFromExtensionPoints =
+                pluginExtensionPoints
+                ->Belt.Array.keepMap(
+                    ({name: extensionPointName, eventTopic}) =>
+                    extensionsOutputs
+                    ->Belt.Array.keep(extension =>
+                        extension##extensionPointName == extensionPointName
+                      )
+                    ->Belt.Array.length
+                    > 0
+                      ? Some(
+                          unsubscribe(
+                            "disconnectFromExtensionPoints",
+                            extensionPointName,
+                            eventTopic,
+                            id,
+                            eventCollectorUrn->Pulumi.Output.get,
+                          ),
+                        )
+                      : None
                   )
-                ->Belt.Array.length
-                > 0
-                  ? Some(
-                      unsubscribe(
-                        "disconnectFromExtensionPoints",
-                        extensionPointName,
-                        eventTopic,
-                        id,
-                        eventCollectorUrn->Pulumi.Output.get,
-                      ),
-                    )
-                  : None
-              )
-            ->Js.Promise.all
-            ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+                ->Js.Promise.all
+                ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
 
-          let disconnectFromExtensions =
-            extensionPointsOutputs
-            ->Belt.Array.keepMap(extensionPoint =>
-                pluginExtensions
-                ->Belt.Array.keep(({extensionPointName}) =>
-                    extensionPoint##name == extensionPointName
+              let disconnectFromExtensions =
+                extensionPointsOutputs
+                ->Belt.Array.keepMap(extensionPoint =>
+                    pluginExtensions
+                    ->Belt.Array.keep(({extensionPointName}) =>
+                        extensionPoint##name == extensionPointName
+                      )
+                    ->Belt.Array.length
+                    > 0
+                      ? Some(
+                          unsubscribe(
+                            "disconnectFromExtensions",
+                            extensionPoint##name,
+                            extensionPoint##eventTopic##publisher##id
+                            ->Pulumi.Output.get,
+                            pluginId,
+                            pluginEventCollector,
+                          ),
+                        )
+                      : None
                   )
-                ->Belt.Array.length
-                > 0
-                  ? Some(
-                      unsubscribe(
-                        "disconnectFromExtensions",
-                        extensionPoint##name,
-                        extensionPoint##eventTopic##publisher##id
-                        ->Pulumi.Output.get,
-                        pluginId,
-                        pluginEventCollector,
-                      ),
-                    )
-                  : None
+                ->Js.Promise.all
+                ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+
+              Js.Promise.all2((
+                disconnectFromExtensionPoints,
+                disconnectFromExtensions,
+              ))
+              ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+            }
+          | _ => Js.Promise.resolve();
+
+        let extensionPointsConfig =
+          extensionPointsOutputs
+          ->Belt.Array.map(extensionPoint =>
+              (
+                extensionPoint##commandTopic##connector##id,
+                extensionPoint##eventTopic##publisher##id,
               )
-            ->Js.Promise.all
-            ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+              ->Pulumi.Output.all2
+              ->Pulumi.Output.apply(
+                  ((commandTopicConnectorId, eventTopicPublisherId)) =>
+                  {
+                    PluginSpec.name: extensionPoint##name,
+                    commandTopic: commandTopicConnectorId,
+                    eventTopic: eventTopicPublisherId,
+                  }
+                )
+            )
+          ->Pulumi.Output.all;
 
-          Js.Promise.all2((
-            disconnectFromExtensionPoints,
-            disconnectFromExtensions,
-          ))
-          ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
-        }
-      | _ => Js.Promise.resolve();
+        let extensionsConfig = {
+          extensionsOutputs->Belt.Array.map(extension =>
+            {
+              PluginSpec.name: extension##name,
+              extensionPointName: extension##extensionPointName,
+            }
+          );
+        };
 
-    let extensionPointsConfig =
-      extensionPointsOutputs
-      ->Belt.Array.map(extensionPoint =>
-          (
-            extensionPoint##commandTopic##connector##id,
-            extensionPoint##eventTopic##publisher##id,
-          )
+        let pluginDefinition =
+          (extensionPointsConfig, eventCollectorUrn)
           ->Pulumi.Output.all2
-          ->Pulumi.Output.apply(
-              ((commandTopicConnectorId, eventTopicPublisherId)) =>
+          ->Pulumi.Output.apply(((extensionPointsConfig, eventCollectorUrn)) =>
               {
-                PluginSpec.name: extensionPoint##name,
-                commandTopic: commandTopicConnectorId,
-                eventTopic: eventTopicPublisherId,
+                PluginSpec.id,
+                name,
+                version,
+                extensionPoints: extensionPointsConfig,
+                extensions: extensionsConfig,
+                eventCollector: eventCollectorUrn,
               }
-            )
-        )
-      ->Pulumi.Output.all;
+            );
 
-    let extensionsConfig = {
-      extensionsOutputs->Belt.Array.map(extension =>
-        {
-          PluginSpec.name: extension##name,
-          extensionPointName: extension##extensionPointName,
-        }
-      );
-    };
+        module ConnectPluginExtensionMapping =
+          ExtensionMapping.Make(
+            ReventlessSpec.PluginExtensionPointSpec,
+            {
+              module Aggregate = ReventlessSpec.ExtensionMapping.NoAggregate;
 
-    let pluginDefinition =
-      (extensionPointsConfig, eventCollectorUrn)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(((extensionPointsConfig, eventCollectorUrn)) =>
-          {
-            PluginSpec.id,
-            name,
-            version,
-            extensionPoints: extensionPointsConfig,
-            extensions: extensionsConfig,
-            eventCollector: eventCollectorUrn,
-          }
-        );
+              let mapIncomingEvent:
+                ReventlessSpec.ExtensionMapping.mapIncomingEvent(
+                  ReventlessSpec.PluginExtensionPointSpec.event,
+                  Aggregate.command,
+                  ReventlessSpec.PluginExtensionPointSpec.command,
+                  ReventlessSpec.PluginExtensionPointSpec.callCommand,
+                ) =
+                (pluginId, event, _meta, _pluginDef, _queryEngine) =>
+                  switch (event) {
+                  | ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected
+                      when pluginId == id => [|
+                      PublishExtensionPointCommand(
+                        id,
+                        ReventlessSpec.PluginExtensionPointSpec.ConnectPlugin(
+                          pluginDefinition->Pulumi.Output.get,
+                        ),
+                      ),
+                    |]
+                  | PluginConnected(pluginDef)
+                  | PluginReconnected(pluginDef) when pluginId != id => [|
+                      Call(callHandler, DoConnectPlugin(pluginDef)),
+                    |]
+                  | PluginDeactivated(pluginDef) when pluginId != id => [|
+                      Call(callHandler, DoDisconnectPlugin(pluginDef)),
+                    |]
+                  // don't disconnect because a newer version might be already connected
+                  // if the old version gets destroyed, then the subscription is also destroyed
+                  | PluginDisconnected(_) => [||]
+                  | _ => [||]
+                  };
 
-    module ConnectPluginExtensionMapping =
-      ExtensionMapping.Make(
-        ReventlessSpec.PluginExtensionPointSpec,
-        {
-          module Aggregate = ReventlessSpec.ExtensionMapping.NoAggregate;
+              let mapOutgoingEvent = (_id, _event, _meta, _pluginDef) => [||];
+            },
+          );
 
-          let mapIncomingEvent:
-            ReventlessSpec.ExtensionMapping.mapIncomingEvent(
-              ReventlessSpec.PluginExtensionPointSpec.event,
-              Aggregate.command,
-              ReventlessSpec.PluginExtensionPointSpec.command,
-              ReventlessSpec.PluginExtensionPointSpec.callCommand,
-            ) =
-            (pluginId, event, _meta, _pluginDef, _queryEngine) =>
-              switch (event) {
-              | ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected
-                  when pluginId == id => [|
-                  PublishExtensionPointCommand(
-                    id,
-                    ReventlessSpec.PluginExtensionPointSpec.ConnectPlugin(
-                      pluginDefinition->Pulumi.Output.get,
-                    ),
-                  ),
-                |]
-              | PluginConnected(pluginDef)
-              | PluginReconnected(pluginDef) when pluginId != id => [|
-                  Call(callHandler, DoConnectPlugin(pluginDef)),
-                |]
-              | PluginDeactivated(pluginDef) when pluginId != id => [|
-                  Call(callHandler, DoDisconnectPlugin(pluginDef)),
-                |]
-              // don't disconnect because a newer version might be already connected
-              // if the old version gets destroyed, then the subscription is also destroyed
-              | PluginDisconnected(_) => [||]
-              | _ => [||]
-              };
-
-          let mapOutgoingEvent = (_id, _event, _meta, _pluginDef) => [||];
-        },
-      );
-
-    module ConnectPluginExtension =
-      Extension.Make(ReventlessSpec.PluginExtensionPointSpec);
-    let connectPluginExtensionMaker =
-      ConnectPluginExtension.make(
-        "Connect",
-        [|(module ConnectPluginExtensionMapping)|],
-      );
-    let connectPluginExtension =
-      connectPluginExtensionMaker(
-        ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
-        ~queryEngine,
-        ~opts=Some(opts),
-        (),
-      );
-
-    let tasksOutputs = ref([||]);
-    let queryBucketName =
-      InterstackResourceQueryRuntime.bucketNameOfTaskExn(
-        tasksOutputs->Interstack.mergeTasks,
-      );
-
-    tasksOutputs :=
-      taskMakers->Belt.Array.map(taskMaker =>
-        taskMaker(
-          ~queryBucketName,
-          ~scheduler,
-          ~queryEngine,
-          ~opts=Some(opts),
-        )
-        ->Component.extractOutputs
-      );
-
-    let eventMappersOutputs =
-      eventMapperMakers
-      ->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
-          eventMapperMaker(
+        module ConnectPluginExtension =
+          Extension.Make(ReventlessSpec.PluginExtensionPointSpec);
+        let connectPluginExtensionMaker =
+          ConnectPluginExtension.make(
+            "Connect",
+            [|(module ConnectPluginExtensionMapping)|],
+          );
+        let connectPluginExtension =
+          connectPluginExtensionMaker(
+            ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
             ~queryEngine,
-            ~memorySize=128,
             ~opts=Some(opts),
             (),
-          )
-        )
-      ->Component.extractMultipleOutputs;
+          );
 
-    let resolvers =
-      servicesOutputs
-      ->ResourceQueryDeploytime.allResolversMakers
-      ->Belt.Array.map(resolverMaker => resolverMaker())
-      ->Belt.Array.concatMany;
+        let tasksOutputs = ref([||]);
+        let queryBucketName =
+          InterstackResourceQueryRuntime.bucketNameOfTaskExn(
+            tasksOutputs->Interstack.mergeTasks,
+          );
 
-    module Set = Belt.Set.String;
+        tasksOutputs :=
+          taskMakers->Belt.Array.map(taskMaker =>
+            taskMaker(
+              ~queryBucketName,
+              ~scheduler,
+              ~queryEngine,
+              ~opts=Some(opts),
+            )
+            ->Component.extractOutputs
+          );
 
-    let collectAggregateNames = exs =>
-      exs->Belt.Array.map(ex =>
-        ex##aggregateNames
-        ->Set.fromArray
-        ->Set.remove(ReventlessSpec.ExtensionMapping.NoAggregate.name)
-      );
-
-    let extensionPointAggregateNames =
-      extensionPointsOutputs->collectAggregateNames;
-
-    let serviceNameToEx = (exs, getServiceNames) => {
-      let dict = Js.Dict.empty();
-      exs->Belt.Array.forEachU((. ex) =>
-        ex
-        ->getServiceNames
-        ->Belt.Array.forEachU((. serviceName) =>
-            switch (dict->Js.Dict.get(serviceName)) {
-            | Some(mappedExtensionPoints) =>
-              Js.Dict.set(
-                dict,
-                serviceName,
-                mappedExtensionPoints->Belt.Array.concat([|ex|]),
-              )
-            | None => Js.Dict.set(dict, serviceName, [|ex|])
-            }
-          )
-      );
-      dict;
-    };
-
-    let incomingServiceNameToPluginConnectExtensionsMapping =
-      serviceNameToEx(
-        [|connectPluginExtension->Component.extractOutputs|], extension =>
-        [|extension##extensionPointName|]
-      );
-    let serviceNameToExtensionPointsMapping =
-      serviceNameToEx(extensionPointsOutputs, extensionPoint =>
-        extensionPoint##aggregateNames
-      );
-    let outgoingServiceNameToExtensionsMapping =
-      serviceNameToEx(extensionsOutputs, extension =>
-        extension##aggregateNames
-      );
-    let incomingServiceNameToExtensionsMapping =
-      serviceNameToEx(extensionsOutputs, extension =>
-        [|extension##extensionPointName|]
-      );
-
-    let extensionAggregateNames = extensionsOutputs->collectAggregateNames;
-
-    let handleEvent = (event'Json, dict, getEventHandler) => {
-      event'Json
-      ->Message.serviceNameOfMsg
-      ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
-      ->Belt.Option.mapWithDefault(Js.Promise.resolve(), exs =>
-          exs
-          ->Belt.Array.map(ex =>
-              (getEventHandler(ex))(.
-                event'Json,
-                pluginDefinition->Pulumi.Output.get,
+        let eventMappersOutputs =
+          eventMapperMakers
+          ->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
+              eventMapperMaker(
+                ~queryEngine,
+                ~memorySize=128,
+                ~opts=Some(opts),
+                (),
               )
             )
-          ->Js.Promise.all
-          ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
-        );
-    };
+          ->Component.extractMultipleOutputs;
 
-    let detectUnhandledEvent = event'Json =>
-      event'Json
-      ->Message.serviceNameOfMsg
-      ->Belt.Option.flatMap(serviceName =>
-          switch (
-            serviceNameToExtensionPointsMapping->Js.Dict.get(serviceName),
-            incomingServiceNameToExtensionsMapping->Js.Dict.get(serviceName),
-            outgoingServiceNameToExtensionsMapping->Js.Dict.get(serviceName),
-          ) {
-          | (None, None, None) => None
-          | _ => Some()
-          }
-        )
-      ->(
-          fun
-          | None => Js.log("No mapping matches service name")
-          | _ => ()
-        );
+        let resolvers =
+          servicesOutputs
+          ->ResourceQueryDeploytime.allResolversMakers
+          ->Belt.Array.map(resolverMaker => resolverMaker())
+          ->Belt.Array.concatMany;
 
-    let eventsHandler =
-      (. events'Json) => {
-        let count = events'Json->Belt.Array.size;
-        events'Json
-        ->Belt.Array.mapWithIndex((idx, event'Json) => {
-            event'Json->Message.logEvent'Json(
-              {j|Plugin $id eventsHandler: incoming event $idx/$count:|j},
+        module Set = Belt.Set.String;
+
+        let collectAggregateNames = exs =>
+          exs->Belt.Array.map(ex =>
+            ex##aggregateNames
+            ->Set.fromArray
+            ->Set.remove(ReventlessSpec.ExtensionMapping.NoAggregate.name)
+          );
+
+        let extensionPointAggregateNames =
+          extensionPointsOutputs->collectAggregateNames;
+
+        let serviceNameToEx = (exs, getServiceNames) => {
+          let dict = Js.Dict.empty();
+          exs->Belt.Array.forEachU((. ex) =>
+            ex
+            ->getServiceNames
+            ->Belt.Array.forEachU((. serviceName) =>
+                switch (dict->Js.Dict.get(serviceName)) {
+                | Some(mappedExtensionPoints) =>
+                  Js.Dict.set(
+                    dict,
+                    serviceName,
+                    mappedExtensionPoints->Belt.Array.concat([|ex|]),
+                  )
+                | None => Js.Dict.set(dict, serviceName, [|ex|])
+                }
+              )
+          );
+          dict;
+        };
+
+        let incomingServiceNameToPluginConnectExtensionsMapping =
+          serviceNameToEx(
+            [|connectPluginExtension->Component.extractOutputs|], extension =>
+            [|extension##extensionPointName|]
+          );
+        let serviceNameToExtensionPointsMapping =
+          serviceNameToEx(extensionPointsOutputs, extensionPoint =>
+            extensionPoint##aggregateNames
+          );
+        let outgoingServiceNameToExtensionsMapping =
+          serviceNameToEx(extensionsOutputs, extension =>
+            extension##aggregateNames
+          );
+        let incomingServiceNameToExtensionsMapping =
+          serviceNameToEx(extensionsOutputs, extension =>
+            [|extension##extensionPointName|]
+          );
+
+        let extensionAggregateNames = extensionsOutputs->collectAggregateNames;
+
+        let handleEvent = (event'Json, dict, getEventHandler) => {
+          event'Json
+          ->Message.serviceNameOfMsg
+          ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
+          ->Belt.Option.mapWithDefault(Js.Promise.resolve(), exs =>
+              exs
+              ->Belt.Array.map(ex =>
+                  (getEventHandler(ex))(.
+                    event'Json,
+                    pluginDefinition->Pulumi.Output.get,
+                  )
+                )
+              ->Js.Promise.all
+              ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
             );
-            detectUnhandledEvent(event'Json);
-            handleEvent(
-              event'Json,
-              incomingServiceNameToPluginConnectExtensionsMapping,
-              extension =>
-              extension##incomingEventHandler
+        };
+
+        let detectUnhandledEvent = event'Json =>
+          event'Json
+          ->Message.serviceNameOfMsg
+          ->Belt.Option.flatMap(serviceName =>
+              switch (
+                serviceNameToExtensionPointsMapping->Js.Dict.get(serviceName),
+                incomingServiceNameToExtensionsMapping->Js.Dict.get(
+                  serviceName,
+                ),
+                outgoingServiceNameToExtensionsMapping->Js.Dict.get(
+                  serviceName,
+                ),
+              ) {
+              | (None, None, None) => None
+              | _ => Some()
+              }
             )
-            ->Js.Promise.then_(
-                _ =>
-                  [|
-                    handleEvent(
-                      event'Json,
-                      serviceNameToExtensionPointsMapping,
-                      extensionPoint =>
-                      extensionPoint##outgoingEventHandler
-                    ),
-                    handleEvent(
-                      event'Json,
-                      outgoingServiceNameToExtensionsMapping,
-                      extension =>
-                      extension##outgoingEventHandler
-                    ),
-                    handleEvent(
-                      event'Json,
-                      incomingServiceNameToExtensionsMapping,
-                      extension =>
-                      extension##incomingEventHandler
-                    ),
-                  |]
-                  ->Js.Promise.all
-                  ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
-                _,
-              );
-          })
-        ->Js.Promise.all
-        ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
-      };
+          ->(
+              fun
+              | None => Js.log("No mapping matches service name")
+              | _ => ()
+            );
 
-    module EventCollector =
-      EventCollector.Make(
-        EventCollector.DefaultPolicies,
-        EventCollectorAdapter,
-      );
+        let eventsHandler =
+          (. events'Json) => {
+            let count = events'Json->Belt.Array.size;
+            events'Json
+            ->Belt.Array.mapWithIndex((idx, event'Json) => {
+                event'Json->Message.logEvent'Json(
+                  {j|Plugin $id eventsHandler: incoming event $idx/$count:|j},
+                );
+                detectUnhandledEvent(event'Json);
+                handleEvent(
+                  event'Json,
+                  incomingServiceNameToPluginConnectExtensionsMapping,
+                  extension =>
+                  extension##incomingEventHandler
+                )
+                ->Js.Promise.then_(
+                    _ =>
+                      [|
+                        handleEvent(
+                          event'Json,
+                          serviceNameToExtensionPointsMapping,
+                          extensionPoint =>
+                          extensionPoint##outgoingEventHandler
+                        ),
+                        handleEvent(
+                          event'Json,
+                          outgoingServiceNameToExtensionsMapping,
+                          extension =>
+                          extension##outgoingEventHandler
+                        ),
+                        handleEvent(
+                          event'Json,
+                          incomingServiceNameToExtensionsMapping,
+                          extension =>
+                          extension##incomingEventHandler
+                        ),
+                      |]
+                      ->Js.Promise.all
+                      ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
+                    _,
+                  );
+              })
+            ->Js.Promise.all
+            ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+          };
 
-    let eventCollector =
-      EventCollector.make(
-        ~name=name->ComponentType.name(componentType),
-        ~aggregateNames=
-          extensionPointAggregateNames
-          ->Belt.Array.concat(extensionAggregateNames)
-          ->Belt.Array.reduce(Set.empty, Set.union)
-          ->Belt.Set.String.toArray,
-        ~extensionPointNames=[|ReventlessSpec.PluginExtensionPointSpec.name|],
-        ~eventsHandler,
-        ~opts=Some(opts),
-        (),
-      );
-    let eventCollectorOutputs = eventCollector->Component.extractOutputs;
-    setEventCollectorUrn(.
-      eventCollectorOutputs##connector->Belt.Option.getExn##urn,
-    );
+        module EventCollector =
+          EventCollector.Make(
+            EventCollector.DefaultPolicies,
+            EventCollectorAdapter,
+          );
 
-    let heartbeat =
-      Heartbeat.make(
-        ~id,
-        ~name=name ++ componentType->ComponentType.toName,
-        ~timeout=heartbeatInterval,
-        ~commandTopicId=corePluginCommandTopicId,
-        ~opts,
-        (),
-      );
+        let eventCollector =
+          EventCollector.make(
+            ~name=name->ComponentType.name(componentType),
+            ~aggregateNames=
+              extensionPointAggregateNames
+              ->Belt.Array.concat(extensionAggregateNames)
+              ->Belt.Array.reduce(Set.empty, Set.union)
+              ->Belt.Set.String.toArray,
+            ~extensionPointNames=[|
+              ReventlessSpec.PluginExtensionPointSpec.name,
+            |],
+            ~eventsHandler,
+            ~opts=Some(opts),
+            (),
+          );
+        let eventCollectorOutputs = eventCollector->Component.extractOutputs;
+        setEventCollectorUrn(.
+          eventCollectorOutputs##connector->Belt.Option.getExn##urn,
+        );
 
-    makeOutputs(
-      ~id,
-      ~version,
-      ~heartbeatInterval,
-      ~eventCollector=eventCollectorOutputs,
-      ~extensionPoints=extensionPointsOutputs->toDict,
-      ~extensions=extensionsOutputs->toDict,
-      ~services=servicesOutputs->toDict,
-      ~tasks=(tasksOutputs^)->toDict,
-      ~eventMappers=eventMappersOutputs->toDict,
-      ~resolvers,
-      ~heartbeat=heartbeat->Component.extractOutputs,
-      ~serviceNameToExtensionPointsMapping,
-      ~outgoingServiceNameToExtensionsMapping,
-      ~incomingServiceNameToExtensionsMapping,
-    )
-    ->setOutputs(self, _);
+        let heartbeat =
+          Heartbeat.make(
+            ~id,
+            ~name=name ++ componentType->ComponentType.toName,
+            ~timeout=heartbeatInterval,
+            ~commandTopicId=corePluginCommandTopicId,
+            ~opts,
+            (),
+          );
+
+        makeOutputs(
+          ~id,
+          ~version,
+          ~heartbeatInterval,
+          ~eventCollector=eventCollectorOutputs,
+          ~extensionPoints=extensionPointsOutputs->toDict,
+          ~extensions=extensionsOutputs->toDict,
+          ~services=servicesOutputs->toDict,
+          ~tasks=(tasksOutputs^)->toDict,
+          ~eventMappers=eventMappersOutputs->toDict,
+          ~resolvers,
+          ~heartbeat=heartbeat->Component.extractOutputs,
+          ~serviceNameToExtensionPointsMapping,
+          ~outgoingServiceNameToExtensionsMapping,
+          ~incomingServiceNameToExtensionsMapping,
+        )
+        ->setOutputs(self, _);
+      });
   };
 
   let make: maker =
