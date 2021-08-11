@@ -119,9 +119,9 @@ module Adapter = {
     let make: resolversMaker(api, role);
   };
 
-  let setResource = (resource, name) =>
-    Resources.set(~adapter=storage, ~name, ~resource);
-  let getResource = name =>
+  let setStorageResource = (resource, name) =>
+    resource->Resources.set(~adapter=storage, ~name);
+  let getStorageResource = name =>
     Resources.getExn(
       ~adapter=storage,
       ~name=name->ComponentType.name(componentType),
@@ -264,7 +264,7 @@ module Make =
         ~apiRole,
         ~opts,
       );
-    storage.resource->Adapter.setResource(storageName);
+    storage.resource->Adapter.setStorageResource(storageName);
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);

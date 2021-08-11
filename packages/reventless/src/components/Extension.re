@@ -167,7 +167,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
         publishCommand(
           id,
           command'Json,
-          aggregateName->CommandTopic.Adapter.getResource##id
+          aggregateName->Aggregate.commandTopicConnectorResource##id
           ->Pulumi.Output.get,
         )
       | ExtensionMapping.AbstractPublishAggregateCommandAsync(promise) =>
@@ -176,7 +176,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
                      publishCommand(
                        id,
                        command'Json,
-                       aggregateName->CommandTopic.Adapter.getResource##id
+                       aggregateName->Aggregate.commandTopicConnectorResource##id
                        ->Pulumi.Output.get,
                      ),
                    _,
@@ -189,7 +189,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
                          publishCommand(
                            id,
                            command'Json,
-                           aggregateName->CommandTopic.Adapter.getResource##id
+                           aggregateName->Aggregate.commandTopicConnectorResource##id
                            ->Pulumi.Output.get,
                          )
                        )

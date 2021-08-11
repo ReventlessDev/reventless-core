@@ -1,3 +1,5 @@
+open PulumiAws;
+
 let service = "SQS";
 
 let toResource = (queue: PulumiAws.SQS.Queue.t) =>
@@ -15,3 +17,18 @@ let arn2Account = arn =>
   | [|_, _, _, _, account, _|] => account
   | _ => ""
   };
+
+let subscribeToSnsTopic =
+    (queue, targetName, opts, (_, (sourceName, topic))) =>
+  SNS.TopicSubscription.make(
+    ~name=sourceName ++ "2" ++ targetName,
+    ~args=
+      SNS.TopicSubscription.Args.make(
+        ~endpoint=queue##arn->Pulumi.Output.asInput,
+        ~protocol=`sqs,
+        ~topic=topic##urn->Pulumi.Output.asInput,
+        ~rawMessageDelivery=true->Pulumi.Input.wrap,
+        (),
+      ),
+    ~opts=Some(opts),
+  );

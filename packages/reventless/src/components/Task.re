@@ -110,7 +110,7 @@ let construct =
         })
       ->AwsSdk.SQS.sendMessageBatch(
           ~queueId=
-            queueName->CommandTopic.Adapter.getResource##id
+            queueName->Aggregate.commandTopicConnectorResource##id
             ->OutputFailsafeRuntime.get,
         )
       |> Js.Promise.catch(err =>
@@ -124,7 +124,7 @@ let construct =
         (
           Schedule.create(
             scheduler,
-            taskName->EventCollector.Adapter.getResource,
+            taskName->EventCollector.Adapter.getConnectorResource,
           )
         )(.
           schedule,
@@ -136,7 +136,7 @@ let construct =
         (
           Schedule.delete(
             scheduler,
-            taskName->EventCollector.Adapter.getResource,
+            taskName->EventCollector.Adapter.getConnectorResource,
           )
         )(.
           name,
@@ -146,7 +146,7 @@ let construct =
     (. taskName) =>
       (. delay, id, messageBody) => {
         let queueId =
-          taskName->EventCollector.Adapter.getResource##id
+          taskName->EventCollector.Adapter.getConnectorResource##id
           ->OutputFailsafeRuntime.get;
         Js.log4("Task.queueMessage:", delay, messageBody, queueId);
         AwsSdk.SQS.sendMessage(

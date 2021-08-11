@@ -166,7 +166,7 @@ module Make =
 
     let resolvers =
       Resolvers.make(
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~api,
         ~fields=Behaviour.resolverConfig.fields,
         ~commandGenerator=generateCommand(commandHandler),
@@ -189,7 +189,7 @@ module Make =
     (~name, ~commandHandler, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=name->ComponentType.name(componentType),
+        ~name,
         ~construct,
         ~opts,
         ~api=Config.api,
