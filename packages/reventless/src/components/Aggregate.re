@@ -12,6 +12,28 @@ type outputs = {
 
 type name = string;
 
+let commandTopicConnectorResource = aggregateName =>
+  aggregateName
+  ->ComponentType.name(componentType)
+  ->CommandTopic.Adapter.getConnectorResource;
+let eventLogStorageResource = aggregateName =>
+  aggregateName
+  ->ComponentType.name(componentType)
+  ->EventLog.Adapter.getStorageResource;
+let eventTopicPublisherResource = aggregateName =>
+  aggregateName
+  ->ComponentType.name(componentType)
+  ->EventTopic.Adapter.getPublisherResource;
+
+let eventTopics = aggregateNames =>
+  aggregateNames
+  ->Belt.Array.map(aggregateName =>
+      (aggregateName, aggregateName->eventTopicPublisherResource)
+    )
+  ->Belt.Array.map(((aggregateName, topic)) =>
+      (topic##service, (aggregateName, topic))
+    );
+
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T;
   type t;
@@ -319,7 +341,7 @@ module Make =
           (),
         );
 
-      let childName = name->ComponentType.name(componentType);
+      let childName = name;
 
       let eventLog = EventLog.make(~name=childName, ~opts, ());
       let eventTopic = EventTopic.make(~name=childName, ~opts, ());

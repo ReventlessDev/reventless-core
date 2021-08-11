@@ -21,6 +21,7 @@ module type T = {
     (
       ~name: string,
       ~aggregateNames: array(string),
+      ~extensionPointNames: array(string)=?,
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
@@ -37,6 +38,7 @@ module Adapter = {
     (
       ~name: string,
       ~aggregateNames: array(string),
+      ~extensionPointNames: array(string),
       ~policies: array(Pulumi.Output.t(arn)),
       ~handleEvents: eventsHandler,
       ~memorySize: int,
@@ -47,9 +49,12 @@ module Adapter = {
 
   module type Connector = {let make: connectorMaker;};
 
-  let setResource = (resource, name) =>
-    Resources.set(~adapter=connector, ~name, ~resource);
-  let getResource = name =>
+  let setConnectorResource = (resource, name) =>
+    resource->Resources.set(
+      ~adapter=connector,
+      ~name=name->ComponentType.name(componentType),
+    );
+  let getConnectorResource = name =>
     Resources.getExn(
       ~adapter=connector,
       ~name=name->ComponentType.name(componentType),
@@ -86,7 +91,15 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
   };
 
   let construct =
-      (~aggregateNames, ~eventsHandler, ~memorySize, ~timeout, self, name) => {
+      (
+        ~aggregateNames,
+        ~extensionPointNames,
+        ~eventsHandler,
+        ~memorySize,
+        ~timeout,
+        self,
+        name,
+      ) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -95,8 +108,9 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
 
     let connector =
       Connector.make(
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~aggregateNames,
+        ~extensionPointNames,
         ~policies=Policies.policies,
         ~handleEvents=eventsHandler,
         ~memorySize,
@@ -104,7 +118,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~opts,
       );
     switch (connector.resource) {
-    | Some(resource) => resource->Adapter.setResource(name)
+    | Some(resource) => resource->Adapter.setConnectorResource(name)
     | None => Js.log2("No resource created for EventColllector", name)
     };
 
@@ -115,6 +129,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     (
       ~name: string,
       ~aggregateNames: array(string),
+      ~extensionPointNames: array(string)=?,
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
@@ -125,6 +140,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     (
       ~name,
       ~aggregateNames,
+      ~extensionPointNames=[||],
       ~eventsHandler,
       ~memorySize=128,
       ~timeout=30,
@@ -133,9 +149,15 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     ) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=name->ComponentType.name(componentType),
+        ~name,
         ~construct=
-          construct(~aggregateNames, ~eventsHandler, ~memorySize, ~timeout),
+          construct(
+            ~aggregateNames,
+            ~extensionPointNames,
+            ~eventsHandler,
+            ~memorySize,
+            ~timeout,
+          ),
         ~opts,
       );
 };

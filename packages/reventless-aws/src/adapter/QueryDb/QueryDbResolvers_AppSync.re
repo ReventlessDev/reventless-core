@@ -87,7 +87,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 DataSource.makeDynamoDBDataSourceWithTableName(
                   ~name=name ++ "Auth",
                   ~api,
-                  ~tableName=tableName->QueryDb.Adapter.getResource##name,
+                  ~tableName=
+                    tableName->QueryDb.Adapter.getStorageResource##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),
@@ -134,7 +135,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           (~tableName: string, ~template: string => string) =>
           Pulumi.Input.t(string) =
           (~tableName, ~template) =>
-            tableName->QueryDb.Adapter.getResource##name
+            tableName->QueryDb.Adapter.getStorageResource##name
             ->Pulumi.Output.apply(realTableName => template(realTableName))
             ->Pulumi.Output.asInput;
 
@@ -168,7 +169,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 DataSource.makeDynamoDBDataSourceWithTableName(
                   ~name=name ++ idFieldName->String.capitalize ++ "Resolver",
                   ~api,
-                  ~tableName=tableName->QueryDb.Adapter.getResource##name,
+                  ~tableName=
+                    tableName->QueryDb.Adapter.getStorageResource##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),

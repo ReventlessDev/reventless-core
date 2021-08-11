@@ -4,6 +4,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
     ~name,
     ~aggregateNames,
+    ~extensionPointNames,
     ~policies,
     ~handleEvents,
     ~memorySize,
@@ -80,50 +81,20 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let (snsTopics, otherTopics) =
-      aggregateNames
-      ->Belt.Array.map(aggregateName =>
-          (
-            aggregateName,
-            aggregateName->Reventless.EventTopic.Adapter.getResource,
-          )
-        )
-      ->Belt.Array.map(((aggregateName, topic)) =>
-          (topic##service, (aggregateName, topic))
+      Reventless.Aggregate.eventTopics(aggregateNames)
+      ->Belt.Array.concat(
+          Reventless.ExtensionPoint.eventTopics(extensionPointNames),
         )
       ->Belt.Array.partition(((service, _)) => service == Util_SNS.service);
 
     let _snsTopicSubscriptions =
-      snsTopics->Belt.Array.map(((_, (aggregateName, topic))) =>
-        SNS.TopicSubscription.make(
-          ~name=aggregateName ++ "2" ++ name,
-          ~args=
-            SNS.TopicSubscription.Args.make(
-              ~endpoint=queue##arn->Pulumi.Output.asInput,
-              ~protocol=`sqs,
-              ~topic=topic##urn->Pulumi.Output.asInput,
-              ~rawMessageDelivery=true->Pulumi.Input.wrap,
-              (),
-            ),
-          ~opts=Some(opts),
-        )
+      snsTopics->Belt.Array.map(
+        Util_SQS.subscribeToSnsTopic(queue, name, opts),
       );
 
     let _eventSourceMappings =
-      otherTopics->Belt.Array.map(((_, (aggregateName, topic))) =>
-        EventSourceMapping.make(
-          ~name=aggregateName ++ "2" ++ name,
-          ~args=
-            EventSourceMapping.Args.make(
-              ~functionName=
-                eventHandlerLambda
-                ->Pulumi.Output.flatMap(lambda => lambda##arn)
-                ->Pulumi.Output.asInput,
-              ~eventSourceArn=topic##urn->Pulumi.Output.asInput,
-              ~startingPosition=`TRIM_HORIZON,
-              (),
-            ),
-          ~opts=Some(opts),
-        )
+      otherTopics->Belt.Array.map(
+        Util_EventSourceMapping.subscribe(eventHandlerLambda, name, opts),
       );
 
     {resource: Some(queue->Util_SQS.toResource)};

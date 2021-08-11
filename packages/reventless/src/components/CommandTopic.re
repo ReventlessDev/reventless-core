@@ -54,15 +54,15 @@ module Adapter = {
 
   module type Connector = {let make: connectorMaker;};
 
-  let setResource = (resource, name) =>
-    Resources.set(~adapter=connector, ~name, ~resource);
-  let getResource = aggregateName =>
+  let setConnectorResource = (resource, name) =>
+    resource->Resources.set(
+      ~adapter=connector,
+      ~name=name->ComponentType.name(componentType),
+    );
+  let getConnectorResource = name =>
     Resources.getExn(
       ~adapter=connector,
-      ~name=
-        aggregateName
-        ->ComponentType.name(ComponentType.Aggregate)
-        ->ComponentType.name(componentType),
+      ~name=name->ComponentType.name(componentType),
     );
 };
 
@@ -220,13 +220,13 @@ module Make =
 
     let connector =
       Connector.make(
-        ~name,
+        ~name=name->ComponentType.name(componentType),
         ~handleCommands=commandsHandler->handleCommands,
         ~memorySize,
         ~timeout,
         ~opts,
       );
-    connector.resource->Adapter.setResource(name);
+    connector.resource->Adapter.setConnectorResource(name);
 
     self->setPublish(connector->publishFn);
 
@@ -246,7 +246,7 @@ module Make =
     (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=name->ComponentType.name(componentType),
+        ~name,
         ~construct=construct(~memorySize, ~timeout),
         ~opts,
         ~commandsHandler,

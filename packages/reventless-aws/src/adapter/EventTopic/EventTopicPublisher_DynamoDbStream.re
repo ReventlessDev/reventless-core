@@ -9,7 +9,7 @@ let make: EventTopic.Adapter.publisherMaker =
           ~from=0,
           ~to_=name->Js.String2.indexOf(Aggregate->toName),
         )
-      ->Reventless.EventLog.Adapter.getResource;
+      ->Reventless.Aggregate.eventLogStorageResource;
 
     {
       resource:

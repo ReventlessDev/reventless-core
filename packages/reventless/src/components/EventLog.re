@@ -45,15 +45,15 @@ module Adapter = {
 
   module type Storage = {let make: storageMaker;};
 
-  let setResource = (resource, name) =>
-    Resources.set(~adapter=storage, ~name, ~resource);
-  let getResource = aggregateName =>
+  let setStorageResource = (resource, name) =>
+    resource->Resources.set(
+      ~adapter=storage,
+      ~name=name->ComponentType.name(componentType),
+    );
+  let getStorageResource = name =>
     Resources.getExn(
       ~adapter=storage,
-      ~name=
-        aggregateName
-        ->ComponentType.name(ComponentType.Aggregate)
-        ->ComponentType.name(componentType),
+      ~name=name->ComponentType.name(componentType),
     );
 };
 
@@ -189,8 +189,9 @@ module Make =
         (),
       );
 
-    let storage = Storage.make(~name, ~opts);
-    storage.resource->Adapter.setResource(name);
+    let storage =
+      Storage.make(~name=name->ComponentType.name(componentType), ~opts);
+    storage.resource->Adapter.setStorageResource(name);
     let storageOutputs = storage.resource;
 
     self->setAppend(storage->appendFn);
@@ -205,7 +206,7 @@ module Make =
     (~name, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=name->ComponentType.name(componentType),
+        ~name,
         ~construct,
         ~opts,
       );

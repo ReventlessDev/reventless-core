@@ -2,7 +2,7 @@ let resources: Js.Dict.t(ReventlessSpec.Adapter.resource) = Js.Dict.empty();
 
 let resourceName = (~adapter, ~name) => name ++ "." ++ adapter;
 
-let set = (~adapter, ~name, ~resource) =>
+let set = (~adapter, ~name, resource) =>
   resources
   ->Js.Dict.get(resourceName(~adapter, ~name))
   ->(

@@ -145,12 +145,25 @@ module Make =
       };
     open Pulumi.StackReference.Infix;
 
-    let corePluginCommandTopicId =
-      coreStackOutput->Pulumi.Output.flatMap(output =>
-        (
+    let corePluginExtensionPoint =
+      coreStackOutput->Pulumi.Output.map(output => {
+        let extensionPoint =
           output##extensionPoints->Belt.Option.getExn
-          -# ReventlessSpec.PluginExtensionPointSpec.name
-        )##commandTopic##connector##id
+          -# ReventlessSpec.PluginExtensionPointSpec.name;
+        extensionPoint##commandTopic##connector
+        ->ExtensionPoint.setCommandTopicConnectorResource(
+            ReventlessSpec.PluginExtensionPointSpec.name,
+          );
+        extensionPoint##eventTopic##publisher
+        ->ExtensionPoint.setEventTopicPublisherResource(
+            ReventlessSpec.PluginExtensionPointSpec.name,
+          );
+        extensionPoint;
+      });
+
+    let corePluginCommandTopicId =
+      corePluginExtensionPoint->Pulumi.Output.flatMap(extensionPoint =>
+        extensionPoint##commandTopic##connector##id
       );
 
     let queryEngine = QueryEngineAdapter.make();
@@ -597,13 +610,6 @@ module Make =
 
     let extensionAggregateNames = extensionsOutputs->collectAggregateNames;
 
-    let aggregateNames: array(string) =
-      extensionPointAggregateNames
-      ->Belt.Array.concat(extensionAggregateNames)
-      ->Belt.Array.reduce(Set.empty, Set.union)
-      ->Belt.Set.String.toArray
-      ->Belt.Array.concat([|ReventlessSpec.PluginExtensionPointSpec.name|]);
-
     let handleEvent = (event'Json, dict, getEventHandler) => {
       event'Json
       ->Message.serviceNameOfMsg
@@ -695,7 +701,12 @@ module Make =
     let eventCollector =
       EventCollector.make(
         ~name=name->ComponentType.name(componentType),
-        ~aggregateNames,
+        ~aggregateNames=
+          extensionPointAggregateNames
+          ->Belt.Array.concat(extensionAggregateNames)
+          ->Belt.Array.reduce(Set.empty, Set.union)
+          ->Belt.Set.String.toArray,
+        ~extensionPointNames=[|ReventlessSpec.PluginExtensionPointSpec.name|],
         ~eventsHandler,
         ~opts=Some(opts),
         (),

@@ -4,6 +4,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
     ~name,
     ~aggregateNames,
+    ~extensionPointNames,
     ~policies,
     ~handleEvents,
     ~memorySize,
@@ -32,30 +33,31 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           )
         );
 
-    let _eventSourceMappings =
-      aggregateNames
-      ->Belt.Array.map(aggregateName =>
-          (
-            aggregateName,
-            aggregateName->Reventless.EventTopic.Adapter.getResource,
-          )
+    let (dynamoDbStreamTopics, otherTopics) =
+      Reventless.Aggregate.eventTopics(aggregateNames)
+      ->Belt.Array.concat(
+          Reventless.ExtensionPoint.eventTopics(extensionPointNames),
         )
-      ->Belt.Array.map(((aggregateName, stream)) =>
-          EventSourceMapping.make(
-            ~name=aggregateName ++ "2" ++ name,
-            ~args=
-              EventSourceMapping.Args.make(
-                ~functionName=
-                  eventHandlerLambda
-                  ->Pulumi.Output.flatMap(lambda => lambda##arn)
-                  ->Pulumi.Output.asInput,
-                ~eventSourceArn=stream##urn->Pulumi.Output.asInput,
-                ~startingPosition=`TRIM_HORIZON,
-                (),
-              ),
-            ~opts=Some(opts),
-          )
+      ->Belt.Array.partition(((service, _)) =>
+          service == Util_DynamoDbStream.service
         );
 
-    {resource: None};
+    let _eventSourceMappings =
+      dynamoDbStreamTopics->Belt.Array.map(
+        Util_EventSourceMapping.subscribe(eventHandlerLambda, name, opts),
+      );
+
+    if (otherTopics->Belt.Array.length > 0) {
+      let errors =
+        otherTopics
+        ->Belt.Array.map(((service, (sourceName, _))) =>
+            {j|EventTopicPublisher_$service $sourceName|j}
+          )
+        ->Js.Array2.joinWith(",");
+      Js.Exn.raiseError(
+        {j|EventCollectorConnector_DynamoDbStream cannot connect to $errors|j},
+      );
+    } else {
+      {resource: None};
+    };
   };

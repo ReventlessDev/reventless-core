@@ -7,6 +7,7 @@ module DynamoDb = Util_DynamoDb;
 module DynamoDb_Runtime = Util_DynamoDb_Runtime;
 module DynamoDbStream_Runtime = Util_DynamoDbStream_Runtime;
 module DynamoDbStream = Util_DynamoDbStream;
+module EventSourceMapping = Util_EventSourceMapping;
 module Kinesis_Runtime = Util_Kinesis_Runtime;
 module S3_Runtime = Util_S3_Runtime;
 module SES_Runtime = Util_SES_Runtime;
