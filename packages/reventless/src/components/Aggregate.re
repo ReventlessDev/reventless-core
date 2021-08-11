@@ -341,7 +341,7 @@ module Make =
           (),
         );
 
-      let childName = name;
+      let childName = name->ComponentType.name(componentType);
 
       let eventLog = EventLog.make(~name=childName, ~opts, ());
       let eventTopic = EventTopic.make(~name=childName, ~opts, ());
