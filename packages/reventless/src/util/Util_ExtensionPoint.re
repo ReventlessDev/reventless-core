@@ -1,20 +1,20 @@
 let setCommandTopicConnectorResource = (resource, extensionPointName) =>
-  resource->CommandTopic.Adapter.setConnectorResource(
+  resource->Util_CommandTopic.setConnectorResource(
     extensionPointName->ComponentType.name(ExtensionPoint.componentType),
   );
 let setEventTopicPublisherResource = (resource, extensionPointName) =>
-  resource->EventTopic.Adapter.setPublisherResource(
+  resource->Util_EventTopic.setPublisherResource(
     extensionPointName->ComponentType.name(ExtensionPoint.componentType),
   );
 
 let commandTopicConnectorResource = extensionPointName =>
   extensionPointName
   ->ComponentType.name(ExtensionPoint.componentType)
-  ->CommandTopic.Adapter.getConnectorResource;
+  ->Util_CommandTopic.getConnectorResource;
 let eventTopicPublisherResource = extensionPointName =>
   extensionPointName
   ->ComponentType.name(ExtensionPoint.componentType)
-  ->EventTopic.Adapter.getPublisherResource;
+  ->Util_EventTopic.getPublisherResource;
 
 let eventTopics = extensionPointNames =>
   extensionPointNames

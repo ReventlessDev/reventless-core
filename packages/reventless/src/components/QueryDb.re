@@ -64,7 +64,6 @@ module type T = {
 };
 
 module Adapter = {
-  let storage = "Storage";
   type storage = {
     resource,
     dataSourceName: Pulumi.Output.t(string), // TODO create in API
@@ -118,14 +117,6 @@ module Adapter = {
 
     let make: resolversMaker(api, role);
   };
-
-  let setStorageResource = (resource, name) =>
-    resource->Resources.set(~adapter=storage, ~name);
-  let getStorageResource = name =>
-    Resources.getExn(
-      ~adapter=storage,
-      ~name=name->ComponentType.name(componentType),
-    );
 };
 
 module Make =
@@ -264,7 +255,7 @@ module Make =
         ~apiRole,
         ~opts,
       );
-    storage.resource->Adapter.setStorageResource(storageName);
+    storage.resource->Util_QueryDb.setStorageResource(storageName);
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);

@@ -34,7 +34,6 @@ module type T = {
 };
 
 module Adapter = {
-  let storage = "Storage";
   type storage = {
     resource,
     append: append(string, Js.Json.t),
@@ -44,17 +43,6 @@ module Adapter = {
     (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage;
 
   module type Storage = {let make: storageMaker;};
-
-  let setStorageResource = (resource, name) =>
-    resource->Resources.set(
-      ~adapter=storage,
-      ~name=name->ComponentType.name(componentType),
-    );
-  let getStorageResource = name =>
-    Resources.getExn(
-      ~adapter=storage,
-      ~name=name->ComponentType.name(componentType),
-    );
 };
 
 module Make =
@@ -191,7 +179,7 @@ module Make =
 
     let storage =
       Storage.make(~name=name->ComponentType.name(componentType), ~opts);
-    storage.resource->Adapter.setStorageResource(name);
+    storage.resource->Util_EventLog.setStorageResource(name);
     let storageOutputs = storage.resource;
 
     self->setAppend(storage->appendFn);

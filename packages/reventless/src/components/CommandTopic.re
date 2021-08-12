@@ -37,7 +37,6 @@ module type T = {
 };
 
 module Adapter = {
-  let connector = "Connector";
   type connector = {
     resource,
     publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
@@ -53,17 +52,6 @@ module Adapter = {
     connector;
 
   module type Connector = {let make: connectorMaker;};
-
-  let setConnectorResource = (resource, name) =>
-    resource->Resources.set(
-      ~adapter=connector,
-      ~name=name->ComponentType.name(componentType),
-    );
-  let getConnectorResource = name =>
-    Resources.getExn(
-      ~adapter=connector,
-      ~name=name->ComponentType.name(componentType),
-    );
 };
 
 module Make =
@@ -226,7 +214,7 @@ module Make =
         ~timeout,
         ~opts,
       );
-    connector.resource->Adapter.setConnectorResource(name);
+    connector.resource->Util_CommandTopic.setConnectorResource(name);
 
     self->setPublish(connector->publishFn);
 

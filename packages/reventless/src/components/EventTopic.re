@@ -31,7 +31,6 @@ module type T = {
 };
 
 module Adapter = {
-  let publisher = "Publisher";
   type publisher = {
     resource,
     publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
@@ -40,17 +39,6 @@ module Adapter = {
     (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => publisher;
 
   module type Publisher = {let make: publisherMaker;};
-
-  let setPublisherResource = (resource, name) =>
-    resource->Resources.set(
-      ~adapter=publisher,
-      ~name=name->ComponentType.name(componentType),
-    );
-  let getPublisherResource = name =>
-    Resources.getExn(
-      ~adapter=publisher,
-      ~name=name->ComponentType.name(componentType),
-    );
 };
 
 module Make =
@@ -132,7 +120,7 @@ module Make =
 
     let publisher =
       Publisher.make(~name=name->ComponentType.name(componentType), ~opts);
-    publisher.resource->Adapter.setPublisherResource(name);
+    publisher.resource->Util_EventTopic.setPublisherResource(name);
     let publisherOutputs = publisher.resource;
 
     self->setPublish(publisher->publishFn);
