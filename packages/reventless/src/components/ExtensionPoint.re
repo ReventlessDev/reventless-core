@@ -13,33 +13,6 @@ type extensionPoint; // TODO: rename to t - after refactoring
 
 type name = string;
 
-let setCommandTopicConnectorResource = (resource, extensionPointName) =>
-  resource->CommandTopic.Adapter.setConnectorResource(
-    extensionPointName->ComponentType.name(componentType),
-  );
-let setEventTopicPublisherResource = (resource, extensionPointName) =>
-  resource->EventTopic.Adapter.setPublisherResource(
-    extensionPointName->ComponentType.name(componentType),
-  );
-
-let commandTopicConnectorResource = extensionPointName =>
-  extensionPointName
-  ->ComponentType.name(componentType)
-  ->CommandTopic.Adapter.getConnectorResource;
-let eventTopicPublisherResource = extensionPointName =>
-  extensionPointName
-  ->ComponentType.name(componentType)
-  ->EventTopic.Adapter.getPublisherResource;
-
-let eventTopics = extensionPointNames =>
-  extensionPointNames
-  ->Belt.Array.map(extensionPointName =>
-      (extensionPointName, extensionPointName->eventTopicPublisherResource)
-    )
-  ->Belt.Array.map(((extensionPointName, topic)) =>
-      (topic##service, (extensionPointName, topic))
-    );
-
 type maker =
   (
     ~scheduler: Scheduler.t,
@@ -200,7 +173,7 @@ module Make =
         ->Js.Json.stringify
         ->AwsSdk.SQS.sendMessage(
             ~queueId=
-              aggregateName->Reventless.Aggregate.commandTopicConnectorResource##id
+              aggregateName->Reventless.Util_Aggregate.commandTopicConnectorResource##id
               ->Pulumi.Output.get,
             ~messageGroupId=id,
             ~messageBody=_,

@@ -85,9 +85,9 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let (snsFifoTopics, otherTopics) =
-      Reventless.Aggregate.eventTopics(aggregateNames)
+      Reventless.Util.Aggregate.eventTopics(aggregateNames)
       ->Belt.Array.concat(
-          Reventless.ExtensionPoint.eventTopics(extensionPointNames),
+          Reventless.Util.ExtensionPoint.eventTopics(extensionPointNames),
         )
       ->Belt.Array.partition(((service, _)) =>
           service == Util_SNS_FIFO.service

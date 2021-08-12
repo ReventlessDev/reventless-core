@@ -110,7 +110,7 @@ let construct =
         })
       ->AwsSdk.SQS.sendMessageBatch(
           ~queueId=
-            queueName->Aggregate.commandTopicConnectorResource##id
+            queueName->Util.Aggregate.commandTopicConnectorResource##id
             ->OutputFailsafeRuntime.get,
         )
       |> Js.Promise.catch(err =>

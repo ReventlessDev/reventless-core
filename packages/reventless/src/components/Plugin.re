@@ -157,13 +157,13 @@ module Make =
           ->Adapter.toResource;
         let corePluginCommandTopicId = corePluginCommandTopic##id;
 
-        corePluginCommandTopic->ExtensionPoint.setCommandTopicConnectorResource(
+        corePluginCommandTopic->Util.ExtensionPoint.setCommandTopicConnectorResource(
           ReventlessSpec.PluginExtensionPointSpec.name,
         );
         corePluginExtensionPoint##eventTopic##publisher
         ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
         ->Adapter.toResource
-        ->ExtensionPoint.setEventTopicPublisherResource(
+        ->Util.ExtensionPoint.setEventTopicPublisherResource(
             ReventlessSpec.PluginExtensionPointSpec.name,
           );
 
