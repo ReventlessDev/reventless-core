@@ -196,7 +196,7 @@ module Make =
             ->Belt.Array.concatMany
             ->AwsSdk.SQS.sendMessageBatch(
                 ~queueId=
-                  service->Aggregate.commandTopicConnectorResource##id
+                  service->Util.Aggregate.commandTopicConnectorResource##id
                   ->Pulumi.Output.get,
               ),
           _,
