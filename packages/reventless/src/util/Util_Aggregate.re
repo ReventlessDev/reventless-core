@@ -1,15 +1,15 @@
 let commandTopicConnectorResource = aggregateName =>
   aggregateName
-  ->ComponentType.name(Aggregate.componentType)
-  ->CommandTopic.Adapter.getConnectorResource;
+  ->ComponentType.name(ComponentType.Aggregate)
+  ->Util_CommandTopic.getConnectorResource;
 let eventLogStorageResource = aggregateName =>
   aggregateName
-  ->ComponentType.name(Aggregate.componentType)
-  ->EventLog.Adapter.getStorageResource;
+  ->ComponentType.name(ComponentType.Aggregate)
+  ->Util_EventLog.getStorageResource;
 let eventTopicPublisherResource = aggregateName =>
   aggregateName
-  ->ComponentType.name(Aggregate.componentType)
-  ->EventTopic.Adapter.getPublisherResource;
+  ->ComponentType.name(ComponentType.Aggregate)
+  ->Util_EventTopic.getPublisherResource;
 
 let eventTopics = aggregateNames =>
   aggregateNames

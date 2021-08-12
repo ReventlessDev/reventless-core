@@ -137,13 +137,13 @@ let make: QueryDb.Adapter.queryEngineMaker =
     scan: (~serviceName) =>
       scanByTableName(
         ~tableName=
-          serviceName->QueryDb.Adapter.getStorageResource##name
+          serviceName->Util_QueryDb.getStorageResource##name
           ->OutputFailsafeRuntime.get,
       ),
     query: (~serviceName) =>
       queryByTableName(
         ~tableName=
-          serviceName->QueryDb.Adapter.getStorageResource##name
+          serviceName->Util_QueryDb.getStorageResource##name
           ->OutputFailsafeRuntime.get,
       ),
   };
