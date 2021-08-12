@@ -119,13 +119,7 @@ module Make =
             ),
             ("event", event'.event |> Spec.event_encode),
           |]
-          ->Belt.Array.concat(
-              event'.meta
-              ->Message.meta_encode
-              ->Js.Json.decodeObject
-              ->Js.Option.getExn
-              ->Js.Dict.entries,
-            )
+          ->Belt.Array.concat(event'.meta->Message.decomposeMeta)
           ->Js.Dict.fromArray
           ->Js.Json.object_
         )
