@@ -173,6 +173,10 @@ module Make =
           corePluginExtensionPoint##commandTopic##connector,
         );
         Js.log2("corePluginCommandTopicId:", corePluginCommandTopicId);
+        Js.log2(
+          "corePluginCommandTopicId.get():",
+          corePluginCommandTopicId->Pulumi.Output.get,
+        );
 
         let queryEngine = QueryEngineAdapter.make();
 
