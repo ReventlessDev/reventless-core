@@ -151,32 +151,21 @@ module Make =
           coreStackOutput##extensionPoints->Belt.Option.getExn
           -# ReventlessSpec.PluginExtensionPointSpec.name;
 
-        corePluginExtensionPoint##commandTopic##connector
-        ->ExtensionPoint.setCommandTopicConnectorResource(
-            ReventlessSpec.PluginExtensionPointSpec.name,
-          );
+        let corePluginCommandTopic =
+          corePluginExtensionPoint##commandTopic##connector
+          ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
+          ->Adapter.toResource;
+        let corePluginCommandTopicId = corePluginCommandTopic##id;
+
+        corePluginCommandTopic->ExtensionPoint.setCommandTopicConnectorResource(
+          ReventlessSpec.PluginExtensionPointSpec.name,
+        );
         corePluginExtensionPoint##eventTopic##publisher
+        ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
+        ->Adapter.toResource
         ->ExtensionPoint.setEventTopicPublisherResource(
             ReventlessSpec.PluginExtensionPointSpec.name,
           );
-
-        let corePluginCommandTopicId =
-          corePluginExtensionPoint##commandTopic##connector##id;
-
-        Js.log2("corePluginExtensionPoint:", corePluginExtensionPoint);
-        Js.log2(
-          "corePluginExtensionPoint##commandTopic:",
-          corePluginExtensionPoint##commandTopic,
-        );
-        Js.log2(
-          "corePluginExtensionPoint##commandTopic##connector:",
-          corePluginExtensionPoint##commandTopic##connector,
-        );
-        Js.log2("corePluginCommandTopicId:", corePluginCommandTopicId);
-        Js.log2(
-          "corePluginCommandTopicId.get():",
-          corePluginCommandTopicId->Pulumi.Output.get,
-        );
 
         let queryEngine = QueryEngineAdapter.make();
 
