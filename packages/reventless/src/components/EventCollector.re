@@ -26,13 +26,13 @@ module type T = {
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
 };
 
 module Adapter = {
-  let connector = "Connector";
   type connector = {resource: option(resource)};
   type connectorMaker =
     (
@@ -43,28 +43,19 @@ module Adapter = {
       ~handleEvents: eventsHandler,
       ~memorySize: int,
       ~timeout: int,
-      ~opts: Pulumi.CustomResourceOptions.t
+      ~opts: Pulumi.CustomResourceOptions.t,
+      ~resources: resources
     ) =>
     connector;
 
   module type Connector = {let make: connectorMaker;};
-
-  let setConnectorResource = (resource, name) =>
-    resource->Resources.set(
-      ~adapter=connector,
-      ~name=name->ComponentType.name(componentType),
-    );
-  let getConnectorResource = name =>
-    Resources.getExn(
-      ~adapter=connector,
-      ~name=name->ComponentType.name(componentType),
-    );
 };
 
 module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
   type t;
   type constructed;
-  type construct = (Component.t(t, outputs), string) => constructed;
+  type construct =
+    (Component.t(t, outputs), string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -72,7 +63,8 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t)
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -99,6 +91,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~timeout,
         self,
         name,
+        resources,
       ) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
@@ -116,9 +109,11 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~memorySize,
         ~timeout,
         ~opts,
+        ~resources,
       );
     switch (connector.resource) {
-    | Some(resource) => resource->Adapter.setConnectorResource(name)
+    | Some(resource) =>
+      resources->Util_EventCollector.setConnectorResource(resource, name)
     | None => Js.log2("No resource created for EventColllector", name)
     };
 
@@ -134,6 +129,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs) =
@@ -145,6 +141,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~memorySize=128,
       ~timeout=30,
       ~opts,
+      ~resources,
       _,
     ) =>
       make(
@@ -159,5 +156,6 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
             ~timeout,
           ),
         ~opts,
+        ~resources,
       );
 };

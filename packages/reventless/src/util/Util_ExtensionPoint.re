@@ -1,25 +1,31 @@
-let setCommandTopicConnectorResource = (resource, extensionPointName) =>
-  resource->Util_CommandTopic.setConnectorResource(
-    extensionPointName->ComponentType.name(ExtensionPoint.componentType),
+let setCommandTopicConnectorResource =
+    (resources, resource, extensionPointName) =>
+  resources->Util_CommandTopic.setConnectorResource(
+    resource,
+    extensionPointName->ComponentType.name(ComponentType.ExtensionPoint),
   );
-let setEventTopicPublisherResource = (resource, extensionPointName) =>
-  resource->Util_EventTopic.setPublisherResource(
-    extensionPointName->ComponentType.name(ExtensionPoint.componentType),
+let setEventTopicPublisherResource = (resources, resource, extensionPointName) =>
+  resources->Util_EventTopic.setPublisherResource(
+    resource,
+    extensionPointName->ComponentType.name(ComponentType.ExtensionPoint),
   );
 
-let commandTopicConnectorResource = extensionPointName =>
-  extensionPointName
-  ->ComponentType.name(ExtensionPoint.componentType)
-  ->Util_CommandTopic.getConnectorResource;
-let eventTopicPublisherResource = extensionPointName =>
-  extensionPointName
-  ->ComponentType.name(ExtensionPoint.componentType)
-  ->Util_EventTopic.getPublisherResource;
+let commandTopicConnectorResource = (resources, extensionPointName) =>
+  resources->Util_CommandTopic.getConnectorResource(
+    extensionPointName->ComponentType.name(ComponentType.ExtensionPoint),
+  );
+let eventTopicPublisherResource = (resources, extensionPointName) =>
+  resources->Util_EventTopic.getPublisherResource(
+    extensionPointName->ComponentType.name(ComponentType.ExtensionPoint),
+  );
 
-let eventTopics = extensionPointNames =>
+let eventTopics = (resources, extensionPointNames) =>
   extensionPointNames
   ->Belt.Array.map(extensionPointName =>
-      (extensionPointName, extensionPointName->eventTopicPublisherResource)
+      (
+        extensionPointName,
+        resources->eventTopicPublisherResource(extensionPointName),
+      )
     )
   ->Belt.Array.map(((extensionPointName, topic)) =>
       (topic##service, (extensionPointName, topic))

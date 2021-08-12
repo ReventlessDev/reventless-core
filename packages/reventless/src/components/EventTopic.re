@@ -24,7 +24,12 @@ module type T = {
   type t;
 
   let make:
-    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    (
+      ~name: string,
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
+      unit
+    ) =>
     Component.t(t, outputs);
 
   let publish: Component.t(t, outputs) => publish(Spec.Id.t, Spec.event);
@@ -36,7 +41,12 @@ module Adapter = {
     publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
   };
   type publisherMaker =
-    (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => publisher;
+    (
+      ~name: string,
+      ~opts: Pulumi.CustomResourceOptions.t,
+      ~resources: resources
+    ) =>
+    publisher;
 
   module type Publisher = {let make: publisherMaker;};
 };
@@ -48,7 +58,8 @@ module Make =
   type t;
 
   type constructed;
-  type construct = (Component.t(t, outputs), string) => constructed;
+  type construct =
+    (Component.t(t, outputs), string, resources) => constructed;
 
   type nonrec publish = publish(Spec.Id.t, Spec.event);
 
@@ -58,7 +69,8 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t)
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -111,7 +123,7 @@ module Make =
       |> Js.Promise.then_(_ => Js.Promise.resolve());
     };
 
-  let construct = (self, name) => {
+  let construct = (self, name, resources) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -119,8 +131,13 @@ module Make =
       );
 
     let publisher =
-      Publisher.make(~name=name->ComponentType.name(componentType), ~opts);
-    publisher.resource->Util_EventTopic.setPublisherResource(name);
+      Publisher.make(
+        ~name=name->ComponentType.name(componentType),
+        ~opts,
+        ~resources,
+      );
+    resources->Util_EventTopic.setPublisherResource(publisher.resource, name);
+
     let publisherOutputs = publisher.resource;
 
     self->setPublish(publisher->publishFn);
@@ -129,14 +146,20 @@ module Make =
   };
 
   let make:
-    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    (
+      ~name: string,
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
+      unit
+    ) =>
     Component.t(t, outputs) =
-    (~name, ~opts=?, _) => {
+    (~name, ~opts=?, ~resources, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name,
         ~construct,
         ~opts,
+        ~resources,
       );
     };
 };

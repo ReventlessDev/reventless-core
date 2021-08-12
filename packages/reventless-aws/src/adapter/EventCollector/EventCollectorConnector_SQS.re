@@ -10,6 +10,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     ~memorySize,
     ~timeout,
     ~opts,
+    ~resources,
   ) => {
     let queue =
       SQS.Queue.make(
@@ -81,9 +82,12 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let (snsTopics, otherTopics) =
-      Reventless.Util.Aggregate.eventTopics(aggregateNames)
+      resources
+      ->Reventless.Util.Aggregate.eventTopics(aggregateNames)
       ->Belt.Array.concat(
-          Reventless.Util.ExtensionPoint.eventTopics(extensionPointNames),
+          resources->Reventless.Util.ExtensionPoint.eventTopics(
+            extensionPointNames,
+          ),
         )
       ->Belt.Array.partition(((service, _)) => service == Util_SNS.service);
 

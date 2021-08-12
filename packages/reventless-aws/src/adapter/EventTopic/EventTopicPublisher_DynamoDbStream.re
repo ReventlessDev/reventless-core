@@ -2,14 +2,14 @@ open Reventless;
 open ComponentType;
 
 let make: EventTopic.Adapter.publisherMaker =
-  (~name, ~opts as _) => {
+  (~name, ~opts as _, ~resources) => {
     let eventLogResource =
-      name
-      ->Js.String2.substring(
+      resources->Reventless.Util.Aggregate.eventLogStorageResource(
+        name->Js.String2.substring(
           ~from=0,
           ~to_=name->Js.String2.indexOf(Aggregate->toName),
-        )
-      ->Reventless.Util.Aggregate.eventLogStorageResource;
+        ),
+      );
 
     {
       resource:

@@ -1,3 +1,5 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.EventMapper;
 
 type outputs = {
@@ -13,6 +15,7 @@ type maker =
     ~memorySize: int,
     ~timeout: int=?,
     ~opts: option(Pulumi.ComponentResource.Options.t),
+    ~resources: resources,
     unit
   ) =>
   Component.t(eventMapper, outputs);
@@ -31,7 +34,8 @@ module Make =
        )
        : (T with module Target := Target) => {
   type constructed;
-  type construct = (Component.t(eventMapper, outputs), string) => constructed;
+  type construct =
+    (Component.t(eventMapper, outputs), string, resources) => constructed;
 
   module type Mapping =
     ReventlessSpec.EventMapping.T with module Target := Target;
@@ -42,7 +46,8 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t)
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources
     ) =>
     Component.t(eventMapper, outputs) =
     "default";
@@ -98,7 +103,7 @@ module Make =
     });
   };
 
-  let eventsHandler = (mappings, queryEngine) =>
+  let eventsHandler = (resources, mappings, queryEngine) =>
     (. events'Json) => {
       let count = events'Json->Belt.Array.size;
       events'Json
@@ -196,7 +201,9 @@ module Make =
             ->Belt.Array.concatMany
             ->AwsSdk.SQS.sendMessageBatch(
                 ~queueId=
-                  service->Util.Aggregate.commandTopicConnectorResource##id
+                  resources->Util.Aggregate.commandTopicConnectorResource(
+                    service,
+                  )##id
                   ->Pulumi.Output.get,
               ),
           _,
@@ -210,7 +217,8 @@ module Make =
         );
     };
 
-  let construct = (~mappings, ~queryEngine, ~memorySize, ~timeout, self, name) => {
+  let construct =
+      (~mappings, ~queryEngine, ~memorySize, ~timeout, self, name, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -223,10 +231,11 @@ module Make =
           mappings->Belt.Array.map((module Mapping: Mapping) =>
             Mapping.Source.name
           ),
-        ~eventsHandler=eventsHandler(mappings, queryEngine),
+        ~eventsHandler=eventsHandler(resources, mappings, queryEngine),
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
+        ~resources,
         (),
       );
 
@@ -244,15 +253,17 @@ module Make =
       ~memorySize: int,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources,
       unit
     ) =>
     Component.t(eventMapper, outputs) =
-    (mappings, ~queryEngine, ~memorySize, ~timeout=180, ~opts, _unit) => {
+    (mappings, ~queryEngine, ~memorySize, ~timeout=180, ~opts, ~resources, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Target.name,
         ~construct=construct(~mappings, ~queryEngine, ~memorySize, ~timeout),
         ~opts,
+        ~resources,
       );
     };
 };

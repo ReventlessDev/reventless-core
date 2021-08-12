@@ -130,9 +130,11 @@ module Make =
 
     let id = makeId(name, version);
 
+    let resources: resources = Js.Dict.empty();
+
     let services =
       serviceMakers->Belt.Array.map(serviceMaker =>
-        serviceMaker(Some(opts))
+        serviceMaker(~opts, ~resources, ())
       );
     let servicesOutputs = services->Component.extractMultipleOutputs;
 
@@ -157,17 +159,18 @@ module Make =
           ->Adapter.toResource;
         let corePluginCommandTopicId = corePluginCommandTopic##id;
 
-        corePluginCommandTopic->Util.ExtensionPoint.setCommandTopicConnectorResource(
+        resources->Util.ExtensionPoint.setCommandTopicConnectorResource(
+          corePluginCommandTopic,
           ReventlessSpec.PluginExtensionPointSpec.name,
         );
-        corePluginExtensionPoint##eventTopic##publisher
-        ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
-        ->Adapter.toResource
-        ->Util.ExtensionPoint.setEventTopicPublisherResource(
-            ReventlessSpec.PluginExtensionPointSpec.name,
-          );
+        resources->Util.ExtensionPoint.setEventTopicPublisherResource(
+          corePluginExtensionPoint##eventTopic##publisher
+          ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
+          ->Adapter.toResource,
+          ReventlessSpec.PluginExtensionPointSpec.name,
+        );
 
-        let queryEngine = QueryEngineAdapter.make();
+        let queryEngine = QueryEngineAdapter.make(resources);
 
         let extensionPoints =
           extensionPointMakers->Belt.Array.map(extensionPointMaker =>
@@ -175,6 +178,7 @@ module Make =
               ~scheduler,
               ~queryEngine,
               ~opts=Some(opts),
+              ~resources,
               (),
             )
           );
@@ -187,6 +191,7 @@ module Make =
               ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
               ~queryEngine,
               ~opts=Some(opts),
+              ~resources,
               (),
             )
           );
@@ -644,6 +649,7 @@ module Make =
             ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
             ~queryEngine,
             ~opts=Some(opts),
+            ~resources,
             (),
           );
 
@@ -660,6 +666,7 @@ module Make =
               ~scheduler,
               ~queryEngine,
               ~opts=Some(opts),
+              ~resources,
             )
             ->Component.extractOutputs
           );
@@ -671,6 +678,7 @@ module Make =
                 ~queryEngine,
                 ~memorySize=128,
                 ~opts=Some(opts),
+                ~resources,
                 (),
               )
             )
@@ -679,7 +687,7 @@ module Make =
         let resolvers =
           servicesOutputs
           ->ResourceQueryDeploytime.allResolversMakers
-          ->Belt.Array.map(resolverMaker => resolverMaker())
+          ->Belt.Array.map(resolverMaker => resolverMaker(resources))
           ->Belt.Array.concatMany;
 
         module Set = Belt.Set.String;
@@ -839,6 +847,7 @@ module Make =
             |],
             ~eventsHandler,
             ~opts=Some(opts),
+            ~resources,
             (),
           );
         let eventCollectorOutputs = eventCollector->Component.extractOutputs;

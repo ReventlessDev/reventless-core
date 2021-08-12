@@ -1,3 +1,5 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.ExtensionPoint;
 
 type outputs = {
@@ -18,6 +20,7 @@ type maker =
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
+    ~resources: resources,
     unit
   ) =>
   Component.t(extensionPoint, outputs);
@@ -69,7 +72,7 @@ module Make =
 
   type constructed;
   type construct =
-    (Component.t(extensionPoint, outputs), string) => constructed;
+    (Component.t(extensionPoint, outputs), string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -77,7 +80,8 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t)
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources
     ) =>
     Component.t(extensionPoint, outputs) =
     "default";
@@ -146,7 +150,7 @@ module Make =
       };
   };
 
-  let construct = (~mappings, ~scheduler, ~queryEngine, self, name) => {
+  let construct = (~mappings, ~scheduler, ~queryEngine, self, name, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -173,7 +177,9 @@ module Make =
         ->Js.Json.stringify
         ->AwsSdk.SQS.sendMessage(
             ~queueId=
-              aggregateName->Reventless.Util_Aggregate.commandTopicConnectorResource##id
+              resources->Util_Aggregate.commandTopicConnectorResource(
+                aggregateName,
+              )##id
               ->Pulumi.Output.get,
             ~messageGroupId=id,
             ~messageBody=_,
@@ -196,7 +202,7 @@ module Make =
             _,
           );
 
-    let eventTopic = EventTopic.make(~name=childName, ~opts, ());
+    let eventTopic = EventTopic.make(~name=childName, ~opts, ~resources, ());
 
     let applyEventAction =
       fun
@@ -279,6 +285,7 @@ module Make =
           ~name=childName,
           ~commandsHandler=incomingCommandsHandler,
           ~opts,
+          ~resources,
           (),
         ),
       );
@@ -296,11 +303,12 @@ module Make =
   };
 
   let make: array(module Mapping) => maker =
-    (mappings, ~scheduler, ~queryEngine, ~opts, _) =>
+    (mappings, ~scheduler, ~queryEngine, ~opts, ~resources, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
         ~construct=construct(~mappings, ~scheduler, ~queryEngine),
         ~opts,
+        ~resources,
       );
 };

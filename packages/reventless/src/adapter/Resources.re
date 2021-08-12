@@ -1,10 +1,25 @@
-let resources: Js.Dict.t(ReventlessSpec.Adapter.resource) = Js.Dict.empty();
-
 let resourceName = (~adapter, ~name) => name ++ "." ++ adapter;
 
-let set = (~adapter, ~name, resource) =>
+let get = (~adapter, ~name, resources) =>
+  resources->Js.Dict.get(resourceName(~adapter, ~name));
+
+let getExn = (~adapter, ~name, resources) =>
   resources
-  ->Js.Dict.get(resourceName(~adapter, ~name))
+  ->get(~adapter, ~name)
+  ->(
+      fun
+      | Some(resource) => resource
+      | None => {
+          let resources = resources->Js.Dict.keys;
+          Js.Exn.raiseError(
+            {j|Resource doesn't exist: $adapter $name, resources: $resources|j},
+          );
+        }
+    );
+
+let set = (~adapter, ~name, ~resource, resources) =>
+  resources
+  ->get(~adapter, ~name)
   ->(
       fun
       | Some(existingResource) => {
@@ -15,20 +30,4 @@ let set = (~adapter, ~name, resource) =>
           );
         }
       | None => resources->Js.Dict.set(name ++ "." ++ adapter, resource)
-    );
-
-let get = (~adapter, ~name) =>
-  resources->Js.Dict.get(resourceName(~adapter, ~name));
-
-let getExn = (~adapter, ~name) =>
-  get(~adapter, ~name)
-  ->(
-      fun
-      | Some(resource) => resource
-      | None => {
-          let resources = resources->Js.Dict.keys;
-          Js.Exn.raiseError(
-            {j|Resource doesn't exist: $adapter $name, resources: $resources|j},
-          );
-        }
     );

@@ -1,4 +1,4 @@
-open Util.DynamoDbStream_Runtime;
+open Util_DynamoDbStream_Runtime;
 
 let handleStreamEvent = (handleEvents, streamEvent, _) => {
   let records = streamEvent##_Records->Belt.Option.getWithDefault([||]);

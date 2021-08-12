@@ -63,7 +63,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
       );
 
     let resourcesMaker: QueryDb.resolversResourcesMaker =
-      () => {
+      resources => {
         let resolversByIndex =
           indexes->Belt.List.map(({View.index, authorization}) => {
             let name = name ++ "By" ++ index->String.capitalize;
@@ -87,7 +87,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 DataSource.makeDynamoDBDataSourceWithTableName(
                   ~name=name ++ "Auth",
                   ~api,
-                  ~tableName=tableName->Util_QueryDb.getStorageResource##name,
+                  ~tableName=
+                    resources->Util_QueryDb.getStorageResource(tableName)##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),
@@ -134,7 +135,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           (~tableName: string, ~template: string => string) =>
           Pulumi.Input.t(string) =
           (~tableName, ~template) =>
-            tableName->Util_QueryDb.getStorageResource##name
+            resources->Util_QueryDb.getStorageResource(tableName)##name
             ->Pulumi.Output.apply(realTableName => template(realTableName))
             ->Pulumi.Output.asInput;
 
@@ -168,7 +169,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 DataSource.makeDynamoDBDataSourceWithTableName(
                   ~name=name ++ idFieldName->String.capitalize ++ "Resolver",
                   ~api,
-                  ~tableName=tableName->Util_QueryDb.getStorageResource##name,
+                  ~tableName=
+                    resources->Util_QueryDb.getStorageResource(tableName)##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),

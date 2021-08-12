@@ -10,6 +10,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     ~memorySize,
     ~timeout,
     ~opts,
+    ~resources,
   ) => {
     let eventHandlerLambda =
       policies // Pulumi.Output cannot be pushed into policies parameter !
@@ -34,9 +35,12 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         );
 
     let (dynamoDbStreamTopics, otherTopics) =
-      Reventless.Util.Aggregate.eventTopics(aggregateNames)
+      resources
+      ->Reventless.Util.Aggregate.eventTopics(aggregateNames)
       ->Belt.Array.concat(
-          Reventless.Util.ExtensionPoint.eventTopics(extensionPointNames),
+          resources->Reventless.Util.ExtensionPoint.eventTopics(
+            extensionPointNames,
+          ),
         )
       ->Belt.Array.partition(((service, _)) =>
           service == Util_DynamoDbStream.service

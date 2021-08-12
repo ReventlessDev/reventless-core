@@ -1,3 +1,5 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.SideEffectHandler;
 
 type outputs = {
@@ -6,28 +8,29 @@ type outputs = {
   "eventCollector": EventCollector.outputs,
 };
 
-type sideEffectHandler; // TODO: rename back to t - after refactoring
-type sideEffectHandlerComponent = Component.t(sideEffectHandler, outputs);
-
 type sideEffects = array(module ReventlessSpec.SideEffect.T);
 
-type maker =
-  (
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~memorySize: int=?,
-    ~timeout: int=?,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    unit
-  ) =>
-  sideEffectHandlerComponent;
-
-type make = (~name: string, ~sideEffects: sideEffects) => maker;
-
-module type T = {let make: make;};
+module type T = {
+  type t;
+  let make:
+    (
+      ~name: string,
+      ~sideEffects: sideEffects,
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
+      ~memorySize: int=?,
+      ~timeout: int=?,
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources,
+      unit
+    ) =>
+    Component.t(t, outputs);
+};
 
 module Make = (EventCollector: EventCollector.T) : T => {
+  type t;
   type constructed;
-  type construct = sideEffectHandlerComponent => constructed;
+  type construct =
+    (Component.t(t, outputs), string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -35,9 +38,10 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t)
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources
     ) =>
-    sideEffectHandlerComponent =
+    Component.t(t, outputs) =
     "default";
 
   [@bs.obj]
@@ -46,11 +50,10 @@ module Make = (EventCollector: EventCollector.T) : T => {
     outputs =
     "";
   [@bs.send]
-  external registerOutputs:
-    (sideEffectHandlerComponent, outputs) => constructed =
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
     "registerOutputs";
   [@bs.send]
-  external setOutputs: (sideEffectHandlerComponent, outputs) => unit =
+  external setOutputs: (Component.t(t, outputs), outputs) => unit =
     "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
@@ -141,7 +144,15 @@ module Make = (EventCollector: EventCollector.T) : T => {
     };
 
   let construct =
-      (~name, ~sideEffects, ~queryEngine, ~memorySize, ~timeout, self) => {
+      (
+        ~sideEffects,
+        ~queryEngine,
+        ~memorySize,
+        ~timeout,
+        self,
+        name,
+        resources,
+      ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -159,6 +170,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
+        ~resources,
         (),
       );
 
@@ -169,32 +181,23 @@ module Make = (EventCollector: EventCollector.T) : T => {
     ->setOutputs(self, _);
   };
 
-  let make:
-    (
-      ~name: string,
-      ~sideEffects: array(module ReventlessSpec.SideEffect.T),
-      ~queryEngine: ReventlessSpec.QueryEngine.t,
-      ~memorySize: int=?,
-      ~timeout: int=?,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      unit
-    ) =>
-    sideEffectHandlerComponent =
-    (
-      ~name,
-      ~sideEffects,
-      ~queryEngine,
-      ~memorySize=2048,
-      ~timeout=180,
-      ~opts,
-      _unit,
-    ) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
+  let make =
+      (
         ~name,
-        ~construct=
-          construct(~name, ~sideEffects, ~queryEngine, ~memorySize, ~timeout),
+        ~sideEffects,
+        ~queryEngine,
+        ~memorySize=2048,
+        ~timeout=180,
         ~opts,
-      );
-    };
+        ~resources,
+        _,
+      ) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct=construct(~sideEffects, ~queryEngine, ~memorySize, ~timeout),
+      ~opts,
+      ~resources,
+    );
+  };
 };

@@ -1,4 +1,5 @@
 // TODO: refactor to abstractions
+open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.Task;
 
@@ -29,7 +30,8 @@ type maker =
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~opts: option(Pulumi.ComponentResource.Options.t)
+    ~opts: option(Pulumi.ComponentResource.Options.t),
+    ~resources: resources
   ) =>
   Component.t(task, outputs);
 
@@ -55,7 +57,8 @@ type setup =
   outputs;
 
 type constructed;
-type construct = (Component.t(task, outputs), string) => constructed;
+type construct =
+  (Component.t(task, outputs), string, resources) => constructed;
 
 [@bs.module "./Component"] [@bs.new]
 external make:
@@ -63,7 +66,8 @@ external make:
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option(Pulumi.ComponentResource.Options.t)
+    ~opts: option(Pulumi.ComponentResource.Options.t),
+    ~resources: resources
   ) =>
   Component.t(task, outputs) =
   "default";
@@ -87,7 +91,8 @@ let construct =
       ~scheduler: Scheduler.t,
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       self,
-      _,
+      _name,
+      resources,
     ) => {
   let opts =
     Pulumi.CustomResourceOptions.make(
@@ -110,7 +115,7 @@ let construct =
         })
       ->AwsSdk.SQS.sendMessageBatch(
           ~queueId=
-            queueName->Util.Aggregate.commandTopicConnectorResource##id
+            resources->Util.Aggregate.commandTopicConnectorResource(queueName)##id
             ->OutputFailsafeRuntime.get,
         )
       |> Js.Promise.catch(err =>
@@ -124,7 +129,7 @@ let construct =
         (
           Schedule.create(
             scheduler,
-            taskName->EventCollector.Adapter.getConnectorResource,
+            resources->Util_EventCollector.getConnectorResource(taskName),
           )
         )(.
           schedule,
@@ -136,7 +141,7 @@ let construct =
         (
           Schedule.delete(
             scheduler,
-            taskName->EventCollector.Adapter.getConnectorResource,
+            resources->Util_EventCollector.getConnectorResource(taskName),
           )
         )(.
           name,
@@ -146,7 +151,7 @@ let construct =
     (. taskName) =>
       (. delay, id, messageBody) => {
         let queueId =
-          taskName->EventCollector.Adapter.getConnectorResource##id
+          resources->Util_EventCollector.getConnectorResource(taskName)##id
           ->OutputFailsafeRuntime.get;
         Js.log4("Task.queueMessage:", delay, messageBody, queueId);
         AwsSdk.SQS.sendMessage(
@@ -171,6 +176,7 @@ let construct =
               (),
             ),
           ),
+        ~resources,
         (),
       )
       ->Component.extractOutputs;
@@ -188,7 +194,16 @@ let construct =
   ->setOutputs(self, _);
 };
 
-let make = (~name, ~setup, ~queryBucketName, ~scheduler, ~queryEngine, ~opts) => {
+let make =
+    (
+      ~name,
+      ~setup,
+      ~queryBucketName,
+      ~scheduler,
+      ~queryEngine,
+      ~opts,
+      ~resources,
+    ) => {
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name=name->ComponentType.name(componentType),
@@ -201,5 +216,6 @@ let make = (~name, ~setup, ~queryBucketName, ~scheduler, ~queryEngine, ~opts) =>
         ~queryEngine,
       ),
     ~opts,
+    ~resources,
   );
 };
