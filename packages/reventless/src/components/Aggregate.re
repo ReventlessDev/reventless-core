@@ -1,3 +1,4 @@
+open ReventlessSpec.Adapter;
 open Belt.Result;
 
 let componentType = ComponentType.Aggregate;
@@ -20,6 +21,7 @@ module type T = {
     (
       ~eventsHandler: Message.eventsHandler(Spec.Id.t, Spec.event),
       ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
@@ -44,7 +46,7 @@ module Make =
 
   type constructed;
   type construct =
-    (Component.t(t, outputs), string, eventsHandler) => constructed;
+    (Component.t(t, outputs), string, eventsHandler, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -53,7 +55,8 @@ module Make =
       ~name: string,
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~eventsHandler: eventsHandler
+      ~eventsHandler: eventsHandler,
+      ~resources: resources
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -312,7 +315,7 @@ module Make =
     };
 
   let construct: construct =
-    (self, name, eventsHandler) => {
+    (self, name, eventsHandler, resources) => {
       let opts =
         Pulumi.ComponentResource.Options.make(
           ~parent=self->Component.toPulumiResource,
@@ -321,8 +324,9 @@ module Make =
 
       let childName = name->ComponentType.name(componentType);
 
-      let eventLog = EventLog.make(~name=childName, ~opts, ());
-      let eventTopic = EventTopic.make(~name=childName, ~opts, ());
+      let eventLog = EventLog.make(~name=childName, ~opts, ~resources, ());
+      let eventTopic =
+        EventTopic.make(~name=childName, ~opts, ~resources, ());
 
       let execCommands =
         execCommands((
@@ -339,6 +343,7 @@ module Make =
           ~name=childName,
           ~commandsHandler=execCommands,
           ~opts,
+          ~resources,
           (),
         );
 
@@ -363,15 +368,17 @@ module Make =
     (
       ~eventsHandler: eventsHandler,
       ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs) =
-    (~eventsHandler, ~opts=?, _) =>
+    (~eventsHandler, ~opts=?, ~resources, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
         ~construct,
         ~opts,
         ~eventsHandler,
+        ~resources,
       );
 };

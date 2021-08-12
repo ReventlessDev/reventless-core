@@ -7,4 +7,4 @@ type resource = {
   "service": string,
 };
 
-type dict = Js.Dict.t(resource);
+type resources = Js.Dict.t(resource);

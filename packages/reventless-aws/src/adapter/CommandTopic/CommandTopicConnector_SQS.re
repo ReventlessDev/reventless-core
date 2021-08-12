@@ -1,7 +1,7 @@
 open PulumiAws;
 
 let make: Reventless.CommandTopic.Adapter.connectorMaker =
-  (~name, ~handleCommands, ~memorySize, ~timeout, ~opts) => {
+  (~name, ~handleCommands, ~memorySize, ~timeout, ~opts, ~resources as _) => {
     let queue =
       SQS.Queue.make(
         ~name,
@@ -24,7 +24,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
       );
 
     let _queuePolicy =
-      Util.SqsQueuePolicy.(
+      Util_SqsQueuePolicy.(
         make(~name, ~queue, ~statements=[|allowCloudWatchEvents|], ~opts, ())
       );
 

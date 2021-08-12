@@ -1,5 +1,5 @@
 let make: Reventless.EventLog.Adapter.storageMaker =
-  (~name, ~opts) => {
+  (~name, ~opts, ~resources as _) => {
     let table =
       PulumiAws.DynamoDb.Table.make(
         ~name,

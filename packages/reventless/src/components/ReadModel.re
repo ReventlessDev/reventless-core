@@ -1,3 +1,5 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.ReadModel;
 
 type outputs = {. "queryDb": QueryDb.outputs};
@@ -9,10 +11,6 @@ type update('id, 'event) = Message.eventsHandler('id, 'event);
 // external toOutputs: functions('id, 'event) => outputs = "%identity";
 
 // type t('id, 'event) = functions('id, 'event);
-
-type maker('component, 'id, 'event) =
-  option(Pulumi.ComponentResource.Options.t) =>
-  Component.t('component, outputs);
 
 module type T = {
   module Spec: View.Spec;
@@ -30,7 +28,13 @@ module type T = {
        */
   let update: Component.t(t, outputs) => update(Spec.Id.t, Spec.event);
 
-  let make: maker(t, Spec.Id.t, Spec.event);
+  let make:
+    (
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
+      unit
+    ) =>
+    Component.t(t, outputs);
 };
 
 module Make =
@@ -53,7 +57,8 @@ module Make =
   type update = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct = (Component.t(t, outputs), string) => constructed;
+  type construct =
+    (Component.t(t, outputs), string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -61,7 +66,8 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t)
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -194,14 +200,14 @@ module Make =
         }
       );
 
-  let construct = (self, _) => {
+  let construct = (self, _, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
         (),
       );
 
-    let queryDb = QueryDb.make(~opts, ());
+    let queryDb = QueryDb.make(~opts, ~resources, ());
 
     updateFn(
       queryDb->QueryDb.load,
@@ -214,12 +220,13 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make = opts => {
+  let make = (~opts=?, ~resources, _) => {
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=View.name |> Js.Option.getWithDefault(Spec.name),
       ~construct,
       ~opts,
+      ~resources,
     );
   };
 };

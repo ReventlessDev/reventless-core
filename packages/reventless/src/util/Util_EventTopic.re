@@ -1,12 +1,13 @@
 let publisher = "Publisher";
 
-let setPublisherResource = (resource, name) =>
-  resource->Resources.set(
+let setPublisherResource = (resources, resource, name) =>
+  resources->Resources.set(
     ~adapter=publisher,
     ~name=name->ComponentType.name(ComponentType.EventTopic),
+    ~resource,
   );
-let getPublisherResource = name =>
-  Resources.getExn(
+let getPublisherResource = (resources, name) =>
+  resources->Resources.getExn(
     ~adapter=publisher,
     ~name=name->ComponentType.name(ComponentType.EventTopic),
   );

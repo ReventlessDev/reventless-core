@@ -1,3 +1,5 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.Service;
 
 type outputs = {
@@ -9,7 +11,8 @@ type outputs = {
 
 type service; // TODO: rename this back to t after refactor
 type maker =
-  option(Pulumi.ComponentResource.Options.t) => Component.t(service, outputs);
+  (~opts: Pulumi.ComponentResource.Options.t=?, ~resources: resources, unit) =>
+  Component.t(service, outputs);
 
 module type T = {let make: maker;};
 
@@ -33,7 +36,8 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct = (Component.t(service, outputs), string) => constructed;
+  type construct =
+    (Component.t(service, outputs), string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -41,7 +45,8 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t)
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources
     ) =>
     Component.t(service, outputs) =
     "default";
@@ -82,17 +87,22 @@ module Make =
   };
 
   let construct: construct =
-    (self, _name) => {
+    (self, _name, resources) => {
       let opts =
         Pulumi.ComponentResource.Options.make(
           ~parent=self->Component.toPulumiResource,
           (),
         );
 
-      let readModel = ReadModel.make(Some(opts));
+      let readModel = ReadModel.make(~opts, ~resources, ());
 
       let aggregate =
-        Aggregate.make(~eventsHandler=readModel->ReadModel.update, ~opts, ());
+        Aggregate.make(
+          ~eventsHandler=readModel->ReadModel.update,
+          ~opts,
+          ~resources,
+          (),
+        );
 
       makeOutputs(
         ~name=Spec.name,
@@ -102,11 +112,12 @@ module Make =
       ->setOutputs(self, _);
     };
 
-  let make = opts =>
+  let make = (~opts=?, ~resources, _) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct,
       ~opts,
+      ~resources,
     );
 };

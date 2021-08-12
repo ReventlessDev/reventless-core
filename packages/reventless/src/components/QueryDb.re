@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.QueryDb;
 
-type resolversResourcesMaker = unit => array(resource);
+type resolversResourcesMaker = resources => array(resource);
 
 type outputs = {
   .
@@ -53,7 +53,11 @@ module type T = {
   type nonrec delete = delete(Spec.Id.t);
 
   let make:
-    (~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    (
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
+      unit
+    ) =>
     Component.t(t, outputs);
 
   let load: Component.t(t, outputs) => load;
@@ -78,7 +82,8 @@ module Adapter = {
       ~sortField: option(string),
       ~api: 'api,
       ~apiRole: 'role,
-      ~opts: Pulumi.CustomResourceOptions.t
+      ~opts: Pulumi.CustomResourceOptions.t,
+      ~resources: resources
     ) =>
     storage;
 
@@ -89,7 +94,7 @@ module Adapter = {
     let make: storageMaker(api, role);
   };
 
-  type queryEngineMaker = unit => ReventlessSpec.QueryEngine.t;
+  type queryEngineMaker = resources => ReventlessSpec.QueryEngine.t;
 
   module type QueryEngineAdapter = {let make: queryEngineMaker;};
 
@@ -146,7 +151,7 @@ module Make =
 
   type constructed;
   type construct =
-    (Component.t(t, outputs), string, api, role) => constructed;
+    (Component.t(t, outputs), string, api, role, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -156,7 +161,8 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~api: api,
-      ~apiRole: role
+      ~apiRole: role,
+      ~resources: resources
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -236,7 +242,7 @@ module Make =
   let outputs: Component.t(t, outputs) => outputs =
     component => Component.extractOutputs(component);
 
-  let construct = (self, name, api, apiRole) => {
+  let construct = (self, name, api, apiRole, resources) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -254,8 +260,9 @@ module Make =
         ~api,
         ~apiRole,
         ~opts,
+        ~resources,
       );
-    storage.resource->Util_QueryDb.setStorageResource(storageName);
+    resources->Util_QueryDb.setStorageResource(storage.resource, storageName);
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);
@@ -289,9 +296,13 @@ module Make =
   };
 
   let make:
-    (~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    (
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
+      unit
+    ) =>
     Component.t(t, outputs) =
-    (~opts=?, _) => {
+    (~opts=?, ~resources, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=View.name->Belt.Option.getWithDefault(Spec.name),
@@ -299,6 +310,7 @@ module Make =
         ~opts,
         ~api=Config.api,
         ~apiRole=Config.apiRole,
+        ~resources,
       );
     };
 };

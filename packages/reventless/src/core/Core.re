@@ -1,3 +1,5 @@
+open ReventlessSpec.Adapter;
+
 let componentType = ComponentType.Core;
 
 type extensionPointMakers = array(ExtensionPoint.maker);
@@ -72,9 +74,11 @@ module Make =
         (),
       );
 
+    let resources: resources = Js.Dict.empty();
+
     let services =
       serviceMakers->Belt.Array.map(serviceMaker =>
-        serviceMaker(Some(opts))
+        serviceMaker(~opts, ~resources, ())
       );
     let servicesOutputs = services->Component.extractMultipleOutputs;
 
@@ -82,8 +86,9 @@ module Make =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
         extensionPointMaker(
           ~scheduler,
-          ~queryEngine=QueryEngineAdapter.make(),
+          ~queryEngine=QueryEngineAdapter.make(resources),
           ~opts=Some(opts),
+          ~resources,
           (),
         )
       );
@@ -141,6 +146,7 @@ module Make =
         ~aggregateNames,
         ~eventsHandler,
         ~opts=Some(opts),
+        ~resources,
         (),
       );
 

@@ -1,12 +1,13 @@
 let storage = "Storage";
 
-let setStorageResource = (resource, name) =>
-  resource->Resources.set(
+let setStorageResource = (resources, resource, name) =>
+  resources->Resources.set(
     ~adapter=storage,
     ~name=name->ComponentType.name(ComponentType.EventLog),
+    ~resource,
   );
-let getStorageResource = name =>
-  Resources.getExn(
+let getStorageResource = (resources, name) =>
+  resources->Resources.getExn(
     ~adapter=storage,
     ~name=name->ComponentType.name(ComponentType.EventLog),
   );
