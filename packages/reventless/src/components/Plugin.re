@@ -163,6 +163,17 @@ module Make =
         let corePluginCommandTopicId =
           corePluginExtensionPoint##commandTopic##connector##id;
 
+        Js.log2("corePluginExtensionPoint:", corePluginExtensionPoint);
+        Js.log2(
+          "corePluginExtensionPoint##commandTopic:",
+          corePluginExtensionPoint##commandTopic,
+        );
+        Js.log2(
+          "corePluginExtensionPoint##commandTopic##connector:",
+          corePluginExtensionPoint##commandTopic##connector,
+        );
+        Js.log2("corePluginCommandTopicId:", corePluginCommandTopicId);
+
         let queryEngine = QueryEngineAdapter.make();
 
         let extensionPoints =
