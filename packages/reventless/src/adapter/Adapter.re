@@ -12,4 +12,20 @@ external resource:
   resource =
   "";
 
-type dict = Js.Dict.t(resource);
+type straightResource = {
+  .
+  "name": string,
+  "id": string,
+  "urn": string,
+  "info": string,
+  "service": string,
+};
+
+let toResource = straightResource =>
+  resource(
+    ~service=straightResource##service,
+    ~name=straightResource##name->Pulumi.Output.make,
+    ~id=straightResource##id->Pulumi.Output.make,
+    ~urn=straightResource##urn->Pulumi.Output.make,
+    ~info=straightResource##info->Pulumi.Output.make,
+  );

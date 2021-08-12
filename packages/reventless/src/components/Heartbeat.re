@@ -41,8 +41,6 @@ external setOutputs: (Component.t(heartbeat, outputs), outputs) => unit =
   "setOutputs";
 
 let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
-  Js.log2("commandTopicId:", commandTopicId);
-
   let opts =
     Pulumi.CustomResourceOptions.make(
       ~parent=self->Component.toPulumiResource,
