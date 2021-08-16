@@ -3,7 +3,7 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.Plugin;
 
-type outputs = {
+type outputFields = {
   .
   "id": string,
   "version": string,
@@ -24,6 +24,8 @@ type outputs = {
     Js.Dict.t(array(Extension.outputs)),
   "resources": resources,
 };
+
+type outputs = {. "outputs": Pulumi.Output.t(outputFields)};
 
 type plugin; // TODO: rename to t - after refactoring
 
@@ -57,8 +59,7 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct =
-    (Component.t(plugin, outputs), string) => Pulumi.Output.t(constructed);
+  type construct = (Component.t(plugin, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -72,7 +73,7 @@ module Make =
     "default";
 
   [@bs.obj]
-  external makeOutputs:
+  external makeOutputFields:
     (
       ~id: string,
       ~version: string,
@@ -96,7 +97,11 @@ module Make =
                                                ),
       ~resources: resources
     ) =>
-    outputs =
+    outputFields =
+    "";
+
+  [@bs.obj]
+  external makeOutputs: (~outputs: Pulumi.Output.t(outputFields)) => outputs =
     "";
 
   [@bs.send]
@@ -867,7 +872,7 @@ module Make =
             (),
           );
 
-        makeOutputs(
+        makeOutputFields(
           ~id,
           ~version,
           ~heartbeatInterval,
@@ -883,9 +888,10 @@ module Make =
           ~outgoingServiceNameToExtensionsMapping,
           ~incomingServiceNameToExtensionsMapping,
           ~resources,
-        )
-        ->setOutputs(self, _);
-      });
+        );
+      })
+    ->makeOutputs(~outputs=_)
+    ->setOutputs(self, _);
   };
 
   let make: maker =
