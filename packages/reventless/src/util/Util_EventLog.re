@@ -11,3 +11,10 @@ let getStorageResource = (resources, name) =>
     ~adapter=storage,
     ~name=name->ComponentType.name(ComponentType.EventLog),
   );
+
+let filterEventLogStorages = (resources, keep) =>
+  resources->Resources.filter(
+    ~name=ComponentType.EventLog->ComponentType.toName,
+    ~adapter=storage,
+    ~keep,
+  );
