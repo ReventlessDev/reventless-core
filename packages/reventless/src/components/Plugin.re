@@ -22,6 +22,7 @@ type outputs = {
     Js.Dict.t(array(Extension.outputs)),
   "incomingServiceNameToExtensionsMapping":
     Js.Dict.t(array(Extension.outputs)),
+  "resources": resources,
 };
 
 type plugin; // TODO: rename to t - after refactoring
@@ -92,7 +93,8 @@ module Make =
                                                ),
       ~incomingServiceNameToExtensionsMapping: Js.Dict.t(
                                                  array(Extension.outputs),
-                                               )
+                                               ),
+      ~resources: resources
     ) =>
     outputs =
     "";
@@ -880,6 +882,7 @@ module Make =
           ~serviceNameToExtensionPointsMapping,
           ~outgoingServiceNameToExtensionsMapping,
           ~incomingServiceNameToExtensionsMapping,
+          ~resources,
         )
         ->setOutputs(self, _);
       });
