@@ -5,3 +5,7 @@ let set:
 
 let get: (~adapter: string, ~name: string, resources) => option(resource);
 let getExn: (~adapter: string, ~name: string, resources) => resource;
+
+let filter:
+  (~name: string, ~adapter: string, ~keep: string => bool, resources) =>
+  array(resource);

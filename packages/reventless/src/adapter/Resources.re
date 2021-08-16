@@ -1,7 +1,7 @@
-let resourceName = (~adapter, ~name) => name ++ "." ++ adapter;
+let createResourceName = (~adapter, ~name) => name ++ "." ++ adapter;
 
 let get = (~adapter, ~name, resources) =>
-  resources->Js.Dict.get(resourceName(~adapter, ~name));
+  resources->Js.Dict.get(createResourceName(~adapter, ~name));
 
 let getExn = (~adapter, ~name, resources) =>
   resources
@@ -30,4 +30,13 @@ let set = (~adapter, ~name, ~resource, resources) =>
           );
         }
       | None => resources->Js.Dict.set(name ++ "." ++ adapter, resource)
+    );
+
+let filter = (~name, ~adapter, ~keep, resources) =>
+  resources
+  ->Js.Dict.entries
+  ->Belt.Array.keepMap(((resourceName, resource)) =>
+      resourceName->Js.String2.endsWith(createResourceName(~name, ~adapter))
+      && keep(name)
+        ? Some(resource) : None
     );

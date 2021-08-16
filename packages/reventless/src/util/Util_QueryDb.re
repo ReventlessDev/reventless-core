@@ -7,3 +7,10 @@ let getStorageResource = (resources, name) =>
     ~adapter=storage,
     ~name=name->ComponentType.name(ComponentType.QueryDb),
   );
+
+let filterQueryDbStorages = (resources, keep) =>
+  resources->Resources.filter(
+    ~name=ComponentType.QueryDb->ComponentType.toName,
+    ~adapter=storage,
+    ~keep,
+  );
