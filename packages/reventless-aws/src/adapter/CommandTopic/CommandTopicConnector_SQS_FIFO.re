@@ -55,7 +55,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
       queue->SQS.Queue.onEvent(~name, ~handler, ~opts, ());
 
     {
-      resource: queue->Util_SQS.toResource,
+      resource: queue->Util_SQS_FIFO.toResource,
       publish: queue->CommandTopicConnector_SQS_FIFO_Runtime.publish,
     };
   };
