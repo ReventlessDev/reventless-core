@@ -32,11 +32,20 @@ let set = (~adapter, ~name, ~resource, resources) =>
       | None => resources->Js.Dict.set(name ++ "." ++ adapter, resource)
     );
 
-let filter = (~name, ~adapter, ~keep, resources) =>
-  resources
-  ->Js.Dict.entries
-  ->Belt.Array.keepMap(((resourceName, resource)) =>
-      resourceName->Js.String2.endsWith(createResourceName(~name, ~adapter))
-      && keep(name)
-        ? Some(resource) : None
-    );
+let filter = (~name, ~adapter, ~keep, resources) => {
+  Js.log(
+    {j|Resources.filter: name:$name, adapter:$adapter, resources:$resources|j},
+  );
+  let filtered =
+    resources
+    ->Js.Dict.entries
+    ->Belt.Array.keepMap(((resourceName, resource)) =>
+        resourceName->Js.String2.endsWith(
+          createResourceName(~name, ~adapter),
+        )
+        && keep(name)
+          ? Some(resource) : None
+      );
+  Js.log({j|Resources.filter: filtered:$filtered|j});
+  filtered;
+};
