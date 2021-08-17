@@ -56,7 +56,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
             ~args=
               Lambda.CallbackFunction.Args.make(
                 ~callback=
-                  EventCollectorConnector_SQS_Runtime.handleQueueEvent(
+                  EventCollectorConnector_SQS_Runtime.handleCallbackEvent(
                     handleEvents,
                     queue,
                   ),
