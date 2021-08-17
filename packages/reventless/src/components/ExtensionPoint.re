@@ -175,7 +175,7 @@ module Make =
         ) =>
         cmdJson
         ->Js.Json.stringify
-        ->AwsSdk.SQS.sendMessage(
+        ->AwsSdk.SQS.sendMessage( // TODO: move to Adapter
             ~queueId=
               resources->Util_Aggregate.commandTopicConnectorResource(
                 aggregateName,

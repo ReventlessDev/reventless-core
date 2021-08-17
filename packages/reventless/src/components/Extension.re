@@ -113,12 +113,27 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
       };
   };
 
-  let publishCommand = (id, cmdJson, queueId) =>
+  let publishAggregateCommand = (id, cmdJson, queueId) =>
     cmdJson
-    |> Js.Json.stringify
+    |> Js.Json.stringify  // TODO: move to Adapter
     |> AwsSdk.SQS.sendMessage(
          ~queueId,
          ~messageGroupId=id,
+         ~messageBody=_,
+         (),
+       )
+    |> Js.Promise.catch(err =>
+         err
+         |> Js.log2("Extension: Error on publish command:")
+         |> Js.Promise.resolve
+       );
+
+  let publishExtensionPointCommand = (id, cmdJson, queueId) =>
+    cmdJson
+    |> Js.Json.stringify  // TODO: move to Adapter
+    |> AwsSdk.SQS.sendMessage(
+         ~queueId,
+         // ~messageGroupId=id,
          ~messageBody=_,
          (),
        )
@@ -141,7 +156,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
     let mapOutgoingEvent = Mapper.mapOutgoingEvent(mappings);
 
     let forwardCommand = (id, meta, extensionPointName, command'Json) =>
-      publishCommand(
+      publishExtensionPointCommand(
         id,
         Message.command'_encode(
           Id.String.t_encode,
@@ -170,7 +185,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
           id,
           command'Json,
         ) =>
-        publishCommand(
+        publishAggregateCommand(
           id,
           command'Json,
           resources->Util.Aggregate.commandTopicConnectorResource(
@@ -181,7 +196,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
       | ExtensionMapping.AbstractPublishAggregateCommandAsync(promise) =>
         promise->Js.Promise.then_(
                    ((aggregateName, id, command'Json)) =>
-                     publishCommand(
+                     publishAggregateCommand(
                        id,
                        command'Json,
                        resources->Util.Aggregate.commandTopicConnectorResource(
@@ -196,7 +211,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
                    tupels =>
                      tupels
                      ->Belt.Array.map(((aggregateName, id, command'Json)) =>
-                         publishCommand(
+                         publishAggregateCommand(
                            id,
                            command'Json,
                            resources->Util.Aggregate.commandTopicConnectorResource(
@@ -213,7 +228,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
           id,
           command'Json,
         ) =>
-        publishCommand(
+        publishExtensionPointCommand(
           id,
           command'Json,
           pluginExtensionPointCommandTopicId->Pulumi.Output.get,
@@ -239,7 +254,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
           id,
           command'Json,
         ) =>
-        publishCommand(
+        publishExtensionPointCommand(
           id,
           command'Json,
           pluginExtensionPointCommandTopicId->Pulumi.Output.get,
