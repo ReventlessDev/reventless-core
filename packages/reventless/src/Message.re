@@ -139,12 +139,18 @@ let generateMeta = (~service, ~ip="", ~user="", ()) => {
 let decomposeMeta = meta =>
   meta->meta_encode->Js.Json.decodeObject->Js.Option.getExn->Js.Dict.entries;
 
+let string =
+  fun
+  | Some(ip) when ip == Js.Json.null => ""->Js.Json.string
+  | Some(ip) => ip
+  | None => ""->Js.Json.string;
+
 let composeMeta = (dict: Js.Dict.t(Js.Json.t)) =>
   [|
     ("service", dict->Js.Dict.get("service")->Belt.Option.getExn),
     ("time", dict->Js.Dict.get("time")->Belt.Option.getExn),
-    ("ip", dict->Js.Dict.get("ip")->Belt.Option.getExn),
-    ("user", dict->Js.Dict.get("user")->Belt.Option.getExn),
+    ("ip", dict->Js.Dict.get("ip")->string),
+    ("user", dict->Js.Dict.get("user")->string),
     ("msgId", dict->Js.Dict.get("msgId")->Belt.Option.getExn),
     (
       "correlationId",
