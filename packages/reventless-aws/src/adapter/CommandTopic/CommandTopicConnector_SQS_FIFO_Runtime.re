@@ -1,4 +1,4 @@
-let handleQueueEvent = (handleCommands, queue, event, _) => {
+let handleEvent = (handleCommands, queue, event, _) => {
   let records = event##_Records;
   let jsons =
     records->Belt.Array.keepMap(record => {
@@ -7,7 +7,7 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
       | json => Some(json)
       | exception err =>
         Js.log3(
-          "CommandTopicConnector_SQS_FIFO_Runtime.handleQueueEvent: Couldn't parse command:",
+          "CommandTopicConnector_SQS_FIFO_Runtime.handleEvent: Couldn't parse command:",
           commandStr,
           err,
         );

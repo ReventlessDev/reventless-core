@@ -37,7 +37,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
           ~args=
             Args.make(
               ~callback=
-                CommandTopicConnector_SQS_FIFO_Runtime.handleQueueEvent(
+                CommandTopicConnector_SQS_FIFO_Runtime.handleEvent(
                   handleCommands,
                   queue,
                 ),
