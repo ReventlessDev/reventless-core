@@ -38,10 +38,10 @@ let forwardCommand =
                       fun
                       | Some(extensionPoint) =>
                         command
-                        ->AwsSdk.SQS.sendMessage(
+                        ->AwsSdk.SQS.sendMessage( // TODO: move to Adapter
                             ~queueId=extensionPoint.commandTopic,
-                            ~messageGroupId=id,
-                            ~messageBody=_,
+                            //~messageGroupId=id,
+                             ~messageBody=_,
                             (),
                           )
                         ->Js.Promise.then_(

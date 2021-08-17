@@ -107,6 +107,7 @@ let construct =
       ->Belt.Array.mapWithIndex((idx, (id, meta: Message.meta, messageBody)) => {
           Js.log({j|Task.publishCommands $idx/$count: $messageBody|j});
           AwsSdk.SQS.makeBatchEntry(
+            // TODO: move to Adapter
             ~groupId=id,
             ~messageBody,
             ~messageId=meta.msgId,
@@ -114,6 +115,7 @@ let construct =
           );
         })
       ->AwsSdk.SQS.sendMessageBatch(
+          // TODO: move to Adapter
           ~queueId=
             resources->Util.Aggregate.commandTopicConnectorResource(queueName)##id
             ->OutputFailsafeRuntime.get,
@@ -155,8 +157,9 @@ let construct =
           ->OutputFailsafeRuntime.get;
         Js.log4("Task.queueMessage:", delay, messageBody, queueId);
         AwsSdk.SQS.sendMessage(
+          // TODO: move to Adapter
           ~queueId,
-          ~messageGroupId=id,
+          // ~messageGroupId=id,
           ~messageBody,
           ~delay,
           (),
