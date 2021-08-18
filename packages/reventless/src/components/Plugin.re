@@ -642,7 +642,7 @@ module Make =
           ->Belt.Option.mapWithDefault(Js.Promise.resolve(), exs =>
               exs
               ->Belt.Array.map(ex =>
-                  (getEventHandler(ex))(.
+                  ex->getEventHandler(.
                     event'Json,
                     pluginDefinition->Pulumi.Output.get,
                   )
@@ -675,6 +675,15 @@ module Make =
               | _ => ()
             );
 
+        let sideEffectHandlers =
+          (tasksOutputs^)
+          ->Belt.Array.keepMap(taskOutput =>
+              taskOutput##sideEffectHandler
+              ->Belt.Option.map(sideEffectHandler =>
+                  sideEffectHandler##eventsHandler
+                )
+            );
+
         let eventsHandler =
           (. events'Json) => {
             let count = events'Json->Belt.Array.size;
@@ -693,25 +702,24 @@ module Make =
                 ->Js.Promise.then_(
                     _ =>
                       [|
-                        handleEvent(
-                          event'Json,
-                          serviceNameToExtensionPointsMapping,
-                          extensionPoint =>
+                        event'Json->handleEvent(
+                          serviceNameToExtensionPointsMapping, extensionPoint =>
                           extensionPoint##outgoingEventHandler
                         ),
-                        handleEvent(
-                          event'Json,
-                          outgoingServiceNameToExtensionsMapping,
-                          extension =>
+                        event'Json->handleEvent(
+                          outgoingServiceNameToExtensionsMapping, extension =>
                           extension##outgoingEventHandler
                         ),
-                        handleEvent(
-                          event'Json,
-                          incomingServiceNameToExtensionsMapping,
-                          extension =>
+                        event'Json->handleEvent(
+                          incomingServiceNameToExtensionsMapping, extension =>
                           extension##incomingEventHandler
                         ),
                       |]
+                      ->Belt.Array.concat(
+                          sideEffectHandlers->Belt.Array.map(sideEffectHandler =>
+                            sideEffectHandler(. [|event'Json|])
+                          ),
+                        )
                       ->Js.Promise.all
                       ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
                     _,
