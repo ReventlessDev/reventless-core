@@ -126,45 +126,48 @@ let construct =
     };
 
   let createSchedule =
-    (. taskName) =>
-      (. schedule: ReventlessSpec.Schedule.schedule) =>
-        (
-          Schedule.create(
-            scheduler,
-            resources->Util_EventCollector.getConnectorResource(taskName),
-          )
-        )(.
-          schedule,
-        );
+    (. schedule: ReventlessSpec.Schedule.schedule) =>
+      (
+        Schedule.create(
+          scheduler,
+          resources->Util.EventCollector.getConnectorResource(
+            ComponentType.Plugin->ComponentType.toName,
+          ),
+        )
+      )(.
+        schedule,
+      );
 
   let deleteSchedule =
-    (. taskName) =>
-      (. name) =>
-        (
-          Schedule.delete(
-            scheduler,
-            resources->Util_EventCollector.getConnectorResource(taskName),
-          )
-        )(.
-          name,
-        );
+    (. name) =>
+      (
+        Schedule.delete(
+          scheduler,
+          resources->Util.EventCollector.getConnectorResource(
+            ComponentType.Plugin->ComponentType.toName,
+          ),
+        )
+      )(.
+        name,
+      );
 
   let queueMessage =
-    (. taskName) =>
-      (. delay, id, messageBody) => {
-        let queueId =
-          resources->Util_EventCollector.getConnectorResource(taskName)##id
-          ->OutputFailsafeRuntime.get;
-        Js.log4("Task.queueMessage:", delay, messageBody, queueId);
-        AwsSdk.SQS.sendMessage(
-          // TODO: move to Adapter
-          ~queueId,
-          // ~messageGroupId=id,
-          ~messageBody,
-          ~delay,
-          (),
-        );
-      };
+    (. delay, _id, messageBody) => {
+      let queueId =
+        resources->Util.EventCollector.getConnectorResource(
+          ComponentType.Plugin->ComponentType.toName,
+        )##id
+        ->OutputFailsafeRuntime.get;
+      Js.log4("Task.queueMessage:", delay, messageBody, queueId);
+      AwsSdk.SQS.sendMessage(
+        // TODO: move to Adapter
+        ~queueId,
+        // ~messageGroupId=id,
+        ~messageBody,
+        ~delay,
+        (),
+      );
+    };
 
   let createSideEffectHandler: createSideEffectHandler =
     (~name, ~sideEffects, (module SideEffectHandler)) =>
@@ -188,9 +191,9 @@ let construct =
     queryEngine,
     publishCommands,
     queryBucketName,
-    createSchedule(. taskName),
-    deleteSchedule(. taskName),
-    queueMessage(. taskName),
+    createSchedule,
+    deleteSchedule,
+    queueMessage,
     createSideEffectHandler,
     opts,
   )
