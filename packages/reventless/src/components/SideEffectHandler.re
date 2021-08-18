@@ -101,6 +101,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
       let count = events'Json->Belt.Array.size;
       events'Json
       ->Belt.Array.mapWithIndex((idx, event'Json) => {
+          let idx = idx + 1;
           event'Json->Message.logEvent'Json(
             {j|SideEffectHandler: incoming event $idx/$count:|j},
           );

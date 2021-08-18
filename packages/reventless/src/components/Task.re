@@ -105,6 +105,7 @@ let construct =
       let count = entries->Belt.Array.size;
       entries
       ->Belt.Array.mapWithIndex((idx, (id, meta: Message.meta, messageBody)) => {
+          let idx = idx + 1;
           Js.log({j|Task.publishCommands $idx/$count: $messageBody|j});
           AwsSdk.SQS.makeBatchEntry(
             // TODO: move to Adapter
