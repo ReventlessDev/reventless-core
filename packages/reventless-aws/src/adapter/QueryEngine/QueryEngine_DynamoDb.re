@@ -134,16 +134,16 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
 
 let make: QueryDb.Adapter.queryEngineMaker =
   resources => {
-    scan: (~serviceName) =>
+    scan: (~viewName) =>
       scanByTableName(
         ~tableName=
-          resources->Util_QueryDb.getStorageResource(serviceName)##name
+          resources->Util_QueryDb.getStorageResource(viewName)##name
           ->OutputFailsafeRuntime.get,
       ),
-    query: (~serviceName) =>
+    query: (~viewName) =>
       queryByTableName(
         ~tableName=
-          resources->Util_QueryDb.getStorageResource(serviceName)##name
+          resources->Util_QueryDb.getStorageResource(viewName)##name
           ->OutputFailsafeRuntime.get,
       ),
   };

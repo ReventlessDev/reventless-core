@@ -18,7 +18,7 @@ type filterConfig = (string, comparator, value);
 
 type query =
   (
-    ~serviceName: string,
+    ~viewName: string,
     ~key: string=?,
     ~id: value,
     ~filterConfigs: list(filterConfig)=?,
@@ -29,7 +29,7 @@ type query =
   Js.Promise.t(array(Js.Json.t));
 
 type scan =
-  (~serviceName: string, ~filterConfigs: list(filterConfig), ~limit: int) =>
+  (~viewName: string, ~filterConfigs: list(filterConfig), ~limit: int) =>
   Js.Promise.t(array(Js.Json.t));
 
 type t = {

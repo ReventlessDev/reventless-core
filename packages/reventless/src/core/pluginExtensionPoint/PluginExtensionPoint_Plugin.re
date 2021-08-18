@@ -2,13 +2,13 @@ open ReventlessSpec.ExtensionPointMapping;
 
 let forwardCommand =
     (
-      id,
+      _id,
       command,
       extensionPointName,
       queryEngine: ReventlessSpec.QueryEngine.t,
     ) =>
   queryEngine.scan(
-    ~serviceName=PluginSpec.name,
+    ~viewName=PluginSpec.name,
     ~filterConfigs=[
       ("extensionPointNames", Contains, String(extensionPointName)),
       ("status", Contains, String("Connected")),
@@ -38,10 +38,9 @@ let forwardCommand =
                       fun
                       | Some(extensionPoint) =>
                         command
-                        ->AwsSdk.SQS.sendMessage( // TODO: move to Adapter
+                        ->AwsSdk.SQS.sendMessage(
                             ~queueId=extensionPoint.commandTopic,
-                            //~messageGroupId=id,
-                             ~messageBody=_,
+                            ~messageBody=_,
                             (),
                           )
                         ->Js.Promise.then_(
