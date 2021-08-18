@@ -6,6 +6,7 @@ type outputs = {
   .
   "name": string,
   "eventCollector": EventCollector.outputs,
+  "eventsHandler": EventCollector.eventsHandler,
 };
 
 type sideEffects = array(module ReventlessSpec.SideEffect.T);
@@ -46,7 +47,11 @@ module Make = (EventCollector: EventCollector.T) : T => {
 
   [@bs.obj]
   external makeOutputs:
-    (~eventCollector: Reventless.EventCollector.outputs, ~name: string) =>
+    (
+      ~name: string,
+      ~eventCollector: Reventless.EventCollector.outputs,
+      ~eventsHandler: Reventless.EventCollector.eventsHandler
+    ) =>
     outputs =
     "";
   [@bs.send]
@@ -103,7 +108,11 @@ module Make = (EventCollector: EventCollector.T) : T => {
           switch (findSideEffect(sideEffects, event')) {
           | Some((eventObj, eventMeta, sideEffect)) =>
             module SideEffect = (val sideEffect);
-
+            Js.log3(
+              "SideEffectHandler.eventsHandler: handling event from source:",
+              SideEffect.Source.name,
+              eventObj,
+            );
             let idDecoded =
               eventObj
               ->Js.Dict.get("id")
@@ -158,6 +167,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~parent=self->Component.toPulumiResource,
         (),
       );
+    let eventsHandler = eventsHandler(sideEffects, queryEngine);
     let eventCollector =
       EventCollector.make(
         ~name=name->ComponentType.name(componentType),
@@ -166,7 +176,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
             (module SideEffect: ReventlessSpec.SideEffect.T) =>
             SideEffect.Source.name
           ),
-        ~eventsHandler=eventsHandler(sideEffects, queryEngine),
+        ~eventsHandler,
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
@@ -175,8 +185,9 @@ module Make = (EventCollector: EventCollector.T) : T => {
       );
 
     makeOutputs(
-      ~eventCollector=eventCollector->Component.extractOutputs,
       ~name,
+      ~eventCollector=eventCollector->Component.extractOutputs,
+      ~eventsHandler,
     )
     ->setOutputs(self, _);
   };
