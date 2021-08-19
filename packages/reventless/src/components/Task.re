@@ -3,6 +3,13 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.Task;
 
+type publishCommands =
+  (
+    . /*~queueName:*/ string,
+    array((/*~id:*/ string, /*~meta*/ Message.meta, /*~message:*/ string))
+  ) =>
+  Js.Promise.t(unit);
+
 type outputs = {
   .
   "name": string,
@@ -33,7 +40,9 @@ type createSideEffectHandler =
 
 type setup =
   (
-    . queryBucketName,
+    . ReventlessSpec.QueryEngine.t,
+    publishCommands,
+    queryBucketName,
     createSideEffectHandler,
     Pulumi.CustomResourceOptions.t
   ) =>
@@ -82,6 +91,32 @@ let construct =
       (),
     );
 
+  let publishCommands =
+    (. queueName, entries) => {
+      let count = entries->Belt.Array.size;
+      entries
+      ->Belt.Array.mapWithIndex((idx, (id, meta: Message.meta, messageBody)) => {
+          let idx = idx + 1;
+          Js.log({j|Task.publishCommands $idx/$count: $messageBody|j});
+          AwsSdk.SQS.makeBatchEntry(
+            // TODO: move to Adapter
+            ~groupId=id,
+            ~messageBody,
+            ~messageId=meta.msgId,
+            ~delay=None,
+          );
+        })
+      ->AwsSdk.SQS.sendMessageBatch(
+          // TODO: move to Adapter
+          ~queueId=
+            resources->Util.Aggregate.commandTopicConnectorResource(queueName)##id
+            ->OutputFailsafeRuntime.get,
+        )
+      |> Js.Promise.catch(err =>
+           Js.Promise.resolve(Js.log2("Task.publishCommands Error:", err))
+         );
+    };
+
   let createSideEffectHandler: createSideEffectHandler =
     (~sideEffects, (module SideEffectHandler)) =>
       SideEffectHandler.make(
@@ -101,7 +136,13 @@ let construct =
       )
       ->Component.extractOutputs;
 
-  setup(. queryBucketName, createSideEffectHandler, opts)
+  setup(.
+    queryEngine,
+    publishCommands,
+    queryBucketName,
+    createSideEffectHandler,
+    opts,
+  )
   ->setOutputs(self, _);
 };
 
