@@ -675,7 +675,7 @@ module Make =
               | _ => ()
             );
 
-        let sideEffectHandlers =
+        let _sideEffectHandlers =
           (tasksOutputs^)
           ->Belt.Array.keepMap(taskOutput =>
               taskOutput##sideEffectHandler
@@ -716,11 +716,6 @@ module Make =
                           extension##incomingEventHandler
                         ),
                       |]
-                      ->Belt.Array.concat(
-                          sideEffectHandlers->Belt.Array.map(sideEffectHandler =>
-                            sideEffectHandler(. [|event'Json|])
-                          ),
-                        )
                       ->Js.Promise.all
                       ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
                     _,
