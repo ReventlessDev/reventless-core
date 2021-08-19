@@ -34,7 +34,10 @@ type maker =
 type createSideEffectHandler =
   (
     ~sideEffects: SideEffectHandler.sideEffects,
-    (module SideEffectHandler.T)
+    ~memorySize: int=?,
+    ~timeout: int=?,
+    (module SideEffectHandler.T),
+    unit
   ) =>
   SideEffectHandler.outputs;
 
@@ -118,12 +121,20 @@ let construct =
     };
 
   let createSideEffectHandler: createSideEffectHandler =
-    (~sideEffects, (module SideEffectHandler)) =>
+    (
+      ~sideEffects,
+      ~memorySize=2048,
+      ~timeout=180,
+      (module SideEffectHandler),
+      _,
+    ) =>
       SideEffectHandler.make(
         ~name,
         ~sideEffects,
         ~queryEngine,
         ~scheduler,
+        ~memorySize,
+        ~timeout,
         ~opts=
           Some(
             Pulumi.ComponentResource.Options.make(
