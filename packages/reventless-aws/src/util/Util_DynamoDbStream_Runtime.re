@@ -1,6 +1,4 @@
 let parseDynamoDbStreamRecord = record => {
-  Js.log2("parseDynamoDbStreamRecord: record:", record);
-
   let eventJson =
     record##dynamodb
     ->Belt.Option.flatMap(dynamodb => dynamodb##_NewImage)
@@ -16,8 +14,5 @@ let parseDynamoDbStreamRecord = record => {
         ->Js.Dict.fromArray
         ->Js.Json.object_
       );
-
-  Js.log2("parseDynamoDbStreamRecord: event:", eventJson);
-
   eventJson;
 };
