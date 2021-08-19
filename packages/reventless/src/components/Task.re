@@ -12,18 +12,7 @@ type outputs = {
 
 type task; // TODO: rename to t - after refactoring
 
-type publishCommands =
-  (
-    . /*~queueName:*/ string,
-    array((/*~id:*/ string, /*~meta*/ Message.meta, /*~message:*/ string))
-  ) =>
-  Js.Promise.t(unit);
-
 type queryBucketName = string => string;
-
-type queueMessage =
-  (. /*~delay:*/ int, /*~id:*/ string, /*~message:*/ string) =>
-  Js.Promise.t(unit);
 
 type maker =
   (
@@ -37,7 +26,6 @@ type maker =
 
 type createSideEffectHandler =
   (
-    ~name: string,
     ~sideEffects: SideEffectHandler.sideEffects,
     (module SideEffectHandler.T)
   ) =>
@@ -45,12 +33,7 @@ type createSideEffectHandler =
 
 type setup =
   (
-    . ReventlessSpec.QueryEngine.t,
-    publishCommands,
-    queryBucketName,
-    ReventlessSpec.Schedule.create,
-    ReventlessSpec.Schedule.delete,
-    queueMessage,
+    . queryBucketName,
     createSideEffectHandler,
     Pulumi.CustomResourceOptions.t
   ) =>
@@ -85,13 +68,12 @@ let setOutputs = (self, outputs) => {
 
 let construct =
     (
-      ~taskName,
       ~setup: setup,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
-      ~queryEngine: ReventlessSpec.QueryEngine.t,
+      ~queryEngine,
       self,
-      _name,
+      name,
       resources,
     ) => {
   let opts =
@@ -100,82 +82,13 @@ let construct =
       (),
     );
 
-  let publishCommands =
-    (. queueName, entries) => {
-      let count = entries->Belt.Array.size;
-      entries
-      ->Belt.Array.mapWithIndex((idx, (id, meta: Message.meta, messageBody)) => {
-          let idx = idx + 1;
-          Js.log({j|Task.publishCommands $idx/$count: $messageBody|j});
-          AwsSdk.SQS.makeBatchEntry(
-            // TODO: move to Adapter
-            ~groupId=id,
-            ~messageBody,
-            ~messageId=meta.msgId,
-            ~delay=None,
-          );
-        })
-      ->AwsSdk.SQS.sendMessageBatch(
-          // TODO: move to Adapter
-          ~queueId=
-            resources->Util.Aggregate.commandTopicConnectorResource(queueName)##id
-            ->OutputFailsafeRuntime.get,
-        )
-      |> Js.Promise.catch(err =>
-           Js.Promise.resolve(Js.log2("Task.publishCommands Error:", err))
-         );
-    };
-
-  let createSchedule =
-    (. schedule: ReventlessSpec.Schedule.schedule) =>
-      (
-        Schedule.create(
-          scheduler,
-          resources->Util.EventCollector.getConnectorResource(
-            ComponentType.Plugin->ComponentType.toName,
-          ),
-        )
-      )(.
-        schedule,
-      );
-
-  let deleteSchedule =
-    (. name) =>
-      (
-        Schedule.delete(
-          scheduler,
-          resources->Util.EventCollector.getConnectorResource(
-            ComponentType.Plugin->ComponentType.toName,
-          ),
-        )
-      )(.
-        name,
-      );
-
-  let queueMessage =
-    (. delay, _id, messageBody) => {
-      let queueId =
-        resources->Util.EventCollector.getConnectorResource(
-          ComponentType.Plugin->ComponentType.toName,
-        )##id
-        ->OutputFailsafeRuntime.get;
-      Js.log4("Task.queueMessage:", delay, messageBody, queueId);
-      AwsSdk.SQS.sendMessage(
-        // TODO: move to Adapter
-        ~queueId,
-        // ~messageGroupId=id,
-        ~messageBody,
-        ~delay,
-        (),
-      );
-    };
-
   let createSideEffectHandler: createSideEffectHandler =
-    (~name, ~sideEffects, (module SideEffectHandler)) =>
+    (~sideEffects, (module SideEffectHandler)) =>
       SideEffectHandler.make(
         ~name,
         ~sideEffects,
         ~queryEngine,
+        ~scheduler,
         ~opts=
           Some(
             Pulumi.ComponentResource.Options.make(
@@ -188,16 +101,7 @@ let construct =
       )
       ->Component.extractOutputs;
 
-  setup(.
-    queryEngine,
-    publishCommands,
-    queryBucketName,
-    createSchedule,
-    deleteSchedule,
-    queueMessage,
-    createSideEffectHandler,
-    opts,
-  )
+  setup(. queryBucketName, createSideEffectHandler, opts)
   ->setOutputs(self, _);
 };
 
@@ -214,14 +118,7 @@ let make =
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name=name->ComponentType.name(componentType),
-    ~construct=
-      construct(
-        ~taskName=name,
-        ~setup,
-        ~queryBucketName,
-        ~scheduler,
-        ~queryEngine,
-      ),
+    ~construct=construct(~setup, ~queryBucketName, ~scheduler, ~queryEngine),
     ~opts,
     ~resources,
   );
