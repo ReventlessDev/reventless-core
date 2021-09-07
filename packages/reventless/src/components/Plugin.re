@@ -847,7 +847,7 @@ module Make =
 
         let eventCollector =
           EventCollector.make(
-            ~name=componentType->ComponentType.toName,
+            ~name=name->ComponentType.name(componentType),
             ~aggregateNames=
               extensionPointAggregateNames
               ->Belt.Array.concat(extensionAggregateNames)
