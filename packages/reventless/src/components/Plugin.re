@@ -437,10 +437,10 @@ module Make =
         let callHandler =
           fun
           | ReventlessSpec.PluginExtensionPointSpec.DoConnectPlugin({
-              id: pluginId,
-              extensionPoints: pluginExtensionPoints,
-              extensions: pluginExtensions,
-              eventCollector: pluginEventCollector,
+              id: otherPluginId,
+              extensionPoints: otherPluginExtensionPoints,
+              extensions: otherPluginExtensions,
+              eventCollector: otherPluginEventCollector,
             }) => {
               /* Current Plugin received `PluginConnected`:
                *  this means: current plugin was already deployed before and received plugin just has been deployed
@@ -450,7 +450,7 @@ module Make =
                *    connect received extensions to current plugin's extension point
                */
               let connectToExtensionPoints =
-                pluginExtensionPoints
+                otherPluginExtensionPoints
                 ->Belt.Array.keepMap(
                     ({name: extensionPointName, eventTopic}) =>
                     extensionsOutputs
@@ -476,7 +476,7 @@ module Make =
               let connectToExtensions =
                 extensionPointsOutputs
                 ->Belt.Array.keepMap(extensionPoint =>
-                    pluginExtensions
+                    otherPluginExtensions
                     ->Belt.Array.keep(({extensionPointName}) =>
                         extensionPoint##name == extensionPointName
                       )
@@ -488,8 +488,8 @@ module Make =
                             extensionPoint##name,
                             extensionPoint##eventTopic##publisher##id
                             ->Pulumi.Output.get,
-                            pluginId,
-                            pluginEventCollector,
+                            otherPluginId,
+                            otherPluginEventCollector,
                           ),
                         )
                       : None
@@ -605,7 +605,7 @@ module Make =
               }
             );
 
-        module ConnectPluginExtensionMapping =
+        module ConnectPluginMapping =
           ExtensionMapping.Make(
             ReventlessSpec.PluginExtensionPointSpec,
             {
@@ -649,7 +649,7 @@ module Make =
         let connectPluginExtensionMaker =
           ConnectPluginExtension.make(
             "Connect",
-            [|(module ConnectPluginExtensionMapping)|],
+            [|(module ConnectPluginMapping)|],
           );
         let connectPluginExtension =
           connectPluginExtensionMaker(
