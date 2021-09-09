@@ -16,10 +16,14 @@ let handleEvent = (handleCommands, queue, event, _) => {
     });
   handleCommands(. jsons)
   |> Js.Promise.then_(_ =>
-       records->Belt.Array.map(record =>
-         queue->Util_SQS_Runtime.deleteMessage(record##receiptHandle)
-       )
-       |> Js.Promise.all
+       records
+       ->Belt.Array.map(record =>
+           AwsSdk.SQS.DeleteMessageBatchEntry.make(
+             ~_Id=record##receiptHandle,
+             ~_ReceiptHandle=record##receiptHandle,
+           )
+         )
+       ->AwsSdk.SQS.deleteMessageBatch(~queueId=queue##id->Pulumi.Output.get)
        |> Js.Promise.then_(_ => Js.Promise.resolve())
      );
 };
