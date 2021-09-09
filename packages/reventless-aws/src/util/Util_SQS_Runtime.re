@@ -20,6 +20,12 @@ let deleteMessage = (queue: PulumiAws.SQS.Queue.t, receiptHandle) =>
     ~receiptHandle,
   );
 
+let deleteMessageBatch = (queue: PulumiAws.SQS.Queue.t, entries) =>
+  AwsSdk.SQS.deleteMessageBatch(
+    ~queueId=queue##id->Pulumi.Output.get,
+    entries,
+  );
+
 let parseSqsRecord = record => {
   let eventStr = record##body;
   switch (eventStr->Js.Json.parseExn) {
