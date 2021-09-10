@@ -18,17 +18,17 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
   handleEvents(. jsons)
   |> Js.Promise.then_(_ =>
        records
-       ->Belt.Array.keepMap(record =>
+       ->Belt.Array.keep(record =>
            switch (record##eventSource) {
-           | "aws:sqs" =>
-             Some(
-               AwsSdk.SQS.DeleteMessageBatchEntry.make(
-                 ~_Id=record##receiptHandle,
-                 ~_ReceiptHandle=record##receiptHandle,
-               ),
-             )
-           | _ => None
+           | "aws:sqs" => true
+           | _ => false
            }
+         )
+       ->Belt.Array.mapWithIndex((idx, record) =>
+           AwsSdk.SQS.DeleteMessageBatchEntry.make(
+             ~_Id=idx->string_of_int,
+             ~_ReceiptHandle=record##receiptHandle,
+           )
          )
        ->(
            fun

@@ -17,9 +17,9 @@ let handleEvent = (handleCommands, queue, event, _) => {
   handleCommands(. jsons)
   |> Js.Promise.then_(_ =>
        records
-       ->Belt.Array.map(record =>
+       ->Belt.Array.mapWithIndex((idx, record) =>
            AwsSdk.SQS.DeleteMessageBatchEntry.make(
-             ~_Id=record##receiptHandle,
+             ~_Id=idx->string_of_int,
              ~_ReceiptHandle=record##receiptHandle,
            )
          )
