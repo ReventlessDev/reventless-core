@@ -30,7 +30,15 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
            | _ => None
            }
          )
-       ->AwsSdk.SQS.deleteMessageBatch(~queueId=queue##id->Pulumi.Output.get)
+       ->(
+           fun
+           | [||] => Js.Promise.resolve()
+           | entries =>
+             AwsSdk.SQS.deleteMessageBatch(
+               ~queueId=queue##id->Pulumi.Output.get,
+               entries,
+             )
+         )
        |> Js.Promise.then_(_ => Js.Promise.resolve())
      );
 };
