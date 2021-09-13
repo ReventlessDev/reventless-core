@@ -42,20 +42,19 @@ let get = table =>
        });
   };
 
-let ttl = {
+let ttl = () => {
   let now_ms = Reventless.Message.now();
   let now_s = now_ms /. 1000.0;
   let now_s_rounded = now_s->int_of_float;
 
-  let week_in_s = 60 * 60 * 24 * 7;
-  //604800; // = 60*60*24*7
+  let week_in_s = 60 * 60 * 24 * 7; //604800
 
   (now_s_rounded + week_in_s)->float_of_int;
 };
 
 let referenceItem = (~referenceId) =>
   Js.Json.(
-    [("id", string(referenceId)), ("ttl", number(ttl))]
+    [("id", string(referenceId)), ("ttl", number(ttl()))]
     ->Js.Dict.fromList
     ->object_
   );
