@@ -1,12 +1,11 @@
+open AwsSdk.DynamoDb.DocumentClient;
 open Belt.Result;
 open Js.Promise;
 open Reventless;
 
 let load = table =>
   (. id) =>
-    table##name
-    ->Pulumi.Output.get
-    ->AwsSdk.DynamoDb.DocumentClient.queryByIdWithTableName(id)
+    table##name->Pulumi.Output.get->queryByIdWithTableName(id)
     |> then_(arr =>
          (
            switch (arr) {
@@ -25,13 +24,48 @@ let load = table =>
          Error(QueryDb.NotLoadedFromStorage(err))->resolve;
        });
 
-let save = table =>
+let calcPurgeTime = ttl => {
+  let now_ms = Reventless.Message.now();
+  let now_s = now_ms /. 1000.0;
+  let now_s_rounded = now_s->int_of_float;
+
+  (now_s_rounded + ttl)->float_of_int;
+};
+let purgeTimeAttributeName = "reventlessPurgeTime";
+
+let save = (table, ttl) =>
   (. _id, json, saveMode: QueryDb.saveMode) => {
     let tableName = table##name->Pulumi.Output.get;
     let stateStr = json->Js.Json.stringify;
+    let json =
+      ttl
+      ->Belt.Option.flatMap(ttl =>
+          json
+          ->Js.Json.decodeObject
+          ->Belt.Option.mapWithDefault(
+              // TODO: extract mapWithSideEffect to Util module
+              () => {
+                Js.log2(
+                  "QueryDbStorage_DynamoDb_Runtime: Error: Couldn't decode JSON",
+                  json->Js.Json.stringify,
+                );
+                None;
+              },
+              (obj, ()) => {
+                obj->Js.Dict.set(
+                  purgeTimeAttributeName,
+                  ttl->calcPurgeTime->Js.Json.number,
+                );
+                obj->Js.Json.object_->Some;
+              },
+              (),
+            )
+        )
+      ->Belt.Option.getWithDefault(json);
+
     switch (saveMode) {
     | Init =>
-      tableName->AwsSdk.DynamoDb.DocumentClient.putIfNotExists(
+      tableName->putIfNotExists(
         table##hashKey->Pulumi.Output.get,
         table##rangeKey->Pulumi.Output.get,
         json,
@@ -59,7 +93,7 @@ let save = table =>
            };
          })
     | Overwrite =>
-      tableName->AwsSdk.DynamoDb.DocumentClient.putWithTableName(json)
+      tableName->putWithTableName(json)
       |> then_(_ => {
            Js.log(
              {j|QueryDbStorage_DynamoDb_Runtime: saved Overwrite state to $tableName: $stateStr|j},
@@ -76,10 +110,10 @@ let save = table =>
   };
 
 let saveBatch:
-  (~maxRetries: int=?, PulumiAws.DynamoDb.Table.t) =>
+  (~maxRetries: int=?, ~ttl: option(int), PulumiAws.DynamoDb.Table.t) =>
   (. array((string, Js.Json.t))) =>
   Js.Promise.t(Belt.Result.t(unit, QueryDb.storageError)) =
-  (~maxRetries=3, table) =>
+  (~maxRetries=3, ~ttl, table) =>
     (. items: array((string, Js.Json.t))) => {
       let tableName = table##name->Pulumi.Output.get;
       open AwsSdk.DynamoDb.DocumentClient;
@@ -146,6 +180,34 @@ let saveBatch:
           _,
         );
     };
+
+let count = table =>
+  (. id, counter, inc) => {
+    let tableName = table##name->Pulumi.Output.get;
+    Js.log(
+      {j|AdapterAws.QueryDbDynamoDB.count: $tableName, $id, $counter, $inc|j},
+    );
+    update(
+      UpdateInput.make(
+        ~_TableName=tableName,
+        ~_Key={"id": id},
+        ~_UpdateExpression="ADD #count :inc",
+        ~_ExpressionAttributeNames=[("#count", counter)]->Js.Dict.fromList,
+        ~_ExpressionAttributeValues={":inc": inc},
+        ~_ReturnValues=`UPDATED_NEW,
+        (),
+      ),
+    )
+    |> then_((updateOutput: UpdateOutput.t({. count: int})) =>
+         Ok(updateOutput##_Attributes##count)->resolve
+       )
+    |> catch(err => {
+         Js.log(
+           {j|QueryDbStorage_DynamoDb_Runtime: Error: Couldn't count on $tableName: $err|j},
+         );
+         Error(QueryDb.NotCountedOnStorage(err))->resolve;
+       });
+  };
 
 let delete = table =>
   (. id, sort) => {
