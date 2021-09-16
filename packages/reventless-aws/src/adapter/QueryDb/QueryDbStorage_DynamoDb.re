@@ -1,4 +1,5 @@
 open PulumiAws;
+open DynamoDb.Table;
 
 type api = Pulumi.Output.t(PulumiAws.AppSync.GraphQLApi.t);
 type role = Pulumi.Output.t(PulumiAws.IAM.Role.t);
@@ -8,6 +9,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
     ~name,
     ~indexes,
     ~sortField,
+    ~ttl,
     ~api: api,
     ~apiRole: role,
     ~opts,
@@ -21,7 +23,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
             switch (projectionType) {
             | `ALL as projectionType
             | `KEYS_ONLY as projectionType =>
-              DynamoDb.Table.GlobalSecondaryIndex.make(
+              GlobalSecondaryIndex.make(
                 ~name=index,
                 ~hashKey=index,
                 ~rangeKey=?sortField,
@@ -29,7 +31,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
                 (),
               )
             | `INCLUDE(includes) =>
-              DynamoDb.Table.GlobalSecondaryIndex.make(
+              GlobalSecondaryIndex.make(
                 ~name=index,
                 ~hashKey=index,
                 ~rangeKey=?sortField,
@@ -65,15 +67,25 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
       ->Pulumi.Input.wrap;
 
     let table =
-      DynamoDb.Table.make(
+      make(
         ~name,
         ~args=
-          DynamoDb.Table.Args.make(
+          Args.make(
             ~attributes,
             ~hashKey="id"->Pulumi.Input.wrap,
             ~rangeKey=?sortField->Belt.Option.map(Pulumi.Input.wrap),
             ~billingMode=`PAY_PER_REQUEST,
             ~globalSecondaryIndexes,
+            ~ttl=?
+              ttl->Belt.Option.map(_ =>
+                Args.TableTtl.make(
+                  ~attributeName=
+                    QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName->Pulumi.Input.wrap,
+                  ~enabled=true->Pulumi.Input.wrap,
+                  (),
+                )
+                ->Pulumi.Input.wrap
+              ),
             (),
           ),
         ~opts,
@@ -105,6 +117,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
       load: table->QueryDbStorage_DynamoDb_Runtime.load,
       save: table->QueryDbStorage_DynamoDb_Runtime.save,
       saveBatch: table->QueryDbStorage_DynamoDb_Runtime.saveBatch,
+      count: table->QueryDbStorage_DynamoDb_Runtime.count,
       delete: table->QueryDbStorage_DynamoDb_Runtime.delete,
     };
   };

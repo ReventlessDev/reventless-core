@@ -18,6 +18,7 @@ type saveMode =
 type storageError =
   | NotSavedToStorage(Js.Promise.error)
   | NotLoadedFromStorage(Js.Promise.error)
+  | NotCountedOnStorage(Js.Promise.error)
   | NotDeletedFromStorage(Js.Promise.error)
   | StaleState;
 
@@ -26,22 +27,11 @@ type load('id, 'state) =
 type save('id, 'state) =
   (. 'id, 'state, saveMode) =>
   Js.Promise.t(Belt.Result.t(unit, storageError));
+type count('id) =
+  (. 'id, string, int) => Js.Promise.t(Belt.Result.t(int, storageError));
 type delete('id) =
   (. 'id, option((string, string))) =>
   Js.Promise.t(Belt.Result.t(unit, storageError));
-
-/*
- type functions('id, 'state) = {
-   .
-   "load": load('id, 'state),
-   "save": save('id, 'state),
-   "delete": delete('id),
- };
- */
-
-// external toOutputs: functions('id, 'command) => outputs = "%identity";
-
-// type t('id, 'state) = functions('id, 'state);
 
 module type T = {
   module Spec: View.Spec;
@@ -50,10 +40,12 @@ module type T = {
   type t;
   type nonrec load = load(Spec.Id.t, View.state);
   type nonrec save = save(Spec.Id.t, View.state);
+  type nonrec count = count(Spec.Id.t);
   type nonrec delete = delete(Spec.Id.t);
 
   let make:
     (
+      ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       ~resources: resources,
       unit
@@ -62,6 +54,7 @@ module type T = {
 
   let load: Component.t(t, outputs) => load;
   let save: Component.t(t, outputs) => save;
+  let count: Component.t(t, outputs) => count;
   let delete: Component.t(t, outputs) => delete;
 
   let outputs: Component.t(t, outputs) => outputs;
@@ -73,6 +66,7 @@ module Adapter = {
     dataSourceName: Pulumi.Output.t(string), // TODO create in API
     load: load(string, Js.Json.t),
     save: save(string, Js.Json.t),
+    count: count(string),
     delete: delete(string),
   };
   type storageMaker('api, 'role) =
@@ -80,6 +74,7 @@ module Adapter = {
       ~name: string,
       ~indexes: list(View.index),
       ~sortField: option(string),
+      ~ttl: option(int),
       ~api: 'api,
       ~apiRole: 'role,
       ~opts: Pulumi.CustomResourceOptions.t,
@@ -147,6 +142,7 @@ module Make =
 
   type nonrec load = load(Spec.Id.t, View.state);
   type nonrec save = save(Spec.Id.t, View.state);
+  type nonrec count = count(Spec.Id.t);
   type nonrec delete = delete(Spec.Id.t);
 
   type constructed;
@@ -193,10 +189,13 @@ module Make =
   [@bs.set]
   external setSave: (Component.t(t, outputs), save) => unit = "save";
   [@bs.set]
+  external setCount: (Component.t(t, outputs), count) => unit = "count";
+  [@bs.set]
   external setDelete: (Component.t(t, outputs), delete) => unit = "delete";
 
   [@bs.get] external load: Component.t(t, outputs) => load = "load";
   [@bs.get] external save: Component.t(t, outputs) => save = "save";
+  [@bs.get] external count: Component.t(t, outputs) => count = "count";
   [@bs.get] external delete: Component.t(t, outputs) => delete = "delete";
 
   let decode = (id, item) =>
@@ -234,6 +233,11 @@ module Make =
       };
     };
 
+  let countFn = storage =>
+    (. id, fieldName, value) => {
+      storage.Adapter.count(. id->Spec.Id.toString, fieldName, value);
+    };
+
   let deleteFn = storage =>
     (. id, sort) => {
       storage.Adapter.delete(. id->Spec.Id.toString, sort);
@@ -242,7 +246,7 @@ module Make =
   let outputs: Component.t(t, outputs) => outputs =
     component => Component.extractOutputs(component);
 
-  let construct = (self, name, api, apiRole, resources) => {
+  let construct = (~ttl, self, name, api, apiRole, resources) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -257,6 +261,7 @@ module Make =
         ~name=storageName,
         ~indexes=View.indexes,
         ~sortField,
+        ~ttl,
         ~api,
         ~apiRole,
         ~opts,
@@ -266,6 +271,7 @@ module Make =
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);
+    self->setCount(storage->countFn);
     self->setDelete(storage->deleteFn);
 
     /*
@@ -297,16 +303,17 @@ module Make =
 
   let make:
     (
+      ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs) =
-    (~opts=?, ~resources, _) => {
+    (~ttl=?, ~opts=?, ~resources, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=View.name->Belt.Option.getWithDefault(Spec.name),
-        ~construct,
+        ~construct=construct(~ttl),
         ~opts,
         ~api=Config.api,
         ~apiRole=Config.apiRole,
