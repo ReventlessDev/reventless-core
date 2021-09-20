@@ -119,9 +119,10 @@ module Make =
         {
           let handleAction =
             fun
-            | Create(state) => save(. id, state, Reventless.QueryDb.Init)
+            | Create(state) =>
+              save(. id, state, Reventless.QueryDb.Init, None)
             | Update(state) =>
-              save(. id, state, Reventless.QueryDb.Overwrite)
+              save(. id, state, Reventless.QueryDb.Overwrite, None)
             | Delete(state) =>
               delete(.
                 id,
