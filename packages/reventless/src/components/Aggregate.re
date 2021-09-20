@@ -334,8 +334,8 @@ module Make =
           EventLog.replay(eventLog),
           EventTopic.publish(eventTopic),
           eventsHandler,
-          Config.atomicCounter##increment,
-          Config.atomicCounter##get,
+          (. _, _, _) => Ok(0)->Js.Promise.resolve,
+          (. _, _) => Ok(0)->Js.Promise.resolve,
         ));
 
       let commandTopic =
