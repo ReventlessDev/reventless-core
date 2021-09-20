@@ -31,6 +31,7 @@ module Make =
        (
          Target: ReventlessSpec.EventMapping.Target,
          EventCollector: EventCollector.T,
+         AtomicCounter: AtomicCounter.T,
        )
        : (T with module Target := Target) => {
   type constructed;
@@ -103,7 +104,7 @@ module Make =
     });
   };
 
-  let eventsHandler = (resources, mappings, queryEngine) =>
+  let eventsHandler = (atomicCounter, resources, mappings, queryEngine) =>
     (. events'Json) => {
       let count = events'Json->Belt.Array.size;
       events'Json
@@ -178,6 +179,9 @@ module Make =
                                  ->Js.Promise.resolve,
                                _,
                              )
+                  | SetCounterTarget(counterTarget) =>
+                    Js.Promise.resolve([||])
+                  | Count(countItem) => Js.Promise.resolve([||])
                   }
                 )
               ->Some
@@ -225,6 +229,9 @@ module Make =
         ~parent=self->Component.toPulumiResource,
         (),
       );
+
+    let atomicCounter = AtomicCounter.make(~opts, ~resources);
+
     let eventCollector =
       EventCollector.make(
         ~name=Target.name->ComponentType.name(componentType),
@@ -232,7 +239,8 @@ module Make =
           mappings->Belt.Array.map((module Mapping: Mapping) =>
             Mapping.Source.name
           ),
-        ~eventsHandler=eventsHandler(resources, mappings, queryEngine),
+        ~eventsHandler=
+          eventsHandler(atomicCounter, resources, mappings, queryEngine),
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
