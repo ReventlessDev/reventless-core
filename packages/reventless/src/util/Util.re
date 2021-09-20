@@ -7,4 +7,5 @@ module EventTopic = Util_EventTopic;
 module ExtensionPoint = Util_ExtensionPoint;
 module Pulumi = Util_Pulumi;
 module QueryDb = Util_QueryDb;
+module ReadModel = Util_ReadModel;
 module VPC = Util_Vpc;
