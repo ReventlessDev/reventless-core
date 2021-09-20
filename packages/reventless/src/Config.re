@@ -7,6 +7,5 @@ module type T = {
   let apiRole: role;
   let userPool: userPool;
 
-  let atomicCounter: AtomicCounter.t;
   let scheduler: Scheduler.t;
 };
