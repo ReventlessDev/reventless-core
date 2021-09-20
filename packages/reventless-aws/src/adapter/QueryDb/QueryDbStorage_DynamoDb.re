@@ -104,6 +104,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
       dataSourceName: dataSource##name,
       load: table->QueryDbStorage_DynamoDb_Runtime.load,
       save: table->QueryDbStorage_DynamoDb_Runtime.save,
+      saveBatch: table->QueryDbStorage_DynamoDb_Runtime.saveBatch,
       delete: table->QueryDbStorage_DynamoDb_Runtime.delete,
     };
   };
