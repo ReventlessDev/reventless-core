@@ -2,45 +2,60 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.AtomicCounter;
 
-type increment =
-  (. /*~name*/ string, /*~id*/ string, /*~ref*/ string) =>
-  Js.Promise.t(Belt.Result.t(int, string));
-type get =
-  (. /*~name*/ string, /*~id*/ string) =>
-  Js.Promise.t(Belt.Result.t(int, string));
-
-type functions = {
+type outputs = {
   .
-  "increment": increment,
-  "get": get,
+  "referencesDb": resource,
+  "counterDb": resource,
 };
 
-type outputs = {. "counter": resource};
-external toOutputs: functions => outputs = "%identity";
+type countItem = {
+  counter: string,
+  id: string,
+  item: string,
+};
 
-type t = functions;
+type counterTarget = {
+  counter: string,
+  id: string,
+  target: int,
+};
+
+type count = array(countItem) => Js.Promise.t(unit);
+type setCounterTarget = counterTarget => Js.Promise.t(unit);
+
+module type Handler = {let onFinished: string => Js.Promise.t(unit);};
+
+exception NotCounted(string);
 
 module type T = {
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t;
+  type t;
+  let make:
+    (
+      ~ttl: int=?,
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
+      unit
+    ) =>
+    Component.t(t, outputs);
+
+  let count: Component.t(t, outputs) => count;
+  let setCounterTarget: Component.t(t, outputs) => setCounterTarget;
 };
 
-module Adapter = {
-  let counter = "Counter";
-  type counter = {
-    resource,
-    increment,
-    get,
-  };
+module Make =
+       (
+         Config: Config.T,
+         Handler: Handler,
+         QueryDbStorage:
+           QueryDb.Adapter.Storage with
+             type api = Config.api and type role = Config.role,
+       )
+       : T => {
+  type t;
 
-  module type Counter = {
-    let make:
-      (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => counter;
-  };
-};
-
-module Make = (Counter: Adapter.Counter) : T => {
   type constructed;
-  type construct = (t, string) => constructed;
+  type construct =
+    (Component.t(t, outputs), string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -48,46 +63,190 @@ module Make = (Counter: Adapter.Counter) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t)
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources
     ) =>
-    t =
+    Component.t(t, outputs) =
     "default";
 
-  [@bs.obj] external makeOutputs: (~counter: resource) => outputs = "";
+  [@bs.obj]
+  external makeOutputs:
+    (~referencesDb: resource, ~counterDb: resource) => outputs =
+    "";
 
   [@bs.send]
-  external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+    "registerOutputs";
+  [@bs.send]
+  external setOutputs: (Component.t(t, outputs), outputs) => unit =
+    "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setIncrement: (t, increment) => unit = "increment";
-  [@bs.set] external setGet: (t, get) => unit = "get";
+  [@bs.set]
+  external setCount: (Component.t(t, outputs), count) => unit = "count";
+  [@bs.get] external count: Component.t(t, outputs) => count = "count";
 
-  let construct = (self, name) => {
+  [@bs.set]
+  external setSetCounterTarget:
+    (Component.t(t, outputs), setCounterTarget) => unit =
+    "setCounterTarget";
+  [@bs.get]
+  external setCounterTarget: Component.t(t, outputs) => setCounterTarget =
+    "setCounterTarget";
+
+  let construct = (~ttl: option(int), self, name, resources) => {
     let opts =
-      Pulumi.CustomResourceOptions.make(
-        ~parent=self->Pulumi.Resource.makeFromJs,
+      Pulumi.ComponentResource.Options.make(
+        ~parent=self->Component.toPulumiResource,
         (),
       );
 
-    let counter = Counter.make(~name, ~opts);
+    module AggregateSpec = {
+      module Id = Id.String;
+      let name = name;
+    };
 
-    self->setIncrement(counter.increment);
-    self->setGet(counter.get);
+    module ReferencesViewSpec = {
+      module Spec = AggregateSpec;
+      let name = Some(name ++ "References");
+      [@decco]
+      type state = unit;
 
-    makeOutputs(~counter=counter.resource) |> self->setOutputs;
+      let resolveIdConfigs = [];
+      let resolveIdsConfigs = [];
+      let sortConfig = None;
+      let indexes = [];
+    };
+
+    module ReferencesDb =
+      QueryDb.Make(
+        Config,
+        AggregateSpec,
+        ReferencesViewSpec,
+        QueryDbStorage,
+        (QueryDb.Adapter.NoResolvers(Config)),
+      );
+
+    module CounterViewSpec = {
+      module Spec = AggregateSpec;
+      let name = Some(name ++ "Counter");
+      [@decco]
+      type state = {count: int}; //TODO: generalize
+
+      let resolveIdConfigs = [];
+      let resolveIdsConfigs = [];
+      let sortConfig = None;
+      let indexes = [];
+    };
+
+    module CounterDb =
+      QueryDb.Make(
+        Config,
+        AggregateSpec,
+        CounterViewSpec,
+        QueryDbStorage,
+        (QueryDb.Adapter.NoResolvers(Config)),
+      );
+
+    let countFn = (saveBatch, countItems) =>
+      saveBatch(.
+        countItems->Belt.Array.map(({counter, id, item}) =>
+          (
+            (counter ++ "-" ++ id ++ "#" ++ item)
+            ->AggregateSpec.Id.makeFromString,
+            (),
+            ttl,
+          )
+        ),
+      )
+      |> Js.Promise.then_(
+           fun
+           | Belt.Result.Ok(_) => Js.Promise.resolve()
+           | Error(Reventless.QueryDb.NotSavedToStorage(err)) =>
+             NotCounted(err)->Js.Promise.reject
+           | Error(_) => NotCounted("Unknown error")->Js.Promise.reject,
+         );
+
+    let setCounterTargetFn = (count, {counter, id, target}) =>
+      count(. id->Id.String.makeFromString, counter, target)
+      |> Js.Promise.then_(
+           fun
+           | Belt.Result.Ok(_) => Js.Promise.resolve()
+           | Error(Reventless.QueryDb.NotSavedToStorage(err)) =>
+             NotCounted(err)->Js.Promise.reject
+           | Error(_) => NotCounted("Unknown error")->Js.Promise.reject,
+         );
+
+    let referencesDb = ReferencesDb.make(~ttl?, ~opts, ~resources, ());
+    let counterDb = CounterDb.make(~ttl?, ~opts, ~resources, ());
+
+    self->setCount(referencesDb->ReferencesDb.saveBatch->countFn);
+    self->setSetCounterTarget(counterDb->CounterDb.count->setCounterTargetFn);
+
+    // let handleStreamEvent = (handleEvents, streamEvent, _) => {
+    //   let records = streamEvent##_Records->Belt.Option.getWithDefault([||]);
+    //   let jsons =
+    //     records->Belt.Array.keepMap(record =>
+    //       switch (record##eventSource) {
+    //       | "aws:dynamodb" =>
+    //         record->Util_DynamoDbStream_Runtime.parseDynamoDbStreamRecord
+    //       | eventSource =>
+    //         Js.log2(
+    //           "EventCollectorConnector_DynamoDbStream_Runtime: ignoring record from eventSource:",
+    //           eventSource,
+    //         );
+    //         None;
+    //       }
+    //     );
+
+    //   handleEvents(. jsons)
+    //   |> Js.Promise.catch(err =>
+    //        Js.Exn.raiseError(err->AwsSdk.Error.ofPromise##message)
+    //      );
+    // };
+    // let eventHandlerLambda =
+    //   PulumiAws.Lambda.CallbackFunction.make(
+    //     ~name,
+    //     ~args=
+    //       PulumiAws.Lambda.CallbackFunction.Args.make(
+    //         ~callback=
+    //           EventCollectorConnector_SQS_Runtime.handleCallbackEvent(
+    //             handleEvents,
+    //             queue,
+    //           ),
+    //         (),
+    //       ),
+    //     ~opts,
+    //     (),
+    //   );
+
+    makeOutputs(
+      ~referencesDb=referencesDb->ReferencesDb.outputs##storage,
+      ~counterDb=counterDb->CounterDb.outputs##storage,
+    )
+    |> self->setOutputs;
   };
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => t =
-    (~opts=?, _) => {
+  let oneWeek = 60 * 60 * 24 * 7; //604800 sec
+
+  let make:
+    (
+      ~ttl: int=?,
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
+      unit
+    ) =>
+    Component.t(t, outputs) =
+    (~ttl=oneWeek, ~opts=?, ~resources, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=componentType->ComponentType.toName,
-        ~construct,
+        ~construct=construct(~ttl=Some(ttl)),
         ~opts,
+        ~resources,
       );
     };
 };
