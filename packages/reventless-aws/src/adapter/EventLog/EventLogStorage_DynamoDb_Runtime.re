@@ -3,7 +3,7 @@ let append = table =>
     jsons
     |> table##name
        ->Pulumi.Output.get
-       ->AwsSdk.DynamoDb.DocumentClient.batchWrite(
+       ->AwsSdk.DynamoDb.DocumentClient.putMany(
            "attribute_not_exists (sequenceNr)",
          );
 
