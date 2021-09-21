@@ -11,7 +11,7 @@ type outputs = {
 
 type service; // TODO: rename this back to t after refactor
 type maker =
-  (~opts: Pulumi.ComponentResource.Options.t=?, ~resources: resources, unit) =>
+  (~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
   Component.t(service, outputs);
 
 module type T = {let make: maker;};
@@ -36,8 +36,7 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct =
-    (Component.t(service, outputs), string, resources) => constructed;
+  type construct = (Component.t(service, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -45,8 +44,7 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     Component.t(service, outputs) =
     "default";
@@ -87,22 +85,17 @@ module Make =
   };
 
   let construct: construct =
-    (self, _name, resources) => {
+    (self, _name) => {
       let opts =
         Pulumi.ComponentResource.Options.make(
           ~parent=self->Component.toPulumiResource,
           (),
         );
 
-      let readModel = ReadModel.make(~opts, ~resources, ());
+      let readModel = ReadModel.make(~opts, ());
 
       let aggregate =
-        Aggregate.make(
-          ~eventsHandler=readModel->ReadModel.update,
-          ~opts,
-          ~resources,
-          (),
-        );
+        Aggregate.make(~eventsHandler=readModel->ReadModel.update, ~opts, ());
 
       makeOutputs(
         ~name=Spec.name,
@@ -112,12 +105,11 @@ module Make =
       ->setOutputs(self, _);
     };
 
-  let make = (~opts=?, ~resources, _) =>
+  let make = (~opts=?, _) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct,
       ~opts,
-      ~resources,
     );
 };

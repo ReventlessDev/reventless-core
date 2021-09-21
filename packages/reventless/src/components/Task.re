@@ -26,8 +26,7 @@ type maker =
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources
+    ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   Component.t(task, outputs);
 
@@ -52,8 +51,7 @@ type setup =
   outputs;
 
 type constructed;
-type construct =
-  (Component.t(task, outputs), string, resources) => constructed;
+type construct = (Component.t(task, outputs), string) => constructed;
 
 [@bs.module "./Component"] [@bs.new]
 external make:
@@ -61,8 +59,7 @@ external make:
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources
+    ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   Component.t(task, outputs) =
   "default";
@@ -86,7 +83,6 @@ let construct =
       ~queryEngine,
       self,
       name,
-      resources,
     ) => {
   let opts =
     Pulumi.CustomResourceOptions.make(
@@ -112,7 +108,7 @@ let construct =
       ->AwsSdk.SQS.sendMessageBatch(
           // TODO: move to Adapter
           ~queueId=
-            resources->Util.Aggregate.commandTopicConnectorResource(queueName)##id
+            Util.Aggregate.Runtime.commandTopicConnectorResource(queueName)##id
             ->OutputFailsafeRuntime.get,
         )
       |> Js.Promise.catch(err =>
@@ -142,7 +138,6 @@ let construct =
               (),
             ),
           ),
-        ~resources,
         (),
       )
       ->Component.extractOutputs;
@@ -157,21 +152,11 @@ let construct =
   ->setOutputs(self, _);
 };
 
-let make =
-    (
-      ~name,
-      ~setup,
-      ~queryBucketName,
-      ~scheduler,
-      ~queryEngine,
-      ~opts,
-      ~resources,
-    ) => {
+let make = (~name, ~setup, ~queryBucketName, ~scheduler, ~queryEngine, ~opts) => {
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name=name->ComponentType.name(componentType),
     ~construct=construct(~setup, ~queryBucketName, ~scheduler, ~queryEngine),
     ~opts,
-    ~resources,
   );
 };

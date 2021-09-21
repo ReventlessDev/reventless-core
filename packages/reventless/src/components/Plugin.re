@@ -14,7 +14,6 @@ type outputFields = {
   "services": Js.Dict.t(Service.outputs),
   "tasks": Js.Dict.t(Task.outputs),
   "eventMappers": Js.Dict.t(EventMapper.outputs),
-  "resolvers": array(resource),
   "heartbeat": Heartbeat.outputs,
   "serviceNameToExtensionPointsMapping":
     Js.Dict.t(array(ExtensionPoint.outputs)),
@@ -22,7 +21,7 @@ type outputFields = {
     Js.Dict.t(array(Extension.outputs)),
   "incomingServiceNameToExtensionsMapping":
     Js.Dict.t(array(Extension.outputs)),
-  "resources": resources,
+  "resources": Pulumi.Output.t(Resources.t),
 };
 
 type outputs = {. "outputs": Pulumi.Output.t(outputFields)};
@@ -84,7 +83,6 @@ module Make =
       ~services: Js.Dict.t(Service.outputs),
       ~tasks: Js.Dict.t(Task.outputs),
       ~eventMappers: Js.Dict.t(EventMapper.outputs),
-      ~resolvers: array(resource),
       ~heartbeat: Heartbeat.outputs,
       ~serviceNameToExtensionPointsMapping: Js.Dict.t(
                                               array(ExtensionPoint.outputs),
@@ -95,7 +93,7 @@ module Make =
       ~incomingServiceNameToExtensionsMapping: Js.Dict.t(
                                                  array(Extension.outputs),
                                                ),
-      ~resources: resources
+      ~resources: Pulumi.Output.t(Resources.t)
     ) =>
     outputFields =
     "";
@@ -137,13 +135,16 @@ module Make =
 
     let id = makeId(name, version);
 
-    let resources: resources = Js.Dict.empty();
-
     let services =
-      serviceMakers->Belt.Array.map(serviceMaker =>
-        serviceMaker(~opts, ~resources, ())
-      );
+      serviceMakers->Belt.Array.map(serviceMaker => serviceMaker(~opts, ()));
     let servicesOutputs = services->Component.extractMultipleOutputs;
+
+    let finalizeResourcesAsSideEffect = outputs => {
+      let _sideEffect =
+        Pulumi.Output.allJsT(outputs)
+        ->Pulumi.Output.apply(_outputs => Resources.Deploytime.finalize());
+      outputs;
+    };
 
     (
       switch (Interstack.coreStackOutput) {
@@ -166,18 +167,18 @@ module Make =
           ->Adapter.toResource;
         let corePluginCommandTopicId = corePluginCommandTopic##id;
 
-        resources->Util.ExtensionPoint.setCommandTopicConnectorResource(
+        Util.ExtensionPoint.Deploytime.setCommandTopicConnectorResource(
           corePluginCommandTopic,
           ReventlessSpec.PluginExtensionPointSpec.name,
         );
-        resources->Util.ExtensionPoint.setEventTopicPublisherResource(
+        Util.ExtensionPoint.Deploytime.setEventTopicPublisherResource(
           corePluginExtensionPoint##eventTopic##publisher
           ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
           ->Adapter.toResource,
           ReventlessSpec.PluginExtensionPointSpec.name,
         );
 
-        let queryEngine = QueryEngineAdapter.make(resources);
+        let queryEngine = QueryEngineAdapter.queryEngine; // FIXME: does make need to be a fn??
 
         let extensionPoints =
           extensionPointMakers->Belt.Array.map(extensionPointMaker =>
@@ -185,7 +186,6 @@ module Make =
               ~scheduler,
               ~queryEngine,
               ~opts=Some(opts),
-              ~resources,
               (),
             )
           );
@@ -198,7 +198,6 @@ module Make =
               ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
               ~queryEngine,
               ~opts=Some(opts),
-              ~resources,
               (),
             )
           );
@@ -656,7 +655,6 @@ module Make =
             ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
             ~queryEngine,
             ~opts=Some(opts),
-            ~resources,
             (),
           );
 
@@ -673,7 +671,6 @@ module Make =
               ~scheduler,
               ~queryEngine,
               ~opts=Some(opts),
-              ~resources,
             )
             ->Component.extractOutputs
           );
@@ -685,17 +682,10 @@ module Make =
                 ~queryEngine,
                 ~memorySize=128,
                 ~opts=Some(opts),
-                ~resources,
                 (),
               )
             )
           ->Component.extractMultipleOutputs;
-
-        let resolvers =
-          servicesOutputs
-          ->ResourceQueryDeploytime.allResolversMakers
-          ->Belt.Array.map(resolverMaker => resolverMaker(resources))
-          ->Belt.Array.concatMany;
 
         module Set = Belt.Set.String;
 
@@ -858,7 +848,6 @@ module Make =
             |],
             ~eventsHandler,
             ~opts=Some(opts),
-            ~resources,
             (),
           );
         let eventCollectorOutputs = eventCollector->Component.extractOutputs;
@@ -886,16 +875,18 @@ module Make =
           ~services=servicesOutputs->toDict,
           ~tasks=(tasksOutputs^)->toDict,
           ~eventMappers=eventMappersOutputs->toDict,
-          ~resolvers,
           ~heartbeat=heartbeat->Component.extractOutputs,
           ~serviceNameToExtensionPointsMapping,
           ~outgoingServiceNameToExtensionsMapping,
           ~incomingServiceNameToExtensionsMapping,
-          ~resources,
+          ~resources=Resources.resources,
         );
       })
     ->makeOutputs(~outputs=_)
+    ->finalizeResourcesAsSideEffect
     ->setOutputs(self, _);
+    // StackReference outputs are not wrapped in Pulumi.Outputs !
+    // TODO: handle paging of subscriptions
   };
 
   let make: maker =

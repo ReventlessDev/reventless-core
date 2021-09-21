@@ -1,7 +1,7 @@
 open PulumiAws;
 
 let make: Reventless.EventTopic.Adapter.publisherMaker =
-  (~name, ~opts, ~resources as _) => {
+  (~name, ~opts) => {
     let topic = SNS.Topic.make(~name, ~args=SNS.Topic.Args.make(), ~opts, ());
 
     {

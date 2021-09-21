@@ -1,7 +1,7 @@
 open PulumiAws;
 
 let make: Reventless.CommandTopic.Adapter.connectorMaker =
-  (~name, ~handleCommands, ~memorySize, ~timeout, ~opts, ~resources as _) => {
+  (~name, ~handleCommands, ~memorySize, ~timeout, ~opts) => {
     let queue =
       SQS.Queue.make(
         ~name,

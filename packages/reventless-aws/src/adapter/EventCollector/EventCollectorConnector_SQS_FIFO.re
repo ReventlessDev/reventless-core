@@ -10,7 +10,6 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     ~memorySize,
     ~timeout,
     ~opts,
-    ~resources,
   ) => {
     let queue =
       SQS.Queue.make(
@@ -86,10 +85,9 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let (snsFifoTopics, otherTopics) =
-      resources
-      ->Reventless.Util.Aggregate.eventTopics(aggregateNames)
+      Reventless.Util.Aggregate.Deploytime.eventTopics(aggregateNames)
       ->Belt.Array.concat(
-          resources->Reventless.Util.ExtensionPoint.eventTopics(
+          Reventless.Util.ExtensionPoint.Deploytime.eventTopics(
             extensionPointNames,
           ),
         )

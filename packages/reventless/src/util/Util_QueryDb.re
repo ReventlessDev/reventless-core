@@ -1,16 +1,25 @@
 let storage = "Storage";
 
-let setStorageResource = (resources, resource, name) =>
-  resources->Resources.set(~adapter=storage, ~name, ~resource);
-let getStorageResource = (resources, name) =>
-  resources->Resources.getExn(
-    ~adapter=storage,
-    ~name=name->ComponentType.name(ComponentType.QueryDb),
-  );
+module Deploytime = {
+  let setStorageResource = (resource, name) =>
+    Resources.Deploytime.set(~adapter=storage, ~name, ~resource);
+  let getStorageResource = name =>
+    Resources.Deploytime.getExn(
+      ~adapter=storage,
+      ~name=name->ComponentType.name(ComponentType.QueryDb),
+    );
+};
+module Runtime = {
+  let getStorageResource = name =>
+    Resources.Runtime.getExn(
+      ~adapter=storage,
+      ~name=name->ComponentType.name(ComponentType.QueryDb),
+    );
 
-let filterQueryDbStorages = (resources, keep) =>
-  resources->Resources.filter(
-    ~name=ComponentType.QueryDb->ComponentType.toName,
-    ~adapter=storage,
-    ~keep,
-  );
+  let filterQueryDbStorages = keep =>
+    Resources.Runtime.filter(
+      ~name=ComponentType.QueryDb->ComponentType.toName,
+      ~adapter=storage,
+      ~keep,
+    );
+};

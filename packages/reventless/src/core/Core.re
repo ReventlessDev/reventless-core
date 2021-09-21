@@ -74,21 +74,16 @@ module Make =
         (),
       );
 
-    let resources: resources = Js.Dict.empty();
-
     let services =
-      serviceMakers->Belt.Array.map(serviceMaker =>
-        serviceMaker(~opts, ~resources, ())
-      );
+      serviceMakers->Belt.Array.map(serviceMaker => serviceMaker(~opts, ()));
     let servicesOutputs = services->Component.extractMultipleOutputs;
 
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
         extensionPointMaker(
           ~scheduler,
-          ~queryEngine=QueryEngineAdapter.make(resources),
+          ~queryEngine=QueryEngineAdapter.queryEngine, // FIXME: does make needs to be a fn??
           ~opts=Some(opts),
-          ~resources,
           (),
         )
       );
@@ -147,7 +142,6 @@ module Make =
         ~aggregateNames,
         ~eventsHandler,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
 

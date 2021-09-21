@@ -6,5 +6,3 @@ type resource = {
   "info": Pulumi.Output.t(string),
   "service": string,
 };
-
-type resources = Js.Dict.t(resource);

@@ -132,18 +132,17 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
      });
 };
 
-let make: QueryDb.Adapter.queryEngineMaker =
-  resources => {
-    scan: (~viewName) =>
-      scanByTableName(
-        ~tableName=
-          resources->Util_QueryDb.getStorageResource(viewName)##name
-          ->OutputFailsafeRuntime.get,
-      ),
-    query: (~viewName) =>
-      queryByTableName(
-        ~tableName=
-          resources->Util_QueryDb.getStorageResource(viewName)##name
-          ->OutputFailsafeRuntime.get,
-      ),
-  };
+let queryEngine: ReventlessSpec.QueryEngine.t = {
+  scan: (~viewName) =>
+    scanByTableName(
+      ~tableName=
+        Util_QueryDb.Runtime.getStorageResource(viewName)##name
+        ->OutputFailsafeRuntime.get,
+    ),
+  query: (~viewName) =>
+    queryByTableName(
+      ~tableName=
+        Util_QueryDb.Runtime.getStorageResource(viewName)##name
+        ->OutputFailsafeRuntime.get,
+    ),
+};

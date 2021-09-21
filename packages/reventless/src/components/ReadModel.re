@@ -29,11 +29,7 @@ module type T = {
   let update: Component.t(t, outputs) => update(Spec.Id.t, Spec.event);
 
   let make:
-    (
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
+    (~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
     Component.t(t, outputs);
 };
 
@@ -57,8 +53,7 @@ module Make =
   type update = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -66,8 +61,7 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -200,14 +194,14 @@ module Make =
         }
       );
 
-  let construct = (self, _, resources) => {
+  let construct = (self, _) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
         (),
       );
 
-    let queryDb = QueryDb.make(~opts, ~resources, ());
+    let queryDb = QueryDb.make(~opts, ());
 
     updateFn(
       queryDb->QueryDb.load,
@@ -220,13 +214,12 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make = (~opts=?, ~resources, _) => {
+  let make = (~opts=?, _) => {
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=View.name |> Js.Option.getWithDefault(Spec.name),
       ~construct,
       ~opts,
-      ~resources,
     );
   };
 };

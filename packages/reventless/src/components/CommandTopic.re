@@ -29,7 +29,6 @@ module type T = {
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
@@ -48,8 +47,7 @@ module Adapter = {
       ~handleCommands: (. array(Js.Json.t)) => Js.Promise.t(unit),
       ~memorySize: int,
       ~timeout: int,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
+      ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     connector;
 
@@ -67,8 +65,7 @@ module Make =
 
   type constructed;
   type construct =
-    (Component.t(t, outputs), string, commandsHandler, resources) =>
-    constructed;
+    (Component.t(t, outputs), string, commandsHandler) => constructed;
 
   type nonrec publish = publish(Spec.Id.t, Spec.command);
 
@@ -79,8 +76,7 @@ module Make =
       ~name: string,
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~commandsHandler: commandsHandler,
-      ~resources: resources
+      ~commandsHandler: commandsHandler
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -203,8 +199,7 @@ module Make =
          });
     };
 
-  let construct =
-      (~memorySize, ~timeout, self, name, commandsHandler, resources) => {
+  let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -218,9 +213,8 @@ module Make =
         ~memorySize,
         ~timeout,
         ~opts,
-        ~resources,
       );
-    resources->Util_CommandTopic.setConnectorResource(
+    Util_CommandTopic.Deploytime.setConnectorResource(
       connector.resource,
       name,
     );
@@ -237,26 +231,16 @@ module Make =
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs) =
-    (
-      ~name,
-      ~commandsHandler,
-      ~memorySize=1024,
-      ~timeout=30,
-      ~opts=?,
-      ~resources,
-      _,
-    ) => {
+    (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name,
         ~construct=construct(~memorySize, ~timeout),
         ~opts,
         ~commandsHandler,
-        ~resources,
       );
     };
 };

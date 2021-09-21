@@ -21,7 +21,6 @@ module type T = {
     (
       ~eventsHandler: Message.eventsHandler(Spec.Id.t, Spec.event),
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
@@ -46,7 +45,7 @@ module Make =
 
   type constructed;
   type construct =
-    (Component.t(t, outputs), string, eventsHandler, resources) => constructed;
+    (Component.t(t, outputs), string, eventsHandler) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -55,8 +54,7 @@ module Make =
       ~name: string,
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~eventsHandler: eventsHandler,
-      ~resources: resources
+      ~eventsHandler: eventsHandler
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -315,7 +313,7 @@ module Make =
     };
 
   let construct: construct =
-    (self, name, eventsHandler, resources) => {
+    (self, name, eventsHandler) => {
       let opts =
         Pulumi.ComponentResource.Options.make(
           ~parent=self->Component.toPulumiResource,
@@ -324,9 +322,8 @@ module Make =
 
       let childName = name->ComponentType.name(componentType);
 
-      let eventLog = EventLog.make(~name=childName, ~opts, ~resources, ());
-      let eventTopic =
-        EventTopic.make(~name=childName, ~opts, ~resources, ());
+      let eventLog = EventLog.make(~name=childName, ~opts, ());
+      let eventTopic = EventTopic.make(~name=childName, ~opts, ());
 
       let execCommands =
         execCommands((
@@ -343,7 +340,6 @@ module Make =
           ~name=childName,
           ~commandsHandler=execCommands,
           ~opts,
-          ~resources,
           (),
         );
 
@@ -368,17 +364,15 @@ module Make =
     (
       ~eventsHandler: eventsHandler,
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs) =
-    (~eventsHandler, ~opts=?, ~resources, _) =>
+    (~eventsHandler, ~opts=?, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
         ~construct,
         ~opts,
         ~eventsHandler,
-        ~resources,
       );
 };

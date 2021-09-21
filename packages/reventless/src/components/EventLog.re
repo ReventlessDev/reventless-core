@@ -24,12 +24,7 @@ module type T = {
   type t;
 
   let make:
-    (
-      ~name: string,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
     Component.t(t, outputs);
 
   let append:
@@ -45,12 +40,7 @@ module Adapter = {
     replay: replay(string, Js.Json.t),
   };
   type storageMaker =
-    (
-      ~name: string,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
-    ) =>
-    storage;
+    (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage;
 
   module type Storage = {let make: storageMaker;};
 };
@@ -62,8 +52,7 @@ module Make =
   type t;
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   type nonrec append =
     append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
@@ -75,8 +64,7 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -176,7 +164,7 @@ module Make =
          );
     };
 
-  let construct = (self, name, resources) => {
+  let construct = (self, name) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -184,12 +172,8 @@ module Make =
       );
 
     let storage =
-      Storage.make(
-        ~name=name->ComponentType.name(componentType),
-        ~opts,
-        ~resources,
-      );
-    resources->Util_EventLog.setStorageResource(storage.resource, name);
+      Storage.make(~name=name->ComponentType.name(componentType), ~opts);
+    Util_EventLog.Deploytime.setStorageResource(storage.resource, name);
     let storageOutputs = storage.resource;
 
     self->setAppend(storage->appendFn);
@@ -199,20 +183,14 @@ module Make =
   };
 
   let make:
-    (
-      ~name: string,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
     Component.t(t, outputs) =
-    (~name, ~opts=?, ~resources, _) => {
+    (~name, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name,
         ~construct,
         ~opts,
-        ~resources,
       );
     };
 };

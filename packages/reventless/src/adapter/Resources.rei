@@ -1,11 +1,35 @@
-open ReventlessSpec.Adapter;
+type t;
 
-let set:
-  (~adapter: string, ~name: string, ~resource: resource, resources) => unit;
+let resources: Pulumi.Output.t(t);
 
-let get: (~adapter: string, ~name: string, resources) => option(resource);
-let getExn: (~adapter: string, ~name: string, resources) => resource;
+module Deploytime: {
+  let set:
+    (
+      ~adapter: string,
+      ~name: string,
+      ~resource: ReventlessSpec.Adapter.resource
+    ) =>
+    unit;
 
-let filter:
-  (~name: string, ~adapter: string, ~keep: string => bool, resources) =>
-  array(resource);
+  let finalize: unit => unit;
+
+  let get:
+    (~adapter: string, ~name: string) =>
+    option(ReventlessSpec.Adapter.resource);
+
+  let getExn:
+    (~adapter: string, ~name: string) => ReventlessSpec.Adapter.resource;
+};
+
+module Runtime: {
+  let get:
+    (~adapter: string, ~name: string) =>
+    option(ReventlessSpec.Adapter.resource);
+
+  let getExn:
+    (~adapter: string, ~name: string) => ReventlessSpec.Adapter.resource;
+
+  let filter:
+    (~name: string, ~adapter: string, ~keep: string => bool) =>
+    array(ReventlessSpec.Adapter.resource);
+};

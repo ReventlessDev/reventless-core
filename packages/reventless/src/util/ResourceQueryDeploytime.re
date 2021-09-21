@@ -26,13 +26,6 @@ let queryDbOfReadModel: ReadModel.outputs => QueryDb.outputs =
 let queryDbOfService: Service.outputs => QueryDb.outputs =
   service => service->readModelOfService->queryDbOfReadModel;
 
-let allResolversMakers:
-  array(Service.outputs) => array(QueryDb.resolversResourcesMaker) =
-  services =>
-    services
-    ->Belt.Array.map(queryDbOfService)
-    ->Belt.Array.map(queryDb => queryDb##resolversMaker);
-
 let queryDbStorageOfService: Service.outputs => resource =
   service => service->queryDbOfService##storage;
 

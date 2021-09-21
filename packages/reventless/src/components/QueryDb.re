@@ -2,13 +2,10 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.QueryDb;
 
-type resolversResourcesMaker = resources => array(resource);
-
 type outputs = {
   .
   "storage": resource,
   "resolvers": resource,
-  "resolversMaker": resolversResourcesMaker,
 };
 
 type saveMode =
@@ -25,6 +22,9 @@ type load('id, 'state) =
   (. 'id) => Js.Promise.t(Belt.Result.t(list('state), storageError));
 type save('id, 'state) =
   (. 'id, 'state, saveMode) =>
+  Js.Promise.t(Belt.Result.t(unit, storageError));
+type saveBatch('id, 'state) =
+  (. array(('id, 'state))) =>
   Js.Promise.t(Belt.Result.t(unit, storageError));
 type delete('id) =
   (. 'id, option((string, string))) =>
@@ -50,18 +50,16 @@ module type T = {
   type t;
   type nonrec load = load(Spec.Id.t, View.state);
   type nonrec save = save(Spec.Id.t, View.state);
+  type nonrec saveBatch = saveBatch(Spec.Id.t, View.state);
   type nonrec delete = delete(Spec.Id.t);
 
   let make:
-    (
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
+    (~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
     Component.t(t, outputs);
 
   let load: Component.t(t, outputs) => load;
   let save: Component.t(t, outputs) => save;
+  let saveBatch: Component.t(t, outputs) => saveBatch;
   let delete: Component.t(t, outputs) => delete;
 
   let outputs: Component.t(t, outputs) => outputs;
@@ -73,6 +71,7 @@ module Adapter = {
     dataSourceName: Pulumi.Output.t(string), // TODO create in API
     load: load(string, Js.Json.t),
     save: save(string, Js.Json.t),
+    saveBatch: saveBatch(string, Js.Json.t),
     delete: delete(string),
   };
   type storageMaker('api, 'role) =
@@ -82,8 +81,7 @@ module Adapter = {
       ~sortField: option(string),
       ~api: 'api,
       ~apiRole: 'role,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
+      ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     storage;
 
@@ -94,14 +92,10 @@ module Adapter = {
     let make: storageMaker(api, role);
   };
 
-  type queryEngineMaker = resources => ReventlessSpec.QueryEngine.t;
-
-  module type QueryEngineAdapter = {let make: queryEngineMaker;};
-
-  type resolvers = {
-    resources: array(resource),
-    resourcesMaker: resolversResourcesMaker,
+  module type QueryEngineAdapter = {
+    let queryEngine: ReventlessSpec.QueryEngine.t;
   };
+
   type resolversMaker('api, 'role) =
     (
       ~name: string,
@@ -114,7 +108,7 @@ module Adapter = {
       ~resolveIdsConfigs: list(View.resolveIdsConfig),
       ~opts: Pulumi.CustomResourceOptions.t
     ) =>
-    resolvers;
+    array(resource);
 
   module type Resolvers = {
     type api;
@@ -147,11 +141,12 @@ module Make =
 
   type nonrec load = load(Spec.Id.t, View.state);
   type nonrec save = save(Spec.Id.t, View.state);
+  type nonrec saveBatch = saveBatch(Spec.Id.t, View.state);
   type nonrec delete = delete(Spec.Id.t);
 
   type constructed;
   type construct =
-    (Component.t(t, outputs), string, api, role, resources) => constructed;
+    (Component.t(t, outputs), string, api, role) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -161,20 +156,14 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~api: api,
-      ~apiRole: role,
-      ~resources: resources
+      ~apiRole: role
     ) =>
     Component.t(t, outputs) =
     "default";
 
   [@bs.obj]
   external makeOutputs:
-    (
-      ~storage: resource,
-      ~resolvers: array(resource),
-      ~resolversMaker: resolversResourcesMaker
-    ) =>
-    outputs =
+    (~storage: resource, ~resolvers: array(resource)) => outputs =
     "";
 
   [@bs.send]
@@ -192,11 +181,15 @@ module Make =
   external setLoad: (Component.t(t, outputs), load) => unit = "load";
   [@bs.set]
   external setSave: (Component.t(t, outputs), save) => unit = "save";
+  external setSaveBatch: (Component.t(t, outputs), saveBatch) => unit =
+    "saveBatch";
   [@bs.set]
   external setDelete: (Component.t(t, outputs), delete) => unit = "delete";
 
   [@bs.get] external load: Component.t(t, outputs) => load = "load";
   [@bs.get] external save: Component.t(t, outputs) => save = "save";
+  [@bs.get]
+  external saveBatch: Component.t(t, outputs) => saveBatch = "saveBatch";
   [@bs.get] external delete: Component.t(t, outputs) => delete = "delete";
 
   let decode = (id, item) =>
@@ -242,7 +235,7 @@ module Make =
   let outputs: Component.t(t, outputs) => outputs =
     component => Component.extractOutputs(component);
 
-  let construct = (self, name, api, apiRole, resources) => {
+  let construct = (self, name, api, apiRole) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -260,9 +253,8 @@ module Make =
         ~api,
         ~apiRole,
         ~opts,
-        ~resources,
       );
-    resources->Util_QueryDb.setStorageResource(storage.resource, storageName);
+    Util_QueryDb.Deploytime.setStorageResource(storage.resource, storageName);
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);
@@ -287,22 +279,13 @@ module Make =
         ~opts,
       );
 
-    makeOutputs(
-      ~storage=storage.resource,
-      ~resolvers=resolvers.resources,
-      ~resolversMaker=resolvers.resourcesMaker,
-    )
-    |> self->setOutputs;
+    makeOutputs(~storage=storage.resource, ~resolvers) |> self->setOutputs;
   };
 
   let make:
-    (
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
+    (~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
     Component.t(t, outputs) =
-    (~opts=?, ~resources, _) => {
+    (~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=View.name->Belt.Option.getWithDefault(Spec.name),
@@ -310,7 +293,6 @@ module Make =
         ~opts,
         ~api=Config.api,
         ~apiRole=Config.apiRole,
-        ~resources,
       );
     };
 };

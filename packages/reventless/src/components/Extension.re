@@ -21,7 +21,6 @@ type maker =
     ~pluginExtensionPointCommandTopicId: Pulumi.Output.t(string),
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources,
     unit
   ) =>
   Component.t(extension, outputs);
@@ -38,8 +37,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec;
 
   type constructed;
-  type construct =
-    (Component.t(extension, outputs), string, resources) => constructed;
+  type construct = (Component.t(extension, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -47,8 +45,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     Component.t(extension, outputs) =
     "default";
@@ -150,7 +147,6 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
         ~queryEngine,
         self,
         name,
-        resources,
       ) => {
     let mapIncomingEvent = Mapper.mapIncomingEvent(mappings);
     let mapOutgoingEvent = Mapper.mapOutgoingEvent(mappings);
@@ -188,9 +184,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
         publishAggregateCommand(
           id,
           command'Json,
-          resources->Util.Aggregate.commandTopicConnectorResource(
-            aggregateName,
-          )##id
+          Util.Aggregate.Runtime.commandTopicConnectorResource(aggregateName)##id
           ->Pulumi.Output.get,
         )
       | ExtensionMapping.AbstractPublishAggregateCommandAsync(promise) =>
@@ -199,7 +193,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
                      publishAggregateCommand(
                        id,
                        command'Json,
-                       resources->Util.Aggregate.commandTopicConnectorResource(
+                       Util.Aggregate.Runtime.commandTopicConnectorResource(
                          aggregateName,
                        )##id
                        ->Pulumi.Output.get,
@@ -214,7 +208,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
                          publishAggregateCommand(
                            id,
                            command'Json,
-                           resources->Util.Aggregate.commandTopicConnectorResource(
+                           Util.Aggregate.Runtime.commandTopicConnectorResource(
                              aggregateName,
                            )##id
                            ->Pulumi.Output.get,
@@ -325,7 +319,6 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
       ~pluginExtensionPointCommandTopicId,
       ~queryEngine,
       ~opts,
-      ~resources,
       _,
     ) =>
       make(
@@ -338,6 +331,5 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
             ~queryEngine,
           ),
         ~opts,
-        ~resources,
       );
 };

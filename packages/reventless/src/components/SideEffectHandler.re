@@ -29,7 +29,6 @@ module type T = {
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
@@ -38,8 +37,7 @@ module type T = {
 module Make = (EventCollector: EventCollector.T) : T => {
   type t;
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -47,8 +45,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -165,7 +162,6 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~timeout,
         self,
         name,
-        resources,
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
@@ -176,7 +172,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
     let queueMessage =
       (. delay, _id, messageBody) => {
         let queueId =
-          resources->Util.EventCollector.getConnectorResource(name)##id
+          Util.EventCollector.getConnectorResource(name)##id
           ->OutputFailsafeRuntime.get;
         Js.log4("Task.queueMessage:", delay, messageBody, queueId);
         AwsSdk.SQS.sendMessage(
@@ -194,7 +190,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
         (
           Schedule.create(
             scheduler,
-            resources->Util.EventCollector.getConnectorResource(name),
+            Util.EventCollector.getConnectorResource(name),
           )
         )(.
           schedule,
@@ -205,7 +201,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
         (
           Schedule.delete(
             scheduler,
-            resources->Util.EventCollector.getConnectorResource(name),
+            Util.EventCollector.getConnectorResource(name),
           )
         )(.
           scheduleName,
@@ -224,7 +220,6 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
 
@@ -249,7 +244,6 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~memorySize=2048,
         ~timeout=180,
         ~opts,
-        ~resources,
         _,
       ) => {
     make(
@@ -264,7 +258,6 @@ module Make = (EventCollector: EventCollector.T) : T => {
           ~timeout,
         ),
       ~opts,
-      ~resources,
     );
   };
 };

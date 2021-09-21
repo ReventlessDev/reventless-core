@@ -1,13 +1,18 @@
 let connector = "Connector";
 
-let setConnectorResource = (resources, resource, name) =>
-  resources->Resources.set(
-    ~adapter=connector,
-    ~name=name->ComponentType.name(ComponentType.CommandTopic),
-    ~resource,
-  );
-let getConnectorResource = (resources, name) =>
-  resources->Resources.getExn(
-    ~adapter=connector,
-    ~name=name->ComponentType.name(ComponentType.CommandTopic),
-  );
+module Deploytime = {
+  let setConnectorResource = (resource, name) =>
+    Resources.Deploytime.set(
+      ~adapter=connector,
+      ~name=name->ComponentType.name(ComponentType.CommandTopic),
+      ~resource,
+    );
+};
+
+module Runtime = {
+  let getConnectorResource = name =>
+    Resources.Runtime.getExn(
+      ~adapter=connector,
+      ~name=name->ComponentType.name(ComponentType.CommandTopic),
+    );
+};

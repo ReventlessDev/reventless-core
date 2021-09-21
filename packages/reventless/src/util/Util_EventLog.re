@@ -1,20 +1,31 @@
 let storage = "Storage";
 
-let setStorageResource = (resources, resource, name) =>
-  resources->Resources.set(
-    ~adapter=storage,
-    ~name=name->ComponentType.name(ComponentType.EventLog),
-    ~resource,
-  );
-let getStorageResource = (resources, name) =>
-  resources->Resources.getExn(
-    ~adapter=storage,
-    ~name=name->ComponentType.name(ComponentType.EventLog),
-  );
+module Deploytime = {
+  let setStorageResource = (resource, name) =>
+    Resources.Deploytime.set(
+      ~adapter=storage,
+      ~name=name->ComponentType.name(ComponentType.EventLog),
+      ~resource,
+    );
 
-let filterEventLogStorages = (resources, keep) =>
-  resources->Resources.filter(
-    ~name=ComponentType.EventLog->ComponentType.toName,
-    ~adapter=storage,
-    ~keep,
-  );
+  let getStorageResource = name =>
+    Resources.Deploytime.getExn(
+      ~adapter=storage,
+      ~name=name->ComponentType.name(ComponentType.EventLog),
+    );
+};
+
+module Runtime = {
+  let getStorageResource = name =>
+    Resources.Runtime.getExn(
+      ~adapter=storage,
+      ~name=name->ComponentType.name(ComponentType.EventLog),
+    );
+
+  let filterEventLogStorages = keep =>
+    Resources.Runtime.filter(
+      ~name=ComponentType.EventLog->ComponentType.toName,
+      ~adapter=storage,
+      ~keep,
+    );
+};
