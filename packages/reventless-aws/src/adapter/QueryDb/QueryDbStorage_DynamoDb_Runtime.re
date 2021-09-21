@@ -36,35 +36,38 @@ let calcPurgeTime = ttl => {
 };
 let purgeTimeAttributeName = "reventlessPurgeTime";
 
+let insertTtl = (json, ttl) =>
+  ttl
+  ->Belt.Option.flatMap(ttl =>
+      (
+        json
+        ->Js.Json.decodeObject
+        ->Belt.Option.mapWithDefault(
+            // TODO: extract mapWithSideEffect to Util module
+            () => {
+              Js.log2(
+                "QueryDbStorage_DynamoDb_Runtime: Error: Couldn't decode JSON",
+                json->Js.Json.stringify,
+              );
+              None;
+            },
+            (obj, _) => {
+              obj->Js.Dict.set(
+                purgeTimeAttributeName,
+                ttl->calcPurgeTime->Js.Json.number,
+              );
+              obj->Js.Json.object_->Some;
+            },
+          )
+      )()
+    )
+  ->Belt.Option.getWithDefault(json);
+
 let save = table =>
   (. _id, json, saveMode: QueryDb.saveMode, ttl) => {
     let tableName = table##name->Pulumi.Output.get;
     let stateStr = json->Js.Json.stringify;
-    let json =
-      ttl
-      ->Belt.Option.flatMap(ttl =>
-          json
-          ->Js.Json.decodeObject
-          ->Belt.Option.mapWithDefault(
-              // TODO: extract mapWithSideEffect to Util module
-              () => {
-                Js.log2(
-                  "QueryDbStorage_DynamoDb_Runtime: Error: Couldn't decode JSON",
-                  json->Js.Json.stringify,
-                );
-                None;
-              },
-              (obj, ()) => {
-                obj->Js.Dict.set(
-                  purgeTimeAttributeName,
-                  ttl->calcPurgeTime->Js.Json.number,
-                );
-                obj->Js.Json.object_->Some;
-              },
-              (),
-            )
-        )
-      ->Belt.Option.getWithDefault(json);
+    let json = json->insertTtl(ttl);
 
     switch (saveMode) {
     | Init =>
@@ -121,14 +124,12 @@ let save = table =>
   };
 
 let saveBatch:
-  (~maxRetries: int=?, ~ttl: option(int), PulumiAws.DynamoDb.Table.t) =>
-  (. array((string, Js.Json.t))) =>
+  (~maxRetries: int=?, PulumiAws.DynamoDb.Table.t) =>
+  (. array((string, Js.Json.t, option(int)))) =>
   Js.Promise.t(Belt.Result.t(unit, QueryDb.storageError)) =
-  (~maxRetries=3, ~ttl, table) =>
-    (. items: array((string, Js.Json.t))) => {
+  (~maxRetries=3, table) =>
+    (. items) => {
       let tableName = table##name->Pulumi.Output.get;
-      open AwsSdk.DynamoDb.DocumentClient;
-
       let batchWrite' = itemRequestMap =>
         batchWrite(
           BatchWriteInput.make(
@@ -167,8 +168,9 @@ let saveBatch:
         };
 
       let writeRequests =
-        items->Belt.Array.map(((_id, json)) =>
+        items->Belt.Array.map(((_id, json, ttl)) =>
           json
+          ->insertTtl(ttl)
           ->WriteRequest.PutRequest.make(~_Item=_)
           ->WriteRequest.make(~_PutRequest=_, ())
         );
