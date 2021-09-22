@@ -14,24 +14,12 @@ module type Target = {
   type command;
 };
 
-type countItem = {
-  counter: string,
-  id: string,
-  item: string,
-};
-
-type counterTarget = {
-  counter: string,
-  id: string,
-  target: int,
-};
-
 type action('id, 'command) =
   | Publish('id, 'command)
   | PublishDelayed('id, 'command, int)
   | PublishAsync(Js.Promise.t(array(('id, 'command))))
-  | SetCounterTarget(counterTarget)
-  | Count(countItem);
+  | SetCounterTarget(AtomicCounter.counterTarget)
+  | Count(AtomicCounter.countItem);
 
 module type T = {
   module Source: Source;

@@ -143,27 +143,36 @@ module Make =
     );
   };
 
+  type eventsHandlerResultType =
+    | Counter(AtomicCounter.action)
+    | Publisher(Js.Promise.t(array(AwsSdk.SQS.SendMessageBatchEntry.t)));
+
   let processActions = (actions, meta) =>
     actions->Belt.Array.mapWithIndex((idx, action) =>
       switch (action) {
       | ReventlessSpec.EventMapping.Publish(commandId, command) =>
         [|makeEntry(idx, commandId, meta, command, None)|]
         ->Js.Promise.resolve
+        ->Publisher
       | PublishDelayed(commandId, command, delay) =>
         [|makeEntry(idx, commandId, meta, command, Some(delay))|]
         ->Js.Promise.resolve
+        ->Publisher
       | PublishAsync(promise) =>
-        promise->Js.Promise.then_(
-                   cmds =>
-                     cmds
-                     ->Belt.Array.map(((commandId, command)) =>
-                         makeEntry(0, commandId, meta, command, None)
-                       )
-                     ->Js.Promise.resolve,
-                   _,
-                 )
-      | SetCounterTarget(counterTarget) => Js.Promise.resolve([||]) // TODO: IMPLEMENT ME
-      | Count(countItem) => Js.Promise.resolve([||]) // TODO: IMPLEMENT ME
+        promise
+        ->Js.Promise.then_(
+            cmds =>
+              cmds
+              ->Belt.Array.map(((commandId, command)) =>
+                  makeEntry(0, commandId, meta, command, None)
+                )
+              ->Js.Promise.resolve,
+            _,
+          )
+        ->Publisher
+      | SetCounterTarget(counterTarget) =>
+        Counter(SetCounterTarget(counterTarget))
+      | Count(countItem) => Counter(Count(countItem))
       }
     );
 
@@ -182,9 +191,9 @@ module Make =
                 _,
               );
 
-  let eventsHandler = (resources, mappings, queryEngine) =>
-    (. events'Json) => {
-      let count = events'Json->Belt.Array.size;
+  let commonEventsHandler = (resources, mappings, queryEngine, events'Json) => {
+    let count = events'Json->Belt.Array.size;
+    let (publisherActions, counterActions) =
       events'Json
       ->Belt.Array.mapWithIndex((idx, event'Json) => {
           let idx = idx + 1;
@@ -224,15 +233,68 @@ module Make =
         })
       ->Belt.Array.keepMap(entry => entry)
       ->Belt.Array.concatMany
-      ->Js.Promise.all
-      ->sendEntries(resources)
-      ->Js.Promise.catch(
-          err =>
-            err
-            ->Js.log2("EventMapper: Error on sendMessageBatch:", _)
-            ->Js.Promise.resolve /* NOTE: should we really resolve hear? Shoudln't we retry somehow?*/,
-          _,
+      ->Belt.Array.partition(resultType =>
+          switch (resultType) {
+          | Publisher(_) => true
+          | Counter(_) => false
+          }
         );
+    let publisherEntries =
+      publisherActions->Belt.Array.map(actionType =>
+        switch (actionType) {
+        | Publisher(entries) => entries
+        | Counter(_) => [||]->Js.Promise.resolve
+        }
+      );
+    let counterActions =
+      counterActions->Belt.Array.map(actionType =>
+        switch (actionType) {
+        | Counter(action) => action
+        | Publisher(_) => Js.Exn.raiseError("INVALID") // shouldn't be possible
+        }
+      );
+    (publisherEntries, counterActions);
+  };
+
+  let eventCollectorEventsHandler =
+      (resources, mappings, queryEngine, countFn, setCounterTargetFn) =>
+    (. events'Json) => {
+      let (publisherEntries, counterActions) =
+        commonEventsHandler(resources, mappings, queryEngine, events'Json);
+      let publisherPromises =
+        publisherEntries
+        ->Js.Promise.all
+        ->sendEntries(resources)
+        ->Js.Promise.catch(
+            err =>
+              err
+              ->Js.log2("EventMapper: Error on sendMessageBatch:", _)
+              ->Js.Promise.resolve /* NOTE: should we really resolve hear? Shoudln't we retry somehow?*/,
+            _,
+          );
+
+      let (countActions, setTargetActions) =
+        counterActions->Belt.Array.partition(
+          fun
+          | AtomicCounter.Count(_) => true
+          | SetCounterTarget(_) => false,
+        );
+
+      // TODO: call countFn with all countAction-items
+      // TODO: call setCounterTargetFn with all setCounterTarget-targets
+      // TODO: await all promises of both calls
+      Js.Promise.resolve(); // TODO
+    };
+
+  let counterEventsHandler = (resources, mappings, queryEngine) =>
+    (. events'Json) => {
+      let (publisherActions, countActions) =
+        commonEventsHandler(resources, mappings, queryEngine, events'Json);
+      if (countActions->Belt.Array.size > 0) {
+        Js.log("NOT ALLOWED!" /*TODO: better log message */);
+      };
+      publisherActions; // TODO: same as above
+      Js.Promise.resolve(); // FIXME: implement
     };
 
   let construct =
@@ -252,15 +314,34 @@ module Make =
         (),
       );
 
-    let counterOutputs =
-      counter->Belt.Option.map((module Counter: Counter) =>
-        Counter.make(
-          ~counterHandler=eventsHandler(resources, mappings, queryEngine),
-          ~opts,
-          ~resources,
-          (),
-        )
-        ->Component.extractOutputs
+    let (countFn, setCounterTargetFn, counterOutputsO) =
+      counter->Belt.Option.mapWithDefault(
+        (
+          _items => {
+            Js.log("No counter deployed, but trying to use counter.")
+            ->Js.Promise.resolve;
+          },
+          _target => {
+            Js.log("No counter deployed, but trying to use counter.")
+            ->Js.Promise.resolve;
+          },
+          None,
+        ),
+        (module Counter: Counter) => {
+          let counter =
+            Counter.make(
+              ~counterHandler=
+                counterEventsHandler(resources, mappings, queryEngine),
+              ~opts,
+              ~resources,
+              (),
+            );
+          (
+            counter->Counter.count,
+            counter->Counter.setCounterTarget,
+            counter->Component.extractOutputs->Some,
+          );
+        },
       );
 
     let eventCollector =
@@ -270,7 +351,14 @@ module Make =
           mappings->Belt.Array.map((module Mapping: Mapping) =>
             Mapping.Source.name
           ),
-        ~eventsHandler=eventsHandler(resources, mappings, queryEngine),
+        ~eventsHandler=
+          eventCollectorEventsHandler(
+            resources,
+            mappings,
+            queryEngine,
+            countFn,
+            setCounterTargetFn,
+          ),
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
@@ -281,7 +369,7 @@ module Make =
     makeOutputs(
       ~name,
       ~eventCollector=eventCollector->Component.extractOutputs,
-      ~counter=counterOutputs,
+      ~counter=counterOutputsO,
     )
     ->setOutputs(self, _);
   };

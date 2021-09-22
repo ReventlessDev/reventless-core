@@ -1,4 +1,5 @@
 open ReventlessSpec.Adapter;
+open ReventlessSpec.AtomicCounter;
 
 let componentType = ComponentType.AtomicCounter;
 
@@ -10,18 +11,9 @@ type outputs = {
 
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
-type countItem = {
-  counter: string,
-  id: string,
-  item: string,
-};
-
-type counterTarget = {
-  counter: string,
-  id: string,
-  target: int,
-};
-
+type action =
+  | Count(countItem)
+  | SetCounterTarget(counterTarget);
 type count = array(countItem) => Js.Promise.t(unit);
 type setCounterTarget = counterTarget => Js.Promise.t(unit);
 
