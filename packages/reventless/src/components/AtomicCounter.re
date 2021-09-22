@@ -1,5 +1,5 @@
 open ReventlessSpec.Adapter;
-open ReventlessSpec.AtomicCounter;
+open ReventlessSpec.Counter;
 
 let componentType = ComponentType.AtomicCounter;
 
