@@ -6,9 +6,10 @@ type outputs = {
   .
   "name": string,
   "eventCollector": EventCollector.outputs,
+  "counter": option(AtomicCounter.outputs),
 };
 
-type eventMapper; // TODO: rename back to t - after refactoring
+type eventMapper;
 type maker =
   (
     ~queryEngine: ReventlessSpec.QueryEngine.t,
@@ -55,7 +56,11 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~eventCollector: Reventless.EventCollector.outputs, ~name: string) =>
+    (
+      ~name: string,
+      ~eventCollector: Reventless.EventCollector.outputs,
+      ~counter: option(AtomicCounter.outputs)
+    ) =>
     outputs =
     "";
   [@bs.send]
@@ -157,10 +162,25 @@ module Make =
                      ->Js.Promise.resolve,
                    _,
                  )
-      | SetCounterTarget(counterTarget) => Js.Promise.resolve([||])
-      | Count(countItem) => Js.Promise.resolve([||])
+      | SetCounterTarget(counterTarget) => Js.Promise.resolve([||]) // TODO: IMPLEMENT ME
+      | Count(countItem) => Js.Promise.resolve([||]) // TODO: IMPLEMENT ME
       }
     );
+
+  let sendEntries = (pEntries, resources) =>
+    pEntries->Js.Promise.then_(
+                entries =>
+                  entries
+                  ->Belt.Array.concatMany
+                  ->AwsSdk.SQS.sendMessageBatch(
+                      ~queueId=
+                        resources->Util.Aggregate.commandTopicConnectorResource(
+                          service,
+                        )##id
+                        ->Pulumi.Output.get,
+                    ),
+                _,
+              );
 
   let eventsHandler = (resources, mappings, queryEngine) =>
     (. events'Json) => {
@@ -173,6 +193,7 @@ module Make =
           );
           let event' = event'Json->Js.Json.decodeObject;
           switch (findMapping(mappings, event')) {
+          // TODO: support multiple mappings for the same source
           | Some((eventObj, eventMeta, mapping)) =>
             module Mapping = (val mapping);
             let idDecoded =
@@ -204,24 +225,12 @@ module Make =
       ->Belt.Array.keepMap(entry => entry)
       ->Belt.Array.concatMany
       ->Js.Promise.all
-      ->Js.Promise.then_(
-          entries =>
-            entries
-            ->Belt.Array.concatMany
-            ->AwsSdk.SQS.sendMessageBatch(
-                ~queueId=
-                  resources->Util.Aggregate.commandTopicConnectorResource(
-                    service,
-                  )##id
-                  ->Pulumi.Output.get,
-              ),
-          _,
-        )
+      ->sendEntries(resources)
       ->Js.Promise.catch(
           err =>
             err
             ->Js.log2("EventMapper: Error on sendMessageBatch:", _)
-            ->Js.Promise.resolve,
+            ->Js.Promise.resolve /* NOTE: should we really resolve hear? Shoudln't we retry somehow?*/,
           _,
         );
     };
@@ -243,49 +252,16 @@ module Make =
         (),
       );
 
-    let (counterMappings, mappings) =
-      mappings->Belt.Array.partition(mapping => {
-        module Mapping = (val mapping);
-        Mapping.Source.name == AtomicCounter.Source.name;
-      });
-
-    // let counterMappings =
-    //   counterMappings->Belt.Array.map(counterMapping => {
-    //     module CounterMapping = (val counterMapping);
-    //     module X: AtomicCounter.Mapping = {
-    //       module Source: ReventlessSpec.EventMapping.Source = CounterMapping.Source;
-    //       let map =
-    //         (. id: Source.Id.t, event: Source.event, queryEngine) =>
-    //           CounterMapping.map(.
-    //             id
-    //             ->Source.Id.toString
-    //             ->CounterMapping.Source.Id.makeFromString,
-    //             event->Obj.magic,
-    //             queryEngine,
-    //           )
-    //           ->Obj.magic;
-    //     };
-    //     ((module X): (module AtomicCounter.Mapping));
-    //     // (module CounterMapping: AtomicCounter.Mapping);
-    //   });
-
-    let counterHandler: AtomicCounter.counterHandler =
-      (counter, event) =>
-        counterMappings
-        ->Belt.Array.map(counterMapping => {
-            module CounterMapping:
-              Mapping with module Source = AtomicCounter.Source = (
-              val counterMapping
-            );
-            CounterMapping.map(. counter, event, queryEngine);
-          })
-        ->Belt.Array.concatMany;
-
-    let counter =
-      counter->Belt.Option.map(counter => {
-        module Counter = (val counter);
-        Some(Counter.make(~counterHandler, ~opts, ~resources));
-      });
+    let counterOutputs =
+      counter->Belt.Option.map((module Counter: Counter) =>
+        Counter.make(
+          ~counterHandler=eventsHandler(resources, mappings, queryEngine),
+          ~opts,
+          ~resources,
+          (),
+        )
+        ->Component.extractOutputs
+      );
 
     let eventCollector =
       EventCollector.make(
@@ -294,8 +270,7 @@ module Make =
           mappings->Belt.Array.map((module Mapping: Mapping) =>
             Mapping.Source.name
           ),
-        ~eventsHandler=
-          eventsHandler(counter, resources, mappings, queryEngine),
+        ~eventsHandler=eventsHandler(resources, mappings, queryEngine),
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
@@ -304,8 +279,9 @@ module Make =
       );
 
     makeOutputs(
-      ~eventCollector=eventCollector->Component.extractOutputs,
       ~name,
+      ~eventCollector=eventCollector->Component.extractOutputs,
+      ~counter=counterOutputs,
     )
     ->setOutputs(self, _);
   };
@@ -336,13 +312,7 @@ module Make =
         ~componentType=componentType->ComponentType.toString,
         ~name=Target.name,
         ~construct=
-          construct(
-            ~mappings,
-            ~counter?,
-            ~queryEngine,
-            ~memorySize,
-            ~timeout,
-          ),
+          construct(~mappings, ~counter, ~queryEngine, ~memorySize, ~timeout),
         ~opts,
         ~resources,
       );

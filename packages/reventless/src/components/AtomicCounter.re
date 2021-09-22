@@ -28,15 +28,15 @@ type setCounterTarget = counterTarget => Js.Promise.t(unit);
 exception NotCounted(string);
 
 module Source: ReventlessSpec.EventMapping.Source = {
-  module Id: ReventlessSpec.Id.T = Id.String;
+  module Id = Id.String;
   let name = componentType->ComponentType.toName;
   [@decco]
   type event =
     | CountFinished;
 };
 
-type counterHandler = (Source.Id.t, Source.event) => Js.Promise.t(unit);
-type onFinishedHandler = string => Js.Promise.t(unit);
+//type counterHandler = (Source.Id.t, Source.event) => Js.Promise.t(unit);
+type counterHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
 module type T = {
   type t;
@@ -129,7 +129,14 @@ module Make =
   external setCounterTarget: Component.t(t, outputs) => setCounterTarget =
     "setCounterTarget";
 
-  let construct = (~counterHandler, ~ttl: option(int), self, name, resources) => {
+  let construct =
+      (
+        ~counterHandler: counterHandler,
+        ~ttl: option(int),
+        self,
+        name,
+        resources,
+      ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -218,6 +225,18 @@ module Make =
     self->setCount(referencesDb->ReferencesDb.saveBatch->countFn);
     self->setSetCounterTarget(counterDb->CounterDb.count->setCounterTargetFn);
 
+    let counterLambdaHandler = {
+      /* TODO:
+       *  - read AWS event and calculate AtomicCounter-Event
+       *  - pass Js.Json.t of AtomicCounter-Event to counerHandler (argument to make())
+       */
+      // foreach record in stream, create event':
+      let id = "TODO";
+      let event = "TODO";
+      let event' = Js.Json.string("TODO");
+      counterHandler(. [|event'|]);
+    };
+
     // let handleStreamEvent = (handleEvents, streamEvent, _) => {
     //   let records = streamEvent##_Records->Belt.Option.getWithDefault([||]);
     //   let jsons =
@@ -233,7 +252,6 @@ module Make =
     //         None;
     //       }
     //     );
-
     //   handleEvents(. jsons)
     //   |> Js.Promise.catch(err =>
     //        Js.Exn.raiseError(err->AwsSdk.Error.ofPromise##message)
@@ -254,7 +272,6 @@ module Make =
     //     ~opts,
     //     (),
     //   );
-
     makeOutputs(
       ~referencesDb=referencesDb->ReferencesDb.outputs##storage,
       ~counterDb=counterDb->CounterDb.outputs##storage,
