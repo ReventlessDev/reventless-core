@@ -22,16 +22,16 @@ type maker =
 
 module type T = {
   module Target: ReventlessSpec.EventMapping.Target;
+  module type Counter = AtomicCounter.T with module Target = Target;
   module type Mapping =
     ReventlessSpec.EventMapping.T with module Target := Target;
-  let make: array(module Mapping) => maker;
+  let make: (~counter: (module Counter)=?, array(module Mapping)) => maker;
 };
 
 module Make =
        (
          Target: ReventlessSpec.EventMapping.Target,
          EventCollector: EventCollector.T,
-         AtomicCounter: AtomicCounter.T,
        )
        : (T with module Target := Target) => {
   type constructed;
@@ -72,6 +72,8 @@ module Make =
 
   module Target = Target;
 
+  module type Counter = AtomicCounter.T with module Target = Target;
+
   let service = Target.name;
 
   let findMapping = (mappings, eventObj) => {
@@ -104,7 +106,63 @@ module Make =
     });
   };
 
-  let eventsHandler = (atomicCounter, resources, mappings, queryEngine) =>
+  let makeEntry = (idx, commandId, meta: Message.meta, command, delay) => {
+    let commandMeta: Message.meta = {
+      ...meta,
+      service,
+      correlationId:
+        // original correlationId only for first action to avoid counting problems
+        // TODO: think about different solution, e.g. AtomicCounter with explicit
+        // count parameter (instead of always counting by 1)
+        idx == 0 ? meta.correlationId : Message.uuid(),
+      msgId: Message.uuid(),
+      time: Message.nowAsISOString(),
+    };
+    let commandStr = command->Target.command_encode->Js.Json.stringify;
+    let source = meta.service;
+    Js.log(
+      {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
+    );
+    let messageBody =
+      Message.command'_encode(
+        Target.Id.t_encode,
+        Target.command_encode,
+        {Message.id: commandId, meta: commandMeta, command},
+      )
+      ->Js.Json.stringify;
+    AwsSdk.SQS.makeBatchEntry(
+      ~groupId=commandId->Target.Id.toString,
+      ~messageId=commandMeta.msgId,
+      ~messageBody,
+      ~delay,
+    );
+  };
+
+  let processActions = (actions, meta) =>
+    actions->Belt.Array.mapWithIndex((idx, action) =>
+      switch (action) {
+      | ReventlessSpec.EventMapping.Publish(commandId, command) =>
+        [|makeEntry(idx, commandId, meta, command, None)|]
+        ->Js.Promise.resolve
+      | PublishDelayed(commandId, command, delay) =>
+        [|makeEntry(idx, commandId, meta, command, Some(delay))|]
+        ->Js.Promise.resolve
+      | PublishAsync(promise) =>
+        promise->Js.Promise.then_(
+                   cmds =>
+                     cmds
+                     ->Belt.Array.map(((commandId, command)) =>
+                         makeEntry(0, commandId, meta, command, None)
+                       )
+                     ->Js.Promise.resolve,
+                   _,
+                 )
+      | SetCounterTarget(counterTarget) => Js.Promise.resolve([||])
+      | Count(countItem) => Js.Promise.resolve([||])
+      }
+    );
+
+  let eventsHandler = (resources, mappings, queryEngine) =>
     (. events'Json) => {
       let count = events'Json->Belt.Array.size;
       events'Json
@@ -116,38 +174,6 @@ module Make =
           let event' = event'Json->Js.Json.decodeObject;
           switch (findMapping(mappings, event')) {
           | Some((eventObj, eventMeta, mapping)) =>
-            let makeEntry = (idx, commandId, command, delay) => {
-              let commandMeta = {
-                ...eventMeta,
-                service,
-                correlationId:
-                  // original correlationId only for first action to avoid counting problems
-                  // TODO: think about different solution, e.g. AtomicCounter with explicit
-                  // count parameter (instead of always counting by 1)
-                  idx == 0 ? eventMeta.correlationId : Message.uuid(),
-                msgId: Message.uuid(),
-                time: Message.nowAsISOString(),
-              };
-              let commandStr =
-                command->Target.command_encode->Js.Json.stringify;
-              let source = eventMeta.service;
-              Js.log(
-                {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
-              );
-              let messageBody =
-                Message.command'_encode(
-                  Target.Id.t_encode,
-                  Target.command_encode,
-                  {Message.id: commandId, meta: commandMeta, command},
-                )
-                ->Js.Json.stringify;
-              AwsSdk.SQS.makeBatchEntry(
-                ~groupId=commandId->Target.Id.toString,
-                ~messageId=commandMeta.msgId,
-                ~messageBody,
-                ~delay,
-              );
-            };
             module Mapping = (val mapping);
             let idDecoded =
               eventObj
@@ -161,29 +187,7 @@ module Make =
             switch (idDecoded, eventDecoded) {
             | (Some(Ok(eventId)), Some(Ok(event))) =>
               Mapping.map(. eventId, event, queryEngine)
-              ->Belt.Array.mapWithIndex((idx, action) =>
-                  switch (action) {
-                  | ReventlessSpec.EventMapping.Publish(commandId, command) =>
-                    [|makeEntry(idx, commandId, command, None)|]
-                    ->Js.Promise.resolve
-                  | PublishDelayed(commandId, command, delay) =>
-                    [|makeEntry(idx, commandId, command, Some(delay))|]
-                    ->Js.Promise.resolve
-                  | PublishAsync(promise) =>
-                    promise->Js.Promise.then_(
-                               cmds =>
-                                 cmds
-                                 ->Belt.Array.map(((commandId, command)) =>
-                                     makeEntry(0, commandId, command, None)
-                                   )
-                                 ->Js.Promise.resolve,
-                               _,
-                             )
-                  | SetCounterTarget(counterTarget) =>
-                    Js.Promise.resolve([||])
-                  | Count(countItem) => Js.Promise.resolve([||])
-                  }
-                )
+              ->processActions(eventMeta)
               ->Some
             | (None, _)
             | (_, None) =>
@@ -223,14 +227,65 @@ module Make =
     };
 
   let construct =
-      (~mappings, ~queryEngine, ~memorySize, ~timeout, self, name, resources) => {
+      (
+        ~counter: option(module Counter),
+        ~mappings: array(module Mapping),
+        ~queryEngine,
+        ~memorySize,
+        ~timeout,
+        self,
+        name,
+        resources,
+      ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
         (),
       );
 
-    let atomicCounter = AtomicCounter.make(~opts, ~resources);
+    let (counterMappings, mappings) =
+      mappings->Belt.Array.partition(mapping => {
+        module Mapping = (val mapping);
+        Mapping.Source.name == AtomicCounter.Source.name;
+      });
+
+    // let counterMappings =
+    //   counterMappings->Belt.Array.map(counterMapping => {
+    //     module CounterMapping = (val counterMapping);
+    //     module X: AtomicCounter.Mapping = {
+    //       module Source: ReventlessSpec.EventMapping.Source = CounterMapping.Source;
+    //       let map =
+    //         (. id: Source.Id.t, event: Source.event, queryEngine) =>
+    //           CounterMapping.map(.
+    //             id
+    //             ->Source.Id.toString
+    //             ->CounterMapping.Source.Id.makeFromString,
+    //             event->Obj.magic,
+    //             queryEngine,
+    //           )
+    //           ->Obj.magic;
+    //     };
+    //     ((module X): (module AtomicCounter.Mapping));
+    //     // (module CounterMapping: AtomicCounter.Mapping);
+    //   });
+
+    let counterHandler: AtomicCounter.counterHandler =
+      (counter, event) =>
+        counterMappings
+        ->Belt.Array.map(counterMapping => {
+            module CounterMapping:
+              Mapping with module Source = AtomicCounter.Source = (
+              val counterMapping
+            );
+            CounterMapping.map(. counter, event, queryEngine);
+          })
+        ->Belt.Array.concatMany;
+
+    let counter =
+      counter->Belt.Option.map(counter => {
+        module Counter = (val counter);
+        Some(Counter.make(~counterHandler, ~opts, ~resources));
+      });
 
     let eventCollector =
       EventCollector.make(
@@ -240,7 +295,7 @@ module Make =
             Mapping.Source.name
           ),
         ~eventsHandler=
-          eventsHandler(atomicCounter, resources, mappings, queryEngine),
+          eventsHandler(counter, resources, mappings, queryEngine),
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
@@ -257,6 +312,7 @@ module Make =
 
   let make:
     (
+      ~counter: (module Counter)=?,
       array(module Mapping),
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~memorySize: int,
@@ -266,11 +322,27 @@ module Make =
       unit
     ) =>
     Component.t(eventMapper, outputs) =
-    (mappings, ~queryEngine, ~memorySize, ~timeout=180, ~opts, ~resources, _) => {
+    (
+      ~counter=?,
+      mappings,
+      ~queryEngine,
+      ~memorySize,
+      ~timeout=180,
+      ~opts,
+      ~resources,
+      _,
+    ) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Target.name,
-        ~construct=construct(~mappings, ~queryEngine, ~memorySize, ~timeout),
+        ~construct=
+          construct(
+            ~mappings,
+            ~counter?,
+            ~queryEngine,
+            ~memorySize,
+            ~timeout,
+          ),
         ~opts,
         ~resources,
       );
