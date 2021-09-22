@@ -8,6 +8,8 @@ type outputs = {
   "counterDb": resource,
 };
 
+type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
+
 type countItem = {
   counter: string,
   id: string,
@@ -23,14 +25,26 @@ type counterTarget = {
 type count = array(countItem) => Js.Promise.t(unit);
 type setCounterTarget = counterTarget => Js.Promise.t(unit);
 
-module type Handler = {let onFinished: string => Js.Promise.t(unit);};
-
 exception NotCounted(string);
+
+module Source: ReventlessSpec.EventMapping.Source = {
+  module Id: ReventlessSpec.Id.T = Id.String;
+  let name = componentType->ComponentType.toName;
+  [@decco]
+  type event =
+    | CountFinished;
+};
+
+type counterHandler = (Source.Id.t, Source.event) => Js.Promise.t(unit);
+type onFinishedHandler = string => Js.Promise.t(unit);
 
 module type T = {
   type t;
+  module Target: ReventlessSpec.EventMapping.Target;
+
   let make:
     (
+      ~counterHandler: counterHandler,
       ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       ~resources: resources,
@@ -42,13 +56,29 @@ module type T = {
   let setCounterTarget: Component.t(t, outputs) => setCounterTarget;
 };
 
+module Adapter = {
+  type handler = unit;
+  type handlerMaker =
+    (
+      ~name: string,
+      ~readModelNames: array(string),
+      ~handleEvents: eventsHandler,
+      ~opts: Pulumi.CustomResourceOptions.t,
+      ~resources: resources
+    ) =>
+    handler;
+
+  module type Handler = {let make: handlerMaker;};
+};
+
 module Make =
        (
          Config: Config.T,
-         Handler: Handler,
+         Target: ReventlessSpec.EventMapping.Target,
          QueryDbStorage:
            QueryDb.Adapter.Storage with
              type api = Config.api and type role = Config.role,
+         Handler: Adapter.Handler,
        )
        : T => {
   type t;
@@ -56,6 +86,8 @@ module Make =
   type constructed;
   type construct =
     (Component.t(t, outputs), string, resources) => constructed;
+
+  module Target = Target;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -97,7 +129,7 @@ module Make =
   external setCounterTarget: Component.t(t, outputs) => setCounterTarget =
     "setCounterTarget";
 
-  let construct = (~ttl: option(int), self, name, resources) => {
+  let construct = (~counterHandler, ~ttl: option(int), self, name, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -234,17 +266,18 @@ module Make =
 
   let make:
     (
+      ~counterHandler: counterHandler,
       ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs) =
-    (~ttl=oneWeek, ~opts=?, ~resources, _) => {
+    (~counterHandler, ~ttl=oneWeek, ~opts=?, ~resources, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=componentType->ComponentType.toName,
-        ~construct=construct(~ttl=Some(ttl)),
+        ~construct=construct(~counterHandler, ~ttl=Some(ttl)),
         ~opts,
         ~resources,
       );
