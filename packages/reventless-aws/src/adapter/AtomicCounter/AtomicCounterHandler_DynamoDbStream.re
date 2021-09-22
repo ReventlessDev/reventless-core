@@ -17,17 +17,25 @@ let make: Reventless.AtomicCounter.Adapter.handlerMaker =
         (),
       );
 
-    let dynamoDbStreamTopics =
-      readModelNames->Belt.Array.map(readModelName =>
-        resources->Reventless.Util.ReadModel.queryDbStorageResource(
-          readModelName,
-        )
-      );
-
     let _eventSourceMappings =
-      dynamoDbStreamTopics->Belt.Array.map(
-        Util_EventSourceMapping.subscribe(eventHandlerLambda, name, opts),
-      );
+      readModelNames
+      ->Belt.Array.map(readModelName =>
+          (
+            readModelName,
+            resources->Reventless.Util.ReadModel.queryDbStorageResource(
+              readModelName,
+            ),
+          )
+        )
+      ->Belt.Array.map(((sourceName, topic)) =>
+          Util_EventSourceMapping.subscribe(
+            ~lambda=eventHandlerLambda->Pulumi.Output.make,
+            ~targetName=name,
+            ~sourceName,
+            ~topic,
+            ~opts,
+          )
+        );
 
     ();
   };
