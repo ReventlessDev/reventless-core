@@ -1,6 +1,6 @@
 type t =
   | Aggregate
-  | AtomicCounter
+  | Counter
   | Plugin
   | CommandGenerator
   | CommandTopic
@@ -24,7 +24,7 @@ type t =
 let toString =
   fun
   | Aggregate => "Aggregate"
-  | AtomicCounter => "AtomicCounter"
+  | Counter => "Counter"
   | Plugin => "Plugin"
   | CommandGenerator => "CommandGenerator"
   | CommandTopic => "CommandTopic"
@@ -48,7 +48,7 @@ let toString =
 let ofString =
   fun
   | "Aggregate" => Aggregate->Some
-  | "AtomicCounter" => AtomicCounter->Some
+  | "Counter" => Counter->Some
   | "Plugin" => Plugin->Some
   | "CommandGenerator" => CommandGenerator->Some
   | "CommandTopic" => CommandTopic->Some
@@ -70,28 +70,6 @@ let ofString =
   | "Heartbeat" => Heartbeat->Some
   | _ => None;
 
-let toName =
-  fun
-  | Aggregate => "Aggr"
-  | AtomicCounter => "AtomicCounter"
-  | Plugin => "Plugin"
-  | CommandGenerator => "CmdGen"
-  | CommandTopic => "CmdTopic"
-  | EventCollector => "EventColl"
-  | EventLog => "EventLog"
-  | EventMapper => "EventMapper"
-  | EventTopic => "EventTopic"
-  | ExtensionPoint => "ExtPoint"
-  | Extension => "Extension"
-  | QueryDb => "QueryDB"
-  | ReadModel => "ReadModel"
-  | ReadModels => "ReadModels"
-  | Scheduler => "Scheduler"
-  | Service => "Service"
-  | SideEffectHandler => "SideEffectHandler"
-  | Task => "Task"
-  | Vpc => "Vpc"
-  | Core => "Core"
-  | Heartbeat => "Heartbeat";
+let toName = toString;
 
 let name = (name, t) => name ++ t->toName;
