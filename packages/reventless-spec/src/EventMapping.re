@@ -18,8 +18,8 @@ type action('id, 'command) =
   | Publish('id, 'command)
   | PublishDelayed('id, 'command, int)
   | PublishAsync(Js.Promise.t(array(('id, 'command))))
-  | SetCounterTarget(AtomicCounter.counterTarget)
-  | Count(AtomicCounter.countItem);
+  | SetCounterTarget(Counter.counterTarget)
+  | Count(Counter.countItem);
 
 module type T = {
   module Source: Source;
