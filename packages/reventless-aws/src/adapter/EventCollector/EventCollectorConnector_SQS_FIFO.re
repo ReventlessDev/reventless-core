@@ -103,8 +103,14 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let _eventSourceMappings =
-      otherTopics->Belt.Array.map(
-        Util_EventSourceMapping.subscribe(eventHandlerLambda, name, opts),
+      otherTopics->Belt.Array.map((_, (sourceName, topic)) =>
+        Util_EventSourceMapping.subscribe(
+          ~lambda=eventHandlerLambda,
+          ~targetName=name,
+          ~sourceName,
+          ~topic,
+          ~opts,
+        )
       );
 
     {resource: Some(queue->Util_SQS_FIFO.toResource)};

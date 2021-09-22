@@ -1,7 +1,7 @@
 open PulumiAws;
 
 /** TODO: handle other EventSources than Stream */
-let subscribe = (lambda, targetName, opts, (_, (sourceName, topic))) =>
+let subscribe = (~lambda, ~targetName, ~sourceName, ~topic, ~opts) =>
   EventSourceMapping.make(
     ~name=sourceName ++ "2" ++ targetName,
     ~args=
