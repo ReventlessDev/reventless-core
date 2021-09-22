@@ -6,7 +6,7 @@ type outputs = {
   .
   "name": string,
   "eventCollector": EventCollector.outputs,
-  "counter": option(AtomicCounter.outputs),
+  "counter": option(Counter.outputs),
 };
 
 type eventMapper;
@@ -23,7 +23,7 @@ type maker =
 
 module type T = {
   module Target: ReventlessSpec.EventMapping.Target;
-  module type Counter = AtomicCounter.T with module Target = Target;
+  module type Counter = Counter.T with module Target = Target;
   module type Mapping =
     ReventlessSpec.EventMapping.T with module Target := Target;
   let make: (~counter: (module Counter)=?, array(module Mapping)) => maker;
@@ -59,7 +59,7 @@ module Make =
     (
       ~name: string,
       ~eventCollector: Reventless.EventCollector.outputs,
-      ~counter: option(AtomicCounter.outputs)
+      ~counter: option(Counter.outputs)
     ) =>
     outputs =
     "";
@@ -77,7 +77,7 @@ module Make =
 
   module Target = Target;
 
-  module type Counter = AtomicCounter.T with module Target = Target;
+  module type Counter = Counter.T with module Target = Target;
 
   let service = Target.name;
 
@@ -117,7 +117,7 @@ module Make =
       service,
       correlationId:
         // original correlationId only for first action to avoid counting problems
-        // TODO: think about different solution, e.g. AtomicCounter with explicit
+        // TODO: think about different solution, e.g. Counter with explicit
         // count parameter (instead of always counting by 1)
         idx == 0 ? meta.correlationId : Message.uuid(),
       msgId: Message.uuid(),
@@ -144,7 +144,7 @@ module Make =
   };
 
   type eventsHandlerResultType =
-    | Counter(AtomicCounter.action)
+    | Counter(Counter.action)
     | Publisher(Js.Promise.t(array(AwsSdk.SQS.SendMessageBatchEntry.t)));
 
   let processActions = (actions, meta) =>
@@ -276,7 +276,7 @@ module Make =
       let (countActions, setTargetActions) =
         counterActions->Belt.Array.partition(
           fun
-          | AtomicCounter.Count(_) => true
+          | Counter.Count(_) => true
           | SetCounterTarget(_) => false,
         );
 

@@ -1,7 +1,7 @@
 open ReventlessSpec.Adapter;
 open ReventlessSpec.Counter;
 
-let componentType = ComponentType.AtomicCounter;
+let componentType = ComponentType.Counter;
 
 type outputs = {
   .
@@ -219,8 +219,8 @@ module Make =
 
     let counterLambdaHandler = {
       /* TODO:
-       *  - read AWS event and calculate AtomicCounter-Event
-       *  - pass Js.Json.t of AtomicCounter-Event to counerHandler (argument to make())
+       *  - read AWS event and calculate Counter-Event
+       *  - pass Js.Json.t of Counter-Event to counerHandler (argument to make())
        */
       // foreach record in stream, create event':
       let id = "TODO";

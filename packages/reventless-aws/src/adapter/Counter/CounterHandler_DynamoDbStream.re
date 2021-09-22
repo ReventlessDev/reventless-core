@@ -1,6 +1,6 @@
 open PulumiAws;
 
-let make: Reventless.AtomicCounter.Adapter.handlerMaker =
+let make: Reventless.Counter.Adapter.handlerMaker =
   (~name, ~readModelNames, ~handleEvents, ~opts, ~resources) => {
     let eventHandlerLambda =
       Lambda.CallbackFunction.make(
