@@ -346,6 +346,7 @@ module Make =
         (module Counter: Counter) => {
           let counter =
             Counter.make(
+              ~name,
               ~counterEventsHandler=
                 counterEventsHandler(resources, mappings, queryEngine),
               ~opts,
