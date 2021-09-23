@@ -215,7 +215,7 @@ external makeOutputs:
   outputs =
   "";
 
-[@bs.module "./Component"] [@bs.new]
+[@bs.module "../../../reventless/src/components/Component"] [@bs.new]
 external make:
   (
     ~componentType: string,
