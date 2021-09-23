@@ -13,6 +13,13 @@ module Deploytime = {
       ~adapter=storage,
       ~name=name->ComponentType.name(ComponentType.EventLog),
     );
+
+  let filterEventLogStorages = keep =>
+    Resources.Deploytime.filter(
+      ~name=ComponentType.EventLog->ComponentType.toName,
+      ~adapter=storage,
+      ~keep,
+    );
 };
 
 module Runtime = {

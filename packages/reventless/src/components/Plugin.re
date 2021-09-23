@@ -1,8 +1,6 @@
 // TODO: refactor to smaller code parts for a better overview
 open ReventlessSpec.Adapter;
 
-let componentType = ComponentType.Plugin;
-
 type outputFields = {
   .
   "id": string,
@@ -28,6 +26,10 @@ type outputs = {. "outputs": Pulumi.Output.t(outputFields)};
 
 type plugin; // TODO: rename to t - after refactoring
 
+let componentType = ComponentType.Plugin;
+
+type t = Component.t(plugin, outputs);
+
 type maker =
   (
     ~name: string,
@@ -42,7 +44,7 @@ type maker =
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit
   ) =>
-  Component.t(plugin, outputs);
+  t;
 
 module type T = {let make: maker;};
 

@@ -17,6 +17,15 @@ let createResourceName = (~adapter, ~name) => name ++ "." ++ adapter;
 let get = (~adapter, ~name, resources) =>
   resources->Js.Dict.get(createResourceName(~adapter, ~name));
 
+let filter = (~adapter, ~name, ~keep, resources) =>
+  resources
+  ->Js.Dict.entries
+  ->Belt.Array.keepMap(((resourceName, resource)) =>
+      resourceName->Js.String2.endsWith(createResourceName(~name, ~adapter))
+      && keep(name)
+        ? Some(resource) : None
+    );
+
 module Deploytime = {
   let finalize = () => {
     resolveResources^(. tmpResources);
@@ -53,6 +62,10 @@ module Deploytime = {
         {j|Resource doesn't exist: $adapter $name, resources: $resources|j},
       );
     };
+
+  let filter = (~name, ~adapter, ~keep) => {
+    tmpResources->filter(~adapter, ~name, ~keep);
+  };
 };
 
 module Runtime = {
@@ -70,15 +83,6 @@ module Runtime = {
     };
 
   let filter = (~name, ~adapter, ~keep) => {
-    resources
-    ->Pulumi.Output.get
-    ->Js.Dict.entries
-    ->Belt.Array.keepMap(((resourceName, resource)) =>
-        resourceName->Js.String2.endsWith(
-          createResourceName(~name, ~adapter),
-        )
-        && keep(name)
-          ? Some(resource) : None
-      );
+    resources->Pulumi.Output.get->filter(~adapter, ~name, ~keep);
   };
 };

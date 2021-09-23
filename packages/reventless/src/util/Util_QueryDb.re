@@ -8,6 +8,13 @@ module Deploytime = {
       ~adapter=storage,
       ~name=name->ComponentType.name(ComponentType.QueryDb),
     );
+
+  let filterQueryDbStorages = keep =>
+    Resources.Deploytime.filter(
+      ~name=ComponentType.QueryDb->ComponentType.toName,
+      ~adapter=storage,
+      ~keep,
+    );
 };
 module Runtime = {
   let getStorageResource = name =>

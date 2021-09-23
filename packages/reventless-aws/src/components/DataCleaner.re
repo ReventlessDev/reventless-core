@@ -192,7 +192,16 @@ let stackName = prefix =>
   ++ "-"
   ++ Pulumi.Pulumi.getStackName();
 
-let make = (~prefix: option(string), ~tablesToClean: array(resource)) => {
+type keep = string => bool;
+
+let make = (~prefix: option(string), ~keep: keep) => {
+  let tablesToClean =
+    [|
+      Util.EventLog.Deploytime.filterEventLogStorages(keep),
+      Util.QueryDb.Deploytime.filterQueryDbStorages(keep),
+    |]
+    ->Belt.Array.concatMany;
+
   CallbackFunction.(
     make(
       ~name="DataCleaner-" ++ stackName(prefix),
