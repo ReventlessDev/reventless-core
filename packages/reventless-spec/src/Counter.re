@@ -1,11 +1,9 @@
 type countItem = {
-  counter: string,
-  id: string,
+  counterId: string,
   item: string,
 };
 
 type counterTarget = {
-  counter: string,
-  id: string,
+  counterId: string,
   target: int,
 };
