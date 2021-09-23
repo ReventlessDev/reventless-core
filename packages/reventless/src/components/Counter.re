@@ -6,7 +6,7 @@ let componentType = ComponentType.Counter;
 type outputs = {
   .
   "referencesDb": resource,
-  "counterDb": resource,
+  "countsDb": resource,
 };
 
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
@@ -36,6 +36,7 @@ module type T = {
 
   let make:
     (
+      ~name: string,
       ~counterEventsHandler: counterEventsHandler,
       ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
@@ -95,7 +96,7 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~referencesDb: resource, ~counterDb: resource) => outputs =
+    (~referencesDb: resource, ~countsDb: resource) => outputs =
     "";
 
   [@bs.send]
@@ -163,9 +164,9 @@ module Make =
 
     let countFieldName = "count";
 
-    module CounterViewSpec = {
+    module CountsViewSpec = {
       module Spec = AggregateSpec;
-      let name = Some(name ++ "Counter");
+      let name = Some(name ++ "Counts");
       [@decco]
       type state = {count: int}; //TODO: generalize
 
@@ -175,11 +176,11 @@ module Make =
       let indexes = [];
     };
 
-    module CounterDb =
+    module CountsDb =
       QueryDb.Make(
         Config,
         AggregateSpec,
-        CounterViewSpec,
+        CountsViewSpec,
         QueryDbStorage,
         (QueryDb.Adapter.NoResolvers(Config)),
       );
@@ -213,10 +214,10 @@ module Make =
          );
 
     let referencesDb = ReferencesDb.make(~ttl?, ~opts, ~resources, ());
-    let counterDb = CounterDb.make(~ttl?, ~opts, ~resources, ());
+    let countsDb = CountsDb.make(~ttl?, ~opts, ~resources, ());
 
     self->setCount(referencesDb->ReferencesDb.saveBatch->countFn);
-    self->setSetCounterTarget(counterDb->CounterDb.count->setCounterTargetFn);
+    self->setSetCounterTarget(countsDb->CountsDb.count->setCounterTargetFn);
 
     let counterLambdaHandler = {
       /* TODO:
@@ -229,6 +230,8 @@ module Make =
       let event' = Js.Json.string("TODO");
       counterEventsHandler(. [|event'|]);
     };
+
+    // let handler = Handler.make();
 
     // let handleStreamEvent = (handleEvents, streamEvent, _) => {
     //   let records = streamEvent##_Records->Belt.Option.getWithDefault([||]);
@@ -250,24 +253,10 @@ module Make =
     //        Js.Exn.raiseError(err->AwsSdk.Error.ofPromise##message)
     //      );
     // };
-    // let eventHandlerLambda =
-    //   PulumiAws.Lambda.CallbackFunction.make(
-    //     ~name,
-    //     ~args=
-    //       PulumiAws.Lambda.CallbackFunction.Args.make(
-    //         ~callback=
-    //           EventCollectorConnector_SQS_Runtime.handleCallbackEvent(
-    //             handleEvents,
-    //             queue,
-    //           ),
-    //         (),
-    //       ),
-    //     ~opts,
-    //     (),
-    //   );
+
     makeOutputs(
       ~referencesDb=referencesDb->ReferencesDb.outputs##storage,
-      ~counterDb=counterDb->CounterDb.outputs##storage,
+      ~countsDb=countsDb->CountsDb.outputs##storage,
     )
     |> self->setOutputs;
   };
@@ -276,6 +265,7 @@ module Make =
 
   let make:
     (
+      ~name: string,
       ~counterEventsHandler: counterEventsHandler,
       ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
@@ -283,10 +273,10 @@ module Make =
       unit
     ) =>
     Component.t(t, outputs) =
-    (~counterEventsHandler, ~ttl=oneWeek, ~opts=?, ~resources, _) => {
+    (~name, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?, ~resources, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=componentType->ComponentType.toName,
+        ~name=name->ComponentType.name(componentType),
         ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl)),
         ~opts,
         ~resources,
