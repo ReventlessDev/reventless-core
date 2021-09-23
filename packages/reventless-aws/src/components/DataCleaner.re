@@ -3,6 +3,15 @@ open PulumiAws.Lambda;
 open Reventless;
 open ReventlessSpec.Adapter;
 
+type outputs = {
+  .
+  "lambda": CallbackFunction.t,
+  "tablesToClean": Pulumi.Output.t(array(string)),
+};
+
+type dataCleaner;
+type t = Component.t(dataCleaner, outputs);
+
 type tableConfig = {
   .
   "name": string,
@@ -194,7 +203,48 @@ let stackName = prefix =>
 
 type keep = string => bool;
 
-let make = (~prefix: option(string), ~keep: keep) => {
+type constructed;
+type construct = (Component.t(dataCleaner, outputs), string) => constructed;
+
+[@bs.obj]
+external makeOutputs:
+  (
+    ~lambda: CallbackFunction.t,
+    ~tablesToClean: Pulumi.Output.t(array(string))
+  ) =>
+  outputs =
+  "";
+
+[@bs.module "./Component"] [@bs.new]
+external make:
+  (
+    ~componentType: string,
+    ~name: string,
+    ~construct: construct,
+    ~opts: option(Pulumi.ComponentResource.Options.t)
+  ) =>
+  Component.t(dataCleaner, outputs) =
+  "default";
+
+[@bs.send]
+external registerOutputs:
+  (Component.t(dataCleaner, outputs), outputs) => constructed =
+  "registerOutputs";
+[@bs.send]
+external setOutputs: (Component.t(dataCleaner, outputs), outputs) => unit =
+  "setOutputs";
+let setOutputs = (outputs, self) => {
+  self->setOutputs(outputs);
+  self->registerOutputs(outputs);
+};
+
+let construct = (~keep: keep, self, name) => {
+  let opts =
+    Pulumi.CustomResourceOptions.make(
+      ~parent=self->Component.toPulumiResource,
+      (),
+    );
+
   let tablesToClean =
     [|
       Util.EventLog.Deploytime.filterEventLogStorages(keep),
@@ -202,16 +252,32 @@ let make = (~prefix: option(string), ~keep: keep) => {
     |]
     ->Belt.Array.concatMany;
 
-  CallbackFunction.(
-    make(
-      ~name="DataCleaner-" ++ stackName(prefix),
+  let lambda =
+    CallbackFunction.make(
+      ~name,
       ~args=
-        Args.make(
+        CallbackFunction.Args.make(
           ~callback=cleanerFn(tablesToClean),
           ~memorySize=1024->Pulumi.Input.wrap,
           (),
         ),
+      ~opts,
       (),
-    )
+    );
+
+  let tablesToClean =
+    tablesToClean
+    ->Belt.Array.map(resource => resource##name)
+    ->Pulumi.Output.all;
+
+  makeOutputs(~lambda, ~tablesToClean)->setOutputs(self);
+};
+
+let make = (~keep: keep, ~prefix: option(string)=?, ~opts=?, _: unit) => {
+  make(
+    ~componentType="DataCleaner",
+    ~name="-" ++ stackName(prefix),
+    ~construct=construct(~keep),
+    ~opts,
   );
 };
