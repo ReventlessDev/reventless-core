@@ -14,6 +14,7 @@ type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 type action =
   | Count(countItem)
   | SetCounterTarget(counterTarget);
+
 type count = array(countItem) => Js.Promise.t(unit);
 type setCounterTarget = counterTarget => Js.Promise.t(unit);
 
@@ -27,8 +28,7 @@ module Source: ReventlessSpec.EventMapping.Source = {
     | CountFinished;
 };
 
-//type counterHandler = (Source.Id.t, Source.event) => Js.Promise.t(unit);
-type counterHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
+type counterEventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
 module type T = {
   type t;
@@ -36,7 +36,7 @@ module type T = {
 
   let make:
     (
-      ~counterHandler: counterHandler,
+      ~counterEventsHandler: counterEventsHandler,
       ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       ~resources: resources,
@@ -123,7 +123,7 @@ module Make =
 
   let construct =
       (
-        ~counterHandler: counterHandler,
+        ~counterEventsHandler: counterEventsHandler,
         ~ttl: option(int),
         self,
         name,
@@ -161,6 +161,8 @@ module Make =
         (QueryDb.Adapter.NoResolvers(Config)),
       );
 
+    let countFieldName = "count";
+
     module CounterViewSpec = {
       module Spec = AggregateSpec;
       let name = Some(name ++ "Counter");
@@ -184,10 +186,9 @@ module Make =
 
     let countFn = (saveBatch, countItems) =>
       saveBatch(.
-        countItems->Belt.Array.map(({counter, id, item}) =>
+        countItems->Belt.Array.map(({counterId, item}) =>
           (
-            (counter ++ "-" ++ id ++ "#" ++ item)
-            ->AggregateSpec.Id.makeFromString,
+            (counterId ++ "#" ++ item)->AggregateSpec.Id.makeFromString,
             (),
             ttl,
           )
@@ -201,8 +202,8 @@ module Make =
            | Error(_) => NotCounted("Unknown error")->Js.Promise.reject,
          );
 
-    let setCounterTargetFn = (count, {counter, id, target}) =>
-      count(. id->Id.String.makeFromString, counter, target)
+    let setCounterTargetFn = (count, {counterId, target}) =>
+      count(. counterId->Id.String.makeFromString, countFieldName, target)
       |> Js.Promise.then_(
            fun
            | Belt.Result.Ok(_) => Js.Promise.resolve()
@@ -226,7 +227,7 @@ module Make =
       let id = "TODO";
       let event = "TODO";
       let event' = Js.Json.string("TODO");
-      counterHandler(. [|event'|]);
+      counterEventsHandler(. [|event'|]);
     };
 
     // let handleStreamEvent = (handleEvents, streamEvent, _) => {
@@ -275,18 +276,18 @@ module Make =
 
   let make:
     (
-      ~counterHandler: counterHandler,
+      ~counterEventsHandler: counterEventsHandler,
       ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs) =
-    (~counterHandler, ~ttl=oneWeek, ~opts=?, ~resources, _) => {
+    (~counterEventsHandler, ~ttl=oneWeek, ~opts=?, ~resources, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=componentType->ComponentType.toName,
-        ~construct=construct(~counterHandler, ~ttl=Some(ttl)),
+        ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl)),
         ~opts,
         ~resources,
       );

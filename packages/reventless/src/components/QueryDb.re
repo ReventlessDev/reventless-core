@@ -301,8 +301,8 @@ module Make =
     };
 
   let countFn = storage =>
-    (. id, fieldName, value) => {
-      storage.Adapter.count(. id->Spec.Id.toString, fieldName, value);
+    (. id, fieldName, inc) => {
+      storage.Adapter.count(. id->Spec.Id.toString, fieldName, inc);
     };
 
   let deleteFn = storage =>

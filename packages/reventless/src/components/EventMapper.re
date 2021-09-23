@@ -143,11 +143,11 @@ module Make =
     );
   };
 
-  type eventsHandlerResultType =
+  type action =
     | Counter(Counter.action)
     | Publisher(Js.Promise.t(array(AwsSdk.SQS.SendMessageBatchEntry.t)));
 
-  let processActions = (actions, meta) =>
+  let processMappingActions = (actions, meta) =>
     actions->Belt.Array.mapWithIndex((idx, action) =>
       switch (action) {
       | ReventlessSpec.EventMapping.Publish(commandId, command) =>
@@ -176,22 +176,26 @@ module Make =
       }
     );
 
-  let sendEntries = (pEntries, resources) =>
-    pEntries->Js.Promise.then_(
-                entries =>
-                  entries
-                  ->Belt.Array.concatMany
-                  ->AwsSdk.SQS.sendMessageBatch(
-                      ~queueId=
-                        resources->Util.Aggregate.commandTopicConnectorResource(
-                          service,
-                        )##id
-                        ->Pulumi.Output.get,
-                    ),
-                _,
-              );
+  let sendEntries = (entries, resources) =>
+    entries
+    ->Js.Promise.then_(
+        entries =>
+          entries->AwsSdk.SQS.sendMessageBatch(
+            ~queueId=
+              resources->Util.Aggregate.commandTopicConnectorResource(service)##id
+              ->Pulumi.Output.get,
+          ),
+        _,
+      )
+    ->Js.Promise.catch(
+        err =>
+          err
+          ->Js.log2("EventMapper: Error on sendMessageBatch:", _)
+          ->Js.Promise.resolve /* NOTE: should we really resolve hear? Shoudln't we retry somehow?*/,
+        _,
+      );
 
-  let commonEventsHandler = (resources, mappings, queryEngine, events'Json) => {
+  let commonEventsHandler = (mappings, queryEngine, events'Json) => {
     let count = events'Json->Belt.Array.size;
     let (publisherActions, counterActions) =
       events'Json
@@ -217,7 +221,7 @@ module Make =
             switch (idDecoded, eventDecoded) {
             | (Some(Ok(eventId)), Some(Ok(event))) =>
               Mapping.map(. eventId, event, queryEngine)
-              ->processActions(eventMeta)
+              ->processMappingActions(eventMeta)
               ->Some
             | (None, _)
             | (_, None) =>
@@ -240,61 +244,73 @@ module Make =
           }
         );
     let publisherEntries =
-      publisherActions->Belt.Array.map(actionType =>
-        switch (actionType) {
-        | Publisher(entries) => entries
-        | Counter(_) => [||]->Js.Promise.resolve
-        }
-      );
+      publisherActions
+      ->Belt.Array.map(
+          fun
+          | Publisher(entries) => entries
+          | Counter(_) => Js.Exn.raiseError("Invalid EventMapper action"),
+        )
+      ->Js.Promise.all
+      ->Js.Promise.then_(
+          entries => entries->Belt.Array.concatMany->Js.Promise.resolve,
+          _,
+        );
     let counterActions =
-      counterActions->Belt.Array.map(actionType =>
-        switch (actionType) {
+      counterActions->Belt.Array.map(
+        fun
         | Counter(action) => action
-        | Publisher(_) => Js.Exn.raiseError("INVALID") // shouldn't be possible
-        }
+        | Publisher(_) => Js.Exn.raiseError("Invalid EventMapper action"),
       );
     (publisherEntries, counterActions);
   };
 
   let eventCollectorEventsHandler =
-      (resources, mappings, queryEngine, countFn, setCounterTargetFn) =>
+      (
+        resources,
+        mappings,
+        queryEngine,
+        count: Counter.count,
+        setCounterTarget: Counter.setCounterTarget,
+      ) =>
     (. events'Json) => {
       let (publisherEntries, counterActions) =
-        commonEventsHandler(resources, mappings, queryEngine, events'Json);
-      let publisherPromises =
-        publisherEntries
-        ->Js.Promise.all
-        ->sendEntries(resources)
-        ->Js.Promise.catch(
-            err =>
-              err
-              ->Js.log2("EventMapper: Error on sendMessageBatch:", _)
-              ->Js.Promise.resolve /* NOTE: should we really resolve hear? Shoudln't we retry somehow?*/,
-            _,
-          );
-
+        commonEventsHandler(mappings, queryEngine, events'Json);
       let (countActions, setTargetActions) =
         counterActions->Belt.Array.partition(
           fun
           | Counter.Count(_) => true
           | SetCounterTarget(_) => false,
         );
-
-      // TODO: call countFn with all countAction-items
-      // TODO: call setCounterTargetFn with all setCounterTarget-targets
-      // TODO: await all promises of both calls
-      Js.Promise.resolve(); // TODO
+      (
+        countActions
+        ->Belt.Array.keepMap(
+            fun
+            | Count(countItem) => Some(countItem)
+            | _ => None,
+          )
+        ->count,
+        setTargetActions
+        ->Belt.Array.map(
+            fun
+            | SetCounterTarget(counterTarget) =>
+              counterTarget->setCounterTarget
+            | _ => Js.Promise.resolve(),
+          )
+        ->Js.Promise.all,
+        publisherEntries->sendEntries(resources),
+      )
+      ->Js.Promise.all3
+      ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
   let counterEventsHandler = (resources, mappings, queryEngine) =>
     (. events'Json) => {
-      let (publisherActions, countActions) =
-        commonEventsHandler(resources, mappings, queryEngine, events'Json);
+      let (publisherEntries, countActions) =
+        commonEventsHandler(mappings, queryEngine, events'Json);
       if (countActions->Belt.Array.size > 0) {
-        Js.log("NOT ALLOWED!" /*TODO: better log message */);
+        Js.log("Counter actions are not allowed in Count mapping!");
       };
-      publisherActions; // TODO: same as above
-      Js.Promise.resolve(); // FIXME: implement
+      publisherEntries->sendEntries(resources);
     };
 
   let construct =
@@ -314,7 +330,7 @@ module Make =
         (),
       );
 
-    let (countFn, setCounterTargetFn, counterOutputsO) =
+    let (count, setCounterTarget, counterOutputs) =
       counter->Belt.Option.mapWithDefault(
         (
           _items => {
@@ -330,7 +346,7 @@ module Make =
         (module Counter: Counter) => {
           let counter =
             Counter.make(
-              ~counterHandler=
+              ~counterEventsHandler=
                 counterEventsHandler(resources, mappings, queryEngine),
               ~opts,
               ~resources,
@@ -356,8 +372,8 @@ module Make =
             resources,
             mappings,
             queryEngine,
-            countFn,
-            setCounterTargetFn,
+            count,
+            setCounterTarget,
           ),
         ~memorySize,
         ~timeout,
@@ -369,7 +385,7 @@ module Make =
     makeOutputs(
       ~name,
       ~eventCollector=eventCollector->Component.extractOutputs,
-      ~counter=counterOutputsO,
+      ~counter=counterOutputs,
     )
     ->setOutputs(self, _);
   };

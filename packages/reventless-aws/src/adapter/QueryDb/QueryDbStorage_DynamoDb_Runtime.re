@@ -195,17 +195,18 @@ let saveBatch:
     };
 
 let count = table =>
-  (. id, counter, inc) => {
+  (. id, fieldName, inc) => {
     let tableName = table##name->Pulumi.Output.get;
     Js.log(
-      {j|AdapterAws.QueryDbDynamoDB.count: $tableName, $id, $counter, $inc|j},
+      {j|AdapterAws.QueryDbDynamoDB.count: $tableName, $id, $fieldName, $inc|j},
     );
     update(
       UpdateInput.make(
         ~_TableName=tableName,
         ~_Key={"id": id},
-        ~_UpdateExpression="ADD #count :inc",
-        ~_ExpressionAttributeNames=[("#count", counter)]->Js.Dict.fromList,
+        ~_UpdateExpression="ADD #fieldName :inc",
+        ~_ExpressionAttributeNames=
+          [("#fieldName", fieldName)]->Js.Dict.fromList,
         ~_ExpressionAttributeValues={":inc": inc},
         ~_ReturnValues=`UPDATED_NEW,
         (),
