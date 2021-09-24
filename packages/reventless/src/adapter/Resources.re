@@ -8,7 +8,7 @@ let (resources, resolveResources) = {
   let resolveResources = ref((. _d: t) => ());
   let resourcesOutput =
     Js.Promise.make((~resolve, ~reject as _) => resolveResources := resolve)
-    ->Pulumi.Output.fromPromise;
+    ->Pulumi.Output.makeFromPromise;
   (resourcesOutput, resolveResources);
 };
 
