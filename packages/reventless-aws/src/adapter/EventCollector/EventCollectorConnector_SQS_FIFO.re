@@ -103,12 +103,12 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let _eventSourceMappings =
-      otherTopics->Belt.Array.map((_, (sourceName, topic)) =>
+      otherTopics->Belt.Array.map((_, (sourceName, source)) =>
         Util_EventSourceMapping.subscribe(
           ~lambda=eventHandlerLambda,
           ~targetName=name,
           ~sourceName,
-          ~topic,
+          ~source,
           ~opts,
         )
       );
