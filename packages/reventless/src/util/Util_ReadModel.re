@@ -1,4 +1,2 @@
 let queryDbStorageResource = (resources, readModelName) =>
-  resources->Util_EventLog.getStorageResource(
-    readModelName->ComponentType.name(ComponentType.ReadModel),
-  );
+  resources->Util_QueryDb.getStorageResource(readModelName);
