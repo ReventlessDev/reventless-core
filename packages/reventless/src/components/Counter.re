@@ -2,6 +2,7 @@ open ReventlessSpec.Adapter;
 open ReventlessSpec.Counter;
 
 let componentType = ComponentType.Counter;
+let countFieldName = "count";
 
 type outputs = {
   .
@@ -9,7 +10,9 @@ type outputs = {
   "countsDb": resource,
 };
 
-type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
+type counterHandler =
+  (~references: array(string), ~counts: array(Js.Json.t)) =>
+  Js.Promise.t(unit);
 
 type action =
   | Count(countItem)
@@ -20,7 +23,7 @@ type setCounterTarget = counterTarget => Js.Promise.t(unit);
 
 exception NotCounted(string);
 
-module Source: ReventlessSpec.EventMapping.Source = {
+module Source = {
   module Id = Id.String;
   let name = componentType->ComponentType.toName;
   [@decco]
@@ -50,12 +53,13 @@ module type T = {
 };
 
 module Adapter = {
-  type handler = unit;
+  type handler = {setCounterTarget};
   type handlerMaker =
     (
       ~name: string,
-      ~readModelNames: array(string),
-      ~handleEvents: eventsHandler,
+      ~referencesName: string,
+      ~countsName: string,
+      ~counterHandler: counterHandler,
       ~opts: Pulumi.CustomResourceOptions.t,
       ~resources: resources
     ) =>
@@ -162,13 +166,14 @@ module Make =
         (QueryDb.Adapter.NoResolvers(Config)),
       );
 
-    let countFieldName = "count";
-
     module CountsViewSpec = {
       module Spec = AggregateSpec;
       let name = Some(name ++ "Counts");
       [@decco]
-      type state = {count: int}; //TODO: generalize
+      type state = {
+        id: string,
+        count: int,
+      }; //TODO: generalize
 
       let resolveIdConfigs = [];
       let resolveIdsConfigs = [];
@@ -185,74 +190,164 @@ module Make =
         (QueryDb.Adapter.NoResolvers(Config)),
       );
 
-    let countFn = (saveBatch, countItems) =>
+    let separator = "#";
+    let makeId = ((counterId, reference)) =>
+      (counterId ++ separator ++ reference)->AggregateSpec.Id.makeFromString;
+    let unmakeId = id =>
+      id
+      ->Js.String2.split(separator)
+      ->(
+          fun
+          | [||] => ("", "")
+          | [|counterId|] => (counterId, "")
+          | parts => (parts[0], parts[1])
+        );
+
+    let groupCountItemsByCounterId = countItems => {
+      let dict = Js.Dict.empty();
+      countItems->Belt.Array.forEach(({counterId, reference}) => {
+        let currentReferences =
+          dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault([||]);
+        dict->Js.Dict.set(
+          counterId,
+          currentReferences->Belt.Array.concat([|reference|]),
+        );
+      });
+      dict->Js.Dict.entries;
+    };
+
+    let logCountItems = countItems =>
+      countItems
+      ->groupCountItemsByCounterId
+      ->Belt.Array.forEach(((counterId, references)) => {
+          let size = references->Belt.Array.size;
+          let referencesStr = references->Js.Array2.joinWith(",");
+          Js.log(
+            {j|  $size references for counterId $counterId: $referencesStr|j},
+          );
+        });
+
+    let count = (saveBatch, countItems) =>
       saveBatch(.
-        countItems->Belt.Array.map(({counterId, item}) =>
-          (
-            (counterId ++ "#" ++ item)->AggregateSpec.Id.makeFromString,
-            (),
-            ttl,
-          )
+        countItems->Belt.Array.map(({counterId, reference}) =>
+          (makeId((counterId, reference)), (), ttl)
         ),
       )
       |> Js.Promise.then_(
            fun
-           | Belt.Result.Ok(_) => Js.Promise.resolve()
-           | Error(Reventless.QueryDb.NotSavedToStorage(err)) =>
-             NotCounted(err)->Js.Promise.reject
-           | Error(_) => NotCounted("Unknown error")->Js.Promise.reject,
+           | Belt.Result.Ok(_) => {
+               let batchSize = countItems->Belt.Array.size;
+               Js.log({j|Counter: saved batch of $batchSize references:|j});
+               countItems->logCountItems;
+               Js.Promise.resolve();
+             }
+           | Error(Reventless.QueryDb.NotSavedToStorage(err)) => {
+               let batchSize = countItems->Belt.Array.size;
+               Js.log(
+                 {j|Counter error: couldn't save batch of $batchSize references:|j},
+               );
+               countItems->logCountItems;
+               NotCounted(err)->Js.Promise.reject;
+             }
+           | Error(_) => {
+               let batchSize = countItems->Belt.Array.size;
+               Js.log(
+                 {j|Unknown Counter error: couldn't save batch of $batchSize references:|j},
+               );
+               countItems->logCountItems;
+               NotCounted("Unknown error")->Js.Promise.reject;
+             },
          );
 
-    let setCounterTargetFn = (count, {counterId, target}) =>
+    let setCounterTarget = (count, {counterId, target}) =>
       count(. counterId->Id.String.makeFromString, countFieldName, target)
       |> Js.Promise.then_(
            fun
-           | Belt.Result.Ok(_) => Js.Promise.resolve()
-           | Error(Reventless.QueryDb.NotSavedToStorage(err)) =>
-             NotCounted(err)->Js.Promise.reject
+           | Belt.Result.Ok(_) => {
+               Js.log(
+                 {j|Counter: set target for counterId $counterId to $target|j},
+               );
+               Js.Promise.resolve();
+             }
+           | Error(Reventless.QueryDb.NotSavedToStorage(err)) => {
+               Js.log(
+                 {j|Counter error: couldn't set target for counterId $counterId to $target|j},
+               );
+               NotCounted(err)->Js.Promise.reject;
+             }
            | Error(_) => NotCounted("Unknown error")->Js.Promise.reject,
          );
 
     let referencesDb = ReferencesDb.make(~ttl?, ~opts, ~resources, ());
     let countsDb = CountsDb.make(~ttl?, ~opts, ~resources, ());
 
-    self->setCount(referencesDb->ReferencesDb.saveBatch->countFn);
-    self->setSetCounterTarget(countsDb->CountsDb.count->setCounterTargetFn);
+    self->setCount(referencesDb->ReferencesDb.saveBatch->count);
+    self->setSetCounterTarget(countsDb->CountsDb.count->setCounterTarget);
 
-    let counterLambdaHandler = {
-      /* TODO:
-       *  - read AWS event and calculate Counter-Event
-       *  - pass Js.Json.t of Counter-Event to counerHandler (argument to make())
-       */
-      // foreach record in stream, create event':
-      let id = "TODO";
-      let event = "TODO";
-      let event' = Js.Json.string("TODO");
-      counterEventsHandler(. [|event'|]);
+    let referencesName =
+      ReferencesViewSpec.name->Belt.Option.getWithDefault(AggregateSpec.name);
+    let countsName =
+      CountsViewSpec.name->Belt.Option.getWithDefault(AggregateSpec.name);
+
+    let groupByCounterId = references => {
+      let dict = Js.Dict.empty();
+      references->Belt.Array.forEach(reference => {
+        let counterId = reference->unmakeId->fst;
+        let current =
+          dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault(0);
+        dict->Js.Dict.set(counterId, current + 1);
+      });
+      dict->Js.Dict.entries;
     };
 
-    // let handler = Handler.make();
+    let counterHandler: counterHandler =
+      (~references, ~counts) =>
+        (
+          references
+          ->groupByCounterId
+          ->Belt.Array.map(((counterId, inc)) =>
+              countsDb->CountsDb.count(.
+                counterId->AggregateSpec.Id.makeFromString,
+                countFieldName,
+                inc,
+              )
+            )
+          ->Js.Promise.all
+          ->Js.Promise.then_(_ => Js.Promise.resolve(), _), // TODO error handling
+          counterEventsHandler(.
+            counts->Belt.Array.keepMap(count =>
+              switch (count->CountsViewSpec.state_decode) {
+              | Ok({id, count}) when count == 0 =>
+                let (counterId, _) = id->unmakeId;
+                Js.log(
+                  __MODULE__ ++ {j|.counterHandler: finished $name($id)|j},
+                );
+                let meta = Message.generateMeta(~service=name, ());
+                Some(
+                  [|
+                    ("id", counterId->Js.Json.string),
+                    ("meta", meta->Message.meta_encode),
+                    ("event", CountFinished->Source.event_encode),
+                  |]
+                  ->Js.Dict.fromArray
+                  ->Js.Json.object_,
+                );
+              | Ok({id, count}) =>
+                Js.log(
+                  __MODULE__
+                  ++ {j|.counterHandler: counted down $name($id) to $count|j},
+                );
+                None;
+              | _ => None
+              }
+            ),
+          ),
+        )
+        ->Js.Promise.all2
+        ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
 
-    // let handleStreamEvent = (handleEvents, streamEvent, _) => {
-    //   let records = streamEvent##_Records->Belt.Option.getWithDefault([||]);
-    //   let jsons =
-    //     records->Belt.Array.keepMap(record =>
-    //       switch (record##eventSource) {
-    //       | "aws:dynamodb" =>
-    //         record->Util_DynamoDbStream_Runtime.parseDynamoDbStreamRecord
-    //       | eventSource =>
-    //         Js.log2(
-    //           "EventCollectorConnector_DynamoDbStream_Runtime: ignoring record from eventSource:",
-    //           eventSource,
-    //         );
-    //         None;
-    //       }
-    //     );
-    //   handleEvents(. jsons)
-    //   |> Js.Promise.catch(err =>
-    //        Js.Exn.raiseError(err->AwsSdk.Error.ofPromise##message)
-    //      );
-    // };
+    let _handler =
+      Handler.make(~name, ~referencesName, ~countsName, ~counterHandler);
 
     makeOutputs(
       ~referencesDb=referencesDb->ReferencesDb.outputs##storage,
