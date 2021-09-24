@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-aws",
-  "version": "1.0.0-resources-improvement.3",
+  "version": "1.0.0-resources-improvement.4",
   "description": "AWS adapters for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -27,10 +27,10 @@
   },
   "dependencies": {
     "@reventless/bs-aws-sdk": "^1.0.0-resources-improvement.0",
-    "@reventless/bs-pulumi-aws": "^1.0.0-resources-improvement.0",
-    "@reventless/bs-pulumi-pulumi": "^1.0.0-resources-improvement.0",
-    "@reventless/reventless": "^1.0.0-resources-improvement.1",
-    "@reventless/reventless-spec": "^1.0.0-resources-improvement.1"
+    "@reventless/bs-pulumi-aws": "^1.0.0-resources-improvement.1",
+    "@reventless/bs-pulumi-pulumi": "^1.0.0-resources-improvement.1",
+    "@reventless/reventless": "^1.0.0-resources-improvement.2",
+    "@reventless/reventless-spec": "^1.0.0-resources-improvement.2"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
