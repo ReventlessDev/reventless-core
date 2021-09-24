@@ -57,7 +57,7 @@ module Deploytime = {
     switch (get(~adapter, ~name)) {
     | Some(resource) => resource
     | None =>
-      let resources = resources->Pulumi.Output.get->Js.Dict.keys;
+      let resources = tmpResources->Js.Dict.keys;
       Js.Exn.raiseError(
         {j|Resource doesn't exist: $adapter $name, resources: $resources|j},
       );
