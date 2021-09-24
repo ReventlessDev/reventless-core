@@ -3,8 +3,15 @@ let storage = "Storage";
 module Deploytime = {
   let setStorageResource = (resource, name) =>
     Resources.Deploytime.set(~adapter=storage, ~name, ~resource);
+
   let getStorageResource = name =>
     Resources.Deploytime.getExn(
+      ~adapter=storage,
+      ~name=name->ComponentType.name(ComponentType.QueryDb),
+    );
+
+  let getStorageResourceOutput = name =>
+    Resources.Deploytime.getResourceOutputExn(
       ~adapter=storage,
       ~name=name->ComponentType.name(ComponentType.QueryDb),
     );

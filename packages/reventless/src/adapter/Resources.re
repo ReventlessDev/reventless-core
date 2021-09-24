@@ -12,19 +12,33 @@ let (resources, resolveResources) = {
   (resourcesOutput, resolveResources);
 };
 
-let createResourceName = (~adapter, ~name) => name ++ "." ++ adapter;
+module Internal = {
+  let createResourceName = (~adapter, ~name) => name ++ "." ++ adapter;
 
-let get = (~adapter, ~name, resources) =>
-  resources->Js.Dict.get(createResourceName(~adapter, ~name));
+  let get = (~adapter, ~name, resources) =>
+    resources->Js.Dict.get(createResourceName(~adapter, ~name));
 
-let filter = (~adapter, ~name, ~keep, resources) =>
-  resources
-  ->Js.Dict.entries
-  ->Belt.Array.keepMap(((resourceName, resource)) =>
-      resourceName->Js.String2.endsWith(createResourceName(~name, ~adapter))
-      && keep(name)
-        ? Some(resource) : None
-    );
+  let getExn = (~adapter, ~name, resources) =>
+    switch (resources->get(~adapter, ~name)) {
+    | Some(resource) => resource
+    | None =>
+      let resources = resources->Js.Dict.keys;
+      Js.Exn.raiseError(
+        {j|Resource doesn't exist: $adapter $name, resources: $resources|j},
+      );
+    };
+
+  let filter = (~adapter, ~name, ~keep, resources) =>
+    resources
+    ->Js.Dict.entries
+    ->Belt.Array.keepMap(((resourceName, resource)) =>
+        resourceName->Js.String2.endsWith(
+          createResourceName(~name, ~adapter),
+        )
+        && keep(name)
+          ? Some(resource) : None
+      );
+};
 
 module Deploytime = {
   let finalize = () => {
@@ -39,7 +53,9 @@ module Deploytime = {
       );
     };
     let existingResourceO =
-      tmpResources->Js.Dict.get(createResourceName(~adapter, ~name));
+      tmpResources->Js.Dict.get(
+        Internal.createResourceName(~adapter, ~name),
+      );
     switch (existingResourceO) {
     | Some(existingResource) =>
       let existing = existingResource->Js.Json.stringifyAny;
@@ -51,38 +67,27 @@ module Deploytime = {
     };
   };
 
-  let get = (~adapter, ~name) => tmpResources->get(~adapter, ~name);
+  let get = (~adapter, ~name) => tmpResources->Internal.get(~adapter, ~name);
 
   let getExn = (~adapter, ~name) =>
-    switch (get(~adapter, ~name)) {
-    | Some(resource) => resource
-    | None =>
-      let resources = tmpResources->Js.Dict.keys;
-      Js.Exn.raiseError(
-        {j|Resource doesn't exist: $adapter $name, resources: $resources|j},
-      );
-    };
+    tmpResources->Internal.getExn(~adapter, ~name);
+
+  let getResourceOutputExn = (~adapter, ~name) =>
+    resources->Pulumi.Output.apply(Internal.getExn(~adapter, ~name));
 
   let filter = (~name, ~adapter, ~keep) => {
-    tmpResources->filter(~adapter, ~name, ~keep);
+    tmpResources->Internal.filter(~adapter, ~name, ~keep);
   };
 };
 
 module Runtime = {
   let get = (~adapter, ~name) =>
-    resources->Pulumi.Output.get->get(~adapter, ~name);
+    resources->Pulumi.Output.get->Internal.get(~adapter, ~name);
 
   let getExn = (~adapter, ~name) =>
-    switch (get(~adapter, ~name)) {
-    | Some(resource) => resource
-    | None =>
-      let resources = resources->Pulumi.Output.get->Js.Dict.keys;
-      Js.Exn.raiseError(
-        {j|Resource doesn't exist: $adapter $name, resources: $resources|j},
-      );
-    };
+    resources->Pulumi.Output.get->Internal.getExn(~adapter, ~name);
 
   let filter = (~name, ~adapter, ~keep) => {
-    resources->Pulumi.Output.get->filter(~adapter, ~name, ~keep);
+    resources->Pulumi.Output.get->Internal.filter(~adapter, ~name, ~keep);
   };
 };

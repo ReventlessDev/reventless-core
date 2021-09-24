@@ -137,7 +137,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
       (~tableName: string, ~template: string => string) =>
       Pulumi.Input.t(string) =
       (~tableName, ~template) =>
-        Util_QueryDb.Deploytime.getStorageResource(tableName)##name
+        Util_QueryDb.Deploytime.getStorageResourceOutput(tableName)
+        ->Pulumi.Output.flatMap(storageResource => storageResource##name)
         ->Pulumi.Output.apply(realTableName => template(realTableName))
         ->Pulumi.Output.asInput;
 

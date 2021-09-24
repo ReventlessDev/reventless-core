@@ -20,6 +20,10 @@ module Deploytime: {
   let getExn:
     (~adapter: string, ~name: string) => ReventlessSpec.Adapter.resource;
 
+  let getResourceOutputExn:
+    (~adapter: string, ~name: string) =>
+    Pulumi.Output.t(ReventlessSpec.Adapter.resource);
+
   let filter:
     (~name: string, ~adapter: string, ~keep: string => bool) =>
     array(ReventlessSpec.Adapter.resource);
