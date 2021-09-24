@@ -15,3 +15,9 @@ let toResource = (table: PulumiAws.DynamoDb.Table.t) =>
     ~urn=table##arn,
     ~info=table->toInfo,
   );
+
+let arn2tableName = arn =>
+  switch (arn->Js.String2.split(":")) {
+  | [|_, _, _service, _region, _account, tableName|] => tableName
+  | _ => Js.Exn.raiseError("Invalid ARN: " ++ arn)
+  };
