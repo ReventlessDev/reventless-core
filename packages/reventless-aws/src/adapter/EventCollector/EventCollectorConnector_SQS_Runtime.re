@@ -5,7 +5,16 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
       switch (record##eventSource) {
       | "aws:sqs" => record->Util.SQS_Runtime.parseSqsRecord
       | "aws:dynamodb" =>
-        record->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecord
+        switch (record->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecord) {
+        | NewImage(_, newImage)
+        | NewAndOldImage(_, newImage, _) => Some(newImage)
+        | _ =>
+          Js.log(
+            __MODULE__
+            ++ ".handleCallbackEvent: no NewImage included in Stream event !",
+          );
+          None;
+        }
       | eventSource =>
         Js.log2(
           "EventCollectorConnector_SQS_Runtime: ignoring record from eventSource:",

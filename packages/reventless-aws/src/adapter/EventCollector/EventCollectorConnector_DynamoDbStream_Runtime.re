@@ -4,10 +4,16 @@ let handleStreamEvent = (handleEvents, streamEvent, _) => {
     records->Belt.Array.keepMap(record =>
       switch (record##eventSource) {
       | "aws:dynamodb" =>
-        record->Util_DynamoDbStream_Runtime.parseDynamoDbStreamRecord
+        switch (record->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecord) {
+        | NewImage(_, newImage)
+        | NewAndOldImage(_, newImage, _) => Some(newImage)
+        | _ =>
+          Js.log(__MODULE__ ++ ": no NewImage included in Stream event !");
+          None;
+        }
       | eventSource =>
         Js.log2(
-          "EventCollectorConnector_DynamoDbStream_Runtime: ignoring record from eventSource:",
+          __MODULE__ ++ ": ignoring record from eventSource:",
           eventSource,
         );
         None;
