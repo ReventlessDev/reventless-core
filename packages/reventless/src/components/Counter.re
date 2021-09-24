@@ -139,6 +139,11 @@ module Make =
         ~parent=self->Component.toPulumiResource,
         (),
       );
+    let opts2 =
+      Pulumi.CustomResourceOptions.make(
+        ~parent=self->Component.toPulumiResource,
+        (),
+      );
 
     module AggregateSpec = {
       module Id = Id.String;
@@ -233,56 +238,37 @@ module Make =
           (makeId((counterId, reference)), (), ttl)
         ),
       )
-      |> Js.Promise.then_(
-           fun
-           | Belt.Result.Ok(_) => {
-               let batchSize = countItems->Belt.Array.size;
-               Js.log({j|Counter: saved batch of $batchSize references:|j});
-               countItems->logCountItems;
-               Js.Promise.resolve();
-             }
-           | Error(Reventless.QueryDb.NotSavedToStorage(err)) => {
-               let batchSize = countItems->Belt.Array.size;
-               Js.log(
-                 {j|Counter error: couldn't save batch of $batchSize references:|j},
-               );
-               countItems->logCountItems;
-               NotCounted(err)->Js.Promise.reject;
-             }
-           | Error(_) => {
-               let batchSize = countItems->Belt.Array.size;
-               Js.log(
-                 {j|Unknown Counter error: couldn't save batch of $batchSize references:|j},
-               );
-               countItems->logCountItems;
-               NotCounted("Unknown error")->Js.Promise.reject;
-             },
-         );
-
-    let setCounterTarget = (count, {counterId, target}) =>
-      count(. counterId->Id.String.makeFromString, countFieldName, target)
-      |> Js.Promise.then_(
-           fun
-           | Belt.Result.Ok(_) => {
-               Js.log(
-                 {j|Counter: set target for counterId $counterId to $target|j},
-               );
-               Js.Promise.resolve();
-             }
-           | Error(Reventless.QueryDb.NotSavedToStorage(err)) => {
-               Js.log(
-                 {j|Counter error: couldn't set target for counterId $counterId to $target|j},
-               );
-               NotCounted(err)->Js.Promise.reject;
-             }
-           | Error(_) => NotCounted("Unknown error")->Js.Promise.reject,
-         );
+      ->Js.Promise.then_(
+          fun
+          | Belt.Result.Ok(_) => {
+              let batchSize = countItems->Belt.Array.size;
+              Js.log(
+                __MODULE__ ++ {j|: saved batch of $batchSize references:|j},
+              );
+              countItems->logCountItems;
+              Js.Promise.resolve();
+            }
+          | Error(Reventless.QueryDb.NotSavedToStorage(err)) => {
+              let batchSize = countItems->Belt.Array.size;
+              Js.log(
+                {j|Counter error: couldn't save batch of $batchSize references:|j},
+              );
+              countItems->logCountItems;
+              NotCounted(err)->Js.Promise.reject;
+            }
+          | Error(_) => {
+              let batchSize = countItems->Belt.Array.size;
+              Js.log(
+                {j|Unknown Counter error: couldn't save batch of $batchSize references:|j},
+              );
+              countItems->logCountItems;
+              NotCounted("Unknown error")->Js.Promise.reject;
+            },
+          _,
+        );
 
     let referencesDb = ReferencesDb.make(~ttl?, ~opts, ~resources, ());
     let countsDb = CountsDb.make(~ttl?, ~opts, ~resources, ());
-
-    self->setCount(referencesDb->ReferencesDb.saveBatch->count);
-    self->setSetCounterTarget(countsDb->CountsDb.count->setCounterTarget);
 
     let referencesName =
       ReferencesViewSpec.name->Belt.Option.getWithDefault(AggregateSpec.name);
@@ -301,22 +287,24 @@ module Make =
     };
 
     let counterHandler: counterHandler =
-      (~references, ~counts) =>
-        (
+      (~references, ~counts) => {
+        let countP =
           references
           ->groupByCounterId
-          ->Belt.Array.map(((counterId, inc)) =>
+          ->Belt.Array.map(((counterId, dec)) =>
               countsDb->CountsDb.count(.
                 counterId->AggregateSpec.Id.makeFromString,
                 countFieldName,
-                inc,
+                - dec,
               )
             )
           ->Js.Promise.all
-          ->Js.Promise.then_(_ => Js.Promise.resolve(), _), // TODO error handling
+          ->Js.Promise.then_(_ => Js.Promise.resolve(), _); // TODO error handling
+
+        let counterEventsHandlerP =
           counterEventsHandler(.
-            counts->Belt.Array.keepMap(count =>
-              switch (count->CountsViewSpec.state_decode) {
+            counts->Belt.Array.keepMap(state =>
+              switch (state->CountsViewSpec.state_decode) {
               | Ok({id, count}) when count == 0 =>
                 let (counterId, _) = id->unmakeId;
                 Js.log(
@@ -338,16 +326,34 @@ module Make =
                   ++ {j|.counterHandler: counted down $name($id) to $count|j},
                 );
                 None;
-              | _ => None
+              | _ =>
+                let stateStr = state->Js.Json.stringify;
+                Js.log(
+                  __MODULE__
+                  ++ {j|.counterHandler: couldn't decode state $stateStr|j},
+                );
+                None;
               }
             ),
-          ),
-        )
+          );
+
+        (countP, counterEventsHandlerP)
         ->Js.Promise.all2
         ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
+      };
 
-    let _handler =
-      Handler.make(~name, ~referencesName, ~countsName, ~counterHandler);
+    let handler =
+      Handler.make(
+        ~name,
+        ~referencesName,
+        ~countsName,
+        ~counterHandler,
+        ~opts=opts2,
+        ~resources,
+      );
+
+    self->setCount(count(referencesDb->ReferencesDb.saveBatch));
+    self->setSetCounterTarget(handler.setCounterTarget);
 
     makeOutputs(
       ~referencesDb=referencesDb->ReferencesDb.outputs##storage,

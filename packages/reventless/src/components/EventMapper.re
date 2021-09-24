@@ -171,8 +171,8 @@ module Make =
           )
         ->Publisher
       | SetCounterTarget(counterTarget) =>
-        Counter(SetCounterTarget(counterTarget))
-      | Count(countItem) => Counter(Count(countItem))
+        SetCounterTarget(counterTarget)->Counter
+      | Count(countItem) => Count(countItem)->Counter
       }
     );
 
@@ -188,10 +188,10 @@ module Make =
         _,
       )
     ->Js.Promise.catch(
-        err =>
-          err
-          ->Js.log2("EventMapper: Error on sendMessageBatch:", _)
-          ->Js.Promise.resolve /* NOTE: should we really resolve hear? Shoudln't we retry somehow?*/,
+        err => {
+          Js.log2(__MODULE__ ++ ".sendEntries error", err);
+          Js.Exn.raiseError(__MODULE__ ++ ".sendEntries error");
+        },
         _,
       );
 
@@ -281,14 +281,16 @@ module Make =
           | Counter.Count(_) => true
           | SetCounterTarget(_) => false,
         );
-      (
-        countActions
-        ->Belt.Array.keepMap(
+
+      let countP =
+        count(
+          countActions->Belt.Array.keepMap(
             fun
             | Count(countItem) => Some(countItem)
             | _ => None,
-          )
-        ->count,
+          ),
+        );
+      let setTargetActionsP =
         setTargetActions
         ->Belt.Array.map(
             fun
@@ -296,9 +298,9 @@ module Make =
               counterTarget->setCounterTarget
             | _ => Js.Promise.resolve(),
           )
-        ->Js.Promise.all,
-        publisherEntries->sendEntries(resources),
-      )
+        ->Js.Promise.all;
+
+      (countP, setTargetActionsP, sendEntries(publisherEntries, resources))
       ->Js.Promise.all3
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
