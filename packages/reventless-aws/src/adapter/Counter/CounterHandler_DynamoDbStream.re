@@ -1,15 +1,21 @@
 open PulumiAws;
+open Reventless.Util.ReadModel;
 
 let make: Reventless.Counter.Adapter.handlerMaker =
-  (~name, ~readModelNames, ~handleEvents, ~opts, ~resources) => {
+  (~name, ~referencesName, ~countsName, ~counterHandler, ~opts, ~resources) => {
+    let referencesDb = resources->queryDbStorageResource(referencesName);
+    let countsDb = resources->queryDbStorageResource(countsName);
+
     let eventHandlerLambda =
       Lambda.CallbackFunction.make(
         ~name,
         ~args=
           Lambda.CallbackFunction.Args.make(
             ~callback=
-              EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(
-                handleEvents,
+              CounterHandler_DynamoDbStream_Runtime.handleStreamEvent(
+                ~referencesDb,
+                ~countsDb,
+                ~counterHandler,
               ),
             (),
           ),
@@ -17,25 +23,20 @@ let make: Reventless.Counter.Adapter.handlerMaker =
         (),
       );
 
-    let _eventSourceMappings =
-      readModelNames
-      ->Belt.Array.map(readModelName =>
-          (
-            readModelName,
-            resources->Reventless.Util.ReadModel.queryDbStorageResource(
-              readModelName,
-            ),
-          )
-        )
-      ->Belt.Array.map(((sourceName, topic)) =>
-          Util_EventSourceMapping.subscribe(
-            ~lambda=eventHandlerLambda->Pulumi.Output.make,
-            ~targetName=name,
-            ~sourceName,
-            ~topic,
-            ~opts,
-          )
-        );
+    let subscribe = (sourceName, source) =>
+      Util_EventSourceMapping.subscribe(
+        ~lambda=eventHandlerLambda->Pulumi.Output.make,
+        ~targetName=name,
+        ~sourceName,
+        ~source,
+        ~opts,
+      );
 
-    ();
+    let _ = subscribe(referencesName, referencesDb);
+    let _ = subscribe(countsName, countsDb);
+
+    {
+      setCounterTarget:
+        countsDb->CounterHandler_DynamoDbStream_Runtime.setCounterTarget,
+    };
   };
