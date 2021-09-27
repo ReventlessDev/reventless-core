@@ -26,11 +26,11 @@
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
   },
   "dependencies": {
-    "@reventless/bs-aws-sdk": "^1.0.0-alpha.6",
-    "@reventless/bs-pulumi-aws": "^1.0.0-alpha.6",
-    "@reventless/bs-pulumi-pulumi": "^1.0.0-alpha.1",
-    "@reventless/reventless": "^1.0.0-alpha.56",
-    "@reventless/reventless-spec": "^1.0.0-alpha.11"
+    "@reventless/bs-aws-sdk": "1.0.0-alpha.6",
+    "@reventless/bs-pulumi-aws": "1.0.0-alpha.6",
+    "@reventless/bs-pulumi-pulumi": "1.0.0-alpha.1",
+    "@reventless/reventless": "1.0.0-alpha.56",
+    "@reventless/reventless-spec": "1.0.0-alpha.11"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
