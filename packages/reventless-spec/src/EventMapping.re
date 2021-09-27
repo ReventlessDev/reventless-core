@@ -19,7 +19,7 @@ type action('id, 'command) =
   | PublishDelayed('id, 'command, int)
   | PublishAsync(Js.Promise.t(array(('id, 'command))))
   | SetCounterTarget(Counter.counterTarget)
-  | Count(Counter.countItem);
+  | Count(Counter.counterId);
 
 module type T = {
   module Source: Source;
