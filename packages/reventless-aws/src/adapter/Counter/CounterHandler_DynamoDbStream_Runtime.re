@@ -4,7 +4,7 @@ open AwsSdk.DynamoDb.DocumentClient;
 open Util.DynamoDbStream_Runtime;
 
 let setCounterTarget = (table, {counterId, target}) => {
-  Js.log(__MODULE__ ++ ".setCounterTarget:");
+  Js.log3(__MODULE__ ++ ".setCounterTarget:", counterId, target);
   let tableName = table##name->Pulumi.Output.get;
   update(
     UpdateInput.make(

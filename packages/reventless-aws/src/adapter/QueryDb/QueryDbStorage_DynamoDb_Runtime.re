@@ -19,7 +19,8 @@ let load = table =>
     |> catch(err => {
          let tableName = table##name->Pulumi.Output.get;
          Js.log(
-           {j|QueryDbStorage_DynamoDb_Runtime: Error: Couldn't load state for $id from $tableName: $err|j},
+           __MODULE__
+           ++ {j|.load: Error: Couldn't load state for $id from $tableName: $err|j},
          );
          Error(
            QueryDb.NotLoadedFromStorage(err->AwsSdk.Error.ofPromise##message),
@@ -46,7 +47,7 @@ let insertTtl = (json, ttl) =>
             // TODO: extract mapWithSideEffect to Util module
             () => {
               Js.log2(
-                "QueryDbStorage_DynamoDb_Runtime: Error: Couldn't decode JSON",
+                __MODULE__ ++ ".insertTtl: Error: Couldn't decode JSON",
                 json->Js.Json.stringify,
               );
               None;
@@ -78,7 +79,8 @@ let save = table =>
       )
       |> then_(_ => {
            Js.log(
-             {j|QueryDbStorage_DynamoDb_Runtime: saved Init state to $tableName: $stateStr|j},
+             __MODULE__
+             ++ {j|.save: saved Init state to $tableName: $stateStr|j},
            );
            Ok()->resolve;
          })
@@ -88,12 +90,13 @@ let save = table =>
            switch (err->AwsSdk.Error.ofPromise##code) {
            | "ConditionalCheckFailedException" =>
              Js.log(
-               {j|QueryDbStorage_DynamoDb_Runtime: Error: Stale State in $tableName|j},
+               __MODULE__ ++ {j|.save: Error: Stale State in $tableName|j},
              );
              Error(QueryDb.StaleState)->resolve;
            | _ =>
              Js.log(
-               {j|QueryDbStorage_DynamoDb_Runtime: Error: Couldn't save Init state to $tableName: $err|j},
+               __MODULE__
+               ++ {j|.save: Error: Couldn't save Init state to $tableName: $err|j},
              );
              Error(
                QueryDb.NotSavedToStorage(
@@ -107,13 +110,15 @@ let save = table =>
       tableName->putWithTableName(json)
       |> then_(_ => {
            Js.log(
-             {j|QueryDbStorage_DynamoDb_Runtime: saved Overwrite state to $tableName: $stateStr|j},
+             __MODULE__
+             ++ {j|.save: saved Overwrite state to $tableName: $stateStr|j},
            );
            Ok()->resolve;
          })
       |> catch(err => {
            Js.log(
-             {j|QueryDbStorage_DynamoDb_Runtime: Error: Couldn't save Overwrite state to $tableName: $err|j},
+             __MODULE__
+             ++ {j|.save: Error: Couldn't save Overwrite state to $tableName: $err|j},
            );
            Error(
              QueryDb.NotSavedToStorage(err->AwsSdk.Error.ofPromise##message),
@@ -197,9 +202,7 @@ let saveBatch:
 let count = table =>
   (. id, fieldName, inc) => {
     let tableName = table##name->Pulumi.Output.get;
-    Js.log(
-      {j|AdapterAws.QueryDbDynamoDB.count: $tableName, $id, $fieldName, $inc|j},
-    );
+    Js.log(__MODULE__ ++ {j|.count: $tableName, $id, $fieldName, $inc|j});
     update(
       UpdateInput.make(
         ~_TableName=tableName,
@@ -217,7 +220,8 @@ let count = table =>
        )
     |> catch(err => {
          Js.log(
-           {j|QueryDbStorage_DynamoDb_Runtime: Error: Couldn't count on $tableName: $err|j},
+           __MODULE__
+           ++ {j|.count: Error: Couldn't count on $tableName: $err|j},
          );
          Error(
            QueryDb.NotCountedOnStorage(err->AwsSdk.Error.ofPromise##message),
@@ -230,7 +234,7 @@ let delete = table =>
   (. id, sort) => {
     let tableName = table##name->Pulumi.Output.get;
     Js.log4(
-      "AdapterAws.QueryDbDynamoDB.delete: tableName, id, sort",
+      __MODULE__ ++ ".delete: tableName, id, sort",
       table##name->Pulumi.Output.get,
       id,
       sort,
@@ -238,13 +242,14 @@ let delete = table =>
     tableName->AwsSdk.DynamoDb.DocumentClient.deleteWithTableName(id, sort)
     |> then_(_ => {
          Js.log(
-           {j|QueryDbStorage_DynamoDb_Runtime: deleted state for $id from $tableName|j},
+           __MODULE__ ++ {j|.delete: deleted state for $id from $tableName|j},
          );
          Ok()->resolve;
        })
     |> catch(err => {
          Js.log(
-           {j|QueryDbStorage_DynamoDb_Runtime: Error: Couldn't delete state for $id from $tableName: $err|j},
+           __MODULE__
+           ++ {j|.delete: Error: Couldn't delete state for $id from $tableName: $err|j},
          );
          Error(
            QueryDb.NotDeletedFromStorage(
