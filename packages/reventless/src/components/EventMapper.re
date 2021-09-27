@@ -368,8 +368,12 @@ module Make =
       EventCollector.make(
         ~name=Target.name->ComponentType.name(componentType),
         ~aggregateNames=
-          mappings->Belt.Array.map((module Mapping: Mapping) =>
-            Mapping.Source.name
+          mappings->Belt.Array.keepMap((module Mapping: Mapping) =>
+            if (Mapping.Source.name != Counter.Source.name) {
+              Some(Mapping.Source.name);
+            } else {
+              None;
+            }
           ),
         ~eventsHandler=
           eventCollectorEventsHandler(

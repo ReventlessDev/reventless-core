@@ -58,15 +58,13 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     if (otherTopics->Belt.Array.length > 0) {
-      let errors =
+      let errorTopics =
         otherTopics
         ->Belt.Array.map(((service, (sourceName, _))) =>
             {j|EventTopicPublisher_$service $sourceName|j}
           )
         ->Js.Array2.joinWith(",");
-      Js.Exn.raiseError(
-        {j|EventCollectorConnector_DynamoDbStream cannot connect to $errors|j},
-      );
+      Js.Exn.raiseError(__MODULE__ ++ {j| cannot connect to $errorTopics|j});
     } else {
       {resource: None};
     };
