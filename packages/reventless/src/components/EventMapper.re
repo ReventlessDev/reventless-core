@@ -172,7 +172,8 @@ module Make =
         ->Publisher
       | SetCounterTarget(counterTarget) =>
         SetCounterTarget(counterTarget)->Counter
-      | Count(countItem) => Count(countItem)->Counter
+      | Count(counterId) =>
+        Count({counterId, reference: meta.correlationId})->Counter
       }
     );
 
