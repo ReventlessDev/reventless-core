@@ -35,7 +35,6 @@ type counterEventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
 module type T = {
   type t;
-  module Target: ReventlessSpec.EventMapping.Target;
 
   let make:
     (
@@ -71,7 +70,6 @@ module Adapter = {
 module Make =
        (
          Config: Config.T,
-         Target: ReventlessSpec.EventMapping.Target,
          QueryDbStorage:
            QueryDb.Adapter.Storage with
              type api = Config.api and type role = Config.role,
@@ -83,8 +81,6 @@ module Make =
   type constructed;
   type construct =
     (Component.t(t, outputs), string, resources) => constructed;
-
-  module Target = Target;
 
   [@bs.module "./Component"] [@bs.new]
   external make:

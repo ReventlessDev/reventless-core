@@ -23,10 +23,9 @@ type maker =
 
 module type T = {
   module Target: ReventlessSpec.EventMapping.Target;
-  module type Counter = Counter.T with module Target = Target;
   module type Mapping =
     ReventlessSpec.EventMapping.T with module Target := Target;
-  let make: (~counter: (module Counter)=?, array(module Mapping)) => maker;
+  let make: (~counter: (module Counter.T)=?, array(module Mapping)) => maker;
 };
 
 module Make =
@@ -76,8 +75,6 @@ module Make =
   };
 
   module Target = Target;
-
-  module type Counter = Counter.T with module Target = Target;
 
   let service = Target.name;
 
@@ -318,7 +315,7 @@ module Make =
 
   let construct =
       (
-        ~counter: option(module Counter),
+        ~counter: option(module Counter.T),
         ~mappings: array(module Mapping),
         ~queryEngine,
         ~memorySize,
@@ -346,7 +343,7 @@ module Make =
           },
           None,
         ),
-        (module Counter: Counter) => {
+        (module Counter: Counter.T) => {
           let counter =
             Counter.make(
               ~name,
@@ -400,7 +397,7 @@ module Make =
 
   let make:
     (
-      ~counter: (module Counter)=?,
+      ~counter: (module Counter.T)=?,
       array(module Mapping),
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~memorySize: int,
