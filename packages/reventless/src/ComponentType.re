@@ -12,7 +12,6 @@ type t =
   | Extension
   | QueryDb
   | ReadModel
-  | ReadModels
   | Scheduler
   | Service
   | SideEffectHandler
@@ -36,7 +35,6 @@ let toString =
   | Extension => "Extension"
   | QueryDb => "QueryDB"
   | ReadModel => "ReadModel"
-  | ReadModels => "ReadModels"
   | Scheduler => "Scheduler"
   | Service => "Service"
   | SideEffectHandler => "SideEffectHandler"
@@ -60,7 +58,6 @@ let ofString =
   | "Extension" => Extension->Some
   | "QueryDB" => QueryDb->Some
   | "ReadModel" => ReadModel->Some
-  | "ReadModels" => ReadModels->Some
   | "Scheduler" => Scheduler->Some
   | "Service" => Service->Some
   | "SideEffectHandler" => SideEffectHandler->Some
@@ -70,6 +67,27 @@ let ofString =
   | "Heartbeat" => Heartbeat->Some
   | _ => None;
 
-let toName = toString;
+let toName =
+  fun
+  | Aggregate => "Aggr"
+  | Counter => "Counter"
+  | Plugin => "Plugin"
+  | CommandGenerator => "CmdGen"
+  | CommandTopic => "CmdTopic"
+  | EventCollector => "EventColl"
+  | EventLog => "EventLog"
+  | EventMapper => "EventMapper"
+  | EventTopic => "EventTopic"
+  | ExtensionPoint => "ExtPoint"
+  | Extension => "Extension"
+  | QueryDb => "QueryDB"
+  | ReadModel => "ReadModel"
+  | Scheduler => "Scheduler"
+  | Service => "Service"
+  | SideEffectHandler => "SideEffectHandler"
+  | Task => "Task"
+  | Vpc => "Vpc"
+  | Core => "Core"
+  | Heartbeat => "Heartbeat";
 
 let name = (name, t) => name ++ t->toName;
