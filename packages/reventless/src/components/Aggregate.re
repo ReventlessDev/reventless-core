@@ -89,8 +89,6 @@ module Make =
     self->registerOutputs(outputs);
   };
 
-  let name = Spec.name;
-
   let errorHandler = (error, command, context: Message.context) => {
     let errorJson = error |> Spec.error_encode |> Js.Json.stringify;
     let commandJson = command |> Spec.command_encode |> Js.Json.stringify;

@@ -38,7 +38,7 @@ let make: Reventless.Counter.Adapter.handlerMaker =
     let _ = subscribe(countsName, countsStream);
 
     {
-      setCounterTarget:
-        countsDb->CounterHandler_DynamoDbStream_Runtime.setCounterTarget,
+      addToCounterTarget:
+        countsDb->CounterHandler_DynamoDbStream_Runtime.addToCounterTarget,
     };
   };
