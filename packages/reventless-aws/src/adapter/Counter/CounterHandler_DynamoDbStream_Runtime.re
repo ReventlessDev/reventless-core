@@ -40,14 +40,14 @@ let setCounterTarget = (table, {counterId, target}) => {
 
 let handleStreamEvent =
     (
-      ~referencesDb: resource,
-      ~countsDb: resource,
+      ~referencesStream: resource,
+      ~countsStream: resource,
       ~counterHandler: Reventless.Counter.counterHandler,
       streamEvent,
       _,
     ) => {
-  let referencesARN = referencesDb##urn->Pulumi.Output.get;
-  let countsARN = countsDb##urn->Pulumi.Output.get;
+  let referencesARN = referencesStream##urn->Pulumi.Output.get;
+  let countsARN = countsStream##urn->Pulumi.Output.get;
 
   let records = streamEvent##_Records->Belt.Option.getWithDefault([||]);
   let (dynamoDbRecords, ignoredRecords) =
