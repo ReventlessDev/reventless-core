@@ -4,7 +4,9 @@ open Reventless.Util.ReadModel;
 let make: Reventless.Counter.Adapter.handlerMaker =
   (~name, ~referencesName, ~countsName, ~counterHandler, ~opts, ~resources) => {
     let referencesDb = resources->queryDbStorageResource(referencesName);
+    let referencesStream = referencesDb->Util_DynamoDbStream.toStreamResource;
     let countsDb = resources->queryDbStorageResource(countsName);
+    let countsStream = countsDb->Util_DynamoDbStream.toStreamResource;
 
     let eventHandlerLambda =
       Lambda.CallbackFunction.make(
@@ -13,8 +15,8 @@ let make: Reventless.Counter.Adapter.handlerMaker =
           Lambda.CallbackFunction.Args.make(
             ~callback=
               CounterHandler_DynamoDbStream_Runtime.handleStreamEvent(
-                ~referencesDb,
-                ~countsDb,
+                ~referencesStream,
+                ~countsStream,
                 ~counterHandler,
               ),
             (),
@@ -32,8 +34,8 @@ let make: Reventless.Counter.Adapter.handlerMaker =
         ~opts,
       );
 
-    let _ = subscribe(referencesName, referencesDb);
-    let _ = subscribe(countsName, countsDb);
+    let _ = subscribe(referencesName, referencesStream);
+    let _ = subscribe(countsName, countsStream);
 
     {
       setCounterTarget:
