@@ -114,7 +114,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     switch (connector.resource) {
     | Some(resource) =>
       resources->Util_EventCollector.setConnectorResource(resource, name)
-    | None => Js.log2("No resource created for EventColllector", name)
+    | None => ()
     };
 
     makeOutputs(~connector=connector.resource)->setOutputs(self, _);
