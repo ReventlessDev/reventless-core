@@ -16,10 +16,10 @@ type counterHandler =
 
 type action =
   | Count(countItem)
-  | SetCounterTarget(counterTarget);
+  | AddToCounterTarget(counterTarget);
 
 type count = array(countItem) => Js.Promise.t(unit);
-type setCounterTarget = counterTarget => Js.Promise.t(unit);
+type addToCounterTarget = counterTarget => Js.Promise.t(unit);
 
 exception NotCounted(string);
 
@@ -48,11 +48,11 @@ module type T = {
     Component.t(t, outputs);
 
   let count: Component.t(t, outputs) => count;
-  let setCounterTarget: Component.t(t, outputs) => setCounterTarget;
+  let addToCounterTarget: Component.t(t, outputs) => addToCounterTarget;
 };
 
 module Adapter = {
-  type handler = {setCounterTarget};
+  type handler = {addToCounterTarget};
   type handlerMaker =
     (
       ~name: string,
@@ -115,12 +115,12 @@ module Make =
   [@bs.get] external count: Component.t(t, outputs) => count = "count";
 
   [@bs.set]
-  external setSetCounterTarget:
-    (Component.t(t, outputs), setCounterTarget) => unit =
-    "setCounterTarget";
+  external setAddToCounterTarget:
+    (Component.t(t, outputs), addToCounterTarget) => unit =
+    "addToCounterTarget";
   [@bs.get]
-  external setCounterTarget: Component.t(t, outputs) => setCounterTarget =
-    "setCounterTarget";
+  external addToCounterTarget: Component.t(t, outputs) => addToCounterTarget =
+    "addToCounterTarget";
 
   let construct =
       (
@@ -349,7 +349,7 @@ module Make =
       );
 
     self->setCount(count(referencesDb->ReferencesDb.saveBatch));
-    self->setSetCounterTarget(handler.setCounterTarget);
+    self->setAddToCounterTarget(handler.addToCounterTarget);
 
     makeOutputs(
       ~referencesDb=referencesDb->ReferencesDb.outputs##storage,

@@ -167,8 +167,8 @@ module Make =
             _,
           )
         ->Publisher
-      | SetCounterTarget(counterTarget) =>
-        SetCounterTarget(counterTarget)->Counter
+      | AddToCounterTarget(counterTarget) =>
+        AddToCounterTarget(counterTarget)->Counter
       | Count(counterId) =>
         Count({counterId, reference: meta.correlationId})->Counter
       }
@@ -268,7 +268,7 @@ module Make =
         mappings,
         queryEngine,
         count: Counter.count,
-        setCounterTarget: Counter.setCounterTarget,
+        addToCounterTarget: Counter.addToCounterTarget,
       ) =>
     (. events'Json) => {
       let (publisherEntries, counterActions) =
@@ -277,7 +277,7 @@ module Make =
         counterActions->Belt.Array.partition(
           fun
           | Counter.Count(_) => true
-          | SetCounterTarget(_) => false,
+          | AddToCounterTarget(_) => false,
         );
 
       let countP =
@@ -292,8 +292,8 @@ module Make =
         setTargetActions
         ->Belt.Array.map(
             fun
-            | SetCounterTarget(counterTarget) =>
-              counterTarget->setCounterTarget
+            | AddToCounterTarget(counterTarget) =>
+              addToCounterTarget(counterTarget)
             | _ => Js.Promise.resolve(),
           )
         ->Js.Promise.all;
@@ -355,7 +355,7 @@ module Make =
             );
           (
             counter->Counter.count,
-            counter->Counter.setCounterTarget,
+            counter->Counter.addToCounterTarget,
             counter->Component.extractOutputs->Some,
           );
         },

@@ -3,8 +3,8 @@ open ReventlessSpec.Counter;
 open AwsSdk.DynamoDb.DocumentClient;
 open Util.DynamoDbStream_Runtime;
 
-let setCounterTarget = (table, {counterId, target}) => {
-  Js.log3(__MODULE__ ++ ".setCounterTarget:", counterId, target);
+let addToCounterTarget = (table, {counterId, target}) => {
+  Js.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target);
   let tableName = table##name->Pulumi.Output.get;
   update(
     UpdateInput.make(
@@ -25,7 +25,7 @@ let setCounterTarget = (table, {counterId, target}) => {
   )
   |> Js.Promise.then_((updateOutput: UpdateOutput.t({. count: int})) =>
        Js.log2(
-         __MODULE__ ++ {j|.setCounterTarget: current count for $counterId:|j},
+         __MODULE__ ++ {j|.addToCounterTarget: current count for $counterId:|j},
          updateOutput##_Attributes##count,
        )
        ->Js.Promise.resolve
@@ -33,7 +33,7 @@ let setCounterTarget = (table, {counterId, target}) => {
   |> Js.Promise.catch(err =>
        Js.Exn.raiseError(
          __MODULE__
-         ++ {j|.setCounterTarget Error: Couldn't count on $tableName: $err|j},
+         ++ {j|.addToCounterTarget Error: Couldn't count on $tableName: $err|j},
        )
      );
 };
