@@ -18,7 +18,7 @@ let resolverConfig =
 let atomicCounter = None;
 
 let create: Behaviour.create(command, event, error) =
-  (. command, context, error, _) =>
+  (. command, context, error) =>
     switch (command) {
     | Heartbeat => [UnknownPluginDetected]
     | ConnectPlugin(_)
@@ -28,7 +28,7 @@ let create: Behaviour.create(command, event, error) =
     };
 
 let execute: Behaviour.execute(state, command, event, error) =
-  (. state, command, context, error, _) => {
+  (. state, command, context, error) => {
     switch (state) {
     | Detected =>
       switch (command) {

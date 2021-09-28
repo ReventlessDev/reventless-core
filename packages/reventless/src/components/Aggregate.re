@@ -111,16 +111,7 @@ module Make =
     err->AwsSdk.Error.ofPromise##message;
 
   let execCommands =
-      (
-        (
-          eventLogAppend,
-          eventLogReplay,
-          eventTopicPublish,
-          eventsHandler,
-          atomicCounterIncrement,
-          atomicCounterGet,
-        ),
-      ) =>
+      ((eventLogAppend, eventLogReplay, eventTopicPublish, eventsHandler)) =>
     (. id, commands': array(Message.command'(Spec.Id.t, Spec.command))) => {
       let apply' = (stateOpt, event) =>
         switch (stateOpt) {
@@ -137,19 +128,12 @@ module Make =
         msgId: Message.uuid(),
       };
 
-      let sequencePromiseOption =
-        fun
-        | Some(promise) =>
-          promise
-          |> Js.Promise.then_(value => Some(value)->Js.Promise.resolve)
-        | None => None->Js.Promise.resolve;
-
       Js.log("starting Aggregate.execCommands");
       eventLogReplay(. id)
       |> Js.Promise.then_(history => {
            let processCommand =
                (accP, command': Message.command'(Spec.Id.t, Spec.command)) => {
-             let runBehaviour = (((stateO, events), count)) =>
+             let runBehaviour = ((stateO, events)) =>
                switch (stateO) {
                | Some(state) =>
                  let generatedEvents =
@@ -162,7 +146,6 @@ module Make =
                          meta: command'.meta,
                        },
                        errorHandler,
-                       count,
                      )
                    ) {
                    | Message.InvalidEvent(event) =>
@@ -174,7 +157,7 @@ module Make =
                    };
                  Ok((
                    updateState(stateO, generatedEvents),
-                   events @ [(generatedEvents, command' |> updateMeta)],
+                   events @ [(generatedEvents, command'->updateMeta)],
                  ))
                  ->Js.Promise.resolve;
                | None =>
@@ -186,63 +169,19 @@ module Make =
                        meta: command'.meta,
                      },
                      errorHandler,
-                     count,
                    );
                  Ok((
                    updateState(None, generatedEvents),
-                   events @ [(generatedEvents, command' |> updateMeta)],
+                   events @ [(generatedEvents, command'->updateMeta)],
                  ))
                  ->Js.Promise.resolve;
                };
 
-             let count = () =>
-               Behaviour.atomicCounter
-               ->Belt.Option.flatMap(({name, shouldIncrement}) =>
-                   if (shouldIncrement(command'.command)) {
-                     Some(
-                       atomicCounterIncrement(.
-                         name,
-                         command'.id |> Spec.Id.toString,
-                         command'.meta.correlationId,
-                       ),
-                     );
-                   } else {
-                     Some(
-                       atomicCounterGet(.
-                         name,
-                         command'.id |> Spec.Id.toString,
-                       ),
-                     );
-                   }
-                 )
-               ->sequencePromiseOption;
-
              accP
-             |> Js.Promise.then_(acc =>
-                  (
-                    switch (acc) {
-                    | Ok(_) => (acc->Js.Promise.resolve, count())
-                    | Error(_) => (
-                        acc->Js.Promise.resolve,
-                        None->Js.Promise.resolve,
-                      )
-                    }
-                  )
-                  ->Js.Promise.all2
-                )
              |> Js.Promise.then_(
                   fun
-                  | (Ok(acc), Some(Ok(count))) => {
-                      Js.log(
-                        {j|Aggregate.processCommand: AtomicCounter for $name($id) count: $count|j},
-                      );
-                      runBehaviour((acc, Some(count)));
-                    }
-                  | (Ok(p1), None) => runBehaviour((p1, None))
-                  | (Ok(_), Some(Error(_) as error)) => {
-                      error->Js.Promise.resolve;
-                    }
-                  | (Error(_) as error, _) => error->Js.Promise.resolve,
+                  | Ok(acc) => runBehaviour(acc)
+                  | Error(_) as error => error->Js.Promise.resolve,
                 );
            };
 
@@ -272,9 +211,9 @@ module Make =
                   Js.log({j|Aggregate.execCommand($id): no Event generated|j})
                   ->Js.Promise.resolve
                 | generatedEvents' => {
-                    let count = generatedEvents'->Belt.Array.length;
+                    let eventCount = generatedEvents'->Belt.Array.length;
                     Js.log2(
-                      {j|Aggregate.execCommand($id): $count Event(s) generated:|j},
+                      {j|Aggregate.execCommand($id): $eventCount Event(s) generated:|j},
                       generatedEvents'->Belt.Array.map(event' =>
                         event'->eventName
                       ),
@@ -334,8 +273,6 @@ module Make =
           EventLog.replay(eventLog),
           EventTopic.publish(eventTopic),
           eventsHandler,
-          (. _, _, _) => Ok(0)->Js.Promise.resolve,
-          (. _, _) => Ok(0)->Js.Promise.resolve,
         ));
 
       let commandTopic =
