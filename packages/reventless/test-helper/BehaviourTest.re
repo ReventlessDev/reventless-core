@@ -1,13 +1,10 @@
 module type T = {
   module Spec: Behaviour.Spec;
 
-  let exec:
-    (Spec.command, option(int), list(Spec.event)) => list(Spec.event);
+  let exec: (Spec.command, list(Spec.event)) => list(Spec.event);
 
   let givenEvents: list(Spec.event) => list(Spec.event);
   let whenCmd: (Spec.command, list(Spec.event)) => list(Spec.event);
-  let whenCmdWithCount:
-    (Spec.command, int, list(Spec.event)) => list(Spec.event);
   let thenEvent: (Spec.event, list(Spec.event)) => Jest.assertion;
   let thenEventWithError:
     (Spec.event, Spec.error, list(Spec.event)) => Jest.assertion;
@@ -37,11 +34,10 @@ module Make =
       [];
     };
 
-  let exec = (command, count, history): list(Spec.event) => {
+  let exec = (command, history): list(Spec.event) => {
     errors := [];
     switch (history) {
-    | [] =>
-      Behaviour.create(. command, TestFixtures.context, errorHandler, count)
+    | [] => Behaviour.create(. command, TestFixtures.context, errorHandler)
     | history =>
       try (
         Behaviour.execute(.
@@ -49,7 +45,6 @@ module Make =
           command,
           TestFixtures.context,
           errorHandler,
-          count,
         )
       ) {
       | Reventless.Message.InvalidEvent(_) => []
@@ -58,8 +53,7 @@ module Make =
   };
 
   let givenEvents = events => events;
-  let whenCmd = cmd => exec(cmd, None);
-  let whenCmdWithCount = (cmd, count) => exec(cmd, Some(count));
+  let whenCmd = cmd => exec(cmd);
 
   open Jest.Expect;
 
