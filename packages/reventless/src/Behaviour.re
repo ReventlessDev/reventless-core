@@ -3,11 +3,6 @@ type resolverConfig('command) = {
   fields: array(string),
 };
 
-type atomicCounterConfig('command) = {
-  name: string,
-  shouldIncrement: 'command => bool,
-};
-
 type init('state, 'event) = (. 'event) => 'state;
 type apply('state, 'event) = (. 'state, 'event) => 'state;
 
@@ -28,8 +23,6 @@ type execute('state, 'command, 'event, 'error) =
   ) =>
   list('event);
 
-exception NoCountProvided;
-
 module type Spec = {
   [@decco]
   type command;
@@ -47,8 +40,6 @@ module type T = {
   type state;
 
   let resolverConfig: resolverConfig(Spec.command);
-
-  let atomicCounter: option(atomicCounterConfig(Spec.command));
 
   let init: init(state, Spec.event);
   let apply: apply(state, Spec.event);
