@@ -51,16 +51,16 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         );
 
     Js.log2(
-      __MODULE__ ++ "dynamoDbStreamTopics:",
-      dynamoDbStreamTopics->Js.Json.stringifyAny,
+      __MODULE__ ++ ".make: dynamoDbStreamTopics:",
+      dynamoDbStreamTopics,
     );
-    Js.log2(__MODULE__ ++ "otherTopics:", otherTopics->Js.Json.stringifyAny);
+    Js.log2(__MODULE__ ++ ".make: otherTopics:", otherTopics);
 
-    let _eventSourceMappings =
+    let eventSourceMappings =
       dynamoDbStreamTopics->Belt.Array.map((_, (sourceName, source)) => {
         Js.log(
           __MODULE__
-          ++ {j|.eventSourceMapping: sourceName=$sourceName, aggregateNames=$aggregateNames|j},
+          ++ {j|.make: eventSourceMapping: sourceName=$sourceName, aggregateNames=$aggregateNames|j},
         );
         Util_EventSourceMapping.subscribe(
           ~lambda=eventHandlerLambda,
@@ -70,6 +70,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           ~opts,
         );
       });
+    Js.log2(__MODULE__ ++ ".make: eventSourceMappings:", eventSourceMappings);
 
     if (otherTopics->Belt.Array.length > 0) {
       let errorTopics =
