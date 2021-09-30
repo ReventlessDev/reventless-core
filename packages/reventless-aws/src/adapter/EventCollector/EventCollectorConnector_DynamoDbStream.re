@@ -50,6 +50,9 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           service == Util_DynamoDbStream.service
         );
 
+    Js.log2(__MODULE__ ++ "dynamoDbStreamTopics:", dynamoDbStreamTopics);
+    Js.log2(__MODULE__ ++ "otherTopics:", otherTopics);
+
     let _eventSourceMappings =
       dynamoDbStreamTopics->Belt.Array.map((_, (sourceName, source)) => {
         let _ =
