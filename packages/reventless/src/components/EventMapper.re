@@ -273,12 +273,25 @@ module Make =
     (. events'Json) => {
       let (publisherEntries, counterActions) =
         commonEventsHandler(mappings, queryEngine, events'Json);
-      let (countActions, setTargetActions) =
+      let (countActions, addToCounterTargetActions) =
         counterActions->Belt.Array.partition(
           fun
           | Counter.Count(_) => true
           | AddToCounterTarget(_) => false,
         );
+
+      Js.log2(
+        "EventMapper.eventCollectorEventsHandler: publisherEntries:",
+        publisherEntries->Js.Json.stringifyAny,
+      );
+      Js.log2(
+        "EventMapper.eventCollectorEventsHandler: countActions:",
+        countActions->Js.Json.stringifyAny,
+      );
+      Js.log2(
+        "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
+        addToCounterTargetActions->Js.Json.stringifyAny,
+      );
 
       let countP =
         count(
@@ -288,8 +301,8 @@ module Make =
             | _ => None,
           ),
         );
-      let setTargetActionsP =
-        setTargetActions
+      let addToCounterTargetsP =
+        addToCounterTargetActions
         ->Belt.Array.map(
             fun
             | AddToCounterTarget(counterTarget) =>
@@ -298,7 +311,11 @@ module Make =
           )
         ->Js.Promise.all;
 
-      (countP, setTargetActionsP, sendEntries(publisherEntries, resources))
+      (
+        countP,
+        addToCounterTargetsP,
+        sendEntries(publisherEntries, resources),
+      )
       ->Js.Promise.all3
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
