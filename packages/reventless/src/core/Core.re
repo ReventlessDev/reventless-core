@@ -11,6 +11,7 @@ type outputs = {
   "eventCollector": EventCollector.outputs,
   "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
   "services": Js.Dict.t(Service.outputs),
+  "resources": resources,
 };
 type core;
 
@@ -42,7 +43,8 @@ module Make =
       ~version: string,
       ~eventCollector: EventCollector.outputs,
       ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
-      ~services: Js.Dict.t(Service.outputs)
+      ~services: Js.Dict.t(Service.outputs),
+      ~resources: resources
     ) =>
     outputs =
     "";
@@ -156,6 +158,7 @@ module Make =
       ~eventCollector=eventCollector->Component.extractOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
       ~services=servicesOutputs->toDict,
+      ~resources,
     )
     ->setOutputs(self, _);
   };
