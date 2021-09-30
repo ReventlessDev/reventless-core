@@ -150,7 +150,7 @@ module Make =
       module Spec = AggregateSpec;
       let name = Some(name ++ "References");
       [@decco]
-      type state = unit;
+      type state = {id: Spec.Id.t};
 
       let resolveIdConfigs = [];
       let resolveIdsConfigs = [];
@@ -230,9 +230,11 @@ module Make =
 
     let count = (saveBatch, countItems) =>
       saveBatch(.
-        countItems->Belt.Array.map(({counterId, reference}) =>
-          (makeId((counterId, reference)), (), ttl)
-        ),
+        countItems->Belt.Array.map(({counterId, reference}) => {
+          let id = makeId((counterId, reference));
+          let state: ReferencesViewSpec.state = {id: id};
+          (id, state, ttl);
+        }),
       )
       ->Js.Promise.then_(
           fun

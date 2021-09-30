@@ -275,7 +275,10 @@ module Make =
         let json = Js.Json.object_(dict);
         storage.Adapter.save(. id->Spec.Id.toString, json, saveMode, ttl);
       | None =>
-        Js.log("QueryDB.save: Error: Couldn't decodeObject");
+        Js.log2(
+          "QueryDB.save: Error: Couldn't decodeObject:",
+          state->Js.Json.stringifyAny,
+        );
         Belt.Result.Error(
           NotSavedToStorage("Couldn't decodeObject"->Obj.magic),
         )
@@ -293,7 +296,10 @@ module Make =
             let json = Js.Json.object_(dict);
             Some((id->Spec.Id.toString, json, ttl));
           | None =>
-            Js.log("QueryDB.save: Error: Couldn't decodeObject");
+            Js.log2(
+              "QueryDB.saveBatch: Error: Couldn't decodeObject:",
+              state->Js.Json.stringifyAny,
+            );
             None;
           }
         );
