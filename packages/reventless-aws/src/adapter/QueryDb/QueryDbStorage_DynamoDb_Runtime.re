@@ -183,7 +183,7 @@ let saveBatch:
         Js.Dict.fromArray([|(tableName, writeRequests)|]);
       Js.log2(
         __MODULE__ ++ ".saveBatch: batchWriteItemRequestMap:",
-        batchWriteItemRequestMap,
+        batchWriteItemRequestMap->Js.Json.stringifyAny,
       );
       batchWrite'(batchWriteItemRequestMap)
       ->wrapWithCount(0)
