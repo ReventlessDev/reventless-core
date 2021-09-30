@@ -194,13 +194,13 @@ module Make =
       );
 
   let commonEventsHandler = (mappings, queryEngine, events'Json) => {
-    let count = events'Json->Belt.Array.size;
+    let eventsCount = events'Json->Belt.Array.size;
     let (publisherActions, counterActions) =
       events'Json
       ->Belt.Array.mapWithIndex((idx, event'Json) => {
           let idx = idx + 1;
           event'Json->Message.logEvent'Json(
-            {j|EventMapper.eventsHandler: incoming event $idx/$count:|j},
+            {j|EventMapper.eventsHandler: incoming event $idx/$eventsCount:|j},
           );
           let event' = event'Json->Js.Json.decodeObject;
           switch (findMapping(mappings, event')) {
