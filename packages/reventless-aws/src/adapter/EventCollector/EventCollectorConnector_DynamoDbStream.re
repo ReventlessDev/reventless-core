@@ -57,7 +57,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     Js.log2(__MODULE__ ++ ".make: otherTopics:", otherTopics);
 
     let eventSourceMappings =
-      dynamoDbStreamTopics->Belt.Array.map((_, (sourceName, source)) => {
+      dynamoDbStreamTopics->Belt.Array.map(((_, (sourceName, source))) => {
         Js.log(
           __MODULE__
           ++ {j|.make: eventSourceMapping: sourceName=$sourceName, aggregateNames=$aggregateNames|j},
