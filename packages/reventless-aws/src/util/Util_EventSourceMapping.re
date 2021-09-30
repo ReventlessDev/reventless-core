@@ -2,6 +2,10 @@ open PulumiAws;
 
 /** TODO: handle other EventSources than Stream */
 let subscribe = (~lambda, ~targetName, ~sourceName, ~source, ~opts) => {
+  Js.log(
+    __MODULE__
+    ++ {j|.subscribe: targetName: $targetName, sourceName: $sourceName|j},
+  );
   let eventSourceMapping =
     EventSourceMapping.make(
       ~name=sourceName ++ "2" ++ targetName,
@@ -18,9 +22,6 @@ let subscribe = (~lambda, ~targetName, ~sourceName, ~source, ~opts) => {
       ~opts=Some(opts),
     );
   let result = eventSourceMapping->Js.Json.stringifyAny;
-  Js.log(
-    __MODULE__
-    ++ {j|.subscribe: targetName: $targetName, sourceName: $sourceName, result: $result|j},
-  );
+  Js.log(__MODULE__ ++ {j|.subscribe: result: $result|j});
   eventSourceMapping;
 };

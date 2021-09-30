@@ -12,6 +12,10 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     ~opts,
     ~resources,
   ) => {
+    Js.log(
+      __MODULE__
+      ++ {j|.make: name=$name, aggregateNames=$aggregateNames, extensionPointNames=$extensionPointNames|j},
+    );
     let eventHandlerLambda =
       policies // Pulumi.Output cannot be pushed into policies parameter !
       ->Pulumi.Output.all
@@ -46,16 +50,26 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           service == Util_DynamoDbStream.service
         );
 
+    Js.log2(
+      __MODULE__ ++ "dynamoDbStreamTopics:",
+      dynamoDbStreamTopics->Js.Json.stringifyAny,
+    );
+    Js.log2(__MODULE__ ++ "otherTopics:", otherTopics->Js.Json.stringifyAny);
+
     let _eventSourceMappings =
-      dynamoDbStreamTopics->Belt.Array.map((_, (sourceName, source)) =>
+      dynamoDbStreamTopics->Belt.Array.map((_, (sourceName, source)) => {
+        Js.log(
+          __MODULE__
+          ++ {j|.eventSourceMapping: sourceName=$sourceName, aggregateNames=$aggregateNames|j},
+        );
         Util_EventSourceMapping.subscribe(
           ~lambda=eventHandlerLambda,
           ~targetName=name,
           ~sourceName,
           ~source,
           ~opts,
-        )
-      );
+        );
+      });
 
     if (otherTopics->Belt.Array.length > 0) {
       let errorTopics =
