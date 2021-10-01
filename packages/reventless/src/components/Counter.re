@@ -2,6 +2,7 @@ open ReventlessSpec.Adapter;
 open ReventlessSpec.Counter;
 
 let componentType = ComponentType.Counter;
+[@bs.inline]
 let countFieldName = "count";
 
 type outputs = {
