@@ -11,10 +11,12 @@ let addToCounterTarget = (table, {counterId, target, targetRef}) => {
       ~_TableName=tableName,
       ~_Key={"id": counterId},
       ~_UpdateExpression=
-        "ADD #fieldName :inc SET #targets=list_append(#targets,:target), #targetRefs=list_append(#targetRefs,:targetRef)",
+        "ADD #count :inc, #total :inc "
+        ++ "SET #targets = list_append(if_not_exists(#targets, :empty), :target), "
+        ++ "    #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRef)",
       ~_ExpressionAttributeNames=
         [
-          ("#fieldName", countFieldName),
+          ("#count", countFieldName),
           ("#targets", "targets"),
           ("#targetRefs", "targetRefs"),
         ]
@@ -23,6 +25,7 @@ let addToCounterTarget = (table, {counterId, target, targetRef}) => {
         ":inc": target,
         ":target": [|target|],
         ":targetRef": [|targetRef|],
+        ":empty": [||],
       },
       ~_ReturnValues=`UPDATED_NEW,
       ~_ConditionExpression="NOT contains(#targetRefs, :targetRef)",
