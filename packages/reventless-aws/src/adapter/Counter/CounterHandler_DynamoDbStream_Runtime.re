@@ -86,7 +86,7 @@ let handleStreamEvent =
 
   let references =
     referenceRecords->Belt.Array.keepMap(record =>
-      switch (record->parseDynamoDbStreamRecord) {
+      switch (record->parseDynamoDbStreamRecordState) {
       | NewImage(id, _) => Some(id)
       | _ =>
         Js.log2(__MODULE__ ++ " (references): ignoring record:", record);
@@ -96,7 +96,7 @@ let handleStreamEvent =
 
   let counts =
     countRecords->Belt.Array.keepMap(record =>
-      switch (record->parseDynamoDbStreamRecord) {
+      switch (record->parseDynamoDbStreamRecordEvent) {
       | NewImage(_, newImage)
       | NewAndOldImage(_, newImage, _) => Some(newImage)
       | _ =>

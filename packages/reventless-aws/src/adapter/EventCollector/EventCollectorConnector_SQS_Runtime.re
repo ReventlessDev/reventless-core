@@ -3,9 +3,15 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
   let jsons =
     records->Belt.Array.keepMap(record =>
       switch (record##eventSource) {
-      | "aws:sqs" => record->Util.SQS_Runtime.parseSqsRecord
+      | "aws:sqs" =>
+        let sqsRecord = record->Obj.magic; // TODO: specify type
+        sqsRecord->Util.SQS_Runtime.parseSqsRecord;
       | "aws:dynamodb" =>
-        switch (record->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecord) {
+        let dynamoDbStreamRecord: AwsSdk.DynamoDb.Stream.Record.t =
+          record->Obj.magic;
+        switch (
+          dynamoDbStreamRecord->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecordEvent
+        ) {
         | NewImage(_, newImage)
         | NewAndOldImage(_, newImage, _) => Some(newImage)
         | _ =>
@@ -14,7 +20,7 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
             ++ ".handleCallbackEvent: no NewImage included in Stream event !",
           );
           None;
-        }
+        };
       | eventSource =>
         Js.log2(
           "EventCollectorConnector_SQS_Runtime: ignoring record from eventSource:",

@@ -4,7 +4,9 @@ let handleStreamEvent = (handleEvents, streamEvent, _) => {
     records->Belt.Array.keepMap(record =>
       switch (record##eventSource) {
       | "aws:dynamodb" =>
-        switch (record->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecord) {
+        switch (
+          record->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecordEvent
+        ) {
         | NewImage(_, newImage)
         | NewAndOldImage(_, newImage, _) => Some(newImage)
         | _ =>
