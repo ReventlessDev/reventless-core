@@ -11,7 +11,7 @@ let addToCounterTarget = (table, {counterId, target, targetRef}) => {
       ~_TableName=tableName,
       ~_Key={"id": counterId},
       ~_UpdateExpression=
-        "ADD #fieldName :inc SET #targets=list_append(#targets,:target), #targetRefs=list_append(#targetRefs:targetRef)",
+        "ADD #fieldName :inc SET #targets=list_append(#targets,:target), #targetRefs=list_append(#targetRefs,:targetRef)",
       ~_ExpressionAttributeNames=
         [
           ("#fieldName", countFieldName),
