@@ -174,21 +174,32 @@ module Make =
       }
     );
 
-  let sendEntries = (entries, resources) =>
-    entries
+  let sendEntries = (publisherEntries, loc, resources) =>
+    publisherEntries
     ->Js.Promise.then_(
-        entries =>
-          entries->AwsSdk.SQS.sendMessageBatch(
-            ~queueId=
-              resources->Util.Aggregate.commandTopicConnectorResource(service)##id
-              ->Pulumi.Output.get,
-          ),
+        publisherEntries => {
+          Js.log2(
+            loc ++ ": publisherEntries:",
+            publisherEntries->Js.Json.stringifyAny,
+          );
+          switch (publisherEntries->Belt.Array.size) {
+          | 0 => Js.Promise.resolve()
+          | _ =>
+            publisherEntries->AwsSdk.SQS.sendMessageBatch(
+              ~queueId=
+                resources->Util.Aggregate.commandTopicConnectorResource(
+                  service,
+                )##id
+                ->Pulumi.Output.get,
+            )
+          };
+        },
         _,
       )
     ->Js.Promise.catch(
         err => {
-          Js.log2(__MODULE__ ++ ".sendEntries error", err);
-          Js.Exn.raiseError(__MODULE__ ++ ".sendEntries error");
+          Js.log2(loc ++ ": sendEntries error", err);
+          Js.Exn.raiseError(loc ++ ": sendEntries error");
         },
         _,
       );
@@ -280,27 +291,36 @@ module Make =
           | AddToCounterTarget(_) => false,
         );
 
-      Js.log2(
-        "EventMapper.eventCollectorEventsHandler: publisherEntries:",
-        publisherEntries->Js.Json.stringifyAny,
-      );
+      let countActions =
+        countActions->Belt.Array.keepMap(
+          fun
+          | Count(countItem) => Some(countItem)
+          | _ => None,
+        );
       Js.log2(
         "EventMapper.eventCollectorEventsHandler: countActions:",
         countActions->Js.Json.stringifyAny,
       );
+      let countP =
+        switch (countActions->Belt.Array.size) {
+        | 0 => Js.Promise.resolve()
+        | _ =>
+          count(countActions)
+          ->Js.Promise.catch(
+              _ => {
+                let err =
+                  __MODULE__ ++ ".eventCollectorEventsHandler: count error";
+                Js.log(err);
+                Js.Exn.raiseError(err);
+              },
+              _,
+            )
+        };
+
       Js.log2(
         "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
         addToCounterTargetActions->Js.Json.stringifyAny,
       );
-
-      let countP =
-        count(
-          countActions->Belt.Array.keepMap(
-            fun
-            | Count(countItem) => Some(countItem)
-            | _ => None,
-          ),
-        );
       let addToCounterTargetsP =
         addToCounterTargetActions
         ->Belt.Array.map(
@@ -311,11 +331,13 @@ module Make =
           )
         ->Js.Promise.all;
 
-      (
-        countP,
-        addToCounterTargetsP,
-        sendEntries(publisherEntries, resources),
-      )
+      let sendEntriesP =
+        publisherEntries->sendEntries(
+          __MODULE__ ++ ".eventCollectorEventsHandler",
+          resources,
+        );
+
+      (countP, addToCounterTargetsP, sendEntriesP)
       ->Js.Promise.all3
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
@@ -325,9 +347,14 @@ module Make =
       let (publisherEntries, countActions) =
         commonEventsHandler(mappings, queryEngine, events'Json);
       if (countActions->Belt.Array.size > 0) {
-        Js.log("Counter actions are not allowed in Count mapping!");
+        Js.log(
+          "EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!",
+        );
       };
-      publisherEntries->sendEntries(resources);
+      publisherEntries->sendEntries(
+        __MODULE__ ++ ".counterEventsHandler",
+        resources,
+      );
     };
 
   let construct =
