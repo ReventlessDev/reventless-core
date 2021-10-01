@@ -167,8 +167,9 @@ module Make =
             _,
           )
         ->Publisher
-      | AddToCounterTarget(counterTarget) =>
-        AddToCounterTarget(counterTarget)->Counter
+      | AddToCounterTarget({counterId, target}) =>
+        AddToCounterTarget({counterId, target, targetRef: meta.correlationId})
+        ->Counter
       | Count(counterId) =>
         Count({counterId, reference: meta.correlationId})->Counter
       }

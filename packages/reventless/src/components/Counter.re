@@ -15,6 +15,17 @@ type counterHandler =
   (~references: array(string), ~counts: array(Js.Json.t)) =>
   Js.Promise.t(unit);
 
+type countItem = {
+  counterId,
+  reference,
+};
+
+type counterTarget = {
+  counterId,
+  target: int,
+  targetRef: reference,
+};
+
 type action =
   | Count(countItem)
   | AddToCounterTarget(counterTarget);

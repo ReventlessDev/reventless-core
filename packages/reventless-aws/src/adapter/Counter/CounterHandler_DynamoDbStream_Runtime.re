@@ -1,25 +1,31 @@
 open ReventlessSpec.Adapter;
-open ReventlessSpec.Counter;
+open Reventless.Counter;
 open AwsSdk.DynamoDb.DocumentClient;
 open Util.DynamoDbStream_Runtime;
 
-let addToCounterTarget = (table, {counterId, target}) => {
+let addToCounterTarget = (table, {counterId, target, targetRef}) => {
   Js.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target);
   let tableName = table##name->Pulumi.Output.get;
   update(
     UpdateInput.make(
       ~_TableName=tableName,
       ~_Key={"id": counterId},
-      ~_UpdateExpression="ADD #fieldName :inc, SET #target :target",
+      ~_UpdateExpression=
+        "ADD #fieldName :inc, #targets :target, #targetRefs :targetRef",
       ~_ExpressionAttributeNames=
         [
-          ("#fieldName", Reventless.Counter.countFieldName),
-          ("#target", "target"),
+          ("#fieldName", countFieldName),
+          ("#targets", "targets"),
+          ("#targetRefs", "targetRefs"),
         ]
         ->Js.Dict.fromList,
-      ~_ExpressionAttributeValues={":inc": target, ":target": target},
+      ~_ExpressionAttributeValues={
+        ":inc": target,
+        ":target": [|target|],
+        ":targetRef": [|targetRef|],
+      },
       ~_ReturnValues=`UPDATED_NEW,
-      ~_ConditionExpression="attribute_not_exists(target)",
+      ~_ConditionExpression="NOT contains(#targetRefs, :targetRef)",
       (),
     ),
   )
@@ -42,7 +48,7 @@ let handleStreamEvent =
     (
       ~referencesStream: resource,
       ~countsStream: resource,
-      ~counterHandler: Reventless.Counter.counterHandler,
+      ~counterHandler: counterHandler,
       streamEvent,
       _,
     ) => {
