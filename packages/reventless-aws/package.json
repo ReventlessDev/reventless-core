@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-aws",
-  "version": "1.0.0-alpha.108",
+  "version": "1.0.0-alpha.109",
   "description": "AWS adapters for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -26,10 +26,10 @@
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
   },
   "dependencies": {
-    "@reventless/bs-aws-sdk": "^1.0.0-alpha.8",
+    "@reventless/bs-aws-sdk": "^1.0.0-alpha.9",
     "@reventless/bs-pulumi-aws": "1.0.0-alpha.6",
     "@reventless/bs-pulumi-pulumi": "1.0.0-alpha.1",
-    "@reventless/reventless": "^1.0.0-alpha.70",
+    "@reventless/reventless": "^1.0.0-alpha.71",
     "@reventless/reventless-spec": "^1.0.0-alpha.13"
   },
   "devDependencies": {
