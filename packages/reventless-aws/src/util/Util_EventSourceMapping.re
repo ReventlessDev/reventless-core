@@ -1,7 +1,8 @@
 open PulumiAws;
 
 /** TODO: handle other EventSources than Stream */
-let subscribe = (~lambda, ~targetName, ~sourceName, ~source, ~opts) => {
+let subscribe =
+    (~batchSize=?, ~lambda, ~targetName, ~sourceName, ~source, ~opts, ()) => {
   EventSourceMapping.make(
     ~name=sourceName ++ "2" ++ targetName,
     ~args=
@@ -12,6 +13,7 @@ let subscribe = (~lambda, ~targetName, ~sourceName, ~source, ~opts) => {
           ->Pulumi.Output.asInput,
         ~eventSourceArn=source##urn->Pulumi.Output.asInput,
         ~startingPosition=`LATEST,
+        ~batchSize?,
         (),
       ),
     ~opts=Some(opts),

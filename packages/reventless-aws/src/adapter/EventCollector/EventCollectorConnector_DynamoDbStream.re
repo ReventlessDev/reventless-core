@@ -49,11 +49,13 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     let _eventSourceMappings =
       dynamoDbStreamTopics->Belt.Array.map(((_, (sourceName, source))) =>
         Util_EventSourceMapping.subscribe(
+          ~batchSize=25,
           ~lambda=eventHandlerLambda,
           ~targetName=name,
           ~sourceName,
           ~source,
           ~opts,
+          (),
         )
       );
 
