@@ -1,10 +1,12 @@
+open AwsSdk.DynamoDb.Stream;
+
 type result =
   | NewImage(string, Js.Json.t)
   | OldImage(string, Js.Json.t)
   | NewAndOldImage(string, Js.Json.t, Js.Json.t)
   | Invalid;
 
-let buildJson = dict =>
+let buildEvent'Json = dict =>
   [|
     ("id", dict->Js.Dict.get("id")->Belt.Option.getExn),
     ("meta", dict->Reventless.Message.composeMeta),
@@ -13,9 +15,12 @@ let buildJson = dict =>
   ->Js.Dict.fromArray
   ->Js.Json.object_;
 
-let parseDynamoDbStreamRecord = record => {
+let buildStateJson = dict => dict->Js.Json.object_;
+
+let parseDynamoDbStreamRecord = (buildJson, record: Record.t) => {
   let record = record##dynamodb;
   let id = record->Belt.Option.map(record => record##_Keys##id);
+
   let newImageJson =
     record
     ->Belt.Option.flatMap(dynamodb => dynamodb##_NewImage)
@@ -40,3 +45,9 @@ let parseDynamoDbStreamRecord = record => {
   | _ => Invalid
   };
 };
+
+let parseDynamoDbStreamRecordEvent: Record.t => result =
+  parseDynamoDbStreamRecord(buildEvent'Json);
+
+let parseDynamoDbStreamRecordState: Record.t => result =
+  parseDynamoDbStreamRecord(buildStateJson);
