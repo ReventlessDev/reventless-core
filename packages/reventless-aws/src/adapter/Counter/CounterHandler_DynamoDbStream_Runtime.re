@@ -17,6 +17,7 @@ let addToCounterTarget = (table, {counterId, target, targetRef}) => {
       ~_ExpressionAttributeNames=
         [
           ("#count", countFieldName),
+          ("#total", "total"),
           ("#targets", "targets"),
           ("#targetRefs", "targetRefs"),
         ]
