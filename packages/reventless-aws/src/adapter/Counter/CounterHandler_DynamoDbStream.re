@@ -32,6 +32,7 @@ let make: Reventless.Counter.Adapter.handlerMaker =
         ~sourceName,
         ~source,
         ~opts,
+        (),
       );
 
     let _ = subscribe(referencesName, referencesStream);
