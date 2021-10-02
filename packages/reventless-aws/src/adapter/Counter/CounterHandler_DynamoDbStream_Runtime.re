@@ -96,7 +96,7 @@ let handleStreamEvent =
 
   let counts =
     countRecords->Belt.Array.keepMap(record =>
-      switch (record->parseDynamoDbStreamRecordEvent) {
+      switch (record->parseDynamoDbStreamRecordState) {
       | NewImage(_, newImage)
       | NewAndOldImage(_, newImage, _) => Some(newImage)
       | _ =>
