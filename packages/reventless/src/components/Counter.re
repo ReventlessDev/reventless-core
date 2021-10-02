@@ -322,7 +322,7 @@ module Make =
                 Js.log(
                   __MODULE__ ++ {j|.counterHandler: finished $name($id)|j},
                 );
-                let meta = Message.generateMeta(~service=name, ());
+                let meta = Message.generateMeta(~service=Source.name, ());
                 Some(
                   [|
                     ("id", counterId->Js.Json.string),
