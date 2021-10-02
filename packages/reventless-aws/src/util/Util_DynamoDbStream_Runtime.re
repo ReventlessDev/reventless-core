@@ -19,20 +19,18 @@ let buildStateJson = dict => dict->Js.Json.object_;
 
 let parseDynamoDbStreamRecord = (buildJson, record: Record.t) => {
   let record = record##dynamodb;
-  let id = record->Belt.Option.map(record => record##_Keys##id);
+  let id =
+    record->Belt.Option.flatMap(record =>
+      AwsSdk.DynamoDb.Converter.output(~data=record##_Keys##id, ())
+    );
 
   let newImageJson =
     record
     ->Belt.Option.flatMap(dynamodb => dynamodb##_NewImage)
-    ->Reventless.Message.log("parseDynamoDbStreamRecord: NewImage")
     ->Belt.Option.map(newImage =>
         AwsSdk.DynamoDb.Converter.unmarshall(~data=newImage, ())
       )
-    ->Reventless.Message.log(
-        "parseDynamoDbStreamRecord: NewImage unmarshalled",
-      )
-    ->Belt.Option.map(buildJson)
-    ->Reventless.Message.log("parseDynamoDbStreamRecord: NewImage Json");
+    ->Belt.Option.map(buildJson);
 
   let oldImageJson =
     record
