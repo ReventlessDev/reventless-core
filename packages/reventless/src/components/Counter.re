@@ -298,6 +298,8 @@ module Make =
 
     let counterHandler: counterHandler =
       (~references, ~counts) => {
+        Js.log2("counterHandler: references:", references);
+        Js.log2("counterHandler: counts:", references);
         let countP =
           references
           ->groupByCounterId
