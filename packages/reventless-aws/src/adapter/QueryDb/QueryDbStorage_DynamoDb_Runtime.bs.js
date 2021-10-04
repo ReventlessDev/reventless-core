@@ -126,7 +126,6 @@ function saveBatch($staropt$star, table) {
               tableName,
               writeRequests
             ]]);
-      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws.saveBatch: batchWriteItemRequestMap:", Caml_option.undefined_to_opt(JSON.stringify(batchWriteItemRequestMap)));
       var __x = retryIfNecessary(wrapWithCount(batchWrite$prime(batchWriteItemRequestMap), 0));
       return __x.then((function (param) {
                     if (hasUnprocessedItems(param[0])) {
