@@ -87,7 +87,13 @@ let handleStreamEvent =
   let references =
     referenceRecords->Belt.Array.keepMap(record =>
       switch (record->parseDynamoDbStreamRecordState) {
-      | NewImage(id, _) => Some(id)
+      | NewImage(id, newImage) =>
+        let inc =
+          switch (newImage->referencesViewState_decode) {
+          | Ok({inc}) => inc
+          | _ => 1
+          };
+        Some((id, inc));
       | _ =>
         Js.log2(__MODULE__ ++ " (references): ignoring record:", record);
         None;

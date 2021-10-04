@@ -171,7 +171,9 @@ module Make =
         AddToCounterTarget({counterId, target, targetRef: meta.correlationId})
         ->Counter
       | Count(counterId) =>
-        Count({counterId, reference: meta.correlationId})->Counter
+        Count({counterId, reference: meta.correlationId, inc: 1})->Counter
+      | CountMulti(counterId, inc) =>
+        Count({counterId, reference: meta.correlationId, inc})->Counter
       }
     );
 
