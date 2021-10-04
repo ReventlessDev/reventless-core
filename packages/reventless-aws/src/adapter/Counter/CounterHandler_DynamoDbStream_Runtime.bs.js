@@ -7,6 +7,7 @@ var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Counter$Reventless = require("@reventless/reventless/src/components/Counter.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
@@ -86,7 +87,13 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
   var references = Belt_Array.keepMap(match$1[0], (function (record) {
           var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
           if (typeof match !== "number" && !match.tag) {
-            return match[0];
+            var match$1 = Counter$Reventless.referencesViewState_decode(match[1]);
+            var inc;
+            inc = match$1.tag ? 1 : match$1[0][/* inc */1];
+            return /* tuple */[
+                    match[0],
+                    inc
+                  ];
           }
           console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (references): ignoring record:", record);
           return ;
@@ -111,4 +118,4 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
 
 exports.addToCounterTarget = addToCounterTarget;
 exports.handleStreamEvent = handleStreamEvent;
-/* DynamoDb_DocumentClient-AwsSdk Not a pure module */
+/* Counter-Reventless Not a pure module */

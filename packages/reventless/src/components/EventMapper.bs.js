@@ -98,7 +98,14 @@ function Make(Target) {
                         case /* Count */4 :
                             return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
                                             /* counterId */action[0],
-                                            /* reference */meta[/* correlationId */5]
+                                            /* reference */meta[/* correlationId */5],
+                                            /* inc */1
+                                          ]])]);
+                        case /* CountMulti */5 :
+                            return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
+                                            /* counterId */action[0],
+                                            /* reference */meta[/* correlationId */5],
+                                            /* inc */action[1]
                                           ]])]);
                         
                       }

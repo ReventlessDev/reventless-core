@@ -12,12 +12,13 @@ type outputs = {
 };
 
 type counterHandler =
-  (~references: array(string), ~counts: array(Js.Json.t)) =>
+  (~references: array((string, int)), ~counts: array(Js.Json.t)) =>
   Js.Promise.t(unit);
 
 type countItem = {
   counterId,
   reference,
+  inc: int,
 };
 
 type counterTarget = {
@@ -44,6 +45,17 @@ module Source = {
 };
 
 type counterEventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
+
+[@decco]
+type referencesViewState = {
+  id: string,
+  inc: int,
+};
+[@decco]
+type countsViewState = {
+  id: string,
+  count: int,
+}; //TODO: generalize
 
 module type T = {
   type t;
@@ -154,7 +166,7 @@ module Make =
       );
 
     module AggregateSpec = {
-      module Id = Id.String;
+      module Id = Id.StringPure;
       let name = name;
     };
 
@@ -162,7 +174,7 @@ module Make =
       module Spec = AggregateSpec;
       let name = Some(name ++ "References");
       [@decco]
-      type state = {id: Spec.Id.t};
+      type state = referencesViewState;
 
       let resolveIdConfigs = [];
       let resolveIdsConfigs = [];
@@ -183,10 +195,7 @@ module Make =
       module Spec = AggregateSpec;
       let name = Some(name ++ "Counts");
       [@decco]
-      type state = {
-        id: string,
-        count: int,
-      }; //TODO: generalize
+      type state = countsViewState;
 
       let resolveIdConfigs = [];
       let resolveIdsConfigs = [];
@@ -205,7 +214,7 @@ module Make =
 
     let separator = "#";
     let makeId = ((counterId, reference)) =>
-      (counterId ++ separator ++ reference)->AggregateSpec.Id.makeFromString;
+      counterId ++ separator ++ reference;
     let unmakeId = id =>
       id
       ->Js.String2.split(separator)
@@ -242,9 +251,9 @@ module Make =
 
     let count = (saveBatch, countItems) =>
       saveBatch(.
-        countItems->Belt.Array.map(({counterId, reference}) => {
+        countItems->Belt.Array.map(({counterId, reference, inc}) => {
           let id = makeId((counterId, reference));
-          let state: ReferencesViewSpec.state = {id: id};
+          let state: ReferencesViewSpec.state = {id, inc};
           (id, state, ttl);
         }),
       )
@@ -287,11 +296,11 @@ module Make =
 
     let groupByCounterId = references => {
       let dict = Js.Dict.empty();
-      references->Belt.Array.forEach(reference => {
+      references->Belt.Array.forEach(((reference, inc)) => {
         let counterId = reference->unmakeId->fst;
         let current =
           dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault(0);
-        dict->Js.Dict.set(counterId, current + 1);
+        dict->Js.Dict.set(counterId, current + inc);
       });
       dict->Js.Dict.entries;
     };
