@@ -16,7 +16,7 @@ function Make(Spec) {
       var mapIncomingCommands = function (commands$prime, createSchedule, deleteSchedule, queryEngine) {
         return Belt_Array.concatMany(Belt_Array.map(commands$prime, (function (param) {
                           var meta = param[/* meta */1];
-                          return Belt_Array.map(Curry._3(MappingImpl.mapIncomingCommand, Curry._1(Id$Reventless.$$String.toString, param[/* id */0]), param[/* command */2], meta), (function (param) {
+                          return Belt_Array.map(Curry._3(MappingImpl.mapIncomingCommand, Id$Reventless.$$String.toString(param[/* id */0]), param[/* command */2], meta), (function (param) {
                                         if (param.tag) {
                                           var callCommand = param[1];
                                           var handler = param[0];
@@ -64,7 +64,7 @@ function Make(Spec) {
                               var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
                               console.log("ExtensionPointMapping: outgoing from Aggregate " + (String(aggregateName) + (" to ExtensionPoint " + (String(extensionPointName) + (": Publishing event: " + (String(eventStr) + (" id: " + (String(id) + ""))))))));
                               return /* AbstractPublishEvent */Block.__(0, [/* record */[
-                                          /* id */Curry._1(Id$Reventless.$$String.makeFromString, id),
+                                          /* id */Id$Reventless.$$String.makeFromString(id),
                                           /* meta : record */[
                                             /* service */Spec.name,
                                             /* time */meta[/* time */1],
@@ -82,7 +82,7 @@ function Make(Spec) {
                                       var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
                                       console.log("ExtensionPointMapping: async outgoing from Aggregate " + (String(aggregateName) + (" to ExtensionPoint " + (String(extensionPointName) + (": Publishing event: " + (String(eventStr) + (" id: " + (String(id) + ""))))))));
                                       return Promise.resolve(/* record */[
-                                                  /* id */Curry._1(Id$Reventless.$$String.makeFromString, id),
+                                                  /* id */Id$Reventless.$$String.makeFromString(id),
                                                   /* meta : record */[
                                                     /* service */Spec.name,
                                                     /* time */meta[/* time */1],

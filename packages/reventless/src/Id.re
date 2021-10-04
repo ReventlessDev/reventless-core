@@ -1,4 +1,4 @@
-module String: ReventlessSpec.Id.T = {
+module StringPure = {
   [@decco]
   type t = string;
   type input = string;
@@ -7,3 +7,5 @@ module String: ReventlessSpec.Id.T = {
   external toString: t => t = "%identity";
   let cmp = String.compare;
 };
+
+module String: ReventlessSpec.Id.T = StringPure;

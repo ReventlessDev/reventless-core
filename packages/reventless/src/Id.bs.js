@@ -8,6 +8,12 @@ var t_encode = Decco.stringToJson;
 
 var t_decode = Decco.stringFromJson;
 
+var StringPure = {
+  t_encode: t_encode,
+  t_decode: t_decode,
+  cmp: $$String.compare
+};
+
 function String_make(prim) {
   return prim;
 }
@@ -29,5 +35,6 @@ var $$String$1 = {
   cmp: $$String.compare
 };
 
+exports.StringPure = StringPure;
 exports.$$String = $$String$1;
 /* No side effect */

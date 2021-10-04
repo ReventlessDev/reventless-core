@@ -52,7 +52,7 @@ function Make(Spec) {
       };
       var mapIncomingEvent = function (param, pluginDef, queryEngine) {
         var meta = param[/* meta */1];
-        return Belt_Array.map(Curry._5(MappingImpl.mapIncomingEvent, Curry._1(Id$Reventless.$$String.toString, param[/* id */0]), param[/* event */2], meta, pluginDef, queryEngine), (function (param) {
+        return Belt_Array.map(Curry._5(MappingImpl.mapIncomingEvent, Id$Reventless.$$String.toString(param[/* id */0]), param[/* event */2], meta, pluginDef, queryEngine), (function (param) {
                       switch (param.tag | 0) {
                         case /* PublishAggregateCommand */0 :
                             var aggregateCmd = param[1];

@@ -57,7 +57,7 @@ function Make(Spec) {
     };
     var forwardCommand = function (id, meta, extensionPointName, command$primeJson) {
       return publishExtensionPointCommand(id, Message$Reventless.command$prime_encode(Id$Reventless.$$String.t_encode, PluginExtensionPointSpec$ReventlessSpec.command_encode, /* record */[
-                      /* id */Curry._1(Id$Reventless.$$String.makeFromString, id),
+                      /* id */Id$Reventless.$$String.makeFromString(id),
                       /* meta : record */[
                         /* service */meta[/* service */0],
                         /* time */meta[/* time */1],
