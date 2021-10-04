@@ -46,7 +46,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           service == Util_DynamoDbStream.service
         );
 
-    let _eventSourceMappings =
+    let _eventSourceMappings: array(EventSourceMapping.t) =
       dynamoDbStreamTopics->Belt.Array.map(((_, (sourceName, source))) =>
         Util_EventSourceMapping.subscribe(
           ~batchSize=25,
