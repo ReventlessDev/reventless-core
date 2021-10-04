@@ -300,7 +300,7 @@ module Make =
         );
       Js.log2(
         "EventMapper.eventCollectorEventsHandler: countActions:",
-        countActions->Js.Json.stringifyAny,
+        countActions->Belt.Array.size,
       );
       let countP =
         switch (countActions->Belt.Array.size) {
@@ -308,11 +308,11 @@ module Make =
         | _ =>
           count(countActions)
           ->Js.Promise.catch(
-              _ => {
-                let err =
+              err => {
+                let error =
                   __MODULE__ ++ ".eventCollectorEventsHandler: count error";
-                Js.log(err);
-                Js.Exn.raiseError(err);
+                Js.log2(error, err);
+                Js.Exn.raiseError(error);
               },
               _,
             )
