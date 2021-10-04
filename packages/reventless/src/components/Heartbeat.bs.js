@@ -22,7 +22,7 @@ function construct(id, timeout, commandTopicId, self, name) {
   var childName = ComponentType$Reventless.name(name, /* Heartbeat */19);
   var heartBeatCallback = function (param, param$1) {
     var msgId = Message$Reventless.uuid(/* () */0);
-    var __x_000 = /* id */Curry._1(Id$Reventless.$$String.makeFromString, id);
+    var __x_000 = /* id */Id$Reventless.$$String.makeFromString(id);
     var __x_001 = /* meta : record */[
       /* service */PluginExtensionPointSpec$ReventlessSpec.name,
       /* time */Message$Reventless.nowAsISOString(/* () */0),
