@@ -23,7 +23,7 @@ other Suggestions:
 - gather requirements in an efficient and customer centric manner
     * Event Storming workshop (online or on site) with all relevant stakeholders, especially domain experts
     * low effort requirement specification
-    * zero waste: requirements are easily translated to formalized spezifications that are directly run by the framework
+    * zero waste: requirements are easily translated to formalized specifications that are directly run by the framework
 - use of a common (ubiquitous) language / vocabulary across all stakeholders to foster better communication and understanding
     * improved communication efficiency
 - focus on business centric tests
