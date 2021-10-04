@@ -102,7 +102,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         Util_SQS.subscribeToSnsTopic(queue, name, opts),
       );
 
-    let _eventSourceMappings =
+    let _eventSourceMappings: array(EventSourceMapping.t) =
       otherTopics->Belt.Array.map(((_, (sourceName, source))) =>
         Util_EventSourceMapping.subscribe(
           ~lambda=eventHandlerLambda,
@@ -110,6 +110,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           ~sourceName,
           ~source,
           ~opts,
+          (),
         )
       );
 
