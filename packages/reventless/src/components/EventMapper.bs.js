@@ -212,15 +212,15 @@ function Make(Target) {
                       return param[0];
                     }
                   }));
-            console.log("EventMapper.eventCollectorEventsHandler: countActions:", Caml_option.undefined_to_opt(JSON.stringify(countActions)));
+            console.log("EventMapper.eventCollectorEventsHandler: countActions:", countActions.length);
             var match$2 = countActions.length;
             var countP;
             if (match$2 !== 0) {
               var __x = Curry._1(count, countActions);
-              countP = __x.catch((function (param) {
-                      var err = "EventMapper-Reventless.eventCollectorEventsHandler: count error";
-                      console.log(err);
-                      return Js_exn.raiseError(err);
+              countP = __x.catch((function (err) {
+                      var error = "EventMapper-Reventless.eventCollectorEventsHandler: count error";
+                      console.log(error, err);
+                      return Js_exn.raiseError(error);
                     }));
             } else {
               countP = Promise.resolve(/* () */0);
