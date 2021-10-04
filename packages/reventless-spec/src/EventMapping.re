@@ -19,7 +19,8 @@ type action('id, 'command) =
   | PublishDelayed('id, 'command, int)
   | PublishAsync(Js.Promise.t(array(('id, 'command))))
   | AddToCounterTarget(Counter.counterTarget)
-  | Count(Counter.counterId);
+  | Count(Counter.counterId)
+  | CountMulti(Counter.counterId, int);
 
 module type T = {
   module Source: Source;
