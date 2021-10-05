@@ -48,6 +48,12 @@ let addToCounterTarget = (table, {counterId, target, targetRef}) => {
      );
 };
 
+[@decco]
+type referencesView = {
+  id: string,
+  inc: int,
+};
+
 let handleStreamEvent =
     (
       ~referencesStream: resource,
@@ -89,7 +95,7 @@ let handleStreamEvent =
       switch (record->parseDynamoDbStreamRecordState) {
       | NewImage(id, newImage) =>
         let inc =
-          switch (newImage->referencesViewState_decode) {
+          switch (newImage->referencesView_decode) {
           | Ok({inc}) => inc
           | _ => 1
           };
