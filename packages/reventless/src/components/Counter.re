@@ -46,17 +46,6 @@ module Source = {
 
 type counterEventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
-[@decco]
-type referencesViewState = {
-  id: string,
-  inc: int,
-};
-[@decco]
-type countsViewState = {
-  id: string,
-  count: int,
-}; //TODO: generalize
-
 module type T = {
   type t;
 
@@ -174,7 +163,10 @@ module Make =
       module Spec = AggregateSpec;
       let name = Some(name ++ "References");
       [@decco]
-      type state = referencesViewState;
+      type state = {
+        id: string,
+        inc: int,
+      };
 
       let resolveIdConfigs = [];
       let resolveIdsConfigs = [];
@@ -195,7 +187,10 @@ module Make =
       module Spec = AggregateSpec;
       let name = Some(name ++ "Counts");
       [@decco]
-      type state = countsViewState;
+      type state = {
+        id: string,
+        count: int,
+      }; //TODO: generalize
 
       let resolveIdConfigs = [];
       let resolveIdsConfigs = [];

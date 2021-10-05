@@ -52,98 +52,6 @@ var Source = {
   event_decode: event_decode
 };
 
-function referencesViewState_encode(v) {
-  return Js_dict.fromArray(/* array */[
-              /* tuple */[
-                "id",
-                Decco.stringToJson(v[/* id */0])
-              ],
-              /* tuple */[
-                "inc",
-                Decco.intToJson(v[/* inc */1])
-              ]
-            ]);
-}
-
-function referencesViewState_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
-    return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "inc");
-    var match$4 = Decco.intFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".inc" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* inc */match$4[0]
-                ]]);
-    }
-  }
-}
-
-function countsViewState_encode(v) {
-  return Js_dict.fromArray(/* array */[
-              /* tuple */[
-                "id",
-                Decco.stringToJson(v[/* id */0])
-              ],
-              /* tuple */[
-                "count",
-                Decco.intToJson(v[/* count */1])
-              ]
-            ]);
-}
-
-function countsViewState_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
-    return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "count");
-    var match$4 = Decco.intFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".count" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* count */match$4[0]
-                ]]);
-    }
-  }
-}
-
 var Adapter = { };
 
 function Make(Config) {
@@ -157,8 +65,50 @@ function Make(Config) {
               parent: self
             };
             var name$2 = name$1 + "References";
-            var state_encode = referencesViewState_encode;
-            var state_decode = referencesViewState_decode;
+            var state_encode = function (v) {
+              return Js_dict.fromArray(/* array */[
+                          /* tuple */[
+                            "id",
+                            Decco.stringToJson(v[/* id */0])
+                          ],
+                          /* tuple */[
+                            "inc",
+                            Decco.intToJson(v[/* inc */1])
+                          ]
+                        ]);
+            };
+            var state_decode = function (v) {
+              var match = Js_json.classify(v);
+              if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+                return Decco.error(undefined, "Not an object", v);
+              } else {
+                var dict = match[0];
+                var match$1 = Js_dict.get(dict, "id");
+                var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
+                var match$3 = Js_dict.get(dict, "inc");
+                var match$4 = Decco.intFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
+                if (match$2.tag) {
+                  var e = match$2[0];
+                  return /* Error */Block.__(1, [/* record */[
+                              /* path */".id" + e[/* path */0],
+                              /* message */e[/* message */1],
+                              /* value */e[/* value */2]
+                            ]]);
+                } else if (match$4.tag) {
+                  var e$1 = match$4[0];
+                  return /* Error */Block.__(1, [/* record */[
+                              /* path */".inc" + e$1[/* path */0],
+                              /* message */e$1[/* message */1],
+                              /* value */e$1[/* value */2]
+                            ]]);
+                } else {
+                  return /* Ok */Block.__(0, [/* record */[
+                              /* id */match$2[0],
+                              /* inc */match$4[0]
+                            ]]);
+                }
+              }
+            };
             var ReferencesDb = QueryDb$Reventless.Make(Config)({
                         Id: {
                           t_encode: Id$Reventless.StringPure.t_encode,
@@ -185,8 +135,50 @@ function Make(Config) {
                       indexes: /* [] */0
                     })(QueryDbStorage)(QueryDb$Reventless.Adapter.NoResolvers(Config));
             var name$3 = name$1 + "Counts";
-            var state_encode$1 = countsViewState_encode;
-            var state_decode$1 = countsViewState_decode;
+            var state_encode$1 = function (v) {
+              return Js_dict.fromArray(/* array */[
+                          /* tuple */[
+                            "id",
+                            Decco.stringToJson(v[/* id */0])
+                          ],
+                          /* tuple */[
+                            "count",
+                            Decco.intToJson(v[/* count */1])
+                          ]
+                        ]);
+            };
+            var state_decode$1 = function (v) {
+              var match = Js_json.classify(v);
+              if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+                return Decco.error(undefined, "Not an object", v);
+              } else {
+                var dict = match[0];
+                var match$1 = Js_dict.get(dict, "id");
+                var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
+                var match$3 = Js_dict.get(dict, "count");
+                var match$4 = Decco.intFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
+                if (match$2.tag) {
+                  var e = match$2[0];
+                  return /* Error */Block.__(1, [/* record */[
+                              /* path */".id" + e[/* path */0],
+                              /* message */e[/* message */1],
+                              /* value */e[/* value */2]
+                            ]]);
+                } else if (match$4.tag) {
+                  var e$1 = match$4[0];
+                  return /* Error */Block.__(1, [/* record */[
+                              /* path */".count" + e$1[/* path */0],
+                              /* message */e$1[/* message */1],
+                              /* value */e$1[/* value */2]
+                            ]]);
+                } else {
+                  return /* Ok */Block.__(0, [/* record */[
+                              /* id */match$2[0],
+                              /* count */match$4[0]
+                            ]]);
+                }
+              }
+            };
             var CountsDb = QueryDb$Reventless.Make(Config)({
                         Id: {
                           t_encode: Id$Reventless.StringPure.t_encode,
@@ -282,7 +274,7 @@ function Make(Config) {
                       return Promise.resolve(/* () */0);
                     }));
               var counterEventsHandlerP = counterEventsHandler(Belt_Array.keepMap(counts, (function (state) {
-                          var match = countsViewState_decode(state);
+                          var match = state_decode$1(state);
                           if (match.tag) {
                             var stateStr = JSON.stringify(state);
                             console.log("Counter-Reventless" + (".counterHandler: couldn\'t decode state " + (String(stateStr) + "")));
@@ -410,10 +402,6 @@ var componentType = /* Counter */1;
 exports.componentType = componentType;
 exports.NotCounted = NotCounted;
 exports.Source = Source;
-exports.referencesViewState_encode = referencesViewState_encode;
-exports.referencesViewState_decode = referencesViewState_decode;
-exports.countsViewState_encode = countsViewState_encode;
-exports.countsViewState_decode = countsViewState_decode;
 exports.Adapter = Adapter;
 exports.Make = Make;
 /* name Not a pure module */
