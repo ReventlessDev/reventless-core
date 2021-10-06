@@ -17,8 +17,8 @@ var Util_EventCollector$Reventless = require("../util/Util_EventCollector.bs.js"
 var OutputFailsafeRuntime$Reventless = require("../util/OutputFailsafeRuntime.bs.js");
 
 function Make(EventCollector) {
-  var findSideEffect = function (sideEffects, eventObj) {
-    return Belt_Option.flatMapU(eventObj, (function (eventObj$prime) {
+  var findSideEffect = function (sideEffects, event$primeJson) {
+    return Belt_Option.flatMapU(Js_json.decodeObject(event$primeJson), (function (eventObj$prime) {
                   var meta = Belt_Option.map(Js_dict.get(eventObj$prime, "meta"), Message$Reventless.meta_decode);
                   if (meta !== undefined) {
                     var match = meta;
@@ -49,12 +49,13 @@ function Make(EventCollector) {
   var eventsHandler = function (sideEffects, queryEngine) {
     return (function (events$primeJson) {
         var __x = Promise.all(Belt_Array.map(events$primeJson, (function (event$primeJson) {
-                    var match = findSideEffect(sideEffects, Js_json.decodeObject(event$primeJson));
+                    var match = findSideEffect(sideEffects, event$primeJson);
                     if (match !== undefined) {
                       var match$1 = match;
                       var sideEffect = match$1[2];
                       var eventObj = match$1[0];
-                      console.log("SideEffectHandler.eventsHandler: handling event from source:", sideEffect.Source.name, eventObj);
+                      var sourceName = sideEffect.Source.name;
+                      Message$Reventless.logEvent$primeJson(event$primeJson, "SideEffectHandler.eventsHandler: handling event from source " + (String(sourceName) + ":"));
                       var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
                       var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
                       if (idDecoded !== undefined) {

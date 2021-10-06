@@ -183,7 +183,7 @@ module Make =
         publisherEntries => {
           Js.log2(
             loc ++ ": publisherEntries:",
-            publisherEntries->Js.Json.stringifyAny,
+            publisherEntries->Belt.Array.size,
           );
           switch (publisherEntries->Belt.Array.size) {
           | 0 => Js.Promise.resolve()
