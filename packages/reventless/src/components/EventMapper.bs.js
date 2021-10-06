@@ -113,7 +113,7 @@ function Make(Target) {
       };
       var sendEntries = function (publisherEntries, loc, resources) {
         var __x = publisherEntries.then((function (publisherEntries) {
-                console.log(loc + ": publisherEntries:", Caml_option.undefined_to_opt(JSON.stringify(publisherEntries)));
+                console.log(loc + ": publisherEntries:", publisherEntries.length);
                 var match = publisherEntries.length;
                 if (match !== 0) {
                   return (function (param) {

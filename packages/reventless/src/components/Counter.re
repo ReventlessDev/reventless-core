@@ -240,7 +240,7 @@ module Make =
           let size = references->Belt.Array.size;
           let referencesStr = references->Js.Array2.joinWith(",");
           Js.log(
-            {j|  $size references for counterId $counterId: $referencesStr|j},
+            {j|  $size reference(s) for counterId $counterId: $referencesStr|j},
           );
         });
 
@@ -257,7 +257,7 @@ module Make =
           | Belt.Result.Ok(_) => {
               let batchSize = countItems->Belt.Array.size;
               Js.log(
-                __MODULE__ ++ {j|: saved batch of $batchSize references:|j},
+                __MODULE__ ++ {j|: saved batch of $batchSize reference(s):|j},
               );
               countItems->logCountItems;
               Js.Promise.resolve();
@@ -265,7 +265,7 @@ module Make =
           | Error(Reventless.QueryDb.NotSavedToStorage(err)) => {
               let batchSize = countItems->Belt.Array.size;
               Js.log(
-                {j|Counter error: couldn't save batch of $batchSize references:|j},
+                {j|Counter error: couldn't save batch of $batchSize reference(s):|j},
               );
               countItems->logCountItems;
               NotCounted(err)->Js.Promise.reject;
@@ -273,7 +273,7 @@ module Make =
           | Error(_) => {
               let batchSize = countItems->Belt.Array.size;
               Js.log(
-                {j|Unknown Counter error: couldn't save batch of $batchSize references:|j},
+                {j|Unknown Counter error: couldn't save batch of $batchSize reference(s):|j},
               );
               countItems->logCountItems;
               NotCounted("Unknown error")->Js.Promise.reject;
@@ -302,7 +302,7 @@ module Make =
 
     let counterHandler: counterHandler =
       (~references, ~counts) => {
-        Js.log2("counterHandler: references:", references);
+        Js.log2("counterHandler: references:", references->Belt.Array.size);
         Js.log2("counterHandler: counts:", counts);
         let countP =
           references
@@ -324,7 +324,8 @@ module Make =
               | Ok({id, count}) when count == 0 =>
                 let (counterId, _) = id->unmakeId;
                 Js.log(
-                  __MODULE__ ++ {j|.counterHandler: finished $name($id)|j},
+                  __MODULE__
+                  ++ {j|.counterHandler: counted down $name($id) to $count|j},
                 );
                 let meta = Message.generateMeta(~service=Source.name, ());
                 Some(

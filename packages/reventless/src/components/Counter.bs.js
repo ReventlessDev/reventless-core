@@ -246,7 +246,7 @@ function Make(Config) {
                             var references = param[1];
                             var size = references.length;
                             var referencesStr = references.join(",");
-                            console.log("  " + (String(size) + (" references for counterId " + (String(param[0]) + (": " + (String(referencesStr) + ""))))));
+                            console.log("  " + (String(size) + (" reference(s) for counterId " + (String(param[0]) + (": " + (String(referencesStr) + ""))))));
                             return /* () */0;
                           }));
             };
@@ -265,7 +265,7 @@ function Make(Config) {
               return Js_dict.entries(dict);
             };
             var counterHandler = function (references, counts) {
-              console.log("counterHandler: references:", references);
+              console.log("counterHandler: references:", references.length);
               console.log("counterHandler: counts:", counts);
               var __x = Promise.all(Belt_Array.map(groupByCounterId(references), (function (param) {
                           return Curry._1(CountsDb.count, countsDb)(param[0], "count", -param[1] | 0);
@@ -285,7 +285,7 @@ function Make(Config) {
                             var id = match$1[/* id */0];
                             if (count === 0) {
                               var match$2 = unmakeId(id);
-                              console.log("Counter-Reventless" + (".counterHandler: finished " + (String(name$1) + ("(" + (String(id) + ")")))));
+                              console.log("Counter-Reventless" + (".counterHandler: counted down " + (String(name$1) + ("(" + (String(id) + (") to " + (String(count) + "")))))));
                               var meta = Message$Reventless.generateMeta(name, undefined, undefined, /* () */0);
                               return Caml_option.some(Js_dict.fromArray(/* array */[
                                               /* tuple */[
@@ -341,7 +341,7 @@ function Make(Config) {
                                 var match = param[0];
                                 if (typeof match !== "number" && !match.tag) {
                                   var batchSize = countItems.length;
-                                  console.log("Counter error: couldn\'t save batch of " + (String(batchSize) + " references:"));
+                                  console.log("Counter error: couldn\'t save batch of " + (String(batchSize) + " reference(s):"));
                                   logCountItems(countItems);
                                   return Promise.reject([
                                               NotCounted,
@@ -349,7 +349,7 @@ function Make(Config) {
                                             ]);
                                 }
                                 var batchSize$1 = countItems.length;
-                                console.log("Unknown Counter error: couldn\'t save batch of " + (String(batchSize$1) + " references:"));
+                                console.log("Unknown Counter error: couldn\'t save batch of " + (String(batchSize$1) + " reference(s):"));
                                 logCountItems(countItems);
                                 return Promise.reject([
                                             NotCounted,
@@ -357,7 +357,7 @@ function Make(Config) {
                                           ]);
                               } else {
                                 var batchSize$2 = countItems.length;
-                                console.log("Counter-Reventless" + (": saved batch of " + (String(batchSize$2) + " references:")));
+                                console.log("Counter-Reventless" + (": saved batch of " + (String(batchSize$2) + " reference(s):")));
                                 logCountItems(countItems);
                                 return Promise.resolve(/* () */0);
                               }

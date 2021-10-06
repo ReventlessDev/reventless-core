@@ -77,45 +77,46 @@ module Make = (EventCollector: EventCollector.T) : T => {
     self->registerOutputs(outputs);
   };
 
-  let findSideEffect = (sideEffects, eventObj) => {
-    eventObj->Belt.Option.flatMapU((. eventObj') => {
-      let meta =
-        eventObj'->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode);
+  let findSideEffect = (sideEffects, event'Json) => {
+    event'Json
+    ->Js.Json.decodeObject
+    ->Belt.Option.flatMapU((. eventObj') => {
+        let meta =
+          eventObj'
+          ->Js.Dict.get("meta")
+          ->Belt.Option.map(Message.meta_decode);
 
-      switch (meta) {
-      | Some(Belt.Result.Ok(eventMeta)) =>
-        let sideEffect =
-          sideEffects->Belt.Array.getBy(
-            (module SideEffect: ReventlessSpec.SideEffect.T) =>
-            SideEffect.Source.name == eventMeta.service
-          );
-        switch (sideEffect) {
-        | None => None
-        | Some(sideEffect) => Some((eventObj', eventMeta, sideEffect))
+        switch (meta) {
+        | Some(Belt.Result.Ok(eventMeta)) =>
+          let sideEffect =
+            sideEffects->Belt.Array.getBy(
+              (module SideEffect: ReventlessSpec.SideEffect.T) =>
+              SideEffect.Source.name == eventMeta.service
+            );
+          switch (sideEffect) {
+          | None => None
+          | Some(sideEffect) => Some((eventObj', eventMeta, sideEffect))
+          };
+        | Some(Error(err)) =>
+          Js.log2("SideEffects.map: Couldn't decode meta:", err);
+          None;
+        | _ =>
+          Js.log("SideEffects.map: Invalid JSON object");
+          None;
         };
-      | Some(Error(err)) =>
-        Js.log2("SideEffects.map: Couldn't decode meta:", err);
-        None;
-      | _ =>
-        Js.log("SideEffects.map: Invalid JSON object");
-        None;
-      };
-    });
+      });
   };
 
   let eventsHandler = (sideEffects, queryEngine) =>
     (. events'Json) => {
       events'Json
       ->Belt.Array.map(event'Json =>
-          switch (
-            sideEffects->findSideEffect(event'Json->Js.Json.decodeObject)
-          ) {
+          switch (sideEffects->findSideEffect(event'Json)) {
           | Some((eventObj, eventMeta, sideEffect)) =>
             module SideEffect = (val sideEffect);
-            Js.log3(
-              "SideEffectHandler.eventsHandler: handling event from source:",
-              SideEffect.Source.name,
-              eventObj,
+            let sourceName = SideEffect.Source.name;
+            event'Json->Message.logEvent'Json(
+              {j|SideEffectHandler.eventsHandler: handling event from source $sourceName:|j},
             );
             let idDecoded =
               eventObj
