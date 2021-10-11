@@ -3,7 +3,6 @@ lib/
 docs/
 __tests__/*.re
 __tests__/*.js
-**/*.bs.js
 yarn.lock
 TODO.txt
 .graphql_ppx_cache
