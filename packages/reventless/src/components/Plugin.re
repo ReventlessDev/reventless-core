@@ -3,7 +3,7 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.Plugin;
 
-type outputFields = {
+type outputs = {
   .
   "id": string,
   "version": string,
@@ -24,8 +24,6 @@ type outputFields = {
     Js.Dict.t(array(Extension.outputs)),
   "resources": resources,
 };
-
-type outputs = {. "outputs": Pulumi.Output.t(outputFields)};
 
 type plugin; // TODO: rename to t - after refactoring
 
@@ -73,7 +71,7 @@ module Make =
     "default";
 
   [@bs.obj]
-  external makeOutputFields:
+  external makeOutputs:
     (
       ~id: string,
       ~version: string,
@@ -97,19 +95,16 @@ module Make =
                                                ),
       ~resources: resources
     ) =>
-    outputFields =
-    "";
-
-  [@bs.obj]
-  external makeOutputs: (~outputs: Pulumi.Output.t(outputFields)) => outputs =
+    outputs =
     "";
 
   [@bs.send]
   external registerOutputs:
-    (Component.t(plugin, outputs), outputs) => constructed =
+    (Component.t(plugin, outputs), Pulumi.Output.t(outputs)) => constructed =
     "registerOutputs";
   [@bs.send]
-  external setOutputs: (Component.t(plugin, outputs), outputs) => unit =
+  external setOutputs:
+    (Component.t(plugin, outputs), Pulumi.Output.t(outputs)) => unit =
     "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
@@ -762,7 +757,7 @@ module Make =
             (),
           );
 
-        makeOutputFields(
+        makeOutputs(
           ~id,
           ~version,
           ~heartbeatInterval,
@@ -780,7 +775,6 @@ module Make =
           ~resources,
         );
       })
-    ->makeOutputs(~outputs=_)
     ->setOutputs(self, _);
   };
 
