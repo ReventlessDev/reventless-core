@@ -57,7 +57,8 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct = (Component.t(plugin, outputs), string) => constructed;
+  type construct =
+    (Component.t(plugin, outputs), string) => Pulumi.Output.t(constructed);
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -100,11 +101,15 @@ module Make =
 
   [@bs.send]
   external registerOutputs:
-    (Component.t(plugin, outputs), Pulumi.Output.t(outputs)) => constructed =
+    (Component.t(plugin, outputs), outputs) => constructed =
     "registerOutputs";
   [@bs.send]
   external setOutputs: (Component.t(plugin, outputs), outputs) => unit =
     "setOutputs";
+  let setOutputs = (self, outputs) => {
+    self->setOutputs(outputs);
+    self->registerOutputs(outputs);
+  };
 
   let construct =
       (
@@ -752,28 +757,25 @@ module Make =
             (),
           );
 
-        let outputs =
-          makeOutputs(
-            ~id,
-            ~version,
-            ~heartbeatInterval,
-            ~eventCollector=eventCollectorOutputs,
-            ~extensionPoints=extensionPointsOutputs->toDict,
-            ~extensions=extensionsOutputs->toDict,
-            ~services=servicesOutputs->toDict,
-            ~tasks=(tasksOutputs^)->toDict,
-            ~eventMappers=eventMappersOutputs->toDict,
-            ~resolvers,
-            ~heartbeat=heartbeat->Component.extractOutputs,
-            ~serviceNameToExtensionPointsMapping,
-            ~outgoingServiceNameToExtensionsMapping,
-            ~incomingServiceNameToExtensionsMapping,
-            ~resources,
-          );
-        outputs->setOutputs(self, _);
-        outputs;
-      })
-    ->registerOutputs(self, _);
+        makeOutputs(
+          ~id,
+          ~version,
+          ~heartbeatInterval,
+          ~eventCollector=eventCollectorOutputs,
+          ~extensionPoints=extensionPointsOutputs->toDict,
+          ~extensions=extensionsOutputs->toDict,
+          ~services=servicesOutputs->toDict,
+          ~tasks=(tasksOutputs^)->toDict,
+          ~eventMappers=eventMappersOutputs->toDict,
+          ~resolvers,
+          ~heartbeat=heartbeat->Component.extractOutputs,
+          ~serviceNameToExtensionPointsMapping,
+          ~outgoingServiceNameToExtensionsMapping,
+          ~incomingServiceNameToExtensionsMapping,
+          ~resources,
+        )
+        ->setOutputs(self, _);
+      });
   };
 
   let make: maker =
