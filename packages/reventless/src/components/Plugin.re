@@ -103,13 +103,8 @@ module Make =
     (Component.t(plugin, outputs), Pulumi.Output.t(outputs)) => constructed =
     "registerOutputs";
   [@bs.send]
-  external setOutputs:
-    (Component.t(plugin, outputs), Pulumi.Output.t(outputs)) => unit =
+  external setOutputs: (Component.t(plugin, outputs), outputs) => unit =
     "setOutputs";
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs);
-    self->registerOutputs(outputs);
-  };
 
   let construct =
       (
@@ -757,25 +752,28 @@ module Make =
             (),
           );
 
-        makeOutputs(
-          ~id,
-          ~version,
-          ~heartbeatInterval,
-          ~eventCollector=eventCollectorOutputs,
-          ~extensionPoints=extensionPointsOutputs->toDict,
-          ~extensions=extensionsOutputs->toDict,
-          ~services=servicesOutputs->toDict,
-          ~tasks=(tasksOutputs^)->toDict,
-          ~eventMappers=eventMappersOutputs->toDict,
-          ~resolvers,
-          ~heartbeat=heartbeat->Component.extractOutputs,
-          ~serviceNameToExtensionPointsMapping,
-          ~outgoingServiceNameToExtensionsMapping,
-          ~incomingServiceNameToExtensionsMapping,
-          ~resources,
-        );
+        let outputs =
+          makeOutputs(
+            ~id,
+            ~version,
+            ~heartbeatInterval,
+            ~eventCollector=eventCollectorOutputs,
+            ~extensionPoints=extensionPointsOutputs->toDict,
+            ~extensions=extensionsOutputs->toDict,
+            ~services=servicesOutputs->toDict,
+            ~tasks=(tasksOutputs^)->toDict,
+            ~eventMappers=eventMappersOutputs->toDict,
+            ~resolvers,
+            ~heartbeat=heartbeat->Component.extractOutputs,
+            ~serviceNameToExtensionPointsMapping,
+            ~outgoingServiceNameToExtensionsMapping,
+            ~incomingServiceNameToExtensionsMapping,
+            ~resources,
+          );
+        outputs->setOutputs(self, _);
+        outputs;
       })
-    ->setOutputs(self, _);
+    ->registerOutputs(self, _);
   };
 
   let make: maker =
