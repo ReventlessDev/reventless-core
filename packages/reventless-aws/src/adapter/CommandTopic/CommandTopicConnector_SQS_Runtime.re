@@ -25,6 +25,13 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
          )
        ->AwsSdk.SQS.deleteMessageBatch(~queueId=queue##id->Pulumi.Output.get)
        |> Js.Promise.then_(_ => Js.Promise.resolve())
+       |> Js.Promise.catch(err =>
+            Js.log2(
+              __MODULE__ ++ ".handleQueueEvent: Couldn't deleteMessageBatch:",
+              err,
+            )
+            ->Js.Promise.resolve
+          )
      );
 };
 

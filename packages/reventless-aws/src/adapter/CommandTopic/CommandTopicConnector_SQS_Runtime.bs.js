@@ -30,9 +30,11 @@ function handleQueueEvent(handleCommands, queue, $$event, param) {
                               };
                       }));
                 return (function (param) {
-                              return SQS$AwsSdk.deleteMessageBatch(param, arg);
-                            })(queue.id.get()).then((function (param) {
-                              return Promise.resolve(/* () */0);
+                                return SQS$AwsSdk.deleteMessageBatch(param, arg);
+                              })(queue.id.get()).then((function (param) {
+                                return Promise.resolve(/* () */0);
+                              })).catch((function (err) {
+                              return Promise.resolve((console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.handleQueueEvent: Couldn't deleteMessageBatch:", err), /* () */0));
                             }));
               }));
 }
