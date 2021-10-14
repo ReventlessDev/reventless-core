@@ -159,7 +159,10 @@ module Make =
 
   let handleCommands = commandsHandler =>
     (. jsons) => {
-      Js.log("starting CommandTopic.handleCommands");
+      Js.log2(
+        "starting CommandTopic.handleCommands. Command count:",
+        jsons->Belt.Array.size,
+      );
       jsons
       ->Belt.Array.keepMap(json =>
           switch (

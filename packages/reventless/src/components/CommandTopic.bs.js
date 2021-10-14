@@ -53,7 +53,7 @@ function Make(Spec) {
       };
       var handleCommands = function (commandsHandler) {
         return (function (jsons) {
-            console.log("starting CommandTopic.handleCommands");
+            console.log("starting CommandTopic.handleCommands. Command count:", jsons.length);
             return Promise.all(Belt_Array.map(groupCommandsById(Belt_Array.keepMap(jsons, (function (json) {
                                         var match = Message$Reventless.command$prime_decode(Spec.Id.t_decode, Spec.command_decode, json);
                                         if (match.tag) {

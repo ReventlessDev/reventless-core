@@ -126,7 +126,7 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
           }
         }));
   Belt_Array.forEach(match[1], (function (record) {
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws: ignoring record from eventSource:", record.eventSource, record.eventSourceARN, record);
+          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws: ignoring record from eventSource:", record.eventSource, record.eventSourceARN, Caml_option.undefined_to_opt(JSON.stringify(record)));
           return /* () */0;
         }));
   var match$1 = Belt_Array.partition(match[0], (function (record) {
@@ -143,7 +143,7 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
                     inc
                   ];
           }
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (references): ignoring record:", record);
+          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (references): ignoring record:", Caml_option.undefined_to_opt(JSON.stringify(record)));
           return ;
         }));
   var counts = Belt_Array.keepMap(match$1[1], (function (record) {
@@ -158,7 +158,7 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
               
             }
           }
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (counts): ignoring record:", record);
+          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (counts): ignoring record:", Caml_option.undefined_to_opt(JSON.stringify(record)));
           return ;
         }));
   return Curry._2(counterHandler, references, counts);

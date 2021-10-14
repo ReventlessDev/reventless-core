@@ -81,7 +81,7 @@ let handleStreamEvent =
       __MODULE__ ++ ": ignoring record from eventSource:",
       record##eventSource,
       record##eventSourceARN,
-      record,
+      record->Js.Json.stringifyAny,
     )
   );
 
@@ -101,7 +101,10 @@ let handleStreamEvent =
           };
         Some((id, inc));
       | _ =>
-        Js.log2(__MODULE__ ++ " (references): ignoring record:", record);
+        Js.log2(
+          __MODULE__ ++ " (references): ignoring record:",
+          record->Js.Json.stringifyAny,
+        );
         None;
       }
     );
@@ -112,7 +115,10 @@ let handleStreamEvent =
       | NewImage(_, newImage)
       | NewAndOldImage(_, newImage, _) => Some(newImage)
       | _ =>
-        Js.log2(__MODULE__ ++ " (counts): ignoring record:", record);
+        Js.log2(
+          __MODULE__ ++ " (counts): ignoring record:",
+          record->Js.Json.stringifyAny,
+        );
         None;
       }
     );
