@@ -3,7 +3,7 @@
 
 var Aws = require("@pulumi/aws");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.bs.js");
-var EventTopicPublisher_SNS_FIFO_Runtime$ReventlessAws = require("./EventTopicPublisher_SNS_FIFO_Runtime.bs.js");
+var EventTopicPublisher_SNS_Runtime$ReventlessAws = require("./EventTopicPublisher_SNS_Runtime.bs.js");
 
 function make(name, opts, param) {
   var topic = new (Aws.sns.Topic)(name, {
@@ -12,7 +12,7 @@ function make(name, opts, param) {
       }, opts);
   return /* record */[
           /* resource */Util_SNS_FIFO$ReventlessAws.toResource(topic),
-          /* publish */EventTopicPublisher_SNS_FIFO_Runtime$ReventlessAws.publish(topic)
+          /* publish */EventTopicPublisher_SNS_Runtime$ReventlessAws.publishFifo(topic)
         ];
 }
 

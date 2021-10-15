@@ -10,14 +10,11 @@ var SNS_Runtime = 0;
 
 var SNS_FIFO = 0;
 
-var SNS_FIFO_Runtime = 0;
-
 var DynamoDbStream = 0;
 
 exports.name = name;
 exports.SNS = SNS;
 exports.SNS_Runtime = SNS_Runtime;
 exports.SNS_FIFO = SNS_FIFO;
-exports.SNS_FIFO_Runtime = SNS_FIFO_Runtime;
 exports.DynamoDbStream = DynamoDbStream;
 /* No side effect */

@@ -9,5 +9,12 @@ function publish(topic) {
     });
 }
 
+function publishFifo(topic) {
+  return (function (id, _meta, json) {
+      return Util_SNS_Runtime$ReventlessAws.publishFifo(topic, id, JSON.stringify(json));
+    });
+}
+
 exports.publish = publish;
+exports.publishFifo = publishFifo;
 /* Util_SNS_Runtime-ReventlessAws Not a pure module */
