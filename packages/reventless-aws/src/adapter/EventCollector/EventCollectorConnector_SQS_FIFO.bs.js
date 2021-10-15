@@ -65,7 +65,7 @@ function make(name, aggregateNames, extensionPointNames, policies, handleEvents,
         }));
   return /* record */[
           /* resource */Caml_option.some(Util_SQS_FIFO$ReventlessAws.toResource(queue)),
-          /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueFifoEvent(queue, resources)
+          /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueFifoEvent(queue)
         ];
 }
 

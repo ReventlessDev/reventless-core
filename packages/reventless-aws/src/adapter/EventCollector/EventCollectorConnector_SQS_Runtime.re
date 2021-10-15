@@ -58,25 +58,17 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
      );
 };
 
-open Reventless.Util.EventCollector;
-
-let enqueueEvent = (queue, resources) =>
+let enqueueEvent = queue =>
   (. delay, _id, messageBody) => {
-    let queueName = queue##name->Pulumi.Output.get;
-    let queueId =
-      resources->getConnectorResource(queueName)##id
-      ->Reventless.OutputFailsafeRuntime.get;
-    Js.log4(__MODULE__ ++ ".enqueueMessage:", delay, messageBody, queueId);
+    let queueName = queue##name->Reventless.OutputFailsafeRuntime.get;
+    Js.log4(__MODULE__ ++ ".enqueueMessage:", delay, messageBody, queueName);
     queue->Util_SQS_Runtime.sendMessage(~delay, messageBody);
   };
 
-let enqueueFifoEvent = (queue, resources) =>
+let enqueueFifoEvent = queue =>
   (. delay, id, messageBody) => {
-    let queueName = queue##name->Pulumi.Output.get;
-    let queueId =
-      resources->getConnectorResource(queueName)##id
-      ->Reventless.OutputFailsafeRuntime.get;
-    Js.log4(__MODULE__ ++ ".enqueueMessage:", delay, messageBody, queueId);
+    let queueName = queue##name->Reventless.OutputFailsafeRuntime.get;
+    Js.log4(__MODULE__ ++ ".enqueueMessage:", delay, messageBody, queueName);
     queue->Util_SQS_Runtime.sendFifoMessage(
       ~delay,
       ~messageBody,

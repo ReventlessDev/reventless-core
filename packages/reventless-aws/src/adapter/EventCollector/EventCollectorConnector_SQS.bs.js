@@ -60,7 +60,7 @@ function make(name, aggregateNames, extensionPointNames, policies, handleEvents,
         }));
   return /* record */[
           /* resource */Caml_option.some(Util_SQS$ReventlessAws.toResource(queue)),
-          /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue, resources)
+          /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue)
         ];
 }
 
