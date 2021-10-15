@@ -377,11 +377,6 @@ function Make(EventCollectorAdapter) {
                     return /* () */0;
                   }
                 };
-                Belt_Array.keepMap(tasksOutputs[0], (function (taskOutput) {
-                        return Belt_Option.map(taskOutput.sideEffectHandler, (function (sideEffectHandler) {
-                                      return sideEffectHandler.eventsHandler;
-                                    }));
-                      }));
                 var eventsHandler = function (events$primeJson) {
                   var count = events$primeJson.length;
                   var __x = Promise.all(Belt_Array.mapWithIndex(events$primeJson, (function (idx, event$primeJson) {
