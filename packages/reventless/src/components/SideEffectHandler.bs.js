@@ -2,8 +2,10 @@
 'use strict';
 
 var Curry = require("bs-platform/lib/js/curry.js");
+var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
+var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
@@ -129,6 +131,19 @@ function Make(EventCollector) {
     self$1.setOutputs(outputs);
     return self$1.registerOutputs(outputs);
   };
+  var convertOpts = function (customResourceOpts) {
+    var keys = Object.keys(customResourceOpts);
+    var firstKey = Belt_Array.get(keys, 0);
+    if (keys.length <= 1 && (Caml_obj.caml_equal(firstKey, "parent") || firstKey === undefined)) {
+      var tmp = { };
+      if (customResourceOpts.parent !== undefined) {
+        tmp.parent = Caml_option.valFromOption(customResourceOpts.parent);
+      }
+      return tmp;
+    } else {
+      return Js_exn.raiseError("SideEffectHandler-Reventless: currently only parent prop supported !");
+    }
+  };
   var make = function (name, sideEffects, queryEngine, scheduler, $staropt$star, $staropt$star$1, opts, resources, param) {
     var memorySize = $staropt$star !== undefined ? $staropt$star : 2048;
     var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 180;
@@ -137,7 +152,7 @@ function Make(EventCollector) {
     var prim$2 = function (param, param$1, param$2) {
       return construct(sideEffects, queryEngine, scheduler, memorySize, timeout, param, param$1, param$2);
     };
-    var prim$3 = opts;
+    var prim$3 = Belt_Option.map(opts, convertOpts);
     var prim$4 = resources;
     return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
   };

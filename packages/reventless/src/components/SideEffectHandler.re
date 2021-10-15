@@ -20,7 +20,7 @@ module type T = {
       ~scheduler: Scheduler.t,
       ~memorySize: int=?,
       ~timeout: int=?,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~opts: Pulumi.CustomResourceOptions.t=?,
       ~resources: resources,
       unit
     ) =>
@@ -245,6 +245,24 @@ module Make = (EventCollector: EventCollector.T) : T => {
     ->setOutputs(self, _);
   };
 
+  let convertOpts:
+    Pulumi.CustomResourceOptions.t => Pulumi.ComponentResource.Options.t =
+    customResourceOpts => {
+      let keys = customResourceOpts->Js.Obj.keys;
+      let firstKey = keys->Belt.Array.get(0);
+      if (keys->Belt.Array.size <= 1
+          && (firstKey == Some("parent") || firstKey == None)) {
+        Pulumi.ComponentResource.Options.make(
+          ~parent=?customResourceOpts##parent,
+          (),
+        );
+      } else {
+        Js.Exn.raiseError(
+          __MODULE__ ++ ": currently only parent prop supported !",
+        );
+      };
+    };
+
   let make =
       (
         ~name,
@@ -253,7 +271,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~scheduler,
         ~memorySize=2048,
         ~timeout=180,
-        ~opts,
+        ~opts=?,
         ~resources,
         _,
       ) => {
@@ -268,7 +286,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
           ~memorySize,
           ~timeout,
         ),
-      ~opts,
+      ~opts=opts->Belt.Option.map(convertOpts),
       ~resources,
     );
   };
