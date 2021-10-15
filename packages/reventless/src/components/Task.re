@@ -40,14 +40,16 @@ type createSideEffectHandler =
     unit
   ) =>
   SideEffectHandler.outputs;
+// Component.t('t, SideEffectHandler.outputs);
 
 type setup =
   (
     . ReventlessSpec.QueryEngine.t,
+    Scheduler.t,
     publishCommands,
     queryBucketName,
-    createSideEffectHandler,
-    Pulumi.CustomResourceOptions.t
+    Pulumi.CustomResourceOptions.t,
+    resources
   ) =>
   outputs;
 
@@ -85,7 +87,7 @@ let construct =
       ~scheduler: Scheduler.t,
       ~queryEngine,
       self,
-      name,
+      _name,
       resources,
     ) => {
   let opts =
@@ -96,63 +98,45 @@ let construct =
 
   let publishCommands =
     (. queueName, entries) => {
+      // TODO: move to Adapter
       let count = entries->Belt.Array.size;
+      let connector =
+        resources->Util.Aggregate.commandTopicConnectorResource(queueName);
       entries
       ->Belt.Array.mapWithIndex((idx, (id, meta: Message.meta, messageBody)) => {
           let idx = idx + 1;
           Js.log({j|Task.publishCommands $idx/$count: $messageBody|j});
-          AwsSdk.SQS.makeBatchEntry(
-            // TODO: move to Adapter
-            ~groupId=id,
-            ~messageBody,
-            ~messageId=meta.msgId,
-            ~delay=None,
-          );
+          switch (connector##service) {
+          | "SQS_FIFO" =>
+            AwsSdk.SQS.makeBatchEntryFifo(
+              ~groupId=id,
+              ~messageBody,
+              ~messageId=meta.msgId,
+              ~delay=None,
+            )
+          | _ =>
+            AwsSdk.SQS.makeBatchEntry(
+              ~messageBody,
+              ~messageId=meta.msgId,
+              ~delay=None,
+            )
+          };
         })
       ->AwsSdk.SQS.sendMessageBatch(
-          // TODO: move to Adapter
-          ~queueId=
-            resources->Util.Aggregate.commandTopicConnectorResource(queueName)##id
-            ->OutputFailsafeRuntime.get,
+          ~queueId=connector##id->OutputFailsafeRuntime.get,
         )
       |> Js.Promise.catch(err =>
            Js.Promise.resolve(Js.log2("Task.publishCommands Error:", err))
          );
     };
 
-  let createSideEffectHandler: createSideEffectHandler =
-    (
-      ~sideEffects,
-      ~memorySize=2048,
-      ~timeout=180,
-      (module SideEffectHandler),
-      _,
-    ) =>
-      SideEffectHandler.make(
-        ~name,
-        ~sideEffects,
-        ~queryEngine,
-        ~scheduler,
-        ~memorySize,
-        ~timeout,
-        ~opts=
-          Some(
-            Pulumi.ComponentResource.Options.make(
-              ~parent=self->Component.toPulumiResource,
-              (),
-            ),
-          ),
-        ~resources,
-        (),
-      )
-      ->Component.extractOutputs;
-
   setup(.
     queryEngine,
+    scheduler,
     publishCommands,
     queryBucketName,
-    createSideEffectHandler,
     opts,
+    resources,
   )
   ->setOutputs(self, _);
 };
