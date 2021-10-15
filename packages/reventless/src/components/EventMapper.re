@@ -108,7 +108,7 @@ module Make =
     });
   };
 
-  let makeEntry = (idx, commandId, meta: Message.meta, command, delay) => {
+  let makeEntry = (queue, idx, commandId, meta: Message.meta, command, delay) => {
     let commandMeta: Message.meta = {
       ...meta,
       service,
@@ -132,27 +132,38 @@ module Make =
         {Message.id: commandId, meta: commandMeta, command},
       )
       ->Js.Json.stringify;
-    AwsSdk.SQS.makeBatchEntry(
-      ~groupId=commandId->Target.Id.toString,
-      ~messageId=commandMeta.msgId,
-      ~messageBody,
-      ~delay,
-    );
+    switch (queue##service) {
+    | "SQS_FIFO" =>
+      AwsSdk.SQS.makeBatchEntryFifo(
+        // TODO: move to Adapter
+        ~groupId=commandId->Target.Id.toString,
+        ~messageId=commandMeta.msgId,
+        ~messageBody,
+        ~delay,
+      )
+    | _ =>
+      AwsSdk.SQS.makeBatchEntry(
+        // TODO: move to Adapter
+        ~messageId=commandMeta.msgId,
+        ~messageBody,
+        ~delay,
+      )
+    };
   };
 
   type action =
     | Counter(Counter.action)
     | Publisher(Js.Promise.t(array(AwsSdk.SQS.SendMessageBatchEntry.t)));
 
-  let processMappingActions = (actions, meta) =>
+  let processMappingActions = (actions, queue, meta) =>
     actions->Belt.Array.mapWithIndex((idx, action) =>
       switch (action) {
       | ReventlessSpec.EventMapping.Publish(commandId, command) =>
-        [|makeEntry(idx, commandId, meta, command, None)|]
+        [|makeEntry(queue, idx, commandId, meta, command, None)|]
         ->Js.Promise.resolve
         ->Publisher
       | PublishDelayed(commandId, command, delay) =>
-        [|makeEntry(idx, commandId, meta, command, Some(delay))|]
+        [|makeEntry(queue, idx, commandId, meta, command, Some(delay))|]
         ->Js.Promise.resolve
         ->Publisher
       | PublishAsync(promise) =>
@@ -161,7 +172,7 @@ module Make =
             cmds =>
               cmds
               ->Belt.Array.map(((commandId, command)) =>
-                  makeEntry(0, commandId, meta, command, None)
+                  makeEntry(queue, 0, commandId, meta, command, None)
                 )
               ->Js.Promise.resolve,
             _,
@@ -177,7 +188,7 @@ module Make =
       }
     );
 
-  let sendEntries = (publisherEntries, loc, resources) =>
+  let sendEntries = (queue, publisherEntries, loc) =>
     publisherEntries
     ->Js.Promise.then_(
         publisherEntries => {
@@ -189,11 +200,7 @@ module Make =
           | 0 => Js.Promise.resolve()
           | _ =>
             publisherEntries->AwsSdk.SQS.sendMessageBatch(
-              ~queueId=
-                resources->Util.Aggregate.commandTopicConnectorResource(
-                  service,
-                )##id
-                ->Pulumi.Output.get,
+              ~queueId=queue##id->Pulumi.Output.get,
             )
           };
         },
@@ -207,7 +214,7 @@ module Make =
         _,
       );
 
-  let commonEventsHandler = (mappings, queryEngine, events'Json) => {
+  let commonEventsHandler = (queue, mappings, queryEngine, events'Json) => {
     let eventsCount = events'Json->Belt.Array.size;
     let (publisherActions, counterActions) =
       events'Json
@@ -233,7 +240,7 @@ module Make =
             switch (idDecoded, eventDecoded) {
             | (Some(Ok(eventId)), Some(Ok(event))) =>
               Mapping.map(. eventId, event, queryEngine)
-              ->processMappingActions(eventMeta)
+              ->processMappingActions(queue, eventMeta)
               ->Some
             | (None, _)
             | (_, None) =>
@@ -278,7 +285,7 @@ module Make =
 
   let eventCollectorEventsHandler =
       (
-        resources,
+        queue,
         mappings,
         queryEngine,
         count: Counter.count,
@@ -286,7 +293,7 @@ module Make =
       ) =>
     (. events'Json) => {
       let (publisherEntries, counterActions) =
-        commonEventsHandler(mappings, queryEngine, events'Json);
+        commonEventsHandler(queue, mappings, queryEngine, events'Json);
       let (countActions, addToCounterTargetActions) =
         counterActions->Belt.Array.partition(
           fun
@@ -335,9 +342,9 @@ module Make =
         ->Js.Promise.all;
 
       let sendEntriesP =
-        publisherEntries->sendEntries(
+        queue->sendEntries(
+          publisherEntries,
           __MODULE__ ++ ".eventCollectorEventsHandler",
-          resources,
         );
 
       (countP, addToCounterTargetsP, sendEntriesP)
@@ -345,18 +352,18 @@ module Make =
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
-  let counterEventsHandler = (resources, mappings, queryEngine) =>
+  let counterEventsHandler = (queue, mappings, queryEngine) =>
     (. events'Json) => {
       let (publisherEntries, countActions) =
-        commonEventsHandler(mappings, queryEngine, events'Json);
+        commonEventsHandler(queue, mappings, queryEngine, events'Json);
       if (countActions->Belt.Array.size > 0) {
         Js.log(
           "EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!",
         );
       };
-      publisherEntries->sendEntries(
+      queue->sendEntries(
+        publisherEntries,
         __MODULE__ ++ ".counterEventsHandler",
-        resources,
       );
     };
 
@@ -377,6 +384,9 @@ module Make =
         (),
       );
 
+    let queue =
+      resources->Util.Aggregate.commandTopicConnectorResource(service);
+
     let (count, setCounterTarget, counterOutputs) =
       counter->Belt.Option.mapWithDefault(
         (
@@ -395,7 +405,7 @@ module Make =
             Counter.make(
               ~name,
               ~counterEventsHandler=
-                counterEventsHandler(resources, mappings, queryEngine),
+                counterEventsHandler(queue, mappings, queryEngine),
               ~opts,
               ~resources,
               (),
@@ -421,7 +431,7 @@ module Make =
           ),
         ~eventsHandler=
           eventCollectorEventsHandler(
-            resources,
+            queue,
             mappings,
             queryEngine,
             count,

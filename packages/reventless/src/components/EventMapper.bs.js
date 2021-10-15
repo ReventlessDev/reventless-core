@@ -50,7 +50,7 @@ function Make(Target) {
                       }
                     }));
       };
-      var makeEntry = function (idx, commandId, meta, command, delay) {
+      var makeEntry = function (queue, idx, commandId, meta, command, delay) {
         var match = idx === 0;
         var commandMeta_001 = /* time */Message$Reventless.nowAsISOString(/* () */0);
         var commandMeta_002 = /* ip */meta[/* ip */2];
@@ -73,19 +73,24 @@ function Make(Target) {
                   /* meta */commandMeta,
                   /* command */command
                 ]));
-        return SQS$AwsSdk.makeBatchEntry(Curry._1(Target.Id.toString, commandId), messageBody, commandMeta_004, delay);
+        var match$1 = queue.service;
+        if (match$1 === "SQS_FIFO") {
+          return SQS$AwsSdk.makeBatchEntryFifo(Curry._1(Target.Id.toString, commandId), messageBody, commandMeta_004, delay);
+        } else {
+          return SQS$AwsSdk.makeBatchEntry(messageBody, commandMeta_004, delay);
+        }
       };
-      var processMappingActions = function (actions, meta) {
+      var processMappingActions = function (actions, queue, meta) {
         return Belt_Array.mapWithIndex(actions, (function (idx, action) {
                       switch (action.tag | 0) {
                         case /* Publish */0 :
-                            return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(idx, action[0], meta, action[1], undefined)])]);
+                            return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(queue, idx, action[0], meta, action[1], undefined)])]);
                         case /* PublishDelayed */1 :
-                            return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(idx, action[0], meta, action[1], action[2])])]);
+                            return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(queue, idx, action[0], meta, action[1], action[2])])]);
                         case /* PublishAsync */2 :
                             return /* Publisher */Block.__(1, [action[0].then((function (cmds) {
                                               return Promise.resolve(Belt_Array.map(cmds, (function (param) {
-                                                                return makeEntry(0, param[0], meta, param[1], undefined);
+                                                                return makeEntry(queue, 0, param[0], meta, param[1], undefined);
                                                               })));
                                             }))]);
                         case /* AddToCounterTarget */3 :
@@ -111,14 +116,14 @@ function Make(Target) {
                       }
                     }));
       };
-      var sendEntries = function (publisherEntries, loc, resources) {
+      var sendEntries = function (queue, publisherEntries, loc) {
         var __x = publisherEntries.then((function (publisherEntries) {
                 console.log(loc + ": publisherEntries:", publisherEntries.length);
                 var match = publisherEntries.length;
                 if (match !== 0) {
                   return (function (param) {
                               return SQS$AwsSdk.sendMessageBatch(param, publisherEntries);
-                            })(Util_Aggregate$Reventless.commandTopicConnectorResource(resources, service).id.get());
+                            })(queue.id.get());
                 } else {
                   return Promise.resolve(/* () */0);
                 }
@@ -128,7 +133,7 @@ function Make(Target) {
                       return Js_exn.raiseError(loc + ": sendEntries error");
                     }));
       };
-      var commonEventsHandler = function (mappings, queryEngine, events$primeJson) {
+      var commonEventsHandler = function (queue, mappings, queryEngine, events$primeJson) {
         var eventsCount = events$primeJson.length;
         var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(events$primeJson, (function (idx, event$primeJson) {
                             var idx$1 = idx + 1 | 0;
@@ -146,7 +151,7 @@ function Make(Target) {
                                 if (!match$2.tag && eventDecoded !== undefined) {
                                   var match$3 = eventDecoded;
                                   if (!match$3.tag) {
-                                    return processMappingActions(mapping.map(match$2[0], match$3[0], queryEngine), match$1[1]);
+                                    return processMappingActions(mapping.map(match$2[0], match$3[0], queryEngine), queue, match$1[1]);
                                   }
                                   
                                 }
@@ -201,9 +206,9 @@ function Make(Target) {
                 counterActions
               ];
       };
-      var eventCollectorEventsHandler = function (resources, mappings, queryEngine, count, addToCounterTarget) {
+      var eventCollectorEventsHandler = function (queue, mappings, queryEngine, count, addToCounterTarget) {
         return (function (events$primeJson) {
-            var match = commonEventsHandler(mappings, queryEngine, events$primeJson);
+            var match = commonEventsHandler(queue, mappings, queryEngine, events$primeJson);
             var match$1 = Belt_Array.partition(match[1], (function (param) {
                     if (param.tag) {
                       return false;
@@ -240,7 +245,7 @@ function Make(Target) {
                           return Promise.resolve(/* () */0);
                         }
                       })));
-            var sendEntriesP = sendEntries(match[0], "EventMapper-Reventless.eventCollectorEventsHandler", resources);
+            var sendEntriesP = sendEntries(queue, match[0], "EventMapper-Reventless.eventCollectorEventsHandler");
             var __x$1 = Promise.all(/* tuple */[
                   countP,
                   addToCounterTargetsP,
@@ -251,19 +256,20 @@ function Make(Target) {
                         }));
           });
       };
-      var counterEventsHandler = function (resources, mappings, queryEngine) {
+      var counterEventsHandler = function (queue, mappings, queryEngine) {
         return (function (events$primeJson) {
-            var match = commonEventsHandler(mappings, queryEngine, events$primeJson);
+            var match = commonEventsHandler(queue, mappings, queryEngine, events$primeJson);
             if (match[1].length !== 0) {
               console.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!");
             }
-            return sendEntries(match[0], "EventMapper-Reventless.counterEventsHandler", resources);
+            return sendEntries(queue, match[0], "EventMapper-Reventless.counterEventsHandler");
           });
       };
       var construct = function (counter, mappings, queryEngine, memorySize, timeout, self, name, resources) {
         var opts = {
           parent: self
         };
+        var queue = Util_Aggregate$Reventless.commandTopicConnectorResource(resources, service);
         var match = Belt_Option.mapWithDefault(counter, /* tuple */[
               (function (_items) {
                   return Promise.resolve((console.log("No counter deployed, but trying to use counter."), /* () */0));
@@ -273,7 +279,7 @@ function Make(Target) {
                 }),
               undefined
             ], (function (Counter) {
-                var counter = Curry._6(Counter.make, name, counterEventsHandler(resources, mappings, queryEngine), undefined, Caml_option.some(opts), resources, /* () */0);
+                var counter = Curry._6(Counter.make, name, counterEventsHandler(queue, mappings, queryEngine), undefined, Caml_option.some(opts), resources, /* () */0);
                 return /* tuple */[
                         Curry._1(Counter.count, counter),
                         Curry._1(Counter.addToCounterTarget, counter),
@@ -289,7 +295,7 @@ function Make(Target) {
                       
                     })),
               undefined,
-              eventCollectorEventsHandler(resources, mappings, queryEngine, match[0], match[1]),
+              eventCollectorEventsHandler(queue, mappings, queryEngine, match[0], match[1]),
               memorySize,
               timeout,
               Caml_option.some(opts),
