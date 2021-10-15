@@ -5,12 +5,12 @@ var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 
-function sendMessage(queue, messageBody) {
-  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, undefined, undefined, undefined, /* () */0);
+function sendMessage(queue, delay, messageBody) {
+  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, undefined, undefined, delay, /* () */0);
 }
 
-function sendFifoMessage(queue, messageBody, messageGroupId) {
-  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, messageGroupId, undefined, undefined, /* () */0);
+function sendFifoMessage(queue, delay, messageBody, messageGroupId, param) {
+  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, messageGroupId, undefined, delay, /* () */0);
 }
 
 function deleteMessage(queue, receiptHandle) {

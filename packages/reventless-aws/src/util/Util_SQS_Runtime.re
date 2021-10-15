@@ -1,16 +1,24 @@
-let sendMessage = (queue: PulumiAws.SQS.Queue.t, messageBody) =>
+let sendMessage = (queue: PulumiAws.SQS.Queue.t, ~delay=?, messageBody) =>
   AwsSdk.SQS.sendMessage(
     ~queueId=queue##id->Pulumi.Output.get,
     ~messageBody,
+    ~delay?,
     (),
   );
 
 let sendFifoMessage =
-    (queue: PulumiAws.SQS.Queue.t, ~messageBody, ~messageGroupId) =>
+    (
+      queue: PulumiAws.SQS.Queue.t,
+      ~delay=?,
+      ~messageBody,
+      ~messageGroupId,
+      (),
+    ) =>
   AwsSdk.SQS.sendMessage(
     ~queueId=queue##id->Pulumi.Output.get,
     ~messageBody,
     ~messageGroupId,
+    ~delay?,
     (),
   );
 
