@@ -2,6 +2,10 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.EventCollector;
 
+type enqueueEvent =
+  (. /*~delay:*/ int, /*~id:*/ string, /*~message:*/ string) =>
+  Js.Promise.t(unit);
+
 type outputs = {. "connector": option(resource)};
 
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
@@ -30,10 +34,15 @@ module type T = {
       unit
     ) =>
     Component.t(t, outputs);
+
+  let enqueueEvent: Component.t(t, outputs) => enqueueEvent;
 };
 
 module Adapter = {
-  type connector = {resource: option(resource)};
+  type connector = {
+    resource: option(resource),
+    enqueueEvent,
+  };
   type connectorMaker =
     (
       ~name: string,
@@ -82,6 +91,17 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     self->registerOutputs(outputs);
   };
 
+  [@bs.set]
+  external setEnqueueEvent: (Component.t(t, outputs), enqueueEvent) => unit =
+    "enqueueEvent";
+  [@bs.get]
+  external enqueueEvent: Component.t(t, outputs) => enqueueEvent =
+    "enqueueEvent";
+
+  let enqueueEventFn = connector =>
+    (. delay, id, message) =>
+      connector.Adapter.enqueueEvent(. delay, id, message);
+
   let construct =
       (
         ~aggregateNames,
@@ -116,6 +136,8 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       resources->Util_EventCollector.setConnectorResource(resource, name)
     | None => ()
     };
+
+    self->setEnqueueEvent(connector->enqueueEventFn);
 
     makeOutputs(~connector=connector.resource)->setOutputs(self, _);
   };

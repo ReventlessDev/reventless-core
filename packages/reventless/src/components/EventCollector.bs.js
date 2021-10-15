@@ -22,6 +22,11 @@ var Adapter = { };
 
 function Make(Policies) {
   return (function (Connector) {
+      var enqueueEventFn = function (connector) {
+        return (function (delay, id, message) {
+            return connector[/* enqueueEvent */1](delay, id, message);
+          });
+      };
       var construct = function (aggregateNames, extensionPointNames, eventsHandler, memorySize, timeout, self, name, resources) {
         var opts = {
           parent: self
@@ -41,6 +46,7 @@ function Make(Policies) {
         if (match !== undefined) {
           Util_EventCollector$Reventless.setConnectorResource(resources, Caml_option.valFromOption(match), name);
         }
+        self.enqueueEvent = enqueueEventFn(connector);
         var self$1 = self;
         var outputs = {
           connector: connector[/* resource */0]
@@ -62,7 +68,10 @@ function Make(Policies) {
         return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
       };
       return {
-              make: make
+              make: make,
+              enqueueEvent: (function (prim) {
+                  return prim.enqueueEvent;
+                })
             };
     });
 }
