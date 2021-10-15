@@ -5,7 +5,6 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
@@ -14,7 +13,6 @@ var Schedule$Reventless = require("../util/Schedule.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var Util_EventCollector$Reventless = require("../util/Util_EventCollector.bs.js");
-var OutputFailsafeRuntime$Reventless = require("../util/OutputFailsafeRuntime.bs.js");
 
 function Make(EventCollector) {
   var findSideEffect = function (sideEffects, event$primeJson) {
@@ -97,15 +95,10 @@ function Make(EventCollector) {
     var opts = {
       parent: self
     };
-    var queueMessage = function (delay, _id, messageBody) {
-      var queueId = OutputFailsafeRuntime$Reventless.get(Util_EventCollector$Reventless.getConnectorResource(resources, name).id);
-      console.log("Task.queueMessage:", delay, messageBody, queueId);
-      return SQS$AwsSdk.sendMessage(queueId, messageBody, undefined, undefined, delay, /* () */0);
-    };
-    var createSchedule = function (schedule) {
+    var createScheduleFn = function (schedule) {
       return Schedule$Reventless.create(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(schedule);
     };
-    var deleteSchedule = function (scheduleName) {
+    var deleteScheduleFn = function (scheduleName) {
       return Schedule$Reventless.$$delete(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(scheduleName);
     };
     var eventsHandler$1 = eventsHandler(sideEffects, queryEngine);
@@ -122,15 +115,16 @@ function Make(EventCollector) {
           resources,
           /* () */0
         ]);
+    var enqueueEventFn = function (delay, id, message) {
+      return Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
+    };
+    self.enqueueEvent = enqueueEventFn;
+    self.createSchedule = createScheduleFn;
+    self.deleteSchedule = deleteScheduleFn;
     var self$1 = self;
     var outputs = {
       name: name,
-      eventCollector: Component$Reventless.extractOutputs(eventCollector),
-      queryEngine: queryEngine,
-      queueMessage: queueMessage,
-      createSchedule: createSchedule,
-      deleteSchedule: deleteSchedule,
-      eventsHandler: eventsHandler$1
+      eventCollector: Component$Reventless.extractOutputs(eventCollector)
     };
     self$1.setOutputs(outputs);
     return self$1.registerOutputs(outputs);
@@ -148,7 +142,16 @@ function Make(EventCollector) {
     return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
   };
   return {
-          make: make
+          make: make,
+          enqueueEvent: (function (prim) {
+              return prim.enqueueEvent;
+            }),
+          createSchedule: (function (prim) {
+              return prim.createSchedule;
+            }),
+          deleteSchedule: (function (prim) {
+              return prim.deleteSchedule;
+            })
         };
 }
 
@@ -156,4 +159,4 @@ var componentType = /* SideEffectHandler */15;
 
 exports.componentType = componentType;
 exports.Make = Make;
-/* SQS-AwsSdk Not a pure module */
+/* ./Component Not a pure module */

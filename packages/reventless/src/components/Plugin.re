@@ -721,15 +721,6 @@ module Make =
                 | _ => ()
               );
 
-          let _sideEffectHandlers =
-            (tasksOutputs^)
-            ->Belt.Array.keepMap(taskOutput =>
-                taskOutput##sideEffectHandler
-                ->Belt.Option.map(sideEffectHandler =>
-                    sideEffectHandler##eventsHandler
-                  )
-              );
-
           let eventsHandler =
             (. events'Json) => {
               let count = events'Json->Belt.Array.size;

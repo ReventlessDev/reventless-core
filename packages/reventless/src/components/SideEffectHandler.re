@@ -2,18 +2,10 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.SideEffectHandler;
 
-type queueEvent =
-  (. /*~delay:*/ int, /*~id:*/ string, /*~message:*/ string) =>
-  Js.Promise.t(unit);
-
 type outputs = {
   .
   "name": string,
   "eventCollector": EventCollector.outputs,
-  "queueEvent": queueEvent,
-  "createSchedule": ReventlessSpec.Schedule.create,
-  "deleteSchedule": ReventlessSpec.Schedule.delete,
-  "eventsHandler": EventCollector.eventsHandler,
 };
 
 type sideEffects = array(module ReventlessSpec.SideEffect.T);
@@ -33,6 +25,12 @@ module type T = {
       unit
     ) =>
     Component.t(t, outputs);
+
+  let enqueueEvent: Component.t(t, outputs) => EventCollector.enqueueEvent;
+  let createSchedule:
+    Component.t(t, outputs) => ReventlessSpec.Schedule.create;
+  let deleteSchedule:
+    Component.t(t, outputs) => ReventlessSpec.Schedule.delete;
 };
 
 module Make = (EventCollector: EventCollector.T) : T => {
@@ -55,15 +53,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
 
   [@bs.obj]
   external makeOutputs:
-    (
-      ~name: string,
-      ~eventCollector: Reventless.EventCollector.outputs,
-      ~queryEngine: ReventlessSpec.QueryEngine.t,
-      ~queueMessage: queueEvent,
-      ~createSchedule: ReventlessSpec.Schedule.create,
-      ~deleteSchedule: ReventlessSpec.Schedule.delete,
-      ~eventsHandler: Reventless.EventCollector.eventsHandler
-    ) =>
+    (~name: string, ~eventCollector: Reventless.EventCollector.outputs) =>
     outputs =
     "";
   [@bs.send]
@@ -76,6 +66,33 @@ module Make = (EventCollector: EventCollector.T) : T => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
+
+  [@bs.set]
+  external setEnqueueEvent:
+    (Component.t(t, outputs), Reventless.EventCollector.enqueueEvent) => unit =
+    "enqueueEvent";
+  [@bs.get]
+  external enqueueEvent:
+    Component.t(t, outputs) => Reventless.EventCollector.enqueueEvent =
+    "enqueueEvent";
+
+  [@bs.set]
+  external setCreateSchedule:
+    (Component.t(t, outputs), ReventlessSpec.Schedule.create) => unit =
+    "createSchedule";
+  [@bs.get]
+  external createSchedule:
+    Component.t(t, outputs) => ReventlessSpec.Schedule.create =
+    "createSchedule";
+
+  [@bs.set]
+  external setDeleteSchedule:
+    (Component.t(t, outputs), ReventlessSpec.Schedule.delete) => unit =
+    "deleteSchedule";
+  [@bs.get]
+  external deleteSchedule:
+    Component.t(t, outputs) => ReventlessSpec.Schedule.delete =
+    "deleteSchedule";
 
   let findSideEffect = (sideEffects, event'Json) => {
     event'Json
@@ -174,23 +191,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
         (),
       );
 
-    let queueMessage =
-      (. delay, _id, messageBody) => {
-        let queueId =
-          resources->Util.EventCollector.getConnectorResource(name)##id
-          ->OutputFailsafeRuntime.get;
-        Js.log4("Task.queueMessage:", delay, messageBody, queueId);
-        AwsSdk.SQS.sendMessage(
-          // TODO: move to Adapter
-          ~queueId,
-          // ~messageGroupId=id,
-          ~messageBody,
-          ~delay,
-          (),
-        );
-      };
-
-    let createSchedule =
+    let createScheduleFn =
       (. schedule: ReventlessSpec.Schedule.schedule) =>
         (
           Schedule.create(
@@ -201,7 +202,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
           schedule,
         );
 
-    let deleteSchedule =
+    let deleteScheduleFn =
       (. scheduleName) =>
         (
           Schedule.delete(
@@ -229,14 +230,17 @@ module Make = (EventCollector: EventCollector.T) : T => {
         (),
       );
 
+    let enqueueEventFn =
+      (. delay, id, message) =>
+        eventCollector->EventCollector.enqueueEvent(. delay, id, message);
+
+    self->setEnqueueEvent(enqueueEventFn);
+    self->setCreateSchedule(createScheduleFn);
+    self->setDeleteSchedule(deleteScheduleFn);
+
     makeOutputs(
       ~name,
       ~eventCollector=eventCollector->Component.extractOutputs,
-      ~eventsHandler,
-      ~queryEngine,
-      ~queueMessage,
-      ~createSchedule,
-      ~deleteSchedule,
     )
     ->setOutputs(self, _);
   };
