@@ -31,17 +31,6 @@ type maker =
   ) =>
   Component.t(task, outputs);
 
-type createSideEffectHandler =
-  (
-    ~sideEffects: SideEffectHandler.sideEffects,
-    ~memorySize: int=?,
-    ~timeout: int=?,
-    (module SideEffectHandler.T),
-    unit
-  ) =>
-  SideEffectHandler.outputs;
-// Component.t('t, SideEffectHandler.outputs);
-
 type setup =
   (
     . ReventlessSpec.QueryEngine.t,
