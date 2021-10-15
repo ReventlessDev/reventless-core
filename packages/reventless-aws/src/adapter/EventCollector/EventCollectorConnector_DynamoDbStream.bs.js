@@ -46,7 +46,12 @@ function make(name, aggregateNames, extensionPointNames, policies, handleEvents,
             })).join(",");
     return Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to " + (String(errorTopics) + "")));
   } else {
-    return /* record */[/* resource */undefined];
+    return /* record */[
+            /* resource */undefined,
+            /* enqueueEvent */(function (delay, id, messageBody) {
+                return Promise.resolve((console.log("EventCollectorConnector_DynamoDbStream-ReventlessAws supports no enqueueEvent:", delay, id, messageBody), /* () */0));
+              })
+          ];
   }
 }
 

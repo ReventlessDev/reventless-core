@@ -68,6 +68,18 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         ->Js.Array2.joinWith(",");
       Js.Exn.raiseError(__MODULE__ ++ {j| cannot connect to $errorTopics|j});
     } else {
-      {resource: None};
+      {
+        resource: None,
+        enqueueEvent:
+          (. delay, id, messageBody) =>
+            // TODO: can we check this at deploy time ?
+            Js.log4(
+              __MODULE__ ++ " supports no enqueueEvent:",
+              delay,
+              id,
+              messageBody,
+            )
+            ->Js.Promise.resolve,
+      };
     };
   };

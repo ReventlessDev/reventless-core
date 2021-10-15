@@ -58,7 +58,10 @@ function make(name, aggregateNames, extensionPointNames, policies, handleEvents,
           var match = param[1];
           return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, match[0], match[1], opts, /* () */0);
         }));
-  return /* record */[/* resource */Caml_option.some(Util_SQS$ReventlessAws.toResource(queue))];
+  return /* record */[
+          /* resource */Caml_option.some(Util_SQS$ReventlessAws.toResource(queue)),
+          /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue, resources)
+        ];
 }
 
 exports.make = make;

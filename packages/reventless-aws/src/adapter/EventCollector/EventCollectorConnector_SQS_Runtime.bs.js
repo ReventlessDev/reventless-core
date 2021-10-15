@@ -5,7 +5,9 @@ var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Util_EventCollector$Reventless = require("@reventless/reventless/src/util/Util_EventCollector.bs.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
+var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
 function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
@@ -58,5 +60,25 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
               }));
 }
 
+function enqueueEvent(queue, resources) {
+  return (function (delay, _id, messageBody) {
+      var queueName = queue.name.get();
+      var queueId = OutputFailsafeRuntime$Reventless.get(Util_EventCollector$Reventless.getConnectorResource(resources, queueName).id);
+      console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.enqueueMessage:", delay, messageBody, queueId);
+      return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody);
+    });
+}
+
+function enqueueFifoEvent(queue, resources) {
+  return (function (delay, id, messageBody) {
+      var queueName = queue.name.get();
+      var queueId = OutputFailsafeRuntime$Reventless.get(Util_EventCollector$Reventless.getConnectorResource(resources, queueName).id);
+      console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.enqueueMessage:", delay, messageBody, queueId);
+      return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, messageBody, id, /* () */0);
+    });
+}
+
 exports.handleCallbackEvent = handleCallbackEvent;
+exports.enqueueEvent = enqueueEvent;
+exports.enqueueFifoEvent = enqueueFifoEvent;
 /* SQS-AwsSdk Not a pure module */
