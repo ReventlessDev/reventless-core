@@ -38,3 +38,11 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
 let publish = queue =>
   (. _id, _meta: Reventless.Message.meta, json) =>
     queue->Util_SQS_Runtime.sendMessage(json->Js.Json.stringify);
+
+let publishFifo = queue =>
+  (. id, _meta: Reventless.Message.meta, json) =>
+    queue->Util_SQS_Runtime.sendFifoMessage(
+      ~messageBody=json->Js.Json.stringify,
+      ~messageGroupId=id,
+      (),
+    );

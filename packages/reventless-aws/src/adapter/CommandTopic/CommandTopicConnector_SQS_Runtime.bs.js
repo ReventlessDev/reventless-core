@@ -41,10 +41,17 @@ function handleQueueEvent(handleCommands, queue, $$event, param) {
 
 function publish(queue) {
   return (function (_id, _meta, json) {
-      return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, JSON.stringify(json));
+      return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, undefined, JSON.stringify(json));
+    });
+}
+
+function publishFifo(queue) {
+  return (function (id, _meta, json) {
+      return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, undefined, JSON.stringify(json), id, /* () */0);
     });
 }
 
 exports.handleQueueEvent = handleQueueEvent;
 exports.publish = publish;
+exports.publishFifo = publishFifo;
 /* SQS-AwsSdk Not a pure module */

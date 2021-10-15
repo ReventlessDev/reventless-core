@@ -8,10 +8,7 @@ var SQS_Runtime = 0;
 
 var SQS_FIFO = 0;
 
-var SQS_FIFO_Runtime = 0;
-
 exports.SQS = SQS;
 exports.SQS_Runtime = SQS_Runtime;
 exports.SQS_FIFO = SQS_FIFO;
-exports.SQS_FIFO_Runtime = SQS_FIFO_Runtime;
 /* No side effect */

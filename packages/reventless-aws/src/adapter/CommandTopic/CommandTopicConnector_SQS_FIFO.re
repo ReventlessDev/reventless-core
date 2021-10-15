@@ -37,7 +37,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
           ~args=
             Args.make(
               ~callback=
-                CommandTopicConnector_SQS_FIFO_Runtime.handleEvent(
+                CommandTopicConnector_SQS_Runtime.handleQueueEvent(
                   handleCommands,
                   queue,
                 ),
@@ -56,6 +56,6 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
 
     {
       resource: queue->Util_SQS_FIFO.toResource,
-      publish: queue->CommandTopicConnector_SQS_FIFO_Runtime.publish,
+      publish: queue->CommandTopicConnector_SQS_Runtime.publishFifo,
     };
   };

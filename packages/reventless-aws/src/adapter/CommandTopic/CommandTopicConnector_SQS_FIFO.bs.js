@@ -10,7 +10,7 @@ var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.b
 var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.bs.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.bs.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.bs.js");
-var CommandTopicConnector_SQS_FIFO_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_FIFO_Runtime.bs.js");
+var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_Runtime.bs.js");
 
 function make(name, handleCommands, memorySize, timeout, opts, param) {
   var queue = new (Aws.sqs.Queue)(name, {
@@ -24,7 +24,7 @@ function make(name, handleCommands, memorySize, timeout, opts, param) {
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, /* array */[Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], Caml_option.some(opts), /* () */0);
   var handler = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
             (function (param, param$1) {
-                return CommandTopicConnector_SQS_FIFO_Runtime$ReventlessAws.handleEvent(handleCommands, queue, param, param$1);
+                return CommandTopicConnector_SQS_Runtime$ReventlessAws.handleQueueEvent(handleCommands, queue, param, param$1);
               }),
             undefined,
             Lambda$PulumiAws.Policy.defaultPolicies,
@@ -40,7 +40,7 @@ function make(name, handleCommands, memorySize, timeout, opts, param) {
   queue.onEvent(name, handler, undefined, opts);
   return /* record */[
           /* resource */Util_SQS_FIFO$ReventlessAws.toResource(queue),
-          /* publish */CommandTopicConnector_SQS_FIFO_Runtime$ReventlessAws.publish(queue)
+          /* publish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publishFifo(queue)
         ];
 }
 
