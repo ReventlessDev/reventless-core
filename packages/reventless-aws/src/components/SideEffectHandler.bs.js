@@ -13,6 +13,15 @@ function MakeWithPolicies(Policies) {
 
 var make = SideEffectHandler.make;
 
+var enqueueEvent = SideEffectHandler.enqueueEvent;
+
+var createSchedule = SideEffectHandler.createSchedule;
+
+var deleteSchedule = SideEffectHandler.deleteSchedule;
+
 exports.make = make;
+exports.enqueueEvent = enqueueEvent;
+exports.createSchedule = createSchedule;
+exports.deleteSchedule = deleteSchedule;
 exports.MakeWithPolicies = MakeWithPolicies;
 /* SideEffectHandler Not a pure module */
