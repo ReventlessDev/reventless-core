@@ -108,9 +108,48 @@ module Make =
     ++
     err->AwsSdk.Error.ofPromise##message;
 
-  let execCommands =
+  let logCommand' =
+      (
+        idx,
+        count,
+        reference,
+        command': Message.command'(Spec.Id.t, Spec.command),
+      ) => {
+    let id = command'.id;
+    let command: array(string) =
+      command'.command->Spec.command_encode->Obj.magic;
+    let commandName = command[0];
+    let commandStr =
+      command'
+      |> Message.command'_encode(Spec.Id.t_encode, Spec.command_encode)
+      |> Js.Json.stringify;
+    let idx = idx + 1;
+    Js.log(
+      {j|CommandTopic: handling command $idx/$count: $commandName($id) ref: $reference, complete command: $commandStr|j},
+    );
+  };
+
+  let groupTopicItemsById =
+      (
+        topicItems:
+          array(
+            Reventless.CommandTopic.topicItem(
+              Message.command'(Spec.Id.t, Spec.command),
+            ),
+          ),
+      ) => {
+    let ids = topicItems->Belt.Array.map(({command}) => command.id);
+    ids
+    ->Belt.Set.fromArray(~id=(module Belt.Id.MakeComparable(Spec.Id)))
+    ->Belt.Set.toArray
+    ->Belt.Array.map(id =>
+        (id, topicItems->Belt.Array.keep(({command}) => command.id == id))
+      );
+  };
+
+  let handleCommands =
       ((eventLogAppend, eventLogReplay, eventTopicPublish, eventsHandler)) =>
-    (. id, commands': array(Message.command'(Spec.Id.t, Spec.command))) => {
+    (. allTopicItems) => {
       let apply' = (stateOpt, event) =>
         switch (stateOpt) {
         | Some(state) => Some(Behaviour.apply(. state, event))
@@ -127,128 +166,179 @@ module Make =
       };
 
       Js.log("starting Aggregate.execCommands");
-      eventLogReplay(. id)
-      |> Js.Promise.then_(history => {
-           let processCommand =
-               (accP, command': Message.command'(Spec.Id.t, Spec.command)) => {
-             let runBehaviour = ((stateO, events)) =>
-               switch (stateO) {
-               | Some(state) =>
-                 let generatedEvents =
-                   try (
-                     Behaviour.execute(.
-                       state,
-                       command'.command,
-                       {
-                         id: command'.id |> Spec.Id.toString,
-                         meta: command'.meta,
-                       },
-                       errorHandler,
-                     )
-                   ) {
-                   | Message.InvalidEvent(event) =>
-                     Js.log2(
-                       "Aggregate.processCommand: InvalidEvent",
-                       event |> Js.Json.stringify,
-                     );
-                     [];
+      allTopicItems
+      ->groupTopicItemsById
+      ->Belt.Array.map(((id, topicItems)) =>
+          eventLogReplay(. id)
+          |> Js.Promise.then_(history => {
+               let processCommand =
+                   (
+                     accP,
+                     command': Message.command'(Spec.Id.t, Spec.command),
+                   ) => {
+                 let runBehaviour = ((stateO, events)) =>
+                   switch (stateO) {
+                   | Some(state) =>
+                     let generatedEvents =
+                       try (
+                         Behaviour.execute(.
+                           state,
+                           command'.command,
+                           {
+                             id: command'.id |> Spec.Id.toString,
+                             meta: command'.meta,
+                           },
+                           errorHandler,
+                         )
+                       ) {
+                       | Message.InvalidEvent(event) =>
+                         Js.log2(
+                           "Aggregate.processCommand: InvalidEvent",
+                           event |> Js.Json.stringify,
+                         );
+                         [];
+                       };
+                     Ok((
+                       updateState(stateO, generatedEvents),
+                       events @ [(generatedEvents, command'->updateMeta)],
+                     ))
+                     ->Js.Promise.resolve;
+                   | None =>
+                     let generatedEvents =
+                       Behaviour.create(.
+                         command'.command,
+                         {
+                           id: command'.id |> Spec.Id.toString,
+                           meta: command'.meta,
+                         },
+                         errorHandler,
+                       );
+                     Ok((
+                       updateState(None, generatedEvents),
+                       events @ [(generatedEvents, command'->updateMeta)],
+                     ))
+                     ->Js.Promise.resolve;
                    };
-                 Ok((
-                   updateState(stateO, generatedEvents),
-                   events @ [(generatedEvents, command'->updateMeta)],
-                 ))
-                 ->Js.Promise.resolve;
-               | None =>
-                 let generatedEvents =
-                   Behaviour.create(.
-                     command'.command,
-                     {
-                       id: command'.id |> Spec.Id.toString,
-                       meta: command'.meta,
-                     },
-                     errorHandler,
-                   );
-                 Ok((
-                   updateState(None, generatedEvents),
-                   events @ [(generatedEvents, command'->updateMeta)],
-                 ))
-                 ->Js.Promise.resolve;
+
+                 accP
+                 |> Js.Promise.then_(
+                      fun
+                      | Ok(acc) => runBehaviour(acc)
+                      | Error(_) as error => error->Js.Promise.resolve,
+                    );
                };
 
-             accP
-             |> Js.Promise.then_(
-                  fun
-                  | Ok(acc) => runBehaviour(acc)
-                  | Error(_) as error => error->Js.Promise.resolve,
-                );
-           };
-
-           Js.log({j|finished eventLogReplay for id $id|j});
-           commands'->Belt.Array.reduce(
-             Ok((updateState(None, history->Belt.List.fromArray), []))
-             ->Js.Promise.resolve,
-             processCommand,
-           )
-           |> Js.Promise.then_(
-                fun
-                | Ok((_, generatedEventsWithMeta)) =>
-                  generatedEventsWithMeta
-                  ->Belt.List.map(((events, meta)) =>
-                      events->Belt.List.map(event =>
-                        {Message.id, meta, event}
-                      )
-                    )
-                  ->Belt.List.flatten
-                  ->Belt.List.toArray
-                  ->Js.Promise.resolve
-                | Error(error) => Js.Exn.raiseError(error),
-              )
-           |> Js.Promise.then_(
-                fun
-                | [||] =>
-                  Js.log({j|Aggregate.execCommand($id): no Event generated|j})
-                  ->Js.Promise.resolve
-                | generatedEvents' => {
-                    let eventCount = generatedEvents'->Belt.Array.length;
-                    Js.log2(
-                      {j|Aggregate.execCommand($id): $eventCount Event(s) generated:|j},
-                      generatedEvents'->Belt.Array.map(event' =>
-                        event'->eventName
-                      ),
-                    );
-                    eventsHandler(. id, generatedEvents')
-                    |> Js.Promise.catch(err => {
-                         let msg = errorMessage(id, "eventsHandler", err);
-                         Js.log(msg);
-                         Js.Exn.raiseError(msg);
-                       })
-                    |> Js.Promise.then_(_ => {
-                         Js.log({j|finished eventsHandler for id $id|j});
-                         eventLogAppend(.
-                           history->Belt.Array.length,
-                           id,
-                           generatedEvents',
-                         )
-                         |> Js.Promise.catch(err => {
-                              let msg =
-                                errorMessage(id, "eventLogAppend", err);
-                              Js.log(msg);
-                              Js.Exn.raiseError(msg);
-                            });
-                       })
-                    |> Js.Promise.then_(_ => {
-                         Js.log({j|finished eventLogAppend for id $id|j});
-                         eventTopicPublish(. generatedEvents')
-                         |> Js.Promise.catch(err => {
-                              let msg =
-                                errorMessage(id, "eventTopicPublish", err);
-                              Js.log(msg);
-                              Js.Exn.raiseError(msg);
-                            });
-                       });
-                  },
-              );
-         });
+               Js.log({j|finished eventLogReplay for id $id|j});
+               let _ =
+                 topicItems->Belt.Array.mapWithIndex(
+                   (idx, {reference, command}) =>
+                   logCommand'(
+                     idx,
+                     topicItems->Belt.Array.length,
+                     reference,
+                     command,
+                   )
+                 );
+               let (references, commands') =
+                 // TODO: handle finer granular references
+                 topicItems
+                 ->Belt.Array.map(({reference, command}) =>
+                     (reference, command)
+                   )
+                 ->Belt.Array.unzip;
+               commands'->Belt.Array.reduce(
+                 Ok((updateState(None, history->Belt.List.fromArray), []))
+                 ->Js.Promise.resolve,
+                 processCommand,
+               )
+               |> Js.Promise.then_(
+                    fun
+                    | Ok((_, generatedEventsWithMeta)) =>
+                      generatedEventsWithMeta
+                      ->Belt.List.map(((events, meta)) =>
+                          events->Belt.List.map(event =>
+                            {Message.id, meta, event}
+                          )
+                        )
+                      ->Belt.List.flatten
+                      ->Belt.List.toArray
+                      ->Js.Promise.resolve
+                    | Error(error) => Js.Exn.raiseError(error),
+                  )
+               |> Js.Promise.then_(
+                    fun
+                    | [||] =>
+                      {
+                        Js.log(
+                          {j|Aggregate.handleCommands($id): no Event generated|j},
+                        );
+                        references->Belt.Array.map(reference =>
+                          Ok(reference)
+                        );
+                      }
+                      ->Js.Promise.resolve
+                    | generatedEvents' => {
+                        let eventCount = generatedEvents'->Belt.Array.length;
+                        Js.log2(
+                          {j|Aggregate.handleCommands($id): $eventCount Event(s) generated:|j},
+                          generatedEvents'->Belt.Array.map(event' =>
+                            event'->eventName
+                          ),
+                        );
+                        eventsHandler(. id, generatedEvents')
+                        |> Js.Promise.catch(err => {
+                             let msg = errorMessage(id, "eventsHandler", err);
+                             Js.log(msg);
+                             Js.Exn.raiseError(msg);
+                           })
+                        |> Js.Promise.then_(_ => {
+                             Js.log({j|finished eventsHandler for id $id|j});
+                             eventLogAppend(.
+                               history->Belt.Array.length,
+                               id,
+                               generatedEvents',
+                             )
+                             |> Js.Promise.then_(result =>
+                                  (
+                                    switch (result) {
+                                    | Ok(_) =>
+                                      references->Belt.Array.map(reference =>
+                                        Ok(reference)
+                                      )
+                                    | Error(_) =>
+                                      references->Belt.Array.map(reference =>
+                                        Error(reference)
+                                      )
+                                    }
+                                  )
+                                  ->Js.Promise.resolve
+                                );
+                           })
+                        |> Js.Promise.then_(results => {
+                             Js.log({j|finished eventLogAppend for id $id|j});
+                             let _ =
+                               // FIXME: include in error handling with Belt.Result
+                               eventTopicPublish(. generatedEvents')
+                               |> Js.Promise.catch(err => {
+                                    let msg =
+                                      errorMessage(
+                                        id,
+                                        "eventTopicPublish",
+                                        err,
+                                      );
+                                    Js.log(msg);
+                                    Js.Exn.raiseError(msg);
+                                  });
+                             results->Js.Promise.resolve;
+                           });
+                      },
+                  );
+             })
+        )
+      ->Js.Promise.all
+      |> Js.Promise.then_(results =>
+           results->Belt.Array.concatMany->Js.Promise.resolve
+         );
     };
 
   let construct: construct =
@@ -265,8 +355,8 @@ module Make =
       let eventTopic =
         EventTopic.make(~name=childName, ~opts, ~resources, ());
 
-      let execCommands =
-        execCommands((
+      let handleCommands =
+        handleCommands((
           EventLog.append(eventLog),
           EventLog.replay(eventLog),
           EventTopic.publish(eventTopic),
@@ -276,7 +366,7 @@ module Make =
       let commandTopic =
         CommandTopic.make(
           ~name=childName,
-          ~commandsHandler=execCommands,
+          ~commandsHandler=handleCommands,
           ~opts,
           ~resources,
           (),

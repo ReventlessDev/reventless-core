@@ -7,7 +7,7 @@ type outputs = {. "storage": resource};
 exception ReplayError(string);
 
 type append('id, 'event) =
-  (. int, 'id, array('event)) => Js.Promise.t(unit);
+  (. int, 'id, array('event)) => Js.Promise.t(Belt.Result.t(unit, string));
 type replay('id, 'event) = (. 'id) => Js.Promise.t(array('event));
 
 module type Spec = {
@@ -129,11 +129,9 @@ module Make =
             |> Js.Promise.catch(err => {
                  let serviceName = Spec.name;
                  let resourceName = storage.resource##name->Pulumi.Output.get;
-                 Js.Promise.resolve(
-                   Js.log(
-                     {j|EventLog: Error: Couldn't append for $serviceName($id) on $resourceName: $err|j},
-                   ),
-                 );
+                 let err = {j|EventLog: Error: Couldn't append for $serviceName($id) on $resourceName: $err|j};
+                 Js.log(err);
+                 err->Belt.Result.Error->Js.Promise.resolve;
                })
         )
       ) {

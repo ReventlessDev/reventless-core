@@ -120,11 +120,11 @@ module Make =
       ); // TODO: handle multiple mappings for same Aggregate name
 
     let mapIncomingCommands =
-        (commands', mappings, scheduler, queryEngine, queue) =>
+        (topicItems, mappings, scheduler, queryEngine, queue) =>
       mappings
       ->Belt.Array.map((module Mapping: Mapping) =>
           Mapping.mapIncomingCommands(
-            commands',
+            topicItems,
             Schedule.create(scheduler, queue),
             Schedule.delete(scheduler, queue),
             queryEngine,
@@ -171,11 +171,12 @@ module Make =
       | ExtensionPointMapping.AbstractPublishCommand(
           aggregateName,
           id,
+          reference,
           cmdJson,
         ) =>
         cmdJson
-        ->Js.Json.stringify
-        ->AwsSdk.SQS.sendMessage( // TODO: move to Adapter
+        ->Js.Json.stringify // TODO: move to Adapter
+        ->AwsSdk.SQS.sendMessage(
             ~queueId=
               resources->Util_Aggregate.commandTopicConnectorResource(
                 aggregateName,
@@ -185,20 +186,28 @@ module Make =
             ~messageBody=_,
             (),
           )
-        ->Js.Promise.catch(
-            err =>
-              err
-              |> Js.log2("ExtensionPoint: Error on publish command:")
-              |> Js.Promise.resolve,
+        ->Js.Promise.then_(
+            _ => Belt.Result.Ok(reference)->Js.Promise.resolve,
             _,
           )
-      | AbstractCall(handler) =>
-        handler()
         ->Js.Promise.catch(
-            err =>
-              err
-              ->Js.log2("ExtensionPoint: Error on calling handler:")
-              ->Js.Promise.resolve,
+            err => {
+              Js.log2("ExtensionPoint: Error on publish command:", err);
+              Belt.Result.Error(reference)->Js.Promise.resolve;
+            },
+            _,
+          )
+      | AbstractCall(reference, handler) =>
+        handler()
+        ->Js.Promise.then_(
+            _ => Belt.Result.Ok(reference)->Js.Promise.resolve,
+            _,
+          )
+        ->Js.Promise.catch(
+            err => {
+              err->Js.log2("ExtensionPoint: Error on calling handler:");
+              Belt.Result.Error(reference)->Js.Promise.resolve;
+            },
             _,
           );
 
@@ -263,20 +272,18 @@ module Make =
       };
 
     let incomingCommandsHandler =
-      (. _id, cmds'Json) => {
+      (. topicItems) => {
         let commandTopic = (commandTopic^)->Belt.Option.getExn;
         let queue = commandTopic->Component.extractOutputs##connector;
         let commandActions =
-          cmds'Json->Mapper.mapIncomingCommands(
+          topicItems->Mapper.mapIncomingCommands(
             mappings,
             scheduler,
             queryEngine,
             queue,
           );
 
-        commandActions->Belt.Array.map(applyCommandAction)
-        |> Js.Promise.all
-        |> Js.Promise.then_(_ => Js.Promise.resolve());
+        commandActions->Belt.Array.map(applyCommandAction)->Js.Promise.all;
       };
 
     commandTopic :=

@@ -13,17 +13,22 @@ function Make(Spec) {
       var Aggregate = MappingImpl.Aggregate;
       var aggregateName = Aggregate.name;
       var extensionPointName = Spec.name;
-      var mapIncomingCommands = function (commands$prime, createSchedule, deleteSchedule, queryEngine) {
-        return Belt_Array.concatMany(Belt_Array.map(commands$prime, (function (param) {
-                          var meta = param[/* meta */1];
-                          return Belt_Array.map(Curry._3(MappingImpl.mapIncomingCommand, Id$Reventless.$$String.toString(param[/* id */0]), param[/* command */2], meta), (function (param) {
+      var mapIncomingCommands = function (topicItems, createSchedule, deleteSchedule, queryEngine) {
+        return Belt_Array.concatMany(Belt_Array.map(topicItems, (function (param) {
+                          var reference = param[/* reference */1];
+                          var match = param[/* command */0];
+                          var meta = match[/* meta */1];
+                          return Belt_Array.map(Curry._3(MappingImpl.mapIncomingCommand, Id$Reventless.$$String.toString(match[/* id */0]), match[/* command */2], meta), (function (param) {
                                         if (param.tag) {
                                           var callCommand = param[1];
                                           var handler = param[0];
                                           console.log("ExtensionPointMapping incoming from ExtensionPoint " + (String(extensionPointName) + ": Handling call command"), JSON.stringify(Curry._1(Spec.callCommand_encode, callCommand)));
-                                          return /* AbstractCall */Block.__(1, [(function (param) {
+                                          return /* AbstractCall */Block.__(1, [
+                                                    reference,
+                                                    (function (param) {
                                                         return Curry._4(handler, createSchedule, deleteSchedule, queryEngine, callCommand);
-                                                      })]);
+                                                      })
+                                                  ]);
                                         } else {
                                           var aggregateCmd = param[1];
                                           var aggregateId = param[0];
@@ -32,6 +37,7 @@ function Make(Spec) {
                                           return /* AbstractPublishCommand */Block.__(0, [
                                                     aggregateName,
                                                     aggregateId,
+                                                    reference,
                                                     Message$Reventless.command$prime_encode(Aggregate.Id.t_encode, Aggregate.command_encode, /* record */[
                                                           /* id */Curry._1(Aggregate.Id.makeFromString, aggregateId),
                                                           /* meta : record */[

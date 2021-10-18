@@ -3,11 +3,7 @@
 
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
-var Belt_Id = require("bs-platform/lib/js/belt_Id.js");
-var Belt_Set = require("bs-platform/lib/js/belt_Set.js");
-var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -36,64 +32,30 @@ function Make(Spec) {
                         }));
           });
       };
-      var groupCommandsById = function (commands) {
-        var match = Belt_Array.unzip(commands);
-        var commands$1 = match[1];
-        var $$let = Spec.Id;
-        return Belt_Array.map(Belt_Set.toArray(Belt_Set.fromArray(match[0], Belt_Id.MakeComparable({
-                                cmp: $$let.cmp
-                              }))), (function (id) {
-                      return /* tuple */[
-                              id,
-                              Belt_Array.keep(commands$1, (function (command$prime) {
-                                      return Caml_obj.caml_equal(command$prime[/* id */0], id);
-                                    }))
-                            ];
-                    }));
-      };
       var handleCommands = function (commandsHandler) {
-        return (function (jsons) {
-            console.log("starting CommandTopic.handleCommands. Command count:", jsons.length);
-            return Promise.all(Belt_Array.map(groupCommandsById(Belt_Array.keepMap(jsons, (function (json) {
-                                        var match = Message$Reventless.command$prime_decode(Spec.Id.t_decode, Spec.command_decode, json);
-                                        if (match.tag) {
-                                          var commandStr = JSON.stringify(json);
-                                          var message = match[0][/* message */1];
-                                          console.log("CommandTopic: Error: Couldn\'t decode command " + (String(commandStr) + (": " + (String(message) + ""))));
-                                          return ;
-                                        } else {
-                                          var command$prime = match[0];
-                                          return /* tuple */[
-                                                  command$prime[/* id */0],
-                                                  command$prime
-                                                ];
-                                        }
-                                      }))), (function (param) {
-                                var commands$prime = param[1];
-                                var id = param[0];
-                                var commandCount = commands$prime.length;
-                                Belt_Array.mapWithIndex(commands$prime, (function (idx, command$prime) {
-                                        var idx$1 = idx;
-                                        var count = commands$prime.length;
-                                        var command$prime$1 = command$prime;
-                                        var id = command$prime$1[/* id */0];
-                                        var command = Curry._1(Spec.command_encode, command$prime$1[/* command */2]);
-                                        var commandName = Caml_array.caml_array_get(command, 0);
-                                        var commandStr = JSON.stringify(Message$Reventless.command$prime_encode(Spec.Id.t_encode, Spec.command_encode, command$prime$1));
-                                        var idx$2 = idx$1 + 1 | 0;
-                                        console.log("CommandTopic: handling command " + (String(idx$2) + ("/" + (String(count) + (": " + (String(commandName) + ("(" + (String(id) + (")  complete command: " + (String(commandStr) + ""))))))))));
-                                        return /* () */0;
-                                      }));
-                                return commandsHandler(id, commands$prime).then((function (res) {
-                                                console.log("finished commandsHandler for id " + (String(id) + ""));
-                                                return Promise.resolve(res);
-                                              })).catch((function (err) {
-                                              var error = err.message;
-                                              return Js_exn.raiseError("CommandTopic.handleCommand: Error: Couldn\'t handle " + (String(commandCount) + (" command(s) for id " + (String(id) + (": " + (String(error) + ""))))));
-                                            }));
-                              }))).then((function (param) {
-                          console.log("finished CommandTopic.handleCommands");
-                          return Promise.resolve(/* () */0);
+        return (function (jsonItems) {
+            console.log("starting CommandTopic.handleCommands. Command count:", jsonItems.length);
+            var topicItems = Belt_Array.keepMap(jsonItems, (function (param) {
+                    var json = param[/* command */0];
+                    var match = Message$Reventless.command$prime_decode(Spec.Id.t_decode, Spec.command_decode, json);
+                    if (match.tag) {
+                      var commandStr = JSON.stringify(json);
+                      var message = match[0][/* message */1];
+                      console.log("CommandTopic: Error: Couldn\'t decode command " + (String(commandStr) + (": " + (String(message) + ""))));
+                      return ;
+                    } else {
+                      return /* record */[
+                              /* command */match[0],
+                              /* reference */param[/* reference */1]
+                            ];
+                    }
+                  }));
+            return commandsHandler(topicItems).then((function (res) {
+                            console.log("finished CommandTopic.handleCommands");
+                            return Promise.resolve(res);
+                          })).catch((function (err) {
+                          var error = err.message;
+                          return Js_exn.raiseError("CommandTopic.handleCommand: Error: Couldn\'t handle commands: " + (String(error) + ""));
                         }));
           });
       };

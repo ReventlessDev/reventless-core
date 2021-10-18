@@ -16,10 +16,20 @@ module type Spec = {
   type command;
 };
 
+type topicItem('command) = {
+  command: 'command,
+  reference: string,
+};
+
+type commandsHandler('command) =
+  (. array(topicItem('command))) =>
+  Js.Promise.t(array(Belt.Result.t(string, string)));
+
 module type T = {
   module Spec: Spec;
 
-  type commandsHandler = Message.commandsHandler(Spec.Id.t, Spec.command);
+  type nonrec commandsHandler =
+    commandsHandler(Message.command'(Spec.Id.t, Spec.command));
   type t;
 
   let make:
@@ -45,7 +55,7 @@ module Adapter = {
   type connectorMaker =
     (
       ~name: string,
-      ~handleCommands: (. array(Js.Json.t)) => Js.Promise.t(unit),
+      ~handleCommands: commandsHandler(Js.Json.t),
       ~memorySize: int,
       ~timeout: int,
       ~opts: Pulumi.CustomResourceOptions.t,
@@ -61,8 +71,8 @@ module Make =
        : (T with module Spec = Spec) => {
   module Spec = Spec;
 
-  type commandsHandler = Message.commandsHandler(Spec.Id.t, Spec.command);
-
+  type nonrec commandsHandler =
+    commandsHandler(Message.command'(Spec.Id.t, Spec.command));
   type t;
 
   type constructed;
@@ -128,48 +138,19 @@ module Make =
          );
     };
 
-  let logCommand' =
-      (idx, count, command': Message.command'(Spec.Id.t, Spec.command)) => {
-    let id = command'.id;
-    let command: array(string) =
-      command'.command->Spec.command_encode->Obj.magic;
-    let commandName = command[0];
-    let commandStr =
-      command'
-      |> Message.command'_encode(Spec.Id.t_encode, Spec.command_encode)
-      |> Js.Json.stringify;
-    let idx = idx + 1;
-    Js.log(
-      {j|CommandTopic: handling command $idx/$count: $commandName($id)  complete command: $commandStr|j},
-    );
-  };
-
-  let groupCommandsById:
-    array((Spec.Id.t, Message.command'(Spec.Id.t, Spec.command))) =>
-    array((Spec.Id.t, array(Message.command'(Spec.Id.t, Spec.command)))) =
-    commands => {
-      let (ids, commands) = commands->Belt.Array.unzip;
-      ids
-      ->Belt.Set.fromArray(~id=(module Belt.Id.MakeComparable(Spec.Id)))
-      ->Belt.Set.toArray
-      ->Belt.Array.map(id =>
-          (id, commands->Belt.Array.keep(command' => command'.id == id))
-        );
-    };
-
   let handleCommands = commandsHandler =>
-    (. jsons) => {
+    (. jsonItems) => {
       Js.log2(
         "starting CommandTopic.handleCommands. Command count:",
-        jsons->Belt.Array.size,
+        jsonItems->Belt.Array.size,
       );
-      jsons
-      ->Belt.Array.keepMap(json =>
+      let topicItems =
+        jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
           switch (
             json
             |> Message.command'_decode(Spec.Id.t_decode, Spec.command_decode)
           ) {
-          | Belt_Result.Ok(command') => Some((command'.id, command'))
+          | Belt_Result.Ok(command') => Some({reference, command: command'})
           | Belt_Result.Error(err) =>
             let commandStr = json->Js.Json.stringify;
             let message = err.message;
@@ -178,31 +159,17 @@ module Make =
             );
             None;
           }
-        )
-      ->groupCommandsById
-      ->Belt.Array.map(((id, commands')) => {
-          let commandCount = commands'->Belt.Array.length;
-          commands'
-          ->Belt.Array.mapWithIndex((idx, command') =>
-              logCommand'(idx, commands'->Belt.Array.length, command')
-            )
-          ->ignore;
-          commandsHandler(. id, commands')
-          |> Js.Promise.then_(res => {
-               Js.log({j|finished commandsHandler for id $id|j});
-               res->Js.Promise.resolve;
-             })
-          |> Js.Promise.catch(err => {
-               let error = err->AwsSdk.Error.ofPromise##message;
-               Js.Exn.raiseError(
-                 {j|CommandTopic.handleCommand: Error: Couldn't handle $commandCount command(s) for id $id: $error|j},
-               );
-             });
-        })
-      |> Js.Promise.all
-      |> Js.Promise.then_(_ => {
+        );
+      commandsHandler(. topicItems)
+      |> Js.Promise.then_(res => {
            Js.log("finished CommandTopic.handleCommands");
-           Js.Promise.resolve();
+           res->Js.Promise.resolve;
+         })
+      |> Js.Promise.catch(err => {
+           let error = err->AwsSdk.Error.ofPromise##message;
+           Js.Exn.raiseError(
+             {j|CommandTopic.handleCommand: Error: Couldn't handle commands: $error|j},
+           );
          });
     };
 

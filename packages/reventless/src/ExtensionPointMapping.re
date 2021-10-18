@@ -2,8 +2,8 @@ open ReventlessSpec.ExtensionPointMapping;
 
 /* these actions are internal to the Mapping Functor */
 type abstractCommandAction =
-  | AbstractPublishCommand(Aggregate.name, string, Js.Json.t)
-  | AbstractCall(unit => Js.Promise.t(unit));
+  | AbstractPublishCommand(Aggregate.name, string, string, Js.Json.t)
+  | AbstractCall(string, unit => Js.Promise.t(unit));
 
 type abstractEventAction('extensionPointEvent) =
   | AbstractPublishEvent(Message.event'(Id.String.t, 'extensionPointEvent))
@@ -19,7 +19,11 @@ module type T = {
 
   let mapIncomingCommands:
     (
-      array(Message.command'(Id.String.t, ExtensionPoint.command)),
+      array(
+        CommandTopic.topicItem(
+          Message.command'(Id.String.t, ExtensionPoint.command),
+        ),
+      ),
       ReventlessSpec.Schedule.create,
       ReventlessSpec.Schedule.delete,
       ReventlessSpec.QueryEngine.t
@@ -45,9 +49,10 @@ module Make =
   let extensionPointName = Spec.name;
 
   let mapIncomingCommands =
-      (commands', createSchedule, deleteSchedule, queryEngine) =>
-    commands'
-    ->Belt.Array.map(({Message.id, command, meta}) =>
+      (topicItems, createSchedule, deleteSchedule, queryEngine) =>
+    topicItems
+    ->Belt.Array.map(
+        ({CommandTopic.reference, command: {Message.id, command, meta}}) =>
         MappingImpl.mapIncomingCommand(id->Id.String.toString, command, meta)
         ->Belt.Array.map(
             fun
@@ -61,6 +66,7 @@ module Make =
                 AbstractPublishCommand(
                   aggregateName,
                   aggregateId,
+                  reference,
                   Message.command'_encode(
                     Aggregate.Id.t_encode,
                     Aggregate.command_encode,
@@ -83,6 +89,7 @@ module Make =
                 );
 
                 AbstractCall(
+                  reference,
                   () =>
                     handler(
                       createSchedule,
