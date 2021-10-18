@@ -14,20 +14,47 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
         None;
       };
     });
-  handleCommands(. jsons)
-  |> Js.Promise.then_(_ =>
-       records
-       ->Belt.Array.mapWithIndex((idx, record) =>
-           AwsSdk.SQS.DeleteMessageBatchEntry.make(
-             ~_Id=idx->string_of_int,
-             ~_ReceiptHandle=record##receiptHandle,
-           )
+  let topicItems =
+    records
+    ->Belt.Array.map(record => record##receiptHandle)
+    ->Belt.Array.zip(jsons)
+    ->Belt.Array.map(((reference, command)) =>
+        {Reventless.CommandTopic.reference, command}
+      );
+
+  handleCommands(. topicItems)
+  |> Js.Promise.catch(_ =>
+       Js.Exn.raiseError(
+         __MODULE__
+         ++ ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!",
+       )
+     )
+  |> Js.Promise.then_(results =>
+       results
+       ->Belt.Array.mapWithIndex((idx, result) =>
+           switch (result) {
+           | Belt.Result.Ok(reference) =>
+             AwsSdk.SQS.DeleteMessageBatchEntry.make(
+               ~_Id=idx->string_of_int,
+               ~_ReceiptHandle=reference,
+             )
+             ->Some
+           | Error(reference) =>
+             Js.log2(
+               __MODULE__
+               ++ ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:",
+               reference,
+             );
+             None;
+           }
          )
+       ->Belt.Array.keepMap(x => x)
        ->AwsSdk.SQS.deleteMessageBatch(~queueId=queue##id->Pulumi.Output.get)
        |> Js.Promise.then_(_ => Js.Promise.resolve())
        |> Js.Promise.catch(err =>
             Js.log2(
-              __MODULE__ ++ ".handleQueueEvent: Couldn't deleteMessageBatch:",
+              __MODULE__
+              ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:",
               err,
             )
             ->Js.Promise.resolve

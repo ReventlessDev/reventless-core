@@ -5,7 +5,12 @@ let append = table =>
        ->Pulumi.Output.get
        ->AwsSdk.DynamoDb.DocumentClient.putMany(
            "attribute_not_exists (sequenceNr)",
-         );
+         )
+    |> Js.Promise.then_(_ => Belt.Result.Ok()->Js.Promise.resolve)
+    |> Js.Promise.catch(_ =>
+         Belt.Result.Error("AwsSdk.DynamoDb.DocumentClient.putMany failed !")
+         ->Js.Promise.resolve
+       );
 
 let replay = table =>
   (. id) =>
