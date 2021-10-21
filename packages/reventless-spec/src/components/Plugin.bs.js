@@ -223,6 +223,176 @@ function pluginDefinition_decode(v) {
   }
 }
 
+var schema_encode = Decco.stringToJson;
+
+var schema_decode = Decco.stringFromJson;
+
+function typeSchema_encode(v) {
+  return Js_dict.fromArray(/* array */[
+              /* tuple */[
+                "name",
+                Decco.stringToJson(v[/* name */0])
+              ],
+              /* tuple */[
+                "schema",
+                Decco.stringToJson(v[/* schema */1])
+              ]
+            ]);
+}
+
+function typeSchema_decode(v) {
+  var match = Js_json.classify(v);
+  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  } else {
+    var dict = match[0];
+    var match$1 = Js_dict.get(dict, "name");
+    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
+    var match$3 = Js_dict.get(dict, "schema");
+    var match$4 = Decco.stringFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
+    if (match$2.tag) {
+      var e = match$2[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".name" + e[/* path */0],
+                  /* message */e[/* message */1],
+                  /* value */e[/* value */2]
+                ]]);
+    } else if (match$4.tag) {
+      var e$1 = match$4[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".schema" + e$1[/* path */0],
+                  /* message */e$1[/* message */1],
+                  /* value */e$1[/* value */2]
+                ]]);
+    } else {
+      return /* Ok */Block.__(0, [/* record */[
+                  /* name */match$2[0],
+                  /* schema */match$4[0]
+                ]]);
+    }
+  }
+}
+
+function querySchema_encode(v) {
+  return Js_dict.fromArray(/* array */[
+              /* tuple */[
+                "schema",
+                Decco.stringToJson(v[/* schema */0])
+              ],
+              /* tuple */[
+                "roles",
+                Decco.arrayToJson(Decco.stringToJson, v[/* roles */1])
+              ]
+            ]);
+}
+
+function querySchema_decode(v) {
+  var match = Js_json.classify(v);
+  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  } else {
+    var dict = match[0];
+    var match$1 = Js_dict.get(dict, "schema");
+    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
+    var match$3 = Js_dict.get(dict, "roles");
+    var match$4 = Decco.arrayFromJson(Decco.stringFromJson, match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
+    if (match$2.tag) {
+      var e = match$2[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".schema" + e[/* path */0],
+                  /* message */e[/* message */1],
+                  /* value */e[/* value */2]
+                ]]);
+    } else if (match$4.tag) {
+      var e$1 = match$4[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".roles" + e$1[/* path */0],
+                  /* message */e$1[/* message */1],
+                  /* value */e$1[/* value */2]
+                ]]);
+    } else {
+      return /* Ok */Block.__(0, [/* record */[
+                  /* schema */match$2[0],
+                  /* roles */match$4[0]
+                ]]);
+    }
+  }
+}
+
+function apiFragmentDescription_encode(v) {
+  return Js_dict.fromArray(/* array */[
+              /* tuple */[
+                "name",
+                Decco.stringToJson(v[/* name */0])
+              ],
+              /* tuple */[
+                "typeSchemas",
+                Decco.arrayToJson(typeSchema_encode, v[/* typeSchemas */1])
+              ],
+              /* tuple */[
+                "queriesSchema",
+                Decco.arrayToJson(querySchema_encode, v[/* queriesSchema */2])
+              ],
+              /* tuple */[
+                "mutationsSchema",
+                Decco.arrayToJson(querySchema_encode, v[/* mutationsSchema */3])
+              ]
+            ]);
+}
+
+function apiFragmentDescription_decode(v) {
+  var match = Js_json.classify(v);
+  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  } else {
+    var dict = match[0];
+    var match$1 = Js_dict.get(dict, "name");
+    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
+    var match$3 = Js_dict.get(dict, "typeSchemas");
+    var match$4 = Decco.arrayFromJson(typeSchema_decode, match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
+    var match$5 = Js_dict.get(dict, "queriesSchema");
+    var match$6 = Decco.arrayFromJson(querySchema_decode, match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
+    var match$7 = Js_dict.get(dict, "mutationsSchema");
+    var match$8 = Decco.arrayFromJson(querySchema_decode, match$7 !== undefined ? Caml_option.valFromOption(match$7) : null);
+    if (match$2.tag) {
+      var e = match$2[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".name" + e[/* path */0],
+                  /* message */e[/* message */1],
+                  /* value */e[/* value */2]
+                ]]);
+    } else if (match$4.tag) {
+      var e$1 = match$4[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".typeSchemas" + e$1[/* path */0],
+                  /* message */e$1[/* message */1],
+                  /* value */e$1[/* value */2]
+                ]]);
+    } else if (match$6.tag) {
+      var e$2 = match$6[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".queriesSchema" + e$2[/* path */0],
+                  /* message */e$2[/* message */1],
+                  /* value */e$2[/* value */2]
+                ]]);
+    } else if (match$8.tag) {
+      var e$3 = match$8[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".mutationsSchema" + e$3[/* path */0],
+                  /* message */e$3[/* message */1],
+                  /* value */e$3[/* value */2]
+                ]]);
+    } else {
+      return /* Ok */Block.__(0, [/* record */[
+                  /* name */match$2[0],
+                  /* typeSchemas */match$4[0],
+                  /* queriesSchema */match$6[0],
+                  /* mutationsSchema */match$8[0]
+                ]]);
+    }
+  }
+}
+
 exports.name_encode = name_encode;
 exports.name_decode = name_decode;
 exports.version_encode = version_encode;
@@ -233,4 +403,12 @@ exports.extensionDefinition_encode = extensionDefinition_encode;
 exports.extensionDefinition_decode = extensionDefinition_decode;
 exports.pluginDefinition_encode = pluginDefinition_encode;
 exports.pluginDefinition_decode = pluginDefinition_decode;
+exports.schema_encode = schema_encode;
+exports.schema_decode = schema_decode;
+exports.typeSchema_encode = typeSchema_encode;
+exports.typeSchema_decode = typeSchema_decode;
+exports.querySchema_encode = querySchema_encode;
+exports.querySchema_decode = querySchema_decode;
+exports.apiFragmentDescription_encode = apiFragmentDescription_encode;
+exports.apiFragmentDescription_decode = apiFragmentDescription_decode;
 /* No side effect */

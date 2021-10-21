@@ -15,18 +15,18 @@ type forwardCommand = {
 [@decco]
 type command =
   | Heartbeat(timeout)
-  | ConnectPlugin(pluginDefinition)
+  | ConnectPlugin(pluginDefinition, array(apiFragmentDescription))
   | DisconnectPlugin
   | ForwardCommand(forwardCommand);
 
 [@decco]
 type event =
   | UnknownPluginDetected
-  | PluginConnected(pluginDefinition)
-  | PluginReconnected(pluginDefinition)
-  | PluginDisconnected(pluginDefinition)
-  | PluginDeactivated(pluginDefinition)
-  | PluginActivated(pluginDefinition);
+  | PluginConnected(pluginDefinition, array(apiFragmentDescription))
+  | PluginReconnected(pluginDefinition, array(apiFragmentDescription))
+  | PluginDisconnected(pluginDefinition, array(apiFragmentDescription))
+  | PluginDeactivated(pluginDefinition, array(apiFragmentDescription))
+  | PluginActivated(pluginDefinition, array(apiFragmentDescription));
 
 [@decco]
 type callCommand =

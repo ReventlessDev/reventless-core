@@ -86,7 +86,8 @@ function command_encode(v) {
       case /* ConnectPlugin */1 :
           return /* array */[
                   "ConnectPlugin",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0]),
+                  Decco.arrayToJson(Plugin$ReventlessSpec.apiFragmentDescription_encode, v[1])
                 ];
       case /* ForwardCommand */2 :
           return /* array */[
@@ -109,11 +110,12 @@ function command_decode(v) {
     if (typeof match$1 !== "number" && !match$1.tag) {
       switch (match$1[0]) {
         case "ConnectPlugin" :
-            var match$2 = tagged.length !== 2;
+            var match$2 = tagged.length !== 3;
             if (match$2) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
               var match$3 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
+              var match$4 = Decco.arrayFromJson(Plugin$ReventlessSpec.apiFragmentDescription_decode, Caml_array.caml_array_get(jsonArr, 2));
               if (match$3.tag) {
                 var e = match$3[0];
                 return /* Error */Block.__(1, [/* record */[
@@ -121,49 +123,59 @@ function command_decode(v) {
                             /* message */e[/* message */1],
                             /* value */e[/* value */2]
                           ]]);
+              } else if (match$4.tag) {
+                var e$1 = match$4[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[1]" + e$1[/* path */0],
+                            /* message */e$1[/* message */1],
+                            /* value */e$1[/* value */2]
+                          ]]);
               } else {
-                return /* Ok */Block.__(0, [/* ConnectPlugin */Block.__(1, [match$3[0]])]);
+                return /* Ok */Block.__(0, [/* ConnectPlugin */Block.__(1, [
+                              match$3[0],
+                              match$4[0]
+                            ])]);
               }
             }
         case "DisconnectPlugin" :
-            var match$4 = tagged.length !== 1;
-            if (match$4) {
+            var match$5 = tagged.length !== 1;
+            if (match$5) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
               return /* Ok */Block.__(0, [/* DisconnectPlugin */0]);
             }
         case "ForwardCommand" :
-            var match$5 = tagged.length !== 2;
-            if (match$5) {
+            var match$6 = tagged.length !== 2;
+            if (match$6) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              var match$6 = forwardCommand_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$6.tag) {
-                var e$1 = match$6[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$1[/* path */0],
-                            /* message */e$1[/* message */1],
-                            /* value */e$1[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* ForwardCommand */Block.__(2, [match$6[0]])]);
-              }
-            }
-        case "Heartbeat" :
-            var match$7 = tagged.length !== 2;
-            if (match$7) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$8 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$8.tag) {
-                var e$2 = match$8[0];
+              var match$7 = forwardCommand_decode(Caml_array.caml_array_get(jsonArr, 1));
+              if (match$7.tag) {
+                var e$2 = match$7[0];
                 return /* Error */Block.__(1, [/* record */[
                             /* path */"[0]" + e$2[/* path */0],
                             /* message */e$2[/* message */1],
                             /* value */e$2[/* value */2]
                           ]]);
               } else {
-                return /* Ok */Block.__(0, [/* Heartbeat */Block.__(0, [match$8[0]])]);
+                return /* Ok */Block.__(0, [/* ForwardCommand */Block.__(2, [match$7[0]])]);
+              }
+            }
+        case "Heartbeat" :
+            var match$8 = tagged.length !== 2;
+            if (match$8) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              var match$9 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
+              if (match$9.tag) {
+                var e$3 = match$9[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[0]" + e$3[/* path */0],
+                            /* message */e$3[/* message */1],
+                            /* value */e$3[/* value */2]
+                          ]]);
+              } else {
+                return /* Ok */Block.__(0, [/* Heartbeat */Block.__(0, [match$9[0]])]);
               }
             }
         default:
@@ -182,27 +194,32 @@ function event_encode(v) {
       case /* PluginConnected */0 :
           return /* array */[
                   "PluginConnected",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0]),
+                  Decco.arrayToJson(Plugin$ReventlessSpec.apiFragmentDescription_encode, v[1])
                 ];
       case /* PluginReconnected */1 :
           return /* array */[
                   "PluginReconnected",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0]),
+                  Decco.arrayToJson(Plugin$ReventlessSpec.apiFragmentDescription_encode, v[1])
                 ];
       case /* PluginDisconnected */2 :
           return /* array */[
                   "PluginDisconnected",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0]),
+                  Decco.arrayToJson(Plugin$ReventlessSpec.apiFragmentDescription_encode, v[1])
                 ];
       case /* PluginDeactivated */3 :
           return /* array */[
                   "PluginDeactivated",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0]),
+                  Decco.arrayToJson(Plugin$ReventlessSpec.apiFragmentDescription_encode, v[1])
                 ];
       case /* PluginActivated */4 :
           return /* array */[
                   "PluginActivated",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0]),
+                  Decco.arrayToJson(Plugin$ReventlessSpec.apiFragmentDescription_encode, v[1])
                 ];
       
     }
@@ -220,11 +237,12 @@ function event_decode(v) {
     if (typeof match$1 !== "number" && !match$1.tag) {
       switch (match$1[0]) {
         case "PluginActivated" :
-            var match$2 = tagged.length !== 2;
+            var match$2 = tagged.length !== 3;
             if (match$2) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
               var match$3 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
+              var match$4 = Decco.arrayFromJson(Plugin$ReventlessSpec.apiFragmentDescription_decode, Caml_array.caml_array_get(jsonArr, 2));
               if (match$3.tag) {
                 var e = match$3[0];
                 return /* Error */Block.__(1, [/* record */[
@@ -232,81 +250,135 @@ function event_decode(v) {
                             /* message */e[/* message */1],
                             /* value */e[/* value */2]
                           ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* PluginActivated */Block.__(4, [match$3[0]])]);
-              }
-            }
-        case "PluginConnected" :
-            var match$4 = tagged.length !== 2;
-            if (match$4) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$5 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$5.tag) {
-                var e$1 = match$5[0];
+              } else if (match$4.tag) {
+                var e$1 = match$4[0];
                 return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$1[/* path */0],
+                            /* path */"[1]" + e$1[/* path */0],
                             /* message */e$1[/* message */1],
                             /* value */e$1[/* value */2]
                           ]]);
               } else {
-                return /* Ok */Block.__(0, [/* PluginConnected */Block.__(0, [match$5[0]])]);
+                return /* Ok */Block.__(0, [/* PluginActivated */Block.__(4, [
+                              match$3[0],
+                              match$4[0]
+                            ])]);
               }
             }
-        case "PluginDeactivated" :
-            var match$6 = tagged.length !== 2;
-            if (match$6) {
+        case "PluginConnected" :
+            var match$5 = tagged.length !== 3;
+            if (match$5) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              var match$7 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$7.tag) {
-                var e$2 = match$7[0];
+              var match$6 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
+              var match$7 = Decco.arrayFromJson(Plugin$ReventlessSpec.apiFragmentDescription_decode, Caml_array.caml_array_get(jsonArr, 2));
+              if (match$6.tag) {
+                var e$2 = match$6[0];
                 return /* Error */Block.__(1, [/* record */[
                             /* path */"[0]" + e$2[/* path */0],
                             /* message */e$2[/* message */1],
                             /* value */e$2[/* value */2]
                           ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* PluginDeactivated */Block.__(3, [match$7[0]])]);
-              }
-            }
-        case "PluginDisconnected" :
-            var match$8 = tagged.length !== 2;
-            if (match$8) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$9 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$9.tag) {
-                var e$3 = match$9[0];
+              } else if (match$7.tag) {
+                var e$3 = match$7[0];
                 return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$3[/* path */0],
+                            /* path */"[1]" + e$3[/* path */0],
                             /* message */e$3[/* message */1],
                             /* value */e$3[/* value */2]
                           ]]);
               } else {
-                return /* Ok */Block.__(0, [/* PluginDisconnected */Block.__(2, [match$9[0]])]);
+                return /* Ok */Block.__(0, [/* PluginConnected */Block.__(0, [
+                              match$6[0],
+                              match$7[0]
+                            ])]);
               }
             }
-        case "PluginReconnected" :
-            var match$10 = tagged.length !== 2;
-            if (match$10) {
+        case "PluginDeactivated" :
+            var match$8 = tagged.length !== 3;
+            if (match$8) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              var match$11 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$11.tag) {
-                var e$4 = match$11[0];
+              var match$9 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
+              var match$10 = Decco.arrayFromJson(Plugin$ReventlessSpec.apiFragmentDescription_decode, Caml_array.caml_array_get(jsonArr, 2));
+              if (match$9.tag) {
+                var e$4 = match$9[0];
                 return /* Error */Block.__(1, [/* record */[
                             /* path */"[0]" + e$4[/* path */0],
                             /* message */e$4[/* message */1],
                             /* value */e$4[/* value */2]
                           ]]);
+              } else if (match$10.tag) {
+                var e$5 = match$10[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[1]" + e$5[/* path */0],
+                            /* message */e$5[/* message */1],
+                            /* value */e$5[/* value */2]
+                          ]]);
               } else {
-                return /* Ok */Block.__(0, [/* PluginReconnected */Block.__(1, [match$11[0]])]);
+                return /* Ok */Block.__(0, [/* PluginDeactivated */Block.__(3, [
+                              match$9[0],
+                              match$10[0]
+                            ])]);
+              }
+            }
+        case "PluginDisconnected" :
+            var match$11 = tagged.length !== 3;
+            if (match$11) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              var match$12 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
+              var match$13 = Decco.arrayFromJson(Plugin$ReventlessSpec.apiFragmentDescription_decode, Caml_array.caml_array_get(jsonArr, 2));
+              if (match$12.tag) {
+                var e$6 = match$12[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[0]" + e$6[/* path */0],
+                            /* message */e$6[/* message */1],
+                            /* value */e$6[/* value */2]
+                          ]]);
+              } else if (match$13.tag) {
+                var e$7 = match$13[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[1]" + e$7[/* path */0],
+                            /* message */e$7[/* message */1],
+                            /* value */e$7[/* value */2]
+                          ]]);
+              } else {
+                return /* Ok */Block.__(0, [/* PluginDisconnected */Block.__(2, [
+                              match$12[0],
+                              match$13[0]
+                            ])]);
+              }
+            }
+        case "PluginReconnected" :
+            var match$14 = tagged.length !== 3;
+            if (match$14) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              var match$15 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
+              var match$16 = Decco.arrayFromJson(Plugin$ReventlessSpec.apiFragmentDescription_decode, Caml_array.caml_array_get(jsonArr, 2));
+              if (match$15.tag) {
+                var e$8 = match$15[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[0]" + e$8[/* path */0],
+                            /* message */e$8[/* message */1],
+                            /* value */e$8[/* value */2]
+                          ]]);
+              } else if (match$16.tag) {
+                var e$9 = match$16[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[1]" + e$9[/* path */0],
+                            /* message */e$9[/* message */1],
+                            /* value */e$9[/* value */2]
+                          ]]);
+              } else {
+                return /* Ok */Block.__(0, [/* PluginReconnected */Block.__(1, [
+                              match$15[0],
+                              match$16[0]
+                            ])]);
               }
             }
         case "UnknownPluginDetected" :
-            var match$12 = tagged.length !== 1;
-            if (match$12) {
+            var match$17 = tagged.length !== 1;
+            if (match$17) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
               return /* Ok */Block.__(0, [/* UnknownPluginDetected */0]);
@@ -487,6 +559,22 @@ var pluginDefinition_encode = Plugin$ReventlessSpec.pluginDefinition_encode;
 
 var pluginDefinition_decode = Plugin$ReventlessSpec.pluginDefinition_decode;
 
+var schema_encode = Plugin$ReventlessSpec.schema_encode;
+
+var schema_decode = Plugin$ReventlessSpec.schema_decode;
+
+var typeSchema_encode = Plugin$ReventlessSpec.typeSchema_encode;
+
+var typeSchema_decode = Plugin$ReventlessSpec.typeSchema_decode;
+
+var querySchema_encode = Plugin$ReventlessSpec.querySchema_encode;
+
+var querySchema_decode = Plugin$ReventlessSpec.querySchema_decode;
+
+var apiFragmentDescription_encode = Plugin$ReventlessSpec.apiFragmentDescription_encode;
+
+var apiFragmentDescription_decode = Plugin$ReventlessSpec.apiFragmentDescription_decode;
+
 exports.name = name;
 exports.name_encode = name_encode;
 exports.name_decode = name_decode;
@@ -498,6 +586,14 @@ exports.extensionDefinition_encode = extensionDefinition_encode;
 exports.extensionDefinition_decode = extensionDefinition_decode;
 exports.pluginDefinition_encode = pluginDefinition_encode;
 exports.pluginDefinition_decode = pluginDefinition_decode;
+exports.schema_encode = schema_encode;
+exports.schema_decode = schema_decode;
+exports.typeSchema_encode = typeSchema_encode;
+exports.typeSchema_decode = typeSchema_decode;
+exports.querySchema_encode = querySchema_encode;
+exports.querySchema_decode = querySchema_decode;
+exports.apiFragmentDescription_encode = apiFragmentDescription_encode;
+exports.apiFragmentDescription_decode = apiFragmentDescription_decode;
 exports.timeout_encode = timeout_encode;
 exports.timeout_decode = timeout_decode;
 exports.forwardCommand_encode = forwardCommand_encode;

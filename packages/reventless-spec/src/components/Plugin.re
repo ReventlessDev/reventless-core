@@ -25,3 +25,24 @@ type pluginDefinition = {
   extensions: array(extensionDefinition),
   eventCollector: string,
 };
+
+[@decco]
+type schema = string;
+[@decco]
+type typeSchema = {
+  name: string,
+  schema,
+};
+[@decco]
+type querySchema = {
+  schema,
+  roles: array(string),
+};
+
+[@decco]
+type apiFragmentDescription = {
+  name,
+  typeSchemas: array(typeSchema),
+  queriesSchema: array(querySchema),
+  mutationsSchema: array(querySchema),
+};
