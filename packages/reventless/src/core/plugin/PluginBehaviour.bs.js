@@ -17,17 +17,20 @@ function state_encode(v) {
       case /* Connected */0 :
           return /* array */[
                   "Connected",
-                  PluginSpec$Reventless.pluginDefinition_encode(v[0])
+                  PluginSpec$Reventless.pluginDefinition_encode(v[0]),
+                  Decco.arrayToJson(PluginSpec$Reventless.apiFragmentDescription_encode, v[1])
                 ];
       case /* Disconnected */1 :
           return /* array */[
                   "Disconnected",
-                  PluginSpec$Reventless.pluginDefinition_encode(v[0])
+                  PluginSpec$Reventless.pluginDefinition_encode(v[0]),
+                  Decco.arrayToJson(PluginSpec$Reventless.apiFragmentDescription_encode, v[1])
                 ];
       case /* Inactive */2 :
           return /* array */[
                   "Inactive",
-                  PluginSpec$Reventless.pluginDefinition_encode(v[0])
+                  PluginSpec$Reventless.pluginDefinition_encode(v[0]),
+                  Decco.arrayToJson(PluginSpec$Reventless.apiFragmentDescription_encode, v[1])
                 ];
       
     }
@@ -45,11 +48,12 @@ function state_decode(v) {
     if (typeof match$1 !== "number" && !match$1.tag) {
       switch (match$1[0]) {
         case "Connected" :
-            var match$2 = tagged.length !== 2;
+            var match$2 = tagged.length !== 3;
             if (match$2) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
               var match$3 = PluginSpec$Reventless.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
+              var match$4 = Decco.arrayFromJson(PluginSpec$Reventless.apiFragmentDescription_decode, Caml_array.caml_array_get(jsonArr, 2));
               if (match$3.tag) {
                 var e = match$3[0];
                 return /* Error */Block.__(1, [/* record */[
@@ -57,49 +61,81 @@ function state_decode(v) {
                             /* message */e[/* message */1],
                             /* value */e[/* value */2]
                           ]]);
+              } else if (match$4.tag) {
+                var e$1 = match$4[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[1]" + e$1[/* path */0],
+                            /* message */e$1[/* message */1],
+                            /* value */e$1[/* value */2]
+                          ]]);
               } else {
-                return /* Ok */Block.__(0, [/* Connected */Block.__(0, [match$3[0]])]);
+                return /* Ok */Block.__(0, [/* Connected */Block.__(0, [
+                              match$3[0],
+                              match$4[0]
+                            ])]);
               }
             }
         case "Detected" :
-            var match$4 = tagged.length !== 1;
-            if (match$4) {
+            var match$5 = tagged.length !== 1;
+            if (match$5) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
               return /* Ok */Block.__(0, [/* Detected */0]);
             }
         case "Disconnected" :
-            var match$5 = tagged.length !== 2;
-            if (match$5) {
+            var match$6 = tagged.length !== 3;
+            if (match$6) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              var match$6 = PluginSpec$Reventless.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$6.tag) {
-                var e$1 = match$6[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$1[/* path */0],
-                            /* message */e$1[/* message */1],
-                            /* value */e$1[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* Disconnected */Block.__(1, [match$6[0]])]);
-              }
-            }
-        case "Inactive" :
-            var match$7 = tagged.length !== 2;
-            if (match$7) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$8 = PluginSpec$Reventless.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$8.tag) {
-                var e$2 = match$8[0];
+              var match$7 = PluginSpec$Reventless.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
+              var match$8 = Decco.arrayFromJson(PluginSpec$Reventless.apiFragmentDescription_decode, Caml_array.caml_array_get(jsonArr, 2));
+              if (match$7.tag) {
+                var e$2 = match$7[0];
                 return /* Error */Block.__(1, [/* record */[
                             /* path */"[0]" + e$2[/* path */0],
                             /* message */e$2[/* message */1],
                             /* value */e$2[/* value */2]
                           ]]);
+              } else if (match$8.tag) {
+                var e$3 = match$8[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[1]" + e$3[/* path */0],
+                            /* message */e$3[/* message */1],
+                            /* value */e$3[/* value */2]
+                          ]]);
               } else {
-                return /* Ok */Block.__(0, [/* Inactive */Block.__(2, [match$8[0]])]);
+                return /* Ok */Block.__(0, [/* Disconnected */Block.__(1, [
+                              match$7[0],
+                              match$8[0]
+                            ])]);
+              }
+            }
+        case "Inactive" :
+            var match$9 = tagged.length !== 3;
+            if (match$9) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              var match$10 = PluginSpec$Reventless.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
+              var match$11 = Decco.arrayFromJson(PluginSpec$Reventless.apiFragmentDescription_decode, Caml_array.caml_array_get(jsonArr, 2));
+              if (match$10.tag) {
+                var e$4 = match$10[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[0]" + e$4[/* path */0],
+                            /* message */e$4[/* message */1],
+                            /* value */e$4[/* value */2]
+                          ]]);
+              } else if (match$11.tag) {
+                var e$5 = match$11[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[1]" + e$5[/* path */0],
+                            /* message */e$5[/* message */1],
+                            /* value */e$5[/* value */2]
+                          ]]);
+              } else {
+                return /* Ok */Block.__(0, [/* Inactive */Block.__(2, [
+                              match$10[0],
+                              match$11[0]
+                            ])]);
               }
             }
         default:
@@ -144,26 +180,36 @@ function execute(state, command, context, error) {
       }
     } else {
       return /* :: */[
-              /* PluginConnected */Block.__(0, [command[0]]),
+              /* PluginConnected */Block.__(0, [
+                  command[0],
+                  command[1]
+                ]),
               /* [] */0
             ];
     }
   } else {
     switch (state.tag | 0) {
       case /* Connected */0 :
+          var apiFragmentDescriptions = state[1];
           var pluginDefinition = state[0];
           if (typeof command === "number" && command !== 0) {
             switch (command - 1 | 0) {
               case /* Heartbeat */0 :
                   return /* :: */[
-                          /* PluginDisconnected */Block.__(2, [pluginDefinition]),
+                          /* PluginDisconnected */Block.__(2, [
+                              pluginDefinition,
+                              apiFragmentDescriptions
+                            ]),
                           /* [] */0
                         ];
               case /* DisconnectPlugin */1 :
                   return Curry._3(error, /* PluginIsConnected */1, command, context);
               case /* ActivatePlugin */2 :
                   return /* :: */[
-                          /* PluginDeactivated */Block.__(4, [pluginDefinition]),
+                          /* PluginDeactivated */Block.__(4, [
+                              pluginDefinition,
+                              apiFragmentDescriptions
+                            ]),
                           /* [] */0
                         ];
               
@@ -172,12 +218,16 @@ function execute(state, command, context, error) {
             return Curry._3(error, /* PluginIsConnected */1, command, context);
           }
       case /* Disconnected */1 :
+          var apiFragmentDescriptions$1 = state[1];
           var pluginDefinition$1 = state[0];
           if (typeof command === "number") {
             if (command !== 0) {
               if (command >= 3) {
                 return /* :: */[
-                        /* PluginDeactivated */Block.__(4, [pluginDefinition$1]),
+                        /* PluginDeactivated */Block.__(4, [
+                            pluginDefinition$1,
+                            apiFragmentDescriptions$1
+                          ]),
                         /* [] */0
                       ];
               } else {
@@ -185,7 +235,10 @@ function execute(state, command, context, error) {
               }
             } else {
               return /* :: */[
-                      /* PluginReconnected */Block.__(1, [pluginDefinition$1]),
+                      /* PluginReconnected */Block.__(1, [
+                          pluginDefinition$1,
+                          apiFragmentDescriptions$1
+                        ]),
                       /* [] */0
                     ];
             }
@@ -195,7 +248,10 @@ function execute(state, command, context, error) {
       case /* Inactive */2 :
           if (typeof command === "number" && command === 2) {
             return /* :: */[
-                    /* PluginActivated */Block.__(3, [state[0]]),
+                    /* PluginActivated */Block.__(3, [
+                        state[0],
+                        state[1]
+                      ]),
                     /* [] */0
                   ];
           } else {
@@ -227,11 +283,15 @@ function apply(state, $$event) {
             PluginSpec$Reventless.event_encode($$event)
           ];
     } else {
-      return /* Connected */Block.__(0, [$$event[0]]);
+      return /* Connected */Block.__(0, [
+                $$event[0],
+                $$event[1]
+              ]);
     }
   } else {
     switch (state.tag | 0) {
       case /* Connected */0 :
+          var apiFragmentDescriptions = state[1];
           var pluginDefinition = state[0];
           if (typeof $$event === "number") {
             throw [
@@ -241,9 +301,15 @@ function apply(state, $$event) {
           } else {
             switch ($$event.tag | 0) {
               case /* PluginDisconnected */2 :
-                  return /* Disconnected */Block.__(1, [pluginDefinition]);
+                  return /* Disconnected */Block.__(1, [
+                            pluginDefinition,
+                            apiFragmentDescriptions
+                          ]);
               case /* PluginDeactivated */4 :
-                  return /* Inactive */Block.__(2, [pluginDefinition]);
+                  return /* Inactive */Block.__(2, [
+                            pluginDefinition,
+                            apiFragmentDescriptions
+                          ]);
               default:
                 throw [
                       Message$Reventless.InvalidEvent,
@@ -252,6 +318,7 @@ function apply(state, $$event) {
             }
           }
       case /* Disconnected */1 :
+          var apiFragmentDescriptions$1 = state[1];
           var pluginDefinition$1 = state[0];
           if (typeof $$event === "number") {
             throw [
@@ -261,9 +328,15 @@ function apply(state, $$event) {
           } else {
             switch ($$event.tag | 0) {
               case /* PluginReconnected */1 :
-                  return /* Connected */Block.__(0, [pluginDefinition$1]);
+                  return /* Connected */Block.__(0, [
+                            pluginDefinition$1,
+                            apiFragmentDescriptions$1
+                          ]);
               case /* PluginDeactivated */4 :
-                  return /* Inactive */Block.__(2, [pluginDefinition$1]);
+                  return /* Inactive */Block.__(2, [
+                            pluginDefinition$1,
+                            apiFragmentDescriptions$1
+                          ]);
               default:
                 throw [
                       Message$Reventless.InvalidEvent,
@@ -278,7 +351,10 @@ function apply(state, $$event) {
                   PluginSpec$Reventless.event_encode($$event)
                 ];
           } else if ($$event.tag === /* PluginActivated */3) {
-            return /* Disconnected */Block.__(1, [state[0]]);
+            return /* Disconnected */Block.__(1, [
+                      state[0],
+                      state[1]
+                    ]);
           } else {
             throw [
                   Message$Reventless.InvalidEvent,

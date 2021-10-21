@@ -62,8 +62,11 @@ var pluginDefinition2 = /* record */[
   /* eventCollector */"eventCollector"
 ];
 
+var apiFragmentDescriptions = /* array */[];
+
 exports.pluginDefinition = pluginDefinition;
 exports.state = state;
 exports.extensionPointNames2 = extensionPointNames2;
 exports.pluginDefinition2 = pluginDefinition2;
+exports.apiFragmentDescriptions = apiFragmentDescriptions;
 /* state Not a pure module */

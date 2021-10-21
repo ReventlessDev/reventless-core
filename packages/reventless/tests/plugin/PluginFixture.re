@@ -41,3 +41,5 @@ let pluginDefinition2 = {
   extensions: [||],
   eventCollector: "eventCollector",
 };
+
+let apiFragmentDescriptions = [||];

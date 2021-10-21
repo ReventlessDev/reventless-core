@@ -49,7 +49,10 @@ Jest.describe("Plugin: View", (function (param) {
                             /* extensions */PluginFixture$Reventless.state[/* extensions */6],
                             /* status : Connected */0,
                             /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
-                          ], Curry._2(PluginTest.whenEvent, /* PluginConnected */Block.__(0, [PluginFixture$Reventless.pluginDefinition]), Curry._1(PluginTest.givenEvents, /* :: */[
+                          ], Curry._2(PluginTest.whenEvent, /* PluginConnected */Block.__(0, [
+                                  PluginFixture$Reventless.pluginDefinition,
+                                  PluginFixture$Reventless.apiFragmentDescriptions
+                                ]), Curry._1(PluginTest.givenEvents, /* :: */[
                                     /* UnknownPluginDetected */0,
                                     /* [] */0
                                   ])));
@@ -65,10 +68,16 @@ Jest.describe("Plugin: View", (function (param) {
                             /* extensions */PluginFixture$Reventless.state[/* extensions */6],
                             /* status : Disconnected */1,
                             /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
-                          ], Curry._2(PluginTest.whenEvent, /* PluginDisconnected */Block.__(2, [PluginFixture$Reventless.pluginDefinition]), Curry._1(PluginTest.givenEvents, /* :: */[
+                          ], Curry._2(PluginTest.whenEvent, /* PluginDisconnected */Block.__(2, [
+                                  PluginFixture$Reventless.pluginDefinition,
+                                  PluginFixture$Reventless.apiFragmentDescriptions
+                                ]), Curry._1(PluginTest.givenEvents, /* :: */[
                                     /* UnknownPluginDetected */0,
                                     /* :: */[
-                                      /* PluginConnected */Block.__(0, [PluginFixture$Reventless.pluginDefinition]),
+                                      /* PluginConnected */Block.__(0, [
+                                          PluginFixture$Reventless.pluginDefinition,
+                                          PluginFixture$Reventless.apiFragmentDescriptions
+                                        ]),
                                       /* [] */0
                                     ]
                                   ])));
@@ -84,10 +93,16 @@ Jest.describe("Plugin: View", (function (param) {
                             /* extensions */PluginFixture$Reventless.state[/* extensions */6],
                             /* status : Inactive */2,
                             /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
-                          ], Curry._2(PluginTest.whenEvent, /* PluginDeactivated */Block.__(4, [PluginFixture$Reventless.pluginDefinition]), Curry._1(PluginTest.givenEvents, /* :: */[
+                          ], Curry._2(PluginTest.whenEvent, /* PluginDeactivated */Block.__(4, [
+                                  PluginFixture$Reventless.pluginDefinition,
+                                  PluginFixture$Reventless.apiFragmentDescriptions
+                                ]), Curry._1(PluginTest.givenEvents, /* :: */[
                                     /* UnknownPluginDetected */0,
                                     /* :: */[
-                                      /* PluginConnected */Block.__(0, [PluginFixture$Reventless.pluginDefinition]),
+                                      /* PluginConnected */Block.__(0, [
+                                          PluginFixture$Reventless.pluginDefinition,
+                                          PluginFixture$Reventless.apiFragmentDescriptions
+                                        ]),
                                       /* [] */0
                                     ]
                                   ])));
@@ -103,12 +118,21 @@ Jest.describe("Plugin: View", (function (param) {
                             /* extensions */PluginFixture$Reventless.state[/* extensions */6],
                             /* status : Disconnected */1,
                             /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
-                          ], Curry._2(PluginTest.whenEvent, /* PluginActivated */Block.__(3, [PluginFixture$Reventless.pluginDefinition]), Curry._1(PluginTest.givenEvents, /* :: */[
+                          ], Curry._2(PluginTest.whenEvent, /* PluginActivated */Block.__(3, [
+                                  PluginFixture$Reventless.pluginDefinition,
+                                  PluginFixture$Reventless.apiFragmentDescriptions
+                                ]), Curry._1(PluginTest.givenEvents, /* :: */[
                                     /* UnknownPluginDetected */0,
                                     /* :: */[
-                                      /* PluginConnected */Block.__(0, [PluginFixture$Reventless.pluginDefinition]),
+                                      /* PluginConnected */Block.__(0, [
+                                          PluginFixture$Reventless.pluginDefinition,
+                                          PluginFixture$Reventless.apiFragmentDescriptions
+                                        ]),
                                       /* :: */[
-                                        /* PluginDeactivated */Block.__(4, [PluginFixture$Reventless.pluginDefinition]),
+                                        /* PluginDeactivated */Block.__(4, [
+                                            PluginFixture$Reventless.pluginDefinition,
+                                            PluginFixture$Reventless.apiFragmentDescriptions
+                                          ]),
                                         /* [] */0
                                       ]
                                     ]
@@ -125,14 +149,26 @@ Jest.describe("Plugin: View", (function (param) {
                                   /* extensions */PluginFixture$Reventless.state[/* extensions */6],
                                   /* status : Connected */0,
                                   /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
-                                ], Curry._2(PluginTest.whenEvent, /* PluginReconnected */Block.__(1, [PluginFixture$Reventless.pluginDefinition]), Curry._1(PluginTest.givenEvents, /* :: */[
+                                ], Curry._2(PluginTest.whenEvent, /* PluginReconnected */Block.__(1, [
+                                        PluginFixture$Reventless.pluginDefinition,
+                                        PluginFixture$Reventless.apiFragmentDescriptions
+                                      ]), Curry._1(PluginTest.givenEvents, /* :: */[
                                           /* UnknownPluginDetected */0,
                                           /* :: */[
-                                            /* PluginConnected */Block.__(0, [PluginFixture$Reventless.pluginDefinition]),
+                                            /* PluginConnected */Block.__(0, [
+                                                PluginFixture$Reventless.pluginDefinition,
+                                                PluginFixture$Reventless.apiFragmentDescriptions
+                                              ]),
                                             /* :: */[
-                                              /* PluginDeactivated */Block.__(4, [PluginFixture$Reventless.pluginDefinition]),
+                                              /* PluginDeactivated */Block.__(4, [
+                                                  PluginFixture$Reventless.pluginDefinition,
+                                                  PluginFixture$Reventless.apiFragmentDescriptions
+                                                ]),
                                               /* :: */[
-                                                /* PluginActivated */Block.__(3, [PluginFixture$Reventless.pluginDefinition]),
+                                                /* PluginActivated */Block.__(3, [
+                                                    PluginFixture$Reventless.pluginDefinition,
+                                                    PluginFixture$Reventless.apiFragmentDescriptions
+                                                  ]),
                                                 /* [] */0
                                               ]
                                             ]

@@ -129,8 +129,11 @@ module Impl = {
         // 1 additional minute to allow additional latency
         Call(callHandler, CreateDisconnectSchedule(id, interval + 2)),
       |]
-    | ConnectPlugin(pluginDefinition) => [|
-        PublishCommand(id, ConnectPlugin(pluginDefinition)),
+    | ConnectPlugin(pluginDefinition, apiFragmentDescriptions) => [|
+        PublishCommand(
+          id,
+          ConnectPlugin(pluginDefinition, apiFragmentDescriptions),
+        ),
       |]
     | DisconnectPlugin => [|
         PublishCommand(id, DisconnectPlugin),
@@ -149,20 +152,35 @@ module Impl = {
           ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected,
         ),
       |]
-    | PluginConnected(pluginDefinition) => [|
-        PublishEvent(id, PluginConnected(pluginDefinition)),
+    | PluginConnected(pluginDefinition, apiFragmentDescriptions) => [|
+        PublishEvent(
+          id,
+          PluginConnected(pluginDefinition, apiFragmentDescriptions),
+        ),
       |]
-    | PluginReconnected(pluginDefinition) => [|
-        PublishEvent(id, PluginReconnected(pluginDefinition)),
+    | PluginReconnected(pluginDefinition, apiFragmentDescriptions) => [|
+        PublishEvent(
+          id,
+          PluginReconnected(pluginDefinition, apiFragmentDescriptions),
+        ),
       |]
-    | PluginDisconnected(pluginDefinition) => [|
-        PublishEvent(id, PluginDisconnected(pluginDefinition)),
+    | PluginDisconnected(pluginDefinition, apiFragmentDescriptions) => [|
+        PublishEvent(
+          id,
+          PluginDisconnected(pluginDefinition, apiFragmentDescriptions),
+        ),
       |]
-    | PluginDeactivated(pluginDefinition) => [|
-        PublishEvent(id, PluginDeactivated(pluginDefinition)),
+    | PluginDeactivated(pluginDefinition, apiFragmentDescriptions) => [|
+        PublishEvent(
+          id,
+          PluginDeactivated(pluginDefinition, apiFragmentDescriptions),
+        ),
       |]
-    | PluginActivated(pluginDefinition) => [|
-        PublishEvent(id, PluginActivated(pluginDefinition)),
+    | PluginActivated(pluginDefinition, apiFragmentDescriptions) => [|
+        PublishEvent(
+          id,
+          PluginActivated(pluginDefinition, apiFragmentDescriptions),
+        ),
       |]
     };
 };

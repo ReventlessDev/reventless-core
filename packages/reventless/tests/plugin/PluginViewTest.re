@@ -20,40 +20,52 @@ describe("Plugin: View", () => {
 
   test("PluginConnected", () =>
     givenEvents([UnknownPluginDetected])
-    |> whenEvent(PluginConnected(pluginDefinition))
+    |> whenEvent(PluginConnected(pluginDefinition, apiFragmentDescriptions))
     |> thenState({...state, status: Connected})
   );
 
   test("PluginDisconnected", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
-    |> whenEvent(PluginDisconnected(pluginDefinition))
+    givenEvents([
+      UnknownPluginDetected,
+      PluginConnected(pluginDefinition, apiFragmentDescriptions),
+    ])
+    |> whenEvent(
+         PluginDisconnected(pluginDefinition, apiFragmentDescriptions),
+       )
     |> thenState({...state, status: Disconnected})
   );
 
   test("PluginDeactivated", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
-    |> whenEvent(PluginDeactivated(pluginDefinition))
+    givenEvents([
+      UnknownPluginDetected,
+      PluginConnected(pluginDefinition, apiFragmentDescriptions),
+    ])
+    |> whenEvent(
+         PluginDeactivated(pluginDefinition, apiFragmentDescriptions),
+       )
     |> thenState({...state, status: Inactive})
   );
 
   test("PluginActivated", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDeactivated(pluginDefinition),
+      PluginConnected(pluginDefinition, apiFragmentDescriptions),
+      PluginDeactivated(pluginDefinition, apiFragmentDescriptions),
     ])
-    |> whenEvent(PluginActivated(pluginDefinition))
+    |> whenEvent(PluginActivated(pluginDefinition, apiFragmentDescriptions))
     |> thenState({...state, status: Disconnected})
   );
 
   test("PluginReconnected (after activated)", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDeactivated(pluginDefinition),
-      PluginActivated(pluginDefinition),
+      PluginConnected(pluginDefinition, apiFragmentDescriptions),
+      PluginDeactivated(pluginDefinition, apiFragmentDescriptions),
+      PluginActivated(pluginDefinition, apiFragmentDescriptions),
     ])
-    |> whenEvent(PluginReconnected(pluginDefinition))
+    |> whenEvent(
+         PluginReconnected(pluginDefinition, apiFragmentDescriptions),
+       )
     |> thenState({...state, status: Connected})
   );
 });

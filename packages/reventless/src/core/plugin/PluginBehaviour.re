@@ -5,9 +5,9 @@ module Spec = PluginSpec;
 [@decco]
 type state =
   | Detected
-  | Connected(pluginDefinition)
-  | Disconnected(pluginDefinition)
-  | Inactive(pluginDefinition);
+  | Connected(pluginDefinition, array(apiFragmentDescription))
+  | Disconnected(pluginDefinition, array(apiFragmentDescription))
+  | Inactive(pluginDefinition, array(apiFragmentDescription));
 
 let resolverConfig =
   Behaviour.{
@@ -32,33 +32,43 @@ let execute: Behaviour.execute(state, command, event, error) =
     switch (state) {
     | Detected =>
       switch (command) {
-      | ConnectPlugin(pluginDefinition) => [
-          PluginConnected(pluginDefinition),
+      | ConnectPlugin(pluginDefinition, apiFragmentDescriptions) => [
+          PluginConnected(pluginDefinition, apiFragmentDescriptions),
         ]
       | Heartbeat => [UnknownPluginDetected]
       | DisconnectPlugin
       | ActivatePlugin
       | DeactivatePlugin => []
       }
-    | Connected(pluginDefinition) =>
+    | Connected(pluginDefinition, apiFragmentDescriptions) =>
       switch (command) {
-      | DisconnectPlugin => [PluginDisconnected(pluginDefinition)]
-      | DeactivatePlugin => [PluginDeactivated(pluginDefinition)]
+      | DisconnectPlugin => [
+          PluginDisconnected(pluginDefinition, apiFragmentDescriptions),
+        ]
+      | DeactivatePlugin => [
+          PluginDeactivated(pluginDefinition, apiFragmentDescriptions),
+        ]
       | Heartbeat
       | ConnectPlugin(_)
       | ActivatePlugin => error(PluginIsConnected, command, context)
       }
-    | Disconnected(pluginDefinition) =>
+    | Disconnected(pluginDefinition, apiFragmentDescriptions) =>
       switch (command) {
-      | Heartbeat => [PluginReconnected(pluginDefinition)]
-      | DeactivatePlugin => [PluginDeactivated(pluginDefinition)]
+      | Heartbeat => [
+          PluginReconnected(pluginDefinition, apiFragmentDescriptions),
+        ]
+      | DeactivatePlugin => [
+          PluginDeactivated(pluginDefinition, apiFragmentDescriptions),
+        ]
       | ConnectPlugin(_)
       | DisconnectPlugin
       | ActivatePlugin => error(PluginIsDisconnected, command, context)
       }
-    | Inactive(pluginDefinition) =>
+    | Inactive(pluginDefinition, apiFragmentDescriptions) =>
       switch (command) {
-      | ActivatePlugin => [PluginActivated(pluginDefinition)]
+      | ActivatePlugin => [
+          PluginActivated(pluginDefinition, apiFragmentDescriptions),
+        ]
       | Heartbeat
       | ConnectPlugin(_)
       | DisconnectPlugin
@@ -84,7 +94,8 @@ let apply: Behaviour.apply(state, event) =
     switch (state) {
     | Detected =>
       switch (event) {
-      | PluginConnected(pluginDefinition) => Connected(pluginDefinition)
+      | PluginConnected(pluginDefinition, apiFragmentDescriptions) =>
+        Connected(pluginDefinition, apiFragmentDescriptions)
       | UnknownPluginDetected => state
       | PluginReconnected(_)
       | PluginDisconnected(_)
@@ -92,29 +103,34 @@ let apply: Behaviour.apply(state, event) =
       | PluginDeactivated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
-    | Connected(pluginDefinition) =>
+    | Connected(pluginDefinition, apiFragmentDescriptions) =>
       switch (event) {
-      | PluginDisconnected(_) => Disconnected(pluginDefinition)
-      | PluginDeactivated(_) => Inactive(pluginDefinition)
+      | PluginDisconnected(_) =>
+        Disconnected(pluginDefinition, apiFragmentDescriptions)
+      | PluginDeactivated(_) =>
+        Inactive(pluginDefinition, apiFragmentDescriptions)
       | UnknownPluginDetected
       | PluginConnected(_)
       | PluginReconnected(_)
       | PluginActivated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
-    | Disconnected(pluginDefinition) =>
+    | Disconnected(pluginDefinition, apiFragmentDescriptions) =>
       switch (event) {
-      | PluginReconnected(_) => Connected(pluginDefinition)
-      | PluginDeactivated(_) => Inactive(pluginDefinition)
+      | PluginReconnected(_) =>
+        Connected(pluginDefinition, apiFragmentDescriptions)
+      | PluginDeactivated(_) =>
+        Inactive(pluginDefinition, apiFragmentDescriptions)
       | UnknownPluginDetected
       | PluginConnected(_)
       | PluginDisconnected(_)
       | PluginActivated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
-    | Inactive(pluginDefinition) =>
+    | Inactive(pluginDefinition, apiFragmentDescriptions) =>
       switch (event) {
-      | PluginActivated(_) => Disconnected(pluginDefinition)
+      | PluginActivated(_) =>
+        Disconnected(pluginDefinition, apiFragmentDescriptions)
       | UnknownPluginDetected
       | PluginConnected(_)
       | PluginReconnected(_)

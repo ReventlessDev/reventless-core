@@ -54,13 +54,10 @@ let init =
   (. event, {Message.meta: {time, user}}) =>
     switch (event) {
     | UnknownPluginDetected => []
-    | PluginConnected({
-        name,
-        version,
-        eventCollector,
-        extensionPoints,
-        extensions,
-      }) => [
+    | PluginConnected(
+        {name, version, eventCollector, extensionPoints, extensions},
+        apiFragmentDescriptions,
+      ) => [
         {
           name,
           version,
@@ -87,13 +84,10 @@ let apply =
   (. state, event, {Message.meta: {time, user}}) =>
     switch (event) {
     | UnknownPluginDetected => []
-    | PluginConnected({
-        name,
-        version,
-        eventCollector,
-        extensionPoints,
-        extensions,
-      }) => [
+    | PluginConnected(
+        {name, version, eventCollector, extensionPoints, extensions},
+        apiFragmentDescriptions,
+      ) => [
         Update({
           name,
           version,
