@@ -34,11 +34,16 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
        ->Belt.Array.mapWithIndex((idx, result) =>
            switch (result) {
            | Belt.Result.Ok(reference) =>
+             Js.log2(
+               __MODULE__
+               ++ ".handleQueueEvent: Delete command with ReceiptHandle:",
+               reference,
+             );
              AwsSdk.SQS.DeleteMessageBatchEntry.make(
                ~_Id=idx->string_of_int,
                ~_ReceiptHandle=reference,
              )
-             ->Some
+             ->Some;
            | Error(reference) =>
              Js.log2(
                __MODULE__

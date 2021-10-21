@@ -39,9 +39,11 @@ function handleQueueEvent(handleCommands, queue, $$event, param) {
                               console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result[0]);
                               return ;
                             } else {
+                              var reference = result[0];
+                              console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.handleQueueEvent: Delete command with ReceiptHandle:", reference);
                               return {
                                       Id: String(idx),
-                                      ReceiptHandle: result[0]
+                                      ReceiptHandle: reference
                                     };
                             }
                           })), (function (x) {
