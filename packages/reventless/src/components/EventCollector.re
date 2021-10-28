@@ -41,6 +41,7 @@ module type T = {
 module Adapter = {
   type connector = {
     resource: option(resource),
+    func: resource,
     enqueueEvent,
   };
   type connectorMaker =
@@ -131,6 +132,8 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~opts,
         ~resources,
       );
+
+    resources->Util_EventCollector.setConnectorFunc(connector.func, name);
     switch (connector.resource) {
     | Some(resource) =>
       resources->Util_EventCollector.setConnectorResource(resource, name)

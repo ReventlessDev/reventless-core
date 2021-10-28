@@ -3,7 +3,7 @@
 
 
 function Make(Spec) {
-  var make = function (param, param$1, param$2, _unit) {
+  var make = function (param, param$1, param$2, param$3, param$4) {
     return /* () */0;
   };
   return {

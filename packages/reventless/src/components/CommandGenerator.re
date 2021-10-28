@@ -31,6 +31,7 @@ module type T = {
       ~name: string,
       ~commandHandler: commandHandler,
       ~opts: Pulumi.ComponentResource.Options.t=?,
+      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
@@ -49,7 +50,10 @@ type payload = {
 type commandGenerator = payload => Js.Promise.t(string);
 
 module Adapter = {
-  type resolvers = {resources: array(resource)};
+  type resolvers = {
+    resources: array(resource),
+    func: resource,
+  };
   type resolversMaker('api) =
     (
       ~name: string,
@@ -78,13 +82,11 @@ module Make =
   module Spec = Spec;
   type t;
 
-  type api = Config.api;
-
   type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
 
   type constructed;
   type construct =
-    (Component.t(t, outputs), string, api, commandHandler) => constructed;
+    (Component.t(t, outputs), string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -93,8 +95,7 @@ module Make =
       ~name: string,
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~api: api,
-      ~commandHandler: commandHandler
+      ~resources: resources
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -157,7 +158,7 @@ module Make =
       fn;
     };
 
-  let construct = (self, name, api, commandHandler) => {
+  let construct = (~api, ~commandHandler, self, name, resources) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -172,28 +173,20 @@ module Make =
         ~commandGenerator=generateCommand(commandHandler),
         ~opts,
       );
+    resources->Util_CommandGenerator.setResolversFunc(resolvers.func, name);
 
     let outputs = makeOutputs(~resolvers=resolvers.resources);
     //self->setOutputs(outputs); // NOTE: creates circular reference (promise leaks)
     self->registerOutputs(outputs);
   };
 
-  let make:
-    (
-      ~name: string,
-      ~commandHandler: commandHandler,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~name, ~commandHandler, ~opts=?, _) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name,
-        ~construct,
-        ~opts,
-        ~api=Config.api,
-        ~commandHandler,
-      );
-    };
+  let make = (~name, ~commandHandler, ~opts=?, ~resources, _) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct=construct(~api=Config.api, ~commandHandler),
+      ~opts,
+      ~resources,
+    );
+  };
 };

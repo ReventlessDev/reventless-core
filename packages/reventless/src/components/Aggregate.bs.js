@@ -254,7 +254,7 @@ function Make(Config) {
                                   eventsHandler
                                 ]);
                             var commandTopic = Curry._7(CommandTopic.make, childName, handleCommands$1, undefined, undefined, Caml_option.some(opts), resources, /* () */0);
-                            var commandGenerator = Curry._4(CommandGenerator.make, childName, Curry._1(CommandTopic.publish, commandTopic), Caml_option.some(opts), /* () */0);
+                            var commandGenerator = Curry._5(CommandGenerator.make, childName, Curry._1(CommandTopic.publish, commandTopic), Caml_option.some(opts), resources, /* () */0);
                             var self$1 = self;
                             var outputs = {
                               commandGenerator: Component$Reventless.extractOutputs(commandGenerator),
