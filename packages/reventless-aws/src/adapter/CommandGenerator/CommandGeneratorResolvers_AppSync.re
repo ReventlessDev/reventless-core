@@ -118,5 +118,5 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
 
     let resources = resolvers->Belt.Array.map(Util_AppSync.toResource);
 
-    {resources: resources};
+    {resources, func: commandGeneratorLambda->Util_Lambda.toResource};
   };

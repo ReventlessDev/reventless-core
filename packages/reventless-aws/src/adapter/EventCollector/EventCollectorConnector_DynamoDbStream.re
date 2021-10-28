@@ -70,6 +70,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     } else {
       {
         resource: None,
+        func: eventHandlerLambda->Util_Lambda.outputToResource,
         enqueueEvent:
           (. delay, id, messageBody) =>
             // TODO: can we check this at deploy time ?

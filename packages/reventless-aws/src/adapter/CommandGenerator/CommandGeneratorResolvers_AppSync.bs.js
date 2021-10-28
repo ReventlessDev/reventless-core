@@ -10,6 +10,7 @@ var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.bs.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
+var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.bs.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.bs.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.bs.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
@@ -58,7 +59,10 @@ function make(name, api, fields, commandGenerator, opts) {
           return AppSync_Resolver$PulumiAws.make(commandName, api, Caml_option.some(dataSource.name), "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
         }));
   var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);
-  return /* record */[/* resources */resources];
+  return /* record */[
+          /* resources */resources,
+          /* func */Util_Lambda$ReventlessAws.toResource(commandGeneratorLambda)
+        ];
 }
 
 exports.make = make;
