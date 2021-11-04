@@ -11,7 +11,6 @@ var Component = require("./Component");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_CommandGenerator$Reventless = require("../util/Util_CommandGenerator.bs.js");
 
 var Adapter = { };
 
@@ -56,9 +55,9 @@ function Make(Config) {
                   parent: self
                 };
                 var resolvers = Curry._5(Resolvers.make, ComponentType$Reventless.name(name, /* CommandGenerator */3), api, Behaviour.resolverConfig[/* fields */1], generateCommand(commandHandler), opts);
-                Util_CommandGenerator$Reventless.setResolversFunc(resources, resolvers[/* func */1], name);
                 var outputs = {
-                  resolvers: resolvers[/* resources */0]
+                  resolvers: resolvers[/* resources */0],
+                  func: resolvers[/* func */1]
                 };
                 return self.registerOutputs(outputs);
               };

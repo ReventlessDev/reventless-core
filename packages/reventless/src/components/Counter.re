@@ -9,6 +9,7 @@ type outputs = {
   .
   "referencesDb": resource,
   "countsDb": resource,
+  "func": resource,
 };
 
 type counterHandler =
@@ -112,7 +113,7 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~referencesDb: resource, ~countsDb: resource) => outputs =
+    (~referencesDb: resource, ~countsDb: resource,~func:resource) => outputs =
     "";
 
   [@bs.send]
@@ -371,7 +372,7 @@ module Make =
         ~opts=opts2,
         ~resources,
       );
-    resources->Util_Counter.setHandlerFunc(handler.func, name);
+    // resources->Util_Counter.setHandlerFunc(handler.func, name);
 
     self->setCount(count(referencesDb->ReferencesDb.saveBatch));
     self->setAddToCounterTarget(handler.addToCounterTarget);
@@ -379,6 +380,7 @@ module Make =
     makeOutputs(
       ~referencesDb=referencesDb->ReferencesDb.outputs##storage,
       ~countsDb=countsDb->CountsDb.outputs##storage,
+      ~func=handler.func
     )
     |> self->setOutputs;
   };

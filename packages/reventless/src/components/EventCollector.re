@@ -6,7 +6,11 @@ type enqueueEvent =
   (. /*~delay:*/ int, /*~id:*/ string, /*~message:*/ string) =>
   Js.Promise.t(unit);
 
-type outputs = {. "connector": option(resource)};
+type outputs = {
+  .
+  "connector": option(resource),
+  "func": resource,
+};
 
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
@@ -80,7 +84,9 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     "default";
 
   [@bs.obj]
-  external makeOutputs: (~connector: option(resource)) => outputs = "";
+  external makeOutputs:
+    (~connector: option(resource), ~func: resource) => outputs =
+    "";
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
     "registerOutputs";
@@ -133,7 +139,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~resources,
       );
 
-    resources->Util_EventCollector.setConnectorFunc(connector.func, name);
+    // resources->Util_EventCollector.setConnectorFunc(connector.func, name);
     switch (connector.resource) {
     | Some(resource) =>
       resources->Util_EventCollector.setConnectorResource(resource, name)
@@ -142,7 +148,8 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
 
     self->setEnqueueEvent(connector->enqueueEventFn);
 
-    makeOutputs(~connector=connector.resource)->setOutputs(self, _);
+    makeOutputs(~connector=connector.resource, ~func=connector.func)
+    ->setOutputs(self, _);
   };
 
   let make:

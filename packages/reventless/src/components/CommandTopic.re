@@ -2,7 +2,11 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.CommandTopic;
 
-type outputs = {. "connector": resource};
+type outputs = {
+  .
+  "connector": resource,
+  "func": resource,
+};
 
 type publish('id, 'command) =
   (. Message.command'('id, 'command)) => Js.Promise.t(unit);
@@ -96,7 +100,9 @@ module Make =
     Component.t(t, outputs) =
     "default";
 
-  [@bs.obj] external makeOutputs: (~connector: resource) => outputs = "";
+  [@bs.obj]
+  external makeOutputs: (~connector: resource, ~func: resource) => outputs =
+    "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
@@ -191,7 +197,7 @@ module Make =
         ~opts,
         ~resources,
       );
-    resources->Util_CommandTopic.setConnectorFunc(connector.func, name);
+    // resources->Util_CommandTopic.setConnectorFunc(connector.func, name);
     resources->Util_CommandTopic.setConnectorResource(
       connector.resource,
       name,
@@ -199,7 +205,8 @@ module Make =
 
     self->setPublish(connector->publishFn);
 
-    makeOutputs(~connector=connector.resource)->setOutputs(self, _);
+    makeOutputs(~connector=connector.resource, ~func=connector.func)
+    ->setOutputs(self, _);
   };
 
   let make:

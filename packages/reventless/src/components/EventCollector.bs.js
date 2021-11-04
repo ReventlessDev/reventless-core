@@ -42,7 +42,6 @@ function Make(Policies) {
               opts,
               resources
             ]);
-        Util_EventCollector$Reventless.setConnectorFunc(resources, connector[/* func */1], name);
         var match = connector[/* resource */0];
         if (match !== undefined) {
           Util_EventCollector$Reventless.setConnectorResource(resources, Caml_option.valFromOption(match), name);
@@ -50,7 +49,8 @@ function Make(Policies) {
         self.enqueueEvent = enqueueEventFn(connector);
         var self$1 = self;
         var outputs = {
-          connector: connector[/* resource */0]
+          connector: connector[/* resource */0],
+          func: connector[/* func */1]
         };
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
