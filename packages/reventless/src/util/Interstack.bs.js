@@ -29,10 +29,6 @@ function getOutputs(getOutput) {
               }));
 }
 
-var stackDependenciesServices = getOutputs((function (plugin) {
-        return plugin.services;
-      }));
-
 var stackDependenciesTasks = getOutputs((function (plugin) {
         return plugin.tasks;
       }));
@@ -47,14 +43,6 @@ function mergeManyRef(dependencies, locals) {
               }));
 }
 
-function mergeServices(param) {
-  var dependencies = stackDependenciesServices;
-  var locals = param;
-  return dependencies.apply((function (dependencies) {
-                return Belt_Array.concat(locals, dependencies);
-              }));
-}
-
 function mergeTasks(param) {
   return mergeManyRef(stackDependenciesTasks, param);
 }
@@ -65,7 +53,6 @@ function mergeEventMappers(param) {
 
 exports.coreStackReference = coreStackReference;
 exports.coreStackOutput = coreStackOutput;
-exports.mergeServices = mergeServices;
 exports.mergeTasks = mergeTasks;
 exports.mergeEventMappers = mergeEventMappers;
 /* coreStackReference Not a pure module */

@@ -17,18 +17,6 @@ function find(resources, name) {
               }));
 }
 
-function commandTopicConnectorOfAllServices(services, serviceName) {
-  return Belt_Option.map(find(services, serviceName), (function (service) {
-                return service.aggregate.commandTopic.connector;
-              }));
-}
-
-function queryDbStorageOfAllServices(services, serviceName) {
-  return Belt_Option.map(find(services, serviceName), (function (service) {
-                return service.readModel.queryDb.storage;
-              }));
-}
-
 function eventCollectorConnectorOfAllEventMappers(eventMappers, eventMapperName) {
   return Belt_Option.flatMap(find(eventMappers, eventMapperName), (function (eventMapper) {
                 return eventMapper.eventCollector.connector;
@@ -52,8 +40,6 @@ function bucketNameOfTaskExn(tasksRef, taskName) {
 }
 
 exports.find = find;
-exports.commandTopicConnectorOfAllServices = commandTopicConnectorOfAllServices;
-exports.queryDbStorageOfAllServices = queryDbStorageOfAllServices;
 exports.eventCollectorConnectorOfAllEventMappers = eventCollectorConnectorOfAllEventMappers;
 exports.bucketNameOfAllTasks = bucketNameOfAllTasks;
 exports.eventCollectorConnectorOfAllEventMappersExn = eventCollectorConnectorOfAllEventMappersExn;

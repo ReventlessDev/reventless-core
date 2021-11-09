@@ -138,7 +138,7 @@ function Make(Config) {
                         return $$process(Belt_List.fromArray(event$primes), /* [] */0);
                       });
                   };
-                  var construct = function (self, param, resources) {
+                  var construct = function (self, name, resources) {
                     var opts = {
                       parent: self
                     };
@@ -146,6 +146,7 @@ function Make(Config) {
                     self.update = updateFn(Curry._1(QueryDb.load, queryDb), Curry._1(QueryDb.save, queryDb), Curry._1(QueryDb.$$delete, queryDb));
                     var self$1 = self;
                     var outputs = {
+                      name: name,
                       queryDb: Component$Reventless.extractOutputs(queryDb)
                     };
                     self$1.setOutputs(outputs);

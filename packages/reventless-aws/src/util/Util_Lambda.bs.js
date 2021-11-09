@@ -8,10 +8,10 @@ var service = "Lambda";
 function toResource(lambda) {
   return {
           service: service,
-          name: lambda.name,
+          name: lambda.id,
           id: lambda.id,
           urn: lambda.arn,
-          info: lambda.name.apply((function (param) {
+          info: lambda.id.apply((function (param) {
                   return "";
                 }))
         };
@@ -21,7 +21,7 @@ function outputToResource(lambda) {
   return {
           service: service,
           name: Output$Pulumi.flatMap(lambda, (function (lambda) {
-                  return lambda.name;
+                  return lambda.id;
                 })),
           id: Output$Pulumi.flatMap(lambda, (function (lambda) {
                   return lambda.id;

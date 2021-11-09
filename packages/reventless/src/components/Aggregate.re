@@ -5,6 +5,7 @@ let componentType = ComponentType.Aggregate;
 
 type outputs = {
   .
+  "name": string,
   "commandGenerator": CommandGenerator.outputs,
   "commandTopic": CommandTopic.outputs,
   "eventLog": EventLog.outputs,
@@ -13,9 +14,11 @@ type outputs = {
 
 type name = string;
 
+type t;
+type component = Component.t(t, outputs);
+
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T;
-  type t;
 
   let make:
     (
@@ -24,7 +27,7 @@ module type T = {
       ~resources: resources,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 };
 
 module Make =
@@ -40,13 +43,12 @@ module Make =
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type t;
 
   type eventsHandler = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
   type construct =
-    (Component.t(t, outputs), string, eventsHandler, resources) => constructed;
+    (component, string, eventsHandler, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -58,7 +60,7 @@ module Make =
       ~eventsHandler: eventsHandler,
       ~resources: resources
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   module CommandGenerator =
@@ -70,6 +72,7 @@ module Make =
   [@bs.obj]
   external makeOutputs:
     (
+      ~name: string,
       ~commandGenerator: Reventless.CommandGenerator.outputs,
       ~commandTopic: Reventless.CommandTopic.outputs,
       ~eventLog: Reventless.EventLog.outputs,
@@ -79,11 +82,9 @@ module Make =
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -382,6 +383,7 @@ module Make =
         );
 
       makeOutputs(
+        ~name,
         ~commandGenerator=commandGenerator->Component.extractOutputs,
         ~commandTopic=commandTopic->Component.extractOutputs,
         ~eventLog=eventLog->Component.extractOutputs,
@@ -397,7 +399,7 @@ module Make =
       ~resources: resources,
       unit
     ) =>
-    Component.t(t, outputs) =
+    component =
     (~eventsHandler, ~opts=?, ~resources, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,

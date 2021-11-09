@@ -3,17 +3,31 @@ open ReventlessSpec.Adapter;
 let componentType = ComponentType.Core;
 
 type extensionPointMakers = array(ExtensionPoint.maker);
-type serviceMakers = array(Service.maker);
 
 type outputs = {
   .
   "version": string,
   "eventCollector": EventCollector.outputs,
   "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
-  "services": Js.Dict.t(Service.outputs),
+  "aggregates": Pulumi.Output.t(Js.Dict.t(Aggregate.outputs)),
+  "readModels": Pulumi.Output.t(Js.Dict.t(ReadModel.outputs)),
   "resources": resources,
 };
-type core;
+
+type t;
+type component = Component.t(t, outputs);
+
+type maker =
+  (
+    ~version: string,
+    ~extensionPointMakers: array(ExtensionPoint.maker),
+    ~aggregates: array(module Aggregate.T),
+    ~readModels: array(module ReadModel.T),
+    ~scheduler: Scheduler.t
+  ) =>
+  component;
+
+module type T = {let make: maker;};
 
 let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
@@ -22,9 +36,10 @@ module Make =
        (
          EventCollectorAdapter: EventCollector.Adapter.Connector,
          QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
-       ) => {
+       )
+       : T => {
   type constructed;
-  type construct = (Component.t(core, outputs), string) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "../components/Component"] [@bs.new]
   external make:
@@ -34,7 +49,7 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(core, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -43,29 +58,33 @@ module Make =
       ~version: string,
       ~eventCollector: EventCollector.outputs,
       ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
-      ~services: Js.Dict.t(Service.outputs),
+      ~aggregates: Js.Dict.t(Aggregate.outputs),
+      ~readModels: Js.Dict.t(ReadModel.outputs),
       ~resources: resources
     ) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs:
-    (Component.t(core, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(core, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
+  };
+
+  type readModel = {
+    module_: (module ReadModel.T),
+    readModel: ReadModel.component,
   };
 
   let construct =
       (
         ~version,
         ~extensionPointMakers: extensionPointMakers,
-        ~serviceMakers: serviceMakers,
+        ~aggregates: array(module Aggregate.T),
+        ~readModels: array(module ReadModel.T),
         ~scheduler: Scheduler.t,
         self,
         _,
@@ -78,11 +97,39 @@ module Make =
 
     let resources: resources = Js.Dict.empty();
 
-    let services =
-      serviceMakers->Belt.Array.map(serviceMaker =>
-        serviceMaker(~opts, ~resources, ())
-      );
-    let servicesOutputs = services->Component.extractMultipleOutputs;
+    let readModels =
+      readModels
+      ->Belt.Array.map((module ReadModel: ReadModel.T) =>
+          (
+            ReadModel.Spec.name,
+            {
+              module_: (module ReadModel),
+              readModel: ReadModel.make(~opts, ~resources, ()),
+            },
+          )
+        )
+      ->Js.Dict.fromArray;
+    let readModelsOutputs =
+      readModels
+      ->Js.Dict.values
+      ->Belt.Array.map(({readModel}) => readModel)
+      ->Component.extractMultipleOutputs;
+
+    let aggregates =
+      aggregates->Belt.Array.map((module Aggregate: Aggregate.T) => {
+        let {module_, readModel} =
+          readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
+        module ReadModel = (val module_);
+        Aggregate.make(
+          ~eventsHandler=
+            (. id, events) =>
+              readModel->ReadModel.update(. id->Obj.magic, events->Obj.magic), // TODO : remove
+          ~opts,
+          ~resources,
+          (),
+        );
+      });
+    let aggregatesOutputs = aggregates->Component.extractMultipleOutputs;
 
     let extensionPoints =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
@@ -157,21 +204,15 @@ module Make =
       ~version,
       ~eventCollector=eventCollector->Component.extractOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
-      ~services=servicesOutputs->toDict,
+      ~aggregates=aggregatesOutputs->toDict,
+      ~readModels=readModelsOutputs->toDict,
       ~resources,
     )
     ->setOutputs(self, _);
   };
 
-  let make:
-    (
-      ~version: string,
-      ~extensionPointMakers: extensionPointMakers,
-      ~serviceMakers: serviceMakers,
-      ~scheduler: Scheduler.t
-    ) =>
-    Component.t(core, outputs) =
-    (~version, ~extensionPointMakers, ~serviceMakers, ~scheduler) =>
+  let make: maker =
+    (~version, ~extensionPointMakers, ~aggregates, ~readModels, ~scheduler) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name="Core",
@@ -179,7 +220,8 @@ module Make =
           construct(
             ~version,
             ~extensionPointMakers,
-            ~serviceMakers,
+            ~aggregates,
+            ~readModels,
             ~scheduler,
           ),
         ~opts=None,

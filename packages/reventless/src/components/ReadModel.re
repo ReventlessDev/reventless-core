@@ -2,7 +2,11 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.ReadModel;
 
-type outputs = {. "queryDb": QueryDb.outputs};
+type outputs = {
+  .
+  "name": string,
+  "queryDb": QueryDb.outputs,
+};
 
 type update('id, 'event) = Message.eventsHandler('id, 'event);
 
@@ -12,10 +16,12 @@ type update('id, 'event) = Message.eventsHandler('id, 'event);
 
 // type t('id, 'event) = functions('id, 'event);
 
+type t;
+type component = Component.t(t, outputs);
+
 module type T = {
   module Spec: View.Spec;
   module View: View.T with module Spec := Spec;
-  type t;
 
   /* Is this necessary? For test?
      let update:
@@ -26,7 +32,7 @@ module type T = {
        ) =>
        update(Spec.Id.t, Spec.event);
        */
-  let update: Component.t(t, outputs) => update(Spec.Id.t, Spec.event);
+  let update: component => update(Spec.Id.t, Spec.event);
 
   let make:
     (
@@ -34,7 +40,7 @@ module type T = {
       ~resources: resources,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 };
 
 module Make =
@@ -52,13 +58,11 @@ module Make =
        : (T with module Spec = Spec and module View = View) => {
   module Spec = Spec;
   module View = View;
-  type t;
 
   type update = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (component, string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -69,28 +73,27 @@ module Make =
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~resources: resources
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   module QueryDb =
     QueryDb.Make(Config, Spec, View, QueryDbStorage, QueryDbResolvers);
 
   [@bs.obj]
-  external makeOutputs: (~queryDb: Reventless.QueryDb.outputs) => outputs = "";
+  external makeOutputs:
+    (~name: string, ~queryDb: Reventless.QueryDb.outputs) => outputs =
+    "";
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
-  external setUpdate: (Component.t(t, outputs), update) => unit = "update";
-  [@bs.get] external update: Component.t(t, outputs) => update = "update";
+  [@bs.set] external setUpdate: (component, update) => unit = "update";
+  [@bs.get] external update: component => update = "update";
 
   open Reventless.View;
 
@@ -201,7 +204,7 @@ module Make =
         }
       );
 
-  let construct = (self, _, resources) => {
+  let construct = (self, name, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -217,7 +220,7 @@ module Make =
     )
     |> self->setUpdate;
 
-    makeOutputs(~queryDb=queryDb->Component.extractOutputs)
+    makeOutputs(~name, ~queryDb=queryDb->Component.extractOutputs)
     |> self->setOutputs;
   };
 

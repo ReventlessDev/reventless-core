@@ -6,21 +6,6 @@ let find: (array('a), string) => option('a) =
       resource##name == name ? Some(resource) : result
     );
 
-let commandTopicConnectorOfAllServices:
-  (array(Service.outputs), string) => option(resource) =
-  (services, serviceName) =>
-    services
-    ->find(serviceName)
-    ->Belt.Option.map(service => service##aggregate##commandTopic##connector);
-
-// NOTE: only works with 1 ReadModel per Service !
-let queryDbStorageOfAllServices:
-  (array(Service.outputs), string) => option(resource) =
-  (services, serviceName) =>
-    services
-    ->find(serviceName)
-    ->Belt.Option.map(service => service##readModel##queryDb##storage);
-
 let eventCollectorConnectorOfAllEventMappers:
   (array(EventMapper.outputs), string) => option(resource) =
   (eventMappers, eventMapperName) =>
