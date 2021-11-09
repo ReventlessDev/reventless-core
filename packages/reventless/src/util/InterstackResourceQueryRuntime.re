@@ -1,18 +1,6 @@
 include ResourceQueryRuntime;
 open InterstackResourceQuery;
 
-let commandTopicConnectorOfAllServicesExn = (services, serviceName) =>
-  services
-  ->Pulumi.Output.get
-  ->commandTopicConnectorOfAllServices(serviceName)
-  ->unwrapResource("CommandTopic", serviceName);
-
-let queryDbStorageOfAllServicesExn = (services, serviceName) =>
-  services
-  ->Pulumi.Output.get
-  ->queryDbStorageOfAllServices(serviceName)
-  ->unwrapResource("queryDbStorage", serviceName);
-
 let eventCollectorConnectorOfAllEventMappersExn =
     (eventMappersRef, eventMapperName) =>
   eventMappersRef

@@ -257,6 +257,7 @@ function Make(Config) {
                             var commandGenerator = Curry._4(CommandGenerator.make, childName, Curry._1(CommandTopic.publish, commandTopic), Caml_option.some(opts), /* () */0);
                             var self$1 = self;
                             var outputs = {
+                              name: name,
                               commandGenerator: Component$Reventless.extractOutputs(commandGenerator),
                               commandTopic: Component$Reventless.extractOutputs(commandTopic),
                               eventLog: Component$Reventless.extractOutputs(eventLog),

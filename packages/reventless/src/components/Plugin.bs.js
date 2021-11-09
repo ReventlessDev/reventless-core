@@ -46,17 +46,34 @@ function makeId(name, version) {
 
 function Make(EventCollectorAdapter) {
   return (function (QueryEngineAdapter) {
-      var construct = function (version, heartbeatInterval, extensionPointMakers, extensionMakers, serviceMakers, taskMakers, eventMapperMakers, scheduler, self, name) {
+      var construct = function (version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, eventMapperMakers, scheduler, self, name) {
         var opts = {
           parent: self
         };
         var id = makeId(name, version);
         var resources = { };
-        var services = Belt_Array.map(serviceMakers, (function (serviceMaker) {
-                return Curry._3(serviceMaker, Caml_option.some(opts), resources, /* () */0);
+        var readModels$1 = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
+                    return /* tuple */[
+                            ReadModel.Spec.name,
+                            /* record */[
+                              /* module_ */ReadModel,
+                              /* readModel */Curry._3(ReadModel.make, Caml_option.some(opts), resources, /* () */0)
+                            ]
+                          ];
+                  })));
+        var readModelsOutputs = Component$Reventless.extractMultipleOutputs(Belt_Array.map(Js_dict.values(readModels$1), (function (param) {
+                    return param[/* readModel */1];
+                  })));
+        var aggregates$1 = Belt_Array.map(aggregates, (function (Aggregate) {
+                var match = readModels$1[Aggregate.Spec.name];
+                var readModel = match[/* readModel */1];
+                var module_ = match[/* module_ */0];
+                return Curry._4(Aggregate.make, (function (id, events) {
+                              return Curry._1(module_.update, readModel)(id, events);
+                            }), Caml_option.some(opts), resources, /* () */0);
               }));
-        var servicesOutputs = Component$Reventless.extractMultipleOutputs(services);
-        var wrappedPluginOutputs = (
+        var aggregatesOutputs = Component$Reventless.extractMultipleOutputs(aggregates$1);
+        var pureOutputs = (
             Interstack$Reventless.coreStackOutput !== undefined ? Caml_option.valFromOption(Interstack$Reventless.coreStackOutput) : Js_exn.raiseError("No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!")
           ).apply((function (coreStackOutput) {
                 var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(Belt_Option.getExn(coreStackOutput.extensionPoints), PluginExtensionPointSpec$ReventlessSpec.name);
@@ -310,7 +327,7 @@ function Make(EventCollectorAdapter) {
                 var eventMappersOutputs = Component$Reventless.extractMultipleOutputs(Belt_Array.map(eventMapperMakers, (function (eventMapperMaker) {
                             return Curry._6(eventMapperMaker, queryEngine, 128, undefined, Caml_option.some(opts), resources, /* () */0);
                           })));
-                var resolvers = Belt_Array.concatMany(Belt_Array.map(ResourceQueryDeploytime$Reventless.allResolversMakers(servicesOutputs), (function (resolverMaker) {
+                var resolvers = Belt_Array.concatMany(Belt_Array.map(ResourceQueryDeploytime$Reventless.allResolversMakers(readModelsOutputs), (function (resolverMaker) {
                             return Curry._1(resolverMaker, resources);
                           })));
                 var collectAggregateNames = function (exs) {
@@ -429,7 +446,8 @@ function Make(EventCollectorAdapter) {
                         /* eventCollector */eventCollectorOutputs,
                         /* extensionPoints */toDict(extensionPointsOutputs),
                         /* extensions */toDict(extensionsOutputs),
-                        /* services */toDict(servicesOutputs),
+                        /* aggregates */toDict(aggregatesOutputs),
+                        /* readModels */toDict(readModelsOutputs),
                         /* tasks */toDict(tasksOutputs[0]),
                         /* eventMappers */toDict(eventMappersOutputs),
                         /* resolvers */resolvers,
@@ -442,60 +460,63 @@ function Make(EventCollectorAdapter) {
               }));
         var self$1 = self;
         var outputs = {
-          id: wrappedPluginOutputs.apply((function (outputs) {
+          id: pureOutputs.apply((function (outputs) {
                   return outputs[/* id */0];
                 })),
-          version: wrappedPluginOutputs.apply((function (outputs) {
+          version: pureOutputs.apply((function (outputs) {
                   return outputs[/* version */1];
                 })),
-          heartbeatInterval: wrappedPluginOutputs.apply((function (outputs) {
+          heartbeatInterval: pureOutputs.apply((function (outputs) {
                   return outputs[/* heartbeatInterval */2];
                 })),
-          eventCollector: wrappedPluginOutputs.apply((function (outputs) {
+          eventCollector: pureOutputs.apply((function (outputs) {
                   return outputs[/* eventCollector */3];
                 })),
-          extensionPoints: wrappedPluginOutputs.apply((function (outputs) {
+          extensionPoints: pureOutputs.apply((function (outputs) {
                   return outputs[/* extensionPoints */4];
                 })),
-          extensions: wrappedPluginOutputs.apply((function (outputs) {
+          extensions: pureOutputs.apply((function (outputs) {
                   return outputs[/* extensions */5];
                 })),
-          services: wrappedPluginOutputs.apply((function (outputs) {
-                  return outputs[/* services */6];
+          aggregates: pureOutputs.apply((function (outputs) {
+                  return outputs[/* aggregates */6];
                 })),
-          tasks: wrappedPluginOutputs.apply((function (outputs) {
-                  return outputs[/* tasks */7];
+          readModels: pureOutputs.apply((function (outputs) {
+                  return outputs[/* readModels */7];
                 })),
-          eventMappers: wrappedPluginOutputs.apply((function (outputs) {
-                  return outputs[/* eventMappers */8];
+          tasks: pureOutputs.apply((function (outputs) {
+                  return outputs[/* tasks */8];
                 })),
-          resolvers: wrappedPluginOutputs.apply((function (outputs) {
-                  return outputs[/* resolvers */9];
+          eventMappers: pureOutputs.apply((function (outputs) {
+                  return outputs[/* eventMappers */9];
                 })),
-          heartbeat: wrappedPluginOutputs.apply((function (outputs) {
-                  return outputs[/* heartbeat */10];
+          resolvers: pureOutputs.apply((function (outputs) {
+                  return outputs[/* resolvers */10];
                 })),
-          serviceNameToExtensionPointsMapping: wrappedPluginOutputs.apply((function (outputs) {
-                  return outputs[/* serviceNameToExtensionPointsMapping */11];
+          heartbeat: pureOutputs.apply((function (outputs) {
+                  return outputs[/* heartbeat */11];
                 })),
-          outgoingServiceNameToExtensionsMapping: wrappedPluginOutputs.apply((function (outputs) {
-                  return outputs[/* outgoingServiceNameToExtensionsMapping */12];
+          serviceNameToExtensionPointsMapping: pureOutputs.apply((function (outputs) {
+                  return outputs[/* serviceNameToExtensionPointsMapping */12];
                 })),
-          incomingServiceNameToExtensionsMapping: wrappedPluginOutputs.apply((function (outputs) {
-                  return outputs[/* incomingServiceNameToExtensionsMapping */13];
+          outgoingServiceNameToExtensionsMapping: pureOutputs.apply((function (outputs) {
+                  return outputs[/* outgoingServiceNameToExtensionsMapping */13];
                 })),
-          resources: wrappedPluginOutputs.apply((function (outputs) {
-                  return outputs[/* resources */14];
+          incomingServiceNameToExtensionsMapping: pureOutputs.apply((function (outputs) {
+                  return outputs[/* incomingServiceNameToExtensionsMapping */14];
+                })),
+          resources: pureOutputs.apply((function (outputs) {
+                  return outputs[/* resources */15];
                 }))
         };
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (name, version, heartbeatInterval, extensionPointMakers, extensionMakers, serviceMakers, taskMakers, eventMapperMakers, scheduler, opts, _unit) {
+      var make = function (name, version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, eventMapperMakers, scheduler, opts, _unit) {
         var prim = ComponentType$Reventless.toString(/* Plugin */2);
         var prim$1 = name;
         var prim$2 = function (param, param$1) {
-          return construct(version, heartbeatInterval, extensionPointMakers, extensionMakers, serviceMakers, taskMakers, eventMapperMakers, scheduler, param, param$1);
+          return construct(version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, eventMapperMakers, scheduler, param, param$1);
         };
         var prim$3 = opts;
         return new Component.default(prim, prim$1, prim$2, prim$3);

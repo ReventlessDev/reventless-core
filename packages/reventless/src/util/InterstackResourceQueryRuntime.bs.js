@@ -6,14 +6,6 @@ var ResourceQueryRuntime$Reventless = require("./ResourceQueryRuntime.bs.js");
 var OutputFailsafeRuntime$Reventless = require("./OutputFailsafeRuntime.bs.js");
 var InterstackResourceQuery$Reventless = require("./InterstackResourceQuery.bs.js");
 
-function commandTopicConnectorOfAllServicesExn(services, serviceName) {
-  return InterstackResourceQuery$Reventless.unwrapResource(ResourceQueryRuntime$Reventless.commandTopicConnectorOfAllServices(services.get(), serviceName), "CommandTopic", serviceName);
-}
-
-function queryDbStorageOfAllServicesExn(services, serviceName) {
-  return InterstackResourceQuery$Reventless.unwrapResource(ResourceQueryRuntime$Reventless.queryDbStorageOfAllServices(services.get(), serviceName), "queryDbStorage", serviceName);
-}
-
 function eventCollectorConnectorOfAllEventMappersExn(eventMappersRef, eventMapperName) {
   return InterstackResourceQuery$Reventless.unwrapResource(ResourceQueryRuntime$Reventless.eventCollectorConnectorOfAllEventMappers(eventMappersRef.get(), eventMapperName), "EventCollector", eventMapperName);
 }
@@ -32,18 +24,10 @@ function bucketNameOfTaskExn(tasksRef, taskName) {
 
 var find = ResourceQueryRuntime$Reventless.find;
 
-var commandTopicConnectorOfAllServices = ResourceQueryRuntime$Reventless.commandTopicConnectorOfAllServices;
-
-var queryDbStorageOfAllServices = ResourceQueryRuntime$Reventless.queryDbStorageOfAllServices;
-
 var eventCollectorConnectorOfAllEventMappers = ResourceQueryRuntime$Reventless.eventCollectorConnectorOfAllEventMappers;
 
 exports.find = find;
-exports.commandTopicConnectorOfAllServices = commandTopicConnectorOfAllServices;
-exports.queryDbStorageOfAllServices = queryDbStorageOfAllServices;
 exports.eventCollectorConnectorOfAllEventMappers = eventCollectorConnectorOfAllEventMappers;
-exports.commandTopicConnectorOfAllServicesExn = commandTopicConnectorOfAllServicesExn;
-exports.queryDbStorageOfAllServicesExn = queryDbStorageOfAllServicesExn;
 exports.eventCollectorConnectorOfAllEventMappersExn = eventCollectorConnectorOfAllEventMappersExn;
 exports.bucketNameOfAllTasks = bucketNameOfAllTasks;
 exports.bucketNameOfTaskExn = bucketNameOfTaskExn;

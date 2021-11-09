@@ -23,19 +23,32 @@ function toDict(els) {
 
 function Make(EventCollectorAdapter) {
   return (function (QueryEngineAdapter) {
-      var setOutputs = function (self, outputs) {
-        self.setOutputs(outputs);
-        return self.registerOutputs(outputs);
-      };
-      var construct = function (version, extensionPointMakers, serviceMakers, scheduler, self, param) {
+      var construct = function (version, extensionPointMakers, aggregates, readModels, scheduler, self, param) {
         var opts = {
           parent: self
         };
         var resources = { };
-        var services = Belt_Array.map(serviceMakers, (function (serviceMaker) {
-                return Curry._3(serviceMaker, Caml_option.some(opts), resources, /* () */0);
+        var readModels$1 = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
+                    return /* tuple */[
+                            ReadModel.Spec.name,
+                            /* record */[
+                              /* module_ */ReadModel,
+                              /* readModel */Curry._3(ReadModel.make, Caml_option.some(opts), resources, /* () */0)
+                            ]
+                          ];
+                  })));
+        var readModelsOutputs = Component$Reventless.extractMultipleOutputs(Belt_Array.map(Js_dict.values(readModels$1), (function (param) {
+                    return param[/* readModel */1];
+                  })));
+        var aggregates$1 = Belt_Array.map(aggregates, (function (Aggregate) {
+                var match = readModels$1[Aggregate.Spec.name];
+                var readModel = match[/* readModel */1];
+                var module_ = match[/* module_ */0];
+                return Curry._4(Aggregate.make, (function (id, events) {
+                              return Curry._1(module_.update, readModel)(id, events);
+                            }), Caml_option.some(opts), resources, /* () */0);
               }));
-        var servicesOutputs = Component$Reventless.extractMultipleOutputs(services);
+        var aggregatesOutputs = Component$Reventless.extractMultipleOutputs(aggregates$1);
         var extensionPoints = Belt_Array.map(extensionPointMakers, (function (extensionPointMaker) {
                 return Curry._5(extensionPointMaker, scheduler, Curry._1(QueryEngineAdapter.make, resources), Caml_option.some(opts), resources, /* () */0);
               }));
@@ -82,26 +95,28 @@ function Make(EventCollectorAdapter) {
               resources,
               /* () */0
             ]);
-        return setOutputs(self, {
-                    version: version,
-                    eventCollector: Component$Reventless.extractOutputs(eventCollector),
-                    extensionPoints: toDict(extensionPointsOutputs),
-                    services: toDict(servicesOutputs),
-                    resources: resources
-                  });
+        var self$1 = self;
+        var outputs = {
+          version: version,
+          eventCollector: Component$Reventless.extractOutputs(eventCollector),
+          extensionPoints: toDict(extensionPointsOutputs),
+          aggregates: toDict(aggregatesOutputs),
+          readModels: toDict(readModelsOutputs),
+          resources: resources
+        };
+        self$1.setOutputs(outputs);
+        return self$1.registerOutputs(outputs);
       };
-      var make = function (version, extensionPointMakers, serviceMakers, scheduler) {
+      var make = function (version, extensionPointMakers, aggregates, readModels, scheduler) {
         var prim = ComponentType$Reventless.toString(/* Core */18);
         var prim$1 = "Core";
         var prim$2 = function (param, param$1) {
-          return construct(version, extensionPointMakers, serviceMakers, scheduler, param, param$1);
+          return construct(version, extensionPointMakers, aggregates, readModels, scheduler, param, param$1);
         };
         var prim$3 = undefined;
         return new Component.default(prim, prim$1, prim$2, prim$3);
       };
       return {
-              setOutputs: setOutputs,
-              construct: construct,
               make: make
             };
     });

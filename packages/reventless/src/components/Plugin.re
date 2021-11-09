@@ -11,7 +11,8 @@ type outputs = {
   "eventCollector": Pulumi.Output.t(EventCollector.outputs),
   "extensionPoints": Pulumi.Output.t(Js.Dict.t(ExtensionPoint.outputs)),
   "extensions": Pulumi.Output.t(Js.Dict.t(Extension.outputs)),
-  "services": Pulumi.Output.t(Js.Dict.t(Service.outputs)),
+  "aggregates": Pulumi.Output.t(Js.Dict.t(Aggregate.outputs)),
+  "readModels": Pulumi.Output.t(Js.Dict.t(ReadModel.outputs)),
   "tasks": Pulumi.Output.t(Js.Dict.t(Task.outputs)),
   "eventMappers": Pulumi.Output.t(Js.Dict.t(EventMapper.outputs)),
   "resolvers": Pulumi.Output.t(array(resource)),
@@ -25,7 +26,8 @@ type outputs = {
   "resources": Pulumi.Output.t(resources),
 };
 
-type plugin; // TODO: rename to t - after refactoring
+type t;
+type component = Component.t(t, outputs);
 
 type maker =
   (
@@ -34,14 +36,15 @@ type maker =
     ~heartbeatInterval: int,
     ~extensionPointMakers: array(ExtensionPoint.maker),
     ~extensionMakers: array(Extension.maker),
-    ~serviceMakers: array(Service.maker),
+    ~aggregates: array(module Aggregate.T),
+    ~readModels: array(module ReadModel.T),
     ~taskMakers: array(Task.maker),
     ~eventMapperMakers: array(EventMapper.maker),
     ~scheduler: Scheduler.t,
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit
   ) =>
-  Component.t(plugin, outputs);
+  component;
 
 module type T = {let make: maker;};
 
@@ -57,7 +60,7 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct = (Component.t(plugin, outputs), string) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -67,7 +70,7 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(plugin, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -79,7 +82,8 @@ module Make =
       ~eventCollector: Pulumi.Output.t(EventCollector.outputs),
       ~extensionPoints: Pulumi.Output.t(Js.Dict.t(ExtensionPoint.outputs)),
       ~extensions: Pulumi.Output.t(Js.Dict.t(Extension.outputs)),
-      ~services: Pulumi.Output.t(Js.Dict.t(Service.outputs)),
+      ~aggregates: Pulumi.Output.t(Js.Dict.t(Aggregate.outputs)),
+      ~readModels: Pulumi.Output.t(Js.Dict.t(ReadModel.outputs)),
       ~tasks: Pulumi.Output.t(Js.Dict.t(Task.outputs)),
       ~eventMappers: Pulumi.Output.t(Js.Dict.t(EventMapper.outputs)),
       ~resolvers: Pulumi.Output.t(array(resource)),
@@ -112,7 +116,8 @@ module Make =
     eventCollector: EventCollector.outputs,
     extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
     extensions: Js.Dict.t(Extension.outputs),
-    services: Js.Dict.t(Service.outputs),
+    aggregates: Js.Dict.t(Aggregate.outputs),
+    readModels: Js.Dict.t(ReadModel.outputs),
     tasks: Js.Dict.t(Task.outputs),
     eventMappers: Js.Dict.t(EventMapper.outputs),
     resolvers: array(resource),
@@ -127,15 +132,17 @@ module Make =
   };
 
   [@bs.send]
-  external registerOutputs:
-    (Component.t(plugin, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(plugin, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
+  };
+
+  type readModel = {
+    module_: (module ReadModel.T),
+    readModel: ReadModel.component,
   };
 
   let construct =
@@ -144,7 +151,8 @@ module Make =
         ~heartbeatInterval: int,
         ~extensionPointMakers: array(ExtensionPoint.maker),
         ~extensionMakers: array(Extension.maker),
-        ~serviceMakers: array(Service.maker),
+        ~aggregates: array(module Aggregate.T),
+        ~readModels: array(module ReadModel.T),
         ~taskMakers: array(Task.maker),
         ~eventMapperMakers: array(EventMapper.maker),
         ~scheduler: Scheduler.t,
@@ -161,13 +169,41 @@ module Make =
 
     let resources: resources = Js.Dict.empty();
 
-    let services =
-      serviceMakers->Belt.Array.map(serviceMaker =>
-        serviceMaker(~opts, ~resources, ())
-      );
-    let servicesOutputs = services->Component.extractMultipleOutputs;
+    let readModels =
+      readModels
+      ->Belt.Array.map((module ReadModel: ReadModel.T) =>
+          (
+            ReadModel.Spec.name,
+            {
+              module_: (module ReadModel),
+              readModel: ReadModel.make(~opts, ~resources, ()),
+            },
+          )
+        )
+      ->Js.Dict.fromArray;
+    let readModelsOutputs =
+      readModels
+      ->Js.Dict.values
+      ->Belt.Array.map(({readModel}) => readModel)
+      ->Component.extractMultipleOutputs;
 
-    let wrappedPluginOutputs =
+    let aggregates =
+      aggregates->Belt.Array.map((module Aggregate: Aggregate.T) => {
+        let {module_, readModel} =
+          readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
+        module ReadModel = (val module_);
+        Aggregate.make(
+          ~eventsHandler=
+            (. id, events) =>
+              readModel->ReadModel.update(. id->Obj.magic, events->Obj.magic), // TODO : remove
+          ~opts,
+          ~resources,
+          (),
+        );
+      });
+    let aggregatesOutputs = aggregates->Component.extractMultipleOutputs;
+
+    let pureOutputs =
       (
         switch (Interstack.coreStackOutput) {
         | Some(coreStackOutput) => coreStackOutput
@@ -619,7 +655,7 @@ module Make =
             ->Component.extractMultipleOutputs;
 
           let resolvers =
-            servicesOutputs
+            readModelsOutputs
             ->ResourceQueryDeploytime.allResolversMakers
             ->Belt.Array.map(resolverMaker => resolverMaker(resources))
             ->Belt.Array.concatMany;
@@ -806,7 +842,8 @@ module Make =
             eventCollector: eventCollectorOutputs,
             extensionPoints: extensionPointsOutputs->toDict,
             extensions: extensionsOutputs->toDict,
-            services: servicesOutputs->toDict,
+            aggregates: aggregatesOutputs->toDict,
+            readModels: readModelsOutputs->toDict,
             tasks: (tasksOutputs^)->toDict,
             eventMappers: eventMappersOutputs->toDict,
             resolvers,
@@ -818,57 +855,41 @@ module Make =
           };
         });
     makeOutputs(
-      ~id=wrappedPluginOutputs->Pulumi.Output.apply(outputs => outputs.id),
-      ~version=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs => outputs.version),
+      ~id=pureOutputs->Pulumi.Output.apply(outputs => outputs.id),
+      ~version=pureOutputs->Pulumi.Output.apply(outputs => outputs.version),
       ~heartbeatInterval=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
-          outputs.heartbeatInterval
-        ),
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeatInterval),
       ~eventCollector=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
-          outputs.eventCollector
-        ),
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.eventCollector),
       ~extensionPoints=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
-          outputs.extensionPoints
-        ),
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.extensionPoints),
       ~extensions=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
-          outputs.extensions
-        ),
-      ~services=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs => outputs.services),
-      ~tasks=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.extensions),
+      ~aggregates=
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),
+      ~readModels=
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
+      ~tasks=pureOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
       ~eventMappers=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
-          outputs.eventMappers
-        ),
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.eventMappers),
       ~resolvers=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
-          outputs.resolvers
-        ),
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
       ~heartbeat=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
-          outputs.heartbeat
-        ),
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
       ~serviceNameToExtensionPointsMapping=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
+        pureOutputs->Pulumi.Output.apply(outputs =>
           outputs.serviceNameToExtensionPointsMapping
         ),
       ~outgoingServiceNameToExtensionsMapping=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
+        pureOutputs->Pulumi.Output.apply(outputs =>
           outputs.outgoingServiceNameToExtensionsMapping
         ),
       ~incomingServiceNameToExtensionsMapping=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
+        pureOutputs->Pulumi.Output.apply(outputs =>
           outputs.incomingServiceNameToExtensionsMapping
         ),
       ~resources=
-        wrappedPluginOutputs->Pulumi.Output.apply(outputs =>
-          outputs.resources
-        ),
+        pureOutputs->Pulumi.Output.apply(outputs => outputs.resources),
     )
     ->setOutputs(self, _);
   };
@@ -880,7 +901,8 @@ module Make =
       ~heartbeatInterval,
       ~extensionPointMakers,
       ~extensionMakers,
-      ~serviceMakers,
+      ~aggregates,
+      ~readModels,
       ~taskMakers,
       ~eventMapperMakers,
       ~scheduler,
@@ -896,7 +918,8 @@ module Make =
             ~heartbeatInterval,
             ~extensionPointMakers,
             ~extensionMakers,
-            ~serviceMakers,
+            ~aggregates,
+            ~readModels,
             ~taskMakers,
             ~eventMapperMakers,
             ~scheduler,
