@@ -12,6 +12,7 @@ var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Component = require("./Component");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -266,7 +267,8 @@ function Make(Config) {
                                               command_encode: Spec.command_encode,
                                               command_decode: Spec.command_decode
                                             })(EventCollector)(EventMappings);
-                                    var eventMapper = Curry._6(EventMapper.make, queryEngine, undefined, undefined, Caml_option.some(opts), resources, /* () */0);
+                                    var match = EventMappings.mappings.length !== 0;
+                                    var eventMapper = match ? Caml_option.some(Curry._6(EventMapper.make, queryEngine, undefined, undefined, Caml_option.some(opts), resources, /* () */0)) : undefined;
                                     var self$1 = self;
                                     var outputs = {
                                       name: name,
@@ -274,7 +276,7 @@ function Make(Config) {
                                       commandTopic: Component$Reventless.extractOutputs(commandTopic),
                                       eventLog: Component$Reventless.extractOutputs(eventLog),
                                       eventTopic: Component$Reventless.extractOutputs(eventTopic),
-                                      eventMapper: Component$Reventless.extractOutputs(eventMapper)
+                                      eventMapper: Belt_Option.map(eventMapper, Component$Reventless.extractOutputs)
                                     };
                                     self$1.setOutputs(outputs);
                                     return self$1.registerOutputs(outputs);

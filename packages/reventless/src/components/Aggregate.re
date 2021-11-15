@@ -10,7 +10,7 @@ type outputs = {
   "commandTopic": CommandTopic.outputs,
   "eventLog": EventLog.outputs,
   "eventTopic": EventTopic.outputs,
-  "eventMapper": EventMapper.outputs,
+  "eventMapper": option(EventMapper.outputs),
 };
 
 type name = string;
@@ -73,7 +73,7 @@ module Make =
       ~commandTopic: CommandTopic.outputs,
       ~eventLog: EventLog.outputs,
       ~eventTopic: EventTopic.outputs,
-      ~eventMapper: EventMapper.outputs
+      ~eventMapper: option(EventMapper.outputs)
     ) =>
     outputs =
     "";
@@ -389,7 +389,9 @@ module Make =
 
     module EventMapper =
       Reventless.EventMapper.Make(Spec, EventCollector, EventMappings);
-    let eventMapper = EventMapper.make(~queryEngine, ~opts, ~resources, ());
+    let eventMapper =
+      EventMappings.mappings->Belt.Array.length > 0
+        ? Some(EventMapper.make(~queryEngine, ~opts, ~resources, ())) : None;
 
     makeOutputs(
       ~name,
@@ -397,7 +399,7 @@ module Make =
       ~commandTopic=commandTopic->Component.extractOutputs,
       ~eventLog=eventLog->Component.extractOutputs,
       ~eventTopic=eventTopic->Component.extractOutputs,
-      ~eventMapper=eventMapper->Component.extractOutputs,
+      ~eventMapper=eventMapper->Belt.Option.map(Component.extractOutputs),
     )
     |> self->setOutputs;
   };
