@@ -187,12 +187,15 @@ module Make =
       ->Belt.Array.map(({readModel}) => readModel)
       ->Component.extractMultipleOutputs;
 
+    let queryEngine = QueryEngineAdapter.make(resources);
+
     let aggregates =
       aggregates->Belt.Array.map((module Aggregate: Aggregate.T) => {
         let {module_, readModel} =
           readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
         module ReadModel = (val module_);
         Aggregate.make(
+          ~queryEngine,
           ~eventsHandler=
             (. id, events) =>
               readModel->ReadModel.update(. id->Obj.magic, events->Obj.magic), // TODO : remove
@@ -235,8 +238,6 @@ module Make =
             ->Adapter.toResource,
             ReventlessSpec.PluginExtensionPointSpec.name,
           );
-
-          let queryEngine = QueryEngineAdapter.make(resources);
 
           let extensionPoints =
             extensionPointMakers->Belt.Array.map(extensionPointMaker =>
@@ -644,13 +645,7 @@ module Make =
           let eventMappersOutputs =
             eventMapperMakers
             ->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
-                eventMapperMaker(
-                  ~queryEngine,
-                  ~memorySize=128,
-                  ~opts=Some(opts),
-                  ~resources,
-                  (),
-                )
+                eventMapperMaker(~queryEngine, ~opts, ~resources, ())
               )
             ->Component.extractMultipleOutputs;
 

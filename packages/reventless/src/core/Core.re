@@ -115,12 +115,15 @@ module Make =
       ->Belt.Array.map(({readModel}) => readModel)
       ->Component.extractMultipleOutputs;
 
+    let queryEngine = QueryEngineAdapter.make(resources);
+
     let aggregates =
       aggregates->Belt.Array.map((module Aggregate: Aggregate.T) => {
         let {module_, readModel} =
           readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
         module ReadModel = (val module_);
         Aggregate.make(
+          ~queryEngine,
           ~eventsHandler=
             (. id, events) =>
               readModel->ReadModel.update(. id->Obj.magic, events->Obj.magic), // TODO : remove
@@ -135,7 +138,7 @@ module Make =
       extensionPointMakers->Belt.Array.map(extensionPointMaker =>
         extensionPointMaker(
           ~scheduler,
-          ~queryEngine=QueryEngineAdapter.make(resources),
+          ~queryEngine,
           ~opts=Some(opts),
           ~resources,
           (),

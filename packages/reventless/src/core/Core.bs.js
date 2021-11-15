@@ -40,17 +40,18 @@ function Make(EventCollectorAdapter) {
         var readModelsOutputs = Component$Reventless.extractMultipleOutputs(Belt_Array.map(Js_dict.values(readModels$1), (function (param) {
                     return param[/* readModel */1];
                   })));
+        var queryEngine = Curry._1(QueryEngineAdapter.make, resources);
         var aggregates$1 = Belt_Array.map(aggregates, (function (Aggregate) {
                 var match = readModels$1[Aggregate.Spec.name];
                 var readModel = match[/* readModel */1];
                 var module_ = match[/* module_ */0];
-                return Curry._4(Aggregate.make, (function (id, events) {
+                return Curry._5(Aggregate.make, queryEngine, (function (id, events) {
                               return Curry._1(module_.update, readModel)(id, events);
                             }), Caml_option.some(opts), resources, /* () */0);
               }));
         var aggregatesOutputs = Component$Reventless.extractMultipleOutputs(aggregates$1);
         var extensionPoints = Belt_Array.map(extensionPointMakers, (function (extensionPointMaker) {
-                return Curry._5(extensionPointMaker, scheduler, Curry._1(QueryEngineAdapter.make, resources), Caml_option.some(opts), resources, /* () */0);
+                return Curry._5(extensionPointMaker, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
               }));
         var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints);
         var aggregateNames = Belt_SetString.toArray(Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {

@@ -13,33 +13,34 @@ type eventMapper;
 type maker =
   (
     ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~memorySize: int,
+    ~memorySize: int=?,
     ~timeout: int=?,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
+    ~opts: Pulumi.ComponentResource.Options.t=?,
     ~resources: resources,
     unit
   ) =>
   Component.t(eventMapper, outputs);
 
-module type T = {
+module type T = {let make: maker;};
+
+module type Mappings = {
   module Target: ReventlessSpec.EventMapping.Target;
   module type Mapping =
     ReventlessSpec.EventMapping.T with module Target := Target;
-  let make: (~counter: (module Counter.T)=?, array(module Mapping)) => maker;
+  let mappings: array(module Mapping);
+  let counter: option(module Counter.T);
 };
 
 module Make =
        (
          Target: ReventlessSpec.EventMapping.Target,
          EventCollector: EventCollector.T,
+         Mappings: Mappings with module Target := Target,
        )
-       : (T with module Target := Target) => {
+       : T => {
   type constructed;
   type construct =
     (Component.t(eventMapper, outputs), string, resources) => constructed;
-
-  module type Mapping =
-    ReventlessSpec.EventMapping.T with module Target := Target;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -86,7 +87,7 @@ module Make =
       switch (meta) {
       | Some(Belt.Result.Ok(eventMeta)) =>
         let mapping =
-          mappings->Belt.Array.getBy((module Mapping: Mapping) =>
+          mappings->Belt.Array.getBy((module Mapping: Mappings.Mapping) =>
             Mapping.Source.name == eventMeta.service
           );
         switch (mapping) {
@@ -367,17 +368,7 @@ module Make =
       );
     };
 
-  let construct =
-      (
-        ~counter: option(module Counter.T),
-        ~mappings: array(module Mapping),
-        ~queryEngine,
-        ~memorySize,
-        ~timeout,
-        self,
-        name,
-        resources,
-      ) => {
+  let construct = (~queryEngine, ~memorySize, ~timeout, self, name, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -388,7 +379,7 @@ module Make =
       resources->Util.Aggregate.commandTopicConnectorResource(service);
 
     let (count, setCounterTarget, counterOutputs) =
-      counter->Belt.Option.mapWithDefault(
+      Mappings.counter->Belt.Option.mapWithDefault(
         (
           _items => {
             Js.log("No counter deployed, but trying to use counter.")
@@ -405,7 +396,7 @@ module Make =
             Counter.make(
               ~name,
               ~counterEventsHandler=
-                counterEventsHandler(queue, mappings, queryEngine),
+                counterEventsHandler(queue, Mappings.mappings, queryEngine),
               ~opts,
               ~resources,
               (),
@@ -422,7 +413,8 @@ module Make =
       EventCollector.make(
         ~name=Target.name->ComponentType.name(componentType),
         ~aggregateNames=
-          mappings->Belt.Array.keepMap((module Mapping: Mapping) =>
+          Mappings.mappings->Belt.Array.keepMap(
+            (module Mapping: Mappings.Mapping) =>
             if (Mapping.Source.name != Counter.Source.name) {
               Some(Mapping.Source.name);
             } else {
@@ -432,7 +424,7 @@ module Make =
         ~eventsHandler=
           eventCollectorEventsHandler(
             queue,
-            mappings,
+            Mappings.mappings,
             queryEngine,
             count,
             setCounterTarget,
@@ -454,31 +446,19 @@ module Make =
 
   let make:
     (
-      ~counter: (module Counter.T)=?,
-      array(module Mapping),
       ~queryEngine: ReventlessSpec.QueryEngine.t,
-      ~memorySize: int,
+      ~memorySize: int=?,
       ~timeout: int=?,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~opts: Pulumi.ComponentResource.Options.t=?,
       ~resources: resources,
       unit
     ) =>
     Component.t(eventMapper, outputs) =
-    (
-      ~counter=?,
-      mappings,
-      ~queryEngine,
-      ~memorySize,
-      ~timeout=180,
-      ~opts,
-      ~resources,
-      _,
-    ) => {
+    (~queryEngine, ~memorySize=128, ~timeout=180, ~opts=?, ~resources, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Target.name,
-        ~construct=
-          construct(~mappings, ~counter, ~queryEngine, ~memorySize, ~timeout),
+        ~construct=construct(~queryEngine, ~memorySize, ~timeout),
         ~opts,
         ~resources,
       );

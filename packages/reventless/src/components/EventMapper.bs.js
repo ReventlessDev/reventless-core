@@ -19,312 +19,315 @@ var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 
 function Make(Target) {
   return (function (EventCollector) {
-      var service = Target.name;
-      var findMapping = function (mappings, eventObj) {
-        return Belt_Option.flatMapU(eventObj, (function (eventObj$prime) {
-                      var meta = Belt_Option.map(Js_dict.get(eventObj$prime, "meta"), Message$Reventless.meta_decode);
-                      if (meta !== undefined) {
-                        var match = meta;
-                        if (match.tag) {
-                          console.log("EventMapper.map: Couldn't decode meta:", match[0]);
-                          return ;
-                        } else {
-                          var eventMeta = match[0];
-                          var mapping = Belt_Array.getBy(mappings, (function (Mapping) {
-                                  return Mapping.Source.name === eventMeta[/* service */0];
-                                }));
-                          if (mapping !== undefined) {
-                            return /* tuple */[
-                                    eventObj$prime,
-                                    eventMeta,
-                                    mapping
-                                  ];
-                          } else {
-                            console.log("EventMapper.map: No mapping available for service:", eventMeta[/* service */0]);
-                            return ;
-                          }
-                        }
-                      } else {
-                        console.log("EventMapper.map: Invalid JSON object");
-                        return ;
-                      }
-                    }));
-      };
-      var makeEntry = function (queue, idx, commandId, meta, command, delay) {
-        var match = idx === 0;
-        var commandMeta_001 = /* time */Message$Reventless.nowAsISOString(/* () */0);
-        var commandMeta_002 = /* ip */meta[/* ip */2];
-        var commandMeta_003 = /* user */meta[/* user */3];
-        var commandMeta_004 = /* msgId */Message$Reventless.uuid(/* () */0);
-        var commandMeta_005 = /* correlationId */match ? meta[/* correlationId */5] : Message$Reventless.uuid(/* () */0);
-        var commandMeta = /* record */[
-          /* service */service,
-          commandMeta_001,
-          commandMeta_002,
-          commandMeta_003,
-          commandMeta_004,
-          commandMeta_005
-        ];
-        var commandStr = JSON.stringify(Curry._1(Target.command_encode, command));
-        var source = meta[/* service */0];
-        console.log("EventMapping from Aggregate " + (String(source) + (" to Aggregate " + (String(service) + (": Publishing command: " + (String(commandStr) + (" id: " + (String(commandId) + ""))))))));
-        var messageBody = JSON.stringify(Message$Reventless.command$prime_encode(Target.Id.t_encode, Target.command_encode, /* record */[
-                  /* id */commandId,
-                  /* meta */commandMeta,
-                  /* command */command
-                ]));
-        var match$1 = queue.service;
-        if (match$1 === "SQS_FIFO") {
-          return SQS$AwsSdk.makeBatchEntryFifo(Curry._1(Target.Id.toString, commandId), messageBody, commandMeta_004, delay);
-        } else {
-          return SQS$AwsSdk.makeBatchEntry(messageBody, commandMeta_004, delay);
-        }
-      };
-      var processMappingActions = function (actions, queue, meta) {
-        return Belt_Array.mapWithIndex(actions, (function (idx, action) {
-                      switch (action.tag | 0) {
-                        case /* Publish */0 :
-                            return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(queue, idx, action[0], meta, action[1], undefined)])]);
-                        case /* PublishDelayed */1 :
-                            return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(queue, idx, action[0], meta, action[1], action[2])])]);
-                        case /* PublishAsync */2 :
-                            return /* Publisher */Block.__(1, [action[0].then((function (cmds) {
-                                              return Promise.resolve(Belt_Array.map(cmds, (function (param) {
-                                                                return makeEntry(queue, 0, param[0], meta, param[1], undefined);
-                                                              })));
-                                            }))]);
-                        case /* AddToCounterTarget */3 :
-                            var match = action[0];
-                            return /* Counter */Block.__(0, [/* AddToCounterTarget */Block.__(1, [/* record */[
-                                            /* counterId */match[/* counterId */0],
-                                            /* target */match[/* target */1],
-                                            /* targetRef */meta[/* correlationId */5]
-                                          ]])]);
-                        case /* Count */4 :
-                            return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
-                                            /* counterId */action[0],
-                                            /* reference */meta[/* correlationId */5],
-                                            /* inc */1
-                                          ]])]);
-                        case /* CountMulti */5 :
-                            return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
-                                            /* counterId */action[0],
-                                            /* reference */meta[/* correlationId */5],
-                                            /* inc */action[1]
-                                          ]])]);
-                        
-                      }
-                    }));
-      };
-      var sendEntries = function (queue, publisherEntries, loc) {
-        var __x = publisherEntries.then((function (publisherEntries) {
-                console.log(loc + ": publisherEntries:", publisherEntries.length);
-                var match = publisherEntries.length;
-                if (match !== 0) {
-                  return (function (param) {
-                              return SQS$AwsSdk.sendMessageBatch(param, publisherEntries);
-                            })(queue.id.get());
-                } else {
-                  return Promise.resolve(/* () */0);
-                }
-              }));
-        return __x.catch((function (err) {
-                      console.log(loc + ": sendEntries error", err);
-                      return Js_exn.raiseError(loc + ": sendEntries error");
-                    }));
-      };
-      var commonEventsHandler = function (queue, mappings, queryEngine, events$primeJson) {
-        var eventsCount = events$primeJson.length;
-        var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(events$primeJson, (function (idx, event$primeJson) {
-                            var idx$1 = idx + 1 | 0;
-                            Message$Reventless.logEvent$primeJson(event$primeJson, "EventMapper.eventsHandler: incoming event " + (String(idx$1) + ("/" + (String(eventsCount) + ":"))));
-                            var event$prime = Js_json.decodeObject(event$primeJson);
-                            var match = findMapping(mappings, event$prime);
-                            if (match !== undefined) {
-                              var match$1 = match;
-                              var mapping = match$1[2];
-                              var eventObj = match$1[0];
-                              var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), mapping.Source.Id.t_decode);
-                              var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), mapping.Source.event_decode);
-                              if (idDecoded !== undefined) {
-                                var match$2 = idDecoded;
-                                if (!match$2.tag && eventDecoded !== undefined) {
-                                  var match$3 = eventDecoded;
-                                  if (!match$3.tag) {
-                                    return processMappingActions(mapping.map(match$2[0], match$3[0], queryEngine), queue, match$1[1]);
-                                  }
-                                  
-                                }
-                                
+      return (function (Mappings) {
+          var service = Target.name;
+          var findMapping = function (mappings, eventObj) {
+            return Belt_Option.flatMapU(eventObj, (function (eventObj$prime) {
+                          var meta = Belt_Option.map(Js_dict.get(eventObj$prime, "meta"), Message$Reventless.meta_decode);
+                          if (meta !== undefined) {
+                            var match = meta;
+                            if (match.tag) {
+                              console.log("EventMapper.map: Couldn't decode meta:", match[0]);
+                              return ;
+                            } else {
+                              var eventMeta = match[0];
+                              var mapping = Belt_Array.getBy(mappings, (function (Mapping) {
+                                      return Mapping.Source.name === eventMeta[/* service */0];
+                                    }));
+                              if (mapping !== undefined) {
+                                return /* tuple */[
+                                        eventObj$prime,
+                                        eventMeta,
+                                        mapping
+                                      ];
                               } else {
-                                console.log("EventMapper.map: Invalid event");
-                                return ;
-                              }
-                              if (eventDecoded !== undefined) {
-                                var match$4 = eventDecoded;
-                                if (match$4.tag) {
-                                  console.log("EventMapper.map: Couldn't decode event:", match$4[0]);
-                                  return ;
-                                } else {
-                                  console.log("EventMapper.map: Couldn't decode event:", idDecoded[0]);
-                                  return ;
-                                }
-                              } else {
-                                console.log("EventMapper.map: Invalid event");
+                                console.log("EventMapper.map: No mapping available for service:", eventMeta[/* service */0]);
                                 return ;
                               }
                             }
-                            
-                          })), (function (entry) {
-                        return entry;
-                      }))), (function (resultType) {
-                if (resultType.tag) {
-                  return true;
-                } else {
-                  return false;
-                }
-              }));
-        var __x = Promise.all(Belt_Array.map(match[0], (function (param) {
-                    if (param.tag) {
-                      return param[0];
-                    } else {
-                      return Js_exn.raiseError("Invalid EventMapper action");
-                    }
-                  })));
-        var publisherEntries = __x.then((function (entries) {
-                return Promise.resolve(Belt_Array.concatMany(entries));
-              }));
-        var counterActions = Belt_Array.map(match[1], (function (param) {
-                if (param.tag) {
-                  return Js_exn.raiseError("Invalid EventMapper action");
-                } else {
-                  return param[0];
-                }
-              }));
-        return /* tuple */[
-                publisherEntries,
-                counterActions
-              ];
-      };
-      var eventCollectorEventsHandler = function (queue, mappings, queryEngine, count, addToCounterTarget) {
-        return (function (events$primeJson) {
-            var match = commonEventsHandler(queue, mappings, queryEngine, events$primeJson);
-            var match$1 = Belt_Array.partition(match[1], (function (param) {
-                    if (param.tag) {
-                      return false;
-                    } else {
-                      return true;
-                    }
-                  }));
-            var addToCounterTargetActions = match$1[1];
-            var countActions = Belt_Array.keepMap(match$1[0], (function (param) {
-                    if (param.tag) {
-                      return ;
-                    } else {
-                      return param[0];
-                    }
-                  }));
-            console.log("EventMapper.eventCollectorEventsHandler: countActions:", countActions.length);
-            var match$2 = countActions.length;
-            var countP;
-            if (match$2 !== 0) {
-              var __x = Curry._1(count, countActions);
-              countP = __x.catch((function (err) {
-                      var error = "EventMapper-Reventless.eventCollectorEventsHandler: count error";
-                      console.log(error, err);
-                      return Js_exn.raiseError(error);
-                    }));
+                          } else {
+                            console.log("EventMapper.map: Invalid JSON object");
+                            return ;
+                          }
+                        }));
+          };
+          var makeEntry = function (queue, idx, commandId, meta, command, delay) {
+            var match = idx === 0;
+            var commandMeta_001 = /* time */Message$Reventless.nowAsISOString(/* () */0);
+            var commandMeta_002 = /* ip */meta[/* ip */2];
+            var commandMeta_003 = /* user */meta[/* user */3];
+            var commandMeta_004 = /* msgId */Message$Reventless.uuid(/* () */0);
+            var commandMeta_005 = /* correlationId */match ? meta[/* correlationId */5] : Message$Reventless.uuid(/* () */0);
+            var commandMeta = /* record */[
+              /* service */service,
+              commandMeta_001,
+              commandMeta_002,
+              commandMeta_003,
+              commandMeta_004,
+              commandMeta_005
+            ];
+            var commandStr = JSON.stringify(Curry._1(Target.command_encode, command));
+            var source = meta[/* service */0];
+            console.log("EventMapping from Aggregate " + (String(source) + (" to Aggregate " + (String(service) + (": Publishing command: " + (String(commandStr) + (" id: " + (String(commandId) + ""))))))));
+            var messageBody = JSON.stringify(Message$Reventless.command$prime_encode(Target.Id.t_encode, Target.command_encode, /* record */[
+                      /* id */commandId,
+                      /* meta */commandMeta,
+                      /* command */command
+                    ]));
+            var match$1 = queue.service;
+            if (match$1 === "SQS_FIFO") {
+              return SQS$AwsSdk.makeBatchEntryFifo(Curry._1(Target.Id.toString, commandId), messageBody, commandMeta_004, delay);
             } else {
-              countP = Promise.resolve(/* () */0);
+              return SQS$AwsSdk.makeBatchEntry(messageBody, commandMeta_004, delay);
             }
-            console.log("EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:", Caml_option.undefined_to_opt(JSON.stringify(addToCounterTargetActions)));
-            var addToCounterTargetsP = Promise.all(Belt_Array.map(addToCounterTargetActions, (function (param) {
+          };
+          var processMappingActions = function (actions, queue, meta) {
+            return Belt_Array.mapWithIndex(actions, (function (idx, action) {
+                          switch (action.tag | 0) {
+                            case /* Publish */0 :
+                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(queue, idx, action[0], meta, action[1], undefined)])]);
+                            case /* PublishDelayed */1 :
+                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(queue, idx, action[0], meta, action[1], action[2])])]);
+                            case /* PublishAsync */2 :
+                                return /* Publisher */Block.__(1, [action[0].then((function (cmds) {
+                                                  return Promise.resolve(Belt_Array.map(cmds, (function (param) {
+                                                                    return makeEntry(queue, 0, param[0], meta, param[1], undefined);
+                                                                  })));
+                                                }))]);
+                            case /* AddToCounterTarget */3 :
+                                var match = action[0];
+                                return /* Counter */Block.__(0, [/* AddToCounterTarget */Block.__(1, [/* record */[
+                                                /* counterId */match[/* counterId */0],
+                                                /* target */match[/* target */1],
+                                                /* targetRef */meta[/* correlationId */5]
+                                              ]])]);
+                            case /* Count */4 :
+                                return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
+                                                /* counterId */action[0],
+                                                /* reference */meta[/* correlationId */5],
+                                                /* inc */1
+                                              ]])]);
+                            case /* CountMulti */5 :
+                                return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
+                                                /* counterId */action[0],
+                                                /* reference */meta[/* correlationId */5],
+                                                /* inc */action[1]
+                                              ]])]);
+                            
+                          }
+                        }));
+          };
+          var sendEntries = function (queue, publisherEntries, loc) {
+            var __x = publisherEntries.then((function (publisherEntries) {
+                    console.log(loc + ": publisherEntries:", publisherEntries.length);
+                    var match = publisherEntries.length;
+                    if (match !== 0) {
+                      return (function (param) {
+                                  return SQS$AwsSdk.sendMessageBatch(param, publisherEntries);
+                                })(queue.id.get());
+                    } else {
+                      return Promise.resolve(/* () */0);
+                    }
+                  }));
+            return __x.catch((function (err) {
+                          console.log(loc + ": sendEntries error", err);
+                          return Js_exn.raiseError(loc + ": sendEntries error");
+                        }));
+          };
+          var commonEventsHandler = function (queue, mappings, queryEngine, events$primeJson) {
+            var eventsCount = events$primeJson.length;
+            var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(events$primeJson, (function (idx, event$primeJson) {
+                                var idx$1 = idx + 1 | 0;
+                                Message$Reventless.logEvent$primeJson(event$primeJson, "EventMapper.eventsHandler: incoming event " + (String(idx$1) + ("/" + (String(eventsCount) + ":"))));
+                                var event$prime = Js_json.decodeObject(event$primeJson);
+                                var match = findMapping(mappings, event$prime);
+                                if (match !== undefined) {
+                                  var match$1 = match;
+                                  var mapping = match$1[2];
+                                  var eventObj = match$1[0];
+                                  var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), mapping.Source.Id.t_decode);
+                                  var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), mapping.Source.event_decode);
+                                  if (idDecoded !== undefined) {
+                                    var match$2 = idDecoded;
+                                    if (!match$2.tag && eventDecoded !== undefined) {
+                                      var match$3 = eventDecoded;
+                                      if (!match$3.tag) {
+                                        return processMappingActions(mapping.map(match$2[0], match$3[0], queryEngine), queue, match$1[1]);
+                                      }
+                                      
+                                    }
+                                    
+                                  } else {
+                                    console.log("EventMapper.map: Invalid event");
+                                    return ;
+                                  }
+                                  if (eventDecoded !== undefined) {
+                                    var match$4 = eventDecoded;
+                                    if (match$4.tag) {
+                                      console.log("EventMapper.map: Couldn't decode event:", match$4[0]);
+                                      return ;
+                                    } else {
+                                      console.log("EventMapper.map: Couldn't decode event:", idDecoded[0]);
+                                      return ;
+                                    }
+                                  } else {
+                                    console.log("EventMapper.map: Invalid event");
+                                    return ;
+                                  }
+                                }
+                                
+                              })), (function (entry) {
+                            return entry;
+                          }))), (function (resultType) {
+                    if (resultType.tag) {
+                      return true;
+                    } else {
+                      return false;
+                    }
+                  }));
+            var __x = Promise.all(Belt_Array.map(match[0], (function (param) {
                         if (param.tag) {
-                          return Curry._1(addToCounterTarget, param[0]);
+                          return param[0];
                         } else {
-                          return Promise.resolve(/* () */0);
+                          return Js_exn.raiseError("Invalid EventMapper action");
                         }
                       })));
-            var sendEntriesP = sendEntries(queue, match[0], "EventMapper-Reventless.eventCollectorEventsHandler");
-            var __x$1 = Promise.all(/* tuple */[
-                  countP,
-                  addToCounterTargetsP,
-                  sendEntriesP
-                ]);
-            return __x$1.then((function (param) {
-                          return Promise.resolve(/* () */0);
+            var publisherEntries = __x.then((function (entries) {
+                    return Promise.resolve(Belt_Array.concatMany(entries));
+                  }));
+            var counterActions = Belt_Array.map(match[1], (function (param) {
+                    if (param.tag) {
+                      return Js_exn.raiseError("Invalid EventMapper action");
+                    } else {
+                      return param[0];
+                    }
+                  }));
+            return /* tuple */[
+                    publisherEntries,
+                    counterActions
+                  ];
+          };
+          var eventCollectorEventsHandler = function (queue, mappings, queryEngine, count, addToCounterTarget) {
+            return (function (events$primeJson) {
+                var match = commonEventsHandler(queue, mappings, queryEngine, events$primeJson);
+                var match$1 = Belt_Array.partition(match[1], (function (param) {
+                        if (param.tag) {
+                          return false;
+                        } else {
+                          return true;
+                        }
+                      }));
+                var addToCounterTargetActions = match$1[1];
+                var countActions = Belt_Array.keepMap(match$1[0], (function (param) {
+                        if (param.tag) {
+                          return ;
+                        } else {
+                          return param[0];
+                        }
+                      }));
+                console.log("EventMapper.eventCollectorEventsHandler: countActions:", countActions.length);
+                var match$2 = countActions.length;
+                var countP;
+                if (match$2 !== 0) {
+                  var __x = Curry._1(count, countActions);
+                  countP = __x.catch((function (err) {
+                          var error = "EventMapper-Reventless.eventCollectorEventsHandler: count error";
+                          console.log(error, err);
+                          return Js_exn.raiseError(error);
                         }));
-          });
-      };
-      var counterEventsHandler = function (queue, mappings, queryEngine) {
-        return (function (events$primeJson) {
-            var match = commonEventsHandler(queue, mappings, queryEngine, events$primeJson);
-            if (match[1].length !== 0) {
-              console.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!");
-            }
-            return sendEntries(queue, match[0], "EventMapper-Reventless.counterEventsHandler");
-          });
-      };
-      var construct = function (counter, mappings, queryEngine, memorySize, timeout, self, name, resources) {
-        var opts = {
-          parent: self
-        };
-        var queue = Util_Aggregate$Reventless.commandTopicConnectorResource(resources, service);
-        var match = Belt_Option.mapWithDefault(counter, /* tuple */[
-              (function (_items) {
-                  return Promise.resolve((console.log("No counter deployed, but trying to use counter."), /* () */0));
-                }),
-              (function (_target) {
-                  return Promise.resolve((console.log("No counter deployed, but trying to use counter."), /* () */0));
-                }),
-              undefined
-            ], (function (Counter) {
-                var counter = Curry._6(Counter.make, name, counterEventsHandler(queue, mappings, queryEngine), undefined, Caml_option.some(opts), resources, /* () */0);
-                return /* tuple */[
-                        Curry._1(Counter.count, counter),
-                        Curry._1(Counter.addToCounterTarget, counter),
-                        Caml_option.some(Component$Reventless.extractOutputs(counter))
-                      ];
-              }));
-        var eventCollector = Curry.app(EventCollector.make, [
-              ComponentType$Reventless.name(Target.name, /* EventMapper */7),
-              Belt_Array.keepMap(mappings, (function (Mapping) {
-                      if (Mapping.Source.name !== Counter$Reventless.Source.name) {
-                        return Mapping.Source.name;
-                      }
-                      
-                    })),
-              undefined,
-              eventCollectorEventsHandler(queue, mappings, queryEngine, match[0], match[1]),
-              memorySize,
-              timeout,
-              Caml_option.some(opts),
-              resources,
-              /* () */0
-            ]);
-        var self$1 = self;
-        var outputs = {
-          name: name,
-          eventCollector: Component$Reventless.extractOutputs(eventCollector),
-          counter: match[2]
-        };
-        self$1.setOutputs(outputs);
-        return self$1.registerOutputs(outputs);
-      };
-      var make = function (counter, mappings, queryEngine, memorySize, $staropt$star, opts, resources, param) {
-        var timeout = $staropt$star !== undefined ? $staropt$star : 180;
-        var prim = ComponentType$Reventless.toString(/* EventMapper */7);
-        var prim$1 = Target.name;
-        var prim$2 = function (param, param$1, param$2) {
-          return construct(counter, mappings, queryEngine, memorySize, timeout, param, param$1, param$2);
-        };
-        var prim$3 = opts;
-        var prim$4 = resources;
-        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
-      };
-      return {
-              make: make
+                } else {
+                  countP = Promise.resolve(/* () */0);
+                }
+                console.log("EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:", Caml_option.undefined_to_opt(JSON.stringify(addToCounterTargetActions)));
+                var addToCounterTargetsP = Promise.all(Belt_Array.map(addToCounterTargetActions, (function (param) {
+                            if (param.tag) {
+                              return Curry._1(addToCounterTarget, param[0]);
+                            } else {
+                              return Promise.resolve(/* () */0);
+                            }
+                          })));
+                var sendEntriesP = sendEntries(queue, match[0], "EventMapper-Reventless.eventCollectorEventsHandler");
+                var __x$1 = Promise.all(/* tuple */[
+                      countP,
+                      addToCounterTargetsP,
+                      sendEntriesP
+                    ]);
+                return __x$1.then((function (param) {
+                              return Promise.resolve(/* () */0);
+                            }));
+              });
+          };
+          var counterEventsHandler = function (queue, mappings, queryEngine) {
+            return (function (events$primeJson) {
+                var match = commonEventsHandler(queue, mappings, queryEngine, events$primeJson);
+                if (match[1].length !== 0) {
+                  console.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!");
+                }
+                return sendEntries(queue, match[0], "EventMapper-Reventless.counterEventsHandler");
+              });
+          };
+          var construct = function (queryEngine, memorySize, timeout, self, name, resources) {
+            var opts = {
+              parent: self
             };
+            var queue = Util_Aggregate$Reventless.commandTopicConnectorResource(resources, service);
+            var match = Belt_Option.mapWithDefault(Mappings.counter, /* tuple */[
+                  (function (_items) {
+                      return Promise.resolve((console.log("No counter deployed, but trying to use counter."), /* () */0));
+                    }),
+                  (function (_target) {
+                      return Promise.resolve((console.log("No counter deployed, but trying to use counter."), /* () */0));
+                    }),
+                  undefined
+                ], (function (Counter) {
+                    var counter = Curry._6(Counter.make, name, counterEventsHandler(queue, Mappings.mappings, queryEngine), undefined, Caml_option.some(opts), resources, /* () */0);
+                    return /* tuple */[
+                            Curry._1(Counter.count, counter),
+                            Curry._1(Counter.addToCounterTarget, counter),
+                            Caml_option.some(Component$Reventless.extractOutputs(counter))
+                          ];
+                  }));
+            var eventCollector = Curry.app(EventCollector.make, [
+                  ComponentType$Reventless.name(Target.name, /* EventMapper */7),
+                  Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
+                          if (Mapping.Source.name !== Counter$Reventless.Source.name) {
+                            return Mapping.Source.name;
+                          }
+                          
+                        })),
+                  undefined,
+                  eventCollectorEventsHandler(queue, Mappings.mappings, queryEngine, match[0], match[1]),
+                  memorySize,
+                  timeout,
+                  Caml_option.some(opts),
+                  resources,
+                  /* () */0
+                ]);
+            var self$1 = self;
+            var outputs = {
+              name: name,
+              eventCollector: Component$Reventless.extractOutputs(eventCollector),
+              counter: match[2]
+            };
+            self$1.setOutputs(outputs);
+            return self$1.registerOutputs(outputs);
+          };
+          var make = function (queryEngine, $staropt$star, $staropt$star$1, opts, resources, param) {
+            var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
+            var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 180;
+            var prim = ComponentType$Reventless.toString(/* EventMapper */7);
+            var prim$1 = Target.name;
+            var prim$2 = function (param, param$1, param$2) {
+              return construct(queryEngine, memorySize, timeout, param, param$1, param$2);
+            };
+            var prim$3 = opts;
+            var prim$4 = resources;
+            return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+          };
+          return {
+                  make: make
+                };
+        });
     });
 }
 

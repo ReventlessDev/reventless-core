@@ -10,6 +10,7 @@ type outputs = {
   "commandTopic": CommandTopic.outputs,
   "eventLog": EventLog.outputs,
   "eventTopic": EventTopic.outputs,
+  "eventMapper": EventMapper.outputs,
 };
 
 type name = string;
@@ -22,6 +23,7 @@ module type T = {
 
   let make:
     (
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~eventsHandler: Message.eventsHandler(Spec.Id.t, Spec.event),
       ~opts: Pulumi.ComponentResource.Options.t=?,
       ~resources: resources,
@@ -35,11 +37,13 @@ module Make =
          Config: Config.T,
          Spec: ReventlessSpec.AggregateSpec.T,
          Behaviour: Behaviour.T with module Spec := Spec,
+         EventMappings: EventMapper.Mappings with module Target := Spec,
          CommandGeneratorResolvers:
            CommandGenerator.Adapter.Resolvers with type api := Config.api,
          CommandTopicConnector: CommandTopic.Adapter.Connector,
          EventLogStorage: EventLog.Adapter.Storage,
          EventTopicPublisher: EventTopic.Adapter.Publisher,
+         EventCollectorConnector: EventCollector.Adapter.Connector,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
@@ -47,8 +51,7 @@ module Make =
   type eventsHandler = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct =
-    (component, string, eventsHandler, resources) => constructed;
+  type construct = (component, string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -57,29 +60,34 @@ module Make =
       ~name: string,
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~eventsHandler: eventsHandler,
       ~resources: resources
     ) =>
     component =
     "default";
+
+  [@bs.obj]
+  external makeOutputs:
+    (
+      ~name: string,
+      ~commandGenerator: CommandGenerator.outputs,
+      ~commandTopic: CommandTopic.outputs,
+      ~eventLog: EventLog.outputs,
+      ~eventTopic: EventTopic.outputs,
+      ~eventMapper: EventMapper.outputs
+    ) =>
+    outputs =
+    "";
 
   module CommandGenerator =
     CommandGenerator.Make(Config, Spec, Behaviour, CommandGeneratorResolvers);
   module CommandTopic = CommandTopic.Make(Spec, CommandTopicConnector);
   module EventLog = EventLog.Make(Spec, EventLogStorage);
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher);
-
-  [@bs.obj]
-  external makeOutputs:
-    (
-      ~name: string,
-      ~commandGenerator: Reventless.CommandGenerator.outputs,
-      ~commandTopic: Reventless.CommandTopic.outputs,
-      ~eventLog: Reventless.EventLog.outputs,
-      ~eventTopic: Reventless.EventTopic.outputs
-    ) =>
-    outputs =
-    "";
+  module EventCollector =
+    EventCollector.Make(
+      EventCollector.DefaultPolicies,
+      EventCollectorConnector,
+    );
 
   [@bs.send]
   external registerOutputs: (component, outputs) => constructed =
@@ -342,70 +350,73 @@ module Make =
          );
     };
 
-  let construct: construct =
-    (self, name, eventsHandler, resources) => {
-      let opts =
-        Pulumi.ComponentResource.Options.make(
-          ~parent=self->Component.toPulumiResource,
-          (),
-        );
+  let construct = (~queryEngine, ~eventsHandler, self, name, resources) => {
+    let opts =
+      Pulumi.ComponentResource.Options.make(
+        ~parent=self->Component.toPulumiResource,
+        (),
+      );
 
-      let childName = name->ComponentType.name(componentType);
+    let childName = name->ComponentType.name(componentType);
 
-      let eventLog = EventLog.make(~name=childName, ~opts, ~resources, ());
-      let eventTopic =
-        EventTopic.make(~name=childName, ~opts, ~resources, ());
+    let eventLog = EventLog.make(~name=childName, ~opts, ~resources, ());
+    let eventTopic = EventTopic.make(~name=childName, ~opts, ~resources, ());
 
-      let handleCommands =
-        handleCommands((
-          EventLog.append(eventLog),
-          EventLog.replay(eventLog),
-          EventTopic.publish(eventTopic),
-          eventsHandler,
-        ));
+    let handleCommands =
+      handleCommands((
+        EventLog.append(eventLog),
+        EventLog.replay(eventLog),
+        EventTopic.publish(eventTopic),
+        eventsHandler,
+      ));
 
-      let commandTopic =
-        CommandTopic.make(
-          ~name=childName,
-          ~commandsHandler=handleCommands,
-          ~opts,
-          ~resources,
-          (),
-        );
+    let commandTopic =
+      CommandTopic.make(
+        ~name=childName,
+        ~commandsHandler=handleCommands,
+        ~opts,
+        ~resources,
+        (),
+      );
 
-      let commandGenerator =
-        CommandGenerator.make(
-          ~name=childName,
-          ~commandHandler=CommandTopic.publish(commandTopic),
-          ~opts,
-          (),
-        );
+    let commandGenerator =
+      CommandGenerator.make(
+        ~name=childName,
+        ~commandHandler=CommandTopic.publish(commandTopic),
+        ~opts,
+        (),
+      );
 
-      makeOutputs(
-        ~name,
-        ~commandGenerator=commandGenerator->Component.extractOutputs,
-        ~commandTopic=commandTopic->Component.extractOutputs,
-        ~eventLog=eventLog->Component.extractOutputs,
-        ~eventTopic=eventTopic->Component.extractOutputs,
-      )
-      |> self->setOutputs;
-    };
+    module EventMapper =
+      Reventless.EventMapper.Make(Spec, EventCollector, EventMappings);
+    let eventMapper = EventMapper.make(~queryEngine, ~opts, ~resources, ());
+
+    makeOutputs(
+      ~name,
+      ~commandGenerator=commandGenerator->Component.extractOutputs,
+      ~commandTopic=commandTopic->Component.extractOutputs,
+      ~eventLog=eventLog->Component.extractOutputs,
+      ~eventTopic=eventTopic->Component.extractOutputs,
+      ~eventMapper=eventMapper->Component.extractOutputs,
+    )
+    |> self->setOutputs;
+  };
 
   let make:
     (
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~eventsHandler: eventsHandler,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       ~resources: resources,
       unit
     ) =>
     component =
-    (~eventsHandler, ~opts=?, ~resources, _) =>
+    (~queryEngine, ~eventsHandler, ~opts=?, ~resources, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct,
+        ~construct=construct(~queryEngine, ~eventsHandler),
         ~opts,
-        ~eventsHandler,
         ~resources,
       );
 };

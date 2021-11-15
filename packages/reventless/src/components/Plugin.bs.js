@@ -64,11 +64,12 @@ function Make(EventCollectorAdapter) {
         var readModelsOutputs = Component$Reventless.extractMultipleOutputs(Belt_Array.map(Js_dict.values(readModels$1), (function (param) {
                     return param[/* readModel */1];
                   })));
+        var queryEngine = Curry._1(QueryEngineAdapter.make, resources);
         var aggregates$1 = Belt_Array.map(aggregates, (function (Aggregate) {
                 var match = readModels$1[Aggregate.Spec.name];
                 var readModel = match[/* readModel */1];
                 var module_ = match[/* module_ */0];
-                return Curry._4(Aggregate.make, (function (id, events) {
+                return Curry._5(Aggregate.make, queryEngine, (function (id, events) {
                               return Curry._1(module_.update, readModel)(id, events);
                             }), Caml_option.some(opts), resources, /* () */0);
               }));
@@ -81,7 +82,6 @@ function Make(EventCollectorAdapter) {
                 var corePluginCommandTopicId = corePluginCommandTopic.id;
                 Util_ExtensionPoint$Reventless.setCommandTopicConnectorResource(resources, corePluginCommandTopic, PluginExtensionPointSpec$ReventlessSpec.name);
                 Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, Adapter$Reventless.toResource(corePluginExtensionPoint.eventTopic.publisher), PluginExtensionPointSpec$ReventlessSpec.name);
-                var queryEngine = Curry._1(QueryEngineAdapter.make, resources);
                 var extensionPoints = Belt_Array.map(extensionPointMakers, (function (extensionPointMaker) {
                         return Curry._5(extensionPointMaker, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
                       }));
@@ -325,7 +325,7 @@ function Make(EventCollectorAdapter) {
                         return Component$Reventless.extractOutputs(Curry._5(taskMaker, queryBucketName, scheduler, queryEngine, Caml_option.some(opts), resources));
                       }));
                 var eventMappersOutputs = Component$Reventless.extractMultipleOutputs(Belt_Array.map(eventMapperMakers, (function (eventMapperMaker) {
-                            return Curry._6(eventMapperMaker, queryEngine, 128, undefined, Caml_option.some(opts), resources, /* () */0);
+                            return Curry._6(eventMapperMaker, queryEngine, undefined, undefined, Caml_option.some(opts), resources, /* () */0);
                           })));
                 var resolvers = Belt_Array.concatMany(Belt_Array.map(ResourceQueryDeploytime$Reventless.allResolversMakers(readModelsOutputs), (function (resolverMaker) {
                             return Curry._1(resolverMaker, resources);
