@@ -46,7 +46,7 @@ function makeId(name, version) {
 
 function Make(EventCollectorAdapter) {
   return (function (QueryEngineAdapter) {
-      var construct = function (version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, eventMapperMakers, scheduler, self, name) {
+      var construct = function (version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, scheduler, self, name) {
         var opts = {
           parent: self
         };
@@ -324,9 +324,6 @@ function Make(EventCollectorAdapter) {
                 tasksOutputs[0] = Belt_Array.map(taskMakers, (function (taskMaker) {
                         return Component$Reventless.extractOutputs(Curry._5(taskMaker, queryBucketName, scheduler, queryEngine, Caml_option.some(opts), resources));
                       }));
-                var eventMappersOutputs = Component$Reventless.extractMultipleOutputs(Belt_Array.map(eventMapperMakers, (function (eventMapperMaker) {
-                            return Curry._6(eventMapperMaker, queryEngine, undefined, undefined, Caml_option.some(opts), resources, /* () */0);
-                          })));
                 var resolvers = Belt_Array.concatMany(Belt_Array.map(ResourceQueryDeploytime$Reventless.allResolversMakers(readModelsOutputs), (function (resolverMaker) {
                             return Curry._1(resolverMaker, resources);
                           })));
@@ -449,7 +446,6 @@ function Make(EventCollectorAdapter) {
                         /* aggregates */toDict(aggregatesOutputs),
                         /* readModels */toDict(readModelsOutputs),
                         /* tasks */toDict(tasksOutputs[0]),
-                        /* eventMappers */toDict(eventMappersOutputs),
                         /* resolvers */resolvers,
                         /* heartbeat */Component$Reventless.extractOutputs(heartbeat),
                         /* serviceNameToExtensionPointsMapping */serviceNameToExtensionPointsMapping,
@@ -487,36 +483,33 @@ function Make(EventCollectorAdapter) {
           tasks: pureOutputs.apply((function (outputs) {
                   return outputs[/* tasks */8];
                 })),
-          eventMappers: pureOutputs.apply((function (outputs) {
-                  return outputs[/* eventMappers */9];
-                })),
           resolvers: pureOutputs.apply((function (outputs) {
-                  return outputs[/* resolvers */10];
+                  return outputs[/* resolvers */9];
                 })),
           heartbeat: pureOutputs.apply((function (outputs) {
-                  return outputs[/* heartbeat */11];
+                  return outputs[/* heartbeat */10];
                 })),
           serviceNameToExtensionPointsMapping: pureOutputs.apply((function (outputs) {
-                  return outputs[/* serviceNameToExtensionPointsMapping */12];
+                  return outputs[/* serviceNameToExtensionPointsMapping */11];
                 })),
           outgoingServiceNameToExtensionsMapping: pureOutputs.apply((function (outputs) {
-                  return outputs[/* outgoingServiceNameToExtensionsMapping */13];
+                  return outputs[/* outgoingServiceNameToExtensionsMapping */12];
                 })),
           incomingServiceNameToExtensionsMapping: pureOutputs.apply((function (outputs) {
-                  return outputs[/* incomingServiceNameToExtensionsMapping */14];
+                  return outputs[/* incomingServiceNameToExtensionsMapping */13];
                 })),
           resources: pureOutputs.apply((function (outputs) {
-                  return outputs[/* resources */15];
+                  return outputs[/* resources */14];
                 }))
         };
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (name, version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, eventMapperMakers, scheduler, opts, _unit) {
+      var make = function (name, version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, scheduler, opts, _unit) {
         var prim = ComponentType$Reventless.toString(/* Plugin */2);
         var prim$1 = name;
         var prim$2 = function (param, param$1) {
-          return construct(version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, eventMapperMakers, scheduler, param, param$1);
+          return construct(version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, scheduler, param, param$1);
         };
         var prim$3 = opts;
         return new Component.default(prim, prim$1, prim$2, prim$3);

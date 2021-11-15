@@ -14,7 +14,6 @@ type outputs = {
   "aggregates": Pulumi.Output.t(Js.Dict.t(Aggregate.outputs)),
   "readModels": Pulumi.Output.t(Js.Dict.t(ReadModel.outputs)),
   "tasks": Pulumi.Output.t(Js.Dict.t(Task.outputs)),
-  "eventMappers": Pulumi.Output.t(Js.Dict.t(EventMapper.outputs)),
   "resolvers": Pulumi.Output.t(array(resource)),
   "heartbeat": Pulumi.Output.t(Heartbeat.outputs),
   "serviceNameToExtensionPointsMapping":
@@ -39,7 +38,6 @@ type maker =
     ~aggregates: array(module Aggregate.T),
     ~readModels: array(module ReadModel.T),
     ~taskMakers: array(Task.maker),
-    ~eventMapperMakers: array(EventMapper.maker),
     ~scheduler: Scheduler.t,
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit
@@ -85,7 +83,6 @@ module Make =
       ~aggregates: Pulumi.Output.t(Js.Dict.t(Aggregate.outputs)),
       ~readModels: Pulumi.Output.t(Js.Dict.t(ReadModel.outputs)),
       ~tasks: Pulumi.Output.t(Js.Dict.t(Task.outputs)),
-      ~eventMappers: Pulumi.Output.t(Js.Dict.t(EventMapper.outputs)),
       ~resolvers: Pulumi.Output.t(array(resource)),
       ~heartbeat: Pulumi.Output.t(Heartbeat.outputs),
       ~serviceNameToExtensionPointsMapping: Pulumi.Output.t(
@@ -119,7 +116,6 @@ module Make =
     aggregates: Js.Dict.t(Aggregate.outputs),
     readModels: Js.Dict.t(ReadModel.outputs),
     tasks: Js.Dict.t(Task.outputs),
-    eventMappers: Js.Dict.t(EventMapper.outputs),
     resolvers: array(resource),
     heartbeat: Heartbeat.outputs,
     serviceNameToExtensionPointsMapping:
@@ -154,7 +150,6 @@ module Make =
         ~aggregates: array(module Aggregate.T),
         ~readModels: array(module ReadModel.T),
         ~taskMakers: array(Task.maker),
-        ~eventMapperMakers: array(EventMapper.maker),
         ~scheduler: Scheduler.t,
         self,
         name,
@@ -642,13 +637,6 @@ module Make =
               ->Component.extractOutputs
             );
 
-          let eventMappersOutputs =
-            eventMapperMakers
-            ->Belt.Array.map((eventMapperMaker: EventMapper.maker) =>
-                eventMapperMaker(~queryEngine, ~opts, ~resources, ())
-              )
-            ->Component.extractMultipleOutputs;
-
           let resolvers =
             readModelsOutputs
             ->ResourceQueryDeploytime.allResolversMakers
@@ -840,7 +828,6 @@ module Make =
             aggregates: aggregatesOutputs->toDict,
             readModels: readModelsOutputs->toDict,
             tasks: (tasksOutputs^)->toDict,
-            eventMappers: eventMappersOutputs->toDict,
             resolvers,
             heartbeat: heartbeat->Component.extractOutputs,
             serviceNameToExtensionPointsMapping,
@@ -865,8 +852,6 @@ module Make =
       ~readModels=
         pureOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
       ~tasks=pureOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
-      ~eventMappers=
-        pureOutputs->Pulumi.Output.apply(outputs => outputs.eventMappers),
       ~resolvers=
         pureOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
       ~heartbeat=
@@ -899,7 +884,6 @@ module Make =
       ~aggregates,
       ~readModels,
       ~taskMakers,
-      ~eventMapperMakers,
       ~scheduler,
       ~opts=?,
       _unit,
@@ -916,7 +900,6 @@ module Make =
             ~aggregates,
             ~readModels,
             ~taskMakers,
-            ~eventMapperMakers,
             ~scheduler,
           ),
         ~opts,
