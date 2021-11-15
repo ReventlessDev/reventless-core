@@ -245,24 +245,6 @@ module Make = (EventCollector: EventCollector.T) : T => {
     ->setOutputs(self, _);
   };
 
-  let convertOpts:
-    Pulumi.CustomResourceOptions.t => Pulumi.ComponentResource.Options.t =
-    customResourceOpts => {
-      let keys = customResourceOpts->Js.Obj.keys;
-      let firstKey = keys->Belt.Array.get(0);
-      if (keys->Belt.Array.size <= 1
-          && (firstKey == Some("parent") || firstKey == None)) {
-        Pulumi.ComponentResource.Options.make(
-          ~parent=?customResourceOpts##parent,
-          (),
-        );
-      } else {
-        Js.Exn.raiseError(
-          __MODULE__ ++ ": currently only parent prop supported !",
-        );
-      };
-    };
-
   let make =
       (
         ~name,
@@ -286,7 +268,10 @@ module Make = (EventCollector: EventCollector.T) : T => {
           ~memorySize,
           ~timeout,
         ),
-      ~opts=opts->Belt.Option.map(convertOpts),
+      ~opts=
+        opts->Belt.Option.map(
+          Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
+        ),
       ~resources,
     );
   };

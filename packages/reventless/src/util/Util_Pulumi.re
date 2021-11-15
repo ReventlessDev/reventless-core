@@ -15,3 +15,21 @@ module Output = {
     };
   };
 };
+
+module ComponentResourceOptions = {
+  let ofCustomResourceOptions = customResourceOpts => {
+    let keys = customResourceOpts->Js.Obj.keys;
+    let firstKey = keys->Belt.Array.get(0);
+    if (keys->Belt.Array.size <= 1
+        && (firstKey == Some("parent") || firstKey == None)) {
+      Pulumi.ComponentResource.Options.make(
+        ~parent=?customResourceOpts##parent,
+        (),
+      );
+    } else {
+      Js.Exn.raiseError(
+        __MODULE__ ++ ": currently only parent prop supported !",
+      );
+    };
+  };
+};
