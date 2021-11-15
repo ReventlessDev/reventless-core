@@ -6,11 +6,14 @@ var CommandTopicConnector_SQS_FIFO$ReventlessAws = require("../adapter/CommandTo
 var EventLogStorage_DynamoDbStream$ReventlessAws = require("../adapter/EventLog/EventLogStorage_DynamoDbStream.bs.js");
 var CommandGeneratorResolvers_AppSync$ReventlessAws = require("../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.bs.js");
 var EventTopicPublisher_DynamoDbStream$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.bs.js");
+var EventCollectorConnector_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_DynamoDbStream.bs.js");
 
 function Make(Config) {
   return (function (Spec) {
       return (function (Behaviour) {
-          return Aggregate$Reventless.Make(Config)(Spec)(Behaviour)(CommandGeneratorResolvers_AppSync$ReventlessAws)(CommandTopicConnector_SQS_FIFO$ReventlessAws)(EventLogStorage_DynamoDbStream$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws);
+          return (function (EventMappings) {
+              return Aggregate$Reventless.Make(Config)(Spec)(Behaviour)(EventMappings)(CommandGeneratorResolvers_AppSync$ReventlessAws)(CommandTopicConnector_SQS_FIFO$ReventlessAws)(EventLogStorage_DynamoDbStream$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)(EventCollectorConnector_DynamoDbStream$ReventlessAws);
+            });
         });
     });
 }
