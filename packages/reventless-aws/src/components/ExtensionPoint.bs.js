@@ -6,15 +6,17 @@ var EventTopicPublisher_SNS$ReventlessAws = require("../adapter/EventTopic/Event
 var CommandTopicConnector_SQS$ReventlessAws = require("../adapter/CommandTopic/CommandTopicConnector_SQS.bs.js");
 
 function Make(Spec) {
-  return ExtensionPoint$Reventless.Make({
-                  name: Spec.name,
-                  command_encode: Spec.command_encode,
-                  command_decode: Spec.command_decode,
-                  event_encode: Spec.event_encode,
-                  event_decode: Spec.event_decode,
-                  callCommand_encode: Spec.callCommand_encode,
-                  callCommand_decode: Spec.callCommand_decode
-                })(CommandTopicConnector_SQS$ReventlessAws)(EventTopicPublisher_SNS$ReventlessAws);
+  return (function (Mappings) {
+      return ExtensionPoint$Reventless.Make({
+                        name: Spec.name,
+                        command_encode: Spec.command_encode,
+                        command_decode: Spec.command_decode,
+                        event_encode: Spec.event_encode,
+                        event_decode: Spec.event_decode,
+                        callCommand_encode: Spec.callCommand_encode,
+                        callCommand_decode: Spec.callCommand_decode
+                      })(Mappings)(CommandTopicConnector_SQS$ReventlessAws)(EventTopicPublisher_SNS$ReventlessAws);
+    });
 }
 
 exports.Make = Make;
