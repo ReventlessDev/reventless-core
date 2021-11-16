@@ -46,7 +46,7 @@ function makeId(name, version) {
 
 function Make(EventCollectorAdapter) {
   return (function (QueryEngineAdapter) {
-      var construct = function (version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, scheduler, self, name) {
+      var construct = function (version, heartbeatInterval, extensionPoints, extensionMakers, aggregates, readModels, taskMakers, scheduler, self, name) {
         var opts = {
           parent: self
         };
@@ -82,10 +82,10 @@ function Make(EventCollectorAdapter) {
                 var corePluginCommandTopicId = corePluginCommandTopic.id;
                 Util_ExtensionPoint$Reventless.setCommandTopicConnectorResource(resources, corePluginCommandTopic, PluginExtensionPointSpec$ReventlessSpec.name);
                 Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, Adapter$Reventless.toResource(corePluginExtensionPoint.eventTopic.publisher), PluginExtensionPointSpec$ReventlessSpec.name);
-                var extensionPoints = Belt_Array.map(extensionPointMakers, (function (extensionPointMaker) {
-                        return Curry._5(extensionPointMaker, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
+                var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
+                        return Curry._5(ExtensionPoint.make, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
                       }));
-                var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints);
+                var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
                 var extensions = Belt_Array.map(extensionMakers, (function (extensionMaker) {
                         return Curry._5(extensionMaker, corePluginCommandTopicId, queryEngine, Caml_option.some(opts), resources, /* () */0);
                       }));
@@ -505,11 +505,11 @@ function Make(EventCollectorAdapter) {
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (name, version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, scheduler, opts, _unit) {
+      var make = function (name, version, heartbeatInterval, extensionPoints, extensionMakers, aggregates, readModels, taskMakers, scheduler, opts, _unit) {
         var prim = ComponentType$Reventless.toString(/* Plugin */2);
         var prim$1 = name;
         var prim$2 = function (param, param$1) {
-          return construct(version, heartbeatInterval, extensionPointMakers, extensionMakers, aggregates, readModels, taskMakers, scheduler, param, param$1);
+          return construct(version, heartbeatInterval, extensionPoints, extensionMakers, aggregates, readModels, taskMakers, scheduler, param, param$1);
         };
         var prim$3 = opts;
         return new Component.default(prim, prim$1, prim$2, prim$3);

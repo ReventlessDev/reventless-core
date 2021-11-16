@@ -23,7 +23,7 @@ function toDict(els) {
 
 function Make(EventCollectorAdapter) {
   return (function (QueryEngineAdapter) {
-      var construct = function (version, extensionPointMakers, aggregates, readModels, scheduler, self, param) {
+      var construct = function (version, extensionPoints, aggregates, readModels, scheduler, self, param) {
         var opts = {
           parent: self
         };
@@ -50,10 +50,10 @@ function Make(EventCollectorAdapter) {
                             }), Caml_option.some(opts), resources, /* () */0);
               }));
         var aggregatesOutputs = Component$Reventless.extractMultipleOutputs(aggregates$1);
-        var extensionPoints = Belt_Array.map(extensionPointMakers, (function (extensionPointMaker) {
-                return Curry._5(extensionPointMaker, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
+        var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
+                return Curry._5(ExtensionPoint.make, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
               }));
-        var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints);
+        var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
         var aggregateNames = Belt_SetString.toArray(Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
                         return Belt_SetString.fromArray(extensionPoint.aggregateNames);
                       })), Belt_SetString.empty, Belt_SetString.union));
@@ -108,11 +108,11 @@ function Make(EventCollectorAdapter) {
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (version, extensionPointMakers, aggregates, readModels, scheduler) {
+      var make = function (version, extensionPoints, aggregates, readModels, scheduler) {
         var prim = ComponentType$Reventless.toString(/* Core */18);
         var prim$1 = "Core";
         var prim$2 = function (param, param$1) {
-          return construct(version, extensionPointMakers, aggregates, readModels, scheduler, param, param$1);
+          return construct(version, extensionPoints, aggregates, readModels, scheduler, param, param$1);
         };
         var prim$3 = undefined;
         return new Component.default(prim, prim$1, prim$2, prim$3);

@@ -11,7 +11,8 @@ type outputs = {
   "commandTopic": CommandTopic.outputs,
   "eventTopic": EventTopic.outputs,
 };
-type extensionPoint; // TODO: rename to t - after refactoring
+type t;
+type component = Component.t(t, outputs);
 
 type name = string;
 
@@ -23,7 +24,7 @@ type maker =
     ~resources: resources,
     unit
   ) =>
-  Component.t(extensionPoint, outputs);
+  component;
 
 module type Spec = {
   module Id = Id.String;
@@ -40,22 +41,25 @@ module type Spec = {
 
 module type T = {
   module Spec: ReventlessSpec.ExtensionPointMapping.Spec;
+  let make: maker;
+};
+
+module type Mappings = {
+  module Spec: ReventlessSpec.ExtensionPointMapping.Spec;
   module type Mapping =
     ExtensionPointMapping.T with module ExtensionPoint := Spec;
-  let make: array(module Mapping) => maker;
+  let mappings: array(module Mapping);
 };
 
 module Make =
        (
          Spec: ReventlessSpec.ExtensionPointMapping.Spec,
+         Mappings: Mappings with module Spec := Spec,
          CommandTopicAdapter: CommandTopic.Adapter.Connector,
          EventTopicAdapter: EventTopic.Adapter.Publisher,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-
-  module type Mapping =
-    ExtensionPointMapping.T with module ExtensionPoint := Spec;
 
   module SpecWithId:
     Spec with
@@ -71,8 +75,7 @@ module Make =
   module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter);
 
   type constructed;
-  type construct =
-    (Component.t(extensionPoint, outputs), string, resources) => constructed;
+  type construct = (component, string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -83,7 +86,7 @@ module Make =
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~resources: resources
     ) =>
-    Component.t(extensionPoint, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -100,12 +103,9 @@ module Make =
     "";
 
   [@bs.send]
-  external registerOutputs:
-    (Component.t(extensionPoint, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(extensionPoint, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -114,7 +114,7 @@ module Make =
   module Mapper = {
     let findOutgoingMapping = (aggregateNameOpt, mappings) =>
       aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
-        mappings->Belt.Array.getBy((module Mapping: Mapping) =>
+        mappings->Belt.Array.getBy((module Mapping: Mappings.Mapping) =>
           Mapping.aggregateName == aggregateName
         )
       ); // TODO: handle multiple mappings for same Aggregate name
@@ -122,7 +122,7 @@ module Make =
     let mapIncomingCommands =
         (topicItems, mappings, scheduler, queryEngine, queue) =>
       mappings
-      ->Belt.Array.map((module Mapping: Mapping) =>
+      ->Belt.Array.map((module Mapping: Mappings.Mapping) =>
           Mapping.mapIncomingCommands(
             topicItems,
             Schedule.create(scheduler, queue),
@@ -150,7 +150,7 @@ module Make =
       };
   };
 
-  let construct = (~mappings, ~scheduler, ~queryEngine, self, name, resources) => {
+  let construct = (~scheduler, ~queryEngine, self, name, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -259,7 +259,7 @@ module Make =
         let queue = commandTopic->Component.extractOutputs##connector;
         let eventActions =
           event'Json->Mapper.mapOutgoingEvent(
-            mappings,
+            Mappings.mappings,
             scheduler,
             queue,
             pluginDef,
@@ -277,7 +277,7 @@ module Make =
         let queue = commandTopic->Component.extractOutputs##connector;
         let commandActions =
           topicItems->Mapper.mapIncomingCommands(
-            mappings,
+            Mappings.mappings,
             scheduler,
             queryEngine,
             queue,
@@ -300,7 +300,9 @@ module Make =
     makeOutputs(
       ~name,
       ~aggregateNames=
-        mappings->Belt.Array.map(((module Mapping)) => Mapping.aggregateName),
+        Mappings.mappings->Belt.Array.map(((module Mapping)) =>
+          Mapping.aggregateName
+        ),
       ~outgoingEventHandler,
       ~commandTopic=
         (commandTopic^)->Belt.Option.getExn->Component.extractOutputs,
@@ -309,12 +311,12 @@ module Make =
     ->setOutputs(self, _);
   };
 
-  let make: array(module Mapping) => maker =
-    (mappings, ~scheduler, ~queryEngine, ~opts, ~resources, _) =>
+  let make: maker =
+    (~scheduler, ~queryEngine, ~opts, ~resources, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~mappings, ~scheduler, ~queryEngine),
+        ~construct=construct(~scheduler, ~queryEngine),
         ~opts,
         ~resources,
       );

@@ -20,7 +20,7 @@ type component = Component.t(t, outputs);
 type maker =
   (
     ~version: string,
-    ~extensionPointMakers: array(ExtensionPoint.maker),
+    ~extensionPoints: array(module ExtensionPoint.T),
     ~aggregates: array(module Aggregate.T),
     ~readModels: array(module ReadModel.T),
     ~scheduler: Scheduler.t
@@ -82,7 +82,7 @@ module Make =
   let construct =
       (
         ~version,
-        ~extensionPointMakers: extensionPointMakers,
+        ~extensionPoints: array(module ExtensionPoint.T),
         ~aggregates: array(module Aggregate.T),
         ~readModels: array(module ReadModel.T),
         ~scheduler: Scheduler.t,
@@ -135,8 +135,9 @@ module Make =
     let aggregatesOutputs = aggregates->Component.extractMultipleOutputs;
 
     let extensionPoints =
-      extensionPointMakers->Belt.Array.map(extensionPointMaker =>
-        extensionPointMaker(
+      extensionPoints->Belt.Array.map(
+        (module ExtensionPoint: ExtensionPoint.T) =>
+        ExtensionPoint.make(
           ~scheduler,
           ~queryEngine,
           ~opts=Some(opts),
@@ -215,14 +216,14 @@ module Make =
   };
 
   let make: maker =
-    (~version, ~extensionPointMakers, ~aggregates, ~readModels, ~scheduler) =>
+    (~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name="Core",
         ~construct=
           construct(
             ~version,
-            ~extensionPointMakers,
+            ~extensionPoints,
             ~aggregates,
             ~readModels,
             ~scheduler,

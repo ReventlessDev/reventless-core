@@ -33,7 +33,7 @@ type maker =
     ~name: string,
     ~version: string,
     ~heartbeatInterval: int,
-    ~extensionPointMakers: array(ExtensionPoint.maker),
+    ~extensionPoints: array(module ExtensionPoint.T),
     ~extensionMakers: array(Extension.maker),
     ~aggregates: array(module Aggregate.T),
     ~readModels: array(module ReadModel.T),
@@ -145,7 +145,7 @@ module Make =
       (
         ~version: string,
         ~heartbeatInterval: int,
-        ~extensionPointMakers: array(ExtensionPoint.maker),
+        ~extensionPoints: array(module ExtensionPoint.T),
         ~extensionMakers: array(Extension.maker),
         ~aggregates: array(module Aggregate.T),
         ~readModels: array(module ReadModel.T),
@@ -235,8 +235,9 @@ module Make =
           );
 
           let extensionPoints =
-            extensionPointMakers->Belt.Array.map(extensionPointMaker =>
-              extensionPointMaker(
+            extensionPoints->Belt.Array.map(
+              (module ExtensionPoint: ExtensionPoint.T) =>
+              ExtensionPoint.make(
                 ~scheduler,
                 ~queryEngine,
                 ~opts=Some(opts),
@@ -879,7 +880,7 @@ module Make =
       ~name,
       ~version,
       ~heartbeatInterval,
-      ~extensionPointMakers,
+      ~extensionPoints,
       ~extensionMakers,
       ~aggregates,
       ~readModels,
@@ -895,7 +896,7 @@ module Make =
           construct(
             ~version,
             ~heartbeatInterval,
-            ~extensionPointMakers,
+            ~extensionPoints,
             ~extensionMakers,
             ~aggregates,
             ~readModels,
