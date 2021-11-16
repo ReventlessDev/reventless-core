@@ -5,11 +5,11 @@ var Plugin$Reventless = require("@reventless/reventless/src/components/Plugin.bs
 var QueryEngine_DynamoDb$ReventlessAws = require("../adapter/QueryEngine/QueryEngine_DynamoDb.bs.js");
 var EventCollectorConnector_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_SQS.bs.js");
 
-function Make($star) {
-  return Plugin$Reventless.Make(EventCollectorConnector_SQS$ReventlessAws)({
-              make: QueryEngine_DynamoDb$ReventlessAws.make
-            });
-}
+var include = Plugin$Reventless.Make(EventCollectorConnector_SQS$ReventlessAws)({
+      make: QueryEngine_DynamoDb$ReventlessAws.make
+    });
 
-exports.Make = Make;
-/* Plugin-Reventless Not a pure module */
+var make = include.make;
+
+exports.make = make;
+/* include Not a pure module */

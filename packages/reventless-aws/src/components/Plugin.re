@@ -1,2 +1,4 @@
-module Make = (()) =>
-  Reventless.Plugin.Make(EventCollectorConnector.SQS, QueryEngine.DynamoDb);
+include Reventless.Plugin.Make(
+          EventCollectorConnector.SQS,
+          QueryEngine.DynamoDb,
+        );

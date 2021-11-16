@@ -1,5 +1,4 @@
-module Make = (()) =>
-  Reventless.Core.Make(
-    EventCollectorConnector.DynamoDbStream,
-    QueryEngine.DynamoDb,
-  );
+include Reventless.Core.Make(
+          EventCollectorConnector.DynamoDbStream,
+          QueryEngine.DynamoDb,
+        );
