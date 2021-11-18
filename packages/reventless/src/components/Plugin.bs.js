@@ -46,7 +46,7 @@ function makeId(name, version) {
 
 function Make(EventCollectorAdapter) {
   return (function (QueryEngineAdapter) {
-      var construct = function (version, heartbeatInterval, extensionPoints, extensionMakers, aggregates, readModels, taskMakers, scheduler, self, name) {
+      var construct = function (version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, self, name) {
         var opts = {
           parent: self
         };
@@ -86,10 +86,10 @@ function Make(EventCollectorAdapter) {
                         return Curry._5(ExtensionPoint.make, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
                       }));
                 var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
-                var extensions = Belt_Array.map(extensionMakers, (function (extensionMaker) {
-                        return Curry._5(extensionMaker, corePluginCommandTopicId, queryEngine, Caml_option.some(opts), resources, /* () */0);
+                var extensions$1 = Belt_Array.map(extensions, (function (Extension) {
+                        return Curry._5(Extension.make, corePluginCommandTopicId, queryEngine, Caml_option.some(opts), resources, /* () */0);
                       }));
-                var extensionsOutputs = Component$Reventless.extractMultipleOutputs(extensions);
+                var extensionsOutputs = Component$Reventless.extractMultipleOutputs(extensions$1);
                 var match = Curry._1(Util_Pulumi$Reventless.Output.Async.make, /* () */0);
                 var eventCollectorUrn = match[0];
                 var subscribe = function (action, extensionPointName, eventTopic, pluginId, eventCollector) {
@@ -305,17 +305,20 @@ function Make(EventCollectorAdapter) {
                       mapIncomingEvent: mapIncomingEvent,
                       mapOutgoingEvent: mapOutgoingEvent
                     });
+                var mappings = /* array */[ConnectPluginMapping];
                 var ConnectPluginExtension = Extension$Reventless.Make({
-                      name: PluginExtensionPointSpec$ReventlessSpec.name,
-                      command_encode: PluginExtensionPointSpec$ReventlessSpec.command_encode,
-                      command_decode: PluginExtensionPointSpec$ReventlessSpec.command_decode,
-                      event_encode: PluginExtensionPointSpec$ReventlessSpec.event_encode,
-                      event_decode: PluginExtensionPointSpec$ReventlessSpec.event_decode,
-                      callCommand_encode: PluginExtensionPointSpec$ReventlessSpec.callCommand_encode,
-                      callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
+                        name: PluginExtensionPointSpec$ReventlessSpec.name,
+                        command_encode: PluginExtensionPointSpec$ReventlessSpec.command_encode,
+                        command_decode: PluginExtensionPointSpec$ReventlessSpec.command_decode,
+                        event_encode: PluginExtensionPointSpec$ReventlessSpec.event_encode,
+                        event_decode: PluginExtensionPointSpec$ReventlessSpec.event_decode,
+                        callCommand_encode: PluginExtensionPointSpec$ReventlessSpec.callCommand_encode,
+                        callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
+                      })({
+                      name: "Connect",
+                      mappings: mappings
                     });
-                var connectPluginExtensionMaker = Curry._2(ConnectPluginExtension.make, "Connect", /* array */[ConnectPluginMapping]);
-                var connectPluginExtension = Curry._5(connectPluginExtensionMaker, corePluginCommandTopicId, queryEngine, Caml_option.some(opts), resources, /* () */0);
+                var connectPluginExtension = Curry._5(ConnectPluginExtension.make, corePluginCommandTopicId, queryEngine, Caml_option.some(opts), resources, /* () */0);
                 var tasksOutputs = /* record */[/* contents : array */[]];
                 var partial_arg = Interstack$Reventless.mergeTasks(tasksOutputs);
                 var queryBucketName = function (param) {
@@ -505,11 +508,11 @@ function Make(EventCollectorAdapter) {
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (name, version, heartbeatInterval, extensionPoints, extensionMakers, aggregates, readModels, taskMakers, scheduler, opts, _unit) {
+      var make = function (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, opts, _unit) {
         var prim = ComponentType$Reventless.toString(/* Plugin */2);
         var prim$1 = name;
         var prim$2 = function (param, param$1) {
-          return construct(version, heartbeatInterval, extensionPoints, extensionMakers, aggregates, readModels, taskMakers, scheduler, param, param$1);
+          return construct(version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, param, param$1);
         };
         var prim$3 = opts;
         return new Component.default(prim, prim$1, prim$2, prim$3);

@@ -16,155 +16,158 @@ var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/E
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 
 function Make(Spec) {
-  var findOutgoingMapping = function (aggregateNameOpt, mappings) {
-    return Belt_Option.flatMap(aggregateNameOpt, (function (aggregateName) {
-                  return Belt_Array.getBy(mappings, (function (Mapping) {
-                                return Mapping.aggregateName === aggregateName;
-                              }));
-                }));
-  };
-  var publishAggregateCommand = function (id, cmdJson, queueId) {
-    var __x = JSON.stringify(cmdJson);
-    return SQS$AwsSdk.sendMessage(queueId, __x, id, undefined, undefined, /* () */0).catch((function (err) {
-                  return Promise.resolve((console.log("Extension: Error on publish command:", err), /* () */0));
-                }));
-  };
-  var publishExtensionPointCommand = function (id, cmdJson, queueId) {
-    var __x = JSON.stringify(cmdJson);
-    return SQS$AwsSdk.sendMessage(queueId, __x, undefined, undefined, undefined, /* () */0).catch((function (err) {
-                  return Promise.resolve((console.log("Extension: Error on publish command:", err), /* () */0));
-                }));
-  };
-  var construct = function (mappings, pluginExtensionPointCommandTopicId, queryEngine, self, name, resources) {
-    var mapIncomingEvent = function (param, param$1, param$2) {
-      var mappings$1 = mappings;
-      var event$prime = param;
-      var pluginDef = param$1;
-      var queryEngine = param$2;
-      return Belt_Array.concatMany(Belt_Array.map(mappings$1, (function (Mapping) {
-                        return Curry._3(Mapping.mapIncomingEvent, event$prime, pluginDef, queryEngine);
-                      })));
-    };
-    var mapOutgoingEvent = function (param) {
-      var mappings$1 = mappings;
-      var event$primeJson = param;
-      var match = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(event$primeJson), mappings$1);
-      if (match !== undefined) {
-        return Curry._1(match.mapOutgoingEvent, event$primeJson);
-      } else {
-        return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$primeJson));
-      }
-    };
-    var forwardCommand = function (id, meta, extensionPointName, command$primeJson) {
-      return publishExtensionPointCommand(id, Message$Reventless.command$prime_encode(Id$Reventless.$$String.t_encode, PluginExtensionPointSpec$ReventlessSpec.command_encode, /* record */[
-                      /* id */Id$Reventless.$$String.makeFromString(id),
-                      /* meta : record */[
-                        /* service */meta[/* service */0],
-                        /* time */meta[/* time */1],
-                        /* ip */meta[/* ip */2],
-                        /* user */meta[/* user */3],
-                        /* msgId */Message$Reventless.uuid(/* () */0),
-                        /* correlationId */meta[/* correlationId */5]
-                      ],
-                      /* command : ForwardCommand */Block.__(2, [/* record */[
-                            /* extensionPointName */extensionPointName,
-                            /* id */id,
-                            /* command */JSON.stringify(command$primeJson)
-                          ]])
-                    ]), pluginExtensionPointCommandTopicId.get());
-    };
-    var applyIncomingCommandAction = function (param) {
-      switch (param.tag | 0) {
-        case /* AbstractPublishAggregateCommand */0 :
-            return publishAggregateCommand(param[1], param[2], Util_Aggregate$Reventless.commandTopicConnectorResource(resources, param[0]).id.get());
-        case /* AbstractPublishAggregateCommandAsync */1 :
-            var __x = param[0];
-            return __x.then((function (param) {
-                          return publishAggregateCommand(param[1], param[2], Util_Aggregate$Reventless.commandTopicConnectorResource(resources, param[0]).id.get());
-                        }));
-        case /* AbstractPublishAggregateCommandsAsync */2 :
-            var __x$1 = param[0];
-            return __x$1.then((function (tupels) {
-                          var __x = Promise.all(Belt_Array.map(tupels, (function (param) {
-                                      return publishAggregateCommand(param[1], param[2], Util_Aggregate$Reventless.commandTopicConnectorResource(resources, param[0]).id.get());
-                                    })));
-                          return __x.then((function (param) {
-                                        return Promise.resolve(/* () */0);
-                                      }));
-                        }));
-        case /* AbstractPublishPluginExtensionPointCommand */3 :
-            return publishExtensionPointCommand(param[0], param[1], pluginExtensionPointCommandTopicId.get());
-        case /* AbstractPublishExtensionPointCommand */4 :
-            return forwardCommand(param[1], param[2], param[0], param[3]);
-        case /* AbstractCall */5 :
-            return Curry._1(param[0], /* () */0).catch((function (err) {
-                          return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), /* () */0));
-                        }));
-        
-      }
-    };
-    var applyOutgoingCommandAction = function (param) {
-      switch (param.tag | 0) {
-        case /* AbstractPublishPluginExtensionPointCommand */0 :
-            return publishExtensionPointCommand(param[0], param[1], pluginExtensionPointCommandTopicId.get());
-        case /* AbstractPublishExtensionPointCommand */1 :
-            return forwardCommand(param[1], param[2], param[0], param[3]);
-        case /* AbstractCall */2 :
-            return Curry._1(param[0], /* () */0).catch((function (err) {
-                          return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), /* () */0));
-                        }));
-        
-      }
-    };
-    var incomingEventHandler = function (event$primeJson, pluginDef) {
-      var event$prime = Message$Reventless.event$prime_decode(Id$Reventless.$$String.t_decode, Spec.event_decode, event$primeJson);
-      if (event$prime.tag) {
-        console.log("Could not decode event':", event$prime[0]);
-        return Promise.resolve(/* () */0);
-      } else {
-        var commandActions = mapIncomingEvent(event$prime[0], pluginDef, queryEngine);
-        return Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction)).then((function (param) {
-                      return Promise.resolve(/* () */0);
+  return (function (Mappings) {
+      var findOutgoingMapping = function (aggregateNameOpt, mappings) {
+        return Belt_Option.flatMap(aggregateNameOpt, (function (aggregateName) {
+                      return Belt_Array.getBy(mappings, (function (Mapping) {
+                                    return Mapping.aggregateName === aggregateName;
+                                  }));
                     }));
-      }
-    };
-    var outgoingEventHandler = function (event$primeJson, pluginDef) {
-      var commandActions = Curry._1(mapOutgoingEvent(event$primeJson), pluginDef);
-      return Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction)).then((function (param) {
-                    return Promise.resolve(/* () */0);
-                  }));
-    };
-    var self$1 = self;
-    var outputs = {
-      name: name,
-      extensionPointName: Spec.name,
-      aggregateNames: Belt_Array.keepMap(mappings, (function (Mapping) {
-              var match = Mapping.aggregateName === ExtensionMapping$ReventlessSpec.NoAggregate.name;
-              if (match) {
-                return ;
-              } else {
-                return Mapping.aggregateName;
-              }
-            })),
-      incomingEventHandler: incomingEventHandler,
-      outgoingEventHandler: outgoingEventHandler
-    };
-    self$1.setOutputs(outputs);
-    return self$1.registerOutputs(outputs);
-  };
-  var make = function (nameSuffix, mappings, pluginExtensionPointCommandTopicId, queryEngine, opts, resources, param) {
-    var prim = ComponentType$Reventless.toString(/* Extension */10);
-    var prim$1 = Spec.name + ("." + nameSuffix);
-    var prim$2 = function (param, param$1, param$2) {
-      return construct(mappings, pluginExtensionPointCommandTopicId, queryEngine, param, param$1, param$2);
-    };
-    var prim$3 = opts;
-    var prim$4 = resources;
-    return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
-  };
-  return {
-          make: make
+      };
+      var publishAggregateCommand = function (id, cmdJson, queueId) {
+        var __x = JSON.stringify(cmdJson);
+        return SQS$AwsSdk.sendMessage(queueId, __x, id, undefined, undefined, /* () */0).catch((function (err) {
+                      return Promise.resolve((console.log("Extension: Error on publish command:", err), /* () */0));
+                    }));
+      };
+      var publishExtensionPointCommand = function (id, cmdJson, queueId) {
+        var __x = JSON.stringify(cmdJson);
+        return SQS$AwsSdk.sendMessage(queueId, __x, undefined, undefined, undefined, /* () */0).catch((function (err) {
+                      return Promise.resolve((console.log("Extension: Error on publish command:", err), /* () */0));
+                    }));
+      };
+      var construct = function (pluginExtensionPointCommandTopicId, queryEngine, self, name, resources) {
+        var partial_arg = Mappings.mappings;
+        var mapIncomingEvent = function (param, param$1, param$2) {
+          var mappings = partial_arg;
+          var event$prime = param;
+          var pluginDef = param$1;
+          var queryEngine = param$2;
+          return Belt_Array.concatMany(Belt_Array.map(mappings, (function (Mapping) {
+                            return Curry._3(Mapping.mapIncomingEvent, event$prime, pluginDef, queryEngine);
+                          })));
         };
+        var partial_arg$1 = Mappings.mappings;
+        var mapOutgoingEvent = function (param) {
+          var event$primeJson = param;
+          var match = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(event$primeJson), Mappings.mappings);
+          if (match !== undefined) {
+            return Curry._1(match.mapOutgoingEvent, event$primeJson);
+          } else {
+            return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$primeJson));
+          }
+        };
+        var forwardCommand = function (id, meta, extensionPointName, command$primeJson) {
+          return publishExtensionPointCommand(id, Message$Reventless.command$prime_encode(Id$Reventless.$$String.t_encode, PluginExtensionPointSpec$ReventlessSpec.command_encode, /* record */[
+                          /* id */Id$Reventless.$$String.makeFromString(id),
+                          /* meta : record */[
+                            /* service */meta[/* service */0],
+                            /* time */meta[/* time */1],
+                            /* ip */meta[/* ip */2],
+                            /* user */meta[/* user */3],
+                            /* msgId */Message$Reventless.uuid(/* () */0),
+                            /* correlationId */meta[/* correlationId */5]
+                          ],
+                          /* command : ForwardCommand */Block.__(2, [/* record */[
+                                /* extensionPointName */extensionPointName,
+                                /* id */id,
+                                /* command */JSON.stringify(command$primeJson)
+                              ]])
+                        ]), pluginExtensionPointCommandTopicId.get());
+        };
+        var applyIncomingCommandAction = function (param) {
+          switch (param.tag | 0) {
+            case /* AbstractPublishAggregateCommand */0 :
+                return publishAggregateCommand(param[1], param[2], Util_Aggregate$Reventless.commandTopicConnectorResource(resources, param[0]).id.get());
+            case /* AbstractPublishAggregateCommandAsync */1 :
+                var __x = param[0];
+                return __x.then((function (param) {
+                              return publishAggregateCommand(param[1], param[2], Util_Aggregate$Reventless.commandTopicConnectorResource(resources, param[0]).id.get());
+                            }));
+            case /* AbstractPublishAggregateCommandsAsync */2 :
+                var __x$1 = param[0];
+                return __x$1.then((function (tupels) {
+                              var __x = Promise.all(Belt_Array.map(tupels, (function (param) {
+                                          return publishAggregateCommand(param[1], param[2], Util_Aggregate$Reventless.commandTopicConnectorResource(resources, param[0]).id.get());
+                                        })));
+                              return __x.then((function (param) {
+                                            return Promise.resolve(/* () */0);
+                                          }));
+                            }));
+            case /* AbstractPublishPluginExtensionPointCommand */3 :
+                return publishExtensionPointCommand(param[0], param[1], pluginExtensionPointCommandTopicId.get());
+            case /* AbstractPublishExtensionPointCommand */4 :
+                return forwardCommand(param[1], param[2], param[0], param[3]);
+            case /* AbstractCall */5 :
+                return Curry._1(param[0], /* () */0).catch((function (err) {
+                              return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), /* () */0));
+                            }));
+            
+          }
+        };
+        var applyOutgoingCommandAction = function (param) {
+          switch (param.tag | 0) {
+            case /* AbstractPublishPluginExtensionPointCommand */0 :
+                return publishExtensionPointCommand(param[0], param[1], pluginExtensionPointCommandTopicId.get());
+            case /* AbstractPublishExtensionPointCommand */1 :
+                return forwardCommand(param[1], param[2], param[0], param[3]);
+            case /* AbstractCall */2 :
+                return Curry._1(param[0], /* () */0).catch((function (err) {
+                              return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), /* () */0));
+                            }));
+            
+          }
+        };
+        var incomingEventHandler = function (event$primeJson, pluginDef) {
+          var event$prime = Message$Reventless.event$prime_decode(Id$Reventless.$$String.t_decode, Spec.event_decode, event$primeJson);
+          if (event$prime.tag) {
+            console.log("Could not decode event':", event$prime[0]);
+            return Promise.resolve(/* () */0);
+          } else {
+            var commandActions = Curry._3(mapIncomingEvent, event$prime[0], pluginDef, queryEngine);
+            return Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction)).then((function (param) {
+                          return Promise.resolve(/* () */0);
+                        }));
+          }
+        };
+        var outgoingEventHandler = function (event$primeJson, pluginDef) {
+          var commandActions = Curry._2(mapOutgoingEvent, event$primeJson, pluginDef);
+          return Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction)).then((function (param) {
+                        return Promise.resolve(/* () */0);
+                      }));
+        };
+        var self$1 = self;
+        var outputs = {
+          name: name + Mappings.name,
+          extensionPointName: Spec.name,
+          aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
+                  var match = Mapping.aggregateName === ExtensionMapping$ReventlessSpec.NoAggregate.name;
+                  if (match) {
+                    return ;
+                  } else {
+                    return Mapping.aggregateName;
+                  }
+                })),
+          incomingEventHandler: incomingEventHandler,
+          outgoingEventHandler: outgoingEventHandler
+        };
+        self$1.setOutputs(outputs);
+        return self$1.registerOutputs(outputs);
+      };
+      var make = function (pluginExtensionPointCommandTopicId, queryEngine, opts, resources, param) {
+        var prim = ComponentType$Reventless.toString(/* Extension */10);
+        var prim$1 = Spec.name;
+        var prim$2 = function (param, param$1, param$2) {
+          return construct(pluginExtensionPointCommandTopicId, queryEngine, param, param$1, param$2);
+        };
+        var prim$3 = opts;
+        var prim$4 = resources;
+        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+      };
+      return {
+              make: make
+            };
+    });
 }
 
 var componentType = /* Extension */10;

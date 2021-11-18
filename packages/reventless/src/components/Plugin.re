@@ -34,7 +34,7 @@ type maker =
     ~version: string,
     ~heartbeatInterval: int,
     ~extensionPoints: array(module ExtensionPoint.T),
-    ~extensionMakers: array(Extension.maker),
+    ~extensions: array(module Extension.T),
     ~aggregates: array(module Aggregate.T),
     ~readModels: array(module ReadModel.T),
     ~taskMakers: array(Task.maker),
@@ -146,7 +146,7 @@ module Make =
         ~version: string,
         ~heartbeatInterval: int,
         ~extensionPoints: array(module ExtensionPoint.T),
-        ~extensionMakers: array(Extension.maker),
+        ~extensions: array(module Extension.T),
         ~aggregates: array(module Aggregate.T),
         ~readModels: array(module ReadModel.T),
         ~taskMakers: array(Task.maker),
@@ -249,8 +249,8 @@ module Make =
             extensionPoints->Component.extractMultipleOutputs;
 
           let extensions =
-            extensionMakers->Belt.Array.map(extensionMaker =>
-              extensionMaker(
+            extensions->Belt.Array.map((module Extension: Extension.T) =>
+              Extension.make(
                 ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
                 ~queryEngine,
                 ~opts=Some(opts),
@@ -604,15 +604,24 @@ module Make =
               },
             );
 
+          module ConnectPluginMappings = {
+            module Spec = ReventlessSpec.PluginExtensionPointSpec;
+            module type Mapping =
+              ExtensionMapping.T with module ExtensionPoint := Spec;
+            let name = "Connect";
+            let mappings: array(module Mapping) = [|
+              (module ConnectPluginMapping),
+            |];
+          };
+
           module ConnectPluginExtension =
-            Extension.Make(ReventlessSpec.PluginExtensionPointSpec);
-          let connectPluginExtensionMaker =
-            ConnectPluginExtension.make(
-              "Connect",
-              [|(module ConnectPluginMapping)|],
+            Extension.Make(
+              ReventlessSpec.PluginExtensionPointSpec,
+              ConnectPluginMappings,
             );
+
           let connectPluginExtension =
-            connectPluginExtensionMaker(
+            ConnectPluginExtension.make(
               ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
               ~queryEngine,
               ~opts=Some(opts),
@@ -881,7 +890,7 @@ module Make =
       ~version,
       ~heartbeatInterval,
       ~extensionPoints,
-      ~extensionMakers,
+      ~extensions,
       ~aggregates,
       ~readModels,
       ~taskMakers,
@@ -897,7 +906,7 @@ module Make =
             ~version,
             ~heartbeatInterval,
             ~extensionPoints,
-            ~extensionMakers,
+            ~extensions,
             ~aggregates,
             ~readModels,
             ~taskMakers,

@@ -12,7 +12,8 @@ type outputs = {
   "outgoingEventHandler":
     (. Js.Json.t, PluginSpec.pluginDefinition) => Js.Promise.t(unit),
 };
-type extension; // TODO: rename to t - after refactoring
+type t;
+type component = Component.t(t, outputs);
 
 type name = string;
 
@@ -24,22 +25,27 @@ type maker =
     ~resources: resources,
     unit
   ) =>
-  Component.t(extension, outputs);
+  component;
 
 open ReventlessSpec.ExtensionMapping;
 
 module type T = {
   module Spec: Spec;
-  module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec;
-  let make: (string, array(module Mapping)) => maker;
+  let make: maker;
 };
 
-module Make = (Spec: Spec) : (T with module Spec := Spec) => {
+module type Mappings = {
+  module Spec: ReventlessSpec.ExtensionMapping.Spec;
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec;
+  let name: string;
+  let mappings: array(module Mapping);
+};
 
+module Make =
+       (Spec: Spec, Mappings: Mappings with module Spec := Spec)
+       : (T with module Spec := Spec) => {
   type constructed;
-  type construct =
-    (Component.t(extension, outputs), string, resources) => constructed;
+  type construct = (component, string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -50,7 +56,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~resources: resources
     ) =>
-    Component.t(extension, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -68,12 +74,9 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
     "";
 
   [@bs.send]
-  external registerOutputs:
-    (Component.t(extension, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(extension, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -82,7 +85,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
   module Mapper = {
     let findOutgoingMapping = (aggregateNameOpt, mappings) =>
       aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
-        mappings->Belt.Array.getBy((module Mapping: Mapping) =>
+        mappings->Belt.Array.getBy((module Mapping: Mappings.Mapping) =>
           Mapping.aggregateName == aggregateName
         )
       ); // TODO: handle multiple mappings for same Aggregate name
@@ -95,14 +98,16 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
           queryEngine,
         ) =>
       mappings
-      ->Belt.Array.map((module Mapping: Mapping) =>
+      ->Belt.Array.map((module Mapping: Mappings.Mapping) =>
           Mapping.mapIncomingEvent(event', pluginDef, queryEngine)
         )
       ->Belt.Array.concatMany;
 
-    let mapOutgoingEvent = (mappings: array(module Mapping), event'Json) =>
+    let mapOutgoingEvent = (mappings, event'Json) =>
       switch (
-        event'Json->Message.serviceNameOfMsg->findOutgoingMapping(mappings)
+        event'Json
+        ->Message.serviceNameOfMsg
+        ->findOutgoingMapping(Mappings.mappings)
       ) {
       | Some((module Mapping)) => Mapping.mapOutgoingEvent(event'Json)
       | None =>
@@ -145,15 +150,14 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
 
   let construct =
       (
-        ~mappings,
         ~pluginExtensionPointCommandTopicId,
         ~queryEngine,
         self,
         name,
         resources,
       ) => {
-    let mapIncomingEvent = Mapper.mapIncomingEvent(mappings);
-    let mapOutgoingEvent = Mapper.mapOutgoingEvent(mappings);
+    let mapIncomingEvent = Mapper.mapIncomingEvent(Mappings.mappings);
+    let mapOutgoingEvent = Mapper.mapOutgoingEvent(Mappings.mappings);
 
     let forwardCommand = (id, meta, extensionPointName, command'Json) =>
       publishExtensionPointCommand(
@@ -305,10 +309,10 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
       };
 
     makeOutputs(
-      ~name,
+      ~name=name ++ Mappings.name,
       ~extensionPointName=Spec.name,
       ~aggregateNames=
-        mappings->Belt.Array.keepMap(((module Mapping)) =>
+        Mappings.mappings->Belt.Array.keepMap(((module Mapping)) =>
           Mapping.aggregateName == NoAggregate.name
             ? None : Some(Mapping.aggregateName)
         ),
@@ -318,25 +322,13 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
     ->setOutputs(self, _);
   };
 
-  let make: (string, array(module Mapping)) => maker =
-    (
-      nameSuffix,
-      mappings,
-      ~pluginExtensionPointCommandTopicId,
-      ~queryEngine,
-      ~opts,
-      ~resources,
-      _,
-    ) =>
+  let make: maker =
+    (~pluginExtensionPointCommandTopicId, ~queryEngine, ~opts, ~resources, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name ++ "." ++ nameSuffix,
+        ~name=Spec.name,
         ~construct=
-          construct(
-            ~mappings,
-            ~pluginExtensionPointCommandTopicId,
-            ~queryEngine,
-          ),
+          construct(~pluginExtensionPointCommandTopicId, ~queryEngine),
         ~opts,
         ~resources,
       );
