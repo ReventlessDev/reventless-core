@@ -77,41 +77,38 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
     self->registerOutputs(outputs);
   };
 
-  module Mapper = {
-    let findOutgoingMapping = (aggregateNameOpt, mappings) =>
-      aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
-        mappings->Belt.Array.getBy((module Mapping: Mappings.Mapping) =>
-          Mapping.aggregateName == aggregateName
-        )
-      ); // TODO: handle multiple mappings for same Aggregate name
+  let findOutgoingMapping = (aggregateNameOpt, mappings) =>
+    aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
+      mappings->Belt.Array.getBy((module Mapping: Mappings.Mapping) =>
+        Mapping.aggregateName == aggregateName
+      )
+    ); // TODO: handle multiple mappings for same Aggregate name
 
-    let mapIncomingEvent =
-        (
-          mappings,
-          event': Message.event'(Id.String.t, Spec.event),
-          pluginDef,
-          queryEngine,
-        ) =>
-      mappings
-      ->Belt.Array.map((module Mapping: Mappings.Mapping) =>
-          Mapping.mapIncomingEvent(event', pluginDef, queryEngine)
-        )
-      ->Belt.Array.concatMany;
+  let mapIncomingEvent =
+      (
+        event': Message.event'(Id.String.t, Spec.event),
+        pluginDef,
+        queryEngine,
+      ) =>
+    Mappings.mappings
+    ->Belt.Array.map((module Mapping: Mappings.Mapping) =>
+        Mapping.mapIncomingEvent(event', pluginDef, queryEngine)
+      )
+    ->Belt.Array.concatMany;
 
-    let mapOutgoingEvent = (mappings, event'Json) =>
-      switch (
-        event'Json
-        ->Message.serviceNameOfMsg
-        ->findOutgoingMapping(Mappings.mappings)
-      ) {
-      | Some((module Mapping)) => Mapping.mapOutgoingEvent(event'Json)
-      | None =>
-        Js.Exn.raiseError(
-          "ExtensionPoint.Mapping: Missing mapping for "
-          ++ event'Json->Js.Json.stringify,
-        )
-      };
-  };
+  let mapOutgoingEvent = event'Json =>
+    switch (
+      event'Json
+      ->Message.serviceNameOfMsg
+      ->findOutgoingMapping(Mappings.mappings)
+    ) {
+    | Some((module Mapping)) => Mapping.mapOutgoingEvent(event'Json)
+    | None =>
+      Js.Exn.raiseError(
+        "ExtensionPoint.Mapping: Missing mapping for "
+        ++ event'Json->Js.Json.stringify,
+      )
+    };
 
   let publishAggregateCommand = (id, cmdJson, queueId) =>
     cmdJson
@@ -128,7 +125,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
          |> Js.Promise.resolve
        );
 
-  let publishExtensionPointCommand = (id, cmdJson, queueId) =>
+  let publishExtensionPointCommand = (_id, cmdJson, queueId) =>
     cmdJson
     |> Js.Json.stringify  // TODO: move to Adapter
     |> AwsSdk.SQS.sendMessage(
@@ -151,9 +148,6 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
         name,
         resources,
       ) => {
-    let mapIncomingEvent = Mapper.mapIncomingEvent(Mappings.mappings);
-    let mapOutgoingEvent = Mapper.mapOutgoingEvent(Mappings.mappings);
-
     let forwardCommand = (id, meta, extensionPointName, command'Json) =>
       publishExtensionPointCommand(
         id,
@@ -304,7 +298,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
       };
 
     makeOutputs(
-      ~name=name ++ Mappings.name,
+      ~name,
       ~extensionPointName=Spec.name,
       ~aggregateNames=
         Mappings.mappings->Belt.Array.keepMap(((module Mapping)) =>
@@ -321,7 +315,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
     (~pluginExtensionPointCommandTopicId, ~queryEngine, ~opts, ~resources, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name,
+        ~name=Spec.name ++ "." ++ Mappings.name,
         ~construct=
           construct(~pluginExtensionPointCommandTopicId, ~queryEngine),
         ~opts,

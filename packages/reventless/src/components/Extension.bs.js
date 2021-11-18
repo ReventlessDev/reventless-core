@@ -24,39 +24,32 @@ function Make(Spec) {
                                   }));
                     }));
       };
+      var mapIncomingEvent = function (event$prime, pluginDef, queryEngine) {
+        return Belt_Array.concatMany(Belt_Array.map(Mappings.mappings, (function (Mapping) {
+                          return Curry._3(Mapping.mapIncomingEvent, event$prime, pluginDef, queryEngine);
+                        })));
+      };
+      var mapOutgoingEvent = function (event$primeJson) {
+        var match = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(event$primeJson), Mappings.mappings);
+        if (match !== undefined) {
+          return Curry._1(match.mapOutgoingEvent, event$primeJson);
+        } else {
+          return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$primeJson));
+        }
+      };
       var publishAggregateCommand = function (id, cmdJson, queueId) {
         var __x = JSON.stringify(cmdJson);
         return SQS$AwsSdk.sendMessage(queueId, __x, id, undefined, undefined, /* () */0).catch((function (err) {
                       return Promise.resolve((console.log("Extension: Error on publish command:", err), /* () */0));
                     }));
       };
-      var publishExtensionPointCommand = function (id, cmdJson, queueId) {
+      var publishExtensionPointCommand = function (_id, cmdJson, queueId) {
         var __x = JSON.stringify(cmdJson);
         return SQS$AwsSdk.sendMessage(queueId, __x, undefined, undefined, undefined, /* () */0).catch((function (err) {
                       return Promise.resolve((console.log("Extension: Error on publish command:", err), /* () */0));
                     }));
       };
       var construct = function (pluginExtensionPointCommandTopicId, queryEngine, self, name, resources) {
-        var partial_arg = Mappings.mappings;
-        var mapIncomingEvent = function (param, param$1, param$2) {
-          var mappings = partial_arg;
-          var event$prime = param;
-          var pluginDef = param$1;
-          var queryEngine = param$2;
-          return Belt_Array.concatMany(Belt_Array.map(mappings, (function (Mapping) {
-                            return Curry._3(Mapping.mapIncomingEvent, event$prime, pluginDef, queryEngine);
-                          })));
-        };
-        var partial_arg$1 = Mappings.mappings;
-        var mapOutgoingEvent = function (param) {
-          var event$primeJson = param;
-          var match = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(event$primeJson), Mappings.mappings);
-          if (match !== undefined) {
-            return Curry._1(match.mapOutgoingEvent, event$primeJson);
-          } else {
-            return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$primeJson));
-          }
-        };
         var forwardCommand = function (id, meta, extensionPointName, command$primeJson) {
           return publishExtensionPointCommand(id, Message$Reventless.command$prime_encode(Id$Reventless.$$String.t_encode, PluginExtensionPointSpec$ReventlessSpec.command_encode, /* record */[
                           /* id */Id$Reventless.$$String.makeFromString(id),
@@ -124,21 +117,21 @@ function Make(Spec) {
             console.log("Could not decode event':", event$prime[0]);
             return Promise.resolve(/* () */0);
           } else {
-            var commandActions = Curry._3(mapIncomingEvent, event$prime[0], pluginDef, queryEngine);
+            var commandActions = mapIncomingEvent(event$prime[0], pluginDef, queryEngine);
             return Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction)).then((function (param) {
                           return Promise.resolve(/* () */0);
                         }));
           }
         };
         var outgoingEventHandler = function (event$primeJson, pluginDef) {
-          var commandActions = Curry._2(mapOutgoingEvent, event$primeJson, pluginDef);
+          var commandActions = Curry._1(mapOutgoingEvent(event$primeJson), pluginDef);
           return Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction)).then((function (param) {
                         return Promise.resolve(/* () */0);
                       }));
         };
         var self$1 = self;
         var outputs = {
-          name: name + Mappings.name,
+          name: name,
           extensionPointName: Spec.name,
           aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
                   var match = Mapping.aggregateName === ExtensionMapping$ReventlessSpec.NoAggregate.name;
@@ -156,7 +149,7 @@ function Make(Spec) {
       };
       var make = function (pluginExtensionPointCommandTopicId, queryEngine, opts, resources, param) {
         var prim = ComponentType$Reventless.toString(/* Extension */10);
-        var prim$1 = Spec.name;
+        var prim$1 = Spec.name + ("." + Mappings.name);
         var prim$2 = function (param, param$1, param$2) {
           return construct(pluginExtensionPointCommandTopicId, queryEngine, param, param$1, param$2);
         };
