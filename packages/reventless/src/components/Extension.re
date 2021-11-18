@@ -29,10 +29,7 @@ type maker =
 
 open ReventlessSpec.ExtensionMapping;
 
-module type T = {
-  module Spec: Spec;
-  let make: maker;
-};
+module type T = {let make: maker;};
 
 module type Mappings = {
   module Spec: ReventlessSpec.ExtensionMapping.Spec;
@@ -41,9 +38,7 @@ module type Mappings = {
   let mappings: array(module Mapping);
 };
 
-module Make =
-       (Spec: Spec, Mappings: Mappings with module Spec := Spec)
-       : (T with module Spec := Spec) => {
+module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
   type constructed;
   type construct = (component, string, resources) => constructed;
 

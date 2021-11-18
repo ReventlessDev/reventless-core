@@ -13,11 +13,7 @@ module Make =
          CommandTopicAdapter: CommandTopic.Adapter.Connector,
          EventTopicAdapter: EventTopic.Adapter.Publisher,
        )
-
-         : (
-           ExtensionPoint.T with
-             module Spec := ReventlessSpec.PluginExtensionPointSpec
-       ) => {
+       : ExtensionPoint.T => {
   include ExtensionPoint.Make(
             ReventlessSpec.PluginExtensionPointSpec,
             Mappings,

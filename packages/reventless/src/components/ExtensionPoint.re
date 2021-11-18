@@ -39,10 +39,7 @@ module type Spec = {
   type callCommand;
 };
 
-module type T = {
-  module Spec: ReventlessSpec.ExtensionPointMapping.Spec;
-  let make: maker;
-};
+module type T = {let make: maker;};
 
 module type Mappings = {
   module Spec: ReventlessSpec.ExtensionPointMapping.Spec;
@@ -58,7 +55,7 @@ module Make =
          CommandTopicAdapter: CommandTopic.Adapter.Connector,
          EventTopicAdapter: EventTopic.Adapter.Publisher,
        )
-       : (T with module Spec = Spec) => {
+       : T => {
   module Spec = Spec;
 
   module SpecWithId:
