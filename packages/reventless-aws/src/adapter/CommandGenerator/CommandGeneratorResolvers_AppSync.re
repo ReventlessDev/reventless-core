@@ -75,7 +75,6 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
                 (),
               )
               ->Pulumi.Input.wrap,
-            ~name=name->Pulumi.Input.wrap, // This has to be provided for DataSource !
             ~serviceRoleArn=dataSourceRole##arn->Pulumi.Output.asInput,
             (),
           ),

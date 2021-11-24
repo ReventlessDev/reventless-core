@@ -45,7 +45,6 @@ function make(name, api, fields, commandGenerator, opts) {
         apiId: Output$Pulumi.flatMap(api, (function (api) {
                 return api.id;
               })),
-        name: name,
         lambdaConfig: {
           functionArn: commandGeneratorArn
         },
