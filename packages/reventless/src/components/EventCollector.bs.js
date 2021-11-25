@@ -24,7 +24,7 @@ function Make(Policies) {
   return (function (Connector) {
       var enqueueEventFn = function (connector) {
         return (function (delay, id, message) {
-            return connector[/* enqueueEvent */2](delay, id, message);
+            return connector[/* enqueueEvent */1](delay, id, message);
           });
       };
       var construct = function (aggregateNames, extensionPointNames, eventsHandler, memorySize, timeout, self, name, resources) {
@@ -42,7 +42,6 @@ function Make(Policies) {
               opts,
               resources
             ]);
-        Util_EventCollector$Reventless.setConnectorFunc(resources, connector[/* func */1], name);
         var match = connector[/* resource */0];
         if (match !== undefined) {
           Util_EventCollector$Reventless.setConnectorResource(resources, Caml_option.valFromOption(match), name);

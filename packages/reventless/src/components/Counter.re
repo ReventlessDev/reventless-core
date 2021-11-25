@@ -65,10 +65,7 @@ module type T = {
 };
 
 module Adapter = {
-  type handler = {
-    addToCounterTarget,
-    func: resource,
-  };
+  type handler = {addToCounterTarget};
   type handlerMaker =
     (
       ~name: string,
@@ -371,7 +368,6 @@ module Make =
         ~opts=opts2,
         ~resources,
       );
-    resources->Util_Counter.setHandlerFunc(handler.func, name);
 
     self->setCount(count(referencesDb->ReferencesDb.saveBatch));
     self->setAddToCounterTarget(handler.addToCounterTarget);

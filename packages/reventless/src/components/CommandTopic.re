@@ -50,7 +50,6 @@ module type T = {
 module Adapter = {
   type connector = {
     resource,
-    func: resource,
     publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
   };
   type connectorMaker =
@@ -191,7 +190,6 @@ module Make =
         ~opts,
         ~resources,
       );
-    resources->Util_CommandTopic.setConnectorFunc(connector.func, name);
     resources->Util_CommandTopic.setConnectorResource(
       connector.resource,
       name,

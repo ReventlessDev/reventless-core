@@ -11,7 +11,6 @@ var Component = require("./Component");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_CommandGenerator$Reventless = require("../util/Util_CommandGenerator.bs.js");
 
 var Adapter = { };
 
@@ -51,27 +50,24 @@ function Make(Config) {
                                 }));
                   });
               };
-              var construct = function (api, commandHandler, self, name, resources) {
+              var construct = function (self, name, api, commandHandler) {
                 var opts = {
                   parent: self
                 };
                 var resolvers = Curry._5(Resolvers.make, ComponentType$Reventless.name(name, /* CommandGenerator */3), api, Behaviour.resolverConfig[/* fields */1], generateCommand(commandHandler), opts);
-                Util_CommandGenerator$Reventless.setResolversFunc(resources, resolvers[/* func */1], name);
                 var outputs = {
                   resolvers: resolvers[/* resources */0]
                 };
                 return self.registerOutputs(outputs);
               };
-              var make = function (name, commandHandler, opts, resources, param) {
-                var partial_arg = Config.api;
+              var make = function (name, commandHandler, opts, param) {
                 var prim = ComponentType$Reventless.toString(/* CommandGenerator */3);
                 var prim$1 = name;
-                var prim$2 = function (param, param$1, param$2) {
-                  return construct(partial_arg, commandHandler, param, param$1, param$2);
-                };
+                var prim$2 = construct;
                 var prim$3 = opts;
-                var prim$4 = resources;
-                return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+                var prim$4 = Config.api;
+                var prim$5 = commandHandler;
+                return new Component.default(prim, prim$1, prim$2, prim$3, prim$4, prim$5);
               };
               return {
                       Spec: Spec,

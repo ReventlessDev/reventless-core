@@ -6,8 +6,15 @@ module Make =
 
   type t;
 
-  let make =
-      (~name as _, ~commandHandler as _, ~opts as _=?, ~resources as _, _) => {
-    ()->Obj.magic;
-  };
+  let make:
+    (
+      ~name: string,
+      ~commandHandler: commandHandler,
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      unit
+    ) =>
+    Component.t(t,CommandGenerator.outputs) =
+    (~name as _, ~commandHandler as _, ~opts as _=?, _unit) => {
+      ()->Obj.magic;
+    };
 };

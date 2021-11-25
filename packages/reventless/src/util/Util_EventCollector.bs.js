@@ -31,36 +31,7 @@ function getConnectorResource(resources, name) {
               })(connector)(ComponentType$Reventless.name(name, /* EventCollector */5));
 }
 
-var func = "Func";
-
-function setConnectorFunc(resources, resource, name) {
-  return Curry._1((function (param) {
-                    var func = function (param$1, param$2, param$3) {
-                      return Resources$Reventless.set(param, param$1, param$2, param$3);
-                    };
-                    return (function (param) {
-                        var func$1 = Curry._1(func, param);
-                        return (function (param) {
-                            return Curry._2(func$1, param, resources);
-                          });
-                      });
-                  })(func)(ComponentType$Reventless.name(name, /* EventCollector */5)), resource);
-}
-
-function getConnectorFunc(resources, name) {
-  return (function (param) {
-                return (function (param$1) {
-                    var param$2 = param$1;
-                    var param$3 = resources;
-                    return Resources$Reventless.getExn(param, param$2, param$3);
-                  });
-              })(func)(ComponentType$Reventless.name(name, /* EventCollector */5));
-}
-
 exports.connector = connector;
 exports.setConnectorResource = setConnectorResource;
 exports.getConnectorResource = getConnectorResource;
-exports.func = func;
-exports.setConnectorFunc = setConnectorFunc;
-exports.getConnectorFunc = getConnectorFunc;
 /* No side effect */

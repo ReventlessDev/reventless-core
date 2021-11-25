@@ -21,7 +21,7 @@ function Make(Spec) {
             var json = Message$Reventless.command$prime_encode(Spec.Id.t_encode, Spec.command_encode, command$prime);
             var jsonStr = JSON.stringify(json);
             var resourceName = connector[/* resource */0].name.get();
-            return connector[/* publish */2](Curry._1(Spec.Id.toString, command$prime[/* id */0]), command$prime[/* meta */1], json).catch((function (e) {
+            return connector[/* publish */1](Curry._1(Spec.Id.toString, command$prime[/* id */0]), command$prime[/* meta */1], json).catch((function (e) {
                             console.log("CommandTopic: Couldn\'t publish command " + (String(jsonStr) + (" to " + (String(resourceName) + ""))));
                             return Promise.reject([
                                         NotPublishedToConnector,
@@ -64,7 +64,6 @@ function Make(Spec) {
           parent: self
         };
         var connector = Curry._6(Connector.make, ComponentType$Reventless.name(name, /* CommandTopic */4), handleCommands(commandsHandler), memorySize, timeout, opts, resources);
-        Util_CommandTopic$Reventless.setConnectorFunc(resources, connector[/* func */1], name);
         Util_CommandTopic$Reventless.setConnectorResource(resources, connector[/* resource */0], name);
         self.publish = publishFn(connector);
         var self$1 = self;

@@ -377,7 +377,6 @@ module Make =
           ~name=childName,
           ~commandHandler=CommandTopic.publish(commandTopic),
           ~opts,
-          ~resources,
           (),
         );
 
