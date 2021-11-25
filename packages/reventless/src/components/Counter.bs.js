@@ -15,6 +15,7 @@ var Id$Reventless = require("../Id.bs.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var QueryDb$Reventless = require("./QueryDb.bs.js");
+var Util_Counter$Reventless = require("../util/Util_Counter.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 var NotCounted = Caml_exceptions.create("Counter-Reventless.NotCounted");
@@ -316,6 +317,7 @@ function Make(Config) {
                           }));
             };
             var handler = Curry._6(Handler.make, name$1, referencesName, countsName, counterHandler, opts2, resources);
+            Util_Counter$Reventless.setHandlerFunc(resources, handler[/* func */1], name$1);
             var partial_arg = Curry._1(ReferencesDb.saveBatch, referencesDb);
             self.count = (function (param) {
                 var saveBatch = partial_arg;
@@ -367,8 +369,7 @@ function Make(Config) {
             var self$1 = self;
             var outputs = {
               referencesDb: Curry._1(ReferencesDb.outputs, referencesDb).storage,
-              countsDb: Curry._1(CountsDb.outputs, countsDb).storage,
-              func: handler[/* func */1]
+              countsDb: Curry._1(CountsDb.outputs, countsDb).storage
             };
             self$1.setOutputs(outputs);
             return self$1.registerOutputs(outputs);

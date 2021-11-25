@@ -64,12 +64,12 @@ function Make(Spec) {
           parent: self
         };
         var connector = Curry._6(Connector.make, ComponentType$Reventless.name(name, /* CommandTopic */4), handleCommands(commandsHandler), memorySize, timeout, opts, resources);
+        Util_CommandTopic$Reventless.setConnectorFunc(resources, connector[/* func */1], name);
         Util_CommandTopic$Reventless.setConnectorResource(resources, connector[/* resource */0], name);
         self.publish = publishFn(connector);
         var self$1 = self;
         var outputs = {
-          connector: connector[/* resource */0],
-          func: connector[/* func */1]
+          connector: connector[/* resource */0]
         };
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
