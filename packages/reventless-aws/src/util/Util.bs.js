@@ -24,8 +24,6 @@ var EventSourceMapping = 0;
 
 var Kinesis_Runtime = 0;
 
-var Lambda = 0;
-
 var S3_Runtime = 0;
 
 var SES_Runtime = 0;
@@ -57,7 +55,6 @@ exports.DynamoDbStream_Runtime = DynamoDbStream_Runtime;
 exports.DynamoDbStream = DynamoDbStream;
 exports.EventSourceMapping = EventSourceMapping;
 exports.Kinesis_Runtime = Kinesis_Runtime;
-exports.Lambda = Lambda;
 exports.S3_Runtime = S3_Runtime;
 exports.SES_Runtime = SES_Runtime;
 exports.SesPolicy_Runtime = SesPolicy_Runtime;

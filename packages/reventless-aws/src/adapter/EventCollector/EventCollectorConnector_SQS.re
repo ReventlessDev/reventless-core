@@ -110,7 +110,6 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
 
     {
       resource: Some(queue->Util_SQS.toResource),
-      func: eventHandlerLambda->Util_Lambda.outputToResource,
       enqueueEvent: queue->EventCollectorConnector_SQS_Runtime.enqueueEvent,
     };
   };

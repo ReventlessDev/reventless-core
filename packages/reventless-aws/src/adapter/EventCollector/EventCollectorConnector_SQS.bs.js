@@ -11,7 +11,6 @@ var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.b
 var Util_SNS$ReventlessAws = require("../../util/Util_SNS.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
 var Util_Aggregate$Reventless = require("@reventless/reventless/src/util/Util_Aggregate.bs.js");
-var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.bs.js");
 var Util_ExtensionPoint$Reventless = require("@reventless/reventless/src/util/Util_ExtensionPoint.bs.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.bs.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.bs.js");
@@ -61,7 +60,6 @@ function make(name, aggregateNames, extensionPointNames, policies, handleEvents,
         }));
   return /* record */[
           /* resource */Caml_option.some(Util_SQS$ReventlessAws.toResource(queue)),
-          /* func */Util_Lambda$ReventlessAws.outputToResource(eventHandlerLambda),
           /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue)
         ];
 }

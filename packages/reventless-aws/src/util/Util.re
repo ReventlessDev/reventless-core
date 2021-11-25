@@ -9,7 +9,6 @@ module DynamoDbStream_Runtime = Util_DynamoDbStream_Runtime;
 module DynamoDbStream = Util_DynamoDbStream;
 module EventSourceMapping = Util_EventSourceMapping;
 module Kinesis_Runtime = Util_Kinesis_Runtime;
-module Lambda = Util_Lambda;
 module S3_Runtime = Util_S3_Runtime;
 module SES_Runtime = Util_SES_Runtime;
 module SesPolicy_Runtime = Util_SesPolicy_Runtime;
