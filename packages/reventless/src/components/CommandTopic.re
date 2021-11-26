@@ -6,6 +6,7 @@ type outputs = {. "connector": resource};
 
 type publish('id, 'command) =
   (. Message.command'('id, 'command)) => Js.Promise.t(unit);
+type publishJson = (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit);
 
 exception NotPublishedToConnector(Js.Promise.error);
 
@@ -45,6 +46,7 @@ module type T = {
     Component.t(t, outputs);
 
   let publish: Component.t(t, outputs) => publish(Spec.Id.t, Spec.command);
+  let publishJson: Component.t(t, outputs) => publishJson;
 };
 
 module Adapter = {
@@ -111,19 +113,19 @@ module Make =
   [@bs.set]
   external setPublish: (Component.t(t, outputs), publish) => unit = "publish";
   [@bs.get] external publish: Component.t(t, outputs) => publish = "publish";
+  [@bs.set]
+  external setPublishJson: (Component.t(t, outputs), publishJson) => unit =
+    "publishJson";
+  [@bs.get]
+  external publishJson: Component.t(t, outputs) => publishJson =
+    "publishJson";
 
-  let publishFn = connector =>
-    (. command') => {
-      let json =
-        Message.command'_encode(
-          Spec.Id.t_encode,
-          Spec.command_encode,
-          command',
-        );
+  let publishJsonFn = connector =>
+    (. id, meta, json) => {
       let jsonStr = json->Js.Json.stringify;
       let resourceName = connector.Adapter.resource##name->Pulumi.Output.get;
 
-      connector.publish(. command'.id->Spec.Id.toString, command'.meta, json)
+      connector.publish(. id, meta, json)
       |> Js.Promise.catch(e => {
            Js.log(
              {j|CommandTopic: Couldn't publish command $jsonStr to $resourceName|j},
@@ -136,6 +138,21 @@ module Make =
            )
            ->Js.Promise.resolve
          );
+    };
+
+  let publishFn = connector =>
+    (. command') => {
+      let json =
+        Message.command'_encode(
+          Spec.Id.t_encode,
+          Spec.command_encode,
+          command',
+        );
+      connector->publishJsonFn(.
+        command'.id->Spec.Id.toString,
+        command'.meta,
+        json,
+      );
     };
 
   let handleCommands = commandsHandler =>
@@ -196,6 +213,7 @@ module Make =
     );
 
     self->setPublish(connector->publishFn);
+    self->setPublishJson(connector->publishJsonFn);
 
     makeOutputs(~connector=connector.resource)->setOutputs(self, _);
   };

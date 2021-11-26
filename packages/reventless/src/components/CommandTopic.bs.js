@@ -16,12 +16,11 @@ var Adapter = { };
 
 function Make(Spec) {
   return (function (Connector) {
-      var publishFn = function (connector) {
-        return (function (command$prime) {
-            var json = Message$Reventless.command$prime_encode(Spec.Id.t_encode, Spec.command_encode, command$prime);
+      var publishJsonFn = function (connector) {
+        return (function (id, meta, json) {
             var jsonStr = JSON.stringify(json);
             var resourceName = connector[/* resource */0].name.get();
-            return connector[/* publish */1](Curry._1(Spec.Id.toString, command$prime[/* id */0]), command$prime[/* meta */1], json).catch((function (e) {
+            return connector[/* publish */1](id, meta, json).catch((function (e) {
                             console.log("CommandTopic: Couldn\'t publish command " + (String(jsonStr) + (" to " + (String(resourceName) + ""))));
                             return Promise.reject([
                                         NotPublishedToConnector,
@@ -30,6 +29,12 @@ function Make(Spec) {
                           })).then((function (param) {
                           return Promise.resolve((console.log("CommandTopic: Published command: " + (String(jsonStr) + (" to " + (String(resourceName) + "")))), /* () */0));
                         }));
+          });
+      };
+      var publishFn = function (connector) {
+        return (function (command$prime) {
+            var json = Message$Reventless.command$prime_encode(Spec.Id.t_encode, Spec.command_encode, command$prime);
+            return publishJsonFn(connector)(Curry._1(Spec.Id.toString, command$prime[/* id */0]), command$prime[/* meta */1], json);
           });
       };
       var handleCommands = function (commandsHandler) {
@@ -66,6 +71,7 @@ function Make(Spec) {
         var connector = Curry._6(Connector.make, ComponentType$Reventless.name(name, /* CommandTopic */4), handleCommands(commandsHandler), memorySize, timeout, opts, resources);
         Util_CommandTopic$Reventless.setConnectorResource(resources, connector[/* resource */0], name);
         self.publish = publishFn(connector);
+        self.publishJson = publishJsonFn(connector);
         var self$1 = self;
         var outputs = {
           connector: connector[/* resource */0]
@@ -91,6 +97,9 @@ function Make(Spec) {
               make: make,
               publish: (function (prim) {
                   return prim.publish;
+                }),
+              publishJson: (function (prim) {
+                  return prim.publishJson;
                 })
             };
     });
