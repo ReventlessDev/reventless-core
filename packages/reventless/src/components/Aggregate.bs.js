@@ -269,6 +269,7 @@ function Make(Config) {
                                             })(EventCollector)(EventMappings);
                                     var match = EventMappings.mappings.length !== 0;
                                     var eventMapper = match ? Caml_option.some(Curry._6(EventMapper.make, queryEngine, undefined, undefined, Caml_option.some(opts), resources, /* () */0)) : undefined;
+                                    self.publishJson = Curry._1(CommandTopic.publishJson, commandTopic);
                                     var self$1 = self;
                                     var outputs = {
                                       name: name,
@@ -293,7 +294,10 @@ function Make(Config) {
                                   };
                                   return {
                                           Spec: Spec,
-                                          make: make
+                                          make: make,
+                                          publishJson: (function (prim) {
+                                              return prim.publishJson;
+                                            })
                                         };
                                 });
                             });

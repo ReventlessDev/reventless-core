@@ -30,6 +30,8 @@ module type T = {
       unit
     ) =>
     component;
+
+  let publishJson: Component.t(t, outputs) => CommandTopic.publishJson;
 };
 
 module Make =
@@ -78,6 +80,23 @@ module Make =
     outputs =
     "";
 
+  [@bs.send]
+  external registerOutputs: (component, outputs) => constructed =
+    "registerOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  let setOutputs = (self, outputs) => {
+    self->setOutputs(outputs);
+    self->registerOutputs(outputs);
+  };
+
+  [@bs.set]
+  external setPublishJson:
+    (Component.t(t, outputs), CommandTopic.publishJson) => unit =
+    "publishJson";
+  [@bs.get]
+  external publishJson: Component.t(t, outputs) => CommandTopic.publishJson =
+    "publishJson";
+
   module CommandGenerator =
     CommandGenerator.Make(Config, Spec, Behaviour, CommandGeneratorResolvers);
   module CommandTopic = CommandTopic.Make(Spec, CommandTopicConnector);
@@ -88,15 +107,6 @@ module Make =
       EventCollector.DefaultPolicies,
       EventCollectorConnector,
     );
-
-  [@bs.send]
-  external registerOutputs: (component, outputs) => constructed =
-    "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs);
-    self->registerOutputs(outputs);
-  };
 
   let errorHandler = (error, command, context: Message.context) => {
     let errorJson = error |> Spec.error_encode |> Js.Json.stringify;
@@ -392,6 +402,8 @@ module Make =
     let eventMapper =
       EventMappings.mappings->Belt.Array.length > 0
         ? Some(EventMapper.make(~queryEngine, ~opts, ~resources, ())) : None;
+
+    self->setPublishJson(commandTopic->CommandTopic.publishJson);
 
     makeOutputs(
       ~name,
