@@ -2,7 +2,11 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.EventLog;
 
-type outputs = {. "storage": resource};
+type outputs = {
+  .
+  "storage": resource,
+  "eventTopic": EventTopic.outputs,
+};
 
 exception ReplayError(string);
 
@@ -56,7 +60,11 @@ module Adapter = {
 };
 
 module Make =
-       (Spec: Spec, Storage: Adapter.Storage)
+       (
+         Spec: Spec,
+         Storage: Adapter.Storage,
+         EventTopicPublisher: EventTopic.Adapter.Publisher,
+       )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
   type t;
@@ -81,7 +89,10 @@ module Make =
     Component.t(t, outputs) =
     "default";
 
-  [@bs.obj] external makeOutputs: (~storage: resource) => outputs = "";
+  [@bs.obj]
+  external makeOutputs:
+    (~storage: resource, ~eventTopic: EventTopic.outputs) => outputs =
+    "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
@@ -101,7 +112,9 @@ module Make =
   [@bs.get] external append: Component.t(t, outputs) => append = "append";
   [@bs.get] external replay: Component.t(t, outputs) => replay = "replay";
 
-  let appendFn = storage =>
+  module EventTopic = EventTopic.Make(Spec, EventTopicPublisher);
+
+  let appendFn = (storage, eventTopic) =>
     (. sequenceNr, id, events') =>
       try (
         events'->Belt.Array.map(
@@ -125,13 +138,28 @@ module Make =
         )
         |> (
           data =>
-            storage.Adapter.append(. sequenceNr, id |> Spec.Id.toString, data)
+            storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, data)
             |> Js.Promise.catch(err => {
                  let serviceName = Spec.name;
                  let resourceName = storage.resource##name->Pulumi.Output.get;
                  let err = {j|EventLog: Error: Couldn't append for $serviceName($id) on $resourceName: $err|j};
                  Js.log(err);
                  err->Belt.Result.Error->Js.Promise.resolve;
+               })
+            |> Js.Promise.then_(result => {
+                 let _ =
+                   eventTopic->EventTopic.publish(. events')
+                   |> Js.Promise.catch(err => {
+                        let msg =
+                          {j|EventLog.appendFn($id): EventTopic.publish Error: |j}
+                          ++
+                          err->AwsSdk.Error.ofPromise##message;
+
+                        Js.log(msg);
+                        Js.Exn.raiseError(msg);
+                      });
+
+                 result->Js.Promise.resolve;
                })
         )
       ) {
@@ -190,10 +218,23 @@ module Make =
     resources->Util_EventLog.setStorageResource(storage.resource, name);
     let storageOutputs = storage.resource;
 
-    self->setAppend(storage->appendFn);
+    let eventTopic =
+      EventTopic.make(
+        ~name,
+        ~opts=
+          opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
+        ~resources,
+        (),
+      );
+
+    self->setAppend(storage->appendFn(eventTopic));
     self->setReplay(storage->replayFn);
 
-    makeOutputs(~storage=storageOutputs) |> self->setOutputs;
+    makeOutputs(
+      ~storage=storageOutputs,
+      ~eventTopic=eventTopic->Component.extractOutputs,
+    )
+    |> self->setOutputs;
   };
 
   let make:

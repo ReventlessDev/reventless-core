@@ -13,6 +13,9 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
+var Component$Reventless = require("./Component.bs.js");
+var EventTopic$Reventless = require("./EventTopic.bs.js");
+var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var Util_EventLog$Reventless = require("../util/Util_EventLog.bs.js");
 
@@ -22,106 +25,118 @@ var Adapter = { };
 
 function Make(Spec) {
   return (function ($$Storage) {
-      var appendFn = function (storage) {
-        return (function (sequenceNr, id, events$prime) {
-            try {
-              var data = Belt_Array.map(events$prime, (function (event$prime) {
-                      return Js_dict.fromArray(Belt_Array.concat(/* array */[
-                                      /* tuple */[
-                                        "id",
-                                        Curry._1(Spec.Id.t_encode, id)
-                                      ],
-                                      /* tuple */[
-                                        "sequenceNr",
-                                        Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now(/* () */0))
-                                      ],
-                                      /* tuple */[
-                                        "event",
-                                        Curry._1(Spec.event_encode, event$prime[/* event */2])
-                                      ]
-                                    ], Message$Reventless.decomposeMeta(event$prime[/* meta */1])));
-                    }));
-              return storage[/* append */1](sequenceNr, Curry._1(Spec.Id.toString, id), data).catch((function (err) {
-                            var serviceName = Spec.name;
-                            var resourceName = storage[/* resource */0].name.get();
-                            var err$1 = "EventLog: Error: Couldn\'t append for " + (String(serviceName) + ("(" + (String(id) + (") on " + (String(resourceName) + (": " + (String(err) + "")))))));
-                            console.log(err$1);
-                            return Promise.resolve(/* Error */Block.__(1, [err$1]));
-                          }));
-            }
-            catch (raw_exn){
-              var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-              console.log("EventLog.append: Couldn't decode:", exn);
-              throw exn;
-            }
-          });
-      };
-      var decodeEvent = function (json) {
-        var param = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
-                        return Js_dict.get(dict, "event");
-                      })), (function (json) {
-                    return /* tuple */[
-                            json,
-                            Curry._1(Spec.event_decode, json)
-                          ];
-                  })), (function (param) {
-                var match = param[1];
-                if (match.tag) {
-                  var eventStr = JSON.stringify(param[0]);
-                  var message = match[0][/* message */1];
-                  return Js_exn.raiseError("EventLog.replay: Error: Couldn\'t decode " + (String(eventStr) + (": " + (String(message) + ""))));
-                } else {
-                  return match[0];
-                }
-              }));
-        if (param !== undefined) {
-          return Caml_option.valFromOption(param);
-        } else {
-          var eventStr = JSON.stringify(json);
-          return Js_exn.raiseError("EventLog.replay: Error: Couldn\'t decodeObject " + (String(eventStr) + ""));
-        }
-      };
-      var replayFn = function (storage) {
-        return (function (id) {
-            return storage[/* replay */2](Curry._1(Spec.Id.toString, id)).then((function (jsons) {
-                          return Promise.resolve(Belt_Array.map(jsons, decodeEvent));
+      return (function (EventTopicPublisher) {
+          var EventTopic = EventTopic$Reventless.Make(Spec)(EventTopicPublisher);
+          var appendFn = function (storage, eventTopic) {
+            return (function (sequenceNr, id, events$prime) {
+                try {
+                  var data = Belt_Array.map(events$prime, (function (event$prime) {
+                          return Js_dict.fromArray(Belt_Array.concat(/* array */[
+                                          /* tuple */[
+                                            "id",
+                                            Curry._1(Spec.Id.t_encode, id)
+                                          ],
+                                          /* tuple */[
+                                            "sequenceNr",
+                                            Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now(/* () */0))
+                                          ],
+                                          /* tuple */[
+                                            "event",
+                                            Curry._1(Spec.event_encode, event$prime[/* event */2])
+                                          ]
+                                        ], Message$Reventless.decomposeMeta(event$prime[/* meta */1])));
                         }));
-          });
-      };
-      var construct = function (self, name, resources) {
-        var opts = {
-          parent: self
-        };
-        var storage = Curry._3($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts, resources);
-        Util_EventLog$Reventless.setStorageResource(resources, storage[/* resource */0], name);
-        var storageOutputs = storage[/* resource */0];
-        self.append = appendFn(storage);
-        self.replay = replayFn(storage);
-        var self$1 = self;
-        var outputs = {
-          storage: storageOutputs
-        };
-        self$1.setOutputs(outputs);
-        return self$1.registerOutputs(outputs);
-      };
-      var make = function (name, opts, resources, param) {
-        var prim = ComponentType$Reventless.toString(/* EventLog */6);
-        var prim$1 = name;
-        var prim$2 = construct;
-        var prim$3 = opts;
-        var prim$4 = resources;
-        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
-      };
-      return {
-              Spec: Spec,
-              make: make,
-              append: (function (prim) {
-                  return prim.append;
-                }),
-              replay: (function (prim) {
-                  return prim.replay;
-                })
+                  return storage[/* append */1](sequenceNr, Curry._1(Spec.Id.toString, id), data).catch((function (err) {
+                                  var serviceName = Spec.name;
+                                  var resourceName = storage[/* resource */0].name.get();
+                                  var err$1 = "EventLog: Error: Couldn\'t append for " + (String(serviceName) + ("(" + (String(id) + (") on " + (String(resourceName) + (": " + (String(err) + "")))))));
+                                  console.log(err$1);
+                                  return Promise.resolve(/* Error */Block.__(1, [err$1]));
+                                })).then((function (result) {
+                                Curry._1(EventTopic.publish, eventTopic)(events$prime).catch((function (err) {
+                                        var msg = "EventLog.appendFn(" + (String(id) + "): EventTopic.publish Error: ") + err.message;
+                                        console.log(msg);
+                                        return Js_exn.raiseError(msg);
+                                      }));
+                                return Promise.resolve(result);
+                              }));
+                }
+                catch (raw_exn){
+                  var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+                  console.log("EventLog.append: Couldn't decode:", exn);
+                  throw exn;
+                }
+              });
+          };
+          var decodeEvent = function (json) {
+            var param = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
+                            return Js_dict.get(dict, "event");
+                          })), (function (json) {
+                        return /* tuple */[
+                                json,
+                                Curry._1(Spec.event_decode, json)
+                              ];
+                      })), (function (param) {
+                    var match = param[1];
+                    if (match.tag) {
+                      var eventStr = JSON.stringify(param[0]);
+                      var message = match[0][/* message */1];
+                      return Js_exn.raiseError("EventLog.replay: Error: Couldn\'t decode " + (String(eventStr) + (": " + (String(message) + ""))));
+                    } else {
+                      return match[0];
+                    }
+                  }));
+            if (param !== undefined) {
+              return Caml_option.valFromOption(param);
+            } else {
+              var eventStr = JSON.stringify(json);
+              return Js_exn.raiseError("EventLog.replay: Error: Couldn\'t decodeObject " + (String(eventStr) + ""));
+            }
+          };
+          var replayFn = function (storage) {
+            return (function (id) {
+                return storage[/* replay */2](Curry._1(Spec.Id.toString, id)).then((function (jsons) {
+                              return Promise.resolve(Belt_Array.map(jsons, decodeEvent));
+                            }));
+              });
+          };
+          var construct = function (self, name, resources) {
+            var opts = {
+              parent: self
             };
+            var storage = Curry._3($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts, resources);
+            Util_EventLog$Reventless.setStorageResource(resources, storage[/* resource */0], name);
+            var storageOutputs = storage[/* resource */0];
+            var eventTopic = Curry._4(EventTopic.make, name, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), resources, /* () */0);
+            self.append = appendFn(storage, eventTopic);
+            self.replay = replayFn(storage);
+            var self$1 = self;
+            var outputs = {
+              storage: storageOutputs,
+              eventTopic: Component$Reventless.extractOutputs(eventTopic)
+            };
+            self$1.setOutputs(outputs);
+            return self$1.registerOutputs(outputs);
+          };
+          var make = function (name, opts, resources, param) {
+            var prim = ComponentType$Reventless.toString(/* EventLog */6);
+            var prim$1 = name;
+            var prim$2 = construct;
+            var prim$3 = opts;
+            var prim$4 = resources;
+            return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+          };
+          return {
+                  Spec: Spec,
+                  make: make,
+                  append: (function (prim) {
+                      return prim.append;
+                    }),
+                  replay: (function (prim) {
+                      return prim.replay;
+                    })
+                };
+        });
     });
 }
 

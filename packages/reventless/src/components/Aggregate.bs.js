@@ -18,7 +18,6 @@ var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var EventLog$Reventless = require("./EventLog.bs.js");
 var Component$Reventless = require("./Component.bs.js");
-var EventTopic$Reventless = require("./EventTopic.bs.js");
 var EventMapper$Reventless = require("./EventMapper.bs.js");
 var CommandTopic$Reventless = require("./CommandTopic.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
@@ -41,17 +40,11 @@ function Make(Config) {
                                           command_decode: Spec.command_decode
                                         })(CommandTopicConnector);
                                   var EventLog = EventLog$Reventless.Make({
-                                          Id: Spec.Id,
-                                          name: Spec.name,
-                                          event_encode: Spec.event_encode,
-                                          event_decode: Spec.event_decode
-                                        })(EventLogStorage);
-                                  var EventTopic = EventTopic$Reventless.Make({
-                                          Id: Spec.Id,
-                                          name: Spec.name,
-                                          event_encode: Spec.event_encode,
-                                          event_decode: Spec.event_decode
-                                        })(EventTopicPublisher);
+                                            Id: Spec.Id,
+                                            name: Spec.name,
+                                            event_encode: Spec.event_encode,
+                                            event_decode: Spec.event_decode
+                                          })(EventLogStorage)(EventTopicPublisher);
                                   var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorConnector);
                                   var errorHandler = function (error, command, context) {
                                     var errorJson = JSON.stringify(Curry._1(Spec.error_encode, error));
@@ -81,8 +74,7 @@ function Make(Config) {
                                                 }));
                                   };
                                   var handleCommands = function (param) {
-                                    var eventsHandler = param[3];
-                                    var eventTopicPublish = param[2];
+                                    var eventsHandler = param[2];
                                     var eventLogReplay = param[1];
                                     var eventLogAppend = param[0];
                                     return (function (allTopicItems) {
@@ -227,11 +219,6 @@ function Make(Config) {
                                                                                                                       }));
                                                                                                         })).then((function (results) {
                                                                                                         console.log("finished eventLogAppend for id " + (String(id) + ""));
-                                                                                                        eventTopicPublish(generatedEvents$prime).catch((function (err) {
-                                                                                                                var msg = errorMessage(id, "eventTopicPublish", err);
-                                                                                                                console.log(msg);
-                                                                                                                return Js_exn.raiseError(msg);
-                                                                                                              }));
                                                                                                         return Promise.resolve(results);
                                                                                                       }));
                                                                                         } else {
@@ -252,11 +239,9 @@ function Make(Config) {
                                     };
                                     var childName = ComponentType$Reventless.name(name, /* Aggregate */0);
                                     var eventLog = Curry._4(EventLog.make, childName, Caml_option.some(opts), resources, /* () */0);
-                                    var eventTopic = Curry._4(EventTopic.make, childName, Caml_option.some(opts), resources, /* () */0);
                                     var handleCommands$1 = handleCommands(/* tuple */[
                                           Curry._1(EventLog.append, eventLog),
                                           Curry._1(EventLog.replay, eventLog),
-                                          Curry._1(EventTopic.publish, eventTopic),
                                           eventsHandler
                                         ]);
                                     var commandTopic = Curry._7(CommandTopic.make, childName, handleCommands$1, undefined, undefined, Caml_option.some(opts), resources, /* () */0);
@@ -276,7 +261,6 @@ function Make(Config) {
                                       commandGenerator: Component$Reventless.extractOutputs(commandGenerator),
                                       commandTopic: Component$Reventless.extractOutputs(commandTopic),
                                       eventLog: Component$Reventless.extractOutputs(eventLog),
-                                      eventTopic: Component$Reventless.extractOutputs(eventTopic),
                                       eventMapper: Belt_Option.map(eventMapper, Component$Reventless.extractOutputs)
                                     };
                                     self$1.setOutputs(outputs);

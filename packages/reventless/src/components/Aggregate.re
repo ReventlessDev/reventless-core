@@ -9,7 +9,6 @@ type outputs = {
   "commandGenerator": CommandGenerator.outputs,
   "commandTopic": CommandTopic.outputs,
   "eventLog": EventLog.outputs,
-  "eventTopic": EventTopic.outputs,
   "eventMapper": option(EventMapper.outputs),
 };
 
@@ -74,7 +73,6 @@ module Make =
       ~commandGenerator: CommandGenerator.outputs,
       ~commandTopic: CommandTopic.outputs,
       ~eventLog: EventLog.outputs,
-      ~eventTopic: EventTopic.outputs,
       ~eventMapper: option(EventMapper.outputs)
     ) =>
     outputs =
@@ -100,8 +98,7 @@ module Make =
   module CommandGenerator =
     CommandGenerator.Make(Config, Spec, Behaviour, CommandGeneratorResolvers);
   module CommandTopic = CommandTopic.Make(Spec, CommandTopicConnector);
-  module EventLog = EventLog.Make(Spec, EventLogStorage);
-  module EventTopic = EventTopic.Make(Spec, EventTopicPublisher);
+  module EventLog = EventLog.Make(Spec, EventLogStorage, EventTopicPublisher);
   module EventCollector =
     EventCollector.Make(
       EventCollector.DefaultPolicies,
@@ -166,8 +163,7 @@ module Make =
       );
   };
 
-  let handleCommands =
-      ((eventLogAppend, eventLogReplay, eventTopicPublish, eventsHandler)) =>
+  let handleCommands = ((eventLogAppend, eventLogReplay, eventsHandler)) =>
     (. allTopicItems) => {
       let apply' = (stateOpt, event) =>
         switch (stateOpt) {
@@ -335,19 +331,6 @@ module Make =
                            })
                         |> Js.Promise.then_(results => {
                              Js.log({j|finished eventLogAppend for id $id|j});
-                             let _ =
-                               // FIXME: include in error handling with Belt.Result
-                               eventTopicPublish(. generatedEvents')
-                               |> Js.Promise.catch(err => {
-                                    let msg =
-                                      errorMessage(
-                                        id,
-                                        "eventTopicPublish",
-                                        err,
-                                      );
-                                    Js.log(msg);
-                                    Js.Exn.raiseError(msg);
-                                  });
                              results->Js.Promise.resolve;
                            });
                       },
@@ -370,13 +353,11 @@ module Make =
     let childName = name->ComponentType.name(componentType);
 
     let eventLog = EventLog.make(~name=childName, ~opts, ~resources, ());
-    let eventTopic = EventTopic.make(~name=childName, ~opts, ~resources, ());
 
     let handleCommands =
       handleCommands((
-        EventLog.append(eventLog),
-        EventLog.replay(eventLog),
-        EventTopic.publish(eventTopic),
+        eventLog->EventLog.append,
+        eventLog->EventLog.replay,
         eventsHandler,
       ));
 
@@ -410,7 +391,6 @@ module Make =
       ~commandGenerator=commandGenerator->Component.extractOutputs,
       ~commandTopic=commandTopic->Component.extractOutputs,
       ~eventLog=eventLog->Component.extractOutputs,
-      ~eventTopic=eventTopic->Component.extractOutputs,
       ~eventMapper=eventMapper->Belt.Option.map(Component.extractOutputs),
     )
     |> self->setOutputs;
