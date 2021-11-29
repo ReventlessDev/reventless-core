@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.CommandGenerator;
 
-type outputs = {. "resolvers": array(resource)};
+type outputs = {. "resources": array(resource)};
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T;
@@ -100,7 +100,7 @@ module Make =
     "default";
 
   [@bs.obj]
-  external makeOutputs: (~resolvers: array(resource)) => outputs = "";
+  external makeOutputs: (~resources: array(resource)) => outputs = "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
@@ -173,7 +173,7 @@ module Make =
         ~opts,
       );
 
-    let outputs = makeOutputs(~resolvers=resolvers.resources);
+    let outputs = makeOutputs(~resources=resolvers.resources);
     //self->setOutputs(outputs); // NOTE: creates circular reference (promise leaks)
     self->registerOutputs(outputs);
   };
