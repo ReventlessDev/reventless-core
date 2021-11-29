@@ -218,7 +218,7 @@ module Make =
             -# ReventlessSpec.PluginExtensionPointSpec.name;
 
           let corePluginCommandTopic =
-            corePluginExtensionPoint##commandTopic##connector
+            corePluginExtensionPoint##commandTopic##resources[0] // FIXME: hardcoded resource
             ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
             ->Adapter.toResource;
           let corePluginCommandTopicId = corePluginCommandTopic##id;
@@ -524,7 +524,7 @@ module Make =
             extensionPointsOutputs
             ->Belt.Array.map(extensionPoint =>
                 (
-                  extensionPoint##commandTopic##connector##id,
+                  extensionPoint##commandTopic##resources[0]##id, // FIXME
                   extensionPoint##eventTopic##publisher##id,
                 )
                 ->Pulumi.Output.all2

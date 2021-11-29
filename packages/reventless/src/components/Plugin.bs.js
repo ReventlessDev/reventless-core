@@ -6,6 +6,7 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var SNS$AwsSdk = require("@reventless/bs-aws-sdk/src/SNS.bs.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Component = require("./Component");
@@ -78,7 +79,7 @@ function Make(EventCollectorAdapter) {
             Interstack$Reventless.coreStackOutput !== undefined ? Caml_option.valFromOption(Interstack$Reventless.coreStackOutput) : Js_exn.raiseError("No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!")
           ).apply((function (coreStackOutput) {
                 var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(Belt_Option.getExn(coreStackOutput.extensionPoints), PluginExtensionPointSpec$ReventlessSpec.name);
-                var corePluginCommandTopic = Adapter$Reventless.toResource(corePluginExtensionPoint.commandTopic.connector);
+                var corePluginCommandTopic = Adapter$Reventless.toResource(Caml_array.caml_array_get(corePluginExtensionPoint.commandTopic.resources, 0));
                 var corePluginCommandTopicId = corePluginCommandTopic.id;
                 Util_ExtensionPoint$Reventless.setCommandTopicConnectorResource(resources, corePluginCommandTopic, PluginExtensionPointSpec$ReventlessSpec.name);
                 Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, Adapter$Reventless.toResource(corePluginExtensionPoint.eventTopic.publisher), PluginExtensionPointSpec$ReventlessSpec.name);
@@ -198,7 +199,7 @@ function Make(EventCollectorAdapter) {
                 };
                 var extensionPointsConfig = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
                             return Pulumi.all(/* tuple */[
-                                          extensionPoint.commandTopic.connector.id,
+                                          Caml_array.caml_array_get(extensionPoint.commandTopic.resources, 0).id,
                                           extensionPoint.eventTopic.publisher.id
                                         ]).apply((function (param) {
                                           return /* record */[

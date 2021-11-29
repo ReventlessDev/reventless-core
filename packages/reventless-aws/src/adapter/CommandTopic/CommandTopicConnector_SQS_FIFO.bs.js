@@ -39,7 +39,7 @@ function make(name, handleCommands, memorySize, timeout, opts, param) {
           ]), opts);
   queue.onEvent(name, handler, undefined, opts);
   return /* record */[
-          /* resource */Util_SQS_FIFO$ReventlessAws.toResource(queue),
+          /* resources : array */[Util_SQS_FIFO$ReventlessAws.toResource(queue)],
           /* publish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publishFifo(queue)
         ];
 }

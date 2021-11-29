@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.CommandTopic;
 
-type outputs = {. "connector": resource};
+type outputs = {. "resources": array(resource)};
 
 type publish('id, 'command) =
   (. Message.command'('id, 'command)) => Js.Promise.t(unit);
@@ -51,7 +51,7 @@ module type T = {
 
 module Adapter = {
   type connector = {
-    resource,
+    resources: array(resource),
     publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
   };
   type connectorMaker =
@@ -97,7 +97,8 @@ module Make =
     Component.t(t, outputs) =
     "default";
 
-  [@bs.obj] external makeOutputs: (~connector: resource) => outputs = "";
+  [@bs.obj]
+  external makeOutputs: (~resources: array(resource)) => outputs = "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
@@ -123,19 +124,14 @@ module Make =
   let publishJsonFn = connector =>
     (. id, meta, json) => {
       let jsonStr = json->Js.Json.stringify;
-      let resourceName = connector.Adapter.resource##name->Pulumi.Output.get;
 
-      connector.publish(. id, meta, json)
+      connector.Adapter.publish(. id, meta, json)
       |> Js.Promise.catch(e => {
-           Js.log(
-             {j|CommandTopic: Couldn't publish command $jsonStr to $resourceName|j},
-           );
+           Js.log({j|CommandTopic: Couldn't publish command $jsonStr|j});
            NotPublishedToConnector(e)->Js.Promise.reject;
          })
       |> Js.Promise.then_(_ =>
-           Js.log(
-             {j|CommandTopic: Published command: $jsonStr to $resourceName|j},
-           )
+           Js.log({j|CommandTopic: Published command: $jsonStr|j})
            ->Js.Promise.resolve
          );
     };
@@ -207,15 +203,11 @@ module Make =
         ~opts,
         ~resources,
       );
-    resources->Util_CommandTopic.setConnectorResource(
-      connector.resource,
-      name,
-    );
 
     self->setPublish(connector->publishFn);
     self->setPublishJson(connector->publishJsonFn);
 
-    makeOutputs(~connector=connector.resource)->setOutputs(self, _);
+    makeOutputs(~resources=connector.resources)->setOutputs(self, _);
   };
 
   let make:

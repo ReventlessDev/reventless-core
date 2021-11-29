@@ -8,7 +8,6 @@ var Component = require("./Component");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_CommandTopic$Reventless = require("../util/Util_CommandTopic.bs.js");
 
 var NotPublishedToConnector = Caml_exceptions.create("CommandTopic-Reventless.NotPublishedToConnector");
 
@@ -19,15 +18,14 @@ function Make(Spec) {
       var publishJsonFn = function (connector) {
         return (function (id, meta, json) {
             var jsonStr = JSON.stringify(json);
-            var resourceName = connector[/* resource */0].name.get();
             return connector[/* publish */1](id, meta, json).catch((function (e) {
-                            console.log("CommandTopic: Couldn\'t publish command " + (String(jsonStr) + (" to " + (String(resourceName) + ""))));
+                            console.log("CommandTopic: Couldn\'t publish command " + (String(jsonStr) + ""));
                             return Promise.reject([
                                         NotPublishedToConnector,
                                         e
                                       ]);
                           })).then((function (param) {
-                          return Promise.resolve((console.log("CommandTopic: Published command: " + (String(jsonStr) + (" to " + (String(resourceName) + "")))), /* () */0));
+                          return Promise.resolve((console.log("CommandTopic: Published command: " + (String(jsonStr) + "")), /* () */0));
                         }));
           });
       };
@@ -69,12 +67,11 @@ function Make(Spec) {
           parent: self
         };
         var connector = Curry._6(Connector.make, ComponentType$Reventless.name(name, /* CommandTopic */4), handleCommands(commandsHandler), memorySize, timeout, opts, resources);
-        Util_CommandTopic$Reventless.setConnectorResource(resources, connector[/* resource */0], name);
         self.publish = publishFn(connector);
         self.publishJson = publishJsonFn(connector);
         var self$1 = self;
         var outputs = {
-          connector: connector[/* resource */0]
+          resources: connector[/* resources */0]
         };
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
