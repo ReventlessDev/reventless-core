@@ -228,7 +228,7 @@ module Make =
             ReventlessSpec.PluginExtensionPointSpec.name,
           );
           resources->Util.ExtensionPoint.setEventTopicPublisherResource(
-            corePluginExtensionPoint##eventTopic##publisher
+            corePluginExtensionPoint##eventTopic##resources[0] // FIXME
             ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
             ->Adapter.toResource,
             ReventlessSpec.PluginExtensionPointSpec.name,
@@ -440,7 +440,7 @@ module Make =
                             subscribe(
                               "connectToExtensions",
                               extensionPoint##name,
-                              extensionPoint##eventTopic##publisher##id
+                              extensionPoint##eventTopic##resources[0]##id // FIXME
                               ->Pulumi.Output.get,
                               otherPluginId,
                               otherPluginEventCollector,
@@ -501,7 +501,7 @@ module Make =
                             unsubscribe(
                               "disconnectFromExtensions",
                               extensionPoint##name,
-                              extensionPoint##eventTopic##publisher##id
+                              extensionPoint##eventTopic##resources[0]##id // FIXME
                               ->Pulumi.Output.get,
                               pluginId,
                               pluginEventCollector,
@@ -525,7 +525,7 @@ module Make =
             ->Belt.Array.map(extensionPoint =>
                 (
                   extensionPoint##commandTopic##resources[0]##id, // FIXME
-                  extensionPoint##eventTopic##publisher##id,
+                  extensionPoint##eventTopic##resources[0]##id,
                 )
                 ->Pulumi.Output.all2
                 ->Pulumi.Output.apply(

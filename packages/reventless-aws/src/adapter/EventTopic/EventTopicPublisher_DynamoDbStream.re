@@ -12,7 +12,7 @@ let make: EventTopic.Adapter.publisherMaker =
       );
 
     {
-      resource:
+      resources: [|
         if (eventLogResource##service == Util_DynamoDbStream.service) {
           eventLogResource->Util_DynamoDbStream.toStreamResource;
         } else {
@@ -22,6 +22,7 @@ let make: EventTopic.Adapter.publisherMaker =
             eventLogResource##service,
           );
         },
+      |],
       publish: (. _, _, _) => Js.Promise.resolve() // ignore publish
     };
   };

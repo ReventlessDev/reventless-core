@@ -11,7 +11,7 @@ function make(name, opts, param) {
         fifoTopic: true
       }, opts);
   return /* record */[
-          /* resource */Util_SNS_FIFO$ReventlessAws.toResource(topic),
+          /* resources : array */[Util_SNS_FIFO$ReventlessAws.toResource(topic)],
           /* publish */EventTopicPublisher_SNS_Runtime$ReventlessAws.publishFifo(topic)
         ];
 }

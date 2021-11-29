@@ -8,7 +8,6 @@ var Component = require("./Component");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_EventTopic$Reventless = require("../util/Util_EventTopic.bs.js");
 
 var NotPublishedToPublisher = Caml_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
 
@@ -25,7 +24,7 @@ function Make(Spec) {
                                 var $$event = JSON.stringify(json);
                                 var eventName = Caml_array.caml_array_get(Curry._1(Spec.event_encode, event$prime[/* event */2]), 0);
                                 var idx$1 = idx + 1 | 0;
-                                var resourceName = publisher[/* resource */0].name.get();
+                                var resourceName = Caml_array.caml_array_get(publisher[/* resources */0], 0).name.get();
                                 return publisher[/* publish */1](Curry._1(Spec.Id.toString, id), event$prime[/* meta */1], json).catch((function (e) {
                                                 console.log("EventTopic: Couldn\'t publish event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(resourceName) + ""))))))))));
                                                 return Promise.reject([
@@ -45,12 +44,10 @@ function Make(Spec) {
           parent: self
         };
         var publisher = Curry._3(Publisher.make, ComponentType$Reventless.name(name, /* EventTopic */8), opts, resources);
-        Util_EventTopic$Reventless.setPublisherResource(resources, publisher[/* resource */0], name);
-        var publisherOutputs = publisher[/* resource */0];
         self.publish = publishFn(publisher);
         var self$1 = self;
         var outputs = {
-          publisher: publisherOutputs
+          resources: publisher[/* resources */0]
         };
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);

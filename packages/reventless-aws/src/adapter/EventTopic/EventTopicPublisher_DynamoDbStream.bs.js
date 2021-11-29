@@ -9,7 +9,7 @@ var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.
 function make(name, param, resources) {
   var eventLogResource = Util_Aggregate$Reventless.eventLogStorageResource(resources, name.substring(0, name.indexOf(ComponentType$Reventless.toName(/* Aggregate */0))));
   return /* record */[
-          /* resource */eventLogResource.service === Util_DynamoDbStream$ReventlessAws.service ? Util_DynamoDbStream$ReventlessAws.toStreamResource(eventLogResource) : Js_exn.raiseError("EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_" + eventLogResource.service),
+          /* resources : array */[eventLogResource.service === Util_DynamoDbStream$ReventlessAws.service ? Util_DynamoDbStream$ReventlessAws.toStreamResource(eventLogResource) : Js_exn.raiseError("EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_" + eventLogResource.service)],
           /* publish */(function (param, param$1, param$2) {
               return Promise.resolve(/* () */0);
             })

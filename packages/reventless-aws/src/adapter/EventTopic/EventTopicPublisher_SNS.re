@@ -5,7 +5,7 @@ let make: Reventless.EventTopic.Adapter.publisherMaker =
     let topic = SNS.Topic.make(~name, ~args=SNS.Topic.Args.make(), ~opts, ());
 
     {
-      resource: topic->Util_SNS.toResource,
+      resources: [|topic->Util_SNS.toResource|],
       publish: topic->EventTopicPublisher_SNS_Runtime.publish,
     };
   };

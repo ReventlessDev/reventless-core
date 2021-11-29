@@ -82,7 +82,7 @@ function Make(EventCollectorAdapter) {
                 var corePluginCommandTopic = Adapter$Reventless.toResource(Caml_array.caml_array_get(corePluginExtensionPoint.commandTopic.resources, 0));
                 var corePluginCommandTopicId = corePluginCommandTopic.id;
                 Util_ExtensionPoint$Reventless.setCommandTopicConnectorResource(resources, corePluginCommandTopic, PluginExtensionPointSpec$ReventlessSpec.name);
-                Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, Adapter$Reventless.toResource(corePluginExtensionPoint.eventTopic.publisher), PluginExtensionPointSpec$ReventlessSpec.name);
+                Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, Adapter$Reventless.toResource(Caml_array.caml_array_get(corePluginExtensionPoint.eventTopic.resources, 0)), PluginExtensionPointSpec$ReventlessSpec.name);
                 var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
                         return Curry._5(ExtensionPoint.make, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
                       }));
@@ -142,7 +142,7 @@ function Make(EventCollectorAdapter) {
                                             return extensionPoint.name === param[/* extensionPointName */1];
                                           })).length !== 0;
                                     if (match) {
-                                      return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, extensionPoint.eventTopic.publisher.id.get(), otherPluginId, otherPluginEventCollector));
+                                      return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, Caml_array.caml_array_get(extensionPoint.eventTopic.resources, 0).id.get(), otherPluginId, otherPluginEventCollector));
                                     }
                                     
                                   })));
@@ -179,7 +179,7 @@ function Make(EventCollectorAdapter) {
                                             return extensionPoint.name === param[/* extensionPointName */1];
                                           })).length !== 0;
                                     if (match) {
-                                      return Caml_option.some(unsubscribe("disconnectFromExtensions", extensionPoint.name, extensionPoint.eventTopic.publisher.id.get(), pluginId, pluginEventCollector));
+                                      return Caml_option.some(unsubscribe("disconnectFromExtensions", extensionPoint.name, Caml_array.caml_array_get(extensionPoint.eventTopic.resources, 0).id.get(), pluginId, pluginEventCollector));
                                     }
                                     
                                   })));
@@ -200,7 +200,7 @@ function Make(EventCollectorAdapter) {
                 var extensionPointsConfig = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
                             return Pulumi.all(/* tuple */[
                                           Caml_array.caml_array_get(extensionPoint.commandTopic.resources, 0).id,
-                                          extensionPoint.eventTopic.publisher.id
+                                          Caml_array.caml_array_get(extensionPoint.eventTopic.resources, 0).id
                                         ]).apply((function (param) {
                                           return /* record */[
                                                   /* name */extensionPoint.name,

@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.EventTopic;
 
-type outputs = {. "publisher": resource};
+type outputs = {. "resources": array(resource)};
 
 type publish('id, 'event) =
   (. array(Message.event'('id, 'event))) => Js.Promise.t(unit);
@@ -37,7 +37,7 @@ module type T = {
 
 module Adapter = {
   type publisher = {
-    resource,
+    resources: array(resource),
     publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
   };
   type publisherMaker =
@@ -75,7 +75,8 @@ module Make =
     Component.t(t, outputs) =
     "default";
 
-  [@bs.obj] external makeOutputs: (~publisher: resource) => outputs = "";
+  [@bs.obj]
+  external makeOutputs: (~resources: array(resource)) => outputs = "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
@@ -103,7 +104,8 @@ module Make =
         let event = json->Js.Json.stringify;
         let eventName: string = event'.event->Spec.event_encode->Obj.magic[0];
         let idx = idx + 1;
-        let resourceName = publisher.Adapter.resource##name->Pulumi.Output.get;
+        let resourceName =
+          publisher.Adapter.resources[0]##name->Pulumi.Output.get; // FIXME
 
         publisher.publish(. id->Spec.Id.toString, event'.meta, json)
         |> Js.Promise.catch(e => {
@@ -136,13 +138,10 @@ module Make =
         ~opts,
         ~resources,
       );
-    resources->Util_EventTopic.setPublisherResource(publisher.resource, name);
-
-    let publisherOutputs = publisher.resource;
 
     self->setPublish(publisher->publishFn);
 
-    makeOutputs(~publisher=publisherOutputs) |> self->setOutputs;
+    makeOutputs(~resources=publisher.resources) |> self->setOutputs;
   };
 
   let make:
