@@ -4,7 +4,7 @@ let componentType = ComponentType.EventLog;
 
 type outputs = {
   .
-  "storage": resource,
+  "resources": array(resource),
   "eventTopic": EventTopic.outputs,
 };
 
@@ -44,7 +44,7 @@ module type T = {
 
 module Adapter = {
   type storage = {
-    resource,
+    resources: array(resource),
     append: append(string, Js.Json.t),
     replay: replay(string, Js.Json.t),
   };
@@ -91,7 +91,7 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~storage: resource, ~eventTopic: EventTopic.outputs) => outputs =
+    (~resources: array(resource), ~eventTopic: EventTopic.outputs) => outputs =
     "";
 
   [@bs.send]
@@ -141,7 +141,8 @@ module Make =
             storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, data)
             |> Js.Promise.catch(err => {
                  let serviceName = Spec.name;
-                 let resourceName = storage.resource##name->Pulumi.Output.get;
+                 let resourceName =
+                   storage.resources[0]##name->Pulumi.Output.get;
                  let err = {j|EventLog: Error: Couldn't append for $serviceName($id) on $resourceName: $err|j};
                  Js.log(err);
                  err->Belt.Result.Error->Js.Promise.resolve;
@@ -215,8 +216,6 @@ module Make =
         ~opts,
         ~resources,
       );
-    resources->Util_EventLog.setStorageResource(storage.resource, name);
-    let storageOutputs = storage.resource;
 
     let eventTopic =
       EventTopic.make(
@@ -231,7 +230,7 @@ module Make =
     self->setReplay(storage->replayFn);
 
     makeOutputs(
-      ~storage=storageOutputs,
+      ~resources=storage.resources,
       ~eventTopic=eventTopic->Component.extractOutputs,
     )
     |> self->setOutputs;

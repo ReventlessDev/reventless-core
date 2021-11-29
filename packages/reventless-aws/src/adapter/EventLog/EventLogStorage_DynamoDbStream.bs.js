@@ -24,7 +24,7 @@ function make(name, opts, param) {
         streamViewType: "NEW_IMAGE"
       }, opts);
   return /* record */[
-          /* resource */Util_DynamoDbStream$ReventlessAws.toResource(table),
+          /* resources : array */[Util_DynamoDbStream$ReventlessAws.toResource(table)],
           /* append */EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table),
           /* replay */EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(table)
         ];

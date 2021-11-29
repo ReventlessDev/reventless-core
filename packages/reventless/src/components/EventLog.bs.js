@@ -7,6 +7,7 @@ var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
@@ -17,7 +18,6 @@ var Component$Reventless = require("./Component.bs.js");
 var EventTopic$Reventless = require("./EventTopic.bs.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_EventLog$Reventless = require("../util/Util_EventLog.bs.js");
 
 var ReplayError = Caml_exceptions.create("EventLog-Reventless.ReplayError");
 
@@ -48,7 +48,7 @@ function Make(Spec) {
                         }));
                   return storage[/* append */1](sequenceNr, Curry._1(Spec.Id.toString, id), data).catch((function (err) {
                                   var serviceName = Spec.name;
-                                  var resourceName = storage[/* resource */0].name.get();
+                                  var resourceName = Caml_array.caml_array_get(storage[/* resources */0], 0).name.get();
                                   var err$1 = "EventLog: Error: Couldn\'t append for " + (String(serviceName) + ("(" + (String(id) + (") on " + (String(resourceName) + (": " + (String(err) + "")))))));
                                   console.log(err$1);
                                   return Promise.resolve(/* Error */Block.__(1, [err$1]));
@@ -105,14 +105,12 @@ function Make(Spec) {
               parent: self
             };
             var storage = Curry._3($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts, resources);
-            Util_EventLog$Reventless.setStorageResource(resources, storage[/* resource */0], name);
-            var storageOutputs = storage[/* resource */0];
             var eventTopic = Curry._4(EventTopic.make, name, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), resources, /* () */0);
             self.append = appendFn(storage, eventTopic);
             self.replay = replayFn(storage);
             var self$1 = self;
             var outputs = {
-              storage: storageOutputs,
+              resources: storage[/* resources */0],
               eventTopic: Component$Reventless.extractOutputs(eventTopic)
             };
             self$1.setOutputs(outputs);

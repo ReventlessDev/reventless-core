@@ -22,7 +22,7 @@ function make(name, opts, param) {
         rangeKey: "sequenceNr"
       }, opts);
   return /* record */[
-          /* resource */Util_DynamoDb$ReventlessAws.toResource(table),
+          /* resources : array */[Util_DynamoDb$ReventlessAws.toResource(table)],
           /* append */EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table),
           /* replay */EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(table)
         ];
