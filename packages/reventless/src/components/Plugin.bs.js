@@ -438,7 +438,7 @@ function Make(EventCollectorAdapter) {
                       /* () */0
                     ]);
                 var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
-                match[1](Belt_Option.getExn(eventCollectorOutputs.connector).urn);
+                match[1](Caml_array.caml_array_get(eventCollectorOutputs.resources, 0).urn);
                 var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName(/* Plugin */2), heartbeatInterval, corePluginCommandTopicId, Caml_option.some(opts), /* () */0);
                 return /* record */[
                         /* id */id,

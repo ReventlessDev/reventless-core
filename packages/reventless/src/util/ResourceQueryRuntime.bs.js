@@ -2,6 +2,7 @@
 'use strict';
 
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var ResourceQuery$Reventless = require("./ResourceQuery.bs.js");
@@ -19,7 +20,12 @@ function find(resources, name) {
 
 function eventCollectorConnectorOfAllEventMappers(eventMappers, eventMapperName) {
   return Belt_Option.flatMap(find(eventMappers, eventMapperName), (function (eventMapper) {
-                return eventMapper.eventCollector.connector;
+                var resources = eventMapper.eventCollector.resources;
+                var match = resources.length !== 0;
+                if (match) {
+                  return Caml_option.some(Caml_array.caml_array_get(resources, 0));
+                }
+                
               }));
 }
 

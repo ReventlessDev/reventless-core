@@ -69,7 +69,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       Js.Exn.raiseError(__MODULE__ ++ {j| cannot connect to $errorTopics|j});
     } else {
       {
-        resource: None,
+        resources: [||],
         enqueueEvent:
           (. delay, id, messageBody) =>
             // TODO: can we check this at deploy time ?

@@ -115,7 +115,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     {
-      resource: Some(queue->Util_SQS_FIFO.toResource),
+      resources: [|queue->Util_SQS_FIFO.toResource|],
       enqueueEvent:
         queue->EventCollectorConnector_SQS_Runtime.enqueueFifoEvent,
     };

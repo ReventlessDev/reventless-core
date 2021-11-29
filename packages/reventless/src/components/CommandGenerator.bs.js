@@ -56,7 +56,7 @@ function Make(Config) {
                 };
                 var resolvers = Curry._5(Resolvers.make, ComponentType$Reventless.name(name, /* CommandGenerator */3), api, Behaviour.resolverConfig[/* fields */1], generateCommand(commandHandler), opts);
                 var outputs = {
-                  resolvers: resolvers[/* resources */0]
+                  resources: resolvers[/* resources */0]
                 };
                 return self.registerOutputs(outputs);
               };

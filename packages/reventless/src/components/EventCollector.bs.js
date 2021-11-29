@@ -4,11 +4,9 @@
 var Curry = require("bs-platform/lib/js/curry.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Component = require("./Component");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_EventCollector$Reventless = require("../util/Util_EventCollector.bs.js");
 
 var policies = Belt_Array.map(Lambda$PulumiAws.Policy.defaultPolicies, (function (policy) {
         return Pulumi.output(policy);
@@ -42,14 +40,10 @@ function Make(Policies) {
               opts,
               resources
             ]);
-        var match = connector[/* resource */0];
-        if (match !== undefined) {
-          Util_EventCollector$Reventless.setConnectorResource(resources, Caml_option.valFromOption(match), name);
-        }
         self.enqueueEvent = enqueueEventFn(connector);
         var self$1 = self;
         var outputs = {
-          connector: connector[/* resource */0]
+          resources: connector[/* resources */0]
         };
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);

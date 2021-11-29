@@ -814,9 +814,7 @@ module Make =
               (),
             );
           let eventCollectorOutputs = eventCollector->Component.extractOutputs;
-          setEventCollectorUrn(.
-            eventCollectorOutputs##connector->Belt.Option.getExn##urn,
-          );
+          setEventCollectorUrn(. eventCollectorOutputs##resources[0]##urn); //FIXME
 
           let heartbeat =
             Heartbeat.make(
