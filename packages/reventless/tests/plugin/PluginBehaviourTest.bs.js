@@ -4,10 +4,10 @@
 var Jest = require("@glennsl/bs-jest/src/jest.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var PluginSpec$Reventless = require("../../src/core/plugin/PluginSpec.bs.js");
+var PluginSpec$Reventless = require("../../src/core/Aggregates/Plugin/PluginSpec.bs.js");
 var BehaviourTest$Reventless = require("../../test-helper/BehaviourTest.bs.js");
 var PluginFixture$Reventless = require("./PluginFixture.bs.js");
-var PluginBehaviour$Reventless = require("../../src/core/plugin/PluginBehaviour.bs.js");
+var PluginBehaviour$Reventless = require("../../src/core/Aggregates/Plugin/PluginBehaviour.bs.js");
 
 var PluginTest = BehaviourTest$Reventless.Make({
         command_encode: PluginSpec$Reventless.command_encode,

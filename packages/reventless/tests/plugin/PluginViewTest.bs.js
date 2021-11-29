@@ -6,8 +6,8 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Id$Reventless = require("../../src/Id.bs.js");
 var ViewTest$Reventless = require("../../test-helper/ViewTest.bs.js");
-var PluginSpec$Reventless = require("../../src/core/plugin/PluginSpec.bs.js");
-var PluginView$Reventless = require("../../src/core/plugin/PluginView.bs.js");
+var PluginSpec$Reventless = require("../../src/core/Aggregates/Plugin/PluginSpec.bs.js");
+var PluginView$Reventless = require("../../src/core/ReadModels/Plugin/PluginView.bs.js");
 var PluginFixture$Reventless = require("./PluginFixture.bs.js");
 
 var PluginTest = ViewTest$Reventless.Make({

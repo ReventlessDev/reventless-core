@@ -6,7 +6,7 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Decco = require("@ryb73/decco/src/Decco.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
-var Message$Reventless = require("../../Message.bs.js");
+var Message$Reventless = require("../../../Message.bs.js");
 var PluginSpec$Reventless = require("./PluginSpec.bs.js");
 
 function state_encode(v) {

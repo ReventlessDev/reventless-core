@@ -2,7 +2,7 @@
 'use strict';
 
 var Curry = require("bs-platform/lib/js/curry.js");
-var ExtensionPoint$Reventless = require("../../components/ExtensionPoint.bs.js");
+var ExtensionPoint$Reventless = require("../../../components/ExtensionPoint.bs.js");
 var PluginExtensionPoint_Plugin$Reventless = require("./PluginExtensionPoint_Plugin.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 

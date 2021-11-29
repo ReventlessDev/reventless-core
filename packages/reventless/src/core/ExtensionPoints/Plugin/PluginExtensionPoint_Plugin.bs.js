@@ -6,12 +6,12 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Decco = require("@ryb73/decco/src/Decco.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
-var Id$Reventless = require("../../Id.bs.js");
-var Message$Reventless = require("../../Message.bs.js");
-var Schedule$Reventless = require("../../util/Schedule.bs.js");
-var PluginSpec$Reventless = require("../plugin/PluginSpec.bs.js");
-var PluginView$Reventless = require("../plugin/PluginView.bs.js");
-var ExtensionPointMapping$Reventless = require("../../ExtensionPointMapping.bs.js");
+var Id$Reventless = require("../../../Id.bs.js");
+var Message$Reventless = require("../../../Message.bs.js");
+var Schedule$Reventless = require("../../../util/Schedule.bs.js");
+var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
+var PluginView$Reventless = require("../../ReadModels/Plugin/PluginView.bs.js");
+var ExtensionPointMapping$Reventless = require("../../../ExtensionPointMapping.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 
 function forwardCommand(_id, command, extensionPointName, queryEngine) {

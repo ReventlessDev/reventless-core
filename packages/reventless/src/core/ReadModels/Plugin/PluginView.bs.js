@@ -9,8 +9,8 @@ var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
-var Message$Reventless = require("../../Message.bs.js");
-var PluginSpec$Reventless = require("./PluginSpec.bs.js");
+var Message$Reventless = require("../../../Message.bs.js");
+var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
 
 function status_encode(v) {
   switch (v) {
