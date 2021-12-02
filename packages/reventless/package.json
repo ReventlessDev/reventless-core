@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
   "author": "Atos",
   "license": "proprietary",
@@ -39,11 +39,11 @@
   },
   "dependencies": {
     "@aantron/repromise": "^0.6.0",
-    "@reventless/bs-aws-sdk": "^1.0.1",
+    "@reventless/bs-aws-sdk": "^1.0.2",
     "@reventless/bs-fast-csv": "^0.2.8",
     "@reventless/bs-hash-obj": "^0.1.5",
     "@reventless/bs-node-streams": "^0.1.5",
-    "@reventless/bs-pulumi-aws": "^1.0.5",
+    "@reventless/bs-pulumi-aws": "^1.0.6",
     "@reventless/bs-pulumi-pulumi": "^1.0.0",
     "@reventless/bs-ssh2": "^0.1.5",
     "@reventless/bs-uuid": "^0.1.6",
