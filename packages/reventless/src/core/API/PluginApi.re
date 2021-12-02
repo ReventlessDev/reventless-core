@@ -1,4 +1,4 @@
-let graphQLSchema = "
+let typesSchema = {|
 type Extension {
 	name: String!
 	extensionPointName: String!
@@ -8,11 +8,6 @@ type ExtensionPoint {
 	name: String!
 	commandTopic: String!
 	eventTopic: String
-}
-
-type Mutation {
-	deactivatePlugin(id: ID!): String!
-	activatePlugin(id: ID!): String!
 }
 
 type StatusChange {
@@ -35,9 +30,18 @@ type Plugins {
 	scannedCount: Int!
 	items: [Plugin!]!
 }
+|};
 
-type Query {
+let queriesSchema = {|
 	plugin(id: ID!): Plugin
+    @aws_auth(cognito_groups: ["Admin"])
 	everyPlugin(nextToken: String, limit: Int): Plugins!
-}
-";
+    @aws_auth(cognito_groups: ["Admin"])
+|};
+
+let mutationsSchema = {|
+	deactivatePlugin(id: ID!): String!
+    @aws_auth(cognito_groups: ["Admin"])
+	activatePlugin(id: ID!): String!
+    @aws_auth(cognito_groups: ["Admin"])
+|};
