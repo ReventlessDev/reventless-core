@@ -44,6 +44,8 @@ function toString(param) {
         return "Core";
     case /* Heartbeat */19 :
         return "Heartbeat";
+    case /* Cloner */20 :
+        return "Cloner";
     
   }
 }
@@ -52,6 +54,8 @@ function ofString(param) {
   switch (param) {
     case "Aggregate" :
         return /* Aggregate */0;
+    case "Cloner" :
+        return /* Cloner */20;
     case "CommandGenerator" :
         return /* CommandGenerator */3;
     case "CommandTopic" :
@@ -137,6 +141,8 @@ function toName(param) {
         return "Core";
     case /* Heartbeat */19 :
         return "Heartbeat";
+    case /* Cloner */20 :
+        return "Cloner";
     
   }
 }

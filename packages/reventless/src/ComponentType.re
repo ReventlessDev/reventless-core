@@ -18,7 +18,8 @@ type t =
   | Task
   | Vpc
   | Core
-  | Heartbeat;
+  | Heartbeat
+  | Cloner;
 
 let toString =
   fun
@@ -41,7 +42,8 @@ let toString =
   | Task => "Task"
   | Vpc => "Vpc"
   | Core => "Core"
-  | Heartbeat => "Heartbeat";
+  | Heartbeat => "Heartbeat"
+  | Cloner => "Cloner";
 
 let ofString =
   fun
@@ -65,6 +67,7 @@ let ofString =
   | "Vpc" => Vpc->Some
   | "Core" => Core->Some
   | "Heartbeat" => Heartbeat->Some
+  | "Cloner" => Cloner->Some
   | _ => None;
 
 let toName =
@@ -88,6 +91,7 @@ let toName =
   | Task => "Task"
   | Vpc => "Vpc"
   | Core => "Core"
-  | Heartbeat => "Heartbeat";
+  | Heartbeat => "Heartbeat"
+  | Cloner => "Cloner";
 
 let name = (name, t) => name ++ t->toName;
