@@ -6,6 +6,7 @@ var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
+var Cloner$Reventless = require("../components/Cloner.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Component$Reventless = require("../components/Component.bs.js");
 var Component = require("../components/Component");
@@ -21,89 +22,96 @@ function toDict(els) {
                   })));
 }
 
-function Make(EventCollectorAdapter) {
-  return (function (QueryEngineAdapter) {
-      var setOutputs = function (self, outputs) {
-        self.setOutputs(outputs);
-        return self.registerOutputs(outputs);
-      };
-      var construct = function (version, extensionPointMakers, serviceMakers, scheduler, self, param) {
-        var opts = {
-          parent: self
-        };
-        var resources = { };
-        var services = Belt_Array.map(serviceMakers, (function (serviceMaker) {
-                return Curry._3(serviceMaker, Caml_option.some(opts), resources, /* () */0);
-              }));
-        var servicesOutputs = Component$Reventless.extractMultipleOutputs(services);
-        var extensionPoints = Belt_Array.map(extensionPointMakers, (function (extensionPointMaker) {
-                return Curry._5(extensionPointMaker, scheduler, Curry._1(QueryEngineAdapter.make, resources), Caml_option.some(opts), resources, /* () */0);
-              }));
-        var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints);
-        var aggregateNames = Belt_SetString.toArray(Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
-                        return Belt_SetString.fromArray(extensionPoint.aggregateNames);
-                      })), Belt_SetString.empty, Belt_SetString.union));
-        var fakePluginDefinition_003 = /* extensionPoints : array */[];
-        var fakePluginDefinition_004 = /* extensions : array */[];
-        var fakePluginDefinition = /* record */[
-          /* id */"Core@FAKE",
-          /* name */"Core",
-          /* version */"FAKE",
-          fakePluginDefinition_003,
-          fakePluginDefinition_004,
-          /* eventCollector */"NOT-SET"
-        ];
-        var eventsHandler = function (events$primeJson) {
-          var count = events$primeJson.length;
-          var __x = Promise.all(Belt_Array.mapWithIndex(events$primeJson, (function (idx, event$primeJson) {
-                      var idx$1 = idx + 1 | 0;
-                      Message$Reventless.logEvent$primeJson(event$primeJson, "Core eventHandler: outgoing event " + (String(idx$1) + ("/" + (String(count) + ":"))));
-                      var __x = Promise.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
-                                  var handle = extensionPoint.outgoingEventHandler;
-                                  return handle(event$primeJson, fakePluginDefinition);
-                                })));
-                      return __x.then((function (param) {
-                                    return Promise.resolve(/* () */0);
-                                  }));
-                    })));
-          return __x.then((function (param) {
-                        return Promise.resolve(/* () */0);
+function Make(Config) {
+  return (function (EventCollectorConnector) {
+      return (function (QueryEngineAdapter) {
+          return (function (ClonerRunner) {
+              var setOutputs = function (self, outputs) {
+                self.setOutputs(outputs);
+                return self.registerOutputs(outputs);
+              };
+              var construct = function (version, extensionPointMakers, serviceMakers, scheduler, self, param) {
+                var opts = {
+                  parent: self
+                };
+                var resources = { };
+                var services = Belt_Array.map(serviceMakers, (function (serviceMaker) {
+                        return Curry._3(serviceMaker, Caml_option.some(opts), resources, /* () */0);
                       }));
-        };
-        var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorAdapter);
-        var eventCollector = Curry.app(EventCollector.make, [
-              ComponentType$Reventless.toName(/* Core */18),
-              aggregateNames,
-              undefined,
-              eventsHandler,
-              undefined,
-              undefined,
-              Caml_option.some(opts),
-              resources,
-              /* () */0
-            ]);
-        return setOutputs(self, {
-                    version: version,
-                    eventCollector: Component$Reventless.extractOutputs(eventCollector),
-                    extensionPoints: toDict(extensionPointsOutputs),
-                    services: toDict(servicesOutputs),
-                    resources: resources
-                  });
-      };
-      var make = function (version, extensionPointMakers, serviceMakers, scheduler) {
-        var prim = ComponentType$Reventless.toString(/* Core */18);
-        var prim$1 = "Core";
-        var prim$2 = function (param, param$1) {
-          return construct(version, extensionPointMakers, serviceMakers, scheduler, param, param$1);
-        };
-        var prim$3 = undefined;
-        return new Component.default(prim, prim$1, prim$2, prim$3);
-      };
-      return {
-              setOutputs: setOutputs,
-              construct: construct,
-              make: make
-            };
+                var servicesOutputs = Component$Reventless.extractMultipleOutputs(services);
+                var extensionPoints = Belt_Array.map(extensionPointMakers, (function (extensionPointMaker) {
+                        return Curry._5(extensionPointMaker, scheduler, Curry._1(QueryEngineAdapter.make, resources), Caml_option.some(opts), resources, /* () */0);
+                      }));
+                var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints);
+                var aggregateNames = Belt_SetString.toArray(Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
+                                return Belt_SetString.fromArray(extensionPoint.aggregateNames);
+                              })), Belt_SetString.empty, Belt_SetString.union));
+                var fakePluginDefinition_003 = /* extensionPoints : array */[];
+                var fakePluginDefinition_004 = /* extensions : array */[];
+                var fakePluginDefinition = /* record */[
+                  /* id */"Core@FAKE",
+                  /* name */"Core",
+                  /* version */"FAKE",
+                  fakePluginDefinition_003,
+                  fakePluginDefinition_004,
+                  /* eventCollector */"NOT-SET"
+                ];
+                var eventsHandler = function (events$primeJson) {
+                  var count = events$primeJson.length;
+                  var __x = Promise.all(Belt_Array.mapWithIndex(events$primeJson, (function (idx, event$primeJson) {
+                              var idx$1 = idx + 1 | 0;
+                              Message$Reventless.logEvent$primeJson(event$primeJson, "Core eventHandler: outgoing event " + (String(idx$1) + ("/" + (String(count) + ":"))));
+                              var __x = Promise.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
+                                          var handle = extensionPoint.outgoingEventHandler;
+                                          return handle(event$primeJson, fakePluginDefinition);
+                                        })));
+                              return __x.then((function (param) {
+                                            return Promise.resolve(/* () */0);
+                                          }));
+                            })));
+                  return __x.then((function (param) {
+                                return Promise.resolve(/* () */0);
+                              }));
+                };
+                var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorConnector);
+                var eventCollector = Curry.app(EventCollector.make, [
+                      ComponentType$Reventless.toName(/* Core */18),
+                      aggregateNames,
+                      undefined,
+                      eventsHandler,
+                      undefined,
+                      undefined,
+                      Caml_option.some(opts),
+                      resources,
+                      /* () */0
+                    ]);
+                var Cloner = Cloner$Reventless.Make(Config)(ClonerRunner);
+                var cloner = Curry._2(Cloner.make, Caml_option.some(opts), /* () */0);
+                return setOutputs(self, {
+                            version: version,
+                            eventCollector: Component$Reventless.extractOutputs(eventCollector),
+                            extensionPoints: toDict(extensionPointsOutputs),
+                            services: toDict(servicesOutputs),
+                            cloner: Component$Reventless.extractOutputs(cloner),
+                            resources: resources
+                          });
+              };
+              var make = function (version, extensionPointMakers, serviceMakers, scheduler) {
+                var prim = ComponentType$Reventless.toString(/* Core */18);
+                var prim$1 = "Core";
+                var prim$2 = function (param, param$1) {
+                  return construct(version, extensionPointMakers, serviceMakers, scheduler, param, param$1);
+                };
+                var prim$3 = undefined;
+                return new Component.default(prim, prim$1, prim$2, prim$3);
+              };
+              return {
+                      setOutputs: setOutputs,
+                      construct: construct,
+                      make: make
+                    };
+            });
+        });
     });
 }
 
@@ -112,4 +120,4 @@ var componentType = /* Core */18;
 exports.componentType = componentType;
 exports.toDict = toDict;
 exports.Make = Make;
-/* Message-Reventless Not a pure module */
+/* Cloner-Reventless Not a pure module */

@@ -11,6 +11,7 @@ type outputs = {
   "eventCollector": EventCollector.outputs,
   "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
   "services": Js.Dict.t(Service.outputs),
+  "cloner": Cloner.outputs,
   "resources": resources,
 };
 type core;
@@ -20,8 +21,10 @@ let toDict = els =>
 
 module Make =
        (
-         EventCollectorAdapter: EventCollector.Adapter.Connector,
+         Config: Config.T,
+         EventCollectorConnector: EventCollector.Adapter.Connector,
          QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
+         ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
        ) => {
   type constructed;
   type construct = (Component.t(core, outputs), string) => constructed;
@@ -44,6 +47,7 @@ module Make =
       ~eventCollector: EventCollector.outputs,
       ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
       ~services: Js.Dict.t(Service.outputs),
+      ~cloner: Cloner.outputs,
       ~resources: resources
     ) =>
     outputs =
@@ -140,7 +144,7 @@ module Make =
     module EventCollector =
       EventCollector.Make(
         EventCollector.DefaultPolicies,
-        EventCollectorAdapter,
+        EventCollectorConnector,
       );
 
     let eventCollector =
@@ -153,11 +157,15 @@ module Make =
         (),
       );
 
+    module Cloner = Cloner.Make(Config, ClonerRunner);
+    let cloner = Cloner.make(~opts, ());
+
     makeOutputs(
       ~version,
       ~eventCollector=eventCollector->Component.extractOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
       ~services=servicesOutputs->toDict,
+      ~cloner=cloner->Component.extractOutputs,
       ~resources,
     )
     ->setOutputs(self, _);
