@@ -43,6 +43,60 @@ let make: Cloner.Adapter.runnerMaker(api) =
       ->Js.Json.stringifyAny
       ->Belt.Option.getExn;
 
+    let taskExecutionRole =
+      IAM.Role.make(
+        ~name=name ++ "TaskExecution",
+        ~args=
+          IAM.Role.Args.make(
+            ~assumeRolePolicy=
+              {|
+              {
+                "Version": "2008-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": "ecs-tasks.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                  }
+                ]
+              }
+              |}
+              ->Pulumi.Input.wrap,
+            ~inlinePolicies=
+              [|
+                IAM.InlinePolicy.make(
+                  ~name="",
+                  ~policy=
+                    {|
+                      {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": [
+                                    "secretsmanager:GetRandomPassword",
+                                    "secretsmanager:GetResourcePolicy",
+                                    "secretsmanager:GetSecretValue",
+                                    "secretsmanager:DescribeSecret",
+                                    "secretsmanager:ListSecretVersionIds"
+                                    "logs:PutLogEvents",
+                                    "logs:CreateLogStream",
+                                ],
+                                "Resource": "*"
+                            }
+                        ]
+                      }
+                   |},
+                ),
+              |]
+              ->Pulumi.Input.wrap,
+            (),
+          ),
+        (),
+      );
+
     let taskDefinition =
       ECS.TaskDefinition.(
         make(
@@ -51,6 +105,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
             Args.make(
               ~family=name->Pulumi.Input.wrap,
               ~containerDefinitions=containerDefinitions->Pulumi.Input.wrap,
+              ~executionRoleArn=taskExecutionRole##arn->Pulumi.Output.asInput,
               (),
             ),
           ~opts,
