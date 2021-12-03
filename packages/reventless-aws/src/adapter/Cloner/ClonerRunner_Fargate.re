@@ -70,24 +70,24 @@ let make: Cloner.Adapter.runnerMaker(api) =
                   ~name="clonerTask",
                   ~policy=
                     {|
-                      {
-                        "Version": "2012-10-17",
-                        "Statement": [
-                            {
-                                "Effect": "Allow",
-                                "Action": [
-                                    "secretsmanager:GetRandomPassword",
-                                    "secretsmanager:GetResourcePolicy",
-                                    "secretsmanager:GetSecretValue",
-                                    "secretsmanager:DescribeSecret",
-                                    "secretsmanager:ListSecretVersionIds",
-                                    "logs:PutLogEvents",
-                                    "logs:CreateLogStream"
-                                ],
-                                "Resource": "*"
-                            }
-                        ]
-                      }
+{
+  "Version": "2012-10-17",
+  "Statement": [
+      {
+          "Effect": "Allow",
+          "Action": [
+              "secretsmanager:GetRandomPassword",
+              "secretsmanager:GetResourcePolicy",
+              "secretsmanager:GetSecretValue",
+              "secretsmanager:DescribeSecret",
+              "secretsmanager:ListSecretVersionIds",
+              "logs:PutLogEvents",
+              "logs:CreateLogStream"
+          ],
+          "Resource": "*"
+      }
+  ]
+}
                    |},
                 ),
               |]
