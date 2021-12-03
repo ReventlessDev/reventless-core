@@ -49,19 +49,18 @@ let make: Cloner.Adapter.runnerMaker(api) =
         ~args=
           IAM.Role.Args.make(
             ~assumeRolePolicy=
-              {|
-              {
-                "Version": "2008-10-17",
-                "Statement": [
-                  {
-                    "Effect": "Allow",
-                    "Principal": {
-                      "Service": "ecs-tasks.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                  }
-                ]
-              }
+              {|{
+  "Version": "2008-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
               |}
               ->Pulumi.Input.wrap,
             ~inlinePolicies=
@@ -69,8 +68,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
                 IAM.InlinePolicy.make(
                   ~name="clonerTask",
                   ~policy=
-                    {|
-{
+                    {|{
   "Version": "2012-10-17",
   "Statement": [
       {
