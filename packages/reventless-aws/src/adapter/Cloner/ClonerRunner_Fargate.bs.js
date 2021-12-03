@@ -39,7 +39,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
       }, undefined);
   new (Aws.iam.RolePolicyAttachment)("ClonerTaskExecutionSecretsManagerAccess", {
         policyArn: secretsManagerAccessPolicy.arn,
-        role: taskExecutionRole.arn
+        role: taskExecutionRole.name
       }, opts);
   var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {
         family: name,

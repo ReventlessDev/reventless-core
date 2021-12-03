@@ -130,7 +130,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
             Args.make(
               ~policyArn=
                 secretsManagerAccessPolicy##arn->Pulumi.Output.asInput,
-              ~role=taskExecutionRole##arn->Pulumi.Output.asInput,
+              ~role=taskExecutionRole##name->Pulumi.Output.asInput,
             ),
           ~opts,
         )
