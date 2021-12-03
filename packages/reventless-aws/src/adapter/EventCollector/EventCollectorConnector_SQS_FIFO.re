@@ -52,38 +52,26 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let eventHandlerLambda =
-      policies // Pulumi.Output cannot be pushed into policies parameter !
-      ->Pulumi.Output.all
-      ->Pulumi.Output.apply(policies =>
-          Lambda.CallbackFunction.make(
-            ~name,
-            ~args=
-              Lambda.CallbackFunction.Args.make(
-                ~callback=
-                  EventCollectorConnector_SQS_Runtime.handleCallbackEvent(
-                    handleEvents,
-                    queue,
-                  ),
-                ~policies,
-                ~memorySize=memorySize->Pulumi.Input.wrap,
-                ~timeout=timeout->Pulumi.Input.wrap,
-                (),
+      Lambda.CallbackFunction.make(
+        ~name,
+        ~args=
+          Lambda.CallbackFunction.Args.make(
+            ~callback=
+              EventCollectorConnector_SQS_Runtime.handleCallbackEvent(
+                handleEvents,
+                queue,
               ),
-            ~opts,
+            ~policies,
+            ~memorySize=memorySize->Pulumi.Input.wrap,
+            ~timeout=timeout->Pulumi.Input.wrap,
             (),
-          )
-        );
+          ),
+        ~opts,
+        (),
+      );
 
     let _queueSubscription =
-      // Pulumi.Output cannot be pushed into handler parameter !
-      eventHandlerLambda->Pulumi.Output.apply(eventHandlerLambda =>
-        queue->SQS.Queue.onEvent(
-          ~name,
-          ~handler=eventHandlerLambda,
-          ~opts,
-          (),
-        )
-      );
+      queue->SQS.Queue.onEvent(~name, ~handler=eventHandlerLambda, ~opts, ());
 
     let (snsFifoTopics, otherTopics) =
       resources
@@ -105,7 +93,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     let _eventSourceMappings: array(EventSourceMapping.t) =
       otherTopics->Belt.Array.map(((_, (sourceName, source))) =>
         Util_EventSourceMapping.subscribe(
-          ~lambda=eventHandlerLambda,
+          ~lambda=eventHandlerLambda->Pulumi.Output.make,
           ~targetName=name,
           ~sourceName,
           ~source,

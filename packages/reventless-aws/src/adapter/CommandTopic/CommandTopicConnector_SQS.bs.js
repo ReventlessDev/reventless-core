@@ -25,7 +25,7 @@ function make(name, handleCommands, memorySize, timeout, opts, param) {
                 return CommandTopicConnector_SQS_Runtime$ReventlessAws.handleQueueEvent(handleCommands, queue, param, param$1);
               }),
             undefined,
-            Lambda$PulumiAws.Policy.defaultPolicies,
+            Caml_option.some(Lambda$PulumiAws.Policy.defaultPolicies),
             undefined,
             undefined,
             Caml_option.some(memorySize),

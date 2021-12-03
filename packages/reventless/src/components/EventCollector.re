@@ -11,12 +11,9 @@ type outputs = {. "connector": option(resource)};
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
 type arn = string;
-module type Policies = {let policies: array(Pulumi.Output.t(arn));};
+module type Policies = {let policies: Pulumi.Input.t(array(arn));};
 module DefaultPolicies: Policies = {
-  let policies =
-    PulumiAws.Lambda.Policy.defaultPolicies->Belt.Array.map(policy =>
-      Pulumi.Output.make(policy)
-    );
+  let policies = PulumiAws.Lambda.Policy.defaultPolicies;
 };
 
 module type T = {
@@ -48,7 +45,7 @@ module Adapter = {
       ~name: string,
       ~aggregateNames: array(string),
       ~extensionPointNames: array(string),
-      ~policies: array(Pulumi.Output.t(arn)),
+      ~policies: Pulumi.Input.t(array(arn)),
       ~handleEvents: eventsHandler,
       ~memorySize: int,
       ~timeout: int,

@@ -28,26 +28,22 @@ function make(name, aggregateNames, extensionPointNames, policies, handleEvents,
         Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),
         Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents
       ], Caml_option.some(opts), /* () */0);
-  var eventHandlerLambda = Pulumi.all(policies).apply((function (policies) {
-          return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
-                          (function (param, param$1) {
-                              return EventCollectorConnector_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, queue, param, param$1);
-                            }),
-                          undefined,
-                          policies,
-                          undefined,
-                          undefined,
-                          Caml_option.some(memorySize),
-                          Caml_option.some(timeout),
-                          undefined,
-                          undefined,
-                          undefined,
-                          /* () */0
-                        ]), opts);
-        }));
-  eventHandlerLambda.apply((function (eventHandlerLambda) {
-          return queue.onEvent(name, eventHandlerLambda, undefined, opts);
-        }));
+  var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
+            (function (param, param$1) {
+                return EventCollectorConnector_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, queue, param, param$1);
+              }),
+            undefined,
+            Caml_option.some(policies),
+            undefined,
+            undefined,
+            Caml_option.some(memorySize),
+            Caml_option.some(timeout),
+            undefined,
+            undefined,
+            undefined,
+            /* () */0
+          ]), opts);
+  queue.onEvent(name, eventHandlerLambda, undefined, opts);
   var match = Belt_Array.partition(Belt_Array.concat(Util_Aggregate$Reventless.eventTopics(resources, aggregateNames), Util_ExtensionPoint$Reventless.eventTopics(resources, extensionPointNames)), (function (param) {
           return param[0] === Util_SNS$ReventlessAws.service;
         }));
@@ -56,7 +52,7 @@ function make(name, aggregateNames, extensionPointNames, policies, handleEvents,
         }));
   Belt_Array.map(match[1], (function (param) {
           var match = param[1];
-          return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, match[0], match[1], opts, /* () */0);
+          return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(eventHandlerLambda), name, match[0], match[1], opts, /* () */0);
         }));
   return /* record */[
           /* resource */Caml_option.some(Util_SQS$ReventlessAws.toResource(queue)),
