@@ -80,9 +80,9 @@ let make: Cloner.Adapter.runnerMaker(api) =
                                     "secretsmanager:GetResourcePolicy",
                                     "secretsmanager:GetSecretValue",
                                     "secretsmanager:DescribeSecret",
-                                    "secretsmanager:ListSecretVersionIds"
+                                    "secretsmanager:ListSecretVersionIds",
                                     "logs:PutLogEvents",
-                                    "logs:CreateLogStream",
+                                    "logs:CreateLogStream"
                                 ],
                                 "Resource": "*"
                             }
