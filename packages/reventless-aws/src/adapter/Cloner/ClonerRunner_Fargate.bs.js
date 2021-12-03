@@ -14,7 +14,7 @@ var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.bs.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
 var ClonerRunner_Fargate_Runtime$ReventlessAws = require("./ClonerRunner_Fargate_Runtime.bs.js");
 
-function make(name, api, fullQualifiedStackName, containerSecretUrn, secretUrns, opts, param) {
+function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts, param) {
   var cluster = new (Aws.ecs.Cluster)(name, {
         name: name
       }, opts);
@@ -23,7 +23,7 @@ function make(name, api, fullQualifiedStackName, containerSecretUrn, secretUrns,
                   image: new Pulumi.Config("ci").require("image"),
                   secrets: /* array */[{
                       name: "reventless-ci",
-                      valueFrom: containerSecretUrn
+                      valueFrom: reventlessCiSecretUrn
                     }]
                 }])));
   var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {

@@ -33,8 +33,8 @@ function Make(Config) {
             ], (function (param) {
                 return secretsConfig.require(param);
               }));
-        var containerSecretUrn = secretsConfig.require("container");
-        var runner = Curry._7(Runner.make, ComponentType$Reventless.name(name, /* Cloner */20), api, fullQualifiedStackName, containerSecretUrn, secretUrns, Caml_option.some(opts), /* () */0);
+        var reventlessCiSecretUrn = secretsConfig.require("reventless-ci");
+        var runner = Curry._7(Runner.make, ComponentType$Reventless.name(name, /* Cloner */20), api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, Caml_option.some(opts), /* () */0);
         var self$1 = self;
         var outputs = {
           resources: runner[/* resources */0]

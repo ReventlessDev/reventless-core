@@ -8,7 +8,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
     ~name,
     ~api: api,
     ~fullQualifiedStackName,
-    ~containerSecretUrn,
+    ~reventlessCiSecretUrn,
     ~secretUrns,
     ~opts=?,
     (),
@@ -33,7 +33,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
             ~secrets=[|
               Secret.make(
                 ~name="reventless-ci",
-                ~valueFrom=containerSecretUrn,
+                ~valueFrom=reventlessCiSecretUrn,
               ),
             |],
             (),

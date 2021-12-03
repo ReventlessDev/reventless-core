@@ -24,7 +24,7 @@ module Adapter = {
       ~name: string,
       ~api: 'api,
       ~fullQualifiedStackName: fullQualifiedStackName,
-      ~containerSecretUrn: string,
+      ~reventlessCiSecretUrn: string,
       ~secretUrns: array(string),
       ~opts: Pulumi.CustomResourceOptions.t=?,
       unit
@@ -88,15 +88,15 @@ module Make =
     let secretUrns =
       [|"aws", "pulumi", "repository"|]
       ->Belt.Array.map(secretsConfig->Pulumi.Config.require(_));
-    let containerSecretUrn =
-      secretsConfig->Pulumi.Config.require("container");
+    let reventlessCiSecretUrn =
+      secretsConfig->Pulumi.Config.require("reventless-ci");
 
     let runner =
       Runner.make(
         ~name=name->ComponentType.name(componentType),
         ~api,
         ~fullQualifiedStackName,
-        ~containerSecretUrn,
+        ~reventlessCiSecretUrn,
         ~secretUrns,
         ~opts,
         (),
