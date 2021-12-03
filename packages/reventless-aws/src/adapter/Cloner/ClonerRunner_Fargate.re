@@ -30,6 +30,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
             ~image=
               Pulumi.Config.make(Some("ci"))
               ->Pulumi.Config.require("image"),
+            ~memory=512,
             ~secrets=[|
               Secret.make(
                 ~name="reventless-ci",
@@ -104,6 +105,8 @@ let make: Cloner.Adapter.runnerMaker(api) =
               ~family=name->Pulumi.Input.wrap,
               ~containerDefinitions=containerDefinitions->Pulumi.Input.wrap,
               ~executionRoleArn=taskExecutionRole##arn->Pulumi.Output.asInput,
+              ~memory="512"->Pulumi.Input.wrap,
+              ~requiresCompatibilities=[|"FARGATE"|],
               (),
             ),
           ~opts,

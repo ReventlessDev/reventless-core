@@ -21,6 +21,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
   var containerDefinitions = Belt_Option.getExn(Caml_option.undefined_to_opt(JSON.stringify(/* array */[{
                   name: "reventless-ci",
                   image: new Pulumi.Config("ci").require("image"),
+                  memory: 512,
                   secrets: /* array */[{
                       name: "reventless-ci",
                       valueFrom: reventlessCiSecretUrn
@@ -36,6 +37,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
   var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {
         family: name,
         containerDefinitions: containerDefinitions,
+        memory: "512",
+        requiresCompatibilities: /* array */["FARGATE"],
         executionRoleArn: taskExecutionRole.arn
       }, opts);
   var partial_arg = cluster.arn;
