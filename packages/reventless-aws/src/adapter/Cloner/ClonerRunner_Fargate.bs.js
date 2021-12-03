@@ -38,6 +38,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         family: name,
         containerDefinitions: containerDefinitions,
         memory: "512",
+        networkMode: "awsvpc",
         requiresCompatibilities: /* array */["FARGATE"],
         executionRoleArn: taskExecutionRole.arn
       }, opts);
