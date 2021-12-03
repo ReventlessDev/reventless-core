@@ -67,7 +67,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
             ~inlinePolicies=
               [|
                 IAM.InlinePolicy.make(
-                  ~name="",
+                  ~name="clonerTask",
                   ~policy=
                     {|
                       {

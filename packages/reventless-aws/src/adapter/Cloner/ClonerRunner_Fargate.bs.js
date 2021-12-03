@@ -29,7 +29,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
   var taskExecutionRole = new (Aws.iam.Role)(name + "TaskExecution", {
         assumeRolePolicy: "\n              {\n                \"Version\": \"2008-10-17\",\n                \"Statement\": [\n                  {\n                    \"Effect\": \"Allow\",\n                    \"Principal\": {\n                      \"Service\": \"ecs-tasks.amazonaws.com\"\n                    },\n                    \"Action\": \"sts:AssumeRole\"\n                  }\n                ]\n              }\n              ",
         inlinePolicies: /* array */[{
-            name: "",
+            name: "clonerTask",
             policy: "\n                      {\n                        \"Version\": \"2012-10-17\",\n                        \"Statement\": [\n                            {\n                                \"Effect\": \"Allow\",\n                                \"Action\": [\n                                    \"secretsmanager:GetRandomPassword\",\n                                    \"secretsmanager:GetResourcePolicy\",\n                                    \"secretsmanager:GetSecretValue\",\n                                    \"secretsmanager:DescribeSecret\",\n                                    \"secretsmanager:ListSecretVersionIds\"\n                                    \"logs:PutLogEvents\",\n                                    \"logs:CreateLogStream\",\n                                ],\n                                \"Resource\": \"*\"\n                            }\n                        ]\n                      }\n                   "
           }]
       }, undefined);
