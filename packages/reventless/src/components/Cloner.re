@@ -93,7 +93,7 @@ module Make =
 
     let runner =
       Runner.make(
-        ~name=name->ComponentType.name(componentType),
+        ~name,
         ~api,
         ~fullQualifiedStackName,
         ~reventlessCiSecretUrn,
