@@ -44,6 +44,37 @@ let make: Cloner.Adapter.runnerMaker(api) =
       ->Js.Json.stringifyAny
       ->Belt.Option.getExn;
 
+    let secretsManagerAccessPolicy =
+      IAM.Policy.(
+        make(
+          ~name="secretsManagerAccess",
+          ~args=
+            Args.makeFromString(
+              ~policy=
+                {|{
+  "Version": "2012-10-17",
+  "Statement": [
+      {
+          "Effect": "Allow",
+          "Action": [
+              "secretsmanager:GetRandomPassword",
+              "secretsmanager:GetResourcePolicy",
+              "secretsmanager:GetSecretValue",
+              "secretsmanager:DescribeSecret",
+              "secretsmanager:ListSecretVersionIds",
+          ],
+          "Resource": "*"
+      }
+  ]
+}
+                   |}
+                ->Pulumi.Input.wrap,
+              (),
+            ),
+          (),
+        )
+      );
+
     let taskExecutionRole =
       IAM.Role.make(
         ~name=name ++ "TaskExecution",
@@ -75,11 +106,6 @@ let make: Cloner.Adapter.runnerMaker(api) =
       {
           "Effect": "Allow",
           "Action": [
-              "secretsmanager:GetRandomPassword",
-              "secretsmanager:GetResourcePolicy",
-              "secretsmanager:GetSecretValue",
-              "secretsmanager:DescribeSecret",
-              "secretsmanager:ListSecretVersionIds",
               "logs:PutLogEvents",
               "logs:CreateLogStream"
           ],
@@ -94,6 +120,20 @@ let make: Cloner.Adapter.runnerMaker(api) =
             (),
           ),
         (),
+      );
+
+    let _ =
+      IAM.RolePolicyAttachment.(
+        make(
+          ~name="ClonerTaskExecutionSecretsManagerAccess",
+          ~args=
+            Args.make(
+              ~policyArn=
+                secretsManagerAccessPolicy##arn->Pulumi.Output.asInput,
+              ~role=taskExecutionRole##arn->Pulumi.Output.asInput,
+            ),
+          ~opts,
+        )
       );
 
     let taskDefinition =
@@ -120,6 +160,10 @@ let make: Cloner.Adapter.runnerMaker(api) =
         ~name,
         ~args=
           Lambda.CallbackFunction.Args.make(
+            ~policies=
+              secretsManagerAccessPolicy##arn
+              ->Pulumi.Output.apply(arn => [|arn|])
+              ->Pulumi.Output.asInput,
             ~callback=
               ClonerRunner_Fargate_Runtime.clone(
                 ~taskDefinition=taskDefinition##arn,

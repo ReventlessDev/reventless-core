@@ -27,13 +27,20 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                       valueFrom: reventlessCiSecretUrn
                     }]
                 }])));
+  var secretsManagerAccessPolicy = new (Aws.iam.Policy)("secretsManagerAccess", {
+        policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n      {\n          \"Effect\": \"Allow\",\n          \"Action\": [\n              \"secretsmanager:GetRandomPassword\",\n              \"secretsmanager:GetResourcePolicy\",\n              \"secretsmanager:GetSecretValue\",\n              \"secretsmanager:DescribeSecret\",\n              \"secretsmanager:ListSecretVersionIds\",\n          ],\n          \"Resource\": \"*\"\n      }\n  ]\n}\n                   "
+      }, undefined);
   var taskExecutionRole = new (Aws.iam.Role)(name + "TaskExecution", {
         assumeRolePolicy: "{\n  \"Version\": \"2008-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"ecs-tasks.amazonaws.com\"\n      },\n      \"Action\": \"sts:AssumeRole\"\n    }\n  ]\n}\n              ",
         inlinePolicies: /* array */[{
             name: "clonerTask",
-            policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n      {\n          \"Effect\": \"Allow\",\n          \"Action\": [\n              \"secretsmanager:GetRandomPassword\",\n              \"secretsmanager:GetResourcePolicy\",\n              \"secretsmanager:GetSecretValue\",\n              \"secretsmanager:DescribeSecret\",\n              \"secretsmanager:ListSecretVersionIds\",\n              \"logs:PutLogEvents\",\n              \"logs:CreateLogStream\"\n          ],\n          \"Resource\": \"*\"\n      }\n  ]\n}\n                   "
+            policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n      {\n          \"Effect\": \"Allow\",\n          \"Action\": [\n              \"logs:PutLogEvents\",\n              \"logs:CreateLogStream\"\n          ],\n          \"Resource\": \"*\"\n      }\n  ]\n}\n                   "
           }]
       }, undefined);
+  new (Aws.iam.RolePolicyAttachment)("ClonerTaskExecutionSecretsManagerAccess", {
+        policyArn: secretsManagerAccessPolicy.arn,
+        role: taskExecutionRole.arn
+      }, opts);
   var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {
         family: name,
         containerDefinitions: containerDefinitions,
@@ -50,7 +57,9 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                 return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(partial_arg$1, partial_arg, fullQualifiedStackName, secretUrns, param, param$1);
               }),
             undefined,
-            undefined,
+            Caml_option.some(secretsManagerAccessPolicy.arn.apply((function (arn) {
+                        return /* array */[arn];
+                      }))),
             undefined,
             undefined,
             undefined,
