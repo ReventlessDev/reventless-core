@@ -106,6 +106,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
               ~containerDefinitions=containerDefinitions->Pulumi.Input.wrap,
               ~executionRoleArn=taskExecutionRole##arn->Pulumi.Output.asInput,
               ~memory="512"->Pulumi.Input.wrap,
+              ~cpu="256"->Pulumi.Input.wrap,
               ~requiresCompatibilities=[|"FARGATE"|],
               ~networkMode=`awsvpc,
               (),

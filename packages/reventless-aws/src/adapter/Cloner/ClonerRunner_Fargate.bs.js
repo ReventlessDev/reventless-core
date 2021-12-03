@@ -37,6 +37,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
   var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {
         family: name,
         containerDefinitions: containerDefinitions,
+        cpu: "256",
         memory: "512",
         networkMode: "awsvpc",
         requiresCompatibilities: /* array */["FARGATE"],
