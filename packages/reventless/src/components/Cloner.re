@@ -18,7 +18,7 @@ module type T = {
 };
 
 module Adapter = {
-  type runner = {resources: array(resource)};
+  type runner = {resources: Pulumi.Output.t(array(resource))};
   type runnerMaker('api) =
     (
       ~name: string,
@@ -60,7 +60,9 @@ module Make =
     "process.env.PULUMI_ORGANIZATION";
 
   [@bs.obj]
-  external makeOutputs: (~resources: array(resource)) => outputs = "";
+  external makeOutputs:
+    (~resources: Pulumi.Output.t(array(resource))) => outputs =
+    "";
 
   [@bs.send]
   external registerOutputs: (component, outputs) => constructed =
