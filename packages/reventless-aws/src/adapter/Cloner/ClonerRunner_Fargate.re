@@ -166,8 +166,8 @@ let make: Cloner.Adapter.runnerMaker(api) =
                   ~policies=[|secretsManagerAccessPolicyArn|],
                   ~callback=
                     ClonerRunner_Fargate_Runtime.clone(
-                      ~taskDefinition=taskDefinition##arn,
-                      ~cluster=cluster##arn,
+                      ~taskDefinition=taskDefinition##arn->Pulumi.Output.get,
+                      ~cluster=cluster##arn->Pulumi.Output.get,
                       ~fullQualifiedStackName,
                       ~secretUrns,
                     ),
