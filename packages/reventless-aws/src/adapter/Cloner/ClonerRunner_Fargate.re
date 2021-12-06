@@ -80,7 +80,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
     let taskRunnerPolicy =
       IAM.Policy.makeForActions(
         ~name="taskRunner",
-        ~actions=[|"ecs:RunTask"|],
+        ~actions=[|"ecs:RunTask", "iam:PassRole"|],
       );
 
     let _ =

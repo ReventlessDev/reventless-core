@@ -41,7 +41,10 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         "secretsmanager:DescribeSecret",
         "secretsmanager:ListSecretVersionIds"
       ]);
-  var taskRunnerPolicy = IAM$PulumiAws.Policy.makeForActions("taskRunner", /* array */["ecs:RunTask"]);
+  var taskRunnerPolicy = IAM$PulumiAws.Policy.makeForActions("taskRunner", /* array */[
+        "ecs:RunTask",
+        "iam:PassRole"
+      ]);
   new (Aws.iam.RolePolicyAttachment)("ClonerTaskExecutionSecretsManagerAccess", {
         policyArn: secretsManagerAccessPolicy.arn,
         role: taskExecutionRole.name
