@@ -13,22 +13,26 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     ~resources,
   ) => {
     let eventHandlerLambda =
-      Lambda.CallbackFunction.make(
-        ~name,
-        ~args=
-          Lambda.CallbackFunction.Args.make(
-            ~callback=
-              EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(
-                handleEvents,
+      policies // Pulumi.Output cannot be pushed into policies parameter !
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(policies =>
+          Lambda.CallbackFunction.make(
+            ~name,
+            ~args=
+              Lambda.CallbackFunction.Args.make(
+                ~callback=
+                  EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(
+                    handleEvents,
+                  ),
+                ~policies,
+                ~memorySize=memorySize->Pulumi.Input.wrap,
+                ~timeout=timeout->Pulumi.Input.wrap,
+                (),
               ),
-            ~policies,
-            ~memorySize=memorySize->Pulumi.Input.wrap,
-            ~timeout=timeout->Pulumi.Input.wrap,
+            ~opts,
             (),
-          ),
-        ~opts,
-        (),
-      );
+          )
+        );
 
     let (dynamoDbStreamTopics, otherTopics) =
       resources
@@ -46,7 +50,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       dynamoDbStreamTopics->Belt.Array.map(((_, (sourceName, source))) =>
         Util_EventSourceMapping.subscribe(
           ~batchSize=25,
-          ~lambda=eventHandlerLambda->Pulumi.Output.make,
+          ~lambda=eventHandlerLambda,
           ~targetName=name,
           ~sourceName,
           ~source,
