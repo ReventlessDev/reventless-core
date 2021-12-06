@@ -28,15 +28,20 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                     }]
                 }])));
   var taskExecutionRole = new (Aws.iam.Role)(name + "TaskExecution", {
-        assumeRolePolicy: "{\n  \"Version\": \"2008-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"ecs-tasks.amazonaws.com\"\n      },\n      \"Action\": \"sts:AssumeRole\"\n    }\n  ]\n}\n              ",
-        inlinePolicies: /* array */[{
-            name: "clonerTask",
-            policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n      {\n          \"Effect\": \"Allow\",\n          \"Action\": [\n              \"logs:PutLogEvents\",\n              \"logs:CreateLogStream\"\n          ],\n          \"Resource\": \"*\"\n      }\n  ]\n}\n                   "
-          }]
+        assumeRolePolicy: IAM$PulumiAws.Policy.assumeRolePolicy("ecs-tasks.amazonaws.com"),
+        inlinePolicies: /* array */[IAM$PulumiAws.InlinePolicy.makeForActions("clonerTask", /* array */[
+                "logs:PutLogEvents",
+                "logs:CreateLogStream"
+              ])]
       }, undefined);
-  var secretsManagerAccessPolicy = new (Aws.iam.Policy)("secretsManagerAccess", {
-        policy: "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n      {\n          \"Effect\": \"Allow\",\n          \"Action\": [\n              \"secretsmanager:GetRandomPassword\",\n              \"secretsmanager:GetResourcePolicy\",\n              \"secretsmanager:GetSecretValue\",\n              \"secretsmanager:DescribeSecret\",\n              \"secretsmanager:ListSecretVersionIds\"\n          ],\n          \"Resource\": \"*\"\n      }\n  ]\n}\n                   "
-      }, undefined);
+  var secretsManagerAccessPolicy = IAM$PulumiAws.Policy.makeForActions("secretsManagerAccess", /* array */[
+        "secretsmanager:GetRandomPassword",
+        "secretsmanager:GetResourcePolicy",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:ListSecretVersionIds"
+      ]);
+  var taskRunnerPolicy = IAM$PulumiAws.Policy.makeForActions("taskRunner", /* array */["ecs:RunTask"]);
   new (Aws.iam.RolePolicyAttachment)("ClonerTaskExecutionSecretsManagerAccess", {
         policyArn: secretsManagerAccessPolicy.arn,
         role: taskExecutionRole.name
@@ -50,7 +55,10 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         requiresCompatibilities: /* array */["FARGATE"],
         executionRoleArn: taskExecutionRole.arn
       }, opts);
-  var resources = secretsManagerAccessPolicy.arn.apply((function (secretsManagerAccessPolicyArn) {
+  var resources = Pulumi.all(/* tuple */[
+          secretsManagerAccessPolicy.arn,
+          taskRunnerPolicy.arn
+        ]).apply((function (param) {
           var partial_arg = cluster.arn;
           var partial_arg$1 = taskDefinition.arn;
           var lambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
@@ -58,7 +66,10 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                         return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(partial_arg$1, partial_arg, fullQualifiedStackName, secretUrns, param, param$1);
                       }),
                     undefined,
-                    /* array */[secretsManagerAccessPolicyArn],
+                    /* array */[
+                      param[0],
+                      param[1]
+                    ],
                     undefined,
                     undefined,
                     undefined,

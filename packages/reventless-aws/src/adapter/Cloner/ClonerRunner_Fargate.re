@@ -50,39 +50,13 @@ let make: Cloner.Adapter.runnerMaker(api) =
         ~args=
           IAM.Role.Args.make(
             ~assumeRolePolicy=
-              {|{
-  "Version": "2008-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "ecs-tasks.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-              |}
+              IAM.Policy.assumeRolePolicy("ecs-tasks.amazonaws.com")
               ->Pulumi.Input.wrap,
             ~inlinePolicies=
               [|
-                IAM.InlinePolicy.make(
+                IAM.InlinePolicy.makeForActions(
                   ~name="clonerTask",
-                  ~policy=
-                    {|{
-  "Version": "2012-10-17",
-  "Statement": [
-      {
-          "Effect": "Allow",
-          "Action": [
-              "logs:PutLogEvents",
-              "logs:CreateLogStream"
-          ],
-          "Resource": "*"
-      }
-  ]
-}
-                   |},
+                  ~actions=[|"logs:PutLogEvents", "logs:CreateLogStream"|],
                 ),
               |]
               ->Pulumi.Input.wrap,
@@ -92,34 +66,21 @@ let make: Cloner.Adapter.runnerMaker(api) =
       );
 
     let secretsManagerAccessPolicy =
-      IAM.Policy.(
-        make(
-          ~name="secretsManagerAccess",
-          ~args=
-            Args.makeFromString(
-              ~policy=
-                {|{
-  "Version": "2012-10-17",
-  "Statement": [
-      {
-          "Effect": "Allow",
-          "Action": [
-              "secretsmanager:GetRandomPassword",
-              "secretsmanager:GetResourcePolicy",
-              "secretsmanager:GetSecretValue",
-              "secretsmanager:DescribeSecret",
-              "secretsmanager:ListSecretVersionIds"
-          ],
-          "Resource": "*"
-      }
-  ]
-}
-                   |}
-                ->Pulumi.Input.wrap,
-              (),
-            ),
-          (),
-        )
+      IAM.Policy.makeForActions(
+        ~name="secretsManagerAccess",
+        ~actions=[|
+          "secretsmanager:GetRandomPassword",
+          "secretsmanager:GetResourcePolicy",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecretVersionIds",
+        |],
+      );
+
+    let taskRunnerPolicy =
+      IAM.Policy.makeForActions(
+        ~name="taskRunner",
+        ~actions=[|"ecs:RunTask"|],
       );
 
     let _ =
@@ -156,14 +117,19 @@ let make: Cloner.Adapter.runnerMaker(api) =
       );
 
     let resources =
-      secretsManagerAccessPolicy##arn
-      ->Pulumi.Output.apply(secretsManagerAccessPolicyArn => {
+      (secretsManagerAccessPolicy##arn, taskRunnerPolicy##arn)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(
+          ((secretsManagerAccessPolicyArn, taskRunnerPolicyArn)) => {
           let lambda =
             Lambda.CallbackFunction.make(
               ~name,
               ~args=
                 Lambda.CallbackFunction.Args.make(
-                  ~policies=[|secretsManagerAccessPolicyArn|],
+                  ~policies=[|
+                    secretsManagerAccessPolicyArn,
+                    taskRunnerPolicyArn,
+                  |],
                   ~callback=
                     ClonerRunner_Fargate_Runtime.clone(
                       ~taskDefinition=taskDefinition##arn,
