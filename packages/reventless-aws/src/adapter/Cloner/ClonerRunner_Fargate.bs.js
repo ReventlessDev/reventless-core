@@ -51,8 +51,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         executionRoleArn: taskExecutionRole.arn
       }, opts);
   var resources = secretsManagerAccessPolicy.arn.apply((function (secretsManagerAccessPolicyArn) {
-          var partial_arg = cluster.arn.get();
-          var partial_arg$1 = taskDefinition.arn.get();
+          var partial_arg = cluster.arn;
+          var partial_arg$1 = taskDefinition.arn;
           var lambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                     (function (param, param$1) {
                         return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(partial_arg$1, partial_arg, fullQualifiedStackName, secretUrns, param, param$1);

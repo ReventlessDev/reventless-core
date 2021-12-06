@@ -67,8 +67,8 @@ let clone =
          ->runTask(
              ~params=
                RunTaskRequest.make(
-                 ~taskDefinition,
-                 ~cluster,
+                 ~taskDefinition=taskDefinition->Pulumi.Output.get,
+                 ~cluster=cluster->Pulumi.Output.get,
                  ~launchType=`FARGATE,
                  ~overrides=
                    TaskOverride.make(

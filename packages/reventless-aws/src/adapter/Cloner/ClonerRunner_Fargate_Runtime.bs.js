@@ -49,9 +49,9 @@ function clone(taskDefinition, cluster, fullQualifiedStackName, secretUrns, payl
                       }
                     ]);
                 return new AwsSdk.ECS(undefined).runTask({
-                              taskDefinition: taskDefinition,
+                              taskDefinition: taskDefinition.get(),
                               launchType: "FARGATE",
-                              cluster: cluster,
+                              cluster: cluster.get(),
                               overrides: {
                                 containerOverrides: /* array */[{
                                     name: "reventless-ci",
