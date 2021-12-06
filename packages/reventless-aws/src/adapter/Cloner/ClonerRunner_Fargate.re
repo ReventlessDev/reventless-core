@@ -1,9 +1,8 @@
-open Reventless;
 open PulumiAws;
 
 type api = Pulumi.Output.t(AppSync.GraphQLApi.t);
 
-let make: Cloner.Adapter.runnerMaker(api) =
+let make: Reventless.Cloner.Adapter.runnerMaker(api) =
   (
     ~name,
     ~api: api,
@@ -13,14 +12,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
     ~opts=?,
     (),
   ) => {
-    let cluster =
-      ECS.Cluster.(
-        make(
-          ~name,
-          ~args=Args.make(~name=name->Pulumi.Input.wrap, ()),
-          ~opts,
-        )
-      );
+    let cluster = ECS.Cluster.(make(~name, ~opts?, ()));
 
     let containerDefinitions =
       [|
@@ -112,15 +104,26 @@ let make: Cloner.Adapter.runnerMaker(api) =
               ~networkMode=`awsvpc,
               (),
             ),
-          ~opts,
+          ~opts?,
+          (),
         )
       );
 
+    let vpcStackName =
+      Pulumi.Config.make(Some("vpc"))
+      ->Pulumi.Config.get("stack")
+      ->Belt.Option.getExn;
+    let vpcConfig =
+      Reventless.Util.VPC.getVpcConfig(
+        ~stackName=vpcStackName,
+        ~outputName="vpc",
+      );
+
     let resources =
-      (secretsManagerAccessPolicy##arn, taskRunnerPolicy##arn)
-      ->Pulumi.Output.all2
+      (secretsManagerAccessPolicy##arn, taskRunnerPolicy##arn, vpcConfig)
+      ->Pulumi.Output.all3
       ->Pulumi.Output.apply(
-          ((secretsManagerAccessPolicyArn, taskRunnerPolicyArn)) => {
+          ((secretsManagerAccessPolicyArn, taskRunnerPolicyArn, vpcConfig)) => {
           let lambda =
             Lambda.CallbackFunction.make(
               ~name,
@@ -136,6 +139,7 @@ let make: Cloner.Adapter.runnerMaker(api) =
                       ~cluster=cluster##arn,
                       ~fullQualifiedStackName,
                       ~secretUrns,
+                      ~subnets=vpcConfig##subnetIds,
                     ),
                   (),
                 ),

@@ -25,7 +25,7 @@ function getSecretByUrn(urn) {
               }));
 }
 
-function clone(taskDefinition, cluster, fullQualifiedStackName, secretUrns, payload, param) {
+function clone(taskDefinition, cluster, fullQualifiedStackName, secretUrns, subnets, payload, param) {
   console.log("clone: requested by user " + (payload.meta.user + (" from ip " + payload.meta.ip)));
   var stack = fullQualifiedStackName[/* stack */2];
   var project = fullQualifiedStackName[/* project */1];
@@ -52,6 +52,11 @@ function clone(taskDefinition, cluster, fullQualifiedStackName, secretUrns, payl
                               taskDefinition: taskDefinition.get(),
                               launchType: "FARGATE",
                               cluster: cluster.get(),
+                              networkConfiguration: {
+                                awsvpcConfiguration: {
+                                  subnets: subnets
+                                }
+                              },
                               overrides: {
                                 containerOverrides: /* array */[{
                                     name: "reventless-ci",

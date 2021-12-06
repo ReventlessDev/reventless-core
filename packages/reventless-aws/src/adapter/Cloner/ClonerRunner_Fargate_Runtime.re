@@ -28,6 +28,7 @@ let clone =
       ~cluster,
       ~fullQualifiedStackName,
       ~secretUrns,
+      ~subnets,
       payload,
       _,
     ) => {
@@ -69,6 +70,11 @@ let clone =
                RunTaskRequest.make(
                  ~taskDefinition=taskDefinition->Pulumi.Output.get,
                  ~cluster=cluster->Pulumi.Output.get,
+                 ~networkConfiguration=
+                   NetworkConfiguration.make(
+                     ~awsvpcConfiguration=AwsVpcConfiguration.make(~subnets),
+                     (),
+                   ),
                  ~launchType=`FARGATE,
                  ~overrides=
                    TaskOverride.make(

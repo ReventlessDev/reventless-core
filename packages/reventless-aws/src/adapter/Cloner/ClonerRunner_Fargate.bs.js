@@ -9,15 +9,14 @@ var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.bs.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
+var Util_Vpc$Reventless = require("@reventless/reventless/src/util/Util_Vpc.bs.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.bs.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.bs.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
 var ClonerRunner_Fargate_Runtime$ReventlessAws = require("./ClonerRunner_Fargate_Runtime.bs.js");
 
 function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts, param) {
-  var cluster = new (Aws.ecs.Cluster)(name, {
-        name: name
-      }, opts);
+  var cluster = new (Aws.ecs.Cluster)(name, undefined, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
   var containerDefinitions = Belt_Option.getExn(Caml_option.undefined_to_opt(JSON.stringify(/* array */[{
                   name: "reventless-ci",
                   image: new Pulumi.Config("ci").require("image"),
@@ -57,16 +56,20 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         networkMode: "awsvpc",
         requiresCompatibilities: /* array */["FARGATE"],
         executionRoleArn: taskExecutionRole.arn
-      }, opts);
+      }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
+  var vpcStackName = Belt_Option.getExn(new Pulumi.Config("vpc").get("stack"));
+  var vpcConfig = Util_Vpc$Reventless.getVpcConfig(vpcStackName, "vpc");
   var resources = Pulumi.all(/* tuple */[
           secretsManagerAccessPolicy.arn,
-          taskRunnerPolicy.arn
+          taskRunnerPolicy.arn,
+          vpcConfig
         ]).apply((function (param) {
-          var partial_arg = cluster.arn;
-          var partial_arg$1 = taskDefinition.arn;
+          var partial_arg = param[2].subnetIds;
+          var partial_arg$1 = cluster.arn;
+          var partial_arg$2 = taskDefinition.arn;
           var lambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                     (function (param, param$1) {
-                        return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(partial_arg$1, partial_arg, fullQualifiedStackName, secretUrns, param, param$1);
+                        return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(partial_arg$2, partial_arg$1, fullQualifiedStackName, secretUrns, partial_arg, param, param$1);
                       }),
                     undefined,
                     /* array */[
