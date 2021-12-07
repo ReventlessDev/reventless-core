@@ -1,37 +1,7 @@
 open Reventless.Cloner;
-open AwsSdk;
-
-let decodeSecret = secret =>
-  secret##_SecretString
-  ->Belt.Option.getWithDefault("")
-  ->Js.Json.parseExn
-  ->Js.Json.decodeObject
-  ->Belt.Option.getWithDefault(Js.Dict.empty())
-  ->Js.Dict.map(
-      (. json) => json->Js.Json.decodeString->Belt.Option.getWithDefault(""),
-      _,
-    );
-
-let secretsManager = AwsSdk.SecretsManager.make();
-
-let getSecretByUrn = urn =>
-  secretsManager
-  ->SecretsManager.(
-      getSecretValue(~params=GetSecretValueRequest.make(~_SecretId=urn, ()))
-    )
-  ->Request.promise
-  ->Js.Promise.then_(secret => secret->decodeSecret->Js.Promise.resolve, _);
 
 let clone =
-    (
-      ~taskDefinition,
-      ~cluster,
-      ~fullQualifiedStackName,
-      ~secretUrns,
-      ~subnets,
-      payload,
-      _,
-    ) => {
+    (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, payload, _) => {
   Js.log(
     "clone: requested by user "
     ++
@@ -43,55 +13,45 @@ let clone =
 
   let {organization, project, stack} = fullQualifiedStackName;
 
-  secretUrns->Belt.Array.map(getSecretByUrn)->Js.Promise.all
-  |> Js.Promise.then_(secrets => {
-       let environment =
-         AwsSdk.ECS.KeyValuePair.(
-           secrets
-           ->Belt.Array.map(secret =>
-               secret
-               ->Js.Dict.entries
-               ->Belt.Array.map(((name, value)) => make(~name, ~value))
-             )
-           ->Belt.Array.concatMany
-           ->Belt.Array.concat([|
-               make(
-                 ~name="REVENTLESS_CORE_STACK",
-                 ~value={j|$organization/$project/$stack|j},
-               ),
-               make(~name="POINT_IN_TIME", ~value=payload##pointInTime),
-             |])
-         );
+  let environment =
+    AwsSdk.ECS.KeyValuePair.(
+      [|
+        make(
+          ~name="REVENTLESS_CORE_STACK",
+          ~value={j|$organization/$project/$stack|j},
+        ),
+        make(~name="POINT_IN_TIME", ~value=payload##pointInTime),
+      |]
+    );
 
-       AwsSdk.ECS.(
-         make()
-         ->runTask(
-             ~params=
-               RunTaskRequest.make(
-                 ~taskDefinition=taskDefinition->Pulumi.Output.get,
-                 ~cluster=cluster->Pulumi.Output.get,
-                 ~networkConfiguration=
-                   NetworkConfiguration.make(
-                     ~awsvpcConfiguration=AwsVpcConfiguration.make(~subnets),
-                     (),
-                   ),
-                 ~launchType=`FARGATE,
-                 ~overrides=
-                   TaskOverride.make(
-                     ~containerOverrides=[|
-                       ContainerOverride.make(
-                         ~name="reventless-ci",
-                         ~environment,
-                         ~command=[|"env"|],
-                         (),
-                       ),
-                     |],
-                     (),
-                   ),
-                 (),
-               ),
-           )
-       )
-       ->AwsSdk.Request.promise;
-     });
+  AwsSdk.ECS.(
+    make()
+    ->runTask(
+        ~params=
+          RunTaskRequest.make(
+            ~taskDefinition=taskDefinition->Pulumi.Output.get,
+            ~cluster=cluster->Pulumi.Output.get,
+            ~networkConfiguration=
+              NetworkConfiguration.make(
+                ~awsvpcConfiguration=AwsVpcConfiguration.make(~subnets),
+                (),
+              ),
+            ~launchType=`FARGATE,
+            ~overrides=
+              TaskOverride.make(
+                ~containerOverrides=[|
+                  ContainerOverride.make(
+                    ~name="reventless-ci",
+                    ~environment,
+                    ~command=[|"env"|],
+                    (),
+                  ),
+                |],
+                (),
+              ),
+            (),
+          ),
+      )
+  )
+  ->AwsSdk.Request.promise;
 };

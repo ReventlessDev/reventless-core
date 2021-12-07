@@ -14,28 +14,6 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
   ) => {
     let cluster = ECS.Cluster.(make(~name, ~opts?, ()));
 
-    let containerDefinitions =
-      [|
-        ECS.Container.(
-          ContainerDefinition.make(
-            ~name="reventless-ci",
-            ~image=
-              Pulumi.Config.make(Some("ci"))
-              ->Pulumi.Config.require("image"),
-            ~memory=512,
-            ~secrets=[|
-              Secret.make(
-                ~name="reventless-ci",
-                ~valueFrom=reventlessCiSecretUrn,
-              ),
-            |],
-            (),
-          )
-        ),
-      |]
-      ->Js.Json.stringifyAny
-      ->Belt.Option.getExn;
-
     let taskExecutionRole =
       IAM.Role.make(
         ~name=name ++ "TaskExecution",
@@ -89,26 +67,6 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
         )
       );
 
-    let taskDefinition =
-      ECS.TaskDefinition.(
-        make(
-          ~name,
-          ~args=
-            Args.make(
-              ~family=name->Pulumi.Input.wrap,
-              ~containerDefinitions=containerDefinitions->Pulumi.Input.wrap,
-              ~executionRoleArn=taskExecutionRole##arn->Pulumi.Output.asInput,
-              ~memory="512"->Pulumi.Input.wrap,
-              ~cpu="256"->Pulumi.Input.wrap,
-              ~requiresCompatibilities=[|"FARGATE"|],
-              ~networkMode=`awsvpc,
-              (),
-            ),
-          ~opts?,
-          (),
-        )
-      );
-
     let vpcStackName =
       Pulumi.Config.make(Some("vpc"))
       ->Pulumi.Config.get("stack")
@@ -119,11 +77,82 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
         ~outputName="vpc",
       );
 
+    let secrets =
+      secretUrns
+      ->Belt.Array.map(urn =>
+          PulumiAws.GetSecretVersion.getSecretNames(urn)
+          ->Pulumi.Output.apply(names =>
+              names->Belt.Array.map(name =>
+                ECS.Container.Secret.make(
+                  ~name,
+                  ~valueFrom={j|$urn:$name::|j},
+                )
+              )
+            )
+        )
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(Belt.Array.concatMany);
+
     let resources =
-      (secretsManagerAccessPolicy##arn, taskRunnerPolicy##arn, vpcConfig)
-      ->Pulumi.Output.all3
+      (
+        secretsManagerAccessPolicy##arn,
+        taskRunnerPolicy##arn,
+        vpcConfig,
+        secrets,
+      )
+      ->Pulumi.Output.all4
       ->Pulumi.Output.apply(
-          ((secretsManagerAccessPolicyArn, taskRunnerPolicyArn, vpcConfig)) => {
+          (
+            (
+              secretsManagerAccessPolicyArn,
+              taskRunnerPolicyArn,
+              vpcConfig,
+              secrets,
+            ),
+          ) => {
+          let containerDefinitions =
+            [|
+              ECS.Container.(
+                ContainerDefinition.make(
+                  ~name="reventless-ci",
+                  ~image=
+                    Pulumi.Config.make(Some("ci"))
+                    ->Pulumi.Config.require("image"),
+                  ~memory=512,
+                  ~repositoryCredentials=
+                    RepositoryCredentials.make(
+                      ~credentialsParameter=reventlessCiSecretUrn,
+                    ),
+                  ~secrets,
+                  (),
+                )
+              ),
+            |]
+            ->Js.Json.stringifyAny
+            ->Belt.Option.getExn;
+
+          let taskDefinition =
+            ECS.TaskDefinition.(
+              make(
+                ~name,
+                ~args=
+                  Args.make(
+                    ~family=name->Pulumi.Input.wrap,
+                    ~containerDefinitions=
+                      containerDefinitions->Pulumi.Input.wrap,
+                    ~executionRoleArn=
+                      taskExecutionRole##arn->Pulumi.Output.asInput,
+                    ~memory="512"->Pulumi.Input.wrap,
+                    ~cpu="256"->Pulumi.Input.wrap,
+                    ~requiresCompatibilities=[|"FARGATE"|],
+                    ~networkMode=`awsvpc,
+                    (),
+                  ),
+                ~opts?,
+                (),
+              )
+            );
+
           let lambda =
             Lambda.CallbackFunction.make(
               ~name,
@@ -138,7 +167,6 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                       ~taskDefinition=taskDefinition##arn,
                       ~cluster=cluster##arn,
                       ~fullQualifiedStackName,
-                      ~secretUrns,
                       ~subnets=vpcConfig##subnetIds,
                     ),
                   (),
@@ -202,16 +230,16 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
             );
 
           let invokeClone = {j|{
-  "version": "2017-02-28",
-  "operation": "Invoke",
-  "payload": {
-      "pointInTime": \$utils.toJson(\$context.arguments.pointInTime),
-      "meta": {
-        "ip": \$util.toJson(\$context.identity.sourceIp),
-        "user": \$util.toJson(\$context.identity.username)
-      }
-  }
-}
+            "version": "2017-02-28",
+            "operation": "Invoke",
+            "payload": {
+                "pointInTime": \$utils.toJson(\$context.arguments.pointInTime),
+                "meta": {
+                  "ip": \$util.toJson(\$context.identity.sourceIp),
+                  "user": \$util.toJson(\$context.identity.username)
+                }
+            }
+          }
           |j};
 
           let field = "clone";
