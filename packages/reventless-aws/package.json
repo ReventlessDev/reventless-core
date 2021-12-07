@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
-    "@pulumi/aws": "^4.12.0",
+    "@pulumi/aws": "^4.31.0",
     "@pulumi/pulumi": "3.6.1",
     "bs-platform": "^5.2.1"
   },
