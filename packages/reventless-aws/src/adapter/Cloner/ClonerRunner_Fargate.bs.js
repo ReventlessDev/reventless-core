@@ -24,6 +24,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         assumeRolePolicy: IAM$PulumiAws.Policy.assumeRolePolicy("ecs-tasks.amazonaws.com"),
         inlinePolicies: /* array */[IAM$PulumiAws.InlinePolicy.makeForActions("clonerTask", /* array */[
                 "logs:PutLogEvents",
+                "logs:CreateLogGroup",
                 "logs:CreateLogStream"
               ])]
       }, undefined);
@@ -100,20 +101,10 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
           var arg$1 = param[3];
           var arg$2 = {
             logDriver: "awslogs",
-            options: Js_dict.fromArray(/* array */[
-                  /* tuple */[
-                    "awslogs-group",
-                    "reventless-cloner"
-                  ],
-                  /* tuple */[
-                    "awslogs-region",
-                    new Pulumi.Config("aws").require("region")
-                  ],
-                  /* tuple */[
-                    "awslogs-stream-prefix",
-                    "reventless-cloner"
-                  ]
-                ])
+            options: Js_dict.fromArray(/* array */[/* tuple */[
+                    "awslogs-create-group",
+                    "true"
+                  ]])
           };
           var containerDefinitions = Belt_Option.getExn(Caml_option.undefined_to_opt(JSON.stringify(/* array */[(function (param, param$1, param$2, param$3) {
                             return Curry._8(func, param, 512, param$1, param$2, param$3, arg, arg$1, arg$2);

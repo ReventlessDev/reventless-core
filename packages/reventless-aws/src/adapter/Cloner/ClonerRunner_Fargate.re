@@ -26,7 +26,11 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
               [|
                 IAM.InlinePolicy.makeForActions(
                   ~name="clonerTask",
-                  ~actions=[|"logs:PutLogEvents", "logs:CreateLogStream"|],
+                  ~actions=[|
+                    "logs:PutLogEvents",
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                  |],
                 ),
               |]
               ->Pulumi.Input.wrap,
@@ -128,15 +132,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                     LogConfiguration.make(
                       ~logDriver="awslogs",
                       ~options=
-                        [|
-                          ("awslogs-group", "reventless-cloner"),
-                          (
-                            "awslogs-region",
-                            Pulumi.Config.make(Some("aws"))
-                            ->Pulumi.Config.require("region"),
-                          ),
-                          ("awslogs-stream-prefix", "reventless-cloner"),
-                        |]
+                        [|("awslogs-create-group", "true")|]
                         ->Js.Dict.fromArray,
                       (),
                     ),
