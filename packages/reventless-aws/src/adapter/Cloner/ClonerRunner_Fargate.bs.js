@@ -71,7 +71,10 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               logConfiguration: {
                 logDriver: "awslogs",
                 options: {
-                  "awslogs-create-group": "true"
+                  "awslogs-create-group": "true",
+                  "awslogs-group": "/aws/ecs/reventless-cloner",
+                  "awslogs-region": new Pulumi.Config("aws").require("region"),
+                  "awslogs-stream-prefix": "reventless-cloner"
                 }
               }
             }];

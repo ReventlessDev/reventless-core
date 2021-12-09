@@ -130,7 +130,14 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                 ~logConfiguration=
                   LogConfiguration.make(
                     ~logDriver="awslogs",
-                    ~options={"awslogs-create-group": "true"},
+                    ~options={
+                      "awslogs-create-group": "true",
+                      "awslogs-group": "/aws/ecs/reventless-cloner",
+                      "awslogs-region":
+                        Pulumi.Config.make(Some("aws"))
+                        ->Pulumi.Config.require("region"),
+                      "awslogs-stream-prefix": "reventless-cloner",
+                    },
                     (),
                   ),
                 (),
