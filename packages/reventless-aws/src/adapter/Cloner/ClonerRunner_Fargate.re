@@ -124,7 +124,22 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                       ~credentialsParameter=reventlessCiSecretUrn,
                     ),
                   ~secrets,
-                  (),
+                  ~logConfiguration=
+                    LogConfiguration.make(
+                      ~logDriver="awslogs",
+                      ~options=
+                        [|
+                          ("awslogs-group", "reventless-cloner"),
+                          (
+                            "awslogs-region",
+                            Pulumi.Config.make(Some("aws"))
+                            ->Pulumi.Config.require("region"),
+                          ),
+                          ("awslogs-stream-prefix", "reventless-cloner"),
+                        |]
+                        ->Js.Dict.fromArray,
+                      (),
+                    ),
                 )
               ),
             |]
@@ -161,6 +176,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                   ~policies=[|
                     secretsManagerAccessPolicyArn,
                     taskRunnerPolicyArn,
+                    PulumiAws.Lambda.Policy.awsLambdaFullAccess,
                   |],
                   ~callback=
                     ClonerRunner_Fargate_Runtime.clone(

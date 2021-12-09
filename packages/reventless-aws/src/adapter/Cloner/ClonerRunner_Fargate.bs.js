@@ -2,6 +2,7 @@
 'use strict';
 
 var Curry = require("bs-platform/lib/js/curry.js");
+var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
@@ -59,15 +60,64 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
           vpcConfig,
           secrets
         ]).apply((function (param) {
-          var containerDefinitions = Belt_Option.getExn(Caml_option.undefined_to_opt(JSON.stringify(/* array */[{
-                          name: "reventless-ci",
-                          image: new Pulumi.Config("ci").require("image"),
-                          memory: 512,
-                          repositoryCredentials: {
-                            credentialsParameter: reventlessCiSecretUrn
-                          },
-                          secrets: param[3]
-                        }])));
+          var partial_arg = new Pulumi.Config("ci").require("image");
+          var func = function (param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8) {
+            var tmp = {
+              name: "reventless-ci"
+            };
+            if (partial_arg !== undefined) {
+              tmp.image = Caml_option.valFromOption(partial_arg);
+            }
+            if (param !== undefined) {
+              tmp.cpu = Caml_option.valFromOption(param);
+            }
+            if (param$1 !== undefined) {
+              tmp.memory = Caml_option.valFromOption(param$1);
+            }
+            if (param$2 !== undefined) {
+              tmp.essential = Caml_option.valFromOption(param$2);
+            }
+            if (param$3 !== undefined) {
+              tmp.portMappings = Caml_option.valFromOption(param$3);
+            }
+            if (param$4 !== undefined) {
+              tmp.environment = Caml_option.valFromOption(param$4);
+            }
+            if (param$5 !== undefined) {
+              tmp.repositoryCredentials = Caml_option.valFromOption(param$5);
+            }
+            if (param$6 !== undefined) {
+              tmp.secrets = Caml_option.valFromOption(param$6);
+            }
+            if (param$7 !== undefined) {
+              tmp.logConfiguration = Caml_option.valFromOption(param$7);
+            }
+            return tmp;
+          };
+          var arg = {
+            credentialsParameter: reventlessCiSecretUrn
+          };
+          var arg$1 = param[3];
+          var arg$2 = {
+            logDriver: "awslogs",
+            options: Js_dict.fromArray(/* array */[
+                  /* tuple */[
+                    "awslogs-group",
+                    "reventless-cloner"
+                  ],
+                  /* tuple */[
+                    "awslogs-region",
+                    new Pulumi.Config("aws").require("region")
+                  ],
+                  /* tuple */[
+                    "awslogs-stream-prefix",
+                    "reventless-cloner"
+                  ]
+                ])
+          };
+          var containerDefinitions = Belt_Option.getExn(Caml_option.undefined_to_opt(JSON.stringify(/* array */[(function (param, param$1, param$2, param$3) {
+                            return Curry._8(func, param, 512, param$1, param$2, param$3, arg, arg$1, arg$2);
+                          })])));
           var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {
                 family: name,
                 containerDefinitions: containerDefinitions,
@@ -77,17 +127,18 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                 requiresCompatibilities: /* array */["FARGATE"],
                 executionRoleArn: taskExecutionRole.arn
               }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
-          var partial_arg = param[2].subnetIds;
-          var partial_arg$1 = cluster.arn;
-          var partial_arg$2 = taskDefinition.arn;
+          var partial_arg$1 = param[2].subnetIds;
+          var partial_arg$2 = cluster.arn;
+          var partial_arg$3 = taskDefinition.arn;
           var lambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                     (function (param, param$1) {
-                        return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(partial_arg$2, partial_arg$1, fullQualifiedStackName, partial_arg, param, param$1);
+                        return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(partial_arg$3, partial_arg$2, fullQualifiedStackName, partial_arg$1, param, param$1);
                       }),
                     undefined,
                     /* array */[
                       param[0],
-                      param[1]
+                      param[1],
+                      Lambda$PulumiAws.Policy.awsLambdaFullAccess
                     ],
                     undefined,
                     undefined,
