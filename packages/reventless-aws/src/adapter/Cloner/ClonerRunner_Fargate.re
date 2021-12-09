@@ -131,9 +131,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                   ~logConfiguration=
                     LogConfiguration.make(
                       ~logDriver="awslogs",
-                      ~options=
-                        [|("awslogs-create-group", "true")|]
-                        ->Js.Dict.fromArray,
+                      ~options={"awslogs-create-group": true},
                       (),
                     ),
                 )
