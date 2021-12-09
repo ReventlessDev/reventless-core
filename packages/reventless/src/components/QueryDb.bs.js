@@ -11,7 +11,6 @@ var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Component$Reventless = require("./Component.bs.js");
-var Util_QueryDb$Reventless = require("../util/Util_QueryDb.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 function NoResolvers(Config) {
@@ -114,7 +113,6 @@ function Make(Config) {
                           }));
                     var storageName = ComponentType$Reventless.name(name, /* QueryDb */11);
                     var storage = Curry._8($$Storage.make, storageName, ViewSpec.indexes, sortField, ttl, api, apiRole, opts, resources);
-                    Util_QueryDb$Reventless.setStorageResource(resources, storage[/* resource */0], storageName);
                     self.load = loadFn(storage);
                     self.save = saveFn(storage);
                     self.saveBatch = saveBatchFn(storage);
@@ -133,9 +131,7 @@ function Make(Config) {
                         ]);
                     var self$1 = self;
                     var outputs = {
-                      storage: storage[/* resource */0],
-                      resolvers: resolvers[/* resources */0],
-                      resolversMaker: resolvers[/* resourcesMaker */1]
+                      resources: Belt_Array.concat(storage[/* resources */0], resolvers[/* resources */0])
                     };
                     self$1.setOutputs(outputs);
                     return self$1.registerOutputs(outputs);

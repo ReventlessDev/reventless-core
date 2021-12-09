@@ -6,8 +6,7 @@ type resolversResourcesMaker = resources => array(resource);
 
 type outputs = {
   .
-  "storage": resource,
-  "resolvers": resource,
+  "resources": array(resource),
   "resolversMaker": resolversResourcesMaker,
 };
 
@@ -86,7 +85,7 @@ module type T = {
 
 module Adapter = {
   type storage = {
-    resource,
+    resources: array(resource),
     dataSourceName: Pulumi.Output.t(string), // TODO create in API
     load: load(string, Js.Json.t),
     save: save(string, Js.Json.t),
@@ -209,14 +208,7 @@ module Make =
     "default";
 
   [@bs.obj]
-  external makeOutputs:
-    (
-      ~storage: resource,
-      ~resolvers: array(resource),
-      ~resolversMaker: resolversResourcesMaker
-    ) =>
-    outputs =
-    "";
+  external makeOutputs: (~resources: array(resource)) => outputs = "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
@@ -340,19 +332,12 @@ module Make =
         ~opts,
         ~resources,
       );
-    resources->Util_QueryDb.setStorageResource(storage.resource, storageName);
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);
     self->setSaveBatch(storage->saveBatchFn);
     self->setCount(storage->countFn);
     self->setDelete(storage->deleteFn);
-
-    /*
-     let load: Component.t(t, outputs) => load = _component => load(storage);
-     let save: Component.t(t, outputs) => save  = _component => save(storage);
-     let delete: Component.t(t, outputs) => delete  = _component => delete(storage);
-     */
 
     let resolvers =
       Resolvers.make(
@@ -368,9 +353,7 @@ module Make =
       );
 
     makeOutputs(
-      ~storage=storage.resource,
-      ~resolvers=resolvers.resources,
-      ~resolversMaker=resolvers.resourcesMaker,
+      ~resources=storage.resources->Belt.Array.concat(resolvers.resources),
     )
     |> self->setOutputs;
   };

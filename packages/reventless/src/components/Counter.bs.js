@@ -366,8 +366,8 @@ function Make(Config) {
             self.addToCounterTarget = handler[/* addToCounterTarget */0];
             var self$1 = self;
             var outputs = {
-              referencesDb: Curry._1(ReferencesDb.outputs, referencesDb).storage,
-              countsDb: Curry._1(CountsDb.outputs, countsDb).storage
+              referencesDb: Curry._1(ReferencesDb.outputs, referencesDb).resources,
+              countsDb: Curry._1(CountsDb.outputs, countsDb).resources
             };
             self$1.setOutputs(outputs);
             return self$1.registerOutputs(outputs);

@@ -7,8 +7,8 @@ let countFieldName = "count";
 
 type outputs = {
   .
-  "referencesDb": resource,
-  "countsDb": resource,
+  "referencesDb": array(resource),
+  "countsDb": array(resource),
 };
 
 type counterHandler =
@@ -109,7 +109,7 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~referencesDb: resource, ~countsDb: resource) => outputs =
+    (~referencesDb: array(resource), ~countsDb: array(resource)) => outputs =
     "";
 
   [@bs.send]
@@ -373,8 +373,8 @@ module Make =
     self->setAddToCounterTarget(handler.addToCounterTarget);
 
     makeOutputs(
-      ~referencesDb=referencesDb->ReferencesDb.outputs##storage,
-      ~countsDb=countsDb->CountsDb.outputs##storage,
+      ~referencesDb=referencesDb->ReferencesDb.outputs##resources,
+      ~countsDb=countsDb->CountsDb.outputs##resources,
     )
     |> self->setOutputs;
   };
