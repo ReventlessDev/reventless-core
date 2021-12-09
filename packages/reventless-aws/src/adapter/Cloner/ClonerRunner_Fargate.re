@@ -114,31 +114,29 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
               secrets,
             ),
           ) => {
-          let containerDefinitions =
-            [|
-              ECS.Container.(
-                ContainerDefinition.make(
-                  ~name="reventless-ci",
-                  ~image=
-                    Pulumi.Config.make(Some("ci"))
-                    ->Pulumi.Config.require("image"),
-                  ~memory=512,
-                  ~repositoryCredentials=
-                    RepositoryCredentials.make(
-                      ~credentialsParameter=reventlessCiSecretUrn,
-                    ),
-                  ~secrets,
-                  ~logConfiguration=
-                    LogConfiguration.make(
-                      ~logDriver="awslogs",
-                      ~options={"awslogs-create-group": true},
-                      (),
-                    ),
-                )
-              ),
-            |]
-            ->Js.Json.stringifyAny
-            ->Belt.Option.getExn;
+          let containerDefinitions = [|
+            ECS.Container.(
+              ContainerDefinition.make(
+                ~name="reventless-ci",
+                ~image=
+                  Pulumi.Config.make(Some("ci"))
+                  ->Pulumi.Config.require("image"),
+                ~memory=512,
+                ~repositoryCredentials=
+                  RepositoryCredentials.make(
+                    ~credentialsParameter=reventlessCiSecretUrn,
+                  ),
+                ~secrets,
+                ~logConfiguration=
+                  LogConfiguration.make(
+                    ~logDriver="awslogs",
+                    ~options={"awslogs-create-group": true},
+                    (),
+                  ),
+                (),
+              )
+            ),
+          |];
 
           let taskDefinition =
             ECS.TaskDefinition.(
@@ -148,7 +146,10 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                   Args.make(
                     ~family=name->Pulumi.Input.wrap,
                     ~containerDefinitions=
-                      containerDefinitions->Pulumi.Input.wrap,
+                      containerDefinitions
+                      ->Js.Json.stringifyAny
+                      ->Belt.Option.getExn
+                      ->Pulumi.Input.wrap,
                     ~executionRoleArn=
                       taskExecutionRole##arn->Pulumi.Output.asInput,
                     ~memory="512"->Pulumi.Input.wrap,
