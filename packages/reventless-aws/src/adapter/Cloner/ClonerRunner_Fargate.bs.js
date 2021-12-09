@@ -71,7 +71,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               logConfiguration: {
                 logDriver: "awslogs",
                 options: {
-                  "awslogs-create-group": true
+                  "awslogs-create-group": "true"
                 }
               }
             }];
