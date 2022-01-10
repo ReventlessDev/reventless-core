@@ -253,8 +253,8 @@ function Make(Config) {
                                               command_decode: Spec.command_decode
                                             })(EventCollector)(EventMappings);
                                     var match = EventMappings.mappings.length !== 0;
-                                    var eventMapper = match ? Caml_option.some(Curry._6(EventMapper.make, queryEngine, undefined, undefined, Caml_option.some(opts), resources, /* () */0)) : undefined;
-                                    self.publishJson = Curry._1(CommandTopic.publishJson, commandTopic);
+                                    var eventMapper = match ? Caml_option.some(Curry._7(EventMapper.make, queryEngine, Curry._1(CommandTopic.publishJsons, commandTopic), undefined, undefined, Caml_option.some(opts), resources, /* () */0)) : undefined;
+                                    self.publishJsons = Curry._1(CommandTopic.publishJsons, commandTopic);
                                     var self$1 = self;
                                     var outputs = {
                                       name: name,
@@ -279,8 +279,8 @@ function Make(Config) {
                                   return {
                                           Spec: Spec,
                                           make: make,
-                                          publishJson: (function (prim) {
-                                              return prim.publishJson;
+                                          publishJsons: (function (prim) {
+                                              return prim.publishJsons;
                                             })
                                         };
                                 });

@@ -38,7 +38,7 @@ function make(name, handleCommands, memorySize, timeout, opts, param) {
   queue.onEvent(name, handler, undefined, opts);
   return /* record */[
           /* resources : array */[Util_SQS$ReventlessAws.toResource(queue)],
-          /* publish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(queue)
+          /* publish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(queue, Util_SQS$ReventlessAws.service)
         ];
 }
 

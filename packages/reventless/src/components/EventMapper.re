@@ -13,6 +13,7 @@ type eventMapper;
 type maker =
   (
     ~queryEngine: ReventlessSpec.QueryEngine.t,
+    ~publishJsons: CommandTopic.publishJsons,
     ~memorySize: int=?,
     ~timeout: int=?,
     ~opts: Pulumi.ComponentResource.Options.t=?,
@@ -77,8 +78,6 @@ module Make =
 
   module Target = Target;
 
-  let service = Target.name;
-
   let findMapping = (mappings, eventObj) => {
     eventObj->Belt.Option.flatMapU((. eventObj') => {
       let meta =
@@ -109,62 +108,33 @@ module Make =
     });
   };
 
-  let makeEntry = (queue, idx, commandId, meta: Message.meta, command, delay) => {
-    let commandMeta: Message.meta = {
-      ...meta,
-      service,
-      correlationId:
-        // original correlationId only for first action to avoid counting problems
-        // TODO: think about different solution, e.g. Counter with explicit
-        // count parameter (instead of always counting by 1)
-        idx == 0 ? meta.correlationId : Message.uuid(),
-      msgId: Message.uuid(),
-      time: Message.nowAsISOString(),
-    };
-    let commandStr = command->Target.command_encode->Js.Json.stringify;
-    let source = meta.service;
-    Js.log(
-      {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
-    );
-    let messageBody =
-      Message.command'_encode(
-        Target.Id.t_encode,
-        Target.command_encode,
-        {Message.id: commandId, meta: commandMeta, command},
-      )
-      ->Js.Json.stringify;
-    switch (queue##service) {
-    | "SQS_FIFO" =>
-      AwsSdk.SQS.makeBatchEntryFifo(
-        // TODO: move to Adapter
-        ~groupId=commandId->Target.Id.toString,
-        ~messageId=commandMeta.msgId,
-        ~messageBody,
-        ~delay,
-      )
-    | _ =>
-      AwsSdk.SQS.makeBatchEntry(
-        // TODO: move to Adapter
-        ~messageId=commandMeta.msgId,
-        ~messageBody,
-        ~delay,
-      )
-    };
-  };
-
   type action =
     | Counter(Counter.action)
-    | Publisher(Js.Promise.t(array(AwsSdk.SQS.SendMessageBatchEntry.t)));
+    | Publisher(Js.Promise.t(array(Message.commandJson)));
 
-  let processMappingActions = (actions, queue, meta) =>
-    actions->Belt.Array.mapWithIndex((idx, action) =>
-      switch (action) {
-      | ReventlessSpec.EventMapping.Publish(commandId, command) =>
-        [|makeEntry(queue, idx, commandId, meta, command, None)|]
+  let processMappingActions = (actions, meta) =>
+    actions->Belt.Array.map(
+      fun
+      | ReventlessSpec.EventMapping.Publish(id, command) =>
+        [|
+          {
+            Message.id: id->Target.Id.toString,
+            meta,
+            commandJson: command->Target.command_encode,
+            delay: None,
+          },
+        |]
         ->Js.Promise.resolve
         ->Publisher
-      | PublishDelayed(commandId, command, delay) =>
-        [|makeEntry(queue, idx, commandId, meta, command, Some(delay))|]
+      | PublishDelayed(id, command, delay) =>
+        [|
+          {
+            Message.id: id->Target.Id.toString,
+            meta,
+            commandJson: command->Target.command_encode,
+            delay: Some(delay),
+          },
+        |]
         ->Js.Promise.resolve
         ->Publisher
       | PublishAsync(promise) =>
@@ -172,8 +142,13 @@ module Make =
         ->Js.Promise.then_(
             cmds =>
               cmds
-              ->Belt.Array.map(((commandId, command)) =>
-                  makeEntry(queue, 0, commandId, meta, command, None)
+              ->Belt.Array.map(((id, command)) =>
+                  {
+                    Message.id: id->Target.Id.toString,
+                    meta,
+                    commandJson: command->Target.command_encode,
+                    delay: None,
+                  }
                 )
               ->Js.Promise.resolve,
             _,
@@ -185,37 +160,10 @@ module Make =
       | Count(counterId) =>
         Count({counterId, reference: meta.correlationId, inc: 1})->Counter
       | CountMulti(counterId, inc) =>
-        Count({counterId, reference: meta.correlationId, inc})->Counter
-      }
+        Count({counterId, reference: meta.correlationId, inc})->Counter,
     );
 
-  let sendEntries = (queue, publisherEntries, loc) =>
-    publisherEntries
-    ->Js.Promise.then_(
-        publisherEntries => {
-          Js.log2(
-            loc ++ ": publisherEntries:",
-            publisherEntries->Belt.Array.size,
-          );
-          switch (publisherEntries->Belt.Array.size) {
-          | 0 => Js.Promise.resolve()
-          | _ =>
-            publisherEntries->AwsSdk.SQS.sendMessageBatch(
-              ~queueId=queue##id->Pulumi.Output.get,
-            )
-          };
-        },
-        _,
-      )
-    ->Js.Promise.catch(
-        err => {
-          Js.log2(loc ++ ": sendEntries error", err);
-          Js.Exn.raiseError(loc ++ ": sendEntries error");
-        },
-        _,
-      );
-
-  let commonEventsHandler = (queue, mappings, queryEngine, events'Json) => {
+  let commonEventsHandler = (mappings, queryEngine, events'Json) => {
     let eventsCount = events'Json->Belt.Array.size;
     let (publisherActions, counterActions) =
       events'Json
@@ -241,7 +189,7 @@ module Make =
             switch (idDecoded, eventDecoded) {
             | (Some(Ok(eventId)), Some(Ok(event))) =>
               Mapping.map(. eventId, event, queryEngine)
-              ->processMappingActions(queue, eventMeta)
+              ->processMappingActions(eventMeta)
               ->Some
             | (None, _)
             | (_, None) =>
@@ -286,7 +234,7 @@ module Make =
 
   let eventCollectorEventsHandler =
       (
-        queue,
+        publishJsons,
         mappings,
         queryEngine,
         count: Counter.count,
@@ -294,7 +242,7 @@ module Make =
       ) =>
     (. events'Json) => {
       let (publisherEntries, counterActions) =
-        commonEventsHandler(queue, mappings, queryEngine, events'Json);
+        commonEventsHandler(mappings, queryEngine, events'Json);
       let (countActions, addToCounterTargetActions) =
         counterActions->Belt.Array.partition(
           fun
@@ -343,40 +291,42 @@ module Make =
         ->Js.Promise.all;
 
       let sendEntriesP =
-        queue->sendEntries(
-          publisherEntries,
-          __MODULE__ ++ ".eventCollectorEventsHandler",
-        );
+        publisherEntries
+        |> Js.Promise.then_(commandJsons => publishJsons(. commandJsons));
 
       (countP, addToCounterTargetsP, sendEntriesP)
       ->Js.Promise.all3
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
-  let counterEventsHandler = (queue, mappings, queryEngine) =>
+  let counterEventsHandler = (publishJsons, mappings, queryEngine) =>
     (. events'Json) => {
       let (publisherEntries, countActions) =
-        commonEventsHandler(queue, mappings, queryEngine, events'Json);
+        commonEventsHandler(mappings, queryEngine, events'Json);
       if (countActions->Belt.Array.size > 0) {
         Js.log(
           "EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!",
         );
       };
-      queue->sendEntries(
-        publisherEntries,
-        __MODULE__ ++ ".counterEventsHandler",
-      );
+      publisherEntries
+      |> Js.Promise.then_(commandJsons => publishJsons(. commandJsons));
     };
 
-  let construct = (~queryEngine, ~memorySize, ~timeout, self, name, resources) => {
+  let construct =
+      (
+        ~queryEngine,
+        ~publishJsons,
+        ~memorySize,
+        ~timeout,
+        self,
+        name,
+        resources,
+      ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
         (),
       );
-
-    let queue =
-      resources->Util.Aggregate.commandTopicConnectorResource(service);
 
     let (count, setCounterTarget, counterOutputs) =
       Mappings.counter->Belt.Option.mapWithDefault(
@@ -396,7 +346,11 @@ module Make =
             Counter.make(
               ~name,
               ~counterEventsHandler=
-                counterEventsHandler(queue, Mappings.mappings, queryEngine),
+                counterEventsHandler(
+                  publishJsons,
+                  Mappings.mappings,
+                  queryEngine,
+                ),
               ~opts,
               ~resources,
               (),
@@ -423,7 +377,7 @@ module Make =
           ),
         ~eventsHandler=
           eventCollectorEventsHandler(
-            queue,
+            publishJsons,
             Mappings.mappings,
             queryEngine,
             count,
@@ -444,21 +398,21 @@ module Make =
     ->setOutputs(self, _);
   };
 
-  let make:
+  let make: maker =
     (
-      ~queryEngine: ReventlessSpec.QueryEngine.t,
-      ~memorySize: int=?,
-      ~timeout: int=?,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(eventMapper, outputs) =
-    (~queryEngine, ~memorySize=128, ~timeout=180, ~opts=?, ~resources, _) => {
+      ~queryEngine,
+      ~publishJsons,
+      ~memorySize=128,
+      ~timeout=180,
+      ~opts=?,
+      ~resources,
+      _,
+    ) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Target.name,
-        ~construct=construct(~queryEngine, ~memorySize, ~timeout),
+        ~construct=
+          construct(~queryEngine, ~publishJsons, ~memorySize, ~timeout),
         ~opts,
         ~resources,
       );

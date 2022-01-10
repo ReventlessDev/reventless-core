@@ -1,7 +1,8 @@
 open AwsSdk.DynamoDb.DocumentClient;
 open Belt.Result;
 open Js.Promise;
-open Reventless;
+open Reventless.QueryDb;
+open Reventless.Util.Error;
 
 let load = table =>
   (. id) =>
@@ -22,10 +23,7 @@ let load = table =>
            __MODULE__
            ++ {j|.load: Error: Couldn't load state for $id from $tableName: $err|j},
          );
-         Error(
-           QueryDb.NotLoadedFromStorage(err->AwsSdk.Error.ofPromise##message),
-         )
-         ->resolve;
+         Error(NotLoadedFromStorage(err->ofPromise##message))->resolve;
        });
 
 let calcPurgeTime = ttl => {
@@ -65,7 +63,7 @@ let insertTtl = (json, ttl) =>
   ->Belt.Option.getWithDefault(json);
 
 let save = table =>
-  (. _id, json, saveMode: QueryDb.saveMode, ttl) => {
+  (. _id, json, saveMode: saveMode, ttl) => {
     let tableName = table##name->Pulumi.Output.get;
     let stateStr = json->Js.Json.stringify;
     let json = json->insertTtl(ttl);
@@ -87,23 +85,18 @@ let save = table =>
       |> catch(err => {
            let tableName = table##name->Pulumi.Output.get;
 
-           switch (err->AwsSdk.Error.ofPromise##code) {
+           switch (err->ofPromise##code) {
            | "ConditionalCheckFailedException" =>
              Js.log(
                __MODULE__ ++ {j|.save: Error: Stale State in $tableName|j},
              );
-             Error(QueryDb.StaleState)->resolve;
+             Error(StaleState)->resolve;
            | _ =>
              Js.log(
                __MODULE__
                ++ {j|.save: Error: Couldn't save Init state to $tableName: $err|j},
              );
-             Error(
-               QueryDb.NotSavedToStorage(
-                 err->AwsSdk.Error.ofPromise##message,
-               ),
-             )
-             ->resolve;
+             Error(NotSavedToStorage(err->ofPromise##message))->resolve;
            };
          })
     | Overwrite =>
@@ -120,10 +113,7 @@ let save = table =>
              __MODULE__
              ++ {j|.save: Error: Couldn't save Overwrite state to $tableName: $err|j},
            );
-           Error(
-             QueryDb.NotSavedToStorage(err->AwsSdk.Error.ofPromise##message),
-           )
-           ->resolve;
+           Error(NotSavedToStorage(err->ofPromise##message))->resolve;
          })
     };
   };
@@ -131,7 +121,7 @@ let save = table =>
 let saveBatch:
   (~maxRetries: int=?, PulumiAws.DynamoDb.Table.t) =>
   (. array((string, Js.Json.t, option(int)))) =>
-  Js.Promise.t(Belt.Result.t(unit, QueryDb.storageError)) =
+  Js.Promise.t(Belt.Result.t(unit, storageError)) =
   (~maxRetries=3, table) =>
     (. items) => {
       let tableName = table##name->Pulumi.Output.get;
@@ -222,10 +212,7 @@ let count = table =>
            __MODULE__
            ++ {j|.count: Error: Couldn't count on $tableName: $err|j},
          );
-         Error(
-           QueryDb.NotCountedOnStorage(err->AwsSdk.Error.ofPromise##message),
-         )
-         ->resolve;
+         Error(NotCountedOnStorage(err->ofPromise##message))->resolve;
        });
   };
 
@@ -250,11 +237,6 @@ let delete = table =>
            __MODULE__
            ++ {j|.delete: Error: Couldn't delete state for $id from $tableName: $err|j},
          );
-         Error(
-           QueryDb.NotDeletedFromStorage(
-             err->AwsSdk.Error.ofPromise##message,
-           ),
-         )
-         ->resolve;
+         Error(NotDeletedFromStorage(err->ofPromise##message))->resolve;
        });
   };

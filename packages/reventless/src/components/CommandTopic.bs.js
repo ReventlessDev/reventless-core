@@ -15,24 +15,35 @@ var Adapter = { };
 
 function Make(Spec) {
   return (function (Connector) {
-      var publishJsonFn = function (connector) {
-        return (function (id, meta, json) {
-            var jsonStr = JSON.stringify(json);
-            return connector[/* publish */1](id, meta, json).catch((function (e) {
-                            console.log("CommandTopic: Couldn\'t publish command " + (String(jsonStr) + ""));
+      var publishJsonsFn = function (connector) {
+        return (function (jsons) {
+            return connector[/* publish */1](jsons).catch((function (e) {
+                            console.log("CommandTopic: Couldn't publish commands:", Belt_Array.map(jsons, (function (commandJson) {
+                                        return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
+                                      })));
                             return Promise.reject([
                                         NotPublishedToConnector,
                                         e
                                       ]);
                           })).then((function (param) {
-                          return Promise.resolve((console.log("CommandTopic: Published command: " + (String(jsonStr) + "")), /* () */0));
+                          return Promise.resolve((console.log("CommandTopic: Published commands:", Belt_Array.map(jsons, (function (commandJson) {
+                                                  return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
+                                                }))), /* () */0));
                         }));
           });
       };
       var publishFn = function (connector) {
         return (function (command$prime) {
-            var json = Message$Reventless.command$prime_encode(Spec.Id.t_encode, Spec.command_encode, command$prime);
-            return publishJsonFn(connector)(Curry._1(Spec.Id.toString, command$prime[/* id */0]), command$prime[/* meta */1], json);
+            var commandJson_000 = /* id */Curry._1(Spec.Id.toString, command$prime[/* id */0]);
+            var commandJson_001 = /* meta */command$prime[/* meta */1];
+            var commandJson_002 = /* commandJson */Curry._1(Spec.command_encode, command$prime[/* command */2]);
+            var commandJson = /* record */[
+              commandJson_000,
+              commandJson_001,
+              commandJson_002,
+              /* delay */undefined
+            ];
+            return publishJsonsFn(connector)(/* array */[commandJson]);
           });
       };
       var handleCommands = function (commandsHandler) {
@@ -68,7 +79,7 @@ function Make(Spec) {
         };
         var connector = Curry._6(Connector.make, ComponentType$Reventless.name(name, /* CommandTopic */4), handleCommands(commandsHandler), memorySize, timeout, opts, resources);
         self.publish = publishFn(connector);
-        self.publishJson = publishJsonFn(connector);
+        self.publishJsons = publishJsonsFn(connector);
         var self$1 = self;
         var outputs = {
           resources: connector[/* resources */0]
@@ -95,8 +106,8 @@ function Make(Spec) {
               publish: (function (prim) {
                   return prim.publish;
                 }),
-              publishJson: (function (prim) {
-                  return prim.publishJson;
+              publishJsons: (function (prim) {
+                  return prim.publishJsons;
                 })
             };
     });

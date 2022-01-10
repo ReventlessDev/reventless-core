@@ -114,6 +114,15 @@ let construct =
       ->AwsSdk.SQS.sendMessageBatch(
           ~queueId=connector##id->OutputFailsafeRuntime.get,
         )
+      ->Util.Promise.allSettled
+      |> Js.Promise.then_(results => {
+           results
+           ->Util.Promise.filterRejected
+           ->Belt.Array.forEach(((idx, reason)) =>
+               Js.log({j|SQS.sendMessageBatch request $idx failed: $reason|j})
+             );
+           Js.Promise.resolve(); // TODO: error handling
+         })
       |> Js.Promise.catch(err =>
            Js.Promise.resolve(Js.log2("Task.publishCommands Error:", err))
          );

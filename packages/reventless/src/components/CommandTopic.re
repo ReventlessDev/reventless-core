@@ -6,7 +6,7 @@ type outputs = {. "resources": array(resource)};
 
 type publish('id, 'command) =
   (. Message.command'('id, 'command)) => Js.Promise.t(unit);
-type publishJson = (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit);
+type publishJsons = (. array(Message.commandJson)) => Js.Promise.t(unit);
 
 exception NotPublishedToConnector(Js.Promise.error);
 
@@ -46,13 +46,13 @@ module type T = {
     Component.t(t, outputs);
 
   let publish: Component.t(t, outputs) => publish(Spec.Id.t, Spec.command);
-  let publishJson: Component.t(t, outputs) => publishJson;
+  let publishJsons: Component.t(t, outputs) => publishJsons;
 };
 
 module Adapter = {
   type connector = {
     resources: array(resource),
-    publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
+    publish: publishJsons,
   };
   type connectorMaker =
     (
@@ -115,40 +115,44 @@ module Make =
   external setPublish: (Component.t(t, outputs), publish) => unit = "publish";
   [@bs.get] external publish: Component.t(t, outputs) => publish = "publish";
   [@bs.set]
-  external setPublishJson: (Component.t(t, outputs), publishJson) => unit =
-    "publishJson";
+  external setPublishJsons: (Component.t(t, outputs), publishJsons) => unit =
+    "publishJsons";
   [@bs.get]
-  external publishJson: Component.t(t, outputs) => publishJson =
-    "publishJson";
+  external publishJsons: Component.t(t, outputs) => publishJsons =
+    "publishJsons";
 
-  let publishJsonFn = connector =>
-    (. id, meta, json) => {
-      let jsonStr = json->Js.Json.stringify;
-
-      connector.Adapter.publish(. id, meta, json)
+  let publishJsonsFn = connector =>
+    (. jsons) => {
+      connector.Adapter.publish(. jsons)
       |> Js.Promise.catch(e => {
-           Js.log({j|CommandTopic: Couldn't publish command $jsonStr|j});
+           Js.log2(
+             "CommandTopic: Couldn't publish commands:",
+             jsons->Belt.Array.map(commandJson =>
+               commandJson->Message.commandJson_encode->Js.Json.stringify
+             ),
+           );
            NotPublishedToConnector(e)->Js.Promise.reject;
          })
       |> Js.Promise.then_(_ =>
-           Js.log({j|CommandTopic: Published command: $jsonStr|j})
+           Js.log2(
+             "CommandTopic: Published commands:",
+             jsons->Belt.Array.map(commandJson =>
+               commandJson->Message.commandJson_encode->Js.Json.stringify
+             ),
+           )
            ->Js.Promise.resolve
          );
     };
 
   let publishFn = connector =>
-    (. command') => {
-      let json =
-        Message.command'_encode(
-          Spec.Id.t_encode,
-          Spec.command_encode,
-          command',
-        );
-      connector->publishJsonFn(.
-        command'.id->Spec.Id.toString,
-        command'.meta,
-        json,
-      );
+    (. command': Message.command'(Spec.Id.t, Spec.command)) => {
+      let commandJson = {
+        Message.id: command'.id->Spec.Id.toString,
+        meta: command'.meta,
+        commandJson: command'.command->Spec.command_encode,
+        delay: None,
+      };
+      connector->publishJsonsFn(. [|commandJson|]);
     };
 
   let handleCommands = commandsHandler =>
@@ -179,7 +183,7 @@ module Make =
            res->Js.Promise.resolve;
          })
       |> Js.Promise.catch(err => {
-           let error = err->AwsSdk.Error.ofPromise##message;
+           let error = err->Util.Error.ofPromise##message;
            Js.Exn.raiseError(
              {j|CommandTopic.handleCommand: Error: Couldn't handle commands: $error|j},
            );
@@ -205,7 +209,7 @@ module Make =
       );
 
     self->setPublish(connector->publishFn);
-    self->setPublishJson(connector->publishJsonFn);
+    self->setPublishJsons(connector->publishJsonsFn);
 
     makeOutputs(~resources=connector.resources)->setOutputs(self, _);
   };

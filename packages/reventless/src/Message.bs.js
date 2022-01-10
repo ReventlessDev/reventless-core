@@ -122,6 +122,80 @@ function command$prime_decode(decoder_id, decoder_command, v) {
   }
 }
 
+function commandJson_encode(v) {
+  return Js_dict.fromArray(/* array */[
+              /* tuple */[
+                "id",
+                Decco.stringToJson(v[/* id */0])
+              ],
+              /* tuple */[
+                "meta",
+                Message$ReventlessSpec.meta_encode(v[/* meta */1])
+              ],
+              /* tuple */[
+                "commandJson",
+                v[/* commandJson */2]
+              ],
+              /* tuple */[
+                "delay",
+                Decco.optionToJson(Decco.intToJson, v[/* delay */3])
+              ]
+            ]);
+}
+
+function commandJson_decode(v) {
+  var match = Js_json.classify(v);
+  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  } else {
+    var dict = match[0];
+    var match$1 = Js_dict.get(dict, "id");
+    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
+    var match$3 = Js_dict.get(dict, "meta");
+    var match$4 = Message$ReventlessSpec.meta_decode(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
+    var match$5 = Js_dict.get(dict, "commandJson");
+    var match$6 = /* Ok */Block.__(0, [match$5 !== undefined ? Caml_option.valFromOption(match$5) : null]);
+    var match$7 = Js_dict.get(dict, "delay");
+    var match$8 = Decco.optionFromJson(Decco.intFromJson, match$7 !== undefined ? Caml_option.valFromOption(match$7) : null);
+    if (match$2.tag) {
+      var e = match$2[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".id" + e[/* path */0],
+                  /* message */e[/* message */1],
+                  /* value */e[/* value */2]
+                ]]);
+    } else if (match$4.tag) {
+      var e$1 = match$4[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".meta" + e$1[/* path */0],
+                  /* message */e$1[/* message */1],
+                  /* value */e$1[/* value */2]
+                ]]);
+    } else if (match$6.tag) {
+      var e$2 = match$6[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".commandJson" + e$2[/* path */0],
+                  /* message */e$2[/* message */1],
+                  /* value */e$2[/* value */2]
+                ]]);
+    } else if (match$8.tag) {
+      var e$3 = match$8[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".delay" + e$3[/* path */0],
+                  /* message */e$3[/* message */1],
+                  /* value */e$3[/* value */2]
+                ]]);
+    } else {
+      return /* Ok */Block.__(0, [/* record */[
+                  /* id */match$2[0],
+                  /* meta */match$4[0],
+                  /* commandJson */match$6[0],
+                  /* delay */match$8[0]
+                ]]);
+    }
+  }
+}
+
 function event$prime_encode(encoder_id, encoder_event, v) {
   return Js_dict.fromArray(/* array */[
               /* tuple */[
@@ -321,6 +395,8 @@ exports.statusChange_encode = statusChange_encode;
 exports.statusChange_decode = statusChange_decode;
 exports.command$prime_encode = command$prime_encode;
 exports.command$prime_decode = command$prime_decode;
+exports.commandJson_encode = commandJson_encode;
+exports.commandJson_decode = commandJson_decode;
 exports.event$prime_encode = event$prime_encode;
 exports.event$prime_decode = event$prime_decode;
 exports.serviceNameOfMsg = serviceNameOfMsg;

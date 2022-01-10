@@ -4,6 +4,7 @@
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Component = require("./Component");
+var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 var OutputFailsafeRuntime$Reventless = require("../util/OutputFailsafeRuntime.bs.js");
@@ -32,9 +33,15 @@ function construct(setup, queryBucketName, scheduler, queryEngine, self, _name, 
               return SQS$AwsSdk.makeBatchEntry(messageBody, meta[/* msgId */4], undefined);
             }
           }));
-    return (function (param) {
-                  return SQS$AwsSdk.sendMessageBatch(param, arg);
-                })(OutputFailsafeRuntime$Reventless.get(connector.id)).catch((function (err) {
+    return Promise.allSettled((function (param) {
+                        return SQS$AwsSdk.sendMessageBatch(param, arg);
+                      })(OutputFailsafeRuntime$Reventless.get(connector.id))).then((function (results) {
+                    Belt_Array.forEach(Util_Promise$Reventless.filterRejected(results), (function (param) {
+                            console.log("SQS.sendMessageBatch request " + (String(param[0]) + (" failed: " + (String(param[1]) + ""))));
+                            return /* () */0;
+                          }));
+                    return Promise.resolve(/* () */0);
+                  })).catch((function (err) {
                   return Promise.resolve((console.log("Task.publishCommands Error:", err), /* () */0));
                 }));
   };

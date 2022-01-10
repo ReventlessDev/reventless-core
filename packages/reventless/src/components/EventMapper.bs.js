@@ -7,7 +7,6 @@ var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
@@ -15,12 +14,10 @@ var Counter$Reventless = require("./Counter.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 
 function Make(Target) {
   return (function (EventCollector) {
       return (function (Mappings) {
-          var service = Target.name;
           var findMapping = function (mappings, eventObj) {
             return Belt_Option.flatMapU(eventObj, (function (eventObj$prime) {
                           var meta = Belt_Option.map(Js_dict.get(eventObj$prime, "meta"), Message$Reventless.meta_decode);
@@ -51,51 +48,36 @@ function Make(Target) {
                           }
                         }));
           };
-          var makeEntry = function (queue, idx, commandId, meta, command, delay) {
-            var match = idx === 0;
-            var commandMeta_001 = /* time */Message$Reventless.nowAsISOString(/* () */0);
-            var commandMeta_002 = /* ip */meta[/* ip */2];
-            var commandMeta_003 = /* user */meta[/* user */3];
-            var commandMeta_004 = /* msgId */Message$Reventless.uuid(/* () */0);
-            var commandMeta_005 = /* correlationId */match ? meta[/* correlationId */5] : Message$Reventless.uuid(/* () */0);
-            var commandMeta = /* record */[
-              /* service */service,
-              commandMeta_001,
-              commandMeta_002,
-              commandMeta_003,
-              commandMeta_004,
-              commandMeta_005
-            ];
-            var commandStr = JSON.stringify(Curry._1(Target.command_encode, command));
-            var source = meta[/* service */0];
-            console.log("EventMapping from Aggregate " + (String(source) + (" to Aggregate " + (String(service) + (": Publishing command: " + (String(commandStr) + (" id: " + (String(commandId) + ""))))))));
-            var messageBody = JSON.stringify(Message$Reventless.command$prime_encode(Target.Id.t_encode, Target.command_encode, /* record */[
-                      /* id */commandId,
-                      /* meta */commandMeta,
-                      /* command */command
-                    ]));
-            var match$1 = queue.service;
-            if (match$1 === "SQS_FIFO") {
-              return SQS$AwsSdk.makeBatchEntryFifo(Curry._1(Target.Id.toString, commandId), messageBody, commandMeta_004, delay);
-            } else {
-              return SQS$AwsSdk.makeBatchEntry(messageBody, commandMeta_004, delay);
-            }
-          };
-          var processMappingActions = function (actions, queue, meta) {
-            return Belt_Array.mapWithIndex(actions, (function (idx, action) {
-                          switch (action.tag | 0) {
+          var processMappingActions = function (actions, meta) {
+            return Belt_Array.map(actions, (function (param) {
+                          switch (param.tag | 0) {
                             case /* Publish */0 :
-                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(queue, idx, action[0], meta, action[1], undefined)])]);
+                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[/* record */[
+                                                  /* id */Curry._1(Target.Id.toString, param[0]),
+                                                  /* meta */meta,
+                                                  /* commandJson */Curry._1(Target.command_encode, param[1]),
+                                                  /* delay */undefined
+                                                ]])]);
                             case /* PublishDelayed */1 :
-                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[makeEntry(queue, idx, action[0], meta, action[1], action[2])])]);
+                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[/* record */[
+                                                  /* id */Curry._1(Target.Id.toString, param[0]),
+                                                  /* meta */meta,
+                                                  /* commandJson */Curry._1(Target.command_encode, param[1]),
+                                                  /* delay */param[2]
+                                                ]])]);
                             case /* PublishAsync */2 :
-                                return /* Publisher */Block.__(1, [action[0].then((function (cmds) {
+                                return /* Publisher */Block.__(1, [param[0].then((function (cmds) {
                                                   return Promise.resolve(Belt_Array.map(cmds, (function (param) {
-                                                                    return makeEntry(queue, 0, param[0], meta, param[1], undefined);
+                                                                    return /* record */[
+                                                                            /* id */Curry._1(Target.Id.toString, param[0]),
+                                                                            /* meta */meta,
+                                                                            /* commandJson */Curry._1(Target.command_encode, param[1]),
+                                                                            /* delay */undefined
+                                                                          ];
                                                                   })));
                                                 }))]);
                             case /* AddToCounterTarget */3 :
-                                var match = action[0];
+                                var match = param[0];
                                 return /* Counter */Block.__(0, [/* AddToCounterTarget */Block.__(1, [/* record */[
                                                 /* counterId */match[/* counterId */0],
                                                 /* target */match[/* target */1],
@@ -103,38 +85,21 @@ function Make(Target) {
                                               ]])]);
                             case /* Count */4 :
                                 return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
-                                                /* counterId */action[0],
+                                                /* counterId */param[0],
                                                 /* reference */meta[/* correlationId */5],
                                                 /* inc */1
                                               ]])]);
                             case /* CountMulti */5 :
                                 return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
-                                                /* counterId */action[0],
+                                                /* counterId */param[0],
                                                 /* reference */meta[/* correlationId */5],
-                                                /* inc */action[1]
+                                                /* inc */param[1]
                                               ]])]);
                             
                           }
                         }));
           };
-          var sendEntries = function (queue, publisherEntries, loc) {
-            var __x = publisherEntries.then((function (publisherEntries) {
-                    console.log(loc + ": publisherEntries:", publisherEntries.length);
-                    var match = publisherEntries.length;
-                    if (match !== 0) {
-                      return (function (param) {
-                                  return SQS$AwsSdk.sendMessageBatch(param, publisherEntries);
-                                })(queue.id.get());
-                    } else {
-                      return Promise.resolve(/* () */0);
-                    }
-                  }));
-            return __x.catch((function (err) {
-                          console.log(loc + ": sendEntries error", err);
-                          return Js_exn.raiseError(loc + ": sendEntries error");
-                        }));
-          };
-          var commonEventsHandler = function (queue, mappings, queryEngine, events$primeJson) {
+          var commonEventsHandler = function (mappings, queryEngine, events$primeJson) {
             var eventsCount = events$primeJson.length;
             var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(events$primeJson, (function (idx, event$primeJson) {
                                 var idx$1 = idx + 1 | 0;
@@ -152,7 +117,7 @@ function Make(Target) {
                                     if (!match$2.tag && eventDecoded !== undefined) {
                                       var match$3 = eventDecoded;
                                       if (!match$3.tag) {
-                                        return processMappingActions(mapping.map(match$2[0], match$3[0], queryEngine), queue, match$1[1]);
+                                        return processMappingActions(mapping.map(match$2[0], match$3[0], queryEngine), match$1[1]);
                                       }
                                       
                                     }
@@ -207,9 +172,9 @@ function Make(Target) {
                     counterActions
                   ];
           };
-          var eventCollectorEventsHandler = function (queue, mappings, queryEngine, count, addToCounterTarget) {
+          var eventCollectorEventsHandler = function (publishJsons, mappings, queryEngine, count, addToCounterTarget) {
             return (function (events$primeJson) {
-                var match = commonEventsHandler(queue, mappings, queryEngine, events$primeJson);
+                var match = commonEventsHandler(mappings, queryEngine, events$primeJson);
                 var match$1 = Belt_Array.partition(match[1], (function (param) {
                         if (param.tag) {
                           return false;
@@ -246,7 +211,9 @@ function Make(Target) {
                               return Promise.resolve(/* () */0);
                             }
                           })));
-                var sendEntriesP = sendEntries(queue, match[0], "EventMapper-Reventless.eventCollectorEventsHandler");
+                var sendEntriesP = match[0].then((function (commandJsons) {
+                        return publishJsons(commandJsons);
+                      }));
                 var __x$1 = Promise.all(/* tuple */[
                       countP,
                       addToCounterTargetsP,
@@ -257,20 +224,21 @@ function Make(Target) {
                             }));
               });
           };
-          var counterEventsHandler = function (queue, mappings, queryEngine) {
+          var counterEventsHandler = function (publishJsons, mappings, queryEngine) {
             return (function (events$primeJson) {
-                var match = commonEventsHandler(queue, mappings, queryEngine, events$primeJson);
+                var match = commonEventsHandler(mappings, queryEngine, events$primeJson);
                 if (match[1].length !== 0) {
                   console.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!");
                 }
-                return sendEntries(queue, match[0], "EventMapper-Reventless.counterEventsHandler");
+                return match[0].then((function (commandJsons) {
+                              return publishJsons(commandJsons);
+                            }));
               });
           };
-          var construct = function (queryEngine, memorySize, timeout, self, name, resources) {
+          var construct = function (queryEngine, publishJsons, memorySize, timeout, self, name, resources) {
             var opts = {
               parent: self
             };
-            var queue = Util_Aggregate$Reventless.commandTopicConnectorResource(resources, service);
             var match = Belt_Option.mapWithDefault(Mappings.counter, /* tuple */[
                   (function (_items) {
                       return Promise.resolve((console.log("No counter deployed, but trying to use counter."), /* () */0));
@@ -280,7 +248,7 @@ function Make(Target) {
                     }),
                   undefined
                 ], (function (Counter) {
-                    var counter = Curry._6(Counter.make, name, counterEventsHandler(queue, Mappings.mappings, queryEngine), undefined, Caml_option.some(opts), resources, /* () */0);
+                    var counter = Curry._6(Counter.make, name, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, Caml_option.some(opts), resources, /* () */0);
                     return /* tuple */[
                             Curry._1(Counter.count, counter),
                             Curry._1(Counter.addToCounterTarget, counter),
@@ -296,7 +264,7 @@ function Make(Target) {
                           
                         })),
                   undefined,
-                  eventCollectorEventsHandler(queue, Mappings.mappings, queryEngine, match[0], match[1]),
+                  eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]),
                   memorySize,
                   timeout,
                   Caml_option.some(opts),
@@ -312,13 +280,13 @@ function Make(Target) {
             self$1.setOutputs(outputs);
             return self$1.registerOutputs(outputs);
           };
-          var make = function (queryEngine, $staropt$star, $staropt$star$1, opts, resources, param) {
+          var make = function (queryEngine, publishJsons, $staropt$star, $staropt$star$1, opts, resources, param) {
             var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
             var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 180;
             var prim = ComponentType$Reventless.toString(/* EventMapper */7);
             var prim$1 = Target.name;
             var prim$2 = function (param, param$1, param$2) {
-              return construct(queryEngine, memorySize, timeout, param, param$1, param$2);
+              return construct(queryEngine, publishJsons, memorySize, timeout, param, param$1, param$2);
             };
             var prim$3 = opts;
             var prim$4 = resources;
@@ -335,4 +303,4 @@ var componentType = /* EventMapper */7;
 
 exports.componentType = componentType;
 exports.Make = Make;
-/* SQS-AwsSdk Not a pure module */
+/* ./Component Not a pure module */

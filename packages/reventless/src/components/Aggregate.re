@@ -30,7 +30,7 @@ module type T = {
     ) =>
     component;
 
-  let publishJson: Component.t(t, outputs) => CommandTopic.publishJson;
+  let publishJsons: Component.t(t, outputs) => CommandTopic.publishJsons;
 };
 
 module Make =
@@ -88,12 +88,12 @@ module Make =
   };
 
   [@bs.set]
-  external setPublishJson:
-    (Component.t(t, outputs), CommandTopic.publishJson) => unit =
-    "publishJson";
+  external setPublishJsons:
+    (Component.t(t, outputs), CommandTopic.publishJsons) => unit =
+    "publishJsons";
   [@bs.get]
-  external publishJson: Component.t(t, outputs) => CommandTopic.publishJson =
-    "publishJson";
+  external publishJsons: Component.t(t, outputs) => CommandTopic.publishJsons =
+    "publishJsons";
 
   module CommandGenerator =
     CommandGenerator.Make(Config, Spec, Behaviour, CommandGeneratorResolvers);
@@ -122,7 +122,7 @@ module Make =
   let errorMessage = (id, kind, err) =>
     {j|Aggregate.execCommand($id): $kind Error: |j}
     ++
-    err->AwsSdk.Error.ofPromise##message;
+    err->Util.Error.ofPromise##message;
 
   let logCommand' =
       (
@@ -379,12 +379,21 @@ module Make =
       );
 
     module EventMapper =
-      Reventless.EventMapper.Make(Spec, EventCollector, EventMappings);
+      EventMapper.Make(Spec, EventCollector, EventMappings);
     let eventMapper =
       EventMappings.mappings->Belt.Array.length > 0
-        ? Some(EventMapper.make(~queryEngine, ~opts, ~resources, ())) : None;
+        ? Some(
+            EventMapper.make(
+              ~queryEngine,
+              ~publishJsons=commandTopic->CommandTopic.publishJsons,
+              ~opts,
+              ~resources,
+              (),
+            ),
+          )
+        : None;
 
-    self->setPublishJson(commandTopic->CommandTopic.publishJson);
+    self->setPublishJsons(commandTopic->CommandTopic.publishJsons);
 
     makeOutputs(
       ~name,

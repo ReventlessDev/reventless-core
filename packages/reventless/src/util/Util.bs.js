@@ -8,6 +8,8 @@ var $$Array = 0;
 
 var CommandTopic = 0;
 
+var $$Error = 0;
+
 var EventCollector = 0;
 
 var EventLog = 0;
@@ -15,6 +17,8 @@ var EventLog = 0;
 var EventTopic = 0;
 
 var ExtensionPoint = 0;
+
+var $$Promise = 0;
 
 var Pulumi = 0;
 
@@ -27,10 +31,12 @@ var VPC = 0;
 exports.Aggregate = Aggregate;
 exports.$$Array = $$Array;
 exports.CommandTopic = CommandTopic;
+exports.$$Error = $$Error;
 exports.EventCollector = EventCollector;
 exports.EventLog = EventLog;
 exports.EventTopic = EventTopic;
 exports.ExtensionPoint = ExtensionPoint;
+exports.$$Promise = $$Promise;
 exports.Pulumi = Pulumi;
 exports.QueryDb = QueryDb;
 exports.ReadModel = ReadModel;

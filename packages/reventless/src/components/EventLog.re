@@ -154,7 +154,7 @@ module Make =
                         let msg =
                           {j|EventLog.appendFn($id): EventTopic.publish Error: |j}
                           ++
-                          err->AwsSdk.Error.ofPromise##message;
+                          err->Util.Error.ofPromise##message;
 
                         Js.log(msg);
                         Js.Exn.raiseError(msg);

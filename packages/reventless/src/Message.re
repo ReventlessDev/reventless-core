@@ -31,6 +31,14 @@ type command'('id, 'command) = {
   command: 'command,
 };
 
+[@decco]
+type commandJson = {
+  id: string,
+  meta,
+  commandJson: Js.Json.t,
+  delay: option(int),
+};
+
 type commandHandler('id, 'command) =
   (. command'('id, 'command)) => Js.Promise.t(unit);
 
