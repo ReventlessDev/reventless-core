@@ -18,8 +18,7 @@ let arn2Account = arn =>
   | _ => ""
   };
 
-let subscribeToSnsTopic =
-    (queue, targetName, opts, (_, (sourceName, topic))) =>
+let subscribeToSnsTopic = (~queue, ~targetName, ~sourceName, ~topic, ~opts) =>
   SNS.TopicSubscription.make(
     ~name=sourceName ++ "2" ++ targetName,
     ~args=

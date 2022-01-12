@@ -27,11 +27,10 @@ function arn2Account(arn) {
   }
 }
 
-function subscribeToSnsTopic(queue, targetName, opts, param) {
-  var match = param[1];
-  return new (Aws.sns.TopicSubscription)(match[0] + ("2" + targetName), {
+function subscribeToSnsTopic(queue, targetName, sourceName, topic, opts) {
+  return new (Aws.sns.TopicSubscription)(sourceName + ("2" + targetName), {
               endpoint: queue.arn,
-              topic: match[1].urn,
+              topic: topic.urn,
               protocol: "sqs",
               rawMessageDelivery: true
             }, Caml_option.some(opts));

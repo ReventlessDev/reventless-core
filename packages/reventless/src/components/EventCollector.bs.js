@@ -25,21 +25,11 @@ function Make(Policies) {
             return connector[/* enqueueEvent */1](delay, id, message);
           });
       };
-      var construct = function (aggregateNames, extensionPointNames, eventsHandler, memorySize, timeout, self, name, resources) {
+      var construct = function (eventTopics, eventsHandler, memorySize, timeout, self, name) {
         var opts = {
           parent: self
         };
-        var connector = Curry.app(Connector.make, [
-              ComponentType$Reventless.name(name, /* EventCollector */5),
-              aggregateNames,
-              extensionPointNames,
-              Policies.policies,
-              eventsHandler,
-              memorySize,
-              timeout,
-              opts,
-              resources
-            ]);
+        var connector = Curry._7(Connector.make, ComponentType$Reventless.name(name, /* EventCollector */5), eventTopics, Policies.policies, eventsHandler, memorySize, timeout, opts);
         self.enqueueEvent = enqueueEventFn(connector);
         var self$1 = self;
         var outputs = {
@@ -48,18 +38,16 @@ function Make(Policies) {
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (name, aggregateNames, $staropt$star, eventsHandler, $staropt$star$1, $staropt$star$2, opts, resources, param) {
-        var extensionPointNames = $staropt$star !== undefined ? $staropt$star : /* array */[];
-        var memorySize = $staropt$star$1 !== undefined ? $staropt$star$1 : 128;
-        var timeout = $staropt$star$2 !== undefined ? $staropt$star$2 : 30;
+      var make = function (name, eventTopics, eventsHandler, $staropt$star, $staropt$star$1, opts, param) {
+        var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
+        var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 30;
         var prim = ComponentType$Reventless.toString(/* EventCollector */5);
         var prim$1 = name;
-        var prim$2 = function (param, param$1, param$2) {
-          return construct(aggregateNames, extensionPointNames, eventsHandler, memorySize, timeout, param, param$1, param$2);
+        var prim$2 = function (param, param$1) {
+          return construct(eventTopics, eventsHandler, memorySize, timeout, param, param$1);
         };
         var prim$3 = opts;
-        var prim$4 = resources;
-        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+        return new Component.default(prim, prim$1, prim$2, prim$3);
       };
       return {
               make: make,

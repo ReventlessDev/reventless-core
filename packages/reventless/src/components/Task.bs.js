@@ -14,7 +14,7 @@ function setOutputs(self, outputs) {
   return self.registerOutputs(outputs);
 }
 
-function construct(setup, queryBucketName, scheduler, queryEngine, self, _name, resources) {
+function construct(setup, queryBucketName, scheduler, queryEngine, allAggregates, self, _name, resources) {
   var opts = {
     parent: self
   };
@@ -45,14 +45,14 @@ function construct(setup, queryBucketName, scheduler, queryEngine, self, _name, 
                   return Promise.resolve((console.log("Task.publishCommands Error:", err), /* () */0));
                 }));
   };
-  return setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, opts, resources));
+  return setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, Util_Aggregate$Reventless.allEventTopics(allAggregates), opts, resources));
 }
 
-function make(name, setup, queryBucketName, scheduler, queryEngine, opts, resources) {
+function make(name, setup, queryBucketName, scheduler, queryEngine, allAggregates, opts, resources) {
   var prim = ComponentType$Reventless.toString(/* Task */16);
   var prim$1 = ComponentType$Reventless.name(name, /* Task */16);
   var prim$2 = function (param, param$1, param$2) {
-    return construct(setup, queryBucketName, scheduler, queryEngine, param, param$1, param$2);
+    return construct(setup, queryBucketName, scheduler, queryEngine, allAggregates, param, param$1, param$2);
   };
   var prim$3 = opts;
   var prim$4 = resources;

@@ -37,6 +37,7 @@ type setup =
     Scheduler.t,
     publishCommands,
     queryBucketName,
+    Js.Dict.t(EventTopic.outputs),
     Pulumi.CustomResourceOptions.t,
     resources
   ) =>
@@ -75,6 +76,7 @@ let construct =
       ~queryBucketName,
       ~scheduler: Scheduler.t,
       ~queryEngine,
+      ~allAggregates,
       self,
       _name,
       resources,
@@ -133,6 +135,7 @@ let construct =
     scheduler,
     publishCommands,
     queryBucketName,
+    Util.Aggregate.allEventTopics(allAggregates),
     opts,
     resources,
   )
@@ -146,13 +149,21 @@ let make =
       ~queryBucketName,
       ~scheduler,
       ~queryEngine,
+      ~allAggregates,
       ~opts,
       ~resources,
     ) => {
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name=name->ComponentType.name(componentType),
-    ~construct=construct(~setup, ~queryBucketName, ~scheduler, ~queryEngine),
+    ~construct=
+      construct(
+        ~setup,
+        ~queryBucketName,
+        ~scheduler,
+        ~queryEngine,
+        ~allAggregates,
+      ),
     ~opts,
     ~resources,
   );

@@ -10,10 +10,12 @@ var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
 var Counter$Reventless = require("./Counter.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
+var Util_EventTopic$Reventless = require("../util/Util_EventTopic.bs.js");
 
 function Make(Target) {
   return (function (EventCollector) {
@@ -235,7 +237,7 @@ function Make(Target) {
                             }));
               });
           };
-          var construct = function (queryEngine, publishJsons, memorySize, timeout, self, name, resources) {
+          var construct = function (allEventTopics, queryEngine, publishJsons, memorySize, timeout, self, name, resources) {
             var opts = {
               parent: self
             };
@@ -255,22 +257,13 @@ function Make(Target) {
                             Caml_option.some(Component$Reventless.extractOutputs(counter))
                           ];
                   }));
-            var eventCollector = Curry.app(EventCollector.make, [
-                  ComponentType$Reventless.name(Target.name, /* EventMapper */7),
-                  Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
-                          if (Mapping.Source.name !== Counter$Reventless.Source.name) {
-                            return Mapping.Source.name;
-                          }
-                          
-                        })),
-                  undefined,
-                  eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]),
-                  memorySize,
-                  timeout,
-                  Caml_option.some(opts),
-                  resources,
-                  /* () */0
-                ]);
+            var aggregateNames = Belt_SetString.fromArray(Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
+                        if (Mapping.Source.name !== Counter$Reventless.Source.name) {
+                          return Mapping.Source.name;
+                        }
+                        
+                      })));
+            var eventCollector = Curry._7(EventCollector.make, ComponentType$Reventless.name(Target.name, /* EventMapper */7), Util_EventTopic$Reventless.findEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]), memorySize, timeout, Caml_option.some(opts), /* () */0);
             var self$1 = self;
             var outputs = {
               name: name,
@@ -280,13 +273,13 @@ function Make(Target) {
             self$1.setOutputs(outputs);
             return self$1.registerOutputs(outputs);
           };
-          var make = function (queryEngine, publishJsons, $staropt$star, $staropt$star$1, opts, resources, param) {
+          var make = function (allEventTopics, queryEngine, publishJsons, $staropt$star, $staropt$star$1, opts, resources, param) {
             var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
             var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 180;
             var prim = ComponentType$Reventless.toString(/* EventMapper */7);
             var prim$1 = Target.name;
             var prim$2 = function (param, param$1, param$2) {
-              return construct(queryEngine, publishJsons, memorySize, timeout, param, param$1, param$2);
+              return construct(allEventTopics, queryEngine, publishJsons, memorySize, timeout, param, param$1, param$2);
             };
             var prim$3 = opts;
             var prim$4 = resources;

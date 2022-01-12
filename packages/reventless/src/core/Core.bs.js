@@ -11,6 +11,7 @@ var Component$Reventless = require("../components/Component.bs.js");
 var Component = require("../components/Component");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("../components/EventCollector.bs.js");
+var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 
 function toDict(els) {
   return Js_dict.fromArray(Belt_Array.map(els, (function (el) {
@@ -41,22 +42,21 @@ function Make(EventCollectorAdapter) {
                     return param[/* readModel */1];
                   })));
         var queryEngine = Curry._1(QueryEngineAdapter.make, resources);
-        var aggregates$1 = Belt_Array.map(aggregates, (function (Aggregate) {
-                var match = readModels$1[Aggregate.Spec.name];
-                var readModel = match[/* readModel */1];
-                var module_ = match[/* module_ */0];
-                return Curry._5(Aggregate.make, queryEngine, (function (id, events) {
-                              return Curry._1(module_.update, readModel)(id, events);
-                            }), Caml_option.some(opts), resources, /* () */0);
-              }));
-        var aggregatesOutputs = Component$Reventless.extractMultipleOutputs(aggregates$1);
+        var aggregatesOutputs = toDict(Component$Reventless.extractMultipleOutputs(Belt_Array.map(aggregates, (function (Aggregate) {
+                        var match = readModels$1[Aggregate.Spec.name];
+                        var readModel = match[/* readModel */1];
+                        var module_ = match[/* module_ */0];
+                        return Curry._5(Aggregate.make, queryEngine, (function (id, events) {
+                                      return Curry._1(module_.update, readModel)(id, events);
+                                    }), Caml_option.some(opts), resources, /* () */0);
+                      }))));
         var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
                 return Curry._5(ExtensionPoint.make, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
               }));
         var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
-        var aggregateNames = Belt_SetString.toArray(Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
-                        return Belt_SetString.fromArray(extensionPoint.aggregateNames);
-                      })), Belt_SetString.empty, Belt_SetString.union));
+        var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
+                    return Belt_SetString.fromArray(extensionPoint.aggregateNames);
+                  })), Belt_SetString.empty, Belt_SetString.union);
         var fakePluginDefinition_003 = /* extensionPoints : array */[];
         var fakePluginDefinition_004 = /* extensions : array */[];
         var fakePluginDefinition = /* record */[
@@ -85,23 +85,13 @@ function Make(EventCollectorAdapter) {
                       }));
         };
         var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorAdapter);
-        var eventCollector = Curry.app(EventCollector.make, [
-              ComponentType$Reventless.toName(/* Core */18),
-              aggregateNames,
-              undefined,
-              eventsHandler,
-              undefined,
-              undefined,
-              Caml_option.some(opts),
-              resources,
-              /* () */0
-            ]);
+        var eventCollector = Curry._7(EventCollector.make, ComponentType$Reventless.toName(/* Core */18), Util_Aggregate$Reventless.findEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Caml_option.some(opts), /* () */0);
         var self$1 = self;
         var outputs = {
           version: version,
           eventCollector: Component$Reventless.extractOutputs(eventCollector),
           extensionPoints: toDict(extensionPointsOutputs),
-          aggregates: toDict(aggregatesOutputs),
+          aggregates: aggregatesOutputs,
           readModels: toDict(readModelsOutputs),
           resources: resources
         };

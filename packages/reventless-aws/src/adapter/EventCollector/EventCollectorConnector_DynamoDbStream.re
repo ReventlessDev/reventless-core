@@ -3,14 +3,12 @@ open PulumiAws;
 let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
     ~name,
-    ~aggregateNames,
-    ~extensionPointNames,
+    ~eventTopics,
     ~policies,
     ~handleEvents,
     ~memorySize,
     ~timeout,
     ~opts,
-    ~resources,
   ) => {
     let eventHandlerLambda =
       policies // Pulumi.Output cannot be pushed into policies parameter !
@@ -34,39 +32,43 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           )
         );
 
-    let (dynamoDbStreamTopics, otherTopics) =
-      resources
-      ->Reventless.Util.Aggregate.eventTopics(aggregateNames)
-      ->Belt.Array.concat(
-          resources->Reventless.Util.ExtensionPoint.eventTopics(
-            extensionPointNames,
-          ),
+    let (dynamoDbStreamResources, errorResources) =
+      eventTopics
+      ->Js.Dict.entries
+      ->Belt.Array.map(((name, eventTopic)) =>
+          (
+            name,
+            eventTopic##resources
+            ->Belt.Array.getBy(resource =>
+                resource##service == Util_DynamoDbStream.service
+              ),
+          )
         )
-      ->Belt.Array.partition(((service, _)) =>
-          service == Util_DynamoDbStream.service
+      ->Belt.Array.partition(((_, resource)) =>
+          resource->Belt.Option.isSome
         );
 
     let _eventSourceMappings: array(EventSourceMapping.t) =
-      dynamoDbStreamTopics->Belt.Array.map(((_, (sourceName, source))) =>
+      dynamoDbStreamResources->Belt.Array.map(((sourceName, resource)) =>
         Util_EventSourceMapping.subscribe(
           ~batchSize=25,
           ~lambda=eventHandlerLambda,
           ~targetName=name,
           ~sourceName,
-          ~source,
+          ~source=resource->Belt.Option.getExn,
           ~opts,
           (),
         )
       );
 
-    if (otherTopics->Belt.Array.length > 0) {
-      let errorTopics =
-        otherTopics
-        ->Belt.Array.map(((service, (sourceName, _))) =>
-            {j|EventTopicPublisher_$service $sourceName|j}
-          )
+    if (errorResources->Belt.Array.length > 0) {
+      let eventTopicNames =
+        errorResources
+        ->Belt.Array.map(((eventTopicName, _)) => eventTopicName)
         ->Js.Array2.joinWith(",");
-      Js.Exn.raiseError(__MODULE__ ++ {j| cannot connect to $errorTopics|j});
+      Js.Exn.raiseError(
+        __MODULE__ ++ {j| cannot connect to EventTopic(s) $eventTopicNames|j},
+      );
     } else {
       {
         resources: [||],

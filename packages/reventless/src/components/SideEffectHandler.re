@@ -16,6 +16,7 @@ module type T = {
     (
       ~name: string,
       ~sideEffects: sideEffects,
+      ~allEventTopics: Js.Dict.t(EventTopic.outputs),
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~scheduler: Scheduler.t,
       ~memorySize: int=?,
@@ -177,6 +178,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
   let construct =
       (
         ~sideEffects,
+        ~allEventTopics,
         ~queryEngine,
         ~scheduler: Scheduler.t,
         ~memorySize,
@@ -213,20 +215,23 @@ module Make = (EventCollector: EventCollector.T) : T => {
           scheduleName,
         );
 
+    let aggregateNames =
+      sideEffects
+      ->Belt.Array.map((module SideEffect: ReventlessSpec.SideEffect.T) =>
+          SideEffect.Source.name
+        )
+      ->Belt.Set.String.fromArray;
+
     let eventsHandler = eventsHandler(sideEffects, queryEngine);
     let eventCollector =
       EventCollector.make(
         ~name,
-        ~aggregateNames=
-          sideEffects->Belt.Array.map(
-            (module SideEffect: ReventlessSpec.SideEffect.T) =>
-            SideEffect.Source.name
-          ),
+        ~eventTopics=
+          Util.EventTopic.findEventTopics(allEventTopics, aggregateNames),
         ~eventsHandler,
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
 
@@ -249,6 +254,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
       (
         ~name,
         ~sideEffects,
+        ~allEventTopics,
         ~queryEngine,
         ~scheduler,
         ~memorySize=2048,
@@ -263,6 +269,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ~construct=
         construct(
           ~sideEffects,
+          ~allEventTopics,
           ~queryEngine,
           ~scheduler,
           ~memorySize,

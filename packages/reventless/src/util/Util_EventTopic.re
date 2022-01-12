@@ -11,3 +11,14 @@ let getPublisherResource = (resources, name) =>
     ~adapter=publisher,
     ~name=name->ComponentType.name(ComponentType.EventTopic),
   );
+
+let findEventTopics = (allEventTopics, aggregateNames) =>
+  aggregateNames
+  ->Belt.Set.String.toArray
+  ->Belt.Array.map(aggregateName =>
+      (
+        aggregateName,
+        allEventTopics->Js.Dict.get(aggregateName)->Belt.Option.getExn,
+      )
+    )
+  ->Js.Dict.fromArray;

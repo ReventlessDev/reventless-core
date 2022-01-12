@@ -22,6 +22,7 @@ var EventMapper$Reventless = require("./EventMapper.bs.js");
 var CommandTopic$Reventless = require("./CommandTopic.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("./EventCollector.bs.js");
+var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 var CommandGenerator$Reventless = require("./CommandGenerator.bs.js");
 
 function Make(Config) {
@@ -45,7 +46,6 @@ function Make(Config) {
                                             event_encode: Spec.event_encode,
                                             event_decode: Spec.event_decode
                                           })(EventLogStorage)(EventTopicPublisher);
-                                  var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorConnector);
                                   var errorHandler = function (error, command, context) {
                                     var errorJson = JSON.stringify(Curry._1(Spec.error_encode, error));
                                     var commandJson = JSON.stringify(Curry._1(Spec.command_encode, command));
@@ -246,22 +246,42 @@ function Make(Config) {
                                         ]);
                                     var commandTopic = Curry._7(CommandTopic.make, childName, handleCommands$1, undefined, undefined, Caml_option.some(opts), resources, /* () */0);
                                     var commandGenerator = Curry._4(CommandGenerator.make, childName, Curry._1(CommandTopic.publish, commandTopic), Caml_option.some(opts), /* () */0);
-                                    var EventMapper = EventMapper$Reventless.Make({
-                                              name: Spec.name,
-                                              Id: Spec.Id,
-                                              command_encode: Spec.command_encode,
-                                              command_decode: Spec.command_decode
-                                            })(EventCollector)(EventMappings);
-                                    var match = EventMappings.mappings.length !== 0;
-                                    var eventMapper = match ? Caml_option.some(Curry._7(EventMapper.make, queryEngine, Curry._1(CommandTopic.publishJsons, commandTopic), undefined, undefined, Caml_option.some(opts), resources, /* () */0)) : undefined;
                                     self.publishJsons = Curry._1(CommandTopic.publishJsons, commandTopic);
+                                    self.addEventMapper = (function (param) {
+                                        var param$1 = param;
+                                        var param$2 = queryEngine;
+                                        var param$3 = opts;
+                                        var param$4 = resources;
+                                        var component = self;
+                                        var allAggregates = param$1;
+                                        var queryEngine$1 = param$2;
+                                        var opts$1 = param$3;
+                                        var resources$1 = param$4;
+                                        var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorConnector);
+                                        var EventMapper = EventMapper$Reventless.Make({
+                                                  name: Spec.name,
+                                                  Id: Spec.Id,
+                                                  command_encode: Spec.command_encode,
+                                                  command_decode: Spec.command_decode
+                                                })(EventCollector)(EventMappings);
+                                        var match = EventMappings.mappings.length !== 0;
+                                        var eventMapper = match ? Caml_option.some(Curry._8(EventMapper.make, Util_Aggregate$Reventless.allEventTopics(allAggregates), queryEngine$1, component.publishJsons, undefined, undefined, Caml_option.some(opts$1), resources$1, /* () */0)) : undefined;
+                                        var outputs = Component$Reventless.extractOutputs(component);
+                                        return {
+                                                name: outputs.name,
+                                                commandGenerator: outputs.commandGenerator,
+                                                commandTopic: outputs.commandTopic,
+                                                eventLog: outputs.eventLog,
+                                                eventMapper: Belt_Option.map(eventMapper, Component$Reventless.extractOutputs)
+                                              };
+                                      });
                                     var self$1 = self;
                                     var outputs = {
                                       name: name,
                                       commandGenerator: Component$Reventless.extractOutputs(commandGenerator),
                                       commandTopic: Component$Reventless.extractOutputs(commandTopic),
                                       eventLog: Component$Reventless.extractOutputs(eventLog),
-                                      eventMapper: Belt_Option.map(eventMapper, Component$Reventless.extractOutputs)
+                                      eventMapper: undefined
                                     };
                                     self$1.setOutputs(outputs);
                                     return self$1.registerOutputs(outputs);
@@ -281,6 +301,9 @@ function Make(Config) {
                                           make: make,
                                           publishJsons: (function (prim) {
                                               return prim.publishJsons;
+                                            }),
+                                          addEventMapper: (function (prim) {
+                                              return prim.addEventMapper;
                                             })
                                         };
                                 });

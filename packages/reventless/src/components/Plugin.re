@@ -184,22 +184,44 @@ module Make =
 
     let queryEngine = QueryEngineAdapter.make(resources);
 
-    let aggregates =
-      aggregates->Belt.Array.map((module Aggregate: Aggregate.T) => {
-        let {module_, readModel} =
-          readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
-        module ReadModel = (val module_);
-        Aggregate.make(
-          ~queryEngine,
-          ~eventsHandler=
-            (. id, events) =>
-              readModel->ReadModel.update(. id->Obj.magic, events->Obj.magic), // TODO : remove
-          ~opts,
-          ~resources,
-          (),
-        );
-      });
-    let aggregatesOutputs = aggregates->Component.extractMultipleOutputs;
+    let addEventMapperFns = Js.Dict.empty();
+    let publishJsonsFns = Js.Dict.empty();
+    let aggregatesWithoutEventMappers =
+      aggregates
+      ->Belt.Array.map((module Aggregate: Aggregate.T) => {
+          let {module_, readModel} =
+            readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
+          module ReadModel = (val module_);
+          let aggregate =
+            Aggregate.make(
+              ~queryEngine,
+              ~eventsHandler=
+                (. id, events) =>
+                  readModel->ReadModel.update(.
+                    id->Obj.magic,
+                    events->Obj.magic,
+                  ), // TODO : remove
+              ~opts,
+              ~resources,
+              (),
+            );
+          addEventMapperFns->Js.Dict.set(
+            Aggregate.Spec.name,
+            Aggregate.addEventMapper(aggregate),
+          );
+          publishJsonsFns->Js.Dict.set(
+            Aggregate.Spec.name,
+            Aggregate.publishJsons(aggregate),
+          );
+          aggregate->Component.extractOutputs;
+        })
+      ->toDict;
+    let aggregatesOutputs =
+      Js.Dict.map(
+        (. addEventMapperFn) =>
+          addEventMapperFn(aggregatesWithoutEventMappers),
+        addEventMapperFns,
+      );
 
     let pureOutputs =
       (
@@ -656,11 +678,13 @@ module Make =
           module Set = Belt.Set.String;
 
           let collectAggregateNames = exs =>
-            exs->Belt.Array.map(ex =>
-              ex##aggregateNames
-              ->Set.fromArray
-              ->Set.remove(ReventlessSpec.ExtensionMapping.NoAggregate.name)
-            );
+            exs
+            ->Belt.Array.map(ex =>
+                ex##aggregateNames
+                ->Set.fromArray
+                ->Set.remove(ReventlessSpec.ExtensionMapping.NoAggregate.name)
+              )
+            ->Belt.Array.reduce(Set.empty, Set.union);
 
           let extensionPointAggregateNames =
             extensionPointsOutputs->collectAggregateNames;
@@ -797,20 +821,20 @@ module Make =
               EventCollectorAdapter,
             );
 
+          let eventTopics =
+            Util.Aggregate.findEventTopics(
+              aggregatesOutputs,
+              extensionPointAggregateNames->Set.union(
+                extensionAggregateNames,
+              ),
+            );
+
           let eventCollector =
             EventCollector.make(
               ~name=name->ComponentType.name(componentType),
-              ~aggregateNames=
-                extensionPointAggregateNames
-                ->Belt.Array.concat(extensionAggregateNames)
-                ->Belt.Array.reduce(Set.empty, Set.union)
-                ->Belt.Set.String.toArray,
-              ~extensionPointNames=[|
-                ReventlessSpec.PluginExtensionPointSpec.name,
-              |],
+              ~eventTopics,
               ~eventsHandler,
               ~opts=Some(opts),
-              ~resources,
               (),
             );
           let eventCollectorOutputs = eventCollector->Component.extractOutputs;
@@ -833,7 +857,7 @@ module Make =
             eventCollector: eventCollectorOutputs,
             extensionPoints: extensionPointsOutputs->toDict,
             extensions: extensionsOutputs->toDict,
-            aggregates: aggregatesOutputs->toDict,
+            aggregates: aggregatesOutputs,
             readModels: readModelsOutputs->toDict,
             tasks: (tasksOutputs^)->toDict,
             resolvers,

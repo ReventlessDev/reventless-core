@@ -3,14 +3,12 @@ open PulumiAws;
 let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
     ~name,
-    ~aggregateNames,
-    ~extensionPointNames,
+    ~eventTopics,
     ~policies,
     ~handleEvents,
     ~memorySize,
     ~timeout,
     ~opts,
-    ~resources,
   ) => {
     let queue =
       SQS.Queue.make(
@@ -85,38 +83,65 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         )
       );
 
-    let (snsFifoTopics, otherTopics) =
-      resources
-      ->Reventless.Util.Aggregate.eventTopics(aggregateNames)
-      ->Belt.Array.concat(
-          resources->Reventless.Util.ExtensionPoint.eventTopics(
-            extensionPointNames,
-          ),
+    let (supportedResources, errorResources) =
+      eventTopics
+      ->Js.Dict.entries
+      ->Belt.Array.map(((name, eventTopic)) =>
+          (
+            name,
+            eventTopic##resources
+            ->Belt.Array.getBy(resource =>
+                resource##service == Util_DynamoDbStream.service
+                ||
+                resource##service == Util_SNS_FIFO.service
+              ),
+          )
         )
-      ->Belt.Array.partition(((service, _)) =>
-          service == Util_SNS_FIFO.service
+      ->Belt.Array.partition(((_, resource)) =>
+          resource->Belt.Option.isSome
         );
 
-    let _snsTopicSubscriptions =
-      snsFifoTopics->Belt.Array.map(
-        Util_SQS.subscribeToSnsTopic(queue, name, opts),
+    let (snsFifoResources, otherResources) =
+      supportedResources->Belt.Array.partition(((_, resource)) =>
+        resource->Belt.Option.getExn##service == Util_SNS_FIFO.service
       );
 
-    let _eventSourceMappings: array(EventSourceMapping.t) =
-      otherTopics->Belt.Array.map(((_, (sourceName, source))) =>
+    let _snsTopicSubscriptions =
+      snsFifoResources->Belt.Array.map(((sourceName, resource)) =>
+        Util_SQS.subscribeToSnsTopic(
+          ~queue,
+          ~targetName=name,
+          ~sourceName,
+          ~topic=resource->Belt.Option.getExn,
+          ~opts,
+        )
+      );
+
+    let _eventSourceMappings =
+      otherResources->Belt.Array.map(((sourceName, resource)) =>
         Util_EventSourceMapping.subscribe(
           ~lambda=eventHandlerLambda,
           ~targetName=name,
           ~sourceName,
-          ~source,
+          ~source=resource->Belt.Option.getExn,
           ~opts,
           (),
         )
       );
 
-    {
-      resources: [|queue->Util_SQS_FIFO.toResource|],
-      enqueueEvent:
-        queue->EventCollectorConnector_SQS_Runtime.enqueueFifoEvent,
+    if (errorResources->Belt.Array.length > 0) {
+      let eventTopicNames =
+        errorResources
+        ->Belt.Array.map(((eventTopicName, _)) => eventTopicName)
+        ->Js.Array2.joinWith(",");
+      Js.Exn.raiseError(
+        __MODULE__ ++ {j| cannot connect to EventTopic(s) $eventTopicNames|j},
+      );
+    } else {
+      {
+        resources: [|queue->Util_SQS_FIFO.toResource|],
+        enqueueEvent:
+          queue->EventCollectorConnector_SQS_Runtime.enqueueFifoEvent,
+      };
     };
   };

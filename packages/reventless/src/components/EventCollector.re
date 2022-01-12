@@ -24,13 +24,11 @@ module type T = {
   let make:
     (
       ~name: string,
-      ~aggregateNames: array(string),
-      ~extensionPointNames: array(string)=?,
+      ~eventTopics: Js.Dict.t(EventTopic.outputs),
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
@@ -46,14 +44,12 @@ module Adapter = {
   type connectorMaker =
     (
       ~name: string,
-      ~aggregateNames: array(string),
-      ~extensionPointNames: array(string),
+      ~eventTopics: Js.Dict.t(EventTopic.outputs),
       ~policies: array(Pulumi.Output.t(arn)),
       ~handleEvents: eventsHandler,
       ~memorySize: int,
       ~timeout: int,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
+      ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     connector;
 
@@ -63,8 +59,7 @@ module Adapter = {
 module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
   type t;
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -72,8 +67,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -103,16 +97,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       connector.Adapter.enqueueEvent(. delay, id, message);
 
   let construct =
-      (
-        ~aggregateNames,
-        ~extensionPointNames,
-        ~eventsHandler,
-        ~memorySize,
-        ~timeout,
-        self,
-        name,
-        resources,
-      ) => {
+      (~eventTopics, ~eventsHandler, ~memorySize, ~timeout, self, name) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -122,14 +107,12 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     let connector =
       Connector.make(
         ~name=name->ComponentType.name(componentType),
-        ~aggregateNames,
-        ~extensionPointNames,
+        ~eventTopics,
         ~policies=Policies.policies,
         ~handleEvents=eventsHandler,
         ~memorySize,
         ~timeout,
         ~opts,
-        ~resources,
       );
 
     self->setEnqueueEvent(connector->enqueueEventFn);
@@ -140,39 +123,28 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
   let make:
     (
       ~name: string,
-      ~aggregateNames: array(string),
-      ~extensionPointNames: array(string)=?,
+      ~eventTopics: Js.Dict.t(EventTopic.outputs),
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs) =
     (
       ~name,
-      ~aggregateNames,
-      ~extensionPointNames=[||],
+      ~eventTopics,
       ~eventsHandler,
       ~memorySize=128,
       ~timeout=30,
       ~opts,
-      ~resources,
       _,
     ) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name,
         ~construct=
-          construct(
-            ~aggregateNames,
-            ~extensionPointNames,
-            ~eventsHandler,
-            ~memorySize,
-            ~timeout,
-          ),
+          construct(~eventTopics, ~eventsHandler, ~memorySize, ~timeout),
         ~opts,
-        ~resources,
       );
 };

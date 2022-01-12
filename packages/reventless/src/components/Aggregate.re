@@ -17,6 +17,8 @@ type name = string;
 type t;
 type component = Component.t(t, outputs);
 
+type addEventMapper = Js.Dict.t(outputs) => outputs;
+
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T;
 
@@ -30,7 +32,8 @@ module type T = {
     ) =>
     component;
 
-  let publishJsons: Component.t(t, outputs) => CommandTopic.publishJsons;
+  let publishJsons: component => CommandTopic.publishJsons;
+  let addEventMapper: component => addEventMapper;
 };
 
 module Make =
@@ -48,8 +51,6 @@ module Make =
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-
-  type eventsHandler = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
   type construct = (component, string, resources) => constructed;
@@ -88,22 +89,22 @@ module Make =
   };
 
   [@bs.set]
-  external setPublishJsons:
-    (Component.t(t, outputs), CommandTopic.publishJsons) => unit =
+  external setPublishJsons: (component, CommandTopic.publishJsons) => unit =
     "publishJsons";
   [@bs.get]
-  external publishJsons: Component.t(t, outputs) => CommandTopic.publishJsons =
+  external publishJsons: component => CommandTopic.publishJsons =
     "publishJsons";
+
+  [@bs.set]
+  external setAddEventMapper: (component, addEventMapper) => unit =
+    "addEventMapper";
+  [@bs.get]
+  external addEventMapper: component => addEventMapper = "addEventMapper";
 
   module CommandGenerator =
     CommandGenerator.Make(Config, Spec, Behaviour, CommandGeneratorResolvers);
   module CommandTopic = CommandTopic.Make(Spec, CommandTopicConnector);
   module EventLog = EventLog.Make(Spec, EventLogStorage, EventTopicPublisher);
-  module EventCollector =
-    EventCollector.Make(
-      EventCollector.DefaultPolicies,
-      EventCollectorConnector,
-    );
 
   let errorHandler = (error, command, context: Message.context) => {
     let errorJson = error |> Spec.error_encode |> Js.Json.stringify;
@@ -343,6 +344,39 @@ module Make =
          );
     };
 
+  let addEventMapperFn =
+      (component, allAggregates, ~queryEngine, ~opts, ~resources) => {
+    module EventCollector =
+      EventCollector.Make(
+        EventCollector.DefaultPolicies,
+        EventCollectorConnector,
+      );
+    module EventMapper =
+      EventMapper.Make(Spec, EventCollector, EventMappings);
+
+    let eventMapper =
+      EventMappings.mappings->Belt.Array.length > 0
+        ? Some(
+            EventMapper.make(
+              ~allEventTopics=Util.Aggregate.allEventTopics(allAggregates),
+              ~queryEngine,
+              ~publishJsons=component->publishJsons,
+              ~opts,
+              ~resources,
+              (),
+            ),
+          )
+        : None;
+    let outputs = component->Component.extractOutputs;
+    makeOutputs(
+      ~name=outputs##name,
+      ~commandGenerator=outputs##commandGenerator,
+      ~commandTopic=outputs##commandTopic,
+      ~eventLog=outputs##eventLog,
+      ~eventMapper=eventMapper->Belt.Option.map(Component.extractOutputs),
+    );
+  };
+
   let construct = (~queryEngine, ~eventsHandler, self, name, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
@@ -378,48 +412,27 @@ module Make =
         (),
       );
 
-    module EventMapper =
-      EventMapper.Make(Spec, EventCollector, EventMappings);
-    let eventMapper =
-      EventMappings.mappings->Belt.Array.length > 0
-        ? Some(
-            EventMapper.make(
-              ~queryEngine,
-              ~publishJsons=commandTopic->CommandTopic.publishJsons,
-              ~opts,
-              ~resources,
-              (),
-            ),
-          )
-        : None;
-
     self->setPublishJsons(commandTopic->CommandTopic.publishJsons);
+    self->setAddEventMapper(
+      self->addEventMapperFn(~queryEngine, ~opts, ~resources),
+    );
 
     makeOutputs(
       ~name,
       ~commandGenerator=commandGenerator->Component.extractOutputs,
       ~commandTopic=commandTopic->Component.extractOutputs,
       ~eventLog=eventLog->Component.extractOutputs,
-      ~eventMapper=eventMapper->Belt.Option.map(Component.extractOutputs),
+      ~eventMapper=None,
     )
     |> self->setOutputs;
   };
 
-  let make:
-    (
-      ~queryEngine: ReventlessSpec.QueryEngine.t,
-      ~eventsHandler: eventsHandler,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    component =
-    (~queryEngine, ~eventsHandler, ~opts=?, ~resources, _) =>
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name,
-        ~construct=construct(~queryEngine, ~eventsHandler),
-        ~opts,
-        ~resources,
-      );
+  let make = (~queryEngine, ~eventsHandler, ~opts=?, ~resources, _) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=Spec.name,
+      ~construct=construct(~queryEngine, ~eventsHandler),
+      ~opts,
+      ~resources,
+    );
 };

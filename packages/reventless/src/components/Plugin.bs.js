@@ -25,6 +25,7 @@ var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackRefer
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("./EventCollector.bs.js");
+var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 var ExtensionMapping$Reventless = require("../ExtensionMapping.bs.js");
 var Util_ExtensionPoint$Reventless = require("../util/Util_ExtensionPoint.bs.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.bs.js");
@@ -66,15 +67,22 @@ function Make(EventCollectorAdapter) {
                     return param[/* readModel */1];
                   })));
         var queryEngine = Curry._1(QueryEngineAdapter.make, resources);
-        var aggregates$1 = Belt_Array.map(aggregates, (function (Aggregate) {
-                var match = readModels$1[Aggregate.Spec.name];
-                var readModel = match[/* readModel */1];
-                var module_ = match[/* module_ */0];
-                return Curry._5(Aggregate.make, queryEngine, (function (id, events) {
-                              return Curry._1(module_.update, readModel)(id, events);
-                            }), Caml_option.some(opts), resources, /* () */0);
-              }));
-        var aggregatesOutputs = Component$Reventless.extractMultipleOutputs(aggregates$1);
+        var addEventMapperFns = { };
+        var publishJsonsFns = { };
+        var aggregatesWithoutEventMappers = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
+                    var match = readModels$1[Aggregate.Spec.name];
+                    var readModel = match[/* readModel */1];
+                    var module_ = match[/* module_ */0];
+                    var aggregate = Curry._5(Aggregate.make, queryEngine, (function (id, events) {
+                            return Curry._1(module_.update, readModel)(id, events);
+                          }), Caml_option.some(opts), resources, /* () */0);
+                    addEventMapperFns[Aggregate.Spec.name] = Curry._1(Aggregate.addEventMapper, aggregate);
+                    publishJsonsFns[Aggregate.Spec.name] = Curry._1(Aggregate.publishJsons, aggregate);
+                    return Component$Reventless.extractOutputs(aggregate);
+                  })));
+        var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
+                return Curry._1(addEventMapperFn, aggregatesWithoutEventMappers);
+              }), addEventMapperFns);
         var pureOutputs = (
             Interstack$Reventless.coreStackOutput !== undefined ? Caml_option.valFromOption(Interstack$Reventless.coreStackOutput) : Js_exn.raiseError("No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!")
           ).apply((function (coreStackOutput) {
@@ -332,9 +340,9 @@ function Make(EventCollectorAdapter) {
                             return Curry._1(resolverMaker, resources);
                           })));
                 var collectAggregateNames = function (exs) {
-                  return Belt_Array.map(exs, (function (ex) {
-                                return Belt_SetString.remove(Belt_SetString.fromArray(ex.aggregateNames), ExtensionMapping$ReventlessSpec.NoAggregate.name);
-                              }));
+                  return Belt_Array.reduce(Belt_Array.map(exs, (function (ex) {
+                                    return Belt_SetString.remove(Belt_SetString.fromArray(ex.aggregateNames), ExtensionMapping$ReventlessSpec.NoAggregate.name);
+                                  })), Belt_SetString.empty, Belt_SetString.union);
                 };
                 var extensionPointAggregateNames = collectAggregateNames(extensionPointsOutputs);
                 var serviceNameToEx = function (exs, getServiceNames) {
@@ -426,17 +434,8 @@ function Make(EventCollectorAdapter) {
                               }));
                 };
                 var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorAdapter);
-                var eventCollector = Curry.app(EventCollector.make, [
-                      ComponentType$Reventless.name(name, /* Plugin */2),
-                      Belt_SetString.toArray(Belt_Array.reduce(Belt_Array.concat(extensionPointAggregateNames, extensionAggregateNames), Belt_SetString.empty, Belt_SetString.union)),
-                      /* array */[PluginExtensionPointSpec$ReventlessSpec.name],
-                      eventsHandler,
-                      undefined,
-                      undefined,
-                      Caml_option.some(opts),
-                      resources,
-                      /* () */0
-                    ]);
+                var eventTopics = Util_Aggregate$Reventless.findEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
+                var eventCollector = Curry._7(EventCollector.make, ComponentType$Reventless.name(name, /* Plugin */2), eventTopics, eventsHandler, undefined, undefined, Caml_option.some(opts), /* () */0);
                 var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
                 match[1](Caml_array.caml_array_get(eventCollectorOutputs.resources, 0).urn);
                 var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName(/* Plugin */2), heartbeatInterval, corePluginCommandTopicId, Caml_option.some(opts), /* () */0);
@@ -447,7 +446,7 @@ function Make(EventCollectorAdapter) {
                         /* eventCollector */eventCollectorOutputs,
                         /* extensionPoints */toDict(extensionPointsOutputs),
                         /* extensions */toDict(extensionsOutputs),
-                        /* aggregates */toDict(aggregatesOutputs),
+                        /* aggregates */aggregatesOutputs,
                         /* readModels */toDict(readModelsOutputs),
                         /* tasks */toDict(tasksOutputs[0]),
                         /* resolvers */resolvers,

@@ -3,18 +3,18 @@
 
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
+var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
-var Util_Aggregate$Reventless = require("@reventless/reventless/src/util/Util_Aggregate.bs.js");
-var Util_ExtensionPoint$Reventless = require("@reventless/reventless/src/util/Util_ExtensionPoint.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.bs.js");
 var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./EventCollectorConnector_DynamoDbStream_Runtime.bs.js");
 
-function make(name, aggregateNames, extensionPointNames, policies, handleEvents, memorySize, timeout, opts, resources) {
+function make(name, eventTopics, policies, handleEvents, memorySize, timeout, opts) {
   var eventHandlerLambda = Pulumi.all(policies).apply((function (policies) {
           return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                           (function (param, param$1) {
@@ -32,19 +32,25 @@ function make(name, aggregateNames, extensionPointNames, policies, handleEvents,
                           /* () */0
                         ]), opts);
         }));
-  var match = Belt_Array.partition(Belt_Array.concat(Util_Aggregate$Reventless.eventTopics(resources, aggregateNames), Util_ExtensionPoint$Reventless.eventTopics(resources, extensionPointNames)), (function (param) {
-          return param[0] === Util_DynamoDbStream$ReventlessAws.service;
+  var match = Belt_Array.partition(Belt_Array.map(Js_dict.entries(eventTopics), (function (param) {
+              return /* tuple */[
+                      param[0],
+                      Belt_Array.getBy(param[1].resources, (function (resource) {
+                              return resource.service === Util_DynamoDbStream$ReventlessAws.service;
+                            }))
+                    ];
+            })), (function (param) {
+          return Belt_Option.isSome(param[1]);
         }));
-  var otherTopics = match[1];
+  var errorResources = match[1];
   Belt_Array.map(match[0], (function (param) {
-          var match = param[1];
-          return Util_EventSourceMapping$ReventlessAws.subscribe(25, eventHandlerLambda, name, match[0], match[1], opts, /* () */0);
+          return Util_EventSourceMapping$ReventlessAws.subscribe(25, eventHandlerLambda, name, param[0], Belt_Option.getExn(param[1]), opts, /* () */0);
         }));
-  if (otherTopics.length !== 0) {
-    var errorTopics = Belt_Array.map(otherTopics, (function (param) {
-              return "EventTopicPublisher_" + (String(param[0]) + (" " + (String(param[1][0]) + "")));
+  if (errorResources.length !== 0) {
+    var eventTopicNames = Belt_Array.map(errorResources, (function (param) {
+              return param[0];
             })).join(",");
-    return Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to " + (String(errorTopics) + "")));
+    return Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + (String(eventTopicNames) + "")));
   } else {
     return /* record */[
             /* resources : array */[],

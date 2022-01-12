@@ -117,22 +117,27 @@ module Make =
 
     let queryEngine = QueryEngineAdapter.make(resources);
 
-    let aggregates =
-      aggregates->Belt.Array.map((module Aggregate: Aggregate.T) => {
-        let {module_, readModel} =
-          readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
-        module ReadModel = (val module_);
-        Aggregate.make(
-          ~queryEngine,
-          ~eventsHandler=
-            (. id, events) =>
-              readModel->ReadModel.update(. id->Obj.magic, events->Obj.magic), // TODO : remove
-          ~opts,
-          ~resources,
-          (),
-        );
-      });
-    let aggregatesOutputs = aggregates->Component.extractMultipleOutputs;
+    let aggregatesOutputs =
+      aggregates
+      ->Belt.Array.map((module Aggregate: Aggregate.T) => {
+          let {module_, readModel} =
+            readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
+          module ReadModel = (val module_);
+          Aggregate.make(
+            ~queryEngine,
+            ~eventsHandler=
+              (. id, events) =>
+                readModel->ReadModel.update(.
+                  id->Obj.magic,
+                  events->Obj.magic,
+                ), // TODO : remove
+            ~opts,
+            ~resources,
+            (),
+          );
+        })
+      ->Component.extractMultipleOutputs
+      ->toDict;
 
     let extensionPoints =
       extensionPoints->Belt.Array.map(
@@ -148,15 +153,12 @@ module Make =
     let extensionPointsOutputs =
       extensionPoints->Component.extractMultipleOutputs;
 
-    module Set = Belt.Set.String;
-
-    let aggregateNames: array(string) =
+    let aggregateNames =
       extensionPointsOutputs
       ->Belt.Array.map(extensionPoint =>
-          extensionPoint##aggregateNames->Set.fromArray
+          extensionPoint##aggregateNames->Belt.Set.String.fromArray
         )
-      ->Belt.Array.reduce(Set.empty, Set.union)
-      ->Belt.Set.String.toArray;
+      ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union);
 
     let fakePluginDefinition: PluginSpec.pluginDefinition = {
       id: "Core@FAKE",
@@ -197,10 +199,10 @@ module Make =
     let eventCollector =
       EventCollector.make(
         ~name=componentType->ComponentType.toName,
-        ~aggregateNames,
+        ~eventTopics=
+          Util.Aggregate.findEventTopics(aggregatesOutputs, aggregateNames),
         ~eventsHandler,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
 
@@ -208,7 +210,7 @@ module Make =
       ~version,
       ~eventCollector=eventCollector->Component.extractOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
-      ~aggregates=aggregatesOutputs->toDict,
+      ~aggregates=aggregatesOutputs,
       ~readModels=readModelsOutputs->toDict,
       ~resources,
     )

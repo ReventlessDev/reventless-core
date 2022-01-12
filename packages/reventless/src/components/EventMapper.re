@@ -12,6 +12,7 @@ type outputs = {
 type eventMapper;
 type maker =
   (
+    ~allEventTopics: Js.Dict.t(EventTopic.outputs),
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~publishJsons: CommandTopic.publishJsons,
     ~memorySize: int=?,
@@ -314,6 +315,7 @@ module Make =
 
   let construct =
       (
+        ~allEventTopics,
         ~queryEngine,
         ~publishJsons,
         ~memorySize,
@@ -363,18 +365,23 @@ module Make =
         },
       );
 
+    module Set = Belt.Set.String;
+    let aggregateNames =
+      Mappings.mappings
+      ->Belt.Array.keepMap((module Mapping: Mappings.Mapping) =>
+          if (Mapping.Source.name != Counter.Source.name) {
+            Some(Mapping.Source.name);
+          } else {
+            None;
+          }
+        )
+      ->Set.fromArray;
+
     let eventCollector =
       EventCollector.make(
         ~name=Target.name->ComponentType.name(componentType),
-        ~aggregateNames=
-          Mappings.mappings->Belt.Array.keepMap(
-            (module Mapping: Mappings.Mapping) =>
-            if (Mapping.Source.name != Counter.Source.name) {
-              Some(Mapping.Source.name);
-            } else {
-              None;
-            }
-          ),
+        ~eventTopics=
+          Util.EventTopic.findEventTopics(allEventTopics, aggregateNames),
         ~eventsHandler=
           eventCollectorEventsHandler(
             publishJsons,
@@ -386,7 +393,6 @@ module Make =
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
 
@@ -400,6 +406,7 @@ module Make =
 
   let make: maker =
     (
+      ~allEventTopics,
       ~queryEngine,
       ~publishJsons,
       ~memorySize=128,
@@ -412,7 +419,13 @@ module Make =
         ~componentType=componentType->ComponentType.toString,
         ~name=Target.name,
         ~construct=
-          construct(~queryEngine, ~publishJsons, ~memorySize, ~timeout),
+          construct(
+            ~allEventTopics,
+            ~queryEngine,
+            ~publishJsons,
+            ~memorySize,
+            ~timeout,
+          ),
         ~opts,
         ~resources,
       );

@@ -2,6 +2,10 @@
 'use strict';
 
 var Curry = require("bs-platform/lib/js/curry.js");
+var Js_dict = require("bs-platform/lib/js/js_dict.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
 var Resources$Reventless = require("../adapter/Resources.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
@@ -31,7 +35,17 @@ function getPublisherResource(resources, name) {
               })(publisher)(ComponentType$Reventless.name(name, /* EventTopic */8));
 }
 
+function findEventTopics(allEventTopics, aggregateNames) {
+  return Js_dict.fromArray(Belt_Array.map(Belt_SetString.toArray(aggregateNames), (function (aggregateName) {
+                    return /* tuple */[
+                            aggregateName,
+                            Belt_Option.getExn(Js_dict.get(allEventTopics, aggregateName))
+                          ];
+                  })));
+}
+
 exports.publisher = publisher;
 exports.setPublisherResource = setPublisherResource;
 exports.getPublisherResource = getPublisherResource;
+exports.findEventTopics = findEventTopics;
 /* No side effect */
