@@ -216,6 +216,7 @@ module Make =
         ~opts,
         ~resources,
       );
+    resources->Util_EventLog.setStorageResource(storage.resources[0], name);
 
     let eventTopic =
       EventTopic.make(

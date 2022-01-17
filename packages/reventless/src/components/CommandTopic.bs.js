@@ -4,10 +4,12 @@
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
+var Util_CommandTopic$Reventless = require("../util/Util_CommandTopic.bs.js");
 
 var NotPublishedToConnector = Caml_exceptions.create("CommandTopic-Reventless.NotPublishedToConnector");
 
@@ -78,6 +80,7 @@ function Make(Spec) {
           parent: self
         };
         var connector = Curry._6(Connector.make, ComponentType$Reventless.name(name, /* CommandTopic */4), handleCommands(commandsHandler), memorySize, timeout, opts, resources);
+        Util_CommandTopic$Reventless.setConnectorResource(resources, Caml_array.caml_array_get(connector[/* resources */0], 0), name);
         self.publish = publishFn(connector);
         self.publishJsons = publishJsonsFn(connector);
         var self$1 = self;

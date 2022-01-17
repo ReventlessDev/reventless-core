@@ -18,6 +18,7 @@ var Component$Reventless = require("./Component.bs.js");
 var EventTopic$Reventless = require("./EventTopic.bs.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
+var Util_EventLog$Reventless = require("../util/Util_EventLog.bs.js");
 
 var ReplayError = Caml_exceptions.create("EventLog-Reventless.ReplayError");
 
@@ -105,6 +106,7 @@ function Make(Spec) {
               parent: self
             };
             var storage = Curry._3($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts, resources);
+            Util_EventLog$Reventless.setStorageResource(resources, Caml_array.caml_array_get(storage[/* resources */0], 0), name);
             var eventTopic = Curry._4(EventTopic.make, name, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), resources, /* () */0);
             self.append = appendFn(storage, eventTopic);
             self.replay = replayFn(storage);

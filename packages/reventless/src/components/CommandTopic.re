@@ -207,6 +207,10 @@ module Make =
         ~opts,
         ~resources,
       );
+    resources->Util_CommandTopic.setConnectorResource(
+      connector.resources[0],
+      name,
+    );
 
     self->setPublish(connector->publishFn);
     self->setPublishJsons(connector->publishJsonsFn);
