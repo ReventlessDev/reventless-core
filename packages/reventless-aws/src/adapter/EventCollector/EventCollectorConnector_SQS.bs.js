@@ -3,16 +3,15 @@
 
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
-var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
-var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.bs.js");
 var Util_SNS$ReventlessAws = require("../../util/Util_SNS.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
+var Util_Adapter$ReventlessAws = require("../../util/Util_Adapter.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.bs.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.bs.js");
@@ -50,34 +49,20 @@ function make(name, eventTopics, policies, handleEvents, memorySize, timeout, op
   eventHandlerLambda.apply((function (eventHandlerLambda) {
           return queue.onEvent(name, eventHandlerLambda, undefined, opts);
         }));
-  var match = Belt_Array.partition(Belt_Array.map(Js_dict.entries(eventTopics), (function (param) {
-              return /* tuple */[
-                      param[0],
-                      Belt_Array.getBy(param[1].resources, (function (resource) {
-                              if (resource.service === Util_DynamoDbStream$ReventlessAws.service) {
-                                return true;
-                              } else {
-                                return resource.service === Util_SNS$ReventlessAws.service;
-                              }
-                            }))
-                    ];
-            })), (function (param) {
-          return Belt_Option.isSome(param[1]);
-        }));
+  var match = Util_Adapter$ReventlessAws.partitionSupportedResources(eventTopics, /* array */[
+        Util_DynamoDbStream$ReventlessAws.service,
+        Util_SNS$ReventlessAws.service
+      ]);
   var errorResources = match[1];
-  var match$1 = Belt_Array.partition(match[0], (function (param) {
-          return Belt_Option.getExn(param[1]).service === Util_SNS$ReventlessAws.service;
-        }));
+  var match$1 = Util_Adapter$ReventlessAws.partitionResourcesByService(match[0], Util_SNS$ReventlessAws.service);
   Belt_Array.map(match$1[0], (function (param) {
-          return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], Belt_Option.getExn(param[1]), opts);
+          return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], param[1], opts);
         }));
   Belt_Array.map(match$1[1], (function (param) {
-          return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], Belt_Option.getExn(param[1]), opts, /* () */0);
+          return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], param[1], opts, /* () */0);
         }));
   if (errorResources.length !== 0) {
-    var eventTopicNames = Belt_Array.map(errorResources, (function (param) {
-              return param[0];
-            })).join(",");
+    var eventTopicNames = errorResources.join(",");
     return Js_exn.raiseError("EventCollectorConnector_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + (String(eventTopicNames) + "")));
   } else {
     return /* record */[

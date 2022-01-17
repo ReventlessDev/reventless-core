@@ -84,56 +84,41 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let (supportedResources, errorResources) =
-      eventTopics
-      ->Js.Dict.entries
-      ->Belt.Array.map(((name, eventTopic)) =>
-          (
-            name,
-            eventTopic##resources
-            ->Belt.Array.getBy(resource =>
-                resource##service == Util_DynamoDbStream.service
-                ||
-                resource##service == Util_SNS_FIFO.service
-              ),
-          )
-        )
-      ->Belt.Array.partition(((_, resource)) =>
-          resource->Belt.Option.isSome
-        );
+      eventTopics->Util.Adapter.partitionSupportedResources([|
+        Util_DynamoDbStream.service,
+        Util_SNS_FIFO.service,
+      |]);
 
     let (snsFifoResources, otherResources) =
-      supportedResources->Belt.Array.partition(((_, resource)) =>
-        resource->Belt.Option.getExn##service == Util_SNS_FIFO.service
+      supportedResources->Util.Adapter.partitionResourcesByService(
+        Util_SNS_FIFO.service,
       );
 
-    let _snsTopicSubscriptions =
-      snsFifoResources->Belt.Array.map(((sourceName, resource)) =>
+    let _snsFifoTopicSubscriptions =
+      snsFifoResources->Belt.Array.map(((sourceName, topic)) =>
         Util_SQS.subscribeToSnsTopic(
           ~queue,
           ~targetName=name,
           ~sourceName,
-          ~topic=resource->Belt.Option.getExn,
+          ~topic,
           ~opts,
         )
       );
 
     let _eventSourceMappings =
-      otherResources->Belt.Array.map(((sourceName, resource)) =>
+      otherResources->Belt.Array.map(((sourceName, source)) =>
         Util_EventSourceMapping.subscribe(
           ~lambda=eventHandlerLambda,
           ~targetName=name,
           ~sourceName,
-          ~source=resource->Belt.Option.getExn,
+          ~source,
           ~opts,
           (),
         )
       );
 
     if (errorResources->Belt.Array.length > 0) {
-      let eventTopicNames =
-        errorResources
-        ->Belt.Array.map(((eventTopicName, _)) => eventTopicName)
-        ->Js.Array2.joinWith(",");
+      let eventTopicNames = errorResources->Js.Array2.joinWith(",");
       Js.Exn.raiseError(
         __MODULE__ ++ {j| cannot connect to EventTopic(s) $eventTopicNames|j},
       );

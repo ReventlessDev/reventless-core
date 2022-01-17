@@ -2,6 +2,8 @@
 'use strict';
 
 
+var Adapter = 0;
+
 var AppSync = 0;
 
 var Cognito_Runtime = 0;
@@ -44,6 +46,7 @@ var SQS_Runtime = 0;
 
 var SqsQueuePolicy = 0;
 
+exports.Adapter = Adapter;
 exports.AppSync = AppSync;
 exports.Cognito_Runtime = Cognito_Runtime;
 exports.CognitoGroupUser = CognitoGroupUser;
