@@ -33,6 +33,7 @@ function Make(Policies) {
         self.enqueueEvent = enqueueEventFn(connector);
         var self$1 = self;
         var outputs = {
+          name: name,
           resources: connector[/* resources */0]
         };
         self$1.setOutputs(outputs);

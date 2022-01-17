@@ -6,7 +6,11 @@ type enqueueEvent =
   (. /*~delay:*/ int, /*~id:*/ string, /*~message:*/ string) =>
   Js.Promise.t(unit);
 
-type outputs = {. "resources": array(resource)};
+type outputs = {
+  .
+  "name": string,
+  "resources": array(resource),
+};
 
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
@@ -73,7 +77,9 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     "default";
 
   [@bs.obj]
-  external makeOutputs: (~resources: array(resource)) => outputs = "";
+  external makeOutputs:
+    (~name: string, ~resources: array(resource)) => outputs =
+    "";
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
     "registerOutputs";
@@ -117,7 +123,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
 
     self->setEnqueueEvent(connector->enqueueEventFn);
 
-    makeOutputs(~resources=connector.resources)->setOutputs(self, _);
+    makeOutputs(~name, ~resources=connector.resources)->setOutputs(self, _);
   };
 
   let make:
