@@ -1,8 +1,8 @@
 open PulumiAws;
 open DynamoDb.Table;
 
-type api = Pulumi.Output.t(PulumiAws.AppSync.GraphQLApi.t);
-type role = Pulumi.Output.t(PulumiAws.IAM.Role.t);
+type api = Pulumi.Output.t(AppSync.GraphQLApi.t);
+type role = Pulumi.Output.t(IAM.Role.t);
 
 let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
   (
@@ -88,6 +88,8 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
                 )
                 ->Pulumi.Input.wrap
               ),
+            ~pointInTimeRecovery=
+              Args.PointInTimeRecovery.make(~enabled=true)->Pulumi.Input.wrap,
             (),
           ),
         ~opts,

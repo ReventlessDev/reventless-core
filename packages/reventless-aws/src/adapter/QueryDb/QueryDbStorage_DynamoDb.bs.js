@@ -94,7 +94,10 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
     attributes: attributes,
     hashKey: "id",
     billingMode: "PAY_PER_REQUEST",
-    globalSecondaryIndexes: globalSecondaryIndexes
+    globalSecondaryIndexes: globalSecondaryIndexes,
+    pointInTimeRecovery: {
+      enabled: true
+    }
   };
   var tmp$1 = Belt_Option.map(sortField, (function (prim) {
           return prim;

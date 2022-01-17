@@ -19,7 +19,10 @@ function make(name, opts, param) {
         ],
         hashKey: "id",
         billingMode: "PAY_PER_REQUEST",
-        rangeKey: "sequenceNr"
+        rangeKey: "sequenceNr",
+        pointInTimeRecovery: {
+          enabled: true
+        }
       }, opts);
   return /* record */[
           /* resource */Util_DynamoDb$ReventlessAws.toResource(table),

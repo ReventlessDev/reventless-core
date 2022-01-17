@@ -86,6 +86,8 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
                 )
                 ->Pulumi.Input.wrap
               ),
+            ~pointInTimeRecovery=
+              Args.PointInTimeRecovery.make(~enabled=true)->Pulumi.Input.wrap,
             (),
           ),
         ~opts,

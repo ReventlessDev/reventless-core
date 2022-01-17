@@ -96,7 +96,10 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
     billingMode: "PAY_PER_REQUEST",
     globalSecondaryIndexes: globalSecondaryIndexes,
     streamEnabled: true,
-    streamViewType: "NEW_AND_OLD_IMAGES"
+    streamViewType: "NEW_AND_OLD_IMAGES",
+    pointInTimeRecovery: {
+      enabled: true
+    }
   };
   var tmp$1 = Belt_Option.map(sortField, (function (prim) {
           return prim;

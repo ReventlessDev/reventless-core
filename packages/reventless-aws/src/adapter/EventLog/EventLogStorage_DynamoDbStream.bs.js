@@ -21,7 +21,10 @@ function make(name, opts, param) {
         billingMode: "PAY_PER_REQUEST",
         rangeKey: "sequenceNr",
         streamEnabled: true,
-        streamViewType: "NEW_IMAGE"
+        streamViewType: "NEW_IMAGE",
+        pointInTimeRecovery: {
+          enabled: true
+        }
       }, opts);
   return /* record */[
           /* resource */Util_DynamoDbStream$ReventlessAws.toResource(table),
