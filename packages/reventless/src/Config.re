@@ -5,7 +5,7 @@ module type T = {
 
   let api: api;
   let apiRole: role;
-  let userPool: userPool;
+  let userPoolId: Pulumi.Output.t(string);
 
   let scheduler: Scheduler.t;
 };

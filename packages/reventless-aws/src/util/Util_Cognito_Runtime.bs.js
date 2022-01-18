@@ -3,25 +3,30 @@
 
 var AwsSdk = require("aws-sdk");
 
-function signUp(region, userPool, userPoolClient, userName, password) {
+function userPoolEndpoint(region, userPoolId) {
+  return "cognito-idp." + (String(region) + (".amazonaws.com/" + (String(userPoolId) + "")));
+}
+
+function signUp(region, userPoolId, userPoolClientId, userName, password) {
   return new AwsSdk.CognitoIdentityServiceProvider({
-                  endpoint: userPool.endpoint.get(),
+                  endpoint: userPoolEndpoint(region, userPoolId),
                   region: region
                 }).signUp({
-                ClientId: userPoolClient.id.get(),
+                ClientId: userPoolClientId,
                 Username: userName,
                 Password: password
               }).promise();
 }
 
-function signUpIfMissing(region, userPool, userPoolClient, userName, password) {
-  return signUp(region, userPool, userPoolClient, userName, password).then((function (result) {
+function signUpIfMissing(region, userPoolId, userPoolClientId, userName, password) {
+  return signUp(region, userPoolId, userPoolClientId, userName, password).then((function (result) {
                   return Promise.resolve((console.log("Created User", userName, result.UserSub), /* () */0));
                 })).catch((function (param) {
                 return Promise.resolve((console.log("Didn't create user:", userName), /* () */0));
               }));
 }
 
+exports.userPoolEndpoint = userPoolEndpoint;
 exports.signUp = signUp;
 exports.signUpIfMissing = signUpIfMissing;
 /* aws-sdk Not a pure module */

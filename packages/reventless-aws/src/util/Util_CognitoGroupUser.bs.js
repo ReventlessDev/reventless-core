@@ -4,10 +4,10 @@
 var Aws = require("@pulumi/aws");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 
-function addUserGroup(name, userPool) {
+function addUserGroup(name, userPoolId) {
   return new (Aws.cognito.UserGroup)("UserGroup-" + name, {
               name: name,
-              userPoolId: userPool.id
+              userPoolId: userPoolId
             }, undefined);
 }
 
