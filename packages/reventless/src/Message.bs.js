@@ -245,7 +245,7 @@ function hrtimeToString(hrtime, now) {
 
 function generateMeta(service, $staropt$star, $staropt$star$1, param) {
   var ip = $staropt$star !== undefined ? $staropt$star : "";
-  var user = $staropt$star$1 !== undefined ? $staropt$star$1 : "";
+  var user = $staropt$star$1 !== undefined ? $staropt$star$1 : "unknown";
   var msgId = Uuid.v4(/* () */0);
   return /* record */[
           /* service */service,

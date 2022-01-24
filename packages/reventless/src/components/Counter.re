@@ -327,7 +327,7 @@ module Make =
                   __MODULE__
                   ++ {j|.counterHandler: counted down $name($id) to $count|j},
                 );
-                let meta = Message.generateMeta(~service=Source.name, ());
+                let meta = Message.generateMeta(~service=Source.name, ~user="Counter", ());
                 Some(
                   [|
                     ("id", counterId->Js.Json.string),
