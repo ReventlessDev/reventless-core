@@ -58,8 +58,8 @@
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
-    "@pulumi/aws": "^4.31.0",
-    "@pulumi/pulumi": "3.6.1",
+    "@pulumi/aws": "4.37.4",
+    "@pulumi/pulumi": "3.24.1",
     "aws-sdk": "^2.556.0"
   },
   "peerDependencies": {
