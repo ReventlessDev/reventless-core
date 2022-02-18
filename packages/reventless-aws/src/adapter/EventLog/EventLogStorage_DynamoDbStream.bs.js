@@ -16,8 +16,6 @@ function make(name, opts, param) {
         }));
   var restoreDateTime = restoreConfig.get("time");
   var restoreToLatestTime = Belt_Option.isNone(restoreDateTime);
-  console.log("EventLogStorage_DynamoDbStream Table " + (String(name) + ":"));
-  console.log("  restoreSourceName=" + (String(restoreSourceName) + (", restoreDateTime=" + (String(restoreDateTime) + (", restoreToLatestTime=" + (String(restoreToLatestTime) + ""))))));
   var tmp = {
     attributes: /* array */[
       {

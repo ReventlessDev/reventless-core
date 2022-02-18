@@ -7,10 +7,6 @@ let make: Reventless.EventLog.Adapter.storageMaker =
       ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name));
     let restoreDateTime = restoreConfig->Pulumi.Config.get("time");
     let restoreToLatestTime = restoreDateTime->Belt.Option.isNone;
-    Js.log({j|EventLogStorage_DynamoDb Table $name:|j});
-    Js.log(
-      {j|  restoreSourceName=$restoreSourceName, restoreDateTime=$restoreDateTime, restoreToLatestTime=$restoreToLatestTime|j},
-    );
 
     let table =
       PulumiAws.DynamoDb.Table.(

@@ -98,8 +98,6 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
         }));
   var restoreDateTime = restoreConfig.get("time");
   var restoreToLatestTime = Belt_Option.isNone(restoreDateTime);
-  console.log("QueryDbStorage_DynamoDb Table " + (String(name) + ":"));
-  console.log("  restoreSourceName=" + (String(restoreSourceName) + (", restoreDateTime=" + (String(restoreDateTime) + (", restoreToLatestTime=" + (String(restoreToLatestTime) + ""))))));
   var tmp = {
     attributes: attributes,
     hashKey: "id",

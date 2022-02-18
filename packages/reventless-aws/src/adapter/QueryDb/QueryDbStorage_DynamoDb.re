@@ -73,10 +73,6 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
       ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name));
     let restoreDateTime = restoreConfig->Pulumi.Config.get("time");
     let restoreToLatestTime = restoreDateTime->Belt.Option.isNone;
-    Js.log({j|QueryDbStorage_DynamoDb Table $name:|j});
-    Js.log(
-      {j|  restoreSourceName=$restoreSourceName, restoreDateTime=$restoreDateTime, restoreToLatestTime=$restoreToLatestTime|j},
-    );
 
     let table =
       make(
