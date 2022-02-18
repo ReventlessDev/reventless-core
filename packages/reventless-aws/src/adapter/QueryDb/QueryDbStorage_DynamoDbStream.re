@@ -66,6 +66,18 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
       ->Belt.List.toArray
       ->Pulumi.Input.wrap;
 
+    let restoreConfig = Pulumi.Config.make(Some("restore"));
+    let restoreSourceName =
+      restoreConfig
+      ->Pulumi.Config.getObject("tables")
+      ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name));
+    let restoreDateTime = restoreConfig->Pulumi.Config.get("time");
+    let restoreToLatestTime = restoreDateTime->Belt.Option.isNone;
+    Js.log({j|QueryDbStorage_DynamoDbStream Table $name:|j});
+    Js.log(
+      {j|  restoreSourceName=$restoreSourceName, restoreDateTime=$restoreDateTime, restoreToLatestTime=$restoreToLatestTime|j},
+    );
+
     let table =
       make(
         ~name,
@@ -90,6 +102,11 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
               ),
             ~pointInTimeRecovery=
               Args.PointInTimeRecovery.make(~enabled=true)->Pulumi.Input.wrap,
+            ~restoreSourceName=?
+              restoreSourceName->Belt.Option.map(Pulumi.Input.wrap),
+            ~restoreDateTime=?
+              restoreDateTime->Belt.Option.map(Pulumi.Input.wrap),
+            ~restoreToLatestTime=restoreToLatestTime->Pulumi.Input.wrap,
             (),
           ),
         ~opts,
