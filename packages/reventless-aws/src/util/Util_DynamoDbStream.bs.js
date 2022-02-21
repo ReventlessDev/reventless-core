@@ -16,22 +16,25 @@ function toInfo(table) {
             table.streamArn
           ]), (function (param) {
           var match = param[1];
+          var tableName = param[0];
           if (match !== undefined) {
-            return Pulumi.output(match);
-          } else {
-            var tableName = param[0];
-            var __x = DynamoDb_DynamoDb$AwsSdk.updateTable({
-                  TableName: tableName,
-                  StreamSpecification: {
-                    StreamEnabled: true
-                  }
-                });
-            return __x.then((function (table) {
-                          var streamArn = table.TableDescription.LatestStreamArn;
-                          console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (": enabled DynamoDbStream for table " + (String(tableName) + (": " + (String(streamArn) + ""))))));
-                          return Promise.resolve(streamArn);
-                        }));
+            var streamArn = match;
+            if (streamArn.trim() !== "") {
+              return Pulumi.output(streamArn);
+            }
+            
           }
+          var __x = DynamoDb_DynamoDb$AwsSdk.updateTable({
+                TableName: tableName,
+                StreamSpecification: {
+                  StreamEnabled: true
+                }
+              });
+          return __x.then((function (table) {
+                        var streamArn = table.TableDescription.LatestStreamArn;
+                        console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (": enabled DynamoDbStream for table " + (String(tableName) + (": " + (String(streamArn) + ""))))));
+                        return Promise.resolve(streamArn);
+                      }));
         }));
   return Pulumi.all(/* tuple */[
                 table.hashKey,

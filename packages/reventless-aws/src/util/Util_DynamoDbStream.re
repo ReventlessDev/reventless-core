@@ -7,8 +7,9 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) => {
     ->Pulumi.Output.all2
     ->Pulumi.Output.flatMap(
         fun
-        | (_, Some(streamArn)) => streamArn->Pulumi.Output.make
-        | (tableName, None) =>
+        | (_, Some(streamArn)) when streamArn->Js.String2.trim != "" =>
+          streamArn->Pulumi.Output.make
+        | (tableName, _) =>
           AwsSdk.DynamoDb.DynamoDb.(
             updateTable(
               UpdateTableInput.make(
