@@ -55,10 +55,6 @@ module Make =
     component =
     "default";
 
-  [@bs.val]
-  external pulumiOrganization: option(string) =
-    "process.env.PULUMI_ORGANIZATION";
-
   [@bs.obj]
   external makeOutputs:
     (~resources: Pulumi.Output.t(array(resource))) => outputs =
@@ -82,7 +78,7 @@ module Make =
 
     let fullQualifiedStackName = {
       organization:
-        pulumiOrganization->Belt.Option.getWithDefault("NO_ORGANIZATION"),
+        Env.pulumiOrganization->Belt.Option.getWithDefault("NO_ORGANIZATION"),
       project: Pulumi.Pulumi.getProjectName(),
       stack: Pulumi.Pulumi.getStackName(),
     };
