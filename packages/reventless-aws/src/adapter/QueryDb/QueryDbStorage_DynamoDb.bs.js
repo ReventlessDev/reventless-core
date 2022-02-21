@@ -92,12 +92,6 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
               ]
             ]
           ]));
-  var restoreConfig = new Pulumi.Config("restore");
-  var restoreSourceName = Belt_Option.flatMap(restoreConfig.getObject("tables"), (function (tables) {
-          return Js_dict.get(tables, name);
-        }));
-  var restoreDateTime = restoreConfig.get("time");
-  var restoreToLatestTime = Belt_Option.isNone(restoreDateTime);
   var tmp = {
     attributes: attributes,
     hashKey: "id",
@@ -106,7 +100,7 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
     pointInTimeRecovery: {
       enabled: true
     },
-    restoreToLatestTime: restoreToLatestTime
+    restoreToLatestTime: Belt_Option.isNone(process.env.RESTORE_DATE_TIME)
   };
   var tmp$1 = Belt_Option.map(sortField, (function (prim) {
           return prim;
@@ -123,13 +117,15 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
   if (tmp$2 !== undefined) {
     tmp.ttl = Caml_option.valFromOption(tmp$2);
   }
-  var tmp$3 = Belt_Option.map(restoreSourceName, (function (prim) {
+  var tmp$3 = Belt_Option.map(Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
+              return Js_dict.get(tables, name);
+            })), (function (prim) {
           return prim;
         }));
   if (tmp$3 !== undefined) {
     tmp.restoreSourceName = Caml_option.valFromOption(tmp$3);
   }
-  var tmp$4 = Belt_Option.map(restoreDateTime, (function (prim) {
+  var tmp$4 = Belt_Option.map(process.env.RESTORE_DATE_TIME, (function (prim) {
           return prim;
         }));
   if (tmp$4 !== undefined) {

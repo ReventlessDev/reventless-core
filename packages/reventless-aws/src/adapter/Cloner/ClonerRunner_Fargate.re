@@ -251,7 +251,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
             "version": "2017-02-28",
             "operation": "Invoke",
             "payload": {
-                "pointInTime": \$utils.toJson(\$context.arguments.pointInTime),
+                "restoreDateTime": \$utils.toJson(\$context.arguments.restoreDateTime),
                 "meta": {
                   "ip": \$util.toJson(\$context.identity.sourceIp),
                   "user": \$util.toJson(\$context.identity.username)

@@ -1,13 +1,5 @@
 let make: Reventless.EventLog.Adapter.storageMaker =
   (~name, ~opts, ~resources as _) => {
-    let restoreConfig = Pulumi.Config.make(Some("restore"));
-    let restoreSourceName =
-      restoreConfig
-      ->Pulumi.Config.getObject("tables")
-      ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name));
-    let restoreDateTime = restoreConfig->Pulumi.Config.get("time");
-    let restoreToLatestTime = restoreDateTime->Belt.Option.isNone;
-
     let table =
       PulumiAws.DynamoDb.Table.(
         make(
@@ -29,10 +21,18 @@ let make: Reventless.EventLog.Adapter.storageMaker =
                 Args.PointInTimeRecovery.make(~enabled=true)
                 ->Pulumi.Input.wrap,
               ~restoreSourceName=?
-                restoreSourceName->Belt.Option.map(Pulumi.Input.wrap),
+                Pulumi.Config.make(Some("restore"))
+                ->Pulumi.Config.getObject("tables")
+                ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name))
+                ->Belt.Option.map(Pulumi.Input.wrap),
               ~restoreDateTime=?
-                restoreDateTime->Belt.Option.map(Pulumi.Input.wrap),
-              ~restoreToLatestTime=restoreToLatestTime->Pulumi.Input.wrap,
+                Reventless.Env.restoreDateTime->Belt.Option.map(
+                  Pulumi.Input.wrap,
+                ),
+              ~restoreToLatestTime=
+                Reventless.Env.restoreDateTime
+                ->Belt.Option.isNone
+                ->Pulumi.Input.wrap,
               (),
             ),
           ~opts,

@@ -11,8 +11,8 @@ function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, payload
       value: "" + (String(fullQualifiedStackName[/* organization */0]) + ("/" + (String(fullQualifiedStackName[/* project */1]) + ("/" + (String(fullQualifiedStackName[/* stack */2]) + "")))))
     },
     {
-      name: "POINT_IN_TIME",
-      value: payload.pointInTime
+      name: "RESTORE_DATE_TIME",
+      value: payload.restoreDateTime
     }
   ];
   return new AwsSdk.ECS(undefined).runTask({
@@ -27,7 +27,7 @@ function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, payload
                 overrides: {
                   containerOverrides: /* array */[{
                       name: "reventless-ci",
-                      command: /* array */["env"],
+                      command: /* array */["reventless-ci clone-environment"],
                       environment: environment
                     }]
                 }

@@ -127,7 +127,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                 serviceRoleArn: dataSourceRole.arn
               }, opts);
           var field = "clone";
-          var resolver = AppSync_Resolver$PulumiAws.make(field, api, Caml_option.some(dataSource.name), "Mutation", field, "{\n            \"version\": \"2017-02-28\",\n            \"operation\": \"Invoke\",\n            \"payload\": {\n                \"pointInTime\": \$utils.toJson(\$context.arguments.pointInTime),\n                \"meta\": {\n                  \"ip\": \$util.toJson(\$context.identity.sourceIp),\n                  \"user\": \$util.toJson(\$context.identity.username)\n                }\n            }\n          }\n          ", AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, opts, /* () */0);
+          var resolver = AppSync_Resolver$PulumiAws.make(field, api, Caml_option.some(dataSource.name), "Mutation", field, "{\n            \"version\": \"2017-02-28\",\n            \"operation\": \"Invoke\",\n            \"payload\": {\n                \"restoreDateTime\": \$utils.toJson(\$context.arguments.restoreDateTime),\n                \"meta\": {\n                  \"ip\": \$util.toJson(\$context.identity.sourceIp),\n                  \"user\": \$util.toJson(\$context.identity.username)\n                }\n            }\n          }\n          ", AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, opts, /* () */0);
           return /* array */[Util_AppSync$ReventlessAws.toResource(resolver)];
         }));
   return /* record */[/* resources */resources];

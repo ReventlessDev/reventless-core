@@ -5,7 +5,7 @@ let queriesSchema = PluginApi.queriesSchema;
 let mutationsSchema =
   PluginApi.mutationsSchema
   ++ {|
-	clone(pointInTime: String): String!
+	clone(restoreDateTime: String): String!
     @aws_auth(cognito_groups: ["Admin"])
 |};
 

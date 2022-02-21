@@ -20,7 +20,7 @@ let clone =
           ~name="REVENTLESS_CORE_STACK",
           ~value={j|$organization/$project/$stack|j},
         ),
-        make(~name="POINT_IN_TIME", ~value=payload##pointInTime),
+        make(~name="RESTORE_DATE_TIME", ~value=payload##restoreDateTime),
       |]
     );
 
@@ -43,7 +43,7 @@ let clone =
                   ContainerOverride.make(
                     ~name="reventless-ci",
                     ~environment,
-                    ~command=[|"env"|],
+                    ~command=[|"reventless-ci clone-environment"|],
                     (),
                   ),
                 |],
