@@ -17,6 +17,7 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) => {
                 ~_StreamSpecification=
                   UpdateTableInput.StreamSpecification.make(
                     ~_StreamEnabled=true,
+                    ~_StreamViewType=`NEW_IMAGE,
                     (),
                   ),
                 (),

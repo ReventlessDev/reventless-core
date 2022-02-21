@@ -27,7 +27,8 @@ function toInfo(table) {
           var __x = DynamoDb_DynamoDb$AwsSdk.updateTable({
                 TableName: tableName,
                 StreamSpecification: {
-                  StreamEnabled: true
+                  StreamEnabled: true,
+                  StreamViewType: "NEW_IMAGE"
                 }
               });
           return __x.then((function (table) {
