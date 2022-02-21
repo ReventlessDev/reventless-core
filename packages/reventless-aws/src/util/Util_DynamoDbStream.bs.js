@@ -4,17 +4,41 @@
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
+var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
 
 var service = "DynamoDbStream";
 
 function toInfo(table) {
+  var streamArn = Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
+            table.name,
+            table.streamArn
+          ]), (function (param) {
+          var match = param[1];
+          if (match !== undefined) {
+            return Pulumi.output(match);
+          } else {
+            var tableName = param[0];
+            var __x = DynamoDb_DynamoDb$AwsSdk.updateTable({
+                  TableName: tableName,
+                  StreamSpecification: {
+                    StreamEnabled: true
+                  }
+                });
+            return __x.then((function (table) {
+                          var streamArn = table.TableDescription.LatestStreamArn;
+                          console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (": enabled DynamoDbStream for table " + (String(tableName) + (": " + (String(streamArn) + ""))))));
+                          return Promise.resolve(streamArn);
+                        }));
+          }
+        }));
   return Pulumi.all(/* tuple */[
                 table.hashKey,
                 table.rangeKey,
-                table.streamArn
+                streamArn
               ]).apply((function (param) {
-                return param[0] + ("," + (Belt_Option.getWithDefault(param[1], "") + ("," + Belt_Option.getWithDefault(param[2], ""))));
+                return param[0] + ("," + (Belt_Option.getWithDefault(param[1], "") + ("," + param[2])));
               }));
 }
 
