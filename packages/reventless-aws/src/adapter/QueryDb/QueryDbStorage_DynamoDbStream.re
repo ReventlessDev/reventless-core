@@ -66,6 +66,11 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
       ->Belt.List.toArray
       ->Pulumi.Input.wrap;
 
+    let restoreSourceName =
+      Pulumi.Config.make(Some("restore"))
+      ->Pulumi.Config.getObject("tables")
+      ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name));
+
     let table =
       make(
         ~name,
@@ -91,18 +96,19 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
             ~pointInTimeRecovery=
               Args.PointInTimeRecovery.make(~enabled=true)->Pulumi.Input.wrap,
             ~restoreSourceName=?
-              Pulumi.Config.make(Some("restore"))
-              ->Pulumi.Config.getObject("tables")
-              ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name))
-              ->Belt.Option.map(Pulumi.Input.wrap),
+              restoreSourceName->Belt.Option.map(Pulumi.Input.wrap),
             ~restoreDateTime=?
-              Reventless.Env.restoreDateTime->Belt.Option.map(
-                Pulumi.Input.wrap,
+              restoreSourceName->Belt.Option.flatMap(_ =>
+                Reventless.Env.restoreDateTime->Belt.Option.map(
+                  Pulumi.Input.wrap,
+                )
               ),
-            ~restoreToLatestTime=
-              Reventless.Env.restoreDateTime
-              ->Belt.Option.isNone
-              ->Pulumi.Input.wrap,
+            ~restoreToLatestTime=?
+              restoreSourceName->Belt.Option.map(_ =>
+                Reventless.Env.restoreDateTime
+                ->Belt.Option.isNone
+                ->Pulumi.Input.wrap
+              ),
             (),
           ),
         ~opts,

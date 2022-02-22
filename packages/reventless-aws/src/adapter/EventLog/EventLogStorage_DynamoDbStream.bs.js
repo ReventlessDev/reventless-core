@@ -10,6 +10,9 @@ var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.
 var EventLogStorage_DynamoDb_Runtime$ReventlessAws = require("./EventLogStorage_DynamoDb_Runtime.bs.js");
 
 function make(name, opts, param) {
+  var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
+          return Js_dict.get(tables, name);
+        }));
   var tmp = {
     attributes: /* array */[
       {
@@ -28,22 +31,27 @@ function make(name, opts, param) {
     streamViewType: "NEW_IMAGE",
     pointInTimeRecovery: {
       enabled: true
-    },
-    restoreToLatestTime: Belt_Option.isNone(process.env.RESTORE_DATE_TIME)
+    }
   };
-  var tmp$1 = Belt_Option.map(Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
-              return Js_dict.get(tables, name);
-            })), (function (prim) {
+  var tmp$1 = Belt_Option.map(restoreSourceName, (function (prim) {
           return prim;
         }));
   if (tmp$1 !== undefined) {
     tmp.restoreSourceName = Caml_option.valFromOption(tmp$1);
   }
-  var tmp$2 = Belt_Option.map(process.env.RESTORE_DATE_TIME, (function (prim) {
-          return prim;
+  var tmp$2 = Belt_Option.flatMap(restoreSourceName, (function (param) {
+          return Belt_Option.map(process.env.RESTORE_DATE_TIME, (function (prim) {
+                        return prim;
+                      }));
         }));
   if (tmp$2 !== undefined) {
     tmp.restoreDateTime = Caml_option.valFromOption(tmp$2);
+  }
+  var tmp$3 = Belt_Option.map(restoreSourceName, (function (param) {
+          return Belt_Option.isNone(process.env.RESTORE_DATE_TIME);
+        }));
+  if (tmp$3 !== undefined) {
+    tmp.restoreToLatestTime = Caml_option.valFromOption(tmp$3);
   }
   var table = new (Aws.dynamodb.Table)(name, tmp, opts);
   return /* record */[

@@ -92,6 +92,9 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
               ]
             ]
           ]));
+  var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
+          return Js_dict.get(tables, name);
+        }));
   var tmp = {
     attributes: attributes,
     hashKey: "id",
@@ -101,8 +104,7 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
     streamViewType: "NEW_AND_OLD_IMAGES",
     pointInTimeRecovery: {
       enabled: true
-    },
-    restoreToLatestTime: Belt_Option.isNone(process.env.RESTORE_DATE_TIME)
+    }
   };
   var tmp$1 = Belt_Option.map(sortField, (function (prim) {
           return prim;
@@ -119,19 +121,25 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
   if (tmp$2 !== undefined) {
     tmp.ttl = Caml_option.valFromOption(tmp$2);
   }
-  var tmp$3 = Belt_Option.map(Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
-              return Js_dict.get(tables, name);
-            })), (function (prim) {
+  var tmp$3 = Belt_Option.map(restoreSourceName, (function (prim) {
           return prim;
         }));
   if (tmp$3 !== undefined) {
     tmp.restoreSourceName = Caml_option.valFromOption(tmp$3);
   }
-  var tmp$4 = Belt_Option.map(process.env.RESTORE_DATE_TIME, (function (prim) {
-          return prim;
+  var tmp$4 = Belt_Option.flatMap(restoreSourceName, (function (param) {
+          return Belt_Option.map(process.env.RESTORE_DATE_TIME, (function (prim) {
+                        return prim;
+                      }));
         }));
   if (tmp$4 !== undefined) {
     tmp.restoreDateTime = Caml_option.valFromOption(tmp$4);
+  }
+  var tmp$5 = Belt_Option.map(restoreSourceName, (function (param) {
+          return Belt_Option.isNone(process.env.RESTORE_DATE_TIME);
+        }));
+  if (tmp$5 !== undefined) {
+    tmp.restoreToLatestTime = Caml_option.valFromOption(tmp$5);
   }
   var table = new (Aws.dynamodb.Table)(name, tmp, opts);
   IAM$PulumiAws.RolePolicy.make(name, "dynamodb:*", /* array */[table.arn.apply((function (arn) {
