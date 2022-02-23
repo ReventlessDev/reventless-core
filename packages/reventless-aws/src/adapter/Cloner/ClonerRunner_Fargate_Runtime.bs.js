@@ -27,7 +27,10 @@ function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, payload
                 overrides: {
                   containerOverrides: /* array */[{
                       name: "reventless-ci",
-                      command: /* array */["reventless-ci clone-environment"],
+                      command: /* array */[
+                        "reventless-ci",
+                        "clone-environment"
+                      ],
                       environment: environment
                     }]
                 }

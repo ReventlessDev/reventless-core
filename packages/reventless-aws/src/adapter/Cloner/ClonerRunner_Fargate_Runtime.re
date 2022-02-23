@@ -43,7 +43,7 @@ let clone =
                   ContainerOverride.make(
                     ~name="reventless-ci",
                     ~environment,
-                    ~command=[|"reventless-ci clone-environment"|],
+                    ~command=[|"reventless-ci", "clone-environment"|],
                     (),
                   ),
                 |],
