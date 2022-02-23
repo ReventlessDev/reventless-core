@@ -21,3 +21,39 @@ let arn2tableName = arn =>
   | [|_, _, _service, _region, _account, tableName|] => tableName
   | _ => Js.Exn.raiseError("Invalid ARN: " ++ arn)
   };
+
+// Workaround when restore enabled: turn on ttl & pointInTimeRecovery again
+let updateTable = (table, ttl) => {
+  let _ =
+    table##name
+    ->Pulumi.Output.flatMap(tableName =>
+        AwsSdk.DynamoDb_DynamoDb.(
+          ttl
+          ->Belt.Option.map(_ =>
+              updateTimeToLive(
+                UpdateTimeToLiveInput.make(
+                  ~_TableName=tableName,
+                  ~_TimeToLiveSpecification=
+                    UpdateTimeToLiveInput.TimeToLiveSpecification.make(
+                      ~_Enabled=true,
+                      ~_AttributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
+                    ),
+                ),
+              )
+            )
+          ->Belt.Option.getExn,
+          updateContinuousBackups(
+            UpdateContinuousBackupsInput.make(
+              ~_TableName=tableName,
+              ~_PointInTimeRecoverySpecification=
+                UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
+                  ~_PointInTimeRecoveryEnabled=true,
+                ),
+            ),
+          ),
+        )
+        ->Js.Promise.all2
+        ->Pulumi.Output.fromPromise
+      );
+  table;
+};

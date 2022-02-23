@@ -3,7 +3,10 @@
 
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
+var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
+var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.bs.js");
 
 var service = "DynamoDb";
 
@@ -35,8 +38,32 @@ function arn2tableName(arn) {
   }
 }
 
+function updateTable(table, ttl) {
+  Output$Pulumi.flatMap(table.name, (function (tableName) {
+          return Promise.all(/* tuple */[
+                      Belt_Option.getExn(Belt_Option.map(ttl, (function (param) {
+                                  return DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
+                                              TableName: tableName,
+                                              TimeToLiveSpecification: {
+                                                Enabled: true,
+                                                AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+                                              }
+                                            });
+                                }))),
+                      DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
+                            TableName: tableName,
+                            PointInTimeRecoverySpecification: {
+                              PointInTimeRecoveryEnabled: true
+                            }
+                          })
+                    ]);
+        }));
+  return table;
+}
+
 exports.service = service;
 exports.toInfo = toInfo;
 exports.toResource = toResource;
 exports.arn2tableName = arn2tableName;
+exports.updateTable = updateTable;
 /* @pulumi/pulumi Not a pure module */

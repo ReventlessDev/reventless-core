@@ -142,20 +142,22 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
     tmp.restoreToLatestTime = Caml_option.valFromOption(tmp$5);
   }
   var table = new (Aws.dynamodb.Table)(name, tmp, opts);
-  IAM$PulumiAws.RolePolicy.make(name, "dynamodb:*", /* array */[table.arn.apply((function (arn) {
+  var match = Belt_Option.isSome(restoreSourceName);
+  var table$1 = match ? Util_DynamoDbStream$ReventlessAws.updateTable(table, ttl) : table;
+  IAM$PulumiAws.RolePolicy.make(name, "dynamodb:*", /* array */[table$1.arn.apply((function (arn) {
                 return arn + "*";
               }))], Output$Pulumi.flatMap(apiRole, (function (role) {
               return role.id;
             })), Caml_option.some(opts), /* () */0);
-  var dataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), /* () */0);
+  var dataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table$1, apiRole, Caml_option.some(opts), /* () */0);
   return /* record */[
-          /* resource */Util_DynamoDbStream$ReventlessAws.toResource(table),
+          /* resource */Util_DynamoDbStream$ReventlessAws.toResource(table$1),
           /* dataSourceName */dataSource.name,
-          /* load */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(table),
-          /* save */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table),
-          /* saveBatch */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(undefined, table),
-          /* count */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(table),
-          /* delete */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table)
+          /* load */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(table$1),
+          /* save */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table$1),
+          /* saveBatch */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(undefined, table$1),
+          /* count */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(table$1),
+          /* delete */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table$1)
         ];
 }
 

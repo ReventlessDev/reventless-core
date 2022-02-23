@@ -44,6 +44,10 @@ let make: Reventless.EventLog.Adapter.storageMaker =
           (),
         )
       );
+    let table =
+      restoreSourceName->Belt.Option.isSome
+        // Workaround when restore enabled
+        ? table->Util.DynamoDbStream.updateTable(None) : table;
 
     {
       resource: table->Util_DynamoDbStream.toResource,

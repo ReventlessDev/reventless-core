@@ -114,6 +114,11 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
         ~opts,
         (),
       );
+    let table =
+      restoreSourceName->Belt.Option.isSome
+        // Workaround when restore enabled
+        ? table->Util.DynamoDbStream.updateTable(ttl) : table;
+
     // API resources
     let _dataSourceRolePolicy =
       IAM.RolePolicy.make(

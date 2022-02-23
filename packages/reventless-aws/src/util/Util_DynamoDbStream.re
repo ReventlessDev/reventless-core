@@ -1,50 +1,14 @@
 let service = "DynamoDbStream";
 
 let toInfo = (table: PulumiAws.DynamoDb.Table.t) => {
-  // NOTE: workaround if stream is not enabled after creation of table (e.g. after restore)
-  let streamArn =
-    (table##name, table##streamArn)
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.flatMap(
-        fun
-        | (_, Some(streamArn)) when streamArn->Js.String2.trim != "" =>
-          streamArn->Pulumi.Output.make
-        | (tableName, _) =>
-          AwsSdk.DynamoDb.DynamoDb.(
-            updateTable(
-              UpdateTableInput.make(
-                ~_TableName=tableName,
-                ~_StreamSpecification=
-                  UpdateTableInput.StreamSpecification.make(
-                    ~_StreamEnabled=true,
-                    ~_StreamViewType=`NEW_IMAGE,
-                    (),
-                  ),
-                (),
-              ),
-            )
-            ->Js.Promise.then_(
-                table => {
-                  let streamArn = table##_TableDescription##_LatestStreamArn;
-                  Js.log(
-                    {j|$__MODULE__: enabled DynamoDbStream for table $tableName: $streamArn|j},
-                  );
-                  streamArn->Js.Promise.resolve;
-                },
-                _,
-              )
-          )
-          ->Pulumi.Output.fromPromise,
-      );
-
-  (table##hashKey, table##rangeKey, streamArn)
+  (table##hashKey, table##rangeKey, table##streamArn)
   ->Pulumi.Output.all3
   ->Pulumi.Output.apply(((hashKey, rangeKey, streamArn)) =>
       hashKey
       ++ ","
       ++ rangeKey->Belt.Option.getWithDefault("")
       ++ ","
-      ++ streamArn
+      ++ streamArn->Belt.Option.getExn
     );
 };
 
@@ -79,4 +43,58 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
     ~urn=streamArn,
     ~info=table##name->Pulumi.Output.apply(_ => ""),
   );
+};
+
+// Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again
+let updateTable = (table, ttl) => {
+  let streamArn =
+    (table##name, table##streamArn)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.flatMap(((tableName, _)) =>
+        AwsSdk.DynamoDb_DynamoDb.(
+          updateTable(
+            UpdateTableInput.make(
+              ~_TableName=tableName,
+              ~_StreamSpecification=
+                UpdateTableInput.StreamSpecification.make(
+                  ~_StreamEnabled=true,
+                  ~_StreamViewType=`NEW_IMAGE,
+                  (),
+                ),
+              (),
+            ),
+          ),
+          ttl
+          ->Belt.Option.map(_ =>
+              updateTimeToLive(
+                UpdateTimeToLiveInput.make(
+                  ~_TableName=tableName,
+                  ~_TimeToLiveSpecification=
+                    UpdateTimeToLiveInput.TimeToLiveSpecification.make(
+                      ~_Enabled=true,
+                      ~_AttributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
+                    ),
+                ),
+              )
+            )
+          ->Belt.Option.getExn,
+          updateContinuousBackups(
+            UpdateContinuousBackupsInput.make(
+              ~_TableName=tableName,
+              ~_PointInTimeRecoverySpecification=
+                UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
+                  ~_PointInTimeRecoveryEnabled=true,
+                ),
+            ),
+          ),
+        )
+        ->Js.Promise.all3
+        ->Js.Promise.then_(
+            ((table, _, _)) =>
+              table##_TableDescription##_LatestStreamArn->Js.Promise.resolve,
+            _,
+          )
+        ->Pulumi.Output.fromPromise
+      );
+  table->Js.Obj.assign({"streamArn": Some(streamArn)});
 };

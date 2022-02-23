@@ -4,45 +4,21 @@
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
+var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.bs.js");
 
 var service = "DynamoDbStream";
 
 function toInfo(table) {
-  var streamArn = Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
-            table.name,
-            table.streamArn
-          ]), (function (param) {
-          var match = param[1];
-          var tableName = param[0];
-          if (match !== undefined) {
-            var streamArn = match;
-            if (streamArn.trim() !== "") {
-              return Pulumi.output(streamArn);
-            }
-            
-          }
-          var __x = DynamoDb_DynamoDb$AwsSdk.updateTable({
-                TableName: tableName,
-                StreamSpecification: {
-                  StreamEnabled: true,
-                  StreamViewType: "NEW_IMAGE"
-                }
-              });
-          return __x.then((function (table) {
-                        var streamArn = table.TableDescription.LatestStreamArn;
-                        console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (": enabled DynamoDbStream for table " + (String(tableName) + (": " + (String(streamArn) + ""))))));
-                        return Promise.resolve(streamArn);
-                      }));
-        }));
   return Pulumi.all(/* tuple */[
                 table.hashKey,
                 table.rangeKey,
-                streamArn
+                table.streamArn
               ]).apply((function (param) {
-                return param[0] + ("," + (Belt_Option.getWithDefault(param[1], "") + ("," + param[2])));
+                return param[0] + ("," + (Belt_Option.getWithDefault(param[1], "") + ("," + Belt_Option.getExn(param[2]))));
               }));
 }
 
@@ -83,9 +59,49 @@ function toStreamResource(table) {
         };
 }
 
+function updateTable(table, ttl) {
+  var streamArn = Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
+            table.name,
+            table.streamArn
+          ]), (function (param) {
+          var tableName = param[0];
+          var __x = Promise.all(/* tuple */[
+                DynamoDb_DynamoDb$AwsSdk.updateTable({
+                      TableName: tableName,
+                      StreamSpecification: {
+                        StreamEnabled: true,
+                        StreamViewType: "NEW_IMAGE"
+                      }
+                    }),
+                Belt_Option.getExn(Belt_Option.map(ttl, (function (param) {
+                            return DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
+                                        TableName: tableName,
+                                        TimeToLiveSpecification: {
+                                          Enabled: true,
+                                          AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+                                        }
+                                      });
+                          }))),
+                DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
+                      TableName: tableName,
+                      PointInTimeRecoverySpecification: {
+                        PointInTimeRecoveryEnabled: true
+                      }
+                    })
+              ]);
+          return __x.then((function (param) {
+                        return Promise.resolve(param[0].TableDescription.LatestStreamArn);
+                      }));
+        }));
+  return Object.assign(table, {
+              streamArn: Caml_option.some(streamArn)
+            });
+}
+
 exports.service = service;
 exports.toInfo = toInfo;
 exports.streamArnFromDynamoDbTableResource = streamArnFromDynamoDbTableResource;
 exports.toResource = toResource;
 exports.toStreamResource = toStreamResource;
+exports.updateTable = updateTable;
 /* @pulumi/pulumi Not a pure module */

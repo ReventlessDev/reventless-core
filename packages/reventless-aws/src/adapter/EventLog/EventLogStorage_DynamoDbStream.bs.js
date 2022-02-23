@@ -54,10 +54,12 @@ function make(name, opts, param) {
     tmp.restoreToLatestTime = Caml_option.valFromOption(tmp$3);
   }
   var table = new (Aws.dynamodb.Table)(name, tmp, opts);
+  var match = Belt_Option.isSome(restoreSourceName);
+  var table$1 = match ? Util_DynamoDbStream$ReventlessAws.updateTable(table, undefined) : table;
   return /* record */[
-          /* resource */Util_DynamoDbStream$ReventlessAws.toResource(table),
-          /* append */EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table),
-          /* replay */EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(table)
+          /* resource */Util_DynamoDbStream$ReventlessAws.toResource(table$1),
+          /* append */EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table$1),
+          /* replay */EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(table$1)
         ];
 }
 
