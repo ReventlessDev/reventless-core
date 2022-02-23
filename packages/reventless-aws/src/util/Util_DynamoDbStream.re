@@ -77,7 +77,7 @@ let updateTable = (table, ttl) => {
                 ),
               )
             )
-          ->Belt.Option.getExn,
+          ->Belt.Option.getWithDefault({}->Js.Promise.resolve),
           updateContinuousBackups(
             UpdateContinuousBackupsInput.make(
               ~_TableName=tableName,
