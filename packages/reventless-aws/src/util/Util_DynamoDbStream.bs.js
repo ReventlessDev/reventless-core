@@ -73,44 +73,49 @@ function updateTable(table, ttl) {
             table.streamArn
           ]), (function (param) {
           var tableName = param[0];
-          if (!class_tables[0]) {
-            var $$class = CamlinternalOO.create_table(0);
-            var env = CamlinternalOO.new_variable($$class, "");
-            var env_init = function (env$1) {
-              var self = CamlinternalOO.create_object_opt(0, $$class);
-              self[env] = env$1;
-              return self;
-            };
-            CamlinternalOO.init_class($$class);
-            class_tables[0] = env_init;
+          var match = Belt_Option.isNone(param[1]);
+          if (match) {
+            if (!class_tables[0]) {
+              var $$class = CamlinternalOO.create_table(0);
+              var env = CamlinternalOO.new_variable($$class, "");
+              var env_init = function (env$1) {
+                var self = CamlinternalOO.create_object_opt(0, $$class);
+                self[env] = env$1;
+                return self;
+              };
+              CamlinternalOO.init_class($$class);
+              class_tables[0] = env_init;
+            }
+            var __x = Promise.all(/* tuple */[
+                  DynamoDb_DynamoDb$AwsSdk.updateTable({
+                        TableName: tableName,
+                        StreamSpecification: {
+                          StreamEnabled: true,
+                          StreamViewType: "NEW_IMAGE"
+                        }
+                      }),
+                  Belt_Option.getWithDefault(Belt_Option.map(ttl, (function (param) {
+                              return DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
+                                          TableName: tableName,
+                                          TimeToLiveSpecification: {
+                                            Enabled: true,
+                                            AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+                                          }
+                                        });
+                            })), Promise.resolve(Curry._1(class_tables[0], 0))),
+                  DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
+                        TableName: tableName,
+                        PointInTimeRecoverySpecification: {
+                          PointInTimeRecoveryEnabled: true
+                        }
+                      })
+                ]);
+            return __x.then((function (param) {
+                          return Promise.resolve(param[0].TableDescription.LatestStreamArn);
+                        }));
+          } else {
+            return Pulumi.output("");
           }
-          var __x = Promise.all(/* tuple */[
-                DynamoDb_DynamoDb$AwsSdk.updateTable({
-                      TableName: tableName,
-                      StreamSpecification: {
-                        StreamEnabled: true,
-                        StreamViewType: "NEW_IMAGE"
-                      }
-                    }),
-                Belt_Option.getWithDefault(Belt_Option.map(ttl, (function (param) {
-                            return DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
-                                        TableName: tableName,
-                                        TimeToLiveSpecification: {
-                                          Enabled: true,
-                                          AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
-                                        }
-                                      });
-                          })), Promise.resolve(Curry._1(class_tables[0], 0))),
-                DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
-                      TableName: tableName,
-                      PointInTimeRecoverySpecification: {
-                        PointInTimeRecoveryEnabled: true
-                      }
-                    })
-              ]);
-          return __x.then((function (param) {
-                        return Promise.resolve(param[0].TableDescription.LatestStreamArn);
-                      }));
         }));
   return Object.assign(table, {
               streamArn: Caml_option.some(streamArn)
