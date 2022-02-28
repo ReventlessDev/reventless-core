@@ -63,7 +63,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
           var containerDefinitions = /* array */[{
               name: "reventless-ci",
               image: new Pulumi.Config("ci").require("image"),
-              memory: 512,
+              cpu: 512,
+              memory: 2048,
               repositoryCredentials: {
                 credentialsParameter: reventlessCiSecretUrn
               },
@@ -81,8 +82,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
           var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {
                 family: name,
                 containerDefinitions: Belt_Option.getExn(Caml_option.undefined_to_opt(JSON.stringify(containerDefinitions))),
-                cpu: "256",
-                memory: "512",
+                cpu: "512",
+                memory: "2048",
                 networkMode: "awsvpc",
                 requiresCompatibilities: /* array */["FARGATE"],
                 executionRoleArn: taskExecutionRole.arn

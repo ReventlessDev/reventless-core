@@ -121,7 +121,8 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                 ~image=
                   Pulumi.Config.make(Some("ci"))
                   ->Pulumi.Config.require("image"),
-                ~memory=512,
+                ~cpu=512,
+                ~memory=2048,
                 ~repositoryCredentials=
                   RepositoryCredentials.make(
                     ~credentialsParameter=reventlessCiSecretUrn,
@@ -159,8 +160,8 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                       ->Pulumi.Input.wrap,
                     ~executionRoleArn=
                       taskExecutionRole##arn->Pulumi.Output.asInput,
-                    ~memory="512"->Pulumi.Input.wrap,
-                    ~cpu="256"->Pulumi.Input.wrap,
+                    ~memory="2048"->Pulumi.Input.wrap,
+                    ~cpu="512"->Pulumi.Input.wrap,
                     ~requiresCompatibilities=[|"FARGATE"|],
                     ~networkMode=`awsvpc,
                     (),
