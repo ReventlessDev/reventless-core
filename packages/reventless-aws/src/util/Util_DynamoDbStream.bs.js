@@ -3,13 +3,17 @@
 
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
+var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
+var Aws = require("@pulumi/aws");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var CamlinternalOO = require("bs-platform/lib/js/camlinternalOO.js");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
+var Util_DynamoDb$ReventlessAws = require("./Util_DynamoDb.bs.js");
+var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.bs.js");
 
 var service = "DynamoDbStream";
@@ -122,10 +126,28 @@ function updateTable(table, ttl) {
             });
 }
 
+function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name) {
+  var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
+          return Js_dict.get(tables, name);
+        }));
+  var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies(/* () */0);
+  var table = new (Aws.dynamodb.Table)(name, Curry._1(Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, Caml_option.some(ttl), rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, true, /* NEW_IMAGE */154188476), /* () */0), Object.assign(opts, {
+            dependsOn: match[0]
+          }));
+  match[1](table);
+  var match$1 = Belt_Option.isSome(restoreSourceName);
+  if (match$1) {
+    return updateTable(table, ttl);
+  } else {
+    return table;
+  }
+}
+
 exports.service = service;
 exports.toInfo = toInfo;
 exports.streamArnFromDynamoDbTableResource = streamArnFromDynamoDbTableResource;
 exports.toResource = toResource;
 exports.toStreamResource = toStreamResource;
 exports.updateTable = updateTable;
-/* @pulumi/pulumi Not a pure module */
+exports.makeTable = makeTable;
+/* @pulumi/aws Not a pure module */

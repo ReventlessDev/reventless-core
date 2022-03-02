@@ -57,3 +57,82 @@ let updateTable = (table, ttl) => {
       );
   table;
 };
+
+let makeTableArgs =
+    (
+      ~attributes,
+      ~globalSecondaryIndexes=?,
+      ~ttl=?,
+      ~rangeKey=?,
+      ~restoreSourceName=?,
+    ) =>
+  PulumiAws.DynamoDb.Table.Args.(
+    make(
+      ~attributes=attributes->Pulumi.Input.wrap,
+      ~hashKey="id"->Pulumi.Input.wrap,
+      ~rangeKey=?rangeKey->Belt.Option.map(Pulumi.Input.wrap),
+      ~billingMode=`PAY_PER_REQUEST,
+      ~globalSecondaryIndexes?,
+      ~ttl=?
+        ttl->Belt.Option.map(_ =>
+          TableTtl.make(
+            ~attributeName=
+              QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName->Pulumi.Input.wrap,
+            ~enabled=true->Pulumi.Input.wrap,
+            (),
+          )
+          ->Pulumi.Input.wrap
+        ),
+      ~pointInTimeRecovery=
+        PointInTimeRecovery.make(~enabled=true)->Pulumi.Input.wrap,
+      ~restoreSourceName=?
+        restoreSourceName->Belt.Option.map(Pulumi.Input.wrap),
+      ~restoreDateTime=?
+        restoreSourceName->Belt.Option.flatMap(_ =>
+          Reventless.Env.restoreDateTime->Belt.Option.map(Pulumi.Input.wrap)
+        ),
+      ~restoreToLatestTime=?
+        restoreSourceName->Belt.Option.map(_ =>
+          Reventless.Env.restoreDateTime->Belt.Option.isNone->Pulumi.Input.wrap
+        ),
+    )
+  );
+
+let makeTable =
+    (~attributes, ~globalSecondaryIndexes=?, ~ttl=?, ~rangeKey=?, ~opts, name) => {
+  let restoreSourceName =
+    Pulumi.Config.make(Some("restore"))
+    ->Pulumi.Config.getObject("tables")
+    ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name));
+
+  let (dependencies, registerResource) =
+    Util_DynamoDb_TableManager.getDependencies();
+
+  let table =
+    PulumiAws.DynamoDb.Table.(
+      make(
+        ~name,
+        ~args=
+          makeTableArgs(
+            ~attributes,
+            ~globalSecondaryIndexes?,
+            ~ttl,
+            ~rangeKey?,
+            ~restoreSourceName?,
+            (),
+          ),
+        ~opts=
+          opts->Js.Obj.assign({
+            "dependsOn": dependencies->Pulumi.Output.asInput,
+          }),
+        (),
+      )
+    );
+  ();
+
+  registerResource(. table->Pulumi.Resource.makeFromJs);
+
+  restoreSourceName->Belt.Option.isSome
+    // Workaround when restore enabled
+    ? table->updateTable(ttl) : table;
+};

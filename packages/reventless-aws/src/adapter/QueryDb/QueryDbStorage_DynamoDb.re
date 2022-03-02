@@ -63,59 +63,17 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
         ->Belt.List.flatten,
       ]
       ->Belt.List.flatten
-      ->Belt.List.toArray
-      ->Pulumi.Input.wrap;
-
-    let restoreSourceName =
-      Pulumi.Config.make(Some("restore"))
-      ->Pulumi.Config.getObject("tables")
-      ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name));
+      ->Belt.List.toArray;
 
     let table =
-      make(
-        ~name,
-        ~args=
-          Args.make(
-            ~attributes,
-            ~hashKey="id"->Pulumi.Input.wrap,
-            ~rangeKey=?sortField->Belt.Option.map(Pulumi.Input.wrap),
-            ~billingMode=`PAY_PER_REQUEST,
-            ~globalSecondaryIndexes,
-            ~ttl=?
-              ttl->Belt.Option.map(_ =>
-                Args.TableTtl.make(
-                  ~attributeName=
-                    QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName->Pulumi.Input.wrap,
-                  ~enabled=true->Pulumi.Input.wrap,
-                  (),
-                )
-                ->Pulumi.Input.wrap
-              ),
-            ~pointInTimeRecovery=
-              Args.PointInTimeRecovery.make(~enabled=true)->Pulumi.Input.wrap,
-            ~restoreSourceName=?
-              restoreSourceName->Belt.Option.map(Pulumi.Input.wrap),
-            ~restoreDateTime=?
-              restoreSourceName->Belt.Option.flatMap(_ =>
-                Reventless.Env.restoreDateTime->Belt.Option.map(
-                  Pulumi.Input.wrap,
-                )
-              ),
-            ~restoreToLatestTime=?
-              restoreSourceName->Belt.Option.map(_ =>
-                Reventless.Env.restoreDateTime
-                ->Belt.Option.isNone
-                ->Pulumi.Input.wrap
-              ),
-            (),
-          ),
+      Util_DynamoDbStream.makeTable(
+        name,
+        ~attributes,
+        ~rangeKey=?sortField,
+        ~globalSecondaryIndexes,
+        ~ttl,
         ~opts,
-        (),
       );
-    let table =
-      restoreSourceName->Belt.Option.isSome
-        // Workaround when restore enabled
-        ? table->Util.DynamoDb.updateTable(ttl) : table;
 
     // API resources
     let _dataSourceRolePolicy =

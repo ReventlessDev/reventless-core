@@ -3,11 +3,15 @@
 
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
+var Js_dict = require("bs-platform/lib/js/js_dict.js");
+var Aws = require("@pulumi/aws");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var CamlinternalOO = require("bs-platform/lib/js/camlinternalOO.js");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
+var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.bs.js");
 
 var service = "DynamoDb";
@@ -80,9 +84,133 @@ function updateTable(table, ttl) {
   return table;
 }
 
+function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName) {
+  var partial_arg = Belt_Option.map(rangeKey, (function (prim) {
+          return prim;
+        }));
+  var func = function (param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8, param$9, param$10, param$11, param$12, param$13) {
+    var tmp = {
+      attributes: attributes,
+      hashKey: "id",
+      billingMode: "PAY_PER_REQUEST"
+    };
+    if (partial_arg !== undefined) {
+      tmp.rangeKey = Caml_option.valFromOption(partial_arg);
+    }
+    if (param !== undefined) {
+      tmp.name = Caml_option.valFromOption(param);
+    }
+    if (param$1 !== undefined) {
+      tmp.globalSecondaryIndexes = Caml_option.valFromOption(param$1);
+    }
+    if (param$2 !== undefined) {
+      tmp.localSecondaryIndexes = Caml_option.valFromOption(param$2);
+    }
+    if (param$3 !== undefined) {
+      tmp.readCapacity = Caml_option.valFromOption(param$3);
+    }
+    if (param$4 !== undefined) {
+      tmp.writeCapacity = Caml_option.valFromOption(param$4);
+    }
+    if (param$5 !== undefined) {
+      tmp.tags = Caml_option.valFromOption(param$5);
+    }
+    if (param$6 !== undefined) {
+      tmp.streamEnabled = Caml_option.valFromOption(param$6);
+    }
+    if (param$7 !== undefined) {
+      tmp.streamViewType = (function () {
+            switch (Caml_option.valFromOption(param$7)) {
+              case -1016321321 :
+                  return "KEYS_ONLY";
+              case 154188476 :
+                  return "NEW_IMAGE";
+              case -697601469 :
+                  return "OLD_IMAGE";
+              case 546078935 :
+                  return "NEW_AND_OLD_IMAGES";
+              
+            }
+          })();
+    }
+    if (param$8 !== undefined) {
+      tmp.ttl = Caml_option.valFromOption(param$8);
+    }
+    if (param$9 !== undefined) {
+      tmp.pointInTimeRecovery = Caml_option.valFromOption(param$9);
+    }
+    if (param$10 !== undefined) {
+      tmp.restoreSourceName = Caml_option.valFromOption(param$10);
+    }
+    if (param$11 !== undefined) {
+      tmp.restoreDateTime = Caml_option.valFromOption(param$11);
+    }
+    if (param$12 !== undefined) {
+      tmp.restoreToLatestTime = Caml_option.valFromOption(param$12);
+    }
+    return tmp;
+  };
+  var arg = Belt_Option.map(ttl, (function (param) {
+          return {
+                  attributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName,
+                  enabled: true
+                };
+        }));
+  var arg$1 = {
+    enabled: true
+  };
+  var arg$2 = Belt_Option.map(restoreSourceName, (function (prim) {
+          return prim;
+        }));
+  var arg$3 = Belt_Option.flatMap(restoreSourceName, (function (param) {
+          return Belt_Option.map(process.env.RESTORE_DATE_TIME, (function (prim) {
+                        return prim;
+                      }));
+        }));
+  var arg$4 = Belt_Option.map(restoreSourceName, (function (param) {
+          return Belt_Option.isNone(process.env.RESTORE_DATE_TIME);
+        }));
+  return (function (param, param$1, param$2, param$3, param$4, param$5, param$6) {
+      return Curry.app(func, [
+                  param,
+                  globalSecondaryIndexes,
+                  param$1,
+                  param$2,
+                  param$3,
+                  param$4,
+                  param$5,
+                  param$6,
+                  arg,
+                  arg$1,
+                  arg$2,
+                  arg$3,
+                  arg$4
+                ]);
+    });
+}
+
+function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name) {
+  var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
+          return Js_dict.get(tables, name);
+        }));
+  var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies(/* () */0);
+  var table = new (Aws.dynamodb.Table)(name, Curry._1(makeTableArgs(attributes, globalSecondaryIndexes, Caml_option.some(ttl), rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, undefined, undefined), /* () */0), Object.assign(opts, {
+            dependsOn: match[0]
+          }));
+  match[1](table);
+  var match$1 = Belt_Option.isSome(restoreSourceName);
+  if (match$1) {
+    return updateTable(table, ttl);
+  } else {
+    return table;
+  }
+}
+
 exports.service = service;
 exports.toInfo = toInfo;
 exports.toResource = toResource;
 exports.arn2tableName = arn2tableName;
 exports.updateTable = updateTable;
-/* @pulumi/pulumi Not a pure module */
+exports.makeTableArgs = makeTableArgs;
+exports.makeTable = makeTable;
+/* @pulumi/aws Not a pure module */

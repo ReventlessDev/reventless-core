@@ -101,3 +101,44 @@ let updateTable = (table, ttl) => {
       );
   table->Js.Obj.assign({"streamArn": Some(streamArn)});
 };
+
+let makeTable =
+    (~attributes, ~globalSecondaryIndexes=?, ~ttl=?, ~rangeKey=?, ~opts, name) => {
+  let restoreSourceName =
+    Pulumi.Config.make(Some("restore"))
+    ->Pulumi.Config.getObject("tables")
+    ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name));
+
+  let (dependencies, registerResource) =
+    Util_DynamoDb_TableManager.getDependencies();
+
+  let table =
+    PulumiAws.DynamoDb.Table.(
+      make(
+        ~name,
+        ~args=
+          Util_DynamoDb.makeTableArgs(
+            ~attributes,
+            ~globalSecondaryIndexes?,
+            ~ttl,
+            ~rangeKey?,
+            ~restoreSourceName?,
+            ~streamEnabled=true,
+            ~streamViewType=`NEW_IMAGE,
+            (),
+          ),
+        ~opts=
+          opts->Js.Obj.assign({
+            "dependsOn": dependencies->Pulumi.Output.asInput,
+          }),
+        (),
+      )
+    );
+  ();
+
+  registerResource(. table->Pulumi.Resource.makeFromJs);
+
+  restoreSourceName->Belt.Option.isSome
+    // Workaround when restore enabled
+    ? table->updateTable(ttl) : table;
+};
