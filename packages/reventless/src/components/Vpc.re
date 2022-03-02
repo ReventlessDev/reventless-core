@@ -153,7 +153,9 @@ let construct: construct =
           ~opts=
             Pulumi.CustomResourceOptions.make(
               ~parent=self->Pulumi.Resource.makeFromJs,
-              ~dependsOn=[|internetGateway->Pulumi.Resource.makeFromJs|],
+              ~dependsOn=
+                [|internetGateway->Pulumi.Resource.makeFromJs|]
+                ->Pulumi.Input.wrap,
               (),
             ),
           (),
@@ -173,7 +175,9 @@ let construct: construct =
           ~opts=
             Pulumi.CustomResourceOptions.make(
               ~parent=self->Pulumi.Resource.makeFromJs,
-              ~dependsOn=[|internetGateway->Pulumi.Resource.makeFromJs|],
+              ~dependsOn=
+                [|internetGateway->Pulumi.Resource.makeFromJs|]
+                ->Pulumi.Input.wrap,
               (),
             ),
           (),
