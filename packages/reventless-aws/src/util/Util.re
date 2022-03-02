@@ -5,6 +5,7 @@ module CognitoGroupUser_Runtime = Util_CognitoGroupUser_Runtime;
 module DeadLetterQueue = Util_DeadLetterQueue;
 module DynamoDb = Util_DynamoDb;
 module DynamoDb_Runtime = Util_DynamoDb_Runtime;
+module DynamoDb_TableManager = Util_DynamoDb_TableManager;
 module DynamoDbStream_Runtime = Util_DynamoDbStream_Runtime;
 module DynamoDbStream = Util_DynamoDbStream;
 module EventSourceMapping = Util_EventSourceMapping;

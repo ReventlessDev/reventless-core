@@ -16,6 +16,8 @@ var DynamoDb = 0;
 
 var DynamoDb_Runtime = 0;
 
+var DynamoDb_TableManager = 0;
+
 var DynamoDbStream_Runtime = 0;
 
 var DynamoDbStream = 0;
@@ -51,6 +53,7 @@ exports.CognitoGroupUser_Runtime = CognitoGroupUser_Runtime;
 exports.DeadLetterQueue = DeadLetterQueue;
 exports.DynamoDb = DynamoDb;
 exports.DynamoDb_Runtime = DynamoDb_Runtime;
+exports.DynamoDb_TableManager = DynamoDb_TableManager;
 exports.DynamoDbStream_Runtime = DynamoDbStream_Runtime;
 exports.DynamoDbStream = DynamoDbStream;
 exports.EventSourceMapping = EventSourceMapping;
