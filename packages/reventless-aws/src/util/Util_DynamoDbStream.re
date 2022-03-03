@@ -47,81 +47,73 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 
 // Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again
 let updateTable = (table, ttl) => {
-  Js.log2("Start updateTable. ttl:", ttl);
   let streamArn =
     (table##name, table##streamArn)
     ->Pulumi.Output.all2
     ->Pulumi.Output.flatMap(((tableName, streamArn)) => {
-        Js.log3(
-          "streamArn before:",
-          streamArn,
-          streamArn->Belt.Option.isSome,
+        let ttlStr =
+          switch (ttl) {
+          | Some(ttl) => {j|Some($ttl|j}
+          | None => "None"
+          };
+        Js.log(
+          {j|$__MODULE__: Start updateTable $tableName, streamArn: $streamArn, ttl: $ttlStr|j},
         );
-        streamArn->Belt.Option.isNone
-          ? AwsSdk.DynamoDb_DynamoDb.(
-              updateTable(
-                UpdateTableInput.make(
-                  ~_TableName=tableName,
-                  ~_StreamSpecification=
-                    UpdateTableInput.StreamSpecification.make(
-                      ~_StreamEnabled=true,
-                      ~_StreamViewType=`NEW_IMAGE,
-                      (),
-                    ),
-                  (),
-                ),
+        switch (streamArn) {
+        | None
+        | Some("") =>
+          AwsSdk.DynamoDb_DynamoDb.(
+            updateTable(
+              UpdateTableInput.make(
+                ~_TableName=tableName,
+                ~_StreamSpecification=
+                  UpdateTableInput.StreamSpecification.make(
+                    ~_StreamEnabled=true,
+                    ~_StreamViewType=`NEW_IMAGE,
+                    (),
+                  ),
+                (),
               ),
-              ttl
-              ->Belt.Option.map(_ => {
-                  Js.log2("Start updateTimeToLive. ttl:", ttl);
-                  updateTimeToLive(
-                    UpdateTimeToLiveInput.make(
-                      ~_TableName=tableName,
-                      ~_TimeToLiveSpecification=
-                        UpdateTimeToLiveInput.TimeToLiveSpecification.make(
-                          ~_Enabled=true,
-                          ~_AttributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
-                        ),
-                    ),
-                  );
-                })
-              ->Belt.Option.getWithDefault({}->Js.Promise.resolve),
-              updateContinuousBackups(
-                UpdateContinuousBackupsInput.make(
-                  ~_TableName=tableName,
-                  ~_PointInTimeRecoverySpecification=
-                    UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
-                      ~_PointInTimeRecoveryEnabled=true,
-                    ),
-                ),
-              ),
-            )
-            ->Js.Promise.all3
-            ->Js.Promise.then_(
-                ((table, _, _)) => {
-                  let streamArn = table##_TableDescription##_LatestStreamArn;
-                  Js.log2("newly set streamArn:", streamArn);
-                  Some(streamArn)->Js.Promise.resolve;
-                },
-                _,
+            ),
+            ttl
+            ->Belt.Option.map(_ =>
+                updateTimeToLive(
+                  UpdateTimeToLiveInput.make(
+                    ~_TableName=tableName,
+                    ~_TimeToLiveSpecification=
+                      UpdateTimeToLiveInput.TimeToLiveSpecification.make(
+                        ~_Enabled=true,
+                        ~_AttributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
+                      ),
+                  ),
+                )
               )
-            ->Pulumi.Output.fromPromise
-          : Pulumi.Output.make(streamArn);
+            ->Belt.Option.getWithDefault({}->Js.Promise.resolve),
+            updateContinuousBackups(
+              UpdateContinuousBackupsInput.make(
+                ~_TableName=tableName,
+                ~_PointInTimeRecoverySpecification=
+                  UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
+                    ~_PointInTimeRecoveryEnabled=true,
+                  ),
+              ),
+            ),
+          )
+          ->Js.Promise.all3
+          ->Js.Promise.then_(
+              ((table, _, _)) => {
+                let streamArn = table##_TableDescription##_LatestStreamArn;
+                Js.log2("newly set streamArn:", streamArn);
+                Some(streamArn)->Js.Promise.resolve;
+              },
+              _,
+            )
+          ->Pulumi.Output.fromPromise
+        | _ => Pulumi.Output.make(streamArn)
+        };
       });
 
-  streamArn
-  ->Pulumi.Output.apply(streamArn =>
-      Js.log3("streamArn after:", streamArn, streamArn->Belt.Option.isSome)
-    )
-  ->ignore;
-  let newTable = table->Js.Obj.assign({"streamArn": streamArn});
-  (newTable##name, newTable##streamArn)
-  ->Pulumi.Output.all2
-  ->Pulumi.Output.apply(((tableName, streamArn)) =>
-      Js.log3("newTable: ", tableName, streamArn)
-    )
-  ->ignore;
-  newTable;
+  table->Js.Obj.assign({"streamArn": streamArn});
 };
 
 let makeTable =

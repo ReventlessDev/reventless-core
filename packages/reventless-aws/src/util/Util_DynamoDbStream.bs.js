@@ -72,76 +72,61 @@ var class_tables = [
 ];
 
 function updateTable(table, ttl) {
-  console.log("Start updateTable. ttl:", ttl);
   var streamArn = Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
             table.name,
             table.streamArn
           ]), (function (param) {
           var streamArn = param[1];
           var tableName = param[0];
-          console.log("streamArn before:", streamArn, Belt_Option.isSome(streamArn));
-          var match = Belt_Option.isNone(streamArn);
-          if (match) {
-            if (!class_tables[0]) {
-              var $$class = CamlinternalOO.create_table(0);
-              var env = CamlinternalOO.new_variable($$class, "");
-              var env_init = function (env$1) {
-                var self = CamlinternalOO.create_object_opt(0, $$class);
-                self[env] = env$1;
-                return self;
-              };
-              CamlinternalOO.init_class($$class);
-              class_tables[0] = env_init;
-            }
-            var __x = Promise.all(/* tuple */[
-                  DynamoDb_DynamoDb$AwsSdk.updateTable({
-                        TableName: tableName,
-                        StreamSpecification: {
-                          StreamEnabled: true,
-                          StreamViewType: "NEW_IMAGE"
-                        }
-                      }),
-                  Belt_Option.getWithDefault(Belt_Option.map(ttl, (function (param) {
-                              console.log("Start updateTimeToLive. ttl:", ttl);
-                              return DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
-                                          TableName: tableName,
-                                          TimeToLiveSpecification: {
-                                            Enabled: true,
-                                            AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
-                                          }
-                                        });
-                            })), Promise.resolve(Curry._1(class_tables[0], 0))),
-                  DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
-                        TableName: tableName,
-                        PointInTimeRecoverySpecification: {
-                          PointInTimeRecoveryEnabled: true
-                        }
-                      })
-                ]);
-            return __x.then((function (param) {
-                          var streamArn = param[0].TableDescription.LatestStreamArn;
-                          console.log("newly set streamArn:", streamArn);
-                          return Promise.resolve(streamArn);
-                        }));
-          } else {
+          var ttlStr = ttl !== undefined ? "Some(" + (String(Caml_option.valFromOption(ttl)) + "") : "None";
+          console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (": Start updateTable " + (String(tableName) + (", streamArn: " + (String(streamArn) + (", ttl: " + (String(ttlStr) + ""))))))));
+          if (streamArn !== undefined && streamArn !== "") {
             return Pulumi.output(streamArn);
           }
+          if (!class_tables[0]) {
+            var $$class = CamlinternalOO.create_table(0);
+            var env = CamlinternalOO.new_variable($$class, "");
+            var env_init = function (env$1) {
+              var self = CamlinternalOO.create_object_opt(0, $$class);
+              self[env] = env$1;
+              return self;
+            };
+            CamlinternalOO.init_class($$class);
+            class_tables[0] = env_init;
+          }
+          var __x = Promise.all(/* tuple */[
+                DynamoDb_DynamoDb$AwsSdk.updateTable({
+                      TableName: tableName,
+                      StreamSpecification: {
+                        StreamEnabled: true,
+                        StreamViewType: "NEW_IMAGE"
+                      }
+                    }),
+                Belt_Option.getWithDefault(Belt_Option.map(ttl, (function (param) {
+                            return DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
+                                        TableName: tableName,
+                                        TimeToLiveSpecification: {
+                                          Enabled: true,
+                                          AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+                                        }
+                                      });
+                          })), Promise.resolve(Curry._1(class_tables[0], 0))),
+                DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
+                      TableName: tableName,
+                      PointInTimeRecoverySpecification: {
+                        PointInTimeRecoveryEnabled: true
+                      }
+                    })
+              ]);
+          return __x.then((function (param) {
+                        var streamArn = param[0].TableDescription.LatestStreamArn;
+                        console.log("newly set streamArn:", streamArn);
+                        return Promise.resolve(streamArn);
+                      }));
         }));
-  streamArn.apply((function (streamArn) {
-          console.log("streamArn after:", streamArn, Belt_Option.isSome(streamArn));
-          return /* () */0;
-        }));
-  var newTable = Object.assign(table, {
-        streamArn: streamArn
-      });
-  Pulumi.all(/* tuple */[
-          newTable.name,
-          newTable.streamArn
-        ]).apply((function (param) {
-          console.log("newTable: ", param[0], param[1]);
-          return /* () */0;
-        }));
-  return newTable;
+  return Object.assign(table, {
+              streamArn: streamArn
+            });
 }
 
 function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name) {

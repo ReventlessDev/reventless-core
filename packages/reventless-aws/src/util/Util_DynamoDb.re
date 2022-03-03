@@ -24,6 +24,16 @@ let arn2tableName = arn =>
 
 // Workaround when restore enabled: turn on ttl & pointInTimeRecovery again
 let updateTable = (table, ttl) => {
+  let ttlStr =
+    switch (ttl) {
+    | Some(ttl) => {j|Some($ttl|j}
+    | None => "None"
+    };
+  table##name
+  ->Pulumi.Output.apply(tableName =>
+      Js.log({j|$__MODULE__: Start updateTable $tableName, ttl: $ttlStr|j})
+    )
+  ->ignore;
   let _ =
     table##name
     ->Pulumi.Output.flatMap(tableName =>

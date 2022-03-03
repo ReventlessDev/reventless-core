@@ -51,6 +51,11 @@ var class_tables = [
 ];
 
 function updateTable(table, ttl) {
+  var ttlStr = ttl !== undefined ? "Some(" + (String(Caml_option.valFromOption(ttl)) + "") : "None";
+  table.name.apply((function (tableName) {
+          console.log("" + (String("Util_DynamoDb-ReventlessAws") + (": Start updateTable " + (String(tableName) + (", ttl: " + (String(ttlStr) + ""))))));
+          return /* () */0;
+        }));
   Output$Pulumi.flatMap(table.name, (function (tableName) {
           if (!class_tables[0]) {
             var $$class = CamlinternalOO.create_table(0);
