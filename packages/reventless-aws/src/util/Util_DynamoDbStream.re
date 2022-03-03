@@ -47,6 +47,7 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 
 // Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again
 let updateTable = (table, ttl) => {
+  Js.log4(__MODULE__ ++ ".updateTable: ", table, ", ttl:", ttl);
   let streamArn =
     (table##name, table##streamArn)
     ->Pulumi.Output.all2
@@ -91,9 +92,11 @@ let updateTable = (table, ttl) => {
             )
             ->Js.Promise.all3
             ->Js.Promise.then_(
-                ((table, _, _)) =>
-                  table##_TableDescription##_LatestStreamArn
-                  ->Js.Promise.resolve,
+                ((table, _, _)) => {
+                  let streamArn = table##_TableDescription##_LatestStreamArn;
+                  Js.log2("newly set streamArn:", streamArn);
+                  streamArn->Js.Promise.resolve;
+                },
                 _,
               )
             ->Pulumi.Output.fromPromise

@@ -72,6 +72,7 @@ var class_tables = [
 ];
 
 function updateTable(table, ttl) {
+  console.log("Util_DynamoDbStream-ReventlessAws.updateTable: ", table, ", ttl:", ttl);
   var streamArn = Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
             table.name,
             table.streamArn
@@ -115,7 +116,9 @@ function updateTable(table, ttl) {
                       })
                 ]);
             return __x.then((function (param) {
-                          return Promise.resolve(param[0].TableDescription.LatestStreamArn);
+                          var streamArn = param[0].TableDescription.LatestStreamArn;
+                          console.log("newly set streamArn:", streamArn);
+                          return Promise.resolve(streamArn);
                         }));
           } else {
             return Pulumi.output("");
