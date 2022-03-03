@@ -72,13 +72,13 @@ var class_tables = [
 ];
 
 function updateTable(table, ttl) {
-  console.log("Util_DynamoDbStream-ReventlessAws.updateTable: ", table, ", ttl:", ttl);
   var streamArn = Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
             table.name,
             table.streamArn
           ]), (function (param) {
+          var streamArn = param[1];
           var tableName = param[0];
-          var match = Belt_Option.isNone(param[1]);
+          var match = Belt_Option.isNone(streamArn);
           if (match) {
             if (!class_tables[0]) {
               var $$class = CamlinternalOO.create_table(0);
@@ -100,6 +100,7 @@ function updateTable(table, ttl) {
                         }
                       }),
                   Belt_Option.getWithDefault(Belt_Option.map(ttl, (function (param) {
+                              console.log("Start updateTimeToLive. ttl:", ttl);
                               return DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
                                           TableName: tableName,
                                           TimeToLiveSpecification: {
@@ -121,11 +122,11 @@ function updateTable(table, ttl) {
                           return Promise.resolve(streamArn);
                         }));
           } else {
-            return Pulumi.output("");
+            return Pulumi.output(streamArn);
           }
         }));
   return Object.assign(table, {
-              streamArn: Caml_option.some(streamArn)
+              streamArn: streamArn
             });
 }
 

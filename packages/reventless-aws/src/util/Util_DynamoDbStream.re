@@ -47,7 +47,6 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 
 // Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again
 let updateTable = (table, ttl) => {
-  Js.log4(__MODULE__ ++ ".updateTable: ", table, ", ttl:", ttl);
   let streamArn =
     (table##name, table##streamArn)
     ->Pulumi.Output.all2
@@ -67,7 +66,8 @@ let updateTable = (table, ttl) => {
                 ),
               ),
               ttl
-              ->Belt.Option.map(_ =>
+              ->Belt.Option.map(_ => {
+                  Js.log2("Start updateTimeToLive. ttl:", ttl);
                   updateTimeToLive(
                     UpdateTimeToLiveInput.make(
                       ~_TableName=tableName,
@@ -77,8 +77,8 @@ let updateTable = (table, ttl) => {
                           ~_AttributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
                         ),
                     ),
-                  )
-                )
+                  );
+                })
               ->Belt.Option.getWithDefault({}->Js.Promise.resolve),
               updateContinuousBackups(
                 UpdateContinuousBackupsInput.make(
@@ -95,14 +95,14 @@ let updateTable = (table, ttl) => {
                 ((table, _, _)) => {
                   let streamArn = table##_TableDescription##_LatestStreamArn;
                   Js.log2("newly set streamArn:", streamArn);
-                  streamArn->Js.Promise.resolve;
+                  Some(streamArn)->Js.Promise.resolve;
                 },
                 _,
               )
             ->Pulumi.Output.fromPromise
-          : Pulumi.Output.make("")
+          : Pulumi.Output.make(streamArn)
       );
-  table->Js.Obj.assign({"streamArn": Some(streamArn)});
+  table->Js.Obj.assign({"streamArn": streamArn});
 };
 
 let makeTable =
