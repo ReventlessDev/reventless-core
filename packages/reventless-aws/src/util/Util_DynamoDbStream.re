@@ -47,10 +47,16 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 
 // Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again
 let updateTable = (table, ttl) => {
+  Js.log2("Start updateTable. ttl:", ttl);
   let streamArn =
     (table##name, table##streamArn)
     ->Pulumi.Output.all2
-    ->Pulumi.Output.flatMap(((tableName, streamArn)) =>
+    ->Pulumi.Output.flatMap(((tableName, streamArn)) => {
+        Js.log3(
+          "streamArn before:",
+          streamArn,
+          streamArn->Belt.Option.isSome,
+        );
         streamArn->Belt.Option.isNone
           ? AwsSdk.DynamoDb_DynamoDb.(
               updateTable(
@@ -100,9 +106,22 @@ let updateTable = (table, ttl) => {
                 _,
               )
             ->Pulumi.Output.fromPromise
-          : Pulumi.Output.make(streamArn)
-      );
-  table->Js.Obj.assign({"streamArn": streamArn});
+          : Pulumi.Output.make(streamArn);
+      });
+
+  streamArn
+  ->Pulumi.Output.apply(streamArn =>
+      Js.log3("streamArn after:", streamArn, streamArn->Belt.Option.isSome)
+    )
+  ->ignore;
+  let newTable = table->Js.Obj.assign({"streamArn": streamArn});
+  (newTable##name, newTable##streamArn)
+  ->Pulumi.Output.all2
+  ->Pulumi.Output.apply(((tableName, streamArn)) =>
+      Js.log3("newTable: ", tableName, streamArn)
+    )
+  ->ignore;
+  newTable;
 };
 
 let makeTable =

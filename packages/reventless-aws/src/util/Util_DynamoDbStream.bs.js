@@ -72,12 +72,14 @@ var class_tables = [
 ];
 
 function updateTable(table, ttl) {
+  console.log("Start updateTable. ttl:", ttl);
   var streamArn = Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
             table.name,
             table.streamArn
           ]), (function (param) {
           var streamArn = param[1];
           var tableName = param[0];
+          console.log("streamArn before:", streamArn, Belt_Option.isSome(streamArn));
           var match = Belt_Option.isNone(streamArn);
           if (match) {
             if (!class_tables[0]) {
@@ -125,9 +127,21 @@ function updateTable(table, ttl) {
             return Pulumi.output(streamArn);
           }
         }));
-  return Object.assign(table, {
-              streamArn: streamArn
-            });
+  streamArn.apply((function (streamArn) {
+          console.log("streamArn after:", streamArn, Belt_Option.isSome(streamArn));
+          return /* () */0;
+        }));
+  var newTable = Object.assign(table, {
+        streamArn: streamArn
+      });
+  Pulumi.all(/* tuple */[
+          newTable.name,
+          newTable.streamArn
+        ]).apply((function (param) {
+          console.log("newTable: ", param[0], param[1]);
+          return /* () */0;
+        }));
+  return newTable;
 }
 
 function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name) {
