@@ -9,7 +9,6 @@ var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
-var CamlinternalOO = require("bs-platform/lib/js/camlinternalOO.js");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.bs.js");
@@ -44,49 +43,82 @@ function arn2tableName(arn) {
   }
 }
 
-var class_tables = [
-  0,
-  0,
-  0
-];
+function enableTtl(tableName) {
+  console.log("" + (String("Util_DynamoDb-ReventlessAws") + (": enableTimeToLive for " + (String(tableName) + ""))));
+  var __x = DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
+        TableName: tableName,
+        TimeToLiveSpecification: {
+          Enabled: true,
+          AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+        }
+      });
+  return __x.then((function (res) {
+                return Promise.resolve({
+                            enabled: res.TimeToLiveSpecification.Enabled,
+                            attributeName: res.TimeToLiveSpecification.AttributeName
+                          });
+              }));
+}
+
+function verifyTtl(table, expectedTtl) {
+  return Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
+                  table.name,
+                  table.ttl
+                ]), (function (param) {
+                var ttl = param[1];
+                var tableName = param[0];
+                var match = ttl.enabled;
+                if (match !== undefined) {
+                  if (match || expectedTtl === undefined) {
+                    return Promise.resolve(ttl);
+                  } else {
+                    return enableTtl(tableName);
+                  }
+                } else if (expectedTtl !== undefined) {
+                  return enableTtl(tableName);
+                } else {
+                  return Promise.resolve(ttl);
+                }
+              }));
+}
+
+function enablePointInTimeRecovery(tableName) {
+  console.log("" + (String("Util_DynamoDb-ReventlessAws") + (": enablePointInTimeRecovery for " + (String(tableName) + ""))));
+  var __x = DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
+        TableName: tableName,
+        PointInTimeRecoverySpecification: {
+          PointInTimeRecoveryEnabled: true
+        }
+      });
+  return __x.then((function (res) {
+                return Promise.resolve({
+                            enabled: res.ContinuousBackupsDescription.ContinuousBackupsStatus === "ENABLED"
+                          });
+              }));
+}
+
+function verifyPointInTimeRecovery(table) {
+  return Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
+                  table.name,
+                  table.pointInTimeRecovery
+                ]), (function (param) {
+                var pointInTimeRecovery = param[1];
+                var match = pointInTimeRecovery.enabled;
+                if (match) {
+                  return Promise.resolve(pointInTimeRecovery);
+                } else {
+                  return enablePointInTimeRecovery(param[0]);
+                }
+              }));
+}
 
 function updateTable(table, ttl) {
-  var ttlStr = ttl !== undefined ? "Some(" + (String(Caml_option.valFromOption(ttl)) + "") : "None";
-  table.name.apply((function (tableName) {
-          console.log("" + (String("Util_DynamoDb-ReventlessAws") + (": Start updateTable " + (String(tableName) + (", ttl: " + (String(ttlStr) + ""))))));
-          return /* () */0;
-        }));
-  Output$Pulumi.flatMap(table.name, (function (tableName) {
-          if (!class_tables[0]) {
-            var $$class = CamlinternalOO.create_table(0);
-            var env = CamlinternalOO.new_variable($$class, "");
-            var env_init = function (env$1) {
-              var self = CamlinternalOO.create_object_opt(0, $$class);
-              self[env] = env$1;
-              return self;
-            };
-            CamlinternalOO.init_class($$class);
-            class_tables[0] = env_init;
-          }
-          return Promise.all(/* tuple */[
-                      Belt_Option.getWithDefault(Belt_Option.map(ttl, (function (param) {
-                                  return DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
-                                              TableName: tableName,
-                                              TimeToLiveSpecification: {
-                                                Enabled: true,
-                                                AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
-                                              }
-                                            });
-                                })), Promise.resolve(Curry._1(class_tables[0], 0))),
-                      DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
-                            TableName: tableName,
-                            PointInTimeRecoverySpecification: {
-                              PointInTimeRecoveryEnabled: true
-                            }
-                          })
-                    ]);
-        }));
-  return table;
+  var newTtl = verifyTtl(table, ttl);
+  var newPointInTimeRecovery = verifyPointInTimeRecovery(table);
+  return Object.assign(table, {
+              ttl: newTtl,
+              pointInTimeRecovery: newPointInTimeRecovery
+            });
 }
 
 function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName) {
@@ -215,6 +247,10 @@ exports.service = service;
 exports.toInfo = toInfo;
 exports.toResource = toResource;
 exports.arn2tableName = arn2tableName;
+exports.enableTtl = enableTtl;
+exports.verifyTtl = verifyTtl;
+exports.enablePointInTimeRecovery = enablePointInTimeRecovery;
+exports.verifyPointInTimeRecovery = verifyPointInTimeRecovery;
 exports.updateTable = updateTable;
 exports.makeTableArgs = makeTableArgs;
 exports.makeTable = makeTable;

@@ -23,49 +23,90 @@ let arn2tableName = arn =>
   };
 
 // Workaround when restore enabled: turn on ttl & pointInTimeRecovery again
-let updateTable = (table, ttl) => {
-  let ttlStr =
-    switch (ttl) {
-    | Some(ttl) => {j|Some($ttl|j}
-    | None => "None"
-    };
-  table##name
-  ->Pulumi.Output.apply(tableName =>
-      Js.log({j|$__MODULE__: Start updateTable $tableName, ttl: $ttlStr|j})
-    )
-  ->ignore;
-  let _ =
-    table##name
-    ->Pulumi.Output.flatMap(tableName =>
-        AwsSdk.DynamoDb_DynamoDb.(
-          ttl
-          ->Belt.Option.map(_ =>
-              updateTimeToLive(
-                UpdateTimeToLiveInput.make(
-                  ~_TableName=tableName,
-                  ~_TimeToLiveSpecification=
-                    UpdateTimeToLiveInput.TimeToLiveSpecification.make(
-                      ~_Enabled=true,
-                      ~_AttributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
-                    ),
-                ),
-              )
-            )
-          ->Belt.Option.getWithDefault({}->Js.Promise.resolve),
-          updateContinuousBackups(
-            UpdateContinuousBackupsInput.make(
-              ~_TableName=tableName,
-              ~_PointInTimeRecoverySpecification=
-                UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
-                  ~_PointInTimeRecoveryEnabled=true,
-                ),
-            ),
-          ),
+open AwsSdk.DynamoDb_DynamoDb;
+open PulumiAws.DynamoDb.Table;
+
+let enableTtl = tableName => {
+  Js.log({j|$__MODULE__: enableTimeToLive for $tableName|j});
+  updateTimeToLive(
+    UpdateTimeToLiveInput.make(
+      ~_TableName=tableName,
+      ~_TimeToLiveSpecification=
+        TimeToLiveSpecification.make(
+          ~_Enabled=true,
+          ~_AttributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
+        ),
+    ),
+  )
+  ->Js.Promise.then_(
+      res =>
+        TableTtl.make(
+          ~enabled=Some(res##_TimeToLiveSpecification##_Enabled),
+          ~attributeName=res##_TimeToLiveSpecification##_AttributeName,
         )
-        ->Js.Promise.all2
-        ->Pulumi.Output.fromPromise
-      );
-  table;
+        ->Js.Promise.resolve,
+      _,
+    );
+};
+
+let verifyTtl = (table, expectedTtl) =>
+  (table##name, table##ttl)
+  ->Pulumi.Output.all2
+  ->Pulumi.Output.flatMap(((tableName, ttl)) =>
+      (
+        switch (ttl##enabled, expectedTtl) {
+        | (None, Some(_))
+        | (Some(false), Some(_)) => enableTtl(tableName)
+        | _ => ttl->Js.Promise.resolve
+        }
+      )
+      ->Pulumi.Output.fromPromise
+    );
+
+let enablePointInTimeRecovery = tableName => {
+  Js.log({j|$__MODULE__: enablePointInTimeRecovery for $tableName|j});
+  updateContinuousBackups(
+    UpdateContinuousBackupsInput.make(
+      ~_TableName=tableName,
+      ~_PointInTimeRecoverySpecification=
+        UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
+          ~_PointInTimeRecoveryEnabled=true,
+        ),
+    ),
+  )
+  ->Js.Promise.then_(
+      res =>
+        TablePointInTimeRecovery.make(
+          ~enabled=
+            res##_ContinuousBackupsDescription##_ContinuousBackupsStatus
+            == "ENABLED",
+        )
+        ->Js.Promise.resolve,
+      _,
+    );
+};
+
+let verifyPointInTimeRecovery = table =>
+  (table##name, table##pointInTimeRecovery)
+  ->Pulumi.Output.all2
+  ->Pulumi.Output.flatMap(((tableName, pointInTimeRecovery)) =>
+      (
+        switch (pointInTimeRecovery##enabled) {
+        | false => enablePointInTimeRecovery(tableName)
+        | true => pointInTimeRecovery->Js.Promise.resolve
+        }
+      )
+      ->Pulumi.Output.fromPromise
+    );
+
+let updateTable = (table, ttl) => {
+  let newTtl = verifyTtl(table, ttl);
+  let newPointInTimeRecovery = verifyPointInTimeRecovery(table);
+
+  table->Js.Obj.assign({
+    "ttl": newTtl,
+    "pointInTimeRecovery": newPointInTimeRecovery,
+  });
 };
 
 let makeTableArgs =
@@ -76,36 +117,34 @@ let makeTableArgs =
       ~rangeKey=?,
       ~restoreSourceName=?,
     ) =>
-  PulumiAws.DynamoDb.Table.Args.(
-    make(
-      ~attributes=attributes->Pulumi.Input.wrap,
-      ~hashKey="id"->Pulumi.Input.wrap,
-      ~rangeKey=?rangeKey->Belt.Option.map(Pulumi.Input.wrap),
-      ~billingMode=`PAY_PER_REQUEST,
-      ~globalSecondaryIndexes?,
-      ~ttl=?
-        ttl->Belt.Option.map(_ =>
-          TableTtl.make(
-            ~attributeName=
-              QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName->Pulumi.Input.wrap,
-            ~enabled=true->Pulumi.Input.wrap,
-            (),
-          )
-          ->Pulumi.Input.wrap
-        ),
-      ~pointInTimeRecovery=
-        PointInTimeRecovery.make(~enabled=true)->Pulumi.Input.wrap,
-      ~restoreSourceName=?
-        restoreSourceName->Belt.Option.map(Pulumi.Input.wrap),
-      ~restoreDateTime=?
-        restoreSourceName->Belt.Option.flatMap(_ =>
-          Reventless.Env.restoreDateTime->Belt.Option.map(Pulumi.Input.wrap)
-        ),
-      ~restoreToLatestTime=?
-        restoreSourceName->Belt.Option.map(_ =>
-          Reventless.Env.restoreDateTime->Belt.Option.isNone->Pulumi.Input.wrap
-        ),
-    )
+  PulumiAws.DynamoDb.Table.Args.make(
+    ~attributes=attributes->Pulumi.Input.wrap,
+    ~hashKey="id"->Pulumi.Input.wrap,
+    ~rangeKey=?rangeKey->Belt.Option.map(Pulumi.Input.wrap),
+    ~billingMode=`PAY_PER_REQUEST,
+    ~globalSecondaryIndexes?,
+    ~ttl=?
+      ttl->Belt.Option.map(_ =>
+        PulumiAws.DynamoDb.Table.Args.TableTtl.make(
+          ~attributeName=
+            QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName->Pulumi.Input.wrap,
+          ~enabled=true->Pulumi.Input.wrap,
+          (),
+        )
+        ->Pulumi.Input.wrap
+      ),
+    ~pointInTimeRecovery=
+      PulumiAws.DynamoDb.Table.Args.PointInTimeRecovery.make(~enabled=true)
+      ->Pulumi.Input.wrap,
+    ~restoreSourceName=?restoreSourceName->Belt.Option.map(Pulumi.Input.wrap),
+    ~restoreDateTime=?
+      restoreSourceName->Belt.Option.flatMap(_ =>
+        Reventless.Env.restoreDateTime->Belt.Option.map(Pulumi.Input.wrap)
+      ),
+    ~restoreToLatestTime=?
+      restoreSourceName->Belt.Option.map(_ =>
+        Reventless.Env.restoreDateTime->Belt.Option.isNone->Pulumi.Input.wrap
+      ),
   );
 
 let makeTable =
@@ -119,26 +158,23 @@ let makeTable =
     Util_DynamoDb_TableManager.getDependencies();
 
   let table =
-    PulumiAws.DynamoDb.Table.(
-      make(
-        ~name,
-        ~args=
-          makeTableArgs(
-            ~attributes,
-            ~globalSecondaryIndexes?,
-            ~ttl,
-            ~rangeKey?,
-            ~restoreSourceName?,
-            (),
-          ),
-        ~opts=
-          opts->Js.Obj.assign({
-            "dependsOn": dependencies->Pulumi.Output.asInput,
-          }),
-        (),
-      )
+    PulumiAws.DynamoDb.Table.make(
+      ~name,
+      ~args=
+        makeTableArgs(
+          ~attributes,
+          ~globalSecondaryIndexes?,
+          ~ttl,
+          ~rangeKey?,
+          ~restoreSourceName?,
+          (),
+        ),
+      ~opts=
+        opts->Js.Obj.assign({
+          "dependsOn": dependencies->Pulumi.Output.asInput,
+        }),
+      (),
     );
-  ();
 
   registerResource(. table->Pulumi.Resource.makeFromJs);
 

@@ -8,7 +8,7 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) => {
       ++ ","
       ++ rangeKey->Belt.Option.getWithDefault("")
       ++ ","
-      ++ streamArn->Belt.Option.getExn
+      ++ streamArn
     );
 };
 
@@ -46,74 +46,68 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 };
 
 // Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again
-let updateTable = (table, ttl) => {
-  let streamArn =
-    (table##name, table##streamArn)
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.flatMap(((tableName, streamArn)) => {
-        let ttlStr =
-          switch (ttl) {
-          | Some(ttl) => {j|Some($ttl|j}
-          | None => "None"
-          };
-        Js.log(
-          {j|$__MODULE__: Start updateTable $tableName, streamArn: $streamArn, ttl: $ttlStr|j},
-        );
-        switch (streamArn) {
-        | None
-        | Some("") =>
-          AwsSdk.DynamoDb_DynamoDb.(
-            updateTable(
-              UpdateTableInput.make(
-                ~_TableName=tableName,
-                ~_StreamSpecification=
-                  UpdateTableInput.StreamSpecification.make(
-                    ~_StreamEnabled=true,
-                    ~_StreamViewType=`NEW_IMAGE,
-                    (),
-                  ),
-                (),
-              ),
-            ),
-            ttl
-            ->Belt.Option.map(_ =>
-                updateTimeToLive(
-                  UpdateTimeToLiveInput.make(
-                    ~_TableName=tableName,
-                    ~_TimeToLiveSpecification=
-                      UpdateTimeToLiveInput.TimeToLiveSpecification.make(
-                        ~_Enabled=true,
-                        ~_AttributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
-                      ),
-                  ),
-                )
-              )
-            ->Belt.Option.getWithDefault({}->Js.Promise.resolve),
-            updateContinuousBackups(
-              UpdateContinuousBackupsInput.make(
-                ~_TableName=tableName,
-                ~_PointInTimeRecoverySpecification=
-                  UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
-                    ~_PointInTimeRecoveryEnabled=true,
-                  ),
-              ),
-            ),
-          )
-          ->Js.Promise.all3
-          ->Js.Promise.then_(
-              ((table, _, _)) => {
-                let streamArn = table##_TableDescription##_LatestStreamArn;
-                Js.log2("newly set streamArn:", streamArn);
-                Some(streamArn)->Js.Promise.resolve;
-              },
-              _,
-            )
-          ->Pulumi.Output.fromPromise
-        | _ => Pulumi.Output.make(streamArn)
-        };
-      });
+open AwsSdk.DynamoDb_DynamoDb;
 
-  table->Js.Obj.assign({"streamArn": streamArn});
+let enableStream = tableName => {
+  Js.log({j|$__MODULE__: Start enableStream for $tableName|j});
+  updateTable(
+    UpdateTableInput.make(
+      ~_TableName=tableName,
+      ~_StreamSpecification=
+        StreamSpecification.make(
+          ~_StreamEnabled=true,
+          ~_StreamViewType=`NEW_IMAGE,
+          (),
+        ),
+      (),
+    ),
+  )
+  ->Js.Promise.then_(
+      res =>
+        (
+          res##_TableDescription##_StreamSpecification##_StreamEnabled,
+          Some(res##_TableDescription##_LatestStreamArn),
+          res##_TableDescription##_LatestStreamLabel,
+        )
+        ->Js.Promise.resolve,
+      _,
+    );
+};
+
+let verifyStream = table =>
+  (table##name, table##streamEnabled, table##streamArn, table##streamLabel)
+  ->Pulumi.Output.all4
+  ->Pulumi.Output.flatMap(
+      ((tableName, streamEnabled, streamArn, streamLabel)) =>
+      (
+        switch (streamEnabled) {
+        | None
+        | Some(false) => enableStream(tableName)
+        | Some(true) =>
+          (true, Some(streamArn), streamLabel)->Js.Promise.resolve
+        }
+      )
+      ->Pulumi.Output.fromPromise
+    );
+
+let updateTable = (table, ttl) => {
+  let streamInfo = verifyStream(table);
+
+  let newTtl = Util_DynamoDb.verifyTtl(table, ttl);
+  let newPointInTimeRecovery = Util_DynamoDb.verifyPointInTimeRecovery(table);
+
+  table->Js.Obj.assign({
+    "streamEnabled":
+      streamInfo->Pulumi.Output.apply(((enabled, _, _)) => enabled),
+    "streamArn":
+      streamInfo->Pulumi.Output.apply(((_, streamArn, _)) =>
+        streamArn->Belt.Option.getWithDefault("")
+      ),
+    "streamLabel":
+      streamInfo->Pulumi.Output.apply(((_, _, streamLabel)) => streamLabel),
+    "ttl": newTtl,
+    "pointInTimeRecovery": newPointInTimeRecovery,
+  });
 };
 
 let makeTable =
@@ -127,27 +121,26 @@ let makeTable =
     Util_DynamoDb_TableManager.getDependencies();
 
   let table =
-    PulumiAws.DynamoDb.Table.(
-      make(
-        ~name,
-        ~args=
-          Util_DynamoDb.makeTableArgs(
-            ~attributes,
-            ~globalSecondaryIndexes?,
-            ~ttl,
-            ~rangeKey?,
-            ~restoreSourceName?,
-            ~streamEnabled=true,
-            ~streamViewType=`NEW_IMAGE,
-            (),
-          ),
-        ~opts=
-          opts->Js.Obj.assign({
-            "dependsOn": dependencies->Pulumi.Output.asInput,
-          }),
-        (),
-      )
+    PulumiAws.DynamoDb.Table.make(
+      ~name,
+      ~args=
+        Util_DynamoDb.makeTableArgs(
+          ~attributes,
+          ~globalSecondaryIndexes?,
+          ~ttl,
+          ~rangeKey?,
+          ~restoreSourceName?,
+          ~streamEnabled=true,
+          ~streamViewType=`NEW_IMAGE,
+          (),
+        ),
+      ~opts=
+        opts->Js.Obj.assign({
+          "dependsOn": dependencies->Pulumi.Output.asInput,
+        }),
+      (),
     );
+
   ();
 
   registerResource(. table->Pulumi.Resource.makeFromJs);

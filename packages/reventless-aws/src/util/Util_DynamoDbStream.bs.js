@@ -10,11 +10,9 @@ var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
-var CamlinternalOO = require("bs-platform/lib/js/camlinternalOO.js");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
 var Util_DynamoDb$ReventlessAws = require("./Util_DynamoDb.bs.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
-var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.bs.js");
 
 var service = "DynamoDbStream";
 
@@ -24,7 +22,7 @@ function toInfo(table) {
                 table.rangeKey,
                 table.streamArn
               ]).apply((function (param) {
-                return param[0] + ("," + (Belt_Option.getWithDefault(param[1], "") + ("," + Belt_Option.getExn(param[2]))));
+                return param[0] + ("," + (Belt_Option.getWithDefault(param[1], "") + ("," + param[2])));
               }));
 }
 
@@ -65,67 +63,61 @@ function toStreamResource(table) {
         };
 }
 
-var class_tables = [
-  0,
-  0,
-  0
-];
+function enableStream(tableName) {
+  console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (": Start enableStream for " + (String(tableName) + ""))));
+  var __x = DynamoDb_DynamoDb$AwsSdk.updateTable({
+        TableName: tableName,
+        StreamSpecification: {
+          StreamEnabled: true,
+          StreamViewType: "NEW_IMAGE"
+        }
+      });
+  return __x.then((function (res) {
+                return Promise.resolve(/* tuple */[
+                            res.TableDescription.StreamSpecification.StreamEnabled,
+                            res.TableDescription.LatestStreamArn,
+                            res.TableDescription.LatestStreamLabel
+                          ]);
+              }));
+}
+
+function verifyStream(table) {
+  return Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
+                  table.name,
+                  table.streamEnabled,
+                  table.streamArn,
+                  table.streamLabel
+                ]), (function (param) {
+                var streamEnabled = param[1];
+                var tableName = param[0];
+                if (streamEnabled !== undefined && streamEnabled) {
+                  return Promise.resolve(/* tuple */[
+                              true,
+                              param[2],
+                              param[3]
+                            ]);
+                } else {
+                  return enableStream(tableName);
+                }
+              }));
+}
 
 function updateTable(table, ttl) {
-  var streamArn = Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
-            table.name,
-            table.streamArn
-          ]), (function (param) {
-          var streamArn = param[1];
-          var tableName = param[0];
-          var ttlStr = ttl !== undefined ? "Some(" + (String(Caml_option.valFromOption(ttl)) + "") : "None";
-          console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (": Start updateTable " + (String(tableName) + (", streamArn: " + (String(streamArn) + (", ttl: " + (String(ttlStr) + ""))))))));
-          if (streamArn !== undefined && streamArn !== "") {
-            return Pulumi.output(streamArn);
-          }
-          if (!class_tables[0]) {
-            var $$class = CamlinternalOO.create_table(0);
-            var env = CamlinternalOO.new_variable($$class, "");
-            var env_init = function (env$1) {
-              var self = CamlinternalOO.create_object_opt(0, $$class);
-              self[env] = env$1;
-              return self;
-            };
-            CamlinternalOO.init_class($$class);
-            class_tables[0] = env_init;
-          }
-          var __x = Promise.all(/* tuple */[
-                DynamoDb_DynamoDb$AwsSdk.updateTable({
-                      TableName: tableName,
-                      StreamSpecification: {
-                        StreamEnabled: true,
-                        StreamViewType: "NEW_IMAGE"
-                      }
-                    }),
-                Belt_Option.getWithDefault(Belt_Option.map(ttl, (function (param) {
-                            return DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
-                                        TableName: tableName,
-                                        TimeToLiveSpecification: {
-                                          Enabled: true,
-                                          AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
-                                        }
-                                      });
-                          })), Promise.resolve(Curry._1(class_tables[0], 0))),
-                DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
-                      TableName: tableName,
-                      PointInTimeRecoverySpecification: {
-                        PointInTimeRecoveryEnabled: true
-                      }
-                    })
-              ]);
-          return __x.then((function (param) {
-                        var streamArn = param[0].TableDescription.LatestStreamArn;
-                        console.log("newly set streamArn:", streamArn);
-                        return Promise.resolve(streamArn);
-                      }));
-        }));
+  var streamInfo = verifyStream(table);
+  var newTtl = Util_DynamoDb$ReventlessAws.verifyTtl(table, ttl);
+  var newPointInTimeRecovery = Util_DynamoDb$ReventlessAws.verifyPointInTimeRecovery(table);
   return Object.assign(table, {
-              streamArn: streamArn
+              streamEnabled: streamInfo.apply((function (param) {
+                      return param[0];
+                    })),
+              streamArn: streamInfo.apply((function (param) {
+                      return Belt_Option.getWithDefault(param[1], "");
+                    })),
+              streamLabel: streamInfo.apply((function (param) {
+                      return param[2];
+                    })),
+              ttl: newTtl,
+              pointInTimeRecovery: newPointInTimeRecovery
             });
 }
 
@@ -151,6 +143,8 @@ exports.toInfo = toInfo;
 exports.streamArnFromDynamoDbTableResource = streamArnFromDynamoDbTableResource;
 exports.toResource = toResource;
 exports.toStreamResource = toStreamResource;
+exports.enableStream = enableStream;
+exports.verifyStream = verifyStream;
 exports.updateTable = updateTable;
 exports.makeTable = makeTable;
 /* @pulumi/aws Not a pure module */
