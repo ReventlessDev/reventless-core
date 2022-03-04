@@ -147,8 +147,17 @@ let makeTableArgs =
       ),
   );
 
+let option2Str = opt =>
+  switch (opt) {
+  | Some(value) => {j|Some($value)|j}
+  | None => "None"
+  };
+
 let makeTable =
     (~attributes, ~globalSecondaryIndexes=?, ~ttl=?, ~rangeKey=?, ~opts, name) => {
+  let ttlStr = ttl->option2Str;
+  Js.log({j|$__MODULE__.makeTable: ttl $ttlStr|j});
+
   let restoreSourceName =
     Pulumi.Config.make(Some("restore"))
     ->Pulumi.Config.getObject("tables")

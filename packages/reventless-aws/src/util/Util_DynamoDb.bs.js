@@ -226,7 +226,17 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
     });
 }
 
+function option2Str(opt) {
+  if (opt !== undefined) {
+    return "Some(" + (String(Caml_option.valFromOption(opt)) + ")");
+  } else {
+    return "None";
+  }
+}
+
 function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name) {
+  var ttlStr = option2Str(ttl);
+  console.log("" + (String("Util_DynamoDb-ReventlessAws") + (".makeTable: ttl " + (String(ttlStr) + ""))));
   var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
           return Js_dict.get(tables, name);
         }));
@@ -253,5 +263,6 @@ exports.enablePointInTimeRecovery = enablePointInTimeRecovery;
 exports.verifyPointInTimeRecovery = verifyPointInTimeRecovery;
 exports.updateTable = updateTable;
 exports.makeTableArgs = makeTableArgs;
+exports.option2Str = option2Str;
 exports.makeTable = makeTable;
 /* @pulumi/aws Not a pure module */

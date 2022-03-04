@@ -49,7 +49,7 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 open AwsSdk.DynamoDb_DynamoDb;
 
 let enableStream = tableName => {
-  Js.log({j|$__MODULE__: Start enableStream for $tableName|j});
+  Js.log({j|$__MODULE__: enableStream for $tableName|j});
   updateTable(
     UpdateTableInput.make(
       ~_TableName=tableName,
@@ -112,6 +112,9 @@ let updateTable = (table, ttl) => {
 
 let makeTable =
     (~attributes, ~globalSecondaryIndexes=?, ~ttl=?, ~rangeKey=?, ~opts, name) => {
+  let ttlStr = ttl->Util_DynamoDb.option2Str;
+  Js.log({j|$__MODULE__.makeTable: ttl $ttlStr|j});
+
   let restoreSourceName =
     Pulumi.Config.make(Some("restore"))
     ->Pulumi.Config.getObject("tables")

@@ -64,7 +64,7 @@ function toStreamResource(table) {
 }
 
 function enableStream(tableName) {
-  console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (": Start enableStream for " + (String(tableName) + ""))));
+  console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (": enableStream for " + (String(tableName) + ""))));
   var __x = DynamoDb_DynamoDb$AwsSdk.updateTable({
         TableName: tableName,
         StreamSpecification: {
@@ -122,6 +122,8 @@ function updateTable(table, ttl) {
 }
 
 function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name) {
+  var ttlStr = Util_DynamoDb$ReventlessAws.option2Str(ttl);
+  console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (".makeTable: ttl " + (String(ttlStr) + ""))));
   var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
           return Js_dict.get(tables, name);
         }));
