@@ -90,28 +90,41 @@ let verifyStream = table =>
       ->Pulumi.Output.fromPromise
     );
 
-let updateTable = (table, ttl) => {
-  let streamInfo = verifyStream(table);
+let updateTable:
+  (~ttl: int=?, PulumiAws.DynamoDb.Table.table) =>
+  PulumiAws.DynamoDb.Table.table =
+  (~ttl=?, table) => {
+    let streamInfo = verifyStream(table);
 
-  let newTtl = Util_DynamoDb.verifyTtl(table, ttl);
-  let newPointInTimeRecovery = Util_DynamoDb.verifyPointInTimeRecovery(table);
+    let newTtl = Util_DynamoDb.verifyTtl(~expectedTtl=?ttl, table);
+    let newPointInTimeRecovery =
+      Util_DynamoDb.verifyPointInTimeRecovery(table);
 
-  table->Js.Obj.assign({
-    "streamEnabled":
-      streamInfo->Pulumi.Output.apply(((enabled, _, _)) => enabled),
-    "streamArn":
-      streamInfo->Pulumi.Output.apply(((_, streamArn, _)) =>
-        streamArn->Belt.Option.getWithDefault("")
-      ),
-    "streamLabel":
-      streamInfo->Pulumi.Output.apply(((_, _, streamLabel)) => streamLabel),
-    "ttl": newTtl,
-    "pointInTimeRecovery": newPointInTimeRecovery,
-  });
-};
+    table->Js.Obj.assign({
+      "streamEnabled":
+        streamInfo->Pulumi.Output.apply(((enabled, _, _)) => enabled),
+      "streamArn":
+        streamInfo->Pulumi.Output.apply(((_, streamArn, _)) =>
+          streamArn->Belt.Option.getWithDefault("")
+        ),
+      "streamLabel":
+        streamInfo->Pulumi.Output.apply(((_, _, streamLabel)) =>
+          streamLabel
+        ),
+      "ttl": newTtl,
+      "pointInTimeRecovery": newPointInTimeRecovery,
+    });
+  };
 
 let makeTable =
-    (~attributes, ~globalSecondaryIndexes=?, ~ttl=?, ~rangeKey=?, ~opts, name) => {
+    (
+      ~attributes,
+      ~globalSecondaryIndexes=?,
+      ~ttl: option(int)=?,
+      ~rangeKey=?,
+      ~opts,
+      name,
+    ) => {
   let ttlStr = ttl->Util_DynamoDb.option2Str;
   Js.log({j|$__MODULE__.makeTable: ttl $ttlStr|j});
 
@@ -130,7 +143,7 @@ let makeTable =
         Util_DynamoDb.makeTableArgs(
           ~attributes,
           ~globalSecondaryIndexes?,
-          ~ttl,
+          ~ttl?,
           ~rangeKey?,
           ~restoreSourceName?,
           ~streamEnabled=true,
@@ -150,5 +163,5 @@ let makeTable =
 
   restoreSourceName->Belt.Option.isSome
     // Workaround when restore enabled
-    ? table->updateTable(ttl) : table;
+    ? updateTable(~ttl?, table) : table;
 };

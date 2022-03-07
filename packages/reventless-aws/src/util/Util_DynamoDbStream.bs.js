@@ -7,7 +7,6 @@ var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
@@ -102,9 +101,9 @@ function verifyStream(table) {
               }));
 }
 
-function updateTable(table, ttl) {
+function updateTable(ttl, table) {
   var streamInfo = verifyStream(table);
-  var newTtl = Util_DynamoDb$ReventlessAws.verifyTtl(table, ttl);
+  var newTtl = Util_DynamoDb$ReventlessAws.verifyTtl(ttl, table);
   var newPointInTimeRecovery = Util_DynamoDb$ReventlessAws.verifyPointInTimeRecovery(table);
   return Object.assign(table, {
               streamEnabled: streamInfo.apply((function (param) {
@@ -128,13 +127,13 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name
           return Js_dict.get(tables, name);
         }));
   var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies(/* () */0);
-  var table = new (Aws.dynamodb.Table)(name, Curry._1(Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, Caml_option.some(ttl), rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, true, /* NEW_IMAGE */154188476), /* () */0), Object.assign(opts, {
+  var table = new (Aws.dynamodb.Table)(name, Curry._1(Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, true, /* NEW_IMAGE */154188476), /* () */0), Object.assign(opts, {
             dependsOn: match[0]
           }));
   match[1](table);
   var match$1 = Belt_Option.isSome(restoreSourceName);
   if (match$1) {
-    return updateTable(table, ttl);
+    return updateTable(ttl, table);
   } else {
     return table;
   }

@@ -60,7 +60,7 @@ function enableTtl(tableName) {
               }));
 }
 
-function verifyTtl(table, expectedTtl) {
+function verifyTtl(expectedTtl, table) {
   return Output$Pulumi.flatMap(Pulumi.all(/* tuple */[
                   table.name,
                   table.ttl
@@ -112,8 +112,8 @@ function verifyPointInTimeRecovery(table) {
               }));
 }
 
-function updateTable(table, ttl) {
-  var newTtl = verifyTtl(table, ttl);
+function updateTable(ttl, table) {
+  var newTtl = verifyTtl(ttl, table);
   var newPointInTimeRecovery = verifyPointInTimeRecovery(table);
   return Object.assign(table, {
               ttl: newTtl,
@@ -122,6 +122,13 @@ function updateTable(table, ttl) {
 }
 
 function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName) {
+  var ttl$1 = Belt_Option.map(ttl, (function (param) {
+          return {
+                  enabled: true,
+                  attributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+                };
+        }));
+  console.log("" + (String("Util_DynamoDb-ReventlessAws") + (".makeTableArgs: ttl=" + (String(ttl$1) + ""))));
   var partial_arg = Belt_Option.map(rangeKey, (function (prim) {
           return prim;
         }));
@@ -187,24 +194,18 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
     }
     return tmp;
   };
-  var arg = Belt_Option.map(ttl, (function (param) {
-          return {
-                  attributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName,
-                  enabled: true
-                };
-        }));
-  var arg$1 = {
+  var arg = {
     enabled: true
   };
-  var arg$2 = Belt_Option.map(restoreSourceName, (function (prim) {
+  var arg$1 = Belt_Option.map(restoreSourceName, (function (prim) {
           return prim;
         }));
-  var arg$3 = Belt_Option.flatMap(restoreSourceName, (function (param) {
+  var arg$2 = Belt_Option.flatMap(restoreSourceName, (function (param) {
           return Belt_Option.map(process.env.RESTORE_DATE_TIME, (function (prim) {
                         return prim;
                       }));
         }));
-  var arg$4 = Belt_Option.map(restoreSourceName, (function (param) {
+  var arg$3 = Belt_Option.map(restoreSourceName, (function (param) {
           return Belt_Option.isNone(process.env.RESTORE_DATE_TIME);
         }));
   return (function (param, param$1, param$2, param$3, param$4, param$5, param$6) {
@@ -217,11 +218,11 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
                   param$4,
                   param$5,
                   param$6,
+                  ttl$1,
                   arg,
                   arg$1,
                   arg$2,
-                  arg$3,
-                  arg$4
+                  arg$3
                 ]);
     });
 }
@@ -241,13 +242,13 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name
           return Js_dict.get(tables, name);
         }));
   var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies(/* () */0);
-  var table = new (Aws.dynamodb.Table)(name, Curry._1(makeTableArgs(attributes, globalSecondaryIndexes, Caml_option.some(ttl), rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, undefined, undefined), /* () */0), Object.assign(opts, {
+  var table = new (Aws.dynamodb.Table)(name, Curry._1(makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, undefined, undefined), /* () */0), Object.assign(opts, {
             dependsOn: match[0]
           }));
   match[1](table);
   var match$1 = Belt_Option.isSome(restoreSourceName);
   if (match$1) {
-    return updateTable(table, ttl);
+    return updateTable(ttl, table);
   } else {
     return table;
   }

@@ -8,10 +8,10 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
   (
     ~name,
     ~indexes,
-    ~sortField,
-    ~ttl,
-    ~api: api,
-    ~apiRole: role,
+    ~sortField=?,
+    ~ttl=?,
+    ~api,
+    ~apiRole,
     ~opts,
     ~resources as _,
   ) => {
@@ -71,7 +71,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
         ~attributes,
         ~rangeKey=?sortField,
         ~globalSecondaryIndexes,
-        ~ttl,
+        ~ttl?,
         ~opts,
       );
 
