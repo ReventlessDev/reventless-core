@@ -66,7 +66,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
       ->Belt.List.toArray;
 
     let table =
-      Util_DynamoDbStream.makeTable(
+      Util_DynamoDb.makeTable(
         name,
         ~attributes,
         ~rangeKey=?sortField,

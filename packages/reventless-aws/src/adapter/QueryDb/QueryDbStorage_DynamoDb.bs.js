@@ -9,7 +9,6 @@ var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.bs.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.bs.js");
 var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_DataSource.bs.js");
-var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_DynamoDb_Runtime.bs.js");
 
 function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
@@ -90,7 +89,7 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
               ]
             ]
           ]));
-  var table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, Caml_option.some(globalSecondaryIndexes), ttl, sortField, opts, name);
+  var table = Util_DynamoDb$ReventlessAws.makeTable(attributes, Caml_option.some(globalSecondaryIndexes), ttl, sortField, opts, name);
   IAM$PulumiAws.RolePolicy.make(name, "dynamodb:*", /* array */[table.arn.apply((function (arn) {
                 return arn + "*";
               }))], Output$Pulumi.flatMap(apiRole, (function (role) {
