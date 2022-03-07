@@ -89,7 +89,7 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
               ]
             ]
           ]));
-  var table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, Caml_option.some(globalSecondaryIndexes), ttl, sortField, opts, name);
+  var table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, Caml_option.some(globalSecondaryIndexes), ttl, sortField, /* NEW_AND_OLD_IMAGES */546078935, opts, name);
   IAM$PulumiAws.RolePolicy.make(name, "dynamodb:*", /* array */[table.arn.apply((function (arn) {
                 return arn + "*";
               }))], Output$Pulumi.flatMap(apiRole, (function (role) {

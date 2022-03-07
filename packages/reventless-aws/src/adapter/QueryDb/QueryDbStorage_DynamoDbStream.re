@@ -72,6 +72,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
         ~rangeKey=?sortField,
         ~globalSecondaryIndexes,
         ~ttl?,
+        ~streamViewType=`NEW_AND_OLD_IMAGES,
         ~opts,
       );
 

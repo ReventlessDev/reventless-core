@@ -122,6 +122,7 @@ let makeTable =
       ~globalSecondaryIndexes=?,
       ~ttl: option(int)=?,
       ~rangeKey=?,
+      ~streamViewType,
       ~opts,
       name,
     ) => {
@@ -147,7 +148,7 @@ let makeTable =
           ~rangeKey?,
           ~restoreSourceName?,
           ~streamEnabled=true,
-          ~streamViewType=`NEW_IMAGE,
+          ~streamViewType,
           (),
         ),
       ~opts=

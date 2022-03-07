@@ -120,14 +120,14 @@ function updateTable(ttl, table) {
             });
 }
 
-function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name) {
+function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, streamViewType, opts, name) {
   var ttlStr = Util_DynamoDb$ReventlessAws.option2Str(ttl);
   console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (".makeTable: ttl " + (String(ttlStr) + ""))));
   var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
           return Js_dict.get(tables, name);
         }));
   var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies(/* () */0);
-  var table = new (Aws.dynamodb.Table)(name, Curry._1(Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, true, /* NEW_IMAGE */154188476), /* () */0), Object.assign(opts, {
+  var table = new (Aws.dynamodb.Table)(name, Curry._1(Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, true, streamViewType), /* () */0), Object.assign(opts, {
             dependsOn: match[0]
           }));
   match[1](table);

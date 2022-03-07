@@ -14,7 +14,7 @@ function make(name, opts, param) {
           name: "sequenceNr",
           type: "S"
         }
-      ], undefined, undefined, "sequenceNr", opts, name);
+      ], undefined, undefined, "sequenceNr", /* NEW_IMAGE */154188476, opts, name);
   return /* record */[
           /* resource */Util_DynamoDbStream$ReventlessAws.toResource(table),
           /* append */EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table),

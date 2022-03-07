@@ -8,6 +8,7 @@ let make: Reventless.EventLog.Adapter.storageMaker =
           {"name": "sequenceNr", "type": "S"},
         |],
         ~rangeKey="sequenceNr",
+        ~streamViewType=`NEW_IMAGE,
         ~opts,
       );
 
