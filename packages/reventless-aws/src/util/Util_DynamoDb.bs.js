@@ -128,7 +128,8 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
                   attributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
                 };
         }));
-  console.log("" + (String("Util_DynamoDb-ReventlessAws") + (".makeTableArgs: ttl=" + (String(ttl$1) + ""))));
+  var restoreDateTime = process.env.RESTORE_DATE_TIME;
+  console.log("Util_DynamoDb-ReventlessAws", ".makeTableArgs: restoreDateTime=", restoreDateTime);
   var partial_arg = Belt_Option.map(rangeKey, (function (prim) {
           return prim;
         }));
@@ -201,12 +202,12 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
           return prim;
         }));
   var arg$2 = Belt_Option.flatMap(restoreSourceName, (function (param) {
-          return Belt_Option.map(process.env.RESTORE_DATE_TIME, (function (prim) {
+          return Belt_Option.map(restoreDateTime, (function (prim) {
                         return prim;
                       }));
         }));
   var arg$3 = Belt_Option.map(restoreSourceName, (function (param) {
-          return Belt_Option.isNone(process.env.RESTORE_DATE_TIME);
+          return Belt_Option.isNone(restoreDateTime);
         }));
   return (function (param, param$1, param$2, param$3, param$4, param$5, param$6) {
       return Curry.app(func, [
@@ -236,8 +237,6 @@ function option2Str(opt) {
 }
 
 function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name) {
-  var ttlStr = option2Str(ttl);
-  console.log("" + (String("Util_DynamoDb-ReventlessAws") + (".makeTable: ttl " + (String(ttlStr) + ""))));
   var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
           return Js_dict.get(tables, name);
         }));

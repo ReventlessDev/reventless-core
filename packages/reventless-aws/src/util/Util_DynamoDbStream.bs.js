@@ -121,8 +121,6 @@ function updateTable(ttl, table) {
 }
 
 function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, streamViewType, opts, name) {
-  var ttlStr = Util_DynamoDb$ReventlessAws.option2Str(ttl);
-  console.log("" + (String("Util_DynamoDbStream-ReventlessAws") + (".makeTable: ttl " + (String(ttlStr) + ""))));
   var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
           return Js_dict.get(tables, name);
         }));

@@ -133,7 +133,9 @@ let makeTableArgs =
       )
       ->Pulumi.Input.wrap
     );
-  Js.log({j|$__MODULE__.makeTableArgs: ttl=$ttl|j});
+  let restoreDateTime = Reventless.Env.restoreDateTime;
+  Js.log3(__MODULE__, ".makeTableArgs: restoreDateTime=", restoreDateTime);
+
   PulumiAws.DynamoDb.Table.Args.make(
     ~attributes=attributes->Pulumi.Input.wrap,
     ~hashKey="id"->Pulumi.Input.wrap,
@@ -147,11 +149,11 @@ let makeTableArgs =
     ~restoreSourceName=?restoreSourceName->Belt.Option.map(Pulumi.Input.wrap),
     ~restoreDateTime=?
       restoreSourceName->Belt.Option.flatMap(_ =>
-        Reventless.Env.restoreDateTime->Belt.Option.map(Pulumi.Input.wrap)
+        restoreDateTime->Belt.Option.map(Pulumi.Input.wrap)
       ),
     ~restoreToLatestTime=?
       restoreSourceName->Belt.Option.map(_ =>
-        Reventless.Env.restoreDateTime->Belt.Option.isNone->Pulumi.Input.wrap
+        restoreDateTime->Belt.Option.isNone->Pulumi.Input.wrap
       ),
   );
 };
@@ -171,9 +173,6 @@ let makeTable =
       ~opts,
       name,
     ) => {
-  let ttlStr = ttl->option2Str;
-  Js.log({j|$__MODULE__.makeTable: ttl $ttlStr|j});
-
   let restoreSourceName =
     Pulumi.Config.make(Some("restore"))
     ->Pulumi.Config.getObject("tables")
