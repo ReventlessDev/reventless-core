@@ -160,8 +160,8 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                       ->Pulumi.Input.wrap,
                     ~executionRoleArn=
                       taskExecutionRole##arn->Pulumi.Output.asInput,
-                    ~memory="2048"->Pulumi.Input.wrap,
-                    ~cpu="512"->Pulumi.Input.wrap,
+                    ~memory="4096"->Pulumi.Input.wrap,
+                    ~cpu="1024"->Pulumi.Input.wrap,
                     ~requiresCompatibilities=[|"FARGATE"|],
                     ~networkMode=`awsvpc,
                     (),

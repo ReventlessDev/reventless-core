@@ -82,8 +82,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
           var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {
                 family: name,
                 containerDefinitions: Belt_Option.getExn(Caml_option.undefined_to_opt(JSON.stringify(containerDefinitions))),
-                cpu: "512",
-                memory: "2048",
+                cpu: "1024",
+                memory: "4096",
                 networkMode: "awsvpc",
                 requiresCompatibilities: /* array */["FARGATE"],
                 executionRoleArn: taskExecutionRole.arn
