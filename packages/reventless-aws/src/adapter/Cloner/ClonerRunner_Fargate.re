@@ -141,6 +141,13 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                     },
                     (),
                   ),
+                ~ulimits=[|
+                  ContainerDefinition.Ulimit.make(
+                    ~name=`nofile,
+                    ~hardLimit=1048576,
+                    ~softLimit=1048576,
+                  ),
+                |],
                 (),
               )
             ),

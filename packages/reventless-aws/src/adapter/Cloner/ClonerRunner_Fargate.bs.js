@@ -62,13 +62,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         ]).apply((function (param) {
           var containerDefinitions = /* array */[{
               name: "reventless-ci",
-              image: new Pulumi.Config("ci").require("image"),
               cpu: 1024,
-              memory: 4096,
-              repositoryCredentials: {
-                credentialsParameter: reventlessCiSecretUrn
-              },
-              secrets: param[3],
+              image: new Pulumi.Config("ci").require("image"),
               logConfiguration: {
                 logDriver: "awslogs",
                 options: {
@@ -77,7 +72,17 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                   "awslogs-region": new Pulumi.Config("aws").require("region"),
                   "awslogs-stream-prefix": "reventless-cloner"
                 }
-              }
+              },
+              memory: 4096,
+              repositoryCredentials: {
+                credentialsParameter: reventlessCiSecretUrn
+              },
+              secrets: param[3],
+              ulimits: /* array */[{
+                  name: "nofile",
+                  hardLimit: 1048576,
+                  softLimit: 1048576
+                }]
             }];
           var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {
                 family: name,
