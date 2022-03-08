@@ -63,8 +63,8 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
           var containerDefinitions = /* array */[{
               name: "reventless-ci",
               image: new Pulumi.Config("ci").require("image"),
-              cpu: 512,
-              memory: 2048,
+              cpu: 1024,
+              memory: 4096,
               repositoryCredentials: {
                 credentialsParameter: reventlessCiSecretUrn
               },
