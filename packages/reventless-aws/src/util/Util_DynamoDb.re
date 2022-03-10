@@ -134,7 +134,6 @@ let makeTableArgs =
       ->Pulumi.Input.wrap
     );
   let restoreDateTime = Reventless.Env.restoreDateTime;
-  Js.log3(__MODULE__, ".makeTableArgs: restoreDateTime=", restoreDateTime);
 
   PulumiAws.DynamoDb.Table.Args.make(
     ~attributes=attributes->Pulumi.Input.wrap,

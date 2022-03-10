@@ -129,7 +129,6 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
                 };
         }));
   var restoreDateTime = process.env.RESTORE_DATE_TIME;
-  console.log("Util_DynamoDb-ReventlessAws", ".makeTableArgs: restoreDateTime=", restoreDateTime);
   var partial_arg = Belt_Option.map(rangeKey, (function (prim) {
           return prim;
         }));
