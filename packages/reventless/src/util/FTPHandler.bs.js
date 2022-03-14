@@ -81,11 +81,12 @@ function ftp(connectionParams, ftpAction) {
                                 }));
                           return /* () */0;
                         }), client.on("end", (function (param) {
-                                  console.log("Client.onEnd - do nothing");
+                                  console.log("Client.onEnd");
                                   return resolvePromise(/* Ok */Block.__(0, [true]));
                                 })).on("error", (function (err) {
+                                resolvePromise(/* Error */Block.__(1, [Belt_Option.getWithDefault(err.message, "Error contains no message.")]));
                                 client.end();
-                                return resolvePromise(/* Error */Block.__(1, [Belt_Option.getWithDefault(err.message, "Error contains no message.")]));
+                                return /* () */0;
                               })).on("timeout", (function (param) {
                               client.emit("error", Message$Reventless.log(new Error("SSH-Client Error: Connection timed out"), "Client.onTimeout"));
                               return /* () */0;

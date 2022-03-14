@@ -44,11 +44,10 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
     let client = Client.make();
     client
     |> Client.onEnd(() => {
-         Js.log("Client.onEnd - do nothing");
+         Js.log("Client.onEnd");
          resolvePromise(. Belt.Result.Ok(true));
        })
     |> Client.onError(err => {
-         client |> Client.end_();
          resolvePromise(.
            Belt.Result.Error(
              err
@@ -56,6 +55,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
              ->Belt.Option.getWithDefault("Error contains no message."),
            ),
          );
+         client |> Client.end_();
        })
     |> Client.onTimeout(() =>
          client
