@@ -41,11 +41,16 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
   let {host, port, userName, password, path, readyTimeout} = connectionParams;
   //let {Import.importType, fileType, pattern, date, run, time} = descriptor;
   Js.Promise.make((~resolve as resolvePromise, ~reject as _rejectPromise) => {
+    let isDone = ref(false);
     let client = Client.make();
     client
     |> Client.onEnd(() => {
          Js.log("Client.onEnd");
-         resolvePromise(. Belt.Result.Ok(true));
+         resolvePromise(.
+           isDone^
+             ? Belt.Result.Ok(true)
+             : Belt.Result.Error("Stream ended before action handling!"),
+         );
        })
     |> Client.onError(err => {
          resolvePromise(.
@@ -105,7 +110,8 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
                          ~sftp,
                          ~fail,
                          ~endFtp,
-                       )
+                       );
+                       isDone := true;
 
                      | Some(readdirError) =>
                        Js.Console.error2(
@@ -122,9 +128,10 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
                   |> (path ++ "/" ++ filename)
                      ->Message.log("path for write stream")
                      ->createWriteStream(~path=_, ())
-                  |> NodeStreams.Writable.onFinish(() =>
-                       Js.log("writable ended")
-                     )
+                  |> NodeStreams.Writable.onFinish(() => {
+                       isDone := true;
+                       Js.log("writable ended");
+                     })
                   |> NodeStreams.Writable.onClose(() => {
                        Js.log("writable closed");
                        sftp |> end_();
