@@ -17,6 +17,7 @@ function ftp(connectionParams, ftpAction) {
   var port = connectionParams[/* port */1];
   var host = connectionParams[/* host */0];
   return new Promise((function (resolvePromise, _rejectPromise) {
+                var isDone = /* record */[/* contents */false];
                 var client = new Ssh2.Client();
                 var tmp = {
                   host: host,
@@ -55,6 +56,7 @@ function ftp(connectionParams, ftpAction) {
                                     ftpAction[0].pipe((function (param) {
                                                     return param.createWriteStream(__x, undefined);
                                                   })(sftp).on("finish", (function (param) {
+                                                    isDone[0] = true;
                                                     console.log("writable ended");
                                                     return /* () */0;
                                                   })).on("close", (function (param) {
@@ -73,7 +75,9 @@ function ftp(connectionParams, ftpAction) {
                                               console.error("Could not read directory:", Caml_option.valFromOption(readdirError));
                                               return fail(new Error("Could not read directory"));
                                             } else {
-                                              return Curry._5(downloadAction, connectionParams, entities, sftp, fail, endFtp);
+                                              Curry._5(downloadAction, connectionParams, entities, sftp, fail, endFtp);
+                                              isDone[0] = true;
+                                              return /* () */0;
                                             }
                                           }));
                                     return /* () */0;
@@ -82,7 +86,8 @@ function ftp(connectionParams, ftpAction) {
                           return /* () */0;
                         }), client.on("end", (function (param) {
                                   console.log("Client.onEnd");
-                                  return resolvePromise(/* Ok */Block.__(0, [true]));
+                                  var match = isDone[0];
+                                  return resolvePromise(match ? /* Ok */Block.__(0, [true]) : /* Error */Block.__(1, ["Stream ended before action handling!"]));
                                 })).on("error", (function (err) {
                                 resolvePromise(/* Error */Block.__(1, [Belt_Option.getWithDefault(err.message, "Error contains no message.")]));
                                 client.end();
