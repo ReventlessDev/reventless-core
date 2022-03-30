@@ -53,7 +53,8 @@ function make(name, api, fields, commandGenerator, opts) {
     return "\n    {\n      \"version\": \"2017-02-28\",\n      \"operation\": \"Invoke\",\n      \"payload\": {\n          \"command\": \"" + (String(command) + "\",\n          \"arguments\": \$utils.toJson(\$context.arguments),\n          \"meta\": {\n            \"ip\": \$util.toJson(\$context.identity.sourceIp),\n            \"user\": \$util.toJson(\$context.identity.username)\n          }\n      }\n    }\n  ");
   };
   var resolvers = Belt_Array.map(fields, (function (field) {
-          var commandName = $$String.capitalize(field);
+          var match = field.split("_");
+          var commandName = match.length !== 2 ? $$String.capitalize(field) : $$String.capitalize(match[1]);
           return AppSync_Resolver$PulumiAws.make(commandName, api, Caml_option.some(dataSource.name), "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
         }));
   var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);

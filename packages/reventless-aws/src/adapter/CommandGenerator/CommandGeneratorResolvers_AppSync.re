@@ -98,7 +98,11 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
 
     let resolvers =
       fields->Belt.Array.map(field => {
-        let commandName = field->String.capitalize;
+        let commandName =
+          switch (field->Js.String2.split("_")) {
+          | [|_aggregate, commandName|] => commandName->String.capitalize
+          | _ => field->String.capitalize
+          };
         AppSync.Resolver.make(
           ~name=commandName,
           ~api,
