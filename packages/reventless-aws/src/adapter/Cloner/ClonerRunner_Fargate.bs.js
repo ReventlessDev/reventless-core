@@ -9,6 +9,7 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.bs.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
+var Iam = require("@pulumi/aws/iam");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var Util_Vpc$Reventless = require("@reventless/reventless/src/util/Util_Vpc.bs.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.bs.js");
@@ -104,7 +105,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                     /* array */[
                       param[0],
                       param[1],
-                      Lambda$PulumiAws.Policy.awsLambdaFullAccess
+                      Iam.ManagedPolicy.LambdaFullAccess
                     ],
                     undefined,
                     undefined,

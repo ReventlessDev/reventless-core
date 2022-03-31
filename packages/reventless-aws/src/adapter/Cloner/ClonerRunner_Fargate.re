@@ -186,7 +186,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                   ~policies=[|
                     secretsManagerAccessPolicyArn,
                     taskRunnerPolicyArn,
-                    PulumiAws.Lambda.Policy.awsLambdaFullAccess,
+                    PulumiAws.IAM.ManagedPolicies.lambdaFullAccess,
                   |],
                   ~callback=
                     ClonerRunner_Fargate_Runtime.clone(
