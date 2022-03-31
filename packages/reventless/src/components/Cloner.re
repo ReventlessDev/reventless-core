@@ -36,6 +36,8 @@ module Adapter = {
 
     let make: runnerMaker(api);
   };
+
+  let noRunner = {resources: [||]->Pulumi.Output.make};
 };
 
 module Make =
@@ -85,21 +87,32 @@ module Make =
     let secretsConfig = Pulumi.Config.make(Some("secrets"));
     let secretUrns =
       [|"aws", "pulumi", "repository"|]
-      ->Belt.Array.map(secretsConfig->Pulumi.Config.require(_));
+      ->Belt.Array.map(secretsConfig->Pulumi.Config.get(_));
     let reventlessCiSecretUrn =
-      secretsConfig->Pulumi.Config.require("reventless-ci");
+      secretsConfig->Pulumi.Config.get("reventless-ci");
 
     let runner =
-      Runner.make(
-        ~name,
-        ~api,
-        ~fullQualifiedStackName,
-        ~reventlessCiSecretUrn,
-        ~secretUrns,
-        ~opts,
-        (),
-      );
+      switch (secretUrns, reventlessCiSecretUrn) {
+      | (
+          [|Some(aws), Some(pulumi), Some(repository)|],
+          Some(reventlessCiSecretUrn),
+        ) =>
+        Runner.make(
+          ~name,
+          ~api,
+          ~fullQualifiedStackName,
+          ~reventlessCiSecretUrn,
+          ~secretUrns=[|aws, pulumi, repository|],
+          ~opts,
+          (),
+        )
 
+      | _ =>
+        Js.log(
+          "No ClonerRunner created because no secrets are configured in Pulumi config !",
+        );
+        Adapter.noRunner;
+      };
     makeOutputs(~resources=runner.resources) |> self->setOutputs;
   };
 

@@ -9,7 +9,11 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
-var Adapter = { };
+var noRunner = /* record */[/* resources */Pulumi.output(/* array */[])];
+
+var Adapter = {
+  noRunner: noRunner
+};
 
 function Make(Config) {
   return (function (Runner) {
@@ -31,10 +35,38 @@ function Make(Config) {
               "pulumi",
               "repository"
             ], (function (param) {
-                return secretsConfig.require(param);
+                return secretsConfig.get(param);
               }));
-        var reventlessCiSecretUrn = secretsConfig.require("reventless-ci");
-        var runner = Curry._7(Runner.make, name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, Caml_option.some(opts), /* () */0);
+        var reventlessCiSecretUrn = secretsConfig.get("reventless-ci");
+        var runner;
+        if (secretUrns.length !== 3) {
+          console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
+          runner = noRunner;
+        } else {
+          var match = secretUrns[0];
+          if (match !== undefined) {
+            var match$1 = secretUrns[1];
+            if (match$1 !== undefined) {
+              var match$2 = secretUrns[2];
+              if (match$2 !== undefined && reventlessCiSecretUrn !== undefined) {
+                runner = Curry._7(Runner.make, name, api, fullQualifiedStackName, Caml_option.valFromOption(reventlessCiSecretUrn), /* array */[
+                      match,
+                      match$1,
+                      match$2
+                    ], Caml_option.some(opts), /* () */0);
+              } else {
+                console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
+                runner = noRunner;
+              }
+            } else {
+              console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
+              runner = noRunner;
+            }
+          } else {
+            console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
+            runner = noRunner;
+          }
+        }
         var self$1 = self;
         var outputs = {
           resources: runner[/* resources */0]
@@ -63,4 +95,4 @@ var componentType = /* Cloner */20;
 exports.componentType = componentType;
 exports.Adapter = Adapter;
 exports.Make = Make;
-/* ./Component Not a pure module */
+/* noRunner Not a pure module */
