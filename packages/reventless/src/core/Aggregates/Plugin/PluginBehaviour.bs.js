@@ -111,8 +111,8 @@ function state_decode(v) {
 }
 
 var resolverConfig_001 = /* fields : array */[
-  "activate",
-  "deactivate"
+  "Plugin_Activate",
+  "Plugin_Deactivate"
 ];
 
 var resolverConfig = /* record */[
