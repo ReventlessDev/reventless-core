@@ -6,7 +6,7 @@ var typesSchema = "\ntype Extension {\n\tname: String!\n\textensionPointName: St
 
 var queriesSchema = "\n\tplugin(id: ID!): Plugin\n    @aws_auth(cognito_groups: [\"Admin\"])\n\teveryPlugin(nextToken: String, limit: Int): Plugins!\n    @aws_auth(cognito_groups: [\"Admin\"])\n";
 
-var mutationsSchema = "\n\tdeactivatePlugin(id: ID!): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n\tactivatePlugin(id: ID!): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n";
+var mutationsSchema = "\n\tPlugin_Deactivate(id: ID!): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n\tPlugin_Activate(id: ID!): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n";
 
 exports.typesSchema = typesSchema;
 exports.queriesSchema = queriesSchema;

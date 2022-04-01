@@ -7,23 +7,23 @@ include ReventlessSpec.Plugin;
 [@decco]
 type command =
   | Heartbeat
-  | ConnectPlugin(pluginDefinition)
-  | DisconnectPlugin
-  | ActivatePlugin
-  | DeactivatePlugin;
+  | Connect(pluginDefinition)
+  | Disconnect
+  | Activate
+  | Deactivate;
 
 [@decco]
 type event =
   | UnknownPluginDetected
-  | PluginConnected(pluginDefinition)
-  | PluginReconnected(pluginDefinition)
-  | PluginDisconnected(pluginDefinition)
-  | PluginActivated(pluginDefinition)
-  | PluginDeactivated(pluginDefinition);
+  | Connected(pluginDefinition)
+  | Reconnected(pluginDefinition)
+  | Disconnected(pluginDefinition)
+  | Activated(pluginDefinition)
+  | Deactivated(pluginDefinition);
 
 [@decco]
 type error =
-  | PluginNotExisting
-  | PluginIsConnected
-  | PluginIsDisconnected
-  | PluginIsInactive;
+  | NotExisting
+  | AlreadyConnected
+  | IsDisconnected
+  | IsInactive;

@@ -111,8 +111,8 @@ function state_decode(v) {
 }
 
 var resolverConfig_001 = /* fields : array */[
-  "activatePlugin",
-  "deactivatePlugin"
+  "activate",
+  "deactivate"
 ];
 
 var resolverConfig = /* record */[
@@ -127,7 +127,7 @@ function create(command, context, error) {
             /* [] */0
           ];
   } else {
-    return Curry._3(error, /* PluginNotExisting */0, command, context);
+    return Curry._3(error, /* NotExisting */0, command, context);
   }
 }
 
@@ -144,7 +144,7 @@ function execute(state, command, context, error) {
       }
     } else {
       return /* :: */[
-              /* PluginConnected */Block.__(0, [command[0]]),
+              /* Connected */Block.__(0, [command[0]]),
               /* [] */0
             ];
     }
@@ -152,24 +152,26 @@ function execute(state, command, context, error) {
     switch (state.tag | 0) {
       case /* Connected */0 :
           var pluginDefinition = state[0];
-          if (typeof command === "number" && command !== 0) {
-            switch (command - 1 | 0) {
+          if (typeof command === "number") {
+            switch (command) {
               case /* Heartbeat */0 :
+                  return /* [] */0;
+              case /* Disconnect */1 :
                   return /* :: */[
-                          /* PluginDisconnected */Block.__(2, [pluginDefinition]),
+                          /* Disconnected */Block.__(2, [pluginDefinition]),
                           /* [] */0
                         ];
-              case /* DisconnectPlugin */1 :
-                  return Curry._3(error, /* PluginIsConnected */1, command, context);
-              case /* ActivatePlugin */2 :
+              case /* Activate */2 :
+                  return Curry._3(error, /* AlreadyConnected */1, command, context);
+              case /* Deactivate */3 :
                   return /* :: */[
-                          /* PluginDeactivated */Block.__(4, [pluginDefinition]),
+                          /* Deactivated */Block.__(4, [pluginDefinition]),
                           /* [] */0
                         ];
               
             }
           } else {
-            return Curry._3(error, /* PluginIsConnected */1, command, context);
+            return Curry._3(error, /* AlreadyConnected */1, command, context);
           }
       case /* Disconnected */1 :
           var pluginDefinition$1 = state[0];
@@ -177,29 +179,37 @@ function execute(state, command, context, error) {
             if (command !== 0) {
               if (command >= 3) {
                 return /* :: */[
-                        /* PluginDeactivated */Block.__(4, [pluginDefinition$1]),
+                        /* Deactivated */Block.__(4, [pluginDefinition$1]),
                         /* [] */0
                       ];
               } else {
-                return Curry._3(error, /* PluginIsDisconnected */2, command, context);
+                return Curry._3(error, /* IsDisconnected */2, command, context);
               }
             } else {
               return /* :: */[
-                      /* PluginReconnected */Block.__(1, [pluginDefinition$1]),
+                      /* Reconnected */Block.__(1, [pluginDefinition$1]),
                       /* [] */0
                     ];
             }
           } else {
-            return Curry._3(error, /* PluginIsDisconnected */2, command, context);
+            return Curry._3(error, /* IsDisconnected */2, command, context);
           }
       case /* Inactive */2 :
-          if (typeof command === "number" && command === 2) {
-            return /* :: */[
-                    /* PluginActivated */Block.__(3, [state[0]]),
-                    /* [] */0
-                  ];
+          if (typeof command === "number" && command < 3) {
+            switch (command) {
+              case /* Heartbeat */0 :
+                  return /* [] */0;
+              case /* Disconnect */1 :
+                  return Curry._3(error, /* IsInactive */3, command, context);
+              case /* Activate */2 :
+                  return /* :: */[
+                          /* Activated */Block.__(3, [state[0]]),
+                          /* [] */0
+                        ];
+              
+            }
           } else {
-            return Curry._3(error, /* PluginIsInactive */3, command, context);
+            return Curry._3(error, /* IsInactive */3, command, context);
           }
       
     }
@@ -240,9 +250,9 @@ function apply(state, $$event) {
                 ];
           } else {
             switch ($$event.tag | 0) {
-              case /* PluginDisconnected */2 :
+              case /* Disconnected */2 :
                   return /* Disconnected */Block.__(1, [pluginDefinition]);
-              case /* PluginDeactivated */4 :
+              case /* Deactivated */4 :
                   return /* Inactive */Block.__(2, [pluginDefinition]);
               default:
                 throw [
@@ -260,9 +270,9 @@ function apply(state, $$event) {
                 ];
           } else {
             switch ($$event.tag | 0) {
-              case /* PluginReconnected */1 :
+              case /* Reconnected */1 :
                   return /* Connected */Block.__(0, [pluginDefinition$1]);
-              case /* PluginDeactivated */4 :
+              case /* Deactivated */4 :
                   return /* Inactive */Block.__(2, [pluginDefinition$1]);
               default:
                 throw [
@@ -277,7 +287,7 @@ function apply(state, $$event) {
                   Message$Reventless.InvalidEvent,
                   PluginSpec$Reventless.event_encode($$event)
                 ];
-          } else if ($$event.tag === /* PluginActivated */3) {
+          } else if ($$event.tag === /* Activated */3) {
             return /* Disconnected */Block.__(1, [state[0]]);
           } else {
             throw [

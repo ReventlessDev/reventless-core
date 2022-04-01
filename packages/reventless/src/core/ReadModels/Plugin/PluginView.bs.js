@@ -264,7 +264,7 @@ function apply(state, $$event, param) {
     return /* [] */0;
   } else {
     switch ($$event.tag | 0) {
-      case /* PluginConnected */0 :
+      case /* Connected */0 :
           var match$1 = $$event[0];
           var extensions = match$1[/* extensions */4];
           var extensionPoints = match$1[/* extensionPoints */3];
@@ -289,7 +289,7 @@ function apply(state, $$event, param) {
                       ]]),
                   /* [] */0
                 ];
-      case /* PluginReconnected */1 :
+      case /* Reconnected */1 :
           return /* :: */[
                   /* Update */Block.__(1, [/* record */[
                         /* name */state[/* name */0],
@@ -307,10 +307,10 @@ function apply(state, $$event, param) {
                       ]]),
                   /* [] */0
                 ];
-      case /* PluginDisconnected */2 :
-      case /* PluginActivated */3 :
+      case /* Disconnected */2 :
+      case /* Activated */3 :
           break;
-      case /* PluginDeactivated */4 :
+      case /* Deactivated */4 :
           return /* :: */[
                   /* Update */Block.__(1, [/* record */[
                         /* name */state[/* name */0],

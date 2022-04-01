@@ -130,10 +130,10 @@ module Impl = {
         Call(callHandler, CreateDisconnectSchedule(id, interval + 2)),
       |]
     | ConnectPlugin(pluginDefinition) => [|
-        PublishCommand(id, ConnectPlugin(pluginDefinition)),
+        PublishCommand(id, Connect(pluginDefinition)),
       |]
     | DisconnectPlugin => [|
-        PublishCommand(id, DisconnectPlugin),
+        PublishCommand(id, Disconnect),
         Call(callHandler, DeleteDisconnectSchedule(id)),
       |]
     | ForwardCommand(forwardCommand) => [|
@@ -149,19 +149,19 @@ module Impl = {
           ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected,
         ),
       |]
-    | PluginConnected(pluginDefinition) => [|
+    | Connected(pluginDefinition) => [|
         PublishEvent(id, PluginConnected(pluginDefinition)),
       |]
-    | PluginReconnected(pluginDefinition) => [|
+    | Reconnected(pluginDefinition) => [|
         PublishEvent(id, PluginReconnected(pluginDefinition)),
       |]
-    | PluginDisconnected(pluginDefinition) => [|
+    | Disconnected(pluginDefinition) => [|
         PublishEvent(id, PluginDisconnected(pluginDefinition)),
       |]
-    | PluginDeactivated(pluginDefinition) => [|
+    | Deactivated(pluginDefinition) => [|
         PublishEvent(id, PluginDeactivated(pluginDefinition)),
       |]
-    | PluginActivated(pluginDefinition) => [|
+    | Activated(pluginDefinition) => [|
         PublishEvent(id, PluginActivated(pluginDefinition)),
       |]
     };

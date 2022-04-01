@@ -90,7 +90,7 @@ function mapIncomingCommand(id, cmd, _meta) {
     return /* array */[
             /* PublishCommand */Block.__(0, [
                 id,
-                /* DisconnectPlugin */1
+                /* Disconnect */1
               ]),
             /* Call */Block.__(1, [
                 callHandler,
@@ -116,7 +116,7 @@ function mapIncomingCommand(id, cmd, _meta) {
       case /* ConnectPlugin */1 :
           return /* array */[/* PublishCommand */Block.__(0, [
                       id,
-                      /* ConnectPlugin */[cmd[0]]
+                      /* Connect */[cmd[0]]
                     ])];
       case /* ForwardCommand */2 :
           return /* array */[/* Call */Block.__(1, [
@@ -136,27 +136,27 @@ function mapOutgoingEvent(id, $$event, _meta, _queryEngine) {
               ])];
   } else {
     switch ($$event.tag | 0) {
-      case /* PluginConnected */0 :
+      case /* Connected */0 :
           return /* array */[/* PublishEvent */Block.__(0, [
                       id,
                       /* PluginConnected */Block.__(0, [$$event[0]])
                     ])];
-      case /* PluginReconnected */1 :
+      case /* Reconnected */1 :
           return /* array */[/* PublishEvent */Block.__(0, [
                       id,
                       /* PluginReconnected */Block.__(1, [$$event[0]])
                     ])];
-      case /* PluginDisconnected */2 :
+      case /* Disconnected */2 :
           return /* array */[/* PublishEvent */Block.__(0, [
                       id,
                       /* PluginDisconnected */Block.__(2, [$$event[0]])
                     ])];
-      case /* PluginActivated */3 :
+      case /* Activated */3 :
           return /* array */[/* PublishEvent */Block.__(0, [
                       id,
                       /* PluginActivated */Block.__(4, [$$event[0]])
                     ])];
-      case /* PluginDeactivated */4 :
+      case /* Deactivated */4 :
           return /* array */[/* PublishEvent */Block.__(0, [
                       id,
                       /* PluginDeactivated */Block.__(3, [$$event[0]])

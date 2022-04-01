@@ -40,8 +40,8 @@ let queriesSchema = {|
 |};
 
 let mutationsSchema = {|
-	deactivatePlugin(id: ID!): String!
+	Plugin_Deactivate(id: ID!): String!
     @aws_auth(cognito_groups: ["Admin"])
-	activatePlugin(id: ID!): String!
+	Plugin_Activate(id: ID!): String!
     @aws_auth(cognito_groups: ["Admin"])
 |};

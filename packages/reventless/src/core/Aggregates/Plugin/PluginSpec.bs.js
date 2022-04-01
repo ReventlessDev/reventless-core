@@ -12,17 +12,17 @@ function command_encode(v) {
     switch (v) {
       case /* Heartbeat */0 :
           return /* array */["Heartbeat"];
-      case /* DisconnectPlugin */1 :
-          return /* array */["DisconnectPlugin"];
-      case /* ActivatePlugin */2 :
-          return /* array */["ActivatePlugin"];
-      case /* DeactivatePlugin */3 :
-          return /* array */["DeactivatePlugin"];
+      case /* Disconnect */1 :
+          return /* array */["Disconnect"];
+      case /* Activate */2 :
+          return /* array */["Activate"];
+      case /* Deactivate */3 :
+          return /* array */["Deactivate"];
       
     }
   } else {
     return /* array */[
-            "ConnectPlugin",
+            "Connect",
             Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
           ];
   }
@@ -38,14 +38,14 @@ function command_decode(v) {
     var match$1 = Caml_array.caml_array_get(tagged, 0);
     if (typeof match$1 !== "number" && !match$1.tag) {
       switch (match$1[0]) {
-        case "ActivatePlugin" :
+        case "Activate" :
             var match$2 = tagged.length !== 1;
             if (match$2) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              return /* Ok */Block.__(0, [/* ActivatePlugin */2]);
+              return /* Ok */Block.__(0, [/* Activate */2]);
             }
-        case "ConnectPlugin" :
+        case "Connect" :
             var match$3 = tagged.length !== 2;
             if (match$3) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
@@ -59,22 +59,22 @@ function command_decode(v) {
                             /* value */e[/* value */2]
                           ]]);
               } else {
-                return /* Ok */Block.__(0, [/* ConnectPlugin */[match$4[0]]]);
+                return /* Ok */Block.__(0, [/* Connect */[match$4[0]]]);
               }
             }
-        case "DeactivatePlugin" :
+        case "Deactivate" :
             var match$5 = tagged.length !== 1;
             if (match$5) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              return /* Ok */Block.__(0, [/* DeactivatePlugin */3]);
+              return /* Ok */Block.__(0, [/* Deactivate */3]);
             }
-        case "DisconnectPlugin" :
+        case "Disconnect" :
             var match$6 = tagged.length !== 1;
             if (match$6) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              return /* Ok */Block.__(0, [/* DisconnectPlugin */1]);
+              return /* Ok */Block.__(0, [/* Disconnect */1]);
             }
         case "Heartbeat" :
             var match$7 = tagged.length !== 1;
@@ -96,29 +96,29 @@ function event_encode(v) {
     return /* array */["UnknownPluginDetected"];
   } else {
     switch (v.tag | 0) {
-      case /* PluginConnected */0 :
+      case /* Connected */0 :
           return /* array */[
-                  "PluginConnected",
+                  "Connected",
                   Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
                 ];
-      case /* PluginReconnected */1 :
+      case /* Reconnected */1 :
           return /* array */[
-                  "PluginReconnected",
+                  "Reconnected",
                   Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
                 ];
-      case /* PluginDisconnected */2 :
+      case /* Disconnected */2 :
           return /* array */[
-                  "PluginDisconnected",
+                  "Disconnected",
                   Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
                 ];
-      case /* PluginActivated */3 :
+      case /* Activated */3 :
           return /* array */[
-                  "PluginActivated",
+                  "Activated",
                   Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
                 ];
-      case /* PluginDeactivated */4 :
+      case /* Deactivated */4 :
           return /* array */[
-                  "PluginDeactivated",
+                  "Deactivated",
                   Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
                 ];
       
@@ -136,7 +136,7 @@ function event_decode(v) {
     var match$1 = Caml_array.caml_array_get(tagged, 0);
     if (typeof match$1 !== "number" && !match$1.tag) {
       switch (match$1[0]) {
-        case "PluginActivated" :
+        case "Activated" :
             var match$2 = tagged.length !== 2;
             if (match$2) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
@@ -150,10 +150,10 @@ function event_decode(v) {
                             /* value */e[/* value */2]
                           ]]);
               } else {
-                return /* Ok */Block.__(0, [/* PluginActivated */Block.__(3, [match$3[0]])]);
+                return /* Ok */Block.__(0, [/* Activated */Block.__(3, [match$3[0]])]);
               }
             }
-        case "PluginConnected" :
+        case "Connected" :
             var match$4 = tagged.length !== 2;
             if (match$4) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
@@ -167,10 +167,10 @@ function event_decode(v) {
                             /* value */e$1[/* value */2]
                           ]]);
               } else {
-                return /* Ok */Block.__(0, [/* PluginConnected */Block.__(0, [match$5[0]])]);
+                return /* Ok */Block.__(0, [/* Connected */Block.__(0, [match$5[0]])]);
               }
             }
-        case "PluginDeactivated" :
+        case "Deactivated" :
             var match$6 = tagged.length !== 2;
             if (match$6) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
@@ -184,10 +184,10 @@ function event_decode(v) {
                             /* value */e$2[/* value */2]
                           ]]);
               } else {
-                return /* Ok */Block.__(0, [/* PluginDeactivated */Block.__(4, [match$7[0]])]);
+                return /* Ok */Block.__(0, [/* Deactivated */Block.__(4, [match$7[0]])]);
               }
             }
-        case "PluginDisconnected" :
+        case "Disconnected" :
             var match$8 = tagged.length !== 2;
             if (match$8) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
@@ -201,10 +201,10 @@ function event_decode(v) {
                             /* value */e$3[/* value */2]
                           ]]);
               } else {
-                return /* Ok */Block.__(0, [/* PluginDisconnected */Block.__(2, [match$9[0]])]);
+                return /* Ok */Block.__(0, [/* Disconnected */Block.__(2, [match$9[0]])]);
               }
             }
-        case "PluginReconnected" :
+        case "Reconnected" :
             var match$10 = tagged.length !== 2;
             if (match$10) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
@@ -218,7 +218,7 @@ function event_decode(v) {
                             /* value */e$4[/* value */2]
                           ]]);
               } else {
-                return /* Ok */Block.__(0, [/* PluginReconnected */Block.__(1, [match$11[0]])]);
+                return /* Ok */Block.__(0, [/* Reconnected */Block.__(1, [match$11[0]])]);
               }
             }
         case "UnknownPluginDetected" :
@@ -238,14 +238,14 @@ function event_decode(v) {
 
 function error_encode(v) {
   switch (v) {
-    case /* PluginNotExisting */0 :
-        return /* array */["PluginNotExisting"];
-    case /* PluginIsConnected */1 :
-        return /* array */["PluginIsConnected"];
-    case /* PluginIsDisconnected */2 :
-        return /* array */["PluginIsDisconnected"];
-    case /* PluginIsInactive */3 :
-        return /* array */["PluginIsInactive"];
+    case /* NotExisting */0 :
+        return /* array */["NotExisting"];
+    case /* AlreadyConnected */1 :
+        return /* array */["AlreadyConnected"];
+    case /* IsDisconnected */2 :
+        return /* array */["IsDisconnected"];
+    case /* IsInactive */3 :
+        return /* array */["IsInactive"];
     
   }
 }
@@ -260,33 +260,33 @@ function error_decode(v) {
     var match$1 = Caml_array.caml_array_get(tagged, 0);
     if (typeof match$1 !== "number" && !match$1.tag) {
       switch (match$1[0]) {
-        case "PluginIsConnected" :
+        case "AlreadyConnected" :
             var match$2 = tagged.length !== 1;
             if (match$2) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              return /* Ok */Block.__(0, [/* PluginIsConnected */1]);
+              return /* Ok */Block.__(0, [/* AlreadyConnected */1]);
             }
-        case "PluginIsDisconnected" :
+        case "IsDisconnected" :
             var match$3 = tagged.length !== 1;
             if (match$3) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              return /* Ok */Block.__(0, [/* PluginIsDisconnected */2]);
+              return /* Ok */Block.__(0, [/* IsDisconnected */2]);
             }
-        case "PluginIsInactive" :
+        case "IsInactive" :
             var match$4 = tagged.length !== 1;
             if (match$4) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              return /* Ok */Block.__(0, [/* PluginIsInactive */3]);
+              return /* Ok */Block.__(0, [/* IsInactive */3]);
             }
-        case "PluginNotExisting" :
+        case "NotExisting" :
             var match$5 = tagged.length !== 1;
             if (match$5) {
               return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
             } else {
-              return /* Ok */Block.__(0, [/* PluginNotExisting */0]);
+              return /* Ok */Block.__(0, [/* NotExisting */0]);
             }
         default:
           

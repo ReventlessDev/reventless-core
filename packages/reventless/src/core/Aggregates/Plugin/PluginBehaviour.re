@@ -12,7 +12,7 @@ type state =
 let resolverConfig =
   Behaviour.{
     commandDecoder: command_decode,
-    fields: [|"activatePlugin", "deactivatePlugin"|],
+    fields: [|"activate", "deactivate"|],
   };
 
 let atomicCounter = None;
@@ -21,10 +21,10 @@ let create: Behaviour.create(command, event, error) =
   (. command, context, error) =>
     switch (command) {
     | Heartbeat => [UnknownPluginDetected]
-    | ConnectPlugin(_)
-    | DisconnectPlugin
-    | ActivatePlugin
-    | DeactivatePlugin => error(PluginNotExisting, command, context)
+    | Connect(_)
+    | Disconnect
+    | Activate
+    | Deactivate => error(NotExisting, command, context)
     };
 
 let execute: Behaviour.execute(state, command, event, error) =
@@ -32,37 +32,35 @@ let execute: Behaviour.execute(state, command, event, error) =
     switch (state) {
     | Detected =>
       switch (command) {
-      | ConnectPlugin(pluginDefinition) => [
-          PluginConnected(pluginDefinition),
-        ]
+      | Connect(pluginDefinition) => [(Connected(pluginDefinition): event)]
       | Heartbeat => [UnknownPluginDetected]
-      | DisconnectPlugin
-      | ActivatePlugin
-      | DeactivatePlugin => []
+      | Disconnect
+      | Activate
+      | Deactivate => []
       }
     | Connected(pluginDefinition) =>
       switch (command) {
-      | DisconnectPlugin => [PluginDisconnected(pluginDefinition)]
-      | DeactivatePlugin => [PluginDeactivated(pluginDefinition)]
-      | Heartbeat
-      | ConnectPlugin(_)
-      | ActivatePlugin => error(PluginIsConnected, command, context)
+      | Disconnect => [Disconnected(pluginDefinition)]
+      | Deactivate => [Deactivated(pluginDefinition)]
+      | Heartbeat => [] // ignore
+      | Connect(_)
+      | Activate => error(AlreadyConnected, command, context)
       }
     | Disconnected(pluginDefinition) =>
       switch (command) {
-      | Heartbeat => [PluginReconnected(pluginDefinition)]
-      | DeactivatePlugin => [PluginDeactivated(pluginDefinition)]
-      | ConnectPlugin(_)
-      | DisconnectPlugin
-      | ActivatePlugin => error(PluginIsDisconnected, command, context)
+      | Heartbeat => [Reconnected(pluginDefinition)]
+      | Deactivate => [Deactivated(pluginDefinition)]
+      | Connect(_)
+      | Disconnect
+      | Activate => error(IsDisconnected, command, context)
       }
     | Inactive(pluginDefinition) =>
       switch (command) {
-      | ActivatePlugin => [PluginActivated(pluginDefinition)]
-      | Heartbeat
-      | ConnectPlugin(_)
-      | DisconnectPlugin
-      | DeactivatePlugin => error(PluginIsInactive, command, context)
+      | Activate => [Activated(pluginDefinition)]
+      | Heartbeat => [] // ignore
+      | Connect(_)
+      | Disconnect
+      | Deactivate => error(IsInactive, command, context)
       }
     };
   };
@@ -71,11 +69,11 @@ let init: Behaviour.init(state, event) =
   (. event) =>
     switch (event) {
     | UnknownPluginDetected => Detected
-    | PluginConnected(_)
-    | PluginReconnected(_)
-    | PluginDisconnected(_)
-    | PluginActivated(_)
-    | PluginDeactivated(_) =>
+    | Connected(_)
+    | Reconnected(_)
+    | Disconnected(_)
+    | Activated(_)
+    | Deactivated(_) =>
       raise(Reventless.Message.InvalidEvent(event_encode(event)))
     };
 
@@ -84,42 +82,42 @@ let apply: Behaviour.apply(state, event) =
     switch (state) {
     | Detected =>
       switch (event) {
-      | PluginConnected(pluginDefinition) => Connected(pluginDefinition)
       | UnknownPluginDetected => state
-      | PluginReconnected(_)
-      | PluginDisconnected(_)
-      | PluginActivated(_)
-      | PluginDeactivated(_) =>
+      | Connected(pluginDefinition) => Connected(pluginDefinition)
+      | Reconnected(_)
+      | Disconnected(_)
+      | Activated(_)
+      | Deactivated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
     | Connected(pluginDefinition) =>
       switch (event) {
-      | PluginDisconnected(_) => Disconnected(pluginDefinition)
-      | PluginDeactivated(_) => Inactive(pluginDefinition)
+      | Disconnected(_) => Disconnected(pluginDefinition)
+      | Deactivated(_) => Inactive(pluginDefinition)
       | UnknownPluginDetected
-      | PluginConnected(_)
-      | PluginReconnected(_)
-      | PluginActivated(_) =>
+      | Connected(_)
+      | Reconnected(_)
+      | Activated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
     | Disconnected(pluginDefinition) =>
       switch (event) {
-      | PluginReconnected(_) => Connected(pluginDefinition)
-      | PluginDeactivated(_) => Inactive(pluginDefinition)
+      | Reconnected(_) => Connected(pluginDefinition)
+      | Deactivated(_) => Inactive(pluginDefinition)
       | UnknownPluginDetected
-      | PluginConnected(_)
-      | PluginDisconnected(_)
-      | PluginActivated(_) =>
+      | Connected(_)
+      | Disconnected(_)
+      | Activated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
     | Inactive(pluginDefinition) =>
       switch (event) {
-      | PluginActivated(_) => Disconnected(pluginDefinition)
+      | Activated(_) => Disconnected(pluginDefinition)
       | UnknownPluginDetected
-      | PluginConnected(_)
-      | PluginReconnected(_)
-      | PluginDisconnected(_)
-      | PluginDeactivated(_) =>
+      | Connected(_)
+      | Reconnected(_)
+      | Disconnected(_)
+      | Deactivated(_) =>
         raise(Reventless.Message.InvalidEvent(event_encode(event)))
       }
     };

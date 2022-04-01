@@ -54,13 +54,7 @@ let init =
   (. event, {Message.meta: {time, user}}) =>
     switch (event) {
     | UnknownPluginDetected => []
-    | PluginConnected({
-        name,
-        version,
-        eventCollector,
-        extensionPoints,
-        extensions,
-      }) => [
+    | Connected({name, version, eventCollector, extensionPoints, extensions}) => [
         {
           name,
           version,
@@ -76,10 +70,10 @@ let init =
           },
         },
       ]
-    | PluginReconnected(_)
-    | PluginDisconnected(_)
-    | PluginActivated(_)
-    | PluginDeactivated(_) =>
+    | Reconnected(_)
+    | Disconnected(_)
+    | Activated(_)
+    | Deactivated(_) =>
       raise(Reventless.Message.InvalidEvent(PluginSpec.event_encode(event)))
     };
 
@@ -87,13 +81,7 @@ let apply =
   (. state, event, {Message.meta: {time, user}}) =>
     switch (event) {
     | UnknownPluginDetected => []
-    | PluginConnected({
-        name,
-        version,
-        eventCollector,
-        extensionPoints,
-        extensions,
-      }) => [
+    | Connected({name, version, eventCollector, extensionPoints, extensions}) => [
         Update({
           name,
           version,
@@ -109,7 +97,7 @@ let apply =
           },
         }),
       ]
-    | PluginReconnected(_) => [
+    | Reconnected(_) => [
         Update({
           ...state,
           status: Connected,
@@ -119,8 +107,8 @@ let apply =
           },
         }),
       ]
-    | PluginDisconnected(_)
-    | PluginActivated(_) => [
+    | Disconnected(_)
+    | Activated(_) => [
         Update({
           ...state,
           status: Disconnected,
@@ -130,7 +118,7 @@ let apply =
           },
         }),
       ]
-    | PluginDeactivated(_) => [
+    | Deactivated(_) => [
         Update({
           ...state,
           status: Inactive,
