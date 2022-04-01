@@ -104,7 +104,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
           | _ => field->String.capitalize
           };
         AppSync.Resolver.make(
-          ~name=commandName,
+          ~name=field->String.capitalize,
           ~api,
           ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
           ~_type="Mutation"->Pulumi.Input.wrap,
