@@ -35,6 +35,13 @@ const addViewTest = {
   templateFile: 'plop-templates/tests/ViewTest.re.hbs'
 };
 
+const addApi = {
+  type: 'add',
+  path: 'src/API/{{properCase name}}/{{properCase name}}Api.re',
+  templateFile: 'plop-templates/API/Api.re.hbs'
+};
+
+
 export default function (plop) {
   plop.setGenerator('Service', {
     prompts: [{
@@ -48,7 +55,8 @@ export default function (plop) {
       addTestFixture,
       addBehaviourTest,
       addView,
-      addViewTest
+      addViewTest,
+      addApi
     ]
   });
   plop.setGenerator('Aggregate', {
@@ -71,7 +79,8 @@ export default function (plop) {
     }],
     actions: [
       addView,
-      addViewTest
+      addViewTest,
+      addApi
     ]
   });
 };
