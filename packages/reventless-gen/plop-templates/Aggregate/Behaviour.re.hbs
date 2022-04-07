@@ -1,0 +1,51 @@
+open {{properCase name}};
+
+module Spec = {{properCase name}};
+
+type state = {
+  status,
+};
+
+let resolverConfig =
+  Reventless.Behaviour.{
+    commandDecoder: command_decode,
+    fields: [||],
+  };
+
+let create: Reventless.Behaviour.create(command, event, error) =
+  (. command, context, error) =>
+    switch (command) {
+    | Add => [Added]
+    | _ => error(NotExisting, command, context)
+    };
+
+let execute: Reventless.Behaviour.execute(state, command, event, error) =
+  (. state, command, context, error) =>
+    switch (state.status) {
+    | Active =>
+      switch (command) {
+      | Add => error(AlreadyExisting, command, context)
+      }
+    };
+
+let invalidEvent = event => 
+  raise(Reventless.Message.InvalidEvent(event_encode(event)));
+
+let init: Reventless.Behaviour.init(state, event) =
+  (. event) =>
+    switch (event) {
+    | Added => {
+        status: Active,
+      }
+    | _ => invalidEvent(event)
+    };
+
+let apply: Reventless.Behaviour.apply(state, event) =
+  (. state: state, event) => {
+    switch (state.status) {
+    | Active =>
+      switch (event) {
+      | Added => invalidEvent(event)
+      }
+    };
+  };

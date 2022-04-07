@@ -1,0 +1,20 @@
+let name = "{{properCase name}}";
+
+module Id = Reventless.Id.String;
+
+[@decco]
+type status =
+| Active;
+
+[@decco]
+type command =
+| Add;
+
+[@decco]
+type event =
+| Added;
+
+[@decco]
+type error =
+| NotExisting
+| AlreadyExisting;
