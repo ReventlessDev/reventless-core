@@ -17,7 +17,7 @@ const addService = {
 };
 const addTestFixture = {
   type: 'add',
-  path: 'tests/{{properCase name}}/{{properCase name}}Fixture.re',
+  path: 'tests/{{properCase name}}/{{properCase name}}Fixtures.re',
   templateFile: 'plop-templates/tests/Fixtures.re.hbs'
 };
 const addBehaviourTest = {
