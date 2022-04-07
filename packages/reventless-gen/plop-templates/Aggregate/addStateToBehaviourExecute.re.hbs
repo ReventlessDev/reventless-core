@@ -1,0 +1,5 @@
+$1
+    | {{properCase statusName}} =>
+      switch (command) {
+      | Add => error(AlreadyExisting, command, context)
+      }$2

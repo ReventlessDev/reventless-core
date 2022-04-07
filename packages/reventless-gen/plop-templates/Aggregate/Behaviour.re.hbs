@@ -41,11 +41,10 @@ let init: Reventless.Behaviour.init(state, event) =
     };
 
 let apply: Reventless.Behaviour.apply(state, event) =
-  (. state: state, event) => {
+  (. state: state, event) => 
     switch (state.status) {
     | Active =>
       switch (event) {
       | Added => invalidEvent(event)
       }
     };
-  };

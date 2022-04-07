@@ -43,6 +43,30 @@ const addApi = {
   templateFile: 'plop-templates/API/Api.re.hbs'
 };
 
+const addStatusToSpec = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
+  pattern: /type status =\n([\S\s]*?);/,
+  template: "type status =\n$1\n| {{properCase statusName}};",
+};
+const addStatusToBehaviourExecute = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(let execute[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
+  templateFile: "plop-templates/Aggregate/addStateToBehaviourExecute.re.hbs",
+};
+const addStatusToBehaviourApply = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(let apply[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
+  templateFile: "plop-templates/Aggregate/addStateToBehaviourApply.re.hbs",
+};
+const addStatusToViewApply = {
+  type: "modify",
+  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
+  pattern: /(let apply[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
+  templateFile: "plop-templates/Aggregate/addStateToViewApply.re.hbs",
+};
 
 export default function (plop) {
   plop.setGenerator('Service', {
@@ -86,6 +110,24 @@ export default function (plop) {
       addView,
       addViewTest,
       addApi
+    ]
+  });
+  plop.setGenerator('Status', {
+    prompts: [{
+      type: 'input',
+      name: 'aggregateName',
+      message: 'Aggregate name:'
+    },
+    {
+      type: 'input',
+      name: 'statusName',
+      message: 'Status name:'
+    }],
+    actions: [
+      addStatusToSpec,
+      addStatusToBehaviourExecute,
+      addStatusToBehaviourApply,
+      addStatusToViewApply
     ]
   });
 

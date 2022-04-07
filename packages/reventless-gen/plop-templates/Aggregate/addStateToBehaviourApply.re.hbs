@@ -1,0 +1,5 @@
+$1
+    | {{properCase statusName}} =>
+      switch (event) {
+      | Added => invalidEvent(event)
+      }$2
