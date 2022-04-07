@@ -1,3 +1,5 @@
+import pluralize from 'pluralize';
+
 const addSpec = {
   type: 'add',
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}.re',
@@ -47,6 +49,7 @@ export default function (plop) {
     prompts: [{
       type: 'input',
       name: 'name',
+      message: 'Service name:'
     }],
     actions: [
       addSpec,
@@ -63,6 +66,7 @@ export default function (plop) {
     prompts: [{
       type: 'input',
       name: 'name',
+      message: 'Aggregate name:'
     }],
     actions: [
       addSpec,
@@ -76,6 +80,7 @@ export default function (plop) {
     prompts: [{
       type: 'input',
       name: 'name',
+      message: 'ReadModel name:'
     }],
     actions: [
       addView,
@@ -83,4 +88,7 @@ export default function (plop) {
       addApi
     ]
   });
+
+  plop.setHelper('pluralize', (txt) =>
+    pluralize.plural(plop.getHelper("properCase")(txt)));
 };

@@ -20,6 +20,7 @@
   },
   "preferGlobal": true,
   "dependencies": {
-    "plop": "^3.0.5"
+    "plop": "^3.0.5",
+    "pluralize": "^8.0.0"
   }
 }
