@@ -34,7 +34,7 @@ let init =
     };
 
 let apply =
-  (. state, event, {meta: {time, user}}) =>
+  (. state: state, event, {meta: {time, user}}) =>
     switch (event) {
     | Added => invalidEvent(event)
     };

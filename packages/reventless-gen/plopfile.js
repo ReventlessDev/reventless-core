@@ -100,7 +100,7 @@ const addStatusFieldToViewState = {
 const addStatusSwitchToViewApply = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(\(. state, event.* =>)(?!\n    switch \(state.status\))([\S\s]*?    };)/,
+  pattern: /(\(. state,.* =>)(?!\n    switch \(state.status\))([\S\s]*?    };)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
 const indentViewSwitchStatusBlocks = { // TODO improve
