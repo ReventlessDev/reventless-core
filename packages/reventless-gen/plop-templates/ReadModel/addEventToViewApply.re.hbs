@@ -1,0 +1,10 @@
+$1
+      | {{properCaseWithOptionalParams event}} => [
+          Update({
+            ...state,
+            statusChange: {
+              at: time,
+              by: user,
+            },
+          }),
+        ] // TODO: generated$2

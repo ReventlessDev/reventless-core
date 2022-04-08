@@ -46,8 +46,8 @@ const addApi = {
 const addStatusToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /type status =\n([\S\s]*?);/,
-  template: "type status =\n$1\n| {{properCase statusName}};",
+  pattern: /(type status =\n[\S\s]*?);/,
+  template: "$1\n| {{properCase statusName}};",
 };
 const addStatusToBehaviourExecute = {
   type: "modify",
@@ -66,6 +66,61 @@ const addStatusToViewApply = {
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
   pattern: /(let apply[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
   templateFile: "plop-templates/Aggregate/addStateToViewApply.re.hbs",
+};
+
+const addCommandToSpec = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
+  pattern: /(type command =\n[\S\s]*?);/,
+  template: "$1\n| {{properCaseWithOptionalParams command}};",
+};
+const addEventToSpec = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
+  pattern: /(type event =\n[\S\s]*?);/,
+  template: "$1\n| {{properCaseWithOptionalParams event}};",
+};
+const addCommandAndEventToBehaviourExecute = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(      switch \(command\)[\S\s]*?)(\n      })/g,
+  template: "$1\n      | {{properCaseWithOptionalParams command}} => [{{properCaseWithOptionalParams event}}]$2",
+};
+const addCommandToBehaviourExecute = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(      switch \(command\)[\S\s]*?)(\n      })/g,
+  template: "$1\n      | {{properCaseWithOptionalParams command}} => [] // TODO: generated$2",
+};
+const addEventToBehaviourApply = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(      switch \(event\)[\S\s]*?)(\n      })/g,
+  template: "$1\n      | {{properCaseWithOptionalParams event}} => state // TODO: generated$2",
+};
+const addEventToViewApply = {
+  type: "modify",
+  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
+  pattern: /(      switch \(event\)[\S\s]*?)(\n      })/g,
+  templateFile: "plop-templates/ReadModel/addEventToViewApply.re.hbs",
+};
+const addCommandAndEventToBehaviourTest = {
+  type: "modify",
+  path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}BehaviourTest.re",
+  pattern: /(\n}\);)/,
+  templateFile: "plop-templates/tests/addCommandAndEventToBehaviourTest.re.hbs",
+};
+const addCommandToBehaviourTest = {
+  type: "modify",
+  path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}BehaviourTest.re",
+  pattern: /(\n}\);)/,
+  templateFile: "plop-templates/tests/addCommandToBehaviourTest.re.hbs",
+};
+const addEventToViewTest = {
+  type: "modify",
+  path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}ViewTest.re",
+  pattern: /(\n}\);)/,
+  templateFile: "plop-templates/tests/addEventToViewTest.re.hbs",
 };
 
 export default function (plop) {
@@ -130,7 +185,75 @@ export default function (plop) {
       addStatusToViewApply
     ]
   });
+  plop.setGenerator('Command+Event', {
+    prompts: [{
+      type: 'input',
+      name: 'aggregateName',
+      message: 'Aggregate name:'
+    },
+    {
+      type: 'input',
+      name: 'command',
+      message: 'Command:'
+    },
+    {
+      type: 'input',
+      name: 'event',
+      message: 'Event:'
+    }],
+    actions: [
+      addCommandToSpec,
+      addEventToSpec,
+      addCommandAndEventToBehaviourExecute,
+      addEventToBehaviourApply,
+      addEventToViewApply,
+      addCommandAndEventToBehaviourTest,
+      addEventToViewTest
+    ]
+  });
+  plop.setGenerator('Command', {
+    prompts: [{
+      type: 'input',
+      name: 'aggregateName',
+      message: 'Aggregate name:'
+    },
+    {
+      type: 'input',
+      name: 'command',
+      message: 'Command:'
+    }],
+    actions: [
+      addCommandToSpec,
+      addCommandToBehaviourExecute,
+      addCommandToBehaviourTest
+    ]
+  });
+  plop.setGenerator('Event', {
+    prompts: [{
+      type: 'input',
+      name: 'aggregateName',
+      message: 'Aggregate name:'
+    },
+    {
+      type: 'input',
+      name: 'event',
+      message: 'Event:'
+    }],
+    actions: [
+      addEventToSpec,
+      addEventToBehaviourApply,
+      addEventToViewApply,
+      addEventToViewTest
+    ]
+  });
 
-  plop.setHelper('pluralize', (txt) =>
-    pluralize.plural(plop.getHelper("properCase")(txt)));
+  plop.setHelper('pluralize', (name) =>
+    pluralize.plural(plop.getHelper("properCase")(name)));
+
+  plop.setHelper('properCaseWithoutOptionalParams', (txt) => txt.split("(")[0]);
+
+  plop.setHelper('properCaseWithOptionalParams', (txt) => {
+    const parts = txt.split("(");
+    return plop.getHelper("properCase")(parts[0]) + (parts[1] ? '(' + parts[1] : '');
+  })
 };

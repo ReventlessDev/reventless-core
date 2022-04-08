@@ -1,0 +1,13 @@
+
+
+  test("{{properCaseWithoutOptionalParams event}} (not existing)", () =>
+    givenEvents([])
+    |> whenEvent({{properCaseWithoutOptionalParams event}})
+    |> thenThrow
+  );
+
+  test("{{properCaseWithoutOptionalParams event}}", () =>
+    givenEvents([Added])
+    |> whenEvent({{properCaseWithoutOptionalParams event}})
+    |> thenState(state) // TODO: generated
+  );$1

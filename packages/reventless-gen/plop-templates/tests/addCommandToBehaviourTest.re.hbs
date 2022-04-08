@@ -1,0 +1,13 @@
+
+
+  test("{{properCaseWithoutOptionalParams command}} (not existing)", () =>
+    givenEvents([])
+    |> whenCmd({{properCaseWithOptionalParams command}})
+    |> thenError(NotExisting)
+  );
+
+  test("{{properCaseWithoutOptionalParams command}}", () =>
+    givenEvents([Added])
+    |> whenCmd({{properCaseWithOptionalParams command}})
+    |> thenEvents([]) // TODO: generated
+  );$1
