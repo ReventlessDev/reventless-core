@@ -90,13 +90,13 @@ const addCommandToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(      switch \(command\)[\S\s]*?)(\n      })/g,
-  template: "$1\n      | {{properCaseWithOptionalParams command}} => [] // TODO: generated$2",
+  template: "$1\n      | {{properCaseWithOptionalParams command}} => [] // TODO: add implementation$2",
 };
 const addEventToBehaviourApply = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(      switch \(event\)[\S\s]*?)(\n      })/g,
-  template: "$1\n      | {{properCaseWithOptionalParams event}} => state // TODO: generated$2",
+  template: "$1\n      | {{properCaseWithOptionalParams event}} => state // TODO: add implementation$2",
 };
 const addEventToViewApply = {
   type: "modify",
