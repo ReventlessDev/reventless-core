@@ -43,29 +43,83 @@ const addApi = {
   templateFile: 'plop-templates/API/Api.re.hbs'
 };
 
+const addEmptyTypeStatusToSpec = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
+  pattern: /(?<!type status =[\S\s]*)(\[@decco\]\ntype command =)/,
+  templateFile: "plop-templates/Aggregate/addEmptyTypeStatus.re.hbs",
+};
 const addStatusToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /(type status =\n[\S\s]*?);/,
-  template: "$1\n| {{properCase statusName}};",
+  pattern: /(type status =[\S\s]*?);/,
+  template: "$1\n| {{properCaseWithOptionalParams status}};",
+};
+const addStatusFieldToBehaviourState = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(type state =[\S\s]*?)(?<!status\W*)(\n};)/,
+  template: "$1\n  status,$2",
+};
+const addStatusSwitchToBehaviourExecute = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(\(. state, command.*=>)(?!\n    switch \(state.status\))([\S\s]*?    };)/,
+  templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
+};
+const addStatusSwitchToBehaviourApply = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(\(. state, event.*=>)(?!\n    switch \(state.status\))([\S\s]*?    };)/,
+  templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
+};
+const indentBehaviourSwitchStatusBlocks = { // TODO improve
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(?<=switch \(state\.status\) {\n.*=>\n)([\S\s]*?)(    };)/g,
+  template: "  $1  $2",
 };
 const addStatusToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(let execute[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
-  templateFile: "plop-templates/Aggregate/addStateToBehaviourExecute.re.hbs",
+  templateFile: "plop-templates/Aggregate/addStatusToBehaviourExecute.re.hbs",
 };
 const addStatusToBehaviourApply = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(let apply[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
-  templateFile: "plop-templates/Aggregate/addStateToBehaviourApply.re.hbs",
+  templateFile: "plop-templates/Aggregate/addStatusToBehaviourApply.re.hbs",
+};
+const addStatusFieldToViewState = {
+  type: "modify",
+  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
+  pattern: /(type state =[\S\s]*?)(?<!status\W*)(\n};)/,
+  template: "$1\n  status,$2",
+};
+const addStatusSwitchToViewApply = {
+  type: "modify",
+  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
+  pattern: /(\(. state, event.* =>)(?!\n    switch \(state.status\))([\S\s]*?    };)/,
+  templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
+};
+const indentViewSwitchStatusBlocks = { // TODO improve
+  type: "modify",
+  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
+  pattern: /(?<=switch \(state\.status\) {\n.*=>\n)([\S\s]*?)(    };)/g,
+  template: "  $1  $2",
 };
 const addStatusToViewApply = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
   pattern: /(let apply[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
-  templateFile: "plop-templates/Aggregate/addStateToViewApply.re.hbs",
+  templateFile: "plop-templates/Aggregate/addStatusToViewApply.re.hbs",
+};
+const addStatusFieldToTestFixture = {
+  type: "modify",
+  path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}Fixtures.re",
+  pattern: /(let state\W[\S\s]*?)(?<!status\W.*)(\n};)/,
+  template: "$1\n  status: {{properCaseWithOptionalParams status}},$2",
 };
 
 const addCommandToSpec = {
@@ -175,14 +229,23 @@ export default function (plop) {
     },
     {
       type: 'input',
-      name: 'statusName',
-      message: 'Status name:'
+      name: 'status',
+      message: 'Status:'
     }],
     actions: [
+      addEmptyTypeStatusToSpec,
       addStatusToSpec,
+      addStatusFieldToBehaviourState,
       addStatusToBehaviourExecute,
       addStatusToBehaviourApply,
-      addStatusToViewApply
+      addStatusSwitchToBehaviourExecute,
+      addStatusSwitchToBehaviourApply,
+      indentBehaviourSwitchStatusBlocks,
+      addStatusFieldToViewState,
+      addStatusToViewApply,
+      addStatusSwitchToViewApply,
+      indentViewSwitchStatusBlocks,
+      addStatusFieldToTestFixture
     ]
   });
   plop.setGenerator('Command+Event', {

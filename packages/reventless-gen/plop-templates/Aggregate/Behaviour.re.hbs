@@ -3,7 +3,6 @@ open {{properCase name}};
 module Spec = {{properCase name}};
 
 type state = {
-  status,
 };
 
 let resolverConfig =
@@ -21,11 +20,8 @@ let create: Reventless.Behaviour.create(command, event, error) =
 
 let execute: Reventless.Behaviour.execute(state, command, event, error) =
   (. state, command, context, error) =>
-    switch (state.status) {
-    | Active =>
-      switch (command) {
-      | Add => error(AlreadyExisting, command, context)
-      }
+    switch (command) {
+    | Add => error(AlreadyExisting, command, context)
     };
 
 let invalidEvent = event => 
@@ -35,16 +31,12 @@ let init: Reventless.Behaviour.init(state, event) =
   (. event) =>
     switch (event) {
     | Added => {
-        status: Active,
       }
     | _ => invalidEvent(event)
     };
 
 let apply: Reventless.Behaviour.apply(state, event) =
-  (. state: state, event) => 
-    switch (state.status) {
-    | Active =>
-      switch (event) {
-      | Added => invalidEvent(event)
-      }
+  (. state, event) =>
+    switch (event) {
+    | Added => invalidEvent(event)
     };

@@ -5,7 +5,6 @@ open {{properCase name}};
 [@decco]
 type state = {
   statusChange,
-  status,
 };
 
 let name = None;
@@ -24,24 +23,20 @@ let init =
   (. event, {meta: {time, user}}) =>
     switch (event) {
     | Added => [
-        {
-          statusChange: {
-            at: time,
-            by: user,
-          },
-          status: Active,
+      {
+        statusChange: {
+          at: time,
+          by: user,
         },
-      ]
+      },
+    ]
     | _ => invalidEvent(event)
     };
 
 let apply =
   (. state, event, {meta: {time, user}}) =>
-    switch (state.status) {
-    | Active =>
-      switch (event) {
-      | Added => invalidEvent(event)
-      }
+    switch (event) {
+    | Added => invalidEvent(event)
     };
 
 let applyMulti =

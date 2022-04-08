@@ -1,5 +1,5 @@
 $1
-    | {{properCase statusName}} =>
+    | {{properCaseWithOptionalParams status}} =>
       switch (event) {
       | Added => invalidEvent(event)
       }$2
