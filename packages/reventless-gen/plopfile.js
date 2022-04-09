@@ -1,43 +1,49 @@
+// assumtions:
+// - code is well indented (regex's check for number of spaces)
+// limitations:
+// - after some generations code has to be reformatted (i.e. saved)
+// - Command Add and Event Added are generated and used for each new Status
+
 import pluralize from 'pluralize';
 
-const addSpec = {
+const createSpec = {
   type: 'add',
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}.re',
   templateFile: 'plop-templates/Aggregate/Spec.re.hbs'
 };
-const addBehaviour = {
+const createBehaviour = {
   type: 'add',
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Behaviour.re',
   templateFile: 'plop-templates/Aggregate/Behaviour.re.hbs'
 };
-const addService = {
+const createService = {
   type: 'add',
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Service.re',
   templateFile: 'plop-templates/Aggregate/Service.re.hbs'
 };
-const addTestFixture = {
+const createTestFixture = {
   type: 'add',
   path: 'tests/{{properCase name}}/{{properCase name}}Fixtures.re',
   templateFile: 'plop-templates/tests/Fixtures.re.hbs'
 };
-const addBehaviourTest = {
+const createBehaviourTest = {
   type: 'add',
   path: 'tests/{{properCase name}}/{{properCase name}}BehaviourTest.re',
   templateFile: 'plop-templates/tests/BehaviourTest.re.hbs'
 };
 
-const addView = {
+const createView = {
   type: 'add',
   path: 'src/ReadModels/{{properCase name}}/{{properCase name}}View.re',
   templateFile: 'plop-templates/ReadModel/View.re.hbs'
 };
-const addViewTest = {
+const createViewTest = {
   type: 'add',
   path: 'tests/{{properCase name}}/{{properCase name}}ViewTest.re',
   templateFile: 'plop-templates/tests/ViewTest.re.hbs'
 };
 
-const addApi = {
+const createApi = {
   type: 'add',
   path: 'src/API/{{properCase name}}/{{properCase name}}Api.re',
   templateFile: 'plop-templates/API/Api.re.hbs'
@@ -46,13 +52,13 @@ const addApi = {
 const addEmptyTypeStatusToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /(?<!type status =[\S\s]*)(\[@decco\]\ntype command =)/,
+  pattern: /(?<!type status\W[\S\s]*)(\[@decco\]\ntype command =)/,
   templateFile: "plop-templates/Aggregate/addEmptyTypeStatus.re.hbs",
 };
 const addStatusToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /(type status =[\S\s]*?);/,
+  pattern: /(type status\W[\S\s]*?);/,
   template: "$1\n| {{properCaseWithOptionalParams status}};",
 };
 const addStatusFieldToBehaviourState = {
@@ -64,13 +70,13 @@ const addStatusFieldToBehaviourState = {
 const addStatusSwitchToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(\(. state, command.*=>)(?!\n    switch \(state.status\))([\S\s]*?    };)/,
+  pattern: /(let execute\W[\S\s]*?=>)([\S\s]*?    };)(?<!switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
 const addStatusSwitchToBehaviourApply = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(\(. state, event.*=>)(?!\n    switch \(state.status\))([\S\s]*?    };)/,
+  pattern: /(let apply\W[\S\s]*?=>)([\S\s]*?    };)(?<!switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
 const indentBehaviourSwitchStatusBlocks = { // TODO improve
@@ -82,37 +88,37 @@ const indentBehaviourSwitchStatusBlocks = { // TODO improve
 const addStatusFieldToBehaviourInit = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let init[\S\s]*?switch \(event\)[\S\s]*?)(?<!        status\W[\S\s]*)(\n      })/,
+  pattern: /(let init\W[\S\s]*?switch \(event\)[\S\s]*?)(?<!        status\W[\S\s]*)(\n      })/,
   template: "$1\n        status: {{properCaseWithOptionalParams status}},$2",
 };
 const addStatusToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let execute[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
+  pattern: /(let execute\W[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
   templateFile: "plop-templates/Aggregate/addStatusToBehaviourExecute.re.hbs",
 };
 const addStatusToBehaviourApply = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let apply[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
+  pattern: /(let apply\W[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
   templateFile: "plop-templates/Aggregate/addStatusToBehaviourApply.re.hbs",
 };
 const addStatusFieldToViewState = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(type state =[\S\s]*?)(?<!status\W*)(\n};)/,
+  pattern: /(type state\W[\S\s]*?)(?<!status\W*)(\n};)/,
   template: "$1\n  status,$2",
 };
 const addStatusFieldToViewInit = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(let init[\S\s]*?switch \(event\)[\S\s]*?)(?<!        status\W[\S\s]*)(\n      })/,
+  pattern: /(let init\W[\S\s]*?switch \(event\)[\S\s]*?)(?<!        status\W[\S\s]*)(\n      })/,
   template: "$1\n        status: {{properCaseWithOptionalParams status}},$2",
 };
 const addStatusSwitchToViewApply = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(\(. state,.* =>)(?!\n    switch \(state.status\))([\S\s]*?    };)/,
+  pattern: /(let apply\W[\S\s]*?=>)([\S\s]*?    };)(?<!switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
 const indentViewSwitchStatusBlocks = { // TODO improve
@@ -124,7 +130,7 @@ const indentViewSwitchStatusBlocks = { // TODO improve
 const addStatusToViewApply = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(let apply[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
+  pattern: /(let apply\W[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
   templateFile: "plop-templates/Aggregate/addStatusToViewApply.re.hbs",
 };
 const addStatusFieldToTestFixture = {
@@ -137,20 +143,20 @@ const addStatusFieldToTestFixture = {
 const addCommandToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /(type command =\n[\S\s]*?);/,
+  pattern: /(type command\W[\S\s]*?);/,
   template: "$1\n| {{properCaseWithOptionalParams command}};",
 };
 const addEventToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /(type event =\n[\S\s]*?);/,
+  pattern: /(type event\W[\S\s]*?);/,
   template: "$1\n| {{properCaseWithOptionalParams event}};",
 };
 const addCommandAndEventToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(      switch \(command\)[\S\s]*?)(\n      })/g,
-  template: "$1\n      | {{properCaseWithOptionalParams command}} => [{{properCaseWithOptionalParams event}}]$2",
+  template: "$1\n      | {{properCaseWithOptionalParams command}} => [{{properCaseWithOptionalParams event}}] // TODO: check generated implementation$2",
 };
 const addCommandToBehaviourExecute = {
   type: "modify",
@@ -197,14 +203,14 @@ export default function (plop) {
       message: 'Service name:'
     }],
     actions: [
-      addSpec,
-      addBehaviour,
-      addService,
-      addTestFixture,
-      addBehaviourTest,
-      addView,
-      addViewTest,
-      addApi
+      createSpec,
+      createBehaviour,
+      createService,
+      createTestFixture,
+      createBehaviourTest,
+      createView,
+      createViewTest,
+      createApi
     ]
   });
   plop.setGenerator('Aggregate', {
@@ -214,11 +220,11 @@ export default function (plop) {
       message: 'Aggregate name:'
     }],
     actions: [
-      addSpec,
-      addBehaviour,
-      addService,
-      addTestFixture,
-      addBehaviourTest,
+      createSpec,
+      createBehaviour,
+      createService,
+      createTestFixture,
+      createBehaviourTest,
     ]
   });
   plop.setGenerator('ReadModel', {
@@ -228,9 +234,9 @@ export default function (plop) {
       message: 'ReadModel name:'
     }],
     actions: [
-      addView,
-      addViewTest,
-      addApi
+      createView,
+      createViewTest,
+      createApi
     ]
   });
   plop.setGenerator('Status', {
