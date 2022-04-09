@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-gen",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Code generator for Reventless",
   "type": "module",
   "author": "Atos",
