@@ -58,8 +58,8 @@ const addStatusToSpec = {
 const addStatusFieldToBehaviourState = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(type state =[\S\s]*?)(?<!status\W*)(\n};)/,
-  template: "$1\n  status,$2",
+  pattern: /(type state = {)\.?([\S\s]*?)(?<!status\W*)(\n};)/,
+  template: "$1$2\n  status,$3",
 };
 const addStatusSwitchToBehaviourExecute = {
   type: "modify",
@@ -78,6 +78,12 @@ const indentBehaviourSwitchStatusBlocks = { // TODO improve
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(?<=switch \(state\.status\) {\n.*=>\n)([\S\s]*?)(    };)/g,
   template: "  $1  $2",
+};
+const addStatusFieldToBehaviourInit = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
+  pattern: /(let init[\S\s]*?switch \(event\)[\S\s]*?)(?<!status\W[\S\s]*)(\n      })/,
+  template: "$1\n        status: {{properCaseWithOptionalParams status}},$2",
 };
 const addStatusToBehaviourExecute = {
   type: "modify",
@@ -236,6 +242,7 @@ export default function (plop) {
       addEmptyTypeStatusToSpec,
       addStatusToSpec,
       addStatusFieldToBehaviourState,
+      addStatusFieldToBehaviourInit,
       addStatusToBehaviourExecute,
       addStatusToBehaviourApply,
       addStatusSwitchToBehaviourExecute,
