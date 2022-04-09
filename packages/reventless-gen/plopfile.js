@@ -70,13 +70,13 @@ const addStatusFieldToBehaviourState = {
 const addStatusSwitchToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let execute\W[\S\s]*?=>)([\S\s]*?    };)(?<!switch \(state\.status\)[\S\s]*?)/,
+  pattern: /(let execute\W[\S\s]*?=>)([\S\s]*?    };)(?<!let execute\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
 const addStatusSwitchToBehaviourApply = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let apply\W[\S\s]*?=>)([\S\s]*?    };)(?<!switch \(state\.status\)[\S\s]*?)/,
+  pattern: /(let apply\W[\S\s]*?=>)([\S\s]*?    };)(?<!let apply\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
 const indentBehaviourSwitchStatusBlocks = { // TODO improve
@@ -118,7 +118,7 @@ const addStatusFieldToViewInit = {
 const addStatusSwitchToViewApply = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(let apply\W[\S\s]*?=>)([\S\s]*?    };)(?<!switch \(state\.status\)[\S\s]*?)/,
+  pattern: /(let apply\W[\S\s]*?=>)([\S\s]*?    };)(?<!let apply\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
 const indentViewSwitchStatusBlocks = { // TODO improve
@@ -256,8 +256,8 @@ export default function (plop) {
       addStatusFieldToBehaviourState,
       addStatusFieldToBehaviourInit,
       addStatusToBehaviourExecute,
-      addStatusToBehaviourApply,
       addStatusSwitchToBehaviourExecute,
+      addStatusToBehaviourApply,
       addStatusSwitchToBehaviourApply,
       indentBehaviourSwitchStatusBlocks,
       addStatusFieldToViewState,
