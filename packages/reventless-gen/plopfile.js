@@ -82,7 +82,7 @@ const indentBehaviourSwitchStatusBlocks = { // TODO improve
 const addStatusFieldToBehaviourInit = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let init[\S\s]*?switch \(event\)[\S\s]*?)(?<!status\W[\S\s]*)(\n      })/,
+  pattern: /(let init[\S\s]*?switch \(event\)[\S\s]*?)(?<!        status\W[\S\s]*)(\n      })/,
   template: "$1\n        status: {{properCaseWithOptionalParams status}},$2",
 };
 const addStatusToBehaviourExecute = {
@@ -102,6 +102,12 @@ const addStatusFieldToViewState = {
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
   pattern: /(type state =[\S\s]*?)(?<!status\W*)(\n};)/,
   template: "$1\n  status,$2",
+};
+const addStatusFieldToViewInit = {
+  type: "modify",
+  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
+  pattern: /(let init[\S\s]*?switch \(event\)[\S\s]*?)(?<!        status\W[\S\s]*)(\n      })/,
+  template: "$1\n        status: {{properCaseWithOptionalParams status}},$2",
 };
 const addStatusSwitchToViewApply = {
   type: "modify",
@@ -249,6 +255,7 @@ export default function (plop) {
       addStatusSwitchToBehaviourApply,
       indentBehaviourSwitchStatusBlocks,
       addStatusFieldToViewState,
+      addStatusFieldToViewInit,
       addStatusToViewApply,
       addStatusSwitchToViewApply,
       indentViewSwitchStatusBlocks,
