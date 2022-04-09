@@ -9,13 +9,13 @@ open {{properCase name}};
 
 describe("{{properCase name}}Behaviour:", () => {
   test("Add", () =>
-    givenEvents([])
+    givenEvents([]) //
     |> whenCmd(Add)
     |> thenEvent(Added)
   );
 
   test("Add (already existing)", () =>
-    givenEvents([Added])
+    givenEvents([Added]) //
     |> whenCmd(Add)
     |> thenError(AlreadyExisting)
   );

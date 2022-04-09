@@ -9,13 +9,13 @@ open {{properCase name}};
 
 describe("{{properCase name}}View:", () => {
   test("Added", () =>
-    givenEvents([])
+    givenEvents([]) //
     |> whenEvent(Added)
     |> thenState(state)
   );
 
   test("Added (already existing)", () =>
-    givenEvents([Added])
+    givenEvents([Added]) //
     |> whenEvent(Added)
     |> thenThrow
   );

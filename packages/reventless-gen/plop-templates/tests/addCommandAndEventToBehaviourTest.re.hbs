@@ -1,13 +1,13 @@
 
 
   test("{{properCaseWithoutOptionalParams command}} (not existing)", () =>
-    givenEvents([])
+    givenEvents([]) //
     |> whenCmd({{properCaseWithOptionalParams command}})
     |> thenError(NotExisting)
   );
 
   test("{{properCaseWithoutOptionalParams command}}", () =>
-    givenEvents([Added])
+    givenEvents([Added]) //
     |> whenCmd({{properCaseWithOptionalParams command}})
     |> thenEvent({{properCaseWithOptionalParams event}})
   );$1
