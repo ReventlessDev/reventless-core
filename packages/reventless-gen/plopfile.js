@@ -70,20 +70,14 @@ const addStatusFieldToBehaviourState = {
 const addStatusSwitchToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let execute\W[\S\s]*?=>)([\S\s]*?    };)(?<!let execute\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
+  pattern: /(let execute\W[\S\s]*?=>.*\n)([\S\s]*?)(    };)(?<!let execute\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
 };
 const addStatusSwitchToBehaviourApply = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let apply\W[\S\s]*?=>)([\S\s]*?    };)(?<!let apply\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
+  pattern: /(let apply\W[\S\s]*?=>.*\n)([\S\s]*?)(    };)(?<!let apply\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
-};
-const indentBehaviourSwitchStatusBlocks = { // TODO improve
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(?<=switch \(state\.status\) {\n.*=>\n)([\S\s]*?)(    };)/g,
-  template: "  $1  $2",
 };
 const addStatusFieldToBehaviourInit = {
   type: "modify",
@@ -118,14 +112,8 @@ const addStatusFieldToViewInit = {
 const addStatusSwitchToViewApply = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(let apply\W[\S\s]*?=>)([\S\s]*?    };)(?<!let apply\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
+  pattern: /(let apply\W[\S\s]*?=>.*\n)([\S\s]*?)(    };)(?<!let apply\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
   templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
-};
-const indentViewSwitchStatusBlocks = { // TODO improve
-  type: "modify",
-  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(?<=switch \(state\.status\) {\n.*=>\n)([\S\s]*?)(    };)/g,
-  template: "  $1  $2",
 };
 const addStatusToViewApply = {
   type: "modify",
@@ -259,12 +247,10 @@ export default function (plop) {
       addStatusSwitchToBehaviourExecute,
       addStatusToBehaviourApply,
       addStatusSwitchToBehaviourApply,
-      indentBehaviourSwitchStatusBlocks,
       addStatusFieldToViewState,
       addStatusFieldToViewInit,
       addStatusToViewApply,
       addStatusSwitchToViewApply,
-      indentViewSwitchStatusBlocks,
       addStatusFieldToTestFixture
     ]
   });
