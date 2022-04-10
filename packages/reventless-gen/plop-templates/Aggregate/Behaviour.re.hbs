@@ -2,14 +2,10 @@ open {{properCase name}};
 
 module Spec = {{properCase name}};
 
-type state = {.
-};
+type state = {.};
 
 let resolverConfig =
-  Reventless.Behaviour.{
-    commandDecoder: command_decode,
-    fields: [||],
-  };
+  Reventless.Behaviour.{commandDecoder: command_decode, fields: [||]};
 
 let create: Reventless.Behaviour.create(command, event, error) =
   (. command, context, error) =>
@@ -30,8 +26,7 @@ let invalidEvent = event =>
 let init: Reventless.Behaviour.init(state, event) =
   (. event) =>
     switch (event) {
-    | Added => {
-      }
+    | Added => {}
     | _ => invalidEvent(event)
     };
 

@@ -3,9 +3,7 @@ open Reventless.Message;
 open {{properCase name}};
 
 [@decco]
-type state = {
-  statusChange,
-};
+type state = {statusChange};
 
 let name = None;
 
@@ -16,20 +14,17 @@ let sortConfig = None;
 
 let indexes = [];
 
-let invalidEvent = event => 
-  raise(InvalidEvent(event_encode(event)));
+let invalidEvent = event => raise(InvalidEvent(event_encode(event)));
 
 let init =
   (. event, {meta: {time, user}}) =>
     switch (event) {
-    | Added => [
-      {
-        statusChange: {
-          at: time,
-          by: user,
-        },
-      },
-    ]
+    | Added => [{
+                  statusChange: {
+                    at: time,
+                    by: user,
+                  },
+                }]
     | _ => invalidEvent(event)
     };
 

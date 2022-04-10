@@ -4,13 +4,14 @@ module Id = Reventless.Id.String;
 
 [@decco]
 type command =
-| Add;
+  | Add;
 
 [@decco]
 type event =
-| Added;
+  | Added;
 
 [@decco]
 type error =
-| NotExisting
-| AlreadyExisting;
+  | NotExisting
+  | AlreadyExisting;
+  

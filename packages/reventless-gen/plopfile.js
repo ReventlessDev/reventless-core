@@ -59,7 +59,7 @@ const addStatusToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
   pattern: /(type status\W[\S\s]*?);/,
-  template: "$1\n| {{properCaseWithOptionalParams status}};",
+  template: "$1\n  | {{properCaseWithOptionalParams status}};",
 };
 const addStatusFieldToBehaviourState = {
   type: "modify",
@@ -132,13 +132,13 @@ const addCommandToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
   pattern: /(type command\W[\S\s]*?);/,
-  template: "$1\n| {{properCaseWithOptionalParams command}};",
+  template: "$1\n  | {{properCaseWithOptionalParams command}};",
 };
 const addEventToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
   pattern: /(type event\W[\S\s]*?);/,
-  template: "$1\n| {{properCaseWithOptionalParams event}};",
+  template: "$1\n  | {{properCaseWithOptionalParams event}};",
 };
 const addCommandAndEventToBehaviourExecute = {
   type: "modify",
