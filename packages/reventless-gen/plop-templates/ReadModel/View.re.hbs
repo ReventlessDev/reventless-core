@@ -16,7 +16,7 @@ let indexes = [];
 
 let invalidEvent = event => raise(InvalidEvent(event_encode(event)));
 
-let init =
+let init: init(state, event) =
   (. event, {meta: {time, user}}) =>
     switch (event) {
     | Added => [{
@@ -28,13 +28,13 @@ let init =
     | _ => invalidEvent(event)
     };
 
-let apply =
-  (. state: state, event, {meta: {time, user}}) =>
+let apply: apply(state, event) =
+  (. state, event, {meta: {time, user}}) =>
     switch (event) {
     | Added => invalidEvent(event)
     };
 
-let applyMulti =
+let applyMulti: applyMulti(state, event) =
   (. states, event, context) =>
     states
     |> List.map(state => apply(. state, event, context))
