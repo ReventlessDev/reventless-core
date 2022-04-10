@@ -88,8 +88,8 @@ const indentBehaviourSwitchStatusBlocks = { // TODO improve
 const addStatusFieldToBehaviourInit = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let init\W[\S\s]*?switch \(event\)[\S\s]*?)(?<!        status\W[\S\s]*)(\n      })/,
-  template: "$1\n        status: {{properCaseWithOptionalParams status}},$2",
+  pattern: /(let init\W[\S\s]*?switch \(event\).*\n.*?{)(?![\S\s]*?status:)/,
+  template: "$1\n        status: Status,",
 };
 const addStatusToBehaviourExecute = {
   type: "modify",
