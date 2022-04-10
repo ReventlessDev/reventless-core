@@ -89,7 +89,7 @@ const addStatusFieldToBehaviourInit = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(let init\W[\S\s]*?switch \(event\).*\n.*?{)(?![\S\s]*?status:)/,
-  template: "$1\n        status: Status,",
+  template: "$1\n        status: {{properCaseWithOptionalParams status}},",
 };
 const addStatusToBehaviourExecute = {
   type: "modify",
