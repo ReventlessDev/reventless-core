@@ -12,7 +12,6 @@ let create: create(command, event, error) =
   (. command, context, error) =>
     switch (command) {
     | Add => [Added]
-    | _ => error(NotExisting, command, context)
     };
 
 let execute: execute(state, command, event, error) =
@@ -27,7 +26,6 @@ let init: init(state, event) =
   (. event) =>
     switch (event) {
     | Added => {}
-    | _ => invalidEvent(event)
     };
 
 let apply: apply(state, event) =
