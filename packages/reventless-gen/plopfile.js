@@ -64,8 +64,8 @@ const addStatusToSpec = {
 const addStatusFieldToBehaviourState = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(type state = {)\.?([\S\s]*?)(?<!status\W*)(\n};)/,
-  template: "$1$2\n  status,$3",
+  pattern: /(type state = {)\.?([\S\s]*?)(?<!status\W*)(};)/,
+  template: "$1$2status,$3",
 };
 const addStatusSwitchToBehaviourExecute = {
   type: "modify",
