@@ -224,13 +224,26 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
             );
 
           let _dataSourcePolicy =
-            IAM.RolePolicy.make(
-              ~name=name ++ "DS",
-              ~action="lambda:InvokeFunction",
-              ~resource=[|lambda##arn|],
-              ~role=dataSourceRole##id,
-              ~opts?,
-              (),
+            IAM.(
+              RolePolicy.make(
+                ~name=name ++ "DS",
+                ~args=
+                  RolePolicy.Args.make(
+                    ~policy=
+                      lambda##arn
+                      ->Pulumi.Output.apply(lambdaArn =>
+                          RolePolicy.generatePolicy(
+                            [|lambdaArn|],
+                            "lambda:InvokeFunction",
+                          )
+                        )
+                      ->Pulumi.Output.asInput,
+                    ~role=dataSourceRole##id->Pulumi.Output.asInput,
+                    (),
+                  ),
+                ~opts?,
+                (),
+              )
             );
 
           let dataSource =

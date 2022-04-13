@@ -50,13 +50,26 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
       );
 
     let _dataSourcePolicy =
-      IAM.RolePolicy.make(
-        ~name=name ++ "DS",
-        ~action="lambda:InvokeFunction",
-        ~resource=[|commandGeneratorArn|],
-        ~role=dataSourceRole##id,
-        ~opts,
-        (),
+      IAM.(
+        RolePolicy.make(
+          ~name=name ++ "DS",
+          ~args=
+            RolePolicy.Args.make(
+              ~policy=
+                commandGeneratorArn
+                ->Pulumi.Output.apply(commandGeneratorArn =>
+                    RolePolicy.generatePolicy(
+                      [|commandGeneratorArn|],
+                      "lambda:InvokeFunction",
+                    )
+                  )
+                ->Pulumi.Output.asInput,
+              ~role=dataSourceRole##id->Pulumi.Output.asInput,
+              (),
+            ),
+          ~opts,
+          (),
+        )
       );
 
     let dataSource =

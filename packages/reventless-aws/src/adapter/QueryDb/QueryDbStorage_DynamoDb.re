@@ -77,13 +77,29 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
 
     // API resources
     let _dataSourceRolePolicy =
-      IAM.RolePolicy.make(
-        ~name,
-        ~action="dynamodb:*",
-        ~resource=[|table##arn->Pulumi.Output.apply(arn => arn ++ "*")|], // including indexes
-        ~role=apiRole->Pulumi.Output.flatMap(role => role##id),
-        ~opts,
-        (),
+      IAM.(
+        RolePolicy.make(
+          ~name,
+          ~args=
+            RolePolicy.Args.make(
+              ~policy=
+                table##arn
+                ->Pulumi.Output.apply(tableArn =>
+                    RolePolicy.generatePolicy(
+                      [|tableArn ++ "*"|],
+                      "dynamodb:*",
+                    )
+                  )
+                ->Pulumi.Output.asInput,
+              ~role=
+                apiRole
+                ->Pulumi.Output.flatMap(role => role##id)
+                ->Pulumi.Output.asInput,
+              (),
+            ),
+          ~opts,
+          (),
+        )
       );
     let dataSource =
       AppSync.DataSource.makeDynamoDBDataSource(

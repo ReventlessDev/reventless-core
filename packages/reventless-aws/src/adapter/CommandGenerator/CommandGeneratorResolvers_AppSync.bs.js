@@ -38,7 +38,12 @@ function make(name, api, fields, commandGenerator, opts) {
         principal: "appsync.amazonaws.com"
       }, opts);
   var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), Caml_option.some(opts), /* () */0);
-  IAM$PulumiAws.RolePolicy.make(name + "DS", "lambda:InvokeFunction", /* array */[commandGeneratorArn], dataSourceRole.id, Caml_option.some(opts), /* () */0);
+  new (Aws.iam.RolePolicy)(name + "DS", {
+        policy: commandGeneratorArn.apply((function (commandGeneratorArn) {
+                return IAM$PulumiAws.RolePolicy.generatePolicy(/* array */[commandGeneratorArn], "lambda:InvokeFunction");
+              })),
+        role: dataSourceRole.id
+      }, opts);
   var dataSource = new (Aws.appsync.DataSource)(name, {
         type: "AWS_LAMBDA",
         apiId: Output$Pulumi.flatMap(api, (function (api) {

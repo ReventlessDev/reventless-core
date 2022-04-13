@@ -3,6 +3,7 @@
 
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Aws = require("@pulumi/aws");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.bs.js");
@@ -90,11 +91,14 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
             ]
           ]));
   var table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, Caml_option.some(globalSecondaryIndexes), ttl, sortField, /* NEW_AND_OLD_IMAGES */546078935, opts, name);
-  IAM$PulumiAws.RolePolicy.make(name, "dynamodb:*", /* array */[table.arn.apply((function (arn) {
-                return arn + "*";
-              }))], Output$Pulumi.flatMap(apiRole, (function (role) {
-              return role.id;
-            })), Caml_option.some(opts), /* () */0);
+  new (Aws.iam.RolePolicy)(name, {
+        policy: table.arn.apply((function (tableArn) {
+                return IAM$PulumiAws.RolePolicy.generatePolicy(/* array */[tableArn + "*"], "dynamodb:*");
+              })),
+        role: Output$Pulumi.flatMap(apiRole, (function (role) {
+                return role.id;
+              }))
+      }, opts);
   var dataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), /* () */0);
   return /* record */[
           /* resource */Util_DynamoDbStream$ReventlessAws.toResource(table),
@@ -108,4 +112,4 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
 }
 
 exports.make = make;
-/* IAM-PulumiAws Not a pure module */
+/* @pulumi/aws Not a pure module */

@@ -122,7 +122,12 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                 principal: "appsync.amazonaws.com"
               }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
           var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), opts, /* () */0);
-          IAM$PulumiAws.RolePolicy.make(name + "DS", "lambda:InvokeFunction", /* array */[lambda.arn], dataSourceRole.id, opts, /* () */0);
+          new (Aws.iam.RolePolicy)(name + "DS", {
+                policy: lambda.arn.apply((function (lambdaArn) {
+                        return IAM$PulumiAws.RolePolicy.generatePolicy(/* array */[lambdaArn], "lambda:InvokeFunction");
+                      })),
+                role: dataSourceRole.id
+              }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
           var dataSource = new (Aws.appsync.DataSource)(name, {
                 type: "AWS_LAMBDA",
                 apiId: Output$Pulumi.flatMap(api, (function (api) {
