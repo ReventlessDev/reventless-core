@@ -64,7 +64,7 @@ const addStatusToSpec = {
 const addStatusFieldToBehaviourState = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(type state = {)\.?(?!status\W*)([\S\s]*?)(};)/,
+  pattern: /(type state = {)\.?(?!status\W+)([\S\s]*?)(};)/,
   template: "$1status,$2$3",
 };
 const addStatusSwitchToBehaviourExecute = {
@@ -100,7 +100,7 @@ const addStatusToBehaviourApply = {
 const addStatusFieldToViewState = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(type state = {)\.?(?!status\W*)([\S\s]*?)(};)/,
+  pattern: /(type state = {)\.?(?!status+)([\S\s]*?)(};)/,
   template: "$1status,$2$3",
 };
 const addStatusFieldToViewInit = {
