@@ -158,6 +158,13 @@ const addCommandToBehaviourExecute = {
   pattern: /(?<=let execute\W[\S\s]*?)(switch \(command\)[\S\s]*?)(\n *)(};)/g,
   template: "$1$2| {{properCaseWithOptionalParams command}} => [] // TODO: add implementation$2$3",
 };
+const addCommandToApiMutation = {
+  type: "modify",
+  path: "src/API/{{properCase aggregateName}}/{{properCase aggregateName}}Api.re",
+  pattern: /(let mutationsSchema[\S\s]*?)(\|\};)/,
+  templateFile: "plop-templates/API/addCommandToApiMutation.re.hbs",
+};
+
 const addEventToBehaviourInit = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
@@ -287,19 +294,31 @@ export default function (plop) {
       type: 'input',
       name: 'event',
       message: 'Event:'
+    },
+    {
+      type: 'confirm',
+      default: false,
+      name: 'addMutation',
+      message: 'Add Mutation?'
     }],
-    actions: [
-      addCommandToSpec,
-      addEventToSpec,
-      addCommandToBehaviourCreate,
-      addCommandAndEventToBehaviourExecute,
-      addEventToBehaviourInit,
-      addEventToBehaviourApply,
-      addEventToViewInit,
-      addEventToViewApply,
-      addCommandAndEventToBehaviourTest,
-      addEventToViewTest
-    ]
+    actions: function (data) {
+      var actions = [
+        addCommandToSpec,
+        addEventToSpec,
+        addCommandToBehaviourCreate,
+        addCommandAndEventToBehaviourExecute,
+        addEventToBehaviourInit,
+        addEventToBehaviourApply,
+        addEventToViewInit,
+        addEventToViewApply,
+        addCommandAndEventToBehaviourTest,
+        addEventToViewTest
+      ];
+      if (data.addMutation) {
+        actions.push(addCommandToApiMutation);
+      }
+      return actions;
+    },
   });
   plop.setGenerator('Command', {
     prompts: [{
@@ -311,13 +330,25 @@ export default function (plop) {
       type: 'input',
       name: 'command',
       message: 'Command:'
+    },
+    {
+      type: 'confirm',
+      default: false,
+      name: 'addMutation',
+      message: 'Add Mutation?'
     }],
-    actions: [
-      addCommandToSpec,
-      addCommandToBehaviourCreate,
-      addCommandToBehaviourExecute,
-      addCommandToBehaviourTest
-    ]
+    actions: function (data) {
+      var actions = [
+        addCommandToSpec,
+        addCommandToBehaviourCreate,
+        addCommandToBehaviourExecute,
+        addCommandToBehaviourTest
+      ];
+      if (data.addMutation) {
+        actions.push(addCommandToApiMutation);
+      }
+      return actions;
+    },
   });
   plop.setGenerator('Event', {
     prompts: [{
