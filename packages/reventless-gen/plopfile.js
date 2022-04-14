@@ -83,7 +83,7 @@ const addStatusFieldToBehaviourInit = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(let init\W[\S\s]*?switch \(event\).*\n.*?{)(?![\S\s]*?status:)/,
-  template: "$1\n        status: {{properCaseWithOptionalParams status}},",
+  template: "$1status: {{properCaseWithOptionalParams status}},",
 };
 const addStatusToBehaviourExecute = {
   type: "modify",
@@ -106,8 +106,8 @@ const addStatusFieldToViewState = {
 const addStatusFieldToViewInit = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(let init\W[\S\s]*?switch \(event\)[\S\s]*?)(?<!status\W[\S\s]*)(\n *)(}[^),])/,
-  template: "$1$2  status: {{properCaseWithOptionalParams status}},$2$3",
+  pattern: /(let init\W[\S\s]*?switch \(event\)[\S\s]*?)(statusChange:[\S\s]*?)(\n *)(},)(?!status\W)/,
+  template: "$1$2$3$4$3status: {{properCaseWithOptionalParams status}},",
 };
 const addStatusSwitchToViewApply = {
   type: "modify",
