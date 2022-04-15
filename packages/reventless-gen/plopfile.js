@@ -21,6 +21,12 @@ const createService = {
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Service.re',
   templateFile: 'plop-templates/Aggregate/Service.re.hbs'
 };
+const addServiceToMain = {
+  type: "modify",
+  path: "src/Main.re",
+  pattern: /(~serviceMakers\W[\S\s]*?\[\|)/,
+  template: "$1{{properCase name}}Service.make,",
+};
 const createTestFixture = {
   type: 'add',
   path: 'tests/{{properCase name}}/{{properCase name}}Fixtures.re',
@@ -219,6 +225,7 @@ export default function (plop) {
       createSpec,
       createBehaviour,
       createService,
+      addServiceToMain,
       createTestFixture,
       createBehaviourTest,
       createView,
