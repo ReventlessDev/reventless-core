@@ -214,6 +214,35 @@ const addEventToViewTest = {
   templateFile: "plop-templates/tests/addEventToViewTest.re.hbs",
 };
 
+const createEventMapper = {
+  type: 'add',
+  path: 'src/Aggregates/{{properCase target}}/{{properCase target}}EventMapper.re',
+  templateFile: "plop-templates/Aggregate/EventMapper.re.hbs",
+};
+const addEventMapperToMain = {
+  type: "modify",
+  path: "src/Main.re",
+  pattern: /(~eventMapperMakers\W[\S\s]*?\[\|)/,
+  template: "$1{{properCase target}}EventMapper.make,",
+};
+const createEventMappings = {
+  type: 'add',
+  path: 'src/Aggregates/{{properCase target}}/{{properCase target}}EventMappings.re',
+  template: 'open ReventlessSpec;\n'
+};
+const addMappingToEventMappings = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase target}}/{{properCase target}}EventMappings.re",
+  pattern: /([\S\s]*)/,
+  templateFile: "plop-templates/Aggregate/addMappingToEventMappings.re.hbs",
+};
+const addMappingToEventMapper = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase target}}/{{properCase target}}EventMapper.re",
+  pattern: /(EventMapper.make\W[\S\s]*?\[\|)/,
+  template: "$1(module {{properCase source}}To{{properCase target}}Mapping),",
+};
+
 export default function (plop) {
   plop.setGenerator('Service', {
     prompts: [{
@@ -375,6 +404,34 @@ export default function (plop) {
       addEventToViewInit,
       addEventToViewApply,
       addEventToViewTest
+    ]
+  });
+  plop.setGenerator('EventMapper', {
+    prompts: [{
+      type: 'input',
+      name: 'target',
+      message: 'Target:'
+    }],
+    actions: [
+      createEventMapper,
+      addEventMapperToMain,
+      createEventMappings,
+    ]
+  });
+  plop.setGenerator('EventMapping', {
+    prompts: [{
+      type: 'input',
+      name: 'target',
+      message: 'Target:'
+    },
+    {
+      type: 'input',
+      name: 'source',
+      message: 'Source:'
+    }],
+    actions: [
+      addMappingToEventMappings,
+      addMappingToEventMapper
     ]
   });
 

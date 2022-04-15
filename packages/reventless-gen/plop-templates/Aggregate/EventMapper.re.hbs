@@ -1,0 +1,5 @@
+module EventMapper = ReventlessAws.EventMapper.Make({{properCase target}});
+
+open {{properCase target}}EventMappings;
+
+let make = EventMapper.make([||]);
