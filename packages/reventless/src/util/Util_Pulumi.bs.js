@@ -39,7 +39,8 @@ function ofCustomResourceOptions(customResourceOpts) {
     }
     return tmp;
   } else {
-    return Js_exn.raiseError("Util_Pulumi-Reventless: currently only parent prop supported !");
+    var keysStr = keys.join(",");
+    return Js_exn.raiseError("Util_Pulumi-Reventless: currently only parent prop supported! keys: " + keysStr);
   }
 }
 

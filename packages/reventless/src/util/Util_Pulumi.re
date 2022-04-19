@@ -27,8 +27,11 @@ module ComponentResourceOptions = {
         (),
       );
     } else {
+      let keysStr = keys->Js.Array2.joinWith(",");
       Js.Exn.raiseError(
-        __MODULE__ ++ ": currently only parent prop supported !",
+        __MODULE__
+        ++ ": currently only parent prop supported! keys: "
+        ++ keysStr,
       );
     };
   };
