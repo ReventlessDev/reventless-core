@@ -8,10 +8,10 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
   (
     ~name,
     ~indexes,
-    ~sortField,
-    ~ttl,
-    ~api: api,
-    ~apiRole: role,
+    ~sortField=?,
+    ~ttl=?,
+    ~api,
+    ~apiRole,
     ~opts,
     ~resources as _,
   ) => {
@@ -63,43 +63,43 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
         ->Belt.List.flatten,
       ]
       ->Belt.List.flatten
-      ->Belt.List.toArray
-      ->Pulumi.Input.wrap;
+      ->Belt.List.toArray;
 
     let table =
-      make(
-        ~name,
-        ~args=
-          Args.make(
-            ~attributes,
-            ~hashKey="id"->Pulumi.Input.wrap,
-            ~rangeKey=?sortField->Belt.Option.map(Pulumi.Input.wrap),
-            ~billingMode=`PAY_PER_REQUEST,
-            ~globalSecondaryIndexes,
-            ~ttl=?
-              ttl->Belt.Option.map(_ =>
-                Args.TableTtl.make(
-                  ~attributeName=
-                    QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName->Pulumi.Input.wrap,
-                  ~enabled=true->Pulumi.Input.wrap,
-                  (),
-                )
-                ->Pulumi.Input.wrap
-              ),
-            (),
-          ),
+      Util_DynamoDb.makeTable(
+        name,
+        ~attributes,
+        ~rangeKey=?sortField,
+        ~globalSecondaryIndexes,
+        ~ttl?,
         ~opts,
-        (),
       );
+
     // API resources
     let _dataSourceRolePolicy =
-      IAM.RolePolicy.make(
-        ~name,
-        ~action="dynamodb:*",
-        ~resource=[|table##arn->Pulumi.Output.apply(arn => arn ++ "*")|], // including indexes
-        ~role=apiRole->Pulumi.Output.flatMap(role => role##id),
-        ~opts,
-        (),
+      IAM.(
+        RolePolicy.make(
+          ~name,
+          ~args=
+            RolePolicy.Args.make(
+              ~policy=
+                table##arn
+                ->Pulumi.Output.apply(tableArn =>
+                    RolePolicy.generatePolicy(
+                      [|tableArn ++ "*"|],
+                      "dynamodb:*",
+                    )
+                  )
+                ->Pulumi.Output.asInput,
+              ~role=
+                apiRole
+                ->Pulumi.Output.flatMap(role => role##id)
+                ->Pulumi.Output.asInput,
+              (),
+            ),
+          ~opts,
+          (),
+        )
       );
     let dataSource =
       AppSync.DataSource.makeDynamoDBDataSource(

@@ -1,23 +1,14 @@
 let make: Reventless.EventLog.Adapter.storageMaker =
   (~name, ~opts, ~resources as _) => {
     let table =
-      PulumiAws.DynamoDb.Table.make(
-        ~name,
-        ~args=
-          PulumiAws.DynamoDb.Table.Args.make(
-            ~attributes=
-              [|
-                {"name": "id", "type": "S"},
-                {"name": "sequenceNr", "type": "S"},
-              |]
-              ->Pulumi.Input.wrap,
-            ~hashKey="id"->Pulumi.Input.wrap,
-            ~rangeKey="sequenceNr"->Pulumi.Input.wrap,
-            ~billingMode=`PAY_PER_REQUEST,
-            (),
-          ),
+      Util.DynamoDb.makeTable(
+        name,
+        ~attributes=[|
+          {"name": "id", "type": "S"},
+          {"name": "sequenceNr", "type": "S"},
+        |],
+        ~rangeKey="sequenceNr",
         ~opts,
-        (),
       );
 
     {

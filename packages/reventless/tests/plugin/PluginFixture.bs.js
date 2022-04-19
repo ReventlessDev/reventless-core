@@ -2,7 +2,7 @@
 'use strict';
 
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var PluginView$Reventless = require("../../src/core/plugin/PluginView.bs.js");
+var PluginView$Reventless = require("../../src/core/ReadModels/Plugin/PluginView.bs.js");
 var TestFixtures$Reventless = require("../../test-helper/TestFixtures.bs.js");
 
 var pluginDefinition_003 = /* extensionPoints : array */[];

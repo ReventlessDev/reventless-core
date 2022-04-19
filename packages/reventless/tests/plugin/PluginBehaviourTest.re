@@ -19,116 +19,132 @@ describe("PluginBehaviour:", () => {
     |> thenEvents([UnknownPluginDetected])
   );
 
-  test("ConnectPlugin", () =>
+  test("Heartbeat (connected)", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    |> whenCmd(Heartbeat)
+    |> thenEvents([])
+  );
+
+  test("Heartbeat (inactive)", () =>
+    givenEvents([
+      UnknownPluginDetected,
+      Connected(pluginDefinition),
+      Deactivated(pluginDefinition),
+    ])
+    |> whenCmd(Heartbeat)
+    |> thenEvents([])
+  );
+
+  test("Connect", () =>
     givenEvents([UnknownPluginDetected])
-    |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenEvents([PluginConnected(pluginDefinition)])
+    |> whenCmd(Connect(pluginDefinition))
+    |> thenEvents([Connected(pluginDefinition)])
   );
 
-  test("ConnectPlugin (after multiple Heartbeats)", () =>
+  test("Connect (after multiple Heartbeats)", () =>
     givenEvents([UnknownPluginDetected, UnknownPluginDetected])
-    |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenEvents([PluginConnected(pluginDefinition)])
+    |> whenCmd(Connect(pluginDefinition))
+    |> thenEvents([Connected(pluginDefinition)])
   );
 
-  test("ConnectPlugin (again)", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
-    |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenError(PluginIsConnected)
+  test("Connect (again)", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    |> whenCmd(Connect(pluginDefinition))
+    |> thenError(AlreadyConnected)
   );
 
-  test("DisconnectPlugin", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
-    |> whenCmd(DisconnectPlugin)
-    |> thenEvents([PluginDisconnected(pluginDefinition)])
+  test("Disconnect", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    |> whenCmd(Disconnect)
+    |> thenEvents([Disconnected(pluginDefinition)])
   );
 
   test("Heartbeat (re-connect)", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDisconnected(pluginDefinition),
+      Connected(pluginDefinition),
+      Disconnected(pluginDefinition),
     ])
     |> whenCmd(Heartbeat)
-    |> thenEvents([PluginReconnected(pluginDefinition)])
+    |> thenEvents([Reconnected(pluginDefinition)])
   );
 
-  test("ConnectPlugin (disconnected)", () =>
+  test("Connect (disconnected)", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDisconnected(pluginDefinition),
+      Connected(pluginDefinition),
+      Disconnected(pluginDefinition),
     ])
-    |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenError(PluginIsDisconnected)
+    |> whenCmd(Connect(pluginDefinition))
+    |> thenError(IsDisconnected)
   );
 
-  test("DeactivatePlugin", () =>
-    givenEvents([UnknownPluginDetected, PluginConnected(pluginDefinition)])
-    |> whenCmd(DeactivatePlugin)
-    |> thenEvents([PluginDeactivated(pluginDefinition)])
+  test("Deactivate", () =>
+    givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    |> whenCmd(Deactivate)
+    |> thenEvents([Deactivated(pluginDefinition)])
   );
 
-  test("DeactivatePlugin (disconnected)", () =>
+  test("Deactivate (disconnected)", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDisconnected(pluginDefinition),
+      Connected(pluginDefinition),
+      Disconnected(pluginDefinition),
     ])
-    |> whenCmd(DeactivatePlugin)
-    |> thenEvents([PluginDeactivated(pluginDefinition)])
+    |> whenCmd(Deactivate)
+    |> thenEvents([Deactivated(pluginDefinition)])
   );
 
-  test("ActivatePlugin (deactivated, disconnected)", () =>
+  test("Activate (deactivated, disconnected)", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDisconnected(pluginDefinition),
-      PluginDeactivated(pluginDefinition),
+      Connected(pluginDefinition),
+      Disconnected(pluginDefinition),
+      Deactivated(pluginDefinition),
     ])
-    |> whenCmd(ActivatePlugin)
-    |> thenEvents([PluginActivated(pluginDefinition)])
+    |> whenCmd(Activate)
+    |> thenEvents([Activated(pluginDefinition)])
   );
 
-  test("ConnectPlugin (inactive)", () =>
+  test("Connect (inactive)", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDeactivated(pluginDefinition),
+      Connected(pluginDefinition),
+      Deactivated(pluginDefinition),
     ])
-    |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenError(PluginIsInactive)
+    |> whenCmd(Connect(pluginDefinition))
+    |> thenError(IsInactive)
   );
 
-  test("ActivatePlugin again", () =>
+  test("Activate again", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDeactivated(pluginDefinition),
+      Connected(pluginDefinition),
+      Deactivated(pluginDefinition),
     ])
-    |> whenCmd(ActivatePlugin)
-    |> thenEvents([PluginActivated(pluginDefinition)])
+    |> whenCmd(Activate)
+    |> thenEvents([Activated(pluginDefinition)])
   );
 
   test("Heartbeat (re-connected after re-activated)", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDeactivated(pluginDefinition),
-      PluginActivated(pluginDefinition),
+      Connected(pluginDefinition),
+      Deactivated(pluginDefinition),
+      Activated(pluginDefinition),
     ])
     |> whenCmd(Heartbeat)
-    |> thenEvents([PluginReconnected(pluginDefinition)])
+    |> thenEvents([Reconnected(pluginDefinition)])
   );
 
-  test("ConnectPlugin (re-activated)", () =>
+  test("Connect (re-activated)", () =>
     givenEvents([
       UnknownPluginDetected,
-      PluginConnected(pluginDefinition),
-      PluginDeactivated(pluginDefinition),
-      PluginActivated(pluginDefinition),
+      Connected(pluginDefinition),
+      Deactivated(pluginDefinition),
+      Activated(pluginDefinition),
     ])
-    |> whenCmd(ConnectPlugin(pluginDefinition))
-    |> thenError(PluginIsDisconnected)
+    |> whenCmd(Connect(pluginDefinition))
+    |> thenError(IsDisconnected)
   );
 });

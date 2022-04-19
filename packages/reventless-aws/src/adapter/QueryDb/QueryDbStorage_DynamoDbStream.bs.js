@@ -90,35 +90,15 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
               ]
             ]
           ]));
-  var tmp = {
-    attributes: attributes,
-    hashKey: "id",
-    billingMode: "PAY_PER_REQUEST",
-    globalSecondaryIndexes: globalSecondaryIndexes,
-    streamEnabled: true,
-    streamViewType: "NEW_AND_OLD_IMAGES"
-  };
-  var tmp$1 = Belt_Option.map(sortField, (function (prim) {
-          return prim;
-        }));
-  if (tmp$1 !== undefined) {
-    tmp.rangeKey = Caml_option.valFromOption(tmp$1);
-  }
-  var tmp$2 = Belt_Option.map(ttl, (function (param) {
-          return {
-                  attributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName,
-                  enabled: true
-                };
-        }));
-  if (tmp$2 !== undefined) {
-    tmp.ttl = Caml_option.valFromOption(tmp$2);
-  }
-  var table = new (Aws.dynamodb.Table)(name, tmp, opts);
-  IAM$PulumiAws.RolePolicy.make(name, "dynamodb:*", /* array */[table.arn.apply((function (arn) {
-                return arn + "*";
-              }))], Output$Pulumi.flatMap(apiRole, (function (role) {
-              return role.id;
-            })), Caml_option.some(opts), /* () */0);
+  var table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, Caml_option.some(globalSecondaryIndexes), ttl, sortField, /* NEW_AND_OLD_IMAGES */546078935, opts, name);
+  new (Aws.iam.RolePolicy)(name, {
+        policy: table.arn.apply((function (tableArn) {
+                return IAM$PulumiAws.RolePolicy.generatePolicy(/* array */[tableArn + "*"], "dynamodb:*");
+              })),
+        role: Output$Pulumi.flatMap(apiRole, (function (role) {
+                return role.id;
+              }))
+      }, opts);
   var dataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), /* () */0);
   return /* record */[
           /* resources : array */[Util_DynamoDbStream$ReventlessAws.toResource(table)],

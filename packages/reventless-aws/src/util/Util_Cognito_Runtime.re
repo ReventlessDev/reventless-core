@@ -7,11 +7,13 @@
    */
 open AwsSdk;
 
+let userPoolEndpoint = (region, userPoolId) => {j|cognito-idp.$region.amazonaws.com/$userPoolId|j};
+
 let signUp =
     (
       ~region: string,
-      ~userPool: PulumiAws.Cognito.UserPool.t,
-      ~userPoolClient: PulumiAws.Cognito.UserPoolClient.t,
+      ~userPoolId: string,
+      ~userPoolClientId: string,
       ~userName: string,
       ~password: string,
     )
@@ -19,13 +21,13 @@ let signUp =
   CognitoIdentityServiceProvider.signUp(
     CognitoIdentityServiceProvider.make(
       CognitoIdentityServiceProvider.Opts.make(
-        ~endpoint=userPool##endpoint |> Pulumi.Output.get,
+        ~endpoint=userPoolEndpoint(region, userPoolId),
         ~region,
       ),
     ),
     ~params=
       CognitoIdentityServiceProvider.SignUpRequest.make(
-        ~_ClientId=userPoolClient##id |> Pulumi.Output.get,
+        ~_ClientId=userPoolClientId,
         ~_Username=userName,
         ~_Password=password,
       ),
@@ -39,12 +41,12 @@ let signUp =
 let signUpIfMissing =
     (
       ~region: string,
-      ~userPool: PulumiAws.Cognito.UserPool.t,
-      ~userPoolClient: PulumiAws.Cognito.UserPoolClient.t,
+      ~userPoolId: string,
+      ~userPoolClientId: string,
       ~userName: string,
       ~password: string,
     ) =>
-  signUp(~region, ~userPool, ~userPoolClient, ~userName, ~password)
+  signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password)
   |> Js.Promise.then_(result =>
        Js.Promise.resolve(
          Js.log3("Created User", userName, result##_UserSub),

@@ -1,0 +1,26 @@
+{
+  "name": "@reventless/reventless-gen",
+  "version": "0.1.0-alpha.0",
+  "description": "Code generator for Reventless",
+  "type": "module",
+  "author": "Atos",
+  "license": "proprietary",
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
+  },
+  "publishConfig": {
+    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+  },
+  "scripts": {
+    "start": "plop"
+  },
+  "bin": {
+    "gen": "./index.js"
+  },
+  "preferGlobal": true,
+  "dependencies": {
+    "plop": "^3.0.5",
+    "pluralize": "^8.0.0"
+  }
+}

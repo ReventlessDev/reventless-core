@@ -38,13 +38,17 @@ function make(name, api, fields, commandGenerator, opts) {
         principal: "appsync.amazonaws.com"
       }, opts);
   var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), Caml_option.some(opts), /* () */0);
-  IAM$PulumiAws.RolePolicy.make(name + "DS", "lambda:InvokeFunction", /* array */[commandGeneratorArn], dataSourceRole.id, Caml_option.some(opts), /* () */0);
+  new (Aws.iam.RolePolicy)(name + "DS", {
+        policy: commandGeneratorArn.apply((function (commandGeneratorArn) {
+                return IAM$PulumiAws.RolePolicy.generatePolicy(/* array */[commandGeneratorArn], "lambda:InvokeFunction");
+              })),
+        role: dataSourceRole.id
+      }, opts);
   var dataSource = new (Aws.appsync.DataSource)(name, {
         type: "AWS_LAMBDA",
         apiId: Output$Pulumi.flatMap(api, (function (api) {
                 return api.id;
               })),
-        name: name,
         lambdaConfig: {
           functionArn: commandGeneratorArn
         },
@@ -54,8 +58,9 @@ function make(name, api, fields, commandGenerator, opts) {
     return "\n    {\n      \"version\": \"2017-02-28\",\n      \"operation\": \"Invoke\",\n      \"payload\": {\n          \"command\": \"" + (String(command) + "\",\n          \"arguments\": \$utils.toJson(\$context.arguments),\n          \"meta\": {\n            \"ip\": \$util.toJson(\$context.identity.sourceIp),\n            \"user\": \$util.toJson(\$context.identity.username)\n          }\n      }\n    }\n  ");
   };
   var resolvers = Belt_Array.map(fields, (function (field) {
-          var commandName = $$String.capitalize(field);
-          return AppSync_Resolver$PulumiAws.make(commandName, api, Caml_option.some(dataSource.name), "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
+          var match = field.split("_");
+          var commandName = match.length !== 2 ? $$String.capitalize(field) : $$String.capitalize(match[1]);
+          return AppSync_Resolver$PulumiAws.make($$String.capitalize(field), api, Caml_option.some(dataSource.name), "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
         }));
   var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);
   return /* record */[/* resources */resources];

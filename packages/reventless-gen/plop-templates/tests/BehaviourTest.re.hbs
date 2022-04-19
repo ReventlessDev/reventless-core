@@ -1,0 +1,23 @@
+open Jest;
+
+module {{properCase name}}BehaviourTest = 
+  Reventless.BehaviourTest.Make({{properCase name}}, {{properCase name}}Behaviour);
+
+open {{properCase name}}BehaviourTest;
+open {{properCase name}}Fixtures;
+open {{properCase name}};
+
+describe("{{properCase name}}Behaviour:", () => {
+  test("Add", () =>
+    givenEvents([]) //
+    |> whenCmd(Add)
+    |> thenEvent(Added)
+  );
+
+  test("Add (already existing)", () =>
+    givenEvents([Added]) //
+    |> whenCmd(Add)
+    |> thenError(AlreadyExisting)
+  );
+
+});

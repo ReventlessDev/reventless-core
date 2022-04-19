@@ -1,0 +1,35 @@
+open Reventless.Behaviour;
+open Reventless.Message;
+open {{properCase name}};
+
+module Spec = {{properCase name}};
+
+type state = {.};
+
+let resolverConfig = {commandDecoder: command_decode, fields: [||]};
+
+let create: create(command, event, error) =
+  (. command, context, error) =>
+    switch (command) {
+    | Add => [Added]
+    };
+
+let execute: execute(state, command, event, error) =
+  (. state, command, context, error) =>
+    switch (command) {
+    | Add => error(AlreadyExisting, command, context)
+    };
+
+let invalidEvent = event => raise(InvalidEvent(event_encode(event)));
+
+let init: init(state, event) =
+  (. event) =>
+    switch (event) {
+    | Added => {}
+    };
+
+let apply: apply(state, event) =
+  (. state, event) =>
+    switch (event) {
+    | Added => invalidEvent(event)
+    };

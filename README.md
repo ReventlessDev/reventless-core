@@ -4,15 +4,19 @@ This is a mono-repo, which contains all necessary packages for the Reventless fr
 
 For individual Readmes per package see inside the package's directory `./packages/*`:
 
-- [bs-aws-sdk](packages/bs-aws-sdk/README.md)
-- [bs-fast-csv](packages/bs-fast-csv/README.md)
-- [bs-hash-obj](packages/bs-hash-obj/README.md)
-- [bs-node-streams](packages/bs-node-streams/README.md)
-- [bs-pulumi-aws](packages/bs-pulumi-aws/README.md)
-- [bs-pulumi-pulumi](packages/bs-pulumi-pulumi/README.md)
-- [bs-ssh2](packages/bs-ssh2/README.md)
-- [bs-uuid](packages/bs-uuid/README.md)
-- [reventless](packages/reventless/README.md)
+- [bs-aws-sdk](packages/bs-aws-sdk/README.md): bindings for `aws-sdk`
+- [bs-fast-csv](packages/bs-fast-csv/README.md): bindings for `fast-csv`
+- [bs-hash-obj](packages/bs-hash-obj/README.md): bindings for `hash-obj`
+- [bs-node-streams](packages/bs-node-streams/README.md): bindings for streams in `node`
+- [bs-pulumi-aws](packages/bs-pulumi-aws/README.md): bindings for `@pulumi/pulumi-aws`
+- [bs-pulumi-pulumi](packages/bs-pulumi-pulumi/README.md): bindings for `@pulumi/pulumi`
+- [bs-ssh2](packages/bs-ssh2/README.md): bindings for `ssh2`
+- [bs-uuid](packages/bs-uuid/README.md): bindings for `uuid`
+- [reventless](packages/reventless/README.md): reventless framework (provider agnostic)
+- [reventless-aws](packages/reventless-aws/README.md): aws specifics for the reventless framework (adapter, preconficured components, etc.)
+- [reventless-ci](packages/reventless-ci/README.md): ci tooling for reventless projects (docker image, scripts, ci templates)
+- [reventless-spec](packages/reventless-spec/README.md): types & interface files for the reventless framework
+- [reventless-ui](packages/reventless-ui/README.md): react component library & core ui for reventless based applications
 
 ## Setup
 
@@ -34,6 +38,12 @@ Use the [wizard](#lerna-wizard) or [`lerna create`](https://github.com/lerna/ler
 ### Linking Local Packages
 
 If you work on a package (`A`), and you have a local package (`D` for dependency), that you want to make use of in `A`. [Local package means `D` is developed inside of this mono-repo, managed by lerna and not necessarily published to npm]. Add `D` to the dependencies in `package.json` of `A`. (mind to match the version) Then call `lerna bootstrap` and you're done.
+
+### Version & Publish Packages
+
+Run `npx lerna publish`: This will check for modifications in all packages since the last version and prompt for a new version (patch, mino, major, pre-release) for each modified package and all dependents of a modified package. After user confirmation correlating tags will be created and pushed, while the packges will also be published to the registry.
+
+If you only want to version, but not publish packages, run `npx lerna version`.
 
 ### [Lerna Wizard](https://github.com/webuniverseio/lerna-wizard)
 
@@ -68,7 +78,21 @@ You will be prompted to enter your Github username, password and your public ema
 
 After that you are able to run `npm install @reventless-universe/<package>` and publish packages with `npm publish`.
 
+## Publish A Package In GitLab Registry
+
+All the packages in this Monorepo can be published using the GitLub Registry. Therefore, a "Personal Access Token" with the privilege for "api" must be created in "User Settings / Access Tokens". After that you can login into the registry on your local machine, using the following command:
+
+```sh
+npm login --registry=https://npm.pkg.github.com --scope=@reventless
+```
+
+You will be prompted to enter your Github username, password and your public email. Instead of the password use the Personal Access Token you just created.
+
+After that you are able to run `npm install @reventless-universe/<package>` and publish packages with `npm publish`.
+
 ## Dependencies of packages in this repository
+
+> //@TODO: This section is out of date and needs to be updated.
 
 How to read the following table:
 

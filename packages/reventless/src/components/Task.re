@@ -17,7 +17,8 @@ type outputs = {
   "sideEffectHandler": option(SideEffectHandler.outputs),
 };
 
-type task; // TODO: rename to t - after refactoring
+type t;
+type component = Component.t(t, outputs);
 
 type queryBucketName = string => string;
 
@@ -29,7 +30,7 @@ type maker =
     ~opts: option(Pulumi.ComponentResource.Options.t),
     ~resources: resources
   ) =>
-  Component.t(task, outputs);
+  component;
 
 type setup =
   (
@@ -44,8 +45,7 @@ type setup =
   outputs;
 
 type constructed;
-type construct =
-  (Component.t(task, outputs), string, resources) => constructed;
+type construct = (component, string, resources) => constructed;
 
 [@bs.module "./Component"] [@bs.new]
 external make:
@@ -56,15 +56,13 @@ external make:
     ~opts: option(Pulumi.ComponentResource.Options.t),
     ~resources: resources
   ) =>
-  Component.t(task, outputs) =
+  component =
   "default";
 
 [@bs.send]
-external registerOutputs: (Component.t(task, outputs), outputs) => constructed =
+external registerOutputs: (component, outputs) => constructed =
   "registerOutputs";
-[@bs.send]
-external setOutputs: (Component.t(task, outputs), outputs) => unit =
-  "setOutputs";
+[@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
 let setOutputs = (self, outputs) => {
   self->setOutputs(outputs);
   self->registerOutputs(outputs);

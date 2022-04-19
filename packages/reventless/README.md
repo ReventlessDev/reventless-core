@@ -143,6 +143,9 @@ This command will run 3 Shell-Scripts:
 ## Ressources
 * [Project Wiki](https://gitlab.com/atos-austria/reason/reventless/wikis/home)
 
+# Coding Guidelines
+
+* `<Component>.Make.createComponent` (binding to `Component.js` constructor): Pass any additional parameters (besides `componentType`, `name`, `opts`) directly to the `construct` function (using partial application), like this: `createComponent(~componentType, ~name, ~construct=construct(~param1, ~param2), ~opts)`
 
 # Code-Smells
 

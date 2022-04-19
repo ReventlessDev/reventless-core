@@ -3,7 +3,7 @@
  */
 let getVpcConfig:
   (~stackName: string, ~outputName: string) =>
-  Pulumi.Input.t(PulumiAws.Lambda.CallbackFunction.Args.VpcConfig.t) =
+  Pulumi.Output.t(PulumiAws.Lambda.CallbackFunction.Args.VpcConfig.t) =
   (~stackName, ~outputName) => {
     let stackReference = Pulumi.StackReference.make(stackName);
     let vpcOutput =
@@ -11,19 +11,17 @@ let getVpcConfig:
 
     switch (vpcOutput) {
     | Some(vpcOutput) =>
-      vpcOutput
-      ->Pulumi.Output.apply(vpc =>
-          switch (vpc##securityGroup##id, vpc##privateSubnet##id) {
-          | (Some(securityGroupId), Some(subnetId)) =>
-            PulumiAws.Lambda.CallbackFunction.Args.VpcConfig.make(
-              ~securityGroupIds=[|securityGroupId|],
-              ~subnetIds=[|subnetId|],
-              ~vpcId=None,
-            )
-          | _ => Js.Exn.raiseError("Output is not a Reventless Vpc Component")
-          }
-        )
-      ->Pulumi.Output.asInput
+      vpcOutput->Pulumi.Output.apply(vpc =>
+        switch (vpc##securityGroup##id, vpc##privateSubnet##id) {
+        | (Some(securityGroupId), Some(subnetId)) =>
+          PulumiAws.Lambda.CallbackFunction.Args.VpcConfig.make(
+            ~securityGroupIds=[|securityGroupId|],
+            ~subnetIds=[|subnetId|],
+            ~vpcId=None,
+          )
+        | _ => Js.Exn.raiseError("Output is not a Reventless Vpc Component")
+        }
+      )
     | None =>
       Js.Exn.raiseError(
         {j|Vpc Output ($outputName) not found in stack ($stackName)|j},

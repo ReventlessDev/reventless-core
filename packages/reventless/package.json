@@ -39,15 +39,15 @@
   },
   "dependencies": {
     "@aantron/repromise": "^0.6.0",
-    "@reventless/bs-aws-sdk": "^1.0.2-alpha.0",
+    "@reventless/bs-aws-sdk": "^1.1.0-alpha.0",
     "@reventless/bs-fast-csv": "^0.2.8",
     "@reventless/bs-hash-obj": "^0.1.5",
     "@reventless/bs-node-streams": "^0.1.5",
-    "@reventless/bs-pulumi-aws": "^1.0.1-alpha.0",
-    "@reventless/bs-pulumi-pulumi": "^1.0.0",
+    "@reventless/bs-pulumi-aws": "^1.1.0-alpha.0",
+    "@reventless/bs-pulumi-pulumi": "^1.0.2",
     "@reventless/bs-ssh2": "^0.1.5",
     "@reventless/bs-uuid": "^0.1.6",
-    "@reventless/reventless-spec": "^1.0.0",
+    "@reventless/reventless-spec": "^1.0.2",
     "@ryb73/decco": "0.0.12",
     "bs-moment": "^0.6.0",
     "fast-csv": "^3.2.0",
@@ -58,8 +58,8 @@
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.4.8",
-    "@pulumi/aws": "^4.12.0",
-    "@pulumi/pulumi": "3.6.1",
+    "@pulumi/aws": "4.37.4",
+    "@pulumi/pulumi": "3.24.1",
     "aws-sdk": "^2.556.0"
   },
   "peerDependencies": {

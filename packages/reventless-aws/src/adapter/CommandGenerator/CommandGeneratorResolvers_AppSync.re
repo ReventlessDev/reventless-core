@@ -50,13 +50,26 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
       );
 
     let _dataSourcePolicy =
-      IAM.RolePolicy.make(
-        ~name=name ++ "DS",
-        ~action="lambda:InvokeFunction",
-        ~resource=[|commandGeneratorArn|],
-        ~role=dataSourceRole##id,
-        ~opts,
-        (),
+      IAM.(
+        RolePolicy.make(
+          ~name=name ++ "DS",
+          ~args=
+            RolePolicy.Args.make(
+              ~policy=
+                commandGeneratorArn
+                ->Pulumi.Output.apply(commandGeneratorArn =>
+                    RolePolicy.generatePolicy(
+                      [|commandGeneratorArn|],
+                      "lambda:InvokeFunction",
+                    )
+                  )
+                ->Pulumi.Output.asInput,
+              ~role=dataSourceRole##id->Pulumi.Output.asInput,
+              (),
+            ),
+          ~opts,
+          (),
+        )
       );
 
     let dataSource =
@@ -75,7 +88,6 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
                 (),
               )
               ->Pulumi.Input.wrap,
-            ~name=name->Pulumi.Input.wrap, // This has to be provided for DataSource !
             ~serviceRoleArn=dataSourceRole##arn->Pulumi.Output.asInput,
             (),
           ),
@@ -99,9 +111,13 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
 
     let resolvers =
       fields->Belt.Array.map(field => {
-        let commandName = field->String.capitalize;
+        let commandName =
+          switch (field->Js.String2.split("_")) {
+          | [|_aggregate, commandName|] => commandName->String.capitalize
+          | _ => field->String.capitalize
+          };
         AppSync.Resolver.make(
-          ~name=commandName,
+          ~name=field->String.capitalize,
           ~api,
           ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
           ~_type="Mutation"->Pulumi.Input.wrap,

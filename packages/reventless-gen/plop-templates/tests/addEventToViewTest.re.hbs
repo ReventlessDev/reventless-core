@@ -1,0 +1,12 @@
+
+  test("{{properCaseWithoutOptionalParams event}} (not existing)", () =>
+    givenEvents([]) //
+    |> whenEvent({{properCaseWithOptionalParams event}})
+    |> thenThrow
+  );
+
+  test("{{properCaseWithoutOptionalParams event}}", () =>
+    givenEvents([Added]) //
+    |> whenEvent({{properCaseWithOptionalParams event}})
+    |> thenState(state) // TODO: add implementation
+  );$1

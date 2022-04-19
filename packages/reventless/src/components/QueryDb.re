@@ -97,8 +97,8 @@ module Adapter = {
     (
       ~name: string,
       ~indexes: list(View.index),
-      ~sortField: option(string),
-      ~ttl: option(int),
+      ~sortField: string=?,
+      ~ttl: int=?,
       ~api: 'api,
       ~apiRole: 'role,
       ~opts: Pulumi.CustomResourceOptions.t,
@@ -311,7 +311,7 @@ module Make =
   let outputs: Component.t(t, outputs) => outputs =
     component => Component.extractOutputs(component);
 
-  let construct = (~ttl, self, name, api, apiRole, resources) => {
+  let construct = (~ttl=?, self, name, api, apiRole, resources) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -325,8 +325,8 @@ module Make =
       Storage.make(
         ~name=storageName,
         ~indexes=ViewSpec.indexes,
-        ~sortField,
-        ~ttl,
+        ~sortField?,
+        ~ttl?,
         ~api,
         ~apiRole,
         ~opts,
@@ -370,7 +370,7 @@ module Make =
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=ViewSpec.name->Belt.Option.getWithDefault(Spec.name),
-        ~construct=construct(~ttl),
+        ~construct=construct(~ttl?),
         ~opts,
         ~api=Config.api,
         ~apiRole=Config.apiRole,

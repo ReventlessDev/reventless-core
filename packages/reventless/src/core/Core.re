@@ -11,6 +11,7 @@ type outputs = {
   "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
   "aggregates": Pulumi.Output.t(Js.Dict.t(Aggregate.outputs)),
   "readModels": Pulumi.Output.t(Js.Dict.t(ReadModel.outputs)),
+  "cloner": Cloner.outputs,
   "resources": resources,
 };
 
@@ -34,10 +35,11 @@ let toDict = els =>
 
 module Make =
        (
-         EventCollectorAdapter: EventCollector.Adapter.Connector,
+         Config: Config.T,
+         EventCollectorConnector: EventCollector.Adapter.Connector,
          QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
-       )
-       : T => {
+         ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
+       ) => {
   type constructed;
   type construct = (component, string) => constructed;
 
@@ -60,6 +62,7 @@ module Make =
       ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
       ~aggregates: Js.Dict.t(Aggregate.outputs),
       ~readModels: Js.Dict.t(ReadModel.outputs),
+      ~cloner: Cloner.outputs,
       ~resources: resources
     ) =>
     outputs =
@@ -193,7 +196,7 @@ module Make =
     module EventCollector =
       EventCollector.Make(
         EventCollector.DefaultPolicies,
-        EventCollectorAdapter,
+        EventCollectorConnector,
       );
 
     let eventCollector =
@@ -206,12 +209,16 @@ module Make =
         (),
       );
 
+    module Cloner = Cloner.Make(Config, ClonerRunner);
+    let cloner = Cloner.make(~opts, ());
+
     makeOutputs(
       ~version,
       ~eventCollector=eventCollector->Component.extractOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
       ~aggregates=aggregatesOutputs,
       ~readModels=readModelsOutputs->toDict,
+      ~cloner=cloner->Component.extractOutputs,
       ~resources,
     )
     ->setOutputs(self, _);

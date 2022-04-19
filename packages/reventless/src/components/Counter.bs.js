@@ -286,7 +286,7 @@ function Make(Config) {
                             if (count === 0) {
                               var match$2 = unmakeId(id);
                               console.log("Counter-Reventless" + (".counterHandler: counted down " + (String(name$1) + ("(" + (String(id) + (") to " + (String(count) + "")))))));
-                              var meta = Message$Reventless.generateMeta(name, undefined, undefined, /* () */0);
+                              var meta = Message$Reventless.generateMeta(name, undefined, "Counter", /* () */0);
                               return Caml_option.some(Js_dict.fromArray(/* array */[
                                               /* tuple */[
                                                 "id",

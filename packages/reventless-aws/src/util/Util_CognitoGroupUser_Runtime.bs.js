@@ -2,26 +2,27 @@
 'use strict';
 
 var AwsSdk = require("aws-sdk");
+var Util_Cognito_Runtime$ReventlessAws = require("./Util_Cognito_Runtime.bs.js");
 
-function addUserToGroup(region, userName, groupName, userPool) {
+function addUserToGroup(region, userName, groupName, userPoolId) {
   return new AwsSdk.CognitoIdentityServiceProvider({
-                  endpoint: userPool.endpoint.get(),
+                  endpoint: Util_Cognito_Runtime$ReventlessAws.userPoolEndpoint(region, userPoolId),
                   region: region
                 }).adminAddUserToGroup({
                 Username: userName,
                 GroupName: groupName,
-                UserPoolId: userPool.id.get()
+                UserPoolId: userPoolId
               }).promise();
 }
 
-function removeUserFromGroup(region, userName, groupName, userPool) {
+function removeUserFromGroup(region, userName, groupName, userPoolId) {
   return new AwsSdk.CognitoIdentityServiceProvider({
-                  endpoint: userPool.endpoint.get(),
+                  endpoint: Util_Cognito_Runtime$ReventlessAws.userPoolEndpoint(region, userPoolId),
                   region: region
                 }).adminRemoveUserFromGroup({
                 Username: userName,
                 GroupName: groupName,
-                UserPoolId: userPool.id.get()
+                UserPoolId: userPoolId
               }).promise();
 }
 
