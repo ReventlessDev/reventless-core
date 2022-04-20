@@ -16,16 +16,16 @@ const createBehaviour = {
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Behaviour.re',
   templateFile: 'plop-templates/Aggregate/Behaviour.re.hbs'
 };
-const createService = {
+const createAggregate = {
   type: 'add',
-  path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Service.re',
-  templateFile: 'plop-templates/Aggregate/Service.re.hbs'
+  path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Aggregate.re',
+  templateFile: 'plop-templates/Aggregate/Aggregate.re.hbs'
 };
-const addServiceToMain = {
+const addAggregateToMain = {
   type: "modify",
   path: "src/Main.re",
-  pattern: /(~serviceMakers\W[\S\s]*?\[\|)/,
-  template: "$1{{properCase name}}Service.make,",
+  pattern: /(~aggregates\W[\S\s]*?\[\|)/,
+  template: "$1(module {{properCase name}}Aggregate),",
 };
 const createTestFixture = {
   type: 'add',
@@ -42,6 +42,17 @@ const createView = {
   type: 'add',
   path: 'src/ReadModels/{{properCase name}}/{{properCase name}}View.re',
   templateFile: 'plop-templates/ReadModel/View.re.hbs'
+};
+const createReadModel = {
+  type: 'add',
+  path: 'src/ReadModels/{{properCase name}}/{{properCase name}}ReadModel.re',
+  templateFile: 'plop-templates/ReadModel/ReadModel.re.hbs'
+};
+const addReadModelToMain = {
+  type: "modify",
+  path: "src/Main.re",
+  pattern: /(~readModels\W[\S\s]*?\[\|)/,
+  template: "$1(module {{properCase name}}ReadModel),",
 };
 const createViewTest = {
   type: 'add',
@@ -214,50 +225,42 @@ const addEventToViewTest = {
   templateFile: "plop-templates/tests/addEventToViewTest.re.hbs",
 };
 
-const createEventMapper = {
-  type: 'add',
-  path: 'src/Aggregates/{{properCase target}}/{{properCase target}}EventMapper.re',
-  templateFile: "plop-templates/Aggregate/EventMapper.re.hbs",
-};
-const addEventMapperToMain = {
-  type: "modify",
-  path: "src/Main.re",
-  pattern: /(~eventMapperMakers\W[\S\s]*?\[\|)/,
-  template: "$1{{properCase target}}EventMapper.make,",
-};
 const createEventMappings = {
   type: 'add',
   path: 'src/Aggregates/{{properCase target}}/{{properCase target}}EventMappings.re',
-  template: 'open ReventlessSpec;\n'
+  templateFile: "plop-templates/Aggregate/EventMappings.re.hbs",
+  abortOnFail: false,
+};
+const addEventMappingsToAggregate = {
+  type: "modify",
+  path: "src/Aggregates/{{properCase target}}/{{properCase target}}Aggregate.re",
+  pattern: /\(Reventless.NoEventMappings.Make\(.*?\)\)/,
+  template: "{{properCase target}}EventMappings",
 };
 const addMappingToEventMappings = {
   type: "modify",
   path: "src/Aggregates/{{properCase target}}/{{properCase target}}EventMappings.re",
-  pattern: /([\S\s]*)/,
+  pattern: /(module type Mapping[\S\s]*?\[\|)/,
   templateFile: "plop-templates/Aggregate/addMappingToEventMappings.re.hbs",
-};
-const addMappingToEventMapper = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase target}}/{{properCase target}}EventMapper.re",
-  pattern: /(EventMapper.make\W[\S\s]*?\[\|)/,
-  template: "$1(module {{properCase source}}To{{properCase target}}Mapping),",
 };
 
 export default function (plop) {
-  plop.setGenerator('Service', {
+  plop.setGenerator('Aggregate+ReadModel', {
     prompts: [{
       type: 'input',
       name: 'name',
-      message: 'Service name:'
+      message: 'Aggregate+ReadModel name:'
     }],
     actions: [
       createSpec,
       createBehaviour,
-      createService,
-      addServiceToMain,
+      createAggregate,
+      addAggregateToMain,
       createTestFixture,
       createBehaviourTest,
       createView,
+      createReadModel,
+      addReadModelToMain,
       createViewTest,
       createApi
     ]
@@ -271,7 +274,8 @@ export default function (plop) {
     actions: [
       createSpec,
       createBehaviour,
-      createService,
+      createAggregate,
+      addAggregateToMain,
       createTestFixture,
       createBehaviourTest,
     ]
@@ -284,6 +288,8 @@ export default function (plop) {
     }],
     actions: [
       createView,
+      createReadModel,
+      addReadModelToMain,
       createViewTest,
       createApi
     ]
@@ -406,18 +412,6 @@ export default function (plop) {
       addEventToViewTest
     ]
   });
-  plop.setGenerator('EventMapper', {
-    prompts: [{
-      type: 'input',
-      name: 'target',
-      message: 'Target:'
-    }],
-    actions: [
-      createEventMapper,
-      addEventMapperToMain,
-      createEventMappings,
-    ]
-  });
   plop.setGenerator('EventMapping', {
     prompts: [{
       type: 'input',
@@ -430,8 +424,9 @@ export default function (plop) {
       message: 'Source:'
     }],
     actions: [
+      createEventMappings,
+      addEventMappingsToAggregate,
       addMappingToEventMappings,
-      addMappingToEventMapper
     ]
   });
 
