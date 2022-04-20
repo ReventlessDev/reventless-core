@@ -20,6 +20,7 @@ var Util_EventTopic$Reventless = require("../util/Util_EventTopic.bs.js");
 function Make(Target) {
   return (function (EventCollector) {
       return (function (Mappings) {
+          var target = Target.name;
           var findMapping = function (mappings, eventObj) {
             return Belt_Option.flatMapU(eventObj, (function (eventObj$prime) {
                           var meta = Belt_Option.map(Js_dict.get(eventObj$prime, "meta"), Message$Reventless.meta_decode);
@@ -30,17 +31,21 @@ function Make(Target) {
                               return ;
                             } else {
                               var eventMeta = match[0];
+                              var source = eventMeta[/* service */0];
                               var mapping = Belt_Array.getBy(mappings, (function (Mapping) {
-                                      return Mapping.Source.name === eventMeta[/* service */0];
+                                      return Mapping.Source.name === source;
                                     }));
                               if (mapping !== undefined) {
+                                var mapping$1 = mapping;
+                                var source$1 = mapping$1.Source.name;
+                                console.log("EventMapper.map: found mapping " + (String(source$1) + (" -> " + (String(target) + ""))));
                                 return /* tuple */[
                                         eventObj$prime,
                                         eventMeta,
-                                        mapping
+                                        mapping$1
                                       ];
                               } else {
-                                console.log("EventMapper.map: No mapping available for service:", eventMeta[/* service */0]);
+                                console.log("EventMapper.map: No mapping " + (String(source) + (" -> " + (String(target) + " found"))));
                                 return ;
                               }
                             }
@@ -50,32 +55,32 @@ function Make(Target) {
                           }
                         }));
           };
-          var processMappingActions = function (actions, meta) {
+          var createCommandJson = function (delay, id, meta, command) {
+            return /* record */[
+                    /* id */Curry._1(Target.Id.toString, id),
+                    /* meta : record */[
+                      /* service */Target.name,
+                      /* time */Message$Reventless.nowAsISOString(/* () */0),
+                      /* ip */meta[/* ip */2],
+                      /* user */meta[/* user */3],
+                      /* msgId */Message$Reventless.uuid(/* () */0),
+                      /* correlationId */meta[/* correlationId */5]
+                    ],
+                    /* commandJson */Curry._1(Target.command_encode, command),
+                    /* delay */delay
+                  ];
+          };
+          var processMappingActions = function (actions, eventMeta) {
             return Belt_Array.map(actions, (function (param) {
                           switch (param.tag | 0) {
                             case /* Publish */0 :
-                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[/* record */[
-                                                  /* id */Curry._1(Target.Id.toString, param[0]),
-                                                  /* meta */meta,
-                                                  /* commandJson */Curry._1(Target.command_encode, param[1]),
-                                                  /* delay */undefined
-                                                ]])]);
+                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[createCommandJson(undefined, param[0], eventMeta, param[1])])]);
                             case /* PublishDelayed */1 :
-                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[/* record */[
-                                                  /* id */Curry._1(Target.Id.toString, param[0]),
-                                                  /* meta */meta,
-                                                  /* commandJson */Curry._1(Target.command_encode, param[1]),
-                                                  /* delay */param[2]
-                                                ]])]);
+                                return /* Publisher */Block.__(1, [Promise.resolve(/* array */[createCommandJson(param[2], param[0], eventMeta, param[1])])]);
                             case /* PublishAsync */2 :
                                 return /* Publisher */Block.__(1, [param[0].then((function (cmds) {
                                                   return Promise.resolve(Belt_Array.map(cmds, (function (param) {
-                                                                    return /* record */[
-                                                                            /* id */Curry._1(Target.Id.toString, param[0]),
-                                                                            /* meta */meta,
-                                                                            /* commandJson */Curry._1(Target.command_encode, param[1]),
-                                                                            /* delay */undefined
-                                                                          ];
+                                                                    return createCommandJson(undefined, param[0], eventMeta, param[1]);
                                                                   })));
                                                 }))]);
                             case /* AddToCounterTarget */3 :
@@ -83,18 +88,18 @@ function Make(Target) {
                                 return /* Counter */Block.__(0, [/* AddToCounterTarget */Block.__(1, [/* record */[
                                                 /* counterId */match[/* counterId */0],
                                                 /* target */match[/* target */1],
-                                                /* targetRef */meta[/* correlationId */5]
+                                                /* targetRef */eventMeta[/* correlationId */5]
                                               ]])]);
                             case /* Count */4 :
                                 return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
                                                 /* counterId */param[0],
-                                                /* reference */meta[/* correlationId */5],
+                                                /* reference */eventMeta[/* correlationId */5],
                                                 /* inc */1
                                               ]])]);
                             case /* CountMulti */5 :
                                 return /* Counter */Block.__(0, [/* Count */Block.__(0, [/* record */[
                                                 /* counterId */param[0],
-                                                /* reference */meta[/* correlationId */5],
+                                                /* reference */eventMeta[/* correlationId */5],
                                                 /* inc */param[1]
                                               ]])]);
                             

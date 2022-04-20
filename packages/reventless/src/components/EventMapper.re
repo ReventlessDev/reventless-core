@@ -78,6 +78,7 @@ module Make =
   };
 
   module Target = Target;
+  let target = Target.name;
 
   let findMapping = (mappings, eventObj) => {
     eventObj->Belt.Option.flatMapU((. eventObj') => {
@@ -86,18 +87,20 @@ module Make =
 
       switch (meta) {
       | Some(Belt.Result.Ok(eventMeta)) =>
+        let source = eventMeta.service;
         let mapping =
           mappings->Belt.Array.getBy((module Mapping: Mappings.Mapping) =>
-            Mapping.Source.name == eventMeta.service
+            Mapping.Source.name == source
           );
         switch (mapping) {
         | None =>
-          Js.log2(
-            "EventMapper.map: No mapping available for service:",
-            eventMeta.service,
-          );
+          Js.log({j|EventMapper.map: No mapping $source -> $target found|j});
           None;
-        | Some(mapping) => Some((eventObj', eventMeta, mapping))
+        | Some(mapping) =>
+          module Mapping = (val mapping);
+          let source = Mapping.Source.name;
+          Js.log({j|EventMapper.map: found mapping $source -> $target|j});
+          Some((eventObj', eventMeta, mapping));
         };
       | Some(Error(err)) =>
         Js.log2("EventMapper.map: Couldn't decode meta:", err);
@@ -113,29 +116,27 @@ module Make =
     | Counter(Counter.action)
     | Publisher(Js.Promise.t(array(Message.commandJson)));
 
-  let processMappingActions = (actions, meta) =>
+  let createCommandJson = (~delay=?, id, meta, command) => {
+    Message.id: id->Target.Id.toString,
+    meta: {
+      ...meta,
+      service: Target.name,
+      msgId: Message.uuid(),
+      time: Message.nowAsISOString(),
+    },
+    commandJson: command->Target.command_encode,
+    delay,
+  };
+
+  let processMappingActions = (actions, eventMeta) =>
     actions->Belt.Array.map(
       fun
       | ReventlessSpec.EventMapping.Publish(id, command) =>
-        [|
-          {
-            Message.id: id->Target.Id.toString,
-            meta,
-            commandJson: command->Target.command_encode,
-            delay: None,
-          },
-        |]
+        [|createCommandJson(id, eventMeta, command)|]
         ->Js.Promise.resolve
         ->Publisher
       | PublishDelayed(id, command, delay) =>
-        [|
-          {
-            Message.id: id->Target.Id.toString,
-            meta,
-            commandJson: command->Target.command_encode,
-            delay: Some(delay),
-          },
-        |]
+        [|createCommandJson(~delay, id, eventMeta, command)|]
         ->Js.Promise.resolve
         ->Publisher
       | PublishAsync(promise) =>
@@ -144,24 +145,24 @@ module Make =
             cmds =>
               cmds
               ->Belt.Array.map(((id, command)) =>
-                  {
-                    Message.id: id->Target.Id.toString,
-                    meta,
-                    commandJson: command->Target.command_encode,
-                    delay: None,
-                  }
+                  createCommandJson(id, eventMeta, command)
                 )
               ->Js.Promise.resolve,
             _,
           )
         ->Publisher
       | AddToCounterTarget({counterId, target}) =>
-        AddToCounterTarget({counterId, target, targetRef: meta.correlationId})
+        AddToCounterTarget({
+          counterId,
+          target,
+          targetRef: eventMeta.correlationId,
+        })
         ->Counter
       | Count(counterId) =>
-        Count({counterId, reference: meta.correlationId, inc: 1})->Counter
+        Count({counterId, reference: eventMeta.correlationId, inc: 1})
+        ->Counter
       | CountMulti(counterId, inc) =>
-        Count({counterId, reference: meta.correlationId, inc})->Counter,
+        Count({counterId, reference: eventMeta.correlationId, inc})->Counter,
     );
 
   let commonEventsHandler = (mappings, queryEngine, events'Json) => {
