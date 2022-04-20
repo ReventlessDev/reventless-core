@@ -208,7 +208,10 @@ module Make =
     "default";
 
   [@bs.obj]
-  external makeOutputs: (~resources: array(resource)) => outputs = "";
+  external makeOutputs:
+    (~resources: array(resource), ~resolversMaker: resolversResourcesMaker) =>
+    outputs =
+    "";
 
   [@bs.send]
   external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
@@ -354,6 +357,7 @@ module Make =
 
     makeOutputs(
       ~resources=storage.resources->Belt.Array.concat(resolvers.resources),
+      ~resolversMaker=resolvers.resourcesMaker,
     )
     |> self->setOutputs;
   };

@@ -131,7 +131,8 @@ function Make(Config) {
                         ]);
                     var self$1 = self;
                     var outputs = {
-                      resources: Belt_Array.concat(storage[/* resources */0], resolvers[/* resources */0])
+                      resources: Belt_Array.concat(storage[/* resources */0], resolvers[/* resources */0]),
+                      resolversMaker: resolvers[/* resourcesMaker */1]
                     };
                     self$1.setOutputs(outputs);
                     return self$1.registerOutputs(outputs);
