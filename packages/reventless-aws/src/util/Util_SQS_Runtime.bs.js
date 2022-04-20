@@ -14,12 +14,12 @@ function sendMessage(queue, delay, messageBody) {
   return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, undefined, undefined, delay, /* () */0);
 }
 
-function sendFifoMessage(queue, delay, messageBody, messageGroupId, param) {
+function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
   return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, messageGroupId, undefined, delay, /* () */0);
 }
 
-function makeEntry(queueService, commandId, meta, commandJson, delay) {
-  var msgId = meta[/* msgId */4];
+function toMessageBody(param) {
+  var meta = param[/* meta */1];
   var commandMeta_000 = /* service */meta[/* service */0];
   var commandMeta_001 = /* time */Message$Reventless.nowAsISOString(/* () */0);
   var commandMeta_002 = /* ip */meta[/* ip */2];
@@ -34,33 +34,49 @@ function makeEntry(queueService, commandId, meta, commandJson, delay) {
     commandMeta_004,
     commandMeta_005
   ];
-  var json = Js_dict.fromArray(/* array */[
-        /* tuple */[
-          "id",
-          commandId
-        ],
-        /* tuple */[
-          "meta",
-          Message$Reventless.meta_encode(commandMeta)
-        ],
-        /* tuple */[
-          "command",
-          commandJson
-        ]
-      ]);
-  var messageBody = JSON.stringify(json);
-  var target = meta[/* service */0];
-  console.log("Publishing command to Aggregate " + (String(target) + (": " + (String(messageBody) + (" id: " + (String(commandId) + ""))))));
+  return JSON.stringify(Js_dict.fromArray(/* array */[
+                  /* tuple */[
+                    "id",
+                    param[/* id */0]
+                  ],
+                  /* tuple */[
+                    "meta",
+                    Message$Reventless.meta_encode(commandMeta)
+                  ],
+                  /* tuple */[
+                    "command",
+                    param[/* commandJson */2]
+                  ]
+                ]));
+}
+
+function send(queue, queueService, commandJson) {
+  var delay = commandJson[/* delay */3];
+  var messageBody = toMessageBody(commandJson);
   if (queueService === Util_SQS_FIFO$ReventlessAws.service) {
-    return SQS$AwsSdk.makeBatchEntryFifo(commandId, messageBody, msgId, delay);
+    return sendFifoMessage(queue, delay, commandJson[/* id */0], messageBody);
   } else {
-    return SQS$AwsSdk.makeBatchEntry(messageBody, msgId, delay);
+    return sendMessage(queue, delay, messageBody);
+  }
+}
+
+function makeEntry(queueService, commandJson) {
+  var delay = commandJson[/* delay */3];
+  var match = commandJson[/* meta */1];
+  var messageId = match[/* msgId */4];
+  var id = commandJson[/* id */0];
+  var messageBody = toMessageBody(commandJson);
+  console.log("Publishing command to Aggregate " + (String(match[/* service */0]) + (": " + (String(messageBody) + (" id: " + (String(id) + ""))))));
+  if (queueService === Util_SQS_FIFO$ReventlessAws.service) {
+    return SQS$AwsSdk.makeBatchEntryFifo(id, messageBody, messageId, delay);
+  } else {
+    return SQS$AwsSdk.makeBatchEntry(messageBody, messageId, delay);
   }
 }
 
 function sendBatch(queue, queueService, commandJsons) {
-  var arg = Belt_Array.map(commandJsons, (function (param) {
-          return makeEntry(queueService, param[/* id */0], param[/* meta */1], param[/* commandJson */2], param[/* delay */3]);
+  var arg = Belt_Array.map(commandJsons, (function (commandJson) {
+          return makeEntry(queueService, commandJson);
         }));
   return Promise.allSettled((function (param) {
                     return SQS$AwsSdk.sendMessageBatch(param, arg);
@@ -97,6 +113,8 @@ function parseSqsRecord(record) {
 
 exports.sendMessage = sendMessage;
 exports.sendFifoMessage = sendFifoMessage;
+exports.toMessageBody = toMessageBody;
+exports.send = send;
 exports.makeEntry = makeEntry;
 exports.sendBatch = sendBatch;
 exports.deleteMessage = deleteMessage;

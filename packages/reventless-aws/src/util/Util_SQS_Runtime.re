@@ -10,13 +10,7 @@ let sendMessage = (queue: PulumiAws.SQS.Queue.t, ~delay=?, messageBody) =>
   );
 
 let sendFifoMessage =
-    (
-      queue: PulumiAws.SQS.Queue.t,
-      ~delay=?,
-      ~messageBody,
-      ~messageGroupId,
-      (),
-    ) =>
+    (queue: PulumiAws.SQS.Queue.t, ~delay=?, ~messageGroupId, messageBody) =>
   SQS.sendMessage(
     ~queueId=queue##id->Pulumi.Output.get,
     ~messageBody,
@@ -25,39 +19,46 @@ let sendFifoMessage =
     (),
   );
 
-let makeEntry =
-    (queueService, commandId, {msgId} as meta, commandJson, delay) => {
+let toMessageBody = ({id, meta, commandJson}) => {
   let commandMeta: meta = {...meta, msgId: uuid(), time: nowAsISOString()};
-  let json =
-    [|
-      ("id", commandId->Js.Json.string),
-      ("meta", commandMeta->Reventless.Message.meta_encode),
-      ("command", commandJson),
-    |]
-    ->Js.Dict.fromArray
-    ->Js.Json.object_;
-  let messageBody = json->Js.Json.stringify;
-  let target = meta.service;
+  [|
+    ("id", id->Js.Json.string),
+    ("meta", commandMeta->Reventless.Message.meta_encode),
+    ("command", commandJson),
+  |]
+  ->Js.Dict.fromArray
+  ->Js.Json.object_
+  ->Js.Json.stringify;
+};
+
+let send = (queue, queueService, {id, delay} as commandJson) => {
+  let messageBody = commandJson->toMessageBody;
+  if (queueService == Util_SQS_FIFO.service) {
+    queue->sendFifoMessage(~messageGroupId=id, ~delay?, messageBody);
+  } else {
+    queue->sendMessage(~delay?, messageBody);
+  };
+};
+
+let makeEntry =
+    (
+      queueService,
+      {id, meta: {msgId: messageId, service}, delay} as commandJson,
+    ) => {
+  let messageBody = commandJson->toMessageBody;
   Js.log(
-    {j|Publishing command to Aggregate $target: $messageBody id: $commandId|j},
+    {j|Publishing command to Aggregate $service: $messageBody id: $id|j},
   );
   if (queueService == Util_SQS_FIFO.service) {
-    SQS.makeBatchEntryFifo(
-      ~groupId=commandId,
-      ~messageId=msgId,
-      ~messageBody,
-      ~delay,
-    );
+    SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay);
   } else {
-    SQS.makeBatchEntry(~messageId=msgId, ~messageBody, ~delay);
+    SQS.makeBatchEntry(~messageId, ~messageBody, ~delay);
   };
 };
 
 let sendBatch = (queue, queueService, commandJsons) =>
   commandJsons
-  ->Belt.Array.map(({id, meta, commandJson, delay}) =>
-      makeEntry(queueService, id, meta, commandJson, delay)
-    )
+  ->Belt.Array.map(commandJson => makeEntry(queueService, commandJson))
   ->SQS.sendMessageBatch(~queueId=queue##id->Pulumi.Output.get)
   ->Reventless.Util.Promise.allSettled
   |> Js.Promise.then_(results => {

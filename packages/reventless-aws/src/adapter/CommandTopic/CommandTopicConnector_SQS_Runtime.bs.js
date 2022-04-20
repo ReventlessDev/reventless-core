@@ -7,7 +7,6 @@ var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
-var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
 
 function handleQueueEvent(handleCommands, queue, $$event, param) {
@@ -68,7 +67,7 @@ function publish(queue, queueService) {
         if (match !== 1) {
           return Util_SQS_Runtime$ReventlessAws.sendBatch(queue, queueService, jsons);
         } else {
-          return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, undefined, JSON.stringify(Message$Reventless.commandJson_encode(Caml_array.caml_array_get(jsons, 0))));
+          return Util_SQS_Runtime$ReventlessAws.send(queue, queueService, Caml_array.caml_array_get(jsons, 0));
         }
       } else {
         return Promise.resolve((console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.publish: No commands to send"), /* () */0));

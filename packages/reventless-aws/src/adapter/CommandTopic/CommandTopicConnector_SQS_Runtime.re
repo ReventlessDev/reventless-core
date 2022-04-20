@@ -73,9 +73,6 @@ let publish = (queue, queueService) =>
     | 0 =>
       Js.log(__MODULE__ ++ ".publish: No commands to send")
       ->Js.Promise.resolve
-    | 1 =>
-      queue->Util_SQS_Runtime.sendMessage(
-        jsons[0]->Reventless.Message.commandJson_encode->Js.Json.stringify,
-      )
+    | 1 => queue->Util_SQS_Runtime.send(queueService, jsons[0])
     | _ => queue->Util_SQS_Runtime.sendBatch(queueService, jsons)
     };
