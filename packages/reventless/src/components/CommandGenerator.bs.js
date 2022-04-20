@@ -18,7 +18,7 @@ function Make(Config) {
   return (function (Spec) {
       return (function (Behaviour) {
           return (function (Resolvers) {
-              var generateCommand = function (commandHandler) {
+              var generateCommand = function (publish) {
                 return (function (payload) {
                     var msgId = Message$Reventless.uuid(/* () */0);
                     var id = Curry._1(Spec.Id.makeFromString, payload.arguments.id);
@@ -45,7 +45,7 @@ function Make(Config) {
                       /* meta */meta,
                       /* command */command
                     ];
-                    return commandHandler(command$prime).then((function (param) {
+                    return publish(command$prime).then((function (param) {
                                   return Promise.resolve(msgId);
                                 }));
                   });
@@ -60,13 +60,13 @@ function Make(Config) {
                 };
                 return self.registerOutputs(outputs);
               };
-              var make = function (name, commandHandler, opts, param) {
+              var make = function (name, publish, opts, param) {
                 var prim = ComponentType$Reventless.toString(/* CommandGenerator */3);
                 var prim$1 = name;
                 var prim$2 = construct;
                 var prim$3 = opts;
                 var prim$4 = Config.api;
-                var prim$5 = commandHandler;
+                var prim$5 = publish;
                 return new Component.default(prim, prim$1, prim$2, prim$3, prim$4, prim$5);
               };
               return {

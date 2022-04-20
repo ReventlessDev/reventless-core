@@ -22,14 +22,14 @@ module type Spec = {
 module type T = {
   module Spec: Spec;
 
-  type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
+  type publish = Message.commandHandler(Spec.Id.t, Spec.command);
 
   type t;
 
   let make:
     (
       ~name: string,
-      ~commandHandler: commandHandler,
+      ~publish: publish,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
@@ -80,11 +80,11 @@ module Make =
 
   type api = Config.api;
 
-  type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
+  type publish = Message.commandHandler(Spec.Id.t, Spec.command);
 
   type constructed;
   type construct =
-    (Component.t(t, outputs), string, api, commandHandler) => constructed;
+    (Component.t(t, outputs), string, api, publish) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -94,7 +94,7 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~api: api,
-      ~commandHandler: commandHandler
+      ~publish: publish
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -107,8 +107,8 @@ module Make =
     "registerOutputs";
   //[@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
 
-  let generateCommand: commandHandler => commandGenerator =
-    commandHandler => {
+  let generateCommand: publish => commandGenerator =
+    publish => {
       let fn = payload => {
         let msgId = Message.uuid();
         let id = payload##arguments##id |> Spec.Id.makeFromString;
@@ -151,7 +151,7 @@ module Make =
               )
           );
         let command' = Message.{id, meta, command};
-        commandHandler(. command')
+        publish(. command')
         |> Js.Promise.then_(_ => Js.Promise.resolve(meta.msgId));
       };
       fn;
@@ -181,19 +181,19 @@ module Make =
   let make:
     (
       ~name: string,
-      ~commandHandler: commandHandler,
+      ~publish: publish,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
     Component.t(t, outputs) =
-    (~name, ~commandHandler, ~opts=?, _) => {
+    (~name, ~publish, ~opts=?, _) => {
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name,
         ~construct,
         ~opts,
         ~api=Config.api,
-        ~commandHandler,
+        ~publish,
       );
     };
 };

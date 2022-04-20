@@ -407,7 +407,7 @@ module Make =
     let commandGenerator =
       CommandGenerator.make(
         ~name=childName,
-        ~commandHandler=CommandTopic.publish(commandTopic),
+        ~publish=commandTopic->CommandTopic.publish,
         ~opts,
         (),
       );
