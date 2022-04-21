@@ -123,8 +123,8 @@ const addStatusFieldToViewState = {
 const addStatusFieldToViewInit = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(let init\W[\S\s]*?switch \(event\)[\S\s]*?)(statusChange:[\S\s]*?)(\n *)(},)(?!status\W)/,
-  template: "$1$2$3$4$3status: {{properCaseWithOptionalParams status}},",
+  pattern: /(let init\W[\S\s]*?\[[\S\s]*?{)([\S\s]*?)(?<!let init\W[\S\s]*?status\W[\S\s]*?)(\])/,
+  template: "$1status: {{properCaseWithOptionalParams status}},$2$3",
 };
 const addStatusSwitchToViewApply = {
   type: "modify",
