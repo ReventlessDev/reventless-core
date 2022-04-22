@@ -95,6 +95,9 @@ function Make(Spec) {
           return Jest.fail("thenEvent: No event present to validate");
         }
       };
+      var thenNoEvent = function (param) {
+        return thenEvents(/* [] */0, param);
+      };
       var thenEventWithError = function (expectedEvent, expectedError, events) {
         return Jest.Expect.toEqual(/* tuple */[
                     1,
@@ -136,6 +139,7 @@ function Make(Spec) {
               whenCmd: whenCmd,
               whenCmdWithId: whenCmdWithId,
               thenEvent: thenEvent,
+              thenNoEvent: thenNoEvent,
               thenEventWithError: thenEventWithError,
               thenEvents: thenEvents,
               thenEventsWithError: thenEventsWithError,

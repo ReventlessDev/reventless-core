@@ -8,6 +8,7 @@ module type T = {
     (string, Spec.command, list(Spec.event)) => list(Spec.event);
 
   let thenEvent: (Spec.event, list(Spec.event)) => Jest.assertion;
+  let thenNoEvent: list(Spec.event) => Jest.assertion;
   let thenEventWithError:
     (Spec.event, Spec.error, list(Spec.event)) => Jest.assertion;
   let thenEvents: (list(Spec.event), list(Spec.event)) => Jest.assertion;
@@ -89,6 +90,8 @@ module Make =
     } else {
       Jest.fail("thenEvent: No event present to validate");
     };
+
+  let thenNoEvent = thenEvents([]);
 
   let thenEventWithError = (expectedEvent, expectedError, events) =>
     expect((
