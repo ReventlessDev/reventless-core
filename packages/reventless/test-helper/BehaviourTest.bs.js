@@ -29,7 +29,7 @@ function Make(Spec) {
             ]);
         return /* [] */0;
       };
-      var exec = function (command, history) {
+      var exec = function (context, command, history) {
         errors[0] = /* [] */0;
         if (history) {
           try {
@@ -44,7 +44,7 @@ function Make(Spec) {
             }
           }
         } else {
-          return Behaviour.create(command, TestFixtures$Reventless.context, errorHandler);
+          return Behaviour.create(command, context, errorHandler);
         }
       };
       var givenEvents = function (events) {
@@ -52,7 +52,17 @@ function Make(Spec) {
       };
       var whenCmd = function (cmd) {
         return (function (param) {
-            return exec(cmd, param);
+            return exec(TestFixtures$Reventless.context, cmd, param);
+          });
+      };
+      var whenCmdWithId = function (id, cmd) {
+        var partial_arg_001 = /* meta */TestFixtures$Reventless.context[/* meta */1];
+        var partial_arg = /* record */[
+          /* id */id,
+          partial_arg_001
+        ];
+        return (function (param) {
+            return exec(partial_arg, cmd, param);
           });
       };
       var thenEvents = function (expectedEvents, events) {
@@ -122,9 +132,9 @@ function Make(Spec) {
       };
       return {
               Spec: Spec,
-              exec: exec,
               givenEvents: givenEvents,
               whenCmd: whenCmd,
+              whenCmdWithId: whenCmdWithId,
               thenEvent: thenEvent,
               thenEventWithError: thenEventWithError,
               thenEvents: thenEvents,

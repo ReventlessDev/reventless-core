@@ -1,10 +1,12 @@
 module type T = {
   module Spec: Behaviour.Spec;
 
-  let exec: (Spec.command, list(Spec.event)) => list(Spec.event);
-
   let givenEvents: list(Spec.event) => list(Spec.event);
+
   let whenCmd: (Spec.command, list(Spec.event)) => list(Spec.event);
+  let whenCmdWithId:
+    (string, Spec.command, list(Spec.event)) => list(Spec.event);
+
   let thenEvent: (Spec.event, list(Spec.event)) => Jest.assertion;
   let thenEventWithError:
     (Spec.event, Spec.error, list(Spec.event)) => Jest.assertion;
@@ -34,10 +36,10 @@ module Make =
       [];
     };
 
-  let exec = (command, history): list(Spec.event) => {
+  let exec = (context, command, history): list(Spec.event) => {
     errors := [];
     switch (history) {
-    | [] => Behaviour.create(. command, TestFixtures.context, errorHandler)
+    | [] => Behaviour.create(. command, context, errorHandler)
     | history =>
       try (
         Behaviour.execute(.
@@ -53,7 +55,8 @@ module Make =
   };
 
   let givenEvents = events => events;
-  let whenCmd = cmd => exec(cmd);
+  let whenCmd = cmd => exec(TestFixtures.context, cmd);
+  let whenCmdWithId = (id, cmd) => exec({...TestFixtures.context, id}, cmd);
 
   open Jest.Expect;
 
