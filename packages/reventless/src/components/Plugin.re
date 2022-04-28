@@ -829,7 +829,7 @@ module Make =
               ),
             );
           eventTopics->Js.Dict.set(
-            "Core.Plugin",
+            ReventlessSpec.PluginExtensionPointSpec.name,
             corePluginExtensionPoint##eventTopic,
           );
 
