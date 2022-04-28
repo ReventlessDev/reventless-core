@@ -6,11 +6,13 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Component$Reventless = require("./Component.bs.js");
+var Util_QueryDb$Reventless = require("../util/Util_QueryDb.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 function NoResolvers(Config) {
@@ -113,6 +115,7 @@ function Make(Config) {
                           }));
                     var storageName = ComponentType$Reventless.name(name, /* QueryDb */11);
                     var storage = Curry._8($$Storage.make, storageName, ViewSpec.indexes, sortField, ttl, api, apiRole, opts, resources);
+                    Util_QueryDb$Reventless.setStorageResource(resources, Caml_array.caml_array_get(storage[/* resources */0], 0), name);
                     self.load = loadFn(storage);
                     self.save = saveFn(storage);
                     self.saveBatch = saveBatchFn(storage);

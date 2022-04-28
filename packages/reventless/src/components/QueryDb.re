@@ -335,6 +335,7 @@ module Make =
         ~opts,
         ~resources,
       );
+    resources->Util_QueryDb.setStorageResource(storage.resources[0], name);
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);
