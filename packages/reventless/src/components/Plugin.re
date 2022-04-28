@@ -828,6 +828,10 @@ module Make =
                 extensionAggregateNames,
               ),
             );
+          eventTopics->Js.Dict.set(
+            "Core.Plugin",
+            corePluginExtensionPoint##eventTopic,
+          );
 
           let eventCollector =
             EventCollector.make(
