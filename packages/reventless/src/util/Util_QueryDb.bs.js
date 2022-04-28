@@ -18,7 +18,7 @@ function setStorageResource(resources, resource, name) {
                             return Curry._2(func$1, param, resources);
                           });
                       });
-                  })(storage)(name), resource);
+                  })(storage)(ComponentType$Reventless.name(name, /* QueryDb */11)), resource);
 }
 
 function getStorageResource(resources, name) {
