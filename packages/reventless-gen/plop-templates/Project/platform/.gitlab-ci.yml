@@ -1,0 +1,51 @@
+include:
+  - project: 'reventless/reventless-universe'
+    ref: master
+    file:
+      - '/packages/reventless-ci/ci-templates/gitlabci.yml'
+
+test-api:
+  extends: .test
+  variables:
+    PLUGIN_DIRECTORY: 'api'
+
+test-core:
+  extends: .test
+  variables:
+    PLUGIN_DIRECTORY: 'core'
+
+deploy-api:
+  extends: .deploy
+  variables:
+    PLUGIN_DIRECTORY: 'api'
+  needs:
+    - test-api
+
+deploy-core:
+  extends: .deploy
+  variables:
+    PLUGIN_DIRECTORY: 'core'
+  needs:
+    - test-core
+    - job: deploy-api
+      optional: true
+
+destroy-core:
+  extends: .destroy
+  variables:
+    PLUGIN_DIRECTORY: 'core'
+    REMOVE_STACK: 'false'
+  needs:
+    - job: deploy-core
+      optional: true
+
+destroy-api:
+  extends: .destroy
+  variables:
+    PLUGIN_DIRECTORY: 'api'
+    REMOVE_STACK: 'false'
+  needs:
+    - job: deploy-api
+      optional: true
+    - job: destroy-core
+      optional: true

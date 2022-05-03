@@ -1,0 +1,31 @@
+include:
+  - project: "reventless/reventless-universe"
+    ref: master
+    file:
+      - "/packages/reventless-ci/ci-templates/gitlabci.yml"
+
+test-plugin:
+  extends: .test
+  variables:
+    PLUGIN_DIRECTORY: "plugin"
+
+test-ui:
+  extends: .test
+  variables:
+    PLUGIN_DIRECTORY: "ui"
+
+deploy-plugin:
+  extends: .deploy
+  variables:
+    PLUGIN_DIRECTORY: "plugin"
+  needs:
+    - test-plugin
+
+destroy-plugin:
+  extends: .destroy
+  variables:
+    PLUGIN_DIRECTORY: "plugin"
+    REMOVE_STACK: "false"
+  needs:
+    - job: deploy-plugin
+      optional: true

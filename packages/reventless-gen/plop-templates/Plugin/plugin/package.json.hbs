@@ -1,0 +1,43 @@
+{
+  "name": "@{{dashCase projectName}}-{{dashCase pluginName}}/plugin",
+  "version": "0.0.1",
+  "description": "{{projectName}} {{properCase pluginName}} Plugin",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@gitlab.com:reventless/{{dashCase projectName}}/{{dashCase pluginName}}.git"
+  },
+  "bugs": {
+    "url": "https://gitlab.com/reventless/{{dashCase projectName}}/{{dashCase pluginName}}/issues"
+  },
+  "jest": {
+    "testMatch": [
+      "**/tests/**/*Test.bs.js"
+    ]
+  },
+  "main": "./src/Main.bs.js",
+  "scripts": {
+    "build": "bsb -make-world",
+    "start": "bsb -make-world -w",
+    "clean": "bsb -clean-world",
+    "rebuild": "npm run clean && npm run build",
+    "deploy": "../scripts/deploy.sh",
+    "test": "jest",
+    "test:ci": "jest --coverage --ci --testResultsProcessor=\"./node_modules/jest-junit-reporter\" --passWithNoTests",
+    "test:all": "jest -c ./jest.config.js",
+    "test:watch": "jest --watchAll",
+    "test:watch:coverage": "jest --coverage --watchAll",
+    "reventless-ci": "reventless-ci"
+  },
+  "dependencies": {
+    "bs-platform": "5.2.1",
+    "uuid": "3.4.0",
+    "@pulumi/aws": "4.37.4",
+    "@pulumi/pulumi": "3.24.1",
+    "@reventless/reventless-aws": "1.1.0-alpha.28"
+  },
+  "devDependencies": {
+    "@glennsl/bs-jest": "^0.4.8",
+    "jest-junit-reporter": "^1.1.0",
+    "jest": "^26.6.3"
+  }
+}

@@ -1,0 +1,10 @@
+type StatusChange {
+  at: String!
+  by: String!
+}
+
+type Query {
+}
+
+type Mutation {
+}

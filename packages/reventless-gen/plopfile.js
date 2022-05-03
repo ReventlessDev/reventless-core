@@ -6,6 +6,20 @@
 
 import pluralize from 'pluralize';
 
+const createProjectFiles = {
+  type: 'addMany',
+  destination: '{{dashCase projectName}}/',
+  base: 'plop-templates/Project/',
+  templateFiles: 'plop-templates/Project/**/*'
+};
+
+const createPluginFiles = {
+  type: 'addMany',
+  destination: '{{dashCase projectName}}/{{dashCase pluginName}}/',
+  base: 'plop-templates/Plugin/',
+  templateFiles: 'plop-templates/Plugin/**/*'
+};
+
 const createSpec = {
   type: 'add',
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}.re',
@@ -245,6 +259,42 @@ const addMappingToEventMappings = {
 };
 
 export default function (plop) {
+  plop.setGenerator('Project', {
+    prompts: [{
+      type: 'input',
+      name: 'projectName',
+      message: 'Project name:'
+    }, {
+      type: 'input',
+      name: 'pulumiOrganization',
+      message: 'Pulumi organization:'
+    }],
+    actions: [
+      createProjectFiles,
+    ]
+  });
+  plop.setGenerator('Plugin', {
+    prompts: [{
+      type: 'input',
+      name: 'projectName',
+      message: 'Project name:'
+    }, {
+      type: 'input',
+      name: 'pluginName',
+      message: 'Plugin name:'
+    }, {
+      type: 'input',
+      name: 'gitLabProjectId',
+      message: 'GitLab ProjectId:'
+    }, {
+      type: 'input',
+      name: 'pulumiOrganization',
+      message: 'Pulumi organization:'
+    }],
+    actions: [
+      createPluginFiles,
+    ]
+  });
   plop.setGenerator('Aggregate+ReadModel', {
     prompts: [{
       type: 'input',
