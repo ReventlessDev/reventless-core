@@ -12,19 +12,33 @@ const createProjectFiles = {
   destination: '{{dashCase projectName}}/',
   base: 'plop-templates/Project/',
   templateFiles: 'plop-templates/Project/**/*',
-  globOptions: {dot: true},
-  stripExtensions: ['hbs']
+  globOptions: {dot: true}
 };
 const gitInitPlatform = data => ({
   type: 'gitInit',
   path: `${process.cwd()}/${data.projectName}/platform/`,
-  // verbose: true,
+  verbose: true,
   abortOnFail: false
 });
-const npmInstallPlatform = data => ({
+const npmInstallApi = data => ({
   type: 'npmInstall',
-  path: `${process.cwd()}/${data.projectName}/platform/`,
-  // verbose: true
+  path: `${process.cwd()}/${data.projectName}/platform/api`,
+  verbose: true
+});
+const rebuildApi = data => ({
+  type: 'rebuild',
+  path: `${process.cwd()}/${data.projectName}/platform/api`,
+  verbose: true
+});
+const npmInstallCore = data => ({
+  type: 'npmInstall',
+  path: `${process.cwd()}/${data.projectName}/platform/core`,
+  verbose: true
+});
+const rebuildCore = data => ({
+  type: 'rebuild',
+  path: `${process.cwd()}/${data.projectName}/platform/core`,
+  verbose: true
 });
 
 const createPluginFiles = {
@@ -32,8 +46,7 @@ const createPluginFiles = {
   destination: '{{dashCase pluginName}}/',
   base: 'plop-templates/Plugin/',
   templateFiles: 'plop-templates/Plugin/**/*',
-  globOptions: {dot: true},
-  stripExtensions: ['hbs']
+  globOptions: {dot: true}
 };
 const gitInitPlugin = (plop, data) => ({
   type: 'gitInit',
@@ -44,22 +57,24 @@ const gitInitPlugin = (plop, data) => ({
 const npmInstallPlugin = (plop, data) => ({
   type: 'npmInstall',
   path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/plugin`,
-  // verbose: true
+  verbose: true
 });
 const rebuildPlugin = (plop, data) => ({
   type: 'rebuild',
   path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/plugin`,
-  // verbose: true
+  verbose: true,
+  abortOnFail: false
 });
 const npmInstallUi = (plop, data) => ({
   type: 'npmInstall',
   path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/ui`,
-  // verbose: true
+  verbose: true
 });
 const rebuildUi = (plop, data) => ({
   type: 'rebuild',
   path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/ui`,
-  // verbose: true
+  verbose: true,
+  abortOnFail: false
 });
 
 const createSpec = {
@@ -317,7 +332,10 @@ export default function (plop) {
       return [
         createProjectFiles,
         gitInitPlatform(data),
-        npmInstallPlatform(data)
+        npmInstallApi(data),
+        rebuildApi(data),
+        npmInstallCore(data),
+        rebuildCore(data),
       ]
     }
   });
