@@ -5,27 +5,26 @@
 // - Command Add and Event Added are generated and used for each new Status
 
 import pluralize from 'pluralize';
-import gitInit from './plop-pack-git-init.js';
-import npmInstall from './plop-pack-npm-install.js';
+import additionalActionTypes from './additionalActionTypes.js';
 
 const createProjectFiles = {
   type: 'addMany',
   destination: '{{dashCase projectName}}/',
   base: 'plop-templates/Project/',
   templateFiles: 'plop-templates/Project/**/*',
-  globOptions: {dot: true, ignoreFiles: ['.gitignore', '.npmignore']},
+  globOptions: {dot: true},
   stripExtensions: ['hbs']
 };
 const gitInitPlatform = data => ({
   type: 'gitInit',
   path: `${process.cwd()}/${data.projectName}/platform/`,
-  verbose: true,
+  // verbose: true,
   abortOnFail: false
 });
 const npmInstallPlatform = data => ({
   type: 'npmInstall',
   path: `${process.cwd()}/${data.projectName}/platform/`,
-  verbose: true
+  // verbose: true
 });
 
 const createPluginFiles = {
@@ -33,7 +32,7 @@ const createPluginFiles = {
   destination: '{{dashCase pluginName}}/',
   base: 'plop-templates/Plugin/',
   templateFiles: 'plop-templates/Plugin/**/*',
-  globOptions: {dot: true, ignoreFiles: ['.gitignore', '.npmignore']},
+  globOptions: {dot: true},
   stripExtensions: ['hbs']
 };
 const gitInitPlugin = (plop, data) => ({
@@ -44,8 +43,23 @@ const gitInitPlugin = (plop, data) => ({
 });
 const npmInstallPlugin = (plop, data) => ({
   type: 'npmInstall',
-  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/`,
-  verbose: true
+  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/plugin`,
+  // verbose: true
+});
+const rebuildPlugin = (plop, data) => ({
+  type: 'rebuild',
+  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/plugin`,
+  // verbose: true
+});
+const npmInstallUi = (plop, data) => ({
+  type: 'npmInstall',
+  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/ui`,
+  // verbose: true
+});
+const rebuildUi = (plop, data) => ({
+  type: 'rebuild',
+  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/ui`,
+  // verbose: true
 });
 
 const createSpec = {
@@ -287,8 +301,7 @@ const addMappingToEventMappings = {
 };
 
 export default function (plop) {
-  gitInit(plop);
-  npmInstall(plop);
+  additionalActionTypes(plop);
 
   plop.setGenerator('Project', {
     prompts: [{
@@ -329,7 +342,10 @@ export default function (plop) {
     actions: data => [
       createPluginFiles,
       gitInitPlugin(plop, data),
-      npmInstallPlugin(plop, data)
+      npmInstallPlugin(plop, data),
+      rebuildPlugin(plop, data),
+      npmInstallUi(plop, data),
+      rebuildUi(plop, data)
     ]
   });
   plop.setGenerator('Aggregate+ReadModel', {

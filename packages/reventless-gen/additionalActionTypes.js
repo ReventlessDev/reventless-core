@@ -55,8 +55,53 @@ function gitInit(_, config) {
 		.then(() => gitCommit());
 }
 
+function npmInstall(_, config) {
+	const spawnOptions = config.verbose ? {
+		cwd: config.path,
+		shell: true,
+		stdio: 'inherit',
+	} : {
+		cwd: config.path
+	};
+
+	return new Promise((resolve, reject) => {
+		const npmI = spawn('npm', ['install'], spawnOptions);
+
+		npmI.on('close', (code) => {
+			if (didSucceed(code)) {
+				resolve(`npm install ran correctly`);
+			} else {
+				reject(`npm install exited with ${code}`);
+			}
+		});
+	});
+}
+
+function rebuild(_, config) {
+	const spawnOptions = config.verbose ? {
+		cwd: config.path,
+		shell: true,
+		stdio: 'inherit',
+	} : {
+		cwd: config.path
+	};
+
+	return new Promise((resolve, reject) => {
+		const npmI = spawn('npm', ['run', 'rebuild'], spawnOptions);
+
+		npmI.on('close', (code) => {
+			if (didSucceed(code)) {
+				resolve(`rebuild ran correctly`);
+			} else {
+				reject(`rebuild exited with ${code}`);
+			}
+		});
+	});
+}
+
 export default function (plop) {
-	console.log("git-init")
 	plop.setDefaultInclude({actionTypes: true});
 	plop.setActionType('gitInit', gitInit);
+	plop.setActionType('npmInstall', npmInstall);
+	plop.setActionType('rebuild', rebuild);
 }
