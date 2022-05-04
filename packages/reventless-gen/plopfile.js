@@ -12,7 +12,8 @@ const createProjectFiles = {
   type: 'addMany',
   destination: '{{dashCase projectName}}/',
   base: 'plop-templates/Project/',
-  templateFiles: 'plop-templates/Project/**/*'
+  templateFiles: 'plop-templates/Project/**/*',
+  globOptions: {dot: true}
 };
 const gitInitPlatform = data => ({
   type: 'gitInit',
@@ -28,19 +29,20 @@ const npmInstallPlatform = data => ({
 
 const createPluginFiles = {
   type: 'addMany',
-  destination: '{{dashCase projectName}}/{{dashCase pluginName}}/',
+  destination: '{{dashCase pluginName}}/',
   base: 'plop-templates/Plugin/',
-  templateFiles: 'plop-templates/Plugin/**/*'
+  templateFiles: 'plop-templates/Plugin/**/*',
+  globOptions: {dot: true}
 };
 const gitInitPlugin = data => ({
   type: 'gitInit',
-  path: `${process.cwd()}/${data.projectName}/${data.pluginName}/`,
+  path: `${process.cwd()}/${data.pluginName}/`,
   verbose: true,
   abortOnFail: false
 });
 const npmInstallPlugin = data => ({
   type: 'npmInstall',
-  path: `${process.cwd()}/${data.projectName}/${data.pluginName}/`,
+  path: `${process.cwd()}/${data.pluginName}/`,
   verbose: true
 });
 
