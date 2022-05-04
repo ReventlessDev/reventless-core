@@ -13,7 +13,8 @@ const createProjectFiles = {
   destination: '{{dashCase projectName}}/',
   base: 'plop-templates/Project/',
   templateFiles: 'plop-templates/Project/**/*',
-  globOptions: {dot: true}
+  globOptions: {dot: true, ignoreFiles: ['.gitignore', '.npmignore']},
+  stripExtensions: ['hbs']
 };
 const gitInitPlatform = data => ({
   type: 'gitInit',
@@ -32,7 +33,8 @@ const createPluginFiles = {
   destination: '{{dashCase pluginName}}/',
   base: 'plop-templates/Plugin/',
   templateFiles: 'plop-templates/Plugin/**/*',
-  globOptions: {dot: true}
+  globOptions: {dot: true, ignoreFiles: ['.gitignore', '.npmignore']},
+  stripExtensions: ['hbs']
 };
 const gitInitPlugin = data => ({
   type: 'gitInit',
@@ -287,8 +289,6 @@ const addMappingToEventMappings = {
 export default function (plop) {
   gitInit(plop);
   npmInstall(plop);
-
-  console.log("Action types:", plop.getActionTypeList());
 
   plop.setGenerator('Project', {
     prompts: [{

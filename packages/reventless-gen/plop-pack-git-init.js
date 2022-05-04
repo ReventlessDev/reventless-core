@@ -13,7 +13,7 @@ function gitInit(_, config) {
 
 	const gitInitLocal = () =>
 		new Promise((resolve, reject) => {
-			const gitInit = spawn('git', ['init'], spawnOptions);
+			const gitInit = spawn('git', ['init', '--initial-branch=dev'], spawnOptions);
 
 			gitInit.on('close', (code) => {
 				if (didSucceed(code)) {
