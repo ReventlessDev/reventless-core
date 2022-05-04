@@ -5,6 +5,8 @@
 // - Command Add and Event Added are generated and used for each new Status
 
 import pluralize from 'pluralize';
+import gitInit from './plop-pack-git-init.js';
+import npmInstall from './plop-pack-npm-install.js';
 
 const createProjectFiles = {
   type: 'addMany',
@@ -12,6 +14,17 @@ const createProjectFiles = {
   base: 'plop-templates/Project/',
   templateFiles: 'plop-templates/Project/**/*'
 };
+const gitInitPlatform = data => ({
+  type: 'gitInit',
+  path: `${process.cwd()}/${data.projectName}/platform/`,
+  verbose: true,
+  abortOnFail: false
+});
+const npmInstallPlatform = data => ({
+  type: 'npmInstall',
+  path: `${process.cwd()}/${data.projectName}/platform/`,
+  verbose: true
+});
 
 const createPluginFiles = {
   type: 'addMany',
@@ -19,6 +32,17 @@ const createPluginFiles = {
   base: 'plop-templates/Plugin/',
   templateFiles: 'plop-templates/Plugin/**/*'
 };
+const gitInitPlugin = data => ({
+  type: 'gitInit',
+  path: `${process.cwd()}/${data.projectName}/${data.pluginName}/`,
+  verbose: true,
+  abortOnFail: false
+});
+const npmInstallPlugin = data => ({
+  type: 'npmInstall',
+  path: `${process.cwd()}/${data.projectName}/${data.pluginName}/`,
+  verbose: true
+});
 
 const createSpec = {
   type: 'add',
@@ -259,6 +283,11 @@ const addMappingToEventMappings = {
 };
 
 export default function (plop) {
+  gitInit(plop);
+  npmInstall(plop);
+
+  console.log("Action types:", plop.getActionTypeList());
+
   plop.setGenerator('Project', {
     prompts: [{
       type: 'input',
@@ -269,9 +298,13 @@ export default function (plop) {
       name: 'pulumiOrganization',
       message: 'Pulumi organization:'
     }],
-    actions: [
-      createProjectFiles,
-    ]
+    actions: data => {
+      return [
+        createProjectFiles,
+        gitInitPlatform(data),
+        npmInstallPlatform(data)
+      ]
+    }
   });
   plop.setGenerator('Plugin', {
     prompts: [{
@@ -291,8 +324,10 @@ export default function (plop) {
       name: 'pulumiOrganization',
       message: 'Pulumi organization:'
     }],
-    actions: [
+    actions: data => [
       createPluginFiles,
+      gitInitPlugin(data),
+      npmInstallPlugin(data)
     ]
   });
   plop.setGenerator('Aggregate+ReadModel', {
@@ -488,5 +523,5 @@ export default function (plop) {
   plop.setHelper('properCaseWithOptionalParams', (txt) => {
     const parts = txt.split("(");
     return plop.getHelper("properCase")(parts[0]) + (parts[1] ? '(' + parts[1] : '');
-  })
+  });
 };
