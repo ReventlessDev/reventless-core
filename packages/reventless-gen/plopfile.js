@@ -36,15 +36,15 @@ const createPluginFiles = {
   globOptions: {dot: true, ignoreFiles: ['.gitignore', '.npmignore']},
   stripExtensions: ['hbs']
 };
-const gitInitPlugin = data => ({
+const gitInitPlugin = (plop, data) => ({
   type: 'gitInit',
-  path: `${process.cwd()}/${data.pluginName}/`,
+  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/`,
   verbose: true,
   abortOnFail: false
 });
-const npmInstallPlugin = data => ({
+const npmInstallPlugin = (plop, data) => ({
   type: 'npmInstall',
-  path: `${process.cwd()}/${data.pluginName}/`,
+  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/`,
   verbose: true
 });
 
@@ -328,8 +328,8 @@ export default function (plop) {
     }],
     actions: data => [
       createPluginFiles,
-      gitInitPlugin(data),
-      npmInstallPlugin(data)
+      gitInitPlugin(plop, data),
+      npmInstallPlugin(plop, data)
     ]
   });
   plop.setGenerator('Aggregate+ReadModel', {
