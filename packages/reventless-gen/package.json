@@ -22,8 +22,8 @@
     "*",
     "plop-templates",
     "plop-templates/Plugin/.gitignore",
-    "plop-templates/Plugin/plugin/.npmrc",
-    "plop-templates/Plugin/ui/.npmrc",
+    "plop-templates/Plugin/plugin/.npmignore",
+    "plop-templates/Plugin/ui/.npmignore",
     "plop-templates/Project/platform/.gitignore"
   ],
   "preferGlobal": true,
