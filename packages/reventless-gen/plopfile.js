@@ -331,11 +331,11 @@ export default function (plop) {
     actions: data => {
       return [
         createProjectFiles,
-        gitInitPlatform(data),
         npmInstallApi(data),
         rebuildApi(data),
         npmInstallCore(data),
         rebuildCore(data),
+        gitInitPlatform(data),
       ]
     }
   });
@@ -359,11 +359,11 @@ export default function (plop) {
     }],
     actions: data => [
       createPluginFiles,
-      gitInitPlugin(plop, data),
       npmInstallPlugin(plop, data),
       rebuildPlugin(plop, data),
       npmInstallUi(plop, data),
-      rebuildUi(plop, data)
+      rebuildUi(plop, data),
+      gitInitPlugin(plop, data),
     ]
   });
   plop.setGenerator('Aggregate+ReadModel', {
