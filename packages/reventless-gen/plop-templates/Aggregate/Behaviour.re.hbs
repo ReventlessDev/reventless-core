@@ -20,7 +20,10 @@ let execute: execute(state, command, event, error) =
     | Add => error(AlreadyExisting, command, context)
     };
 
-let invalidEvent = event => raise(InvalidEvent(event_encode(event)));
+let invalidEvent = event => 
+  Js.Exn.raiseError(
+    "InvalidEvent: " ++ event_encode(event)->Js.Json.stringify,
+  );
 
 let init: init(state, event) =
   (. event) =>

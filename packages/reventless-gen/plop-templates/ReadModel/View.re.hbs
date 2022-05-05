@@ -14,7 +14,10 @@ let sortConfig = None;
 
 let indexes = [];
 
-let invalidEvent = event => raise(InvalidEvent(event_encode(event)));
+let invalidEvent = event => 
+  Js.Exn.raiseError(
+    "InvalidEvent: " ++ event_encode(event)->Js.Json.stringify,
+  );
 
 let init: init(state, event) =
   (. event, {meta: {time, user}}) =>
