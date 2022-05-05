@@ -18,6 +18,14 @@
   "bin": {
     "gen": "./index.js"
   },
+  "files": [
+    "*",
+    "plop-templates",
+    "plop-templates/Plugin/.gitignore",
+    "plop-templates/Plugin/plugin/.npmrc",
+    "plop-templates/Plugin/ui/.npmrc",
+    "plop-templates/Project/platform/.gitignore"
+  ],
   "preferGlobal": true,
   "dependencies": {
     "plop": "^3.1.0",
