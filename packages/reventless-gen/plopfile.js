@@ -237,14 +237,14 @@ const addCommandToBehaviourCreate = {
 const addCommandAndEventToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(?<=let execute\W[\S\s]*?)(switch \(command\)[\S\s]*?)(\n *)(})/g,
-  template: "$1$2| {{properCaseWithOptionalParams command}} => [{{properCaseWithOptionalParams event}}] // TODO: check generated implementation$2$3",
+  pattern: /(?<=let execute\W[\S\s]*?)( *)(switch \(command\)[\S\s]*?{)/g,
+  template: "$1$2\n$1| {{properCaseWithOptionalParams command}} => [{{properCaseWithOptionalParams event}}] // TODO: check generated implementation",
 };
 const addCommandToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(?<=let execute\W[\S\s]*?)(switch \(command\)[\S\s]*?)(\n *)(})/g,
-  template: "$1$2| {{properCaseWithOptionalParams command}} => [] // TODO: add implementation$2$3",
+  pattern: /(?<=let execute\W[\S\s]*?)( *)(switch \(command\)[\S\s]*?{)/g,
+  template: "$1$2\n$1| {{properCaseWithOptionalParams command}} => [] // TODO: add implementation",
 };
 const addCommandToApiMutation = {
   type: "modify",
@@ -262,8 +262,8 @@ const addEventToBehaviourInit = {
 const addEventToBehaviourApply = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(?<=let apply\W[\S\s]*?)(switch \(event\)[\S\s]*?)(\n *)(})/g,
-  template: "$1$2| {{properCaseWithOptionalParams event}} => state // TODO: add implementation$2$3",
+  pattern: /(?<=let apply\W[\S\s]*?)( *)(switch \(event\)[\S\s]*?{)/g,
+  template: "$1$2\n$1| {{properCaseWithOptionalParams event}} => state // TODO: add implementation",
 };
 const addEventToViewInit = {
   type: "modify",
