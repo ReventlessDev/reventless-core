@@ -77,6 +77,31 @@ const rebuildUi = (plop, data) => ({
   abortOnFail: false
 });
 
+const createPluginSpecFiles = {
+  type: 'addMany',
+  destination: 'spec/',
+  base: 'plop-templates/PluginSpec/',
+  templateFiles: 'plop-templates/PluginSpec/**/*',
+  globOptions: {dot: true}
+};
+const gitInitPluginSpec = (plop, data) => ({
+  type: 'gitInit',
+  path: `${process.cwd()}/spec/`,
+  verbose: true,
+  abortOnFail: false
+});
+const npmInstallPluginSpec = (plop, data) => ({
+  type: 'npmInstall',
+  path: `${process.cwd()}/spec`,
+  verbose: true
+});
+const rebuildPluginSpec = (plop, data) => ({
+  type: 'rebuild',
+  path: `${process.cwd()}/spec`,
+  verbose: true,
+  abortOnFail: false
+});
+
 const createSpec = {
   type: 'add',
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}.re',
@@ -364,6 +389,31 @@ export default function (plop) {
       npmInstallUi(plop, data),
       rebuildUi(plop, data),
       gitInitPlugin(plop, data),
+    ]
+  });
+  plop.setGenerator('PluginSpec', {
+    prompts: [{
+      type: 'input',
+      name: 'projectName',
+      message: 'Project name:'
+    }, {
+      type: 'input',
+      name: 'pluginName',
+      message: 'Plugin name:'
+    }, {
+      type: 'input',
+      name: 'gitLabProjectId',
+      message: 'GitLab ProjectId:'
+    }, {
+      type: 'input',
+      name: 'extensionPointName',
+      message: 'ExtensionPoint name:'
+    }],
+    actions: data => [
+      createPluginSpecFiles,
+      npmInstallPluginSpec(plop, data),
+      rebuildPluginSpec(plop, data),
+      gitInitPluginSpec(plop, data),
     ]
   });
   plop.setGenerator('Aggregate+ReadModel', {
