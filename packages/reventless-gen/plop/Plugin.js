@@ -1,11 +1,11 @@
-export const createPluginFiles = {
+export const createFiles = {
   type: 'addMany',
   destination: '{{dashCase pluginName}}/',
   base: 'plop-templates/Plugin/',
   templateFiles: 'plop-templates/Plugin/**/*',
   globOptions: {dot: true}
 };
-export const gitInitPlugin = (plop, data) => ({
+export const gitInit = (plop, data) => ({
   type: 'gitInit',
   path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/`,
   verbose: true,

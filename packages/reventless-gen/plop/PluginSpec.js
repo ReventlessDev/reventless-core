@@ -1,22 +1,16 @@
-export const createPluginSpecFiles = {
+export const createFiles = {
   type: 'addMany',
   destination: 'spec/',
   base: 'plop-templates/PluginSpec/',
   templateFiles: 'plop-templates/PluginSpec/**/*',
   globOptions: {dot: true}
 };
-export const gitInitPluginSpec = (plop, data) => ({
-  type: 'gitInit',
-  path: `${process.cwd()}/spec/`,
-  verbose: true,
-  abortOnFail: false
-});
-export const npmInstallPluginSpec = (plop, data) => ({
+export const npmInstall = (plop, data) => ({
   type: 'npmInstall',
   path: `${process.cwd()}/spec`,
   verbose: true
 });
-export const rebuildPluginSpec = (plop, data) => ({
+export const rebuild = (plop, data) => ({
   type: 'rebuild',
   path: `${process.cwd()}/spec`,
   verbose: true,

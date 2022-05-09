@@ -61,12 +61,12 @@ export default function (plop) {
       message: 'Pulumi organization:'
     }],
     actions: data => [
-      Plugin.createPluginFiles,
+      Plugin.createFiles,
       Plugin.npmInstallPlugin(plop, data),
       Plugin.rebuildPlugin(plop, data),
       Plugin.npmInstallUi(plop, data),
       Plugin.rebuildUi(plop, data),
-      Plugin.gitInitPlugin(plop, data),
+      Plugin.gitInit(plop, data),
     ]
   });
   plop.setGenerator('PluginSpec', {
@@ -88,10 +88,9 @@ export default function (plop) {
       message: 'ExtensionPoint name:'
     }],
     actions: data => [
-      PluginSpec.createPluginSpecFiles,
-      PluginSpec.npmInstallPluginSpec(plop, data),
-      PluginSpec.rebuildPluginSpec(plop, data),
-      PluginSpec.gitInitPluginSpec(plop, data),
+      PluginSpec.createFiles,
+      PluginSpec.npmInstall(plop, data),
+      PluginSpec.rebuild(plop, data),
     ]
   });
   plop.setGenerator('Aggregate+ReadModel', {
@@ -103,15 +102,15 @@ export default function (plop) {
     actions: [
       Aggregate.createSpec,
       Aggregate.createBehaviour,
-      Aggregate.createAggregate,
-      Aggregate.addAggregateToMain,
+      Aggregate.create,
+      Aggregate.addToMain,
       Aggregate.createTestFixture,
       Aggregate.createBehaviourTest,
       ReadModel.createView,
-      ReadModel.createReadModel,
-      ReadModel.addReadModelToMain,
+      ReadModel.create,
+      ReadModel.addToMain,
       ReadModel.createViewTest,
-      API.createApi
+      API.create
     ]
   });
   plop.setGenerator('Aggregate', {
@@ -123,8 +122,8 @@ export default function (plop) {
     actions: [
       Aggregate.createSpec,
       Aggregate.createBehaviour,
-      Aggregate.createAggregate,
-      Aggregate.addAggregateToMain,
+      Aggregate.create,
+      Aggregate.addToMain,
       Aggregate.createTestFixture,
       Aggregate.createBehaviourTest,
     ]
@@ -137,10 +136,10 @@ export default function (plop) {
     }],
     actions: [
       ReadModel.createView,
-      ReadModel.createReadModel,
-      ReadModel.addReadModelToMain,
+      ReadModel.create,
+      ReadModel.addToMain,
       ReadModel.createViewTest,
-      API.createApi
+      API.create
     ]
   });
   plop.setGenerator('Status', {
@@ -194,16 +193,16 @@ export default function (plop) {
     }],
     actions: function (data) {
       var actions = [
-        Command.addCommandToSpec,
-        Command.addCommandToBehaviourCreate,
+        Command.addToSpec,
+        Command.addToBehaviourCreate,
         Command.addCommandAndEventToBehaviourExecute,
         Command.addCommandAndEventToBehaviourTest,
-        Event.addEventToSpec,
-        Event.addEventToBehaviourInit,
-        Event.addEventToBehaviourApply,
-        Event.addEventToViewInit,
-        Event.addEventToViewApply,
-        Event.addEventToViewTest
+        Event.addToSpec,
+        Event.addToBehaviourInit,
+        Event.addToBehaviourApply,
+        Event.addToViewInit,
+        Event.addToViewApply,
+        Event.addToViewTest
       ];
       if (data.addMutation) {
         actions.push(Command.addCommandToApiMutation);
@@ -230,10 +229,10 @@ export default function (plop) {
     }],
     actions: function (data) {
       var actions = [
-        Command.addCommandToSpec,
-        Command.addCommandToBehaviourCreate,
-        Command.addCommandToBehaviourExecute,
-        Command.addCommandToBehaviourTest
+        Command.addToSpec,
+        Command.addToBehaviourCreate,
+        Command.addToBehaviourExecute,
+        Command.addToBehaviourTest
       ];
       if (data.addMutation) {
         actions.push(Command.addCommandToApiMutation);
@@ -253,12 +252,12 @@ export default function (plop) {
       message: 'Event:'
     }],
     actions: [
-      Event.addEventToSpec,
-      Event.addEventToBehaviourInit,
-      Event.addEventToBehaviourApply,
-      Event.addEventToViewInit,
-      Event.addEventToViewApply,
-      Event.addEventToViewTest
+      Event.addToSpec,
+      Event.addToBehaviourInit,
+      Event.addToBehaviourApply,
+      Event.addToViewInit,
+      Event.addToViewApply,
+      Event.addToViewTest
     ]
   });
   plop.setGenerator('EventMapping', {

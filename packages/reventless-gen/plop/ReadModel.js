@@ -3,12 +3,12 @@ export const createView = {
   path: 'src/ReadModels/{{properCase name}}/{{properCase name}}View.re',
   templateFile: 'plop-templates/ReadModel/View.re.hbs'
 };
-export const createReadModel = {
+export const create = {
   type: 'add',
   path: 'src/ReadModels/{{properCase name}}/{{properCase name}}ReadModel.re',
   templateFile: 'plop-templates/ReadModel/ReadModel.re.hbs'
 };
-export const addReadModelToMain = {
+export const addToMain = {
   type: "modify",
   path: "src/Main.re",
   pattern: /(~readModels\W[\S\s]*?\[\|)/,

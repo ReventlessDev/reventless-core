@@ -8,12 +8,12 @@ export const createBehaviour = {
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Behaviour.re',
   templateFile: 'plop-templates/Aggregate/Behaviour.re.hbs'
 };
-export const createAggregate = {
+export const create = {
   type: 'add',
   path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Aggregate.re',
   templateFile: 'plop-templates/Aggregate/Aggregate.re.hbs'
 };
-export const addAggregateToMain = {
+export const addToMain = {
   type: "modify",
   path: "src/Main.re",
   pattern: /(~aggregates\W[\S\s]*?\[\|)/,

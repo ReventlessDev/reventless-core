@@ -1,10 +1,10 @@
-export const addCommandToSpec = {
+export const addToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
   pattern: /(type command\W[\S\s]*?);/,
   template: "$1\n  | {{properCaseWithOptionalParams command}};",
 };
-export const addCommandToBehaviourCreate = {
+export const addToBehaviourCreate = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(?<=let create\W[\S\s]*?)(switch \(command\)[\S\s]*?)(\n *)(};)/,
@@ -16,13 +16,13 @@ export const addCommandAndEventToBehaviourExecute = {
   pattern: /(?<=let execute\W[\S\s]*?)( *)(switch \(command\)[\S\s]*?{)/g,
   template: "$1$2\n$1| {{properCaseWithOptionalParams command}} => [{{properCaseWithOptionalParams event}}] // TODO: check generated implementation",
 };
-export const addCommandToBehaviourExecute = {
+export const addToBehaviourExecute = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(?<=let execute\W[\S\s]*?)( *)(switch \(command\)[\S\s]*?{)/g,
   template: "$1$2\n$1| {{properCaseWithOptionalParams command}} => [] // TODO: add implementation",
 };
-export const addCommandToBehaviourTest = {
+export const addToBehaviourTest = {
   type: "modify",
   path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}BehaviourTest.re",
   pattern: /(\n}\);)/,

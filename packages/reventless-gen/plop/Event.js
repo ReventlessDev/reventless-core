@@ -1,34 +1,34 @@
-export const addEventToSpec = {
+export const addToSpec = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
   pattern: /(type event\W[\S\s]*?);/,
   template: "$1\n  | {{properCaseWithOptionalParams event}};",
 };
-export const addEventToBehaviourInit = {
+export const addToBehaviourInit = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(?<=let init\W[\S\s]*?)(switch \(event\)[\S\s]*?)(\n *)(};)/,
   template: "$1$2| {{properCaseWithOptionalParams event}} => invalidEvent(event)$2$3"
 };
-export const addEventToBehaviourApply = {
+export const addToBehaviourApply = {
   type: "modify",
   path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
   pattern: /(?<=let apply\W[\S\s]*?)( *)(switch \(event\)[\S\s]*?{)/g,
   template: "$1$2\n$1| {{properCaseWithOptionalParams event}} => state // TODO: add implementation",
 };
-export const addEventToViewInit = {
+export const addToViewInit = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
   pattern: /(?<=let init\W[\S\s]*?)(switch \(event\)[\S\s]*?)(\n *)(}[^),\]])/,
   template: "$1$2| {{properCaseWithOptionalParams event}} => invalidEvent(event)$2$3"
 };
-export const addEventToViewApply = {
+export const addToViewApply = {
   type: "modify",
   path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
   pattern: /(?<=let apply\W[\S\s]*?)(switch \(event\)[\S\s]*?)(\n *)(}[^),\]])/g,
   templateFile: "plop-templates/ReadModel/addEventToViewApply.re.hbs",
 };
-export const addEventToViewTest = {
+export const addToViewTest = {
   type: "modify",
   path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}ViewTest.re",
   pattern: /(\n}\);)/,
