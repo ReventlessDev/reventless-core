@@ -1,7 +1,7 @@
 module Impl = {
   open ReventlessSpec.ExtensionPointMapping;
 
-  module Aggregate = Location;
+  module Aggregate = {{properCase aggregateName}};
 
   let mapIncomingCommand = ({{camelCase aggregateName}}Id, command, _meta) =>
     switch (command) {
