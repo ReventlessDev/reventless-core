@@ -7,338 +7,16 @@
 import pluralize from 'pluralize';
 import additionalActionTypes from './additionalActionTypes.js';
 
-const createProjectFiles = {
-  type: 'addMany',
-  destination: '{{dashCase projectName}}/',
-  base: 'plop-templates/Project/',
-  templateFiles: 'plop-templates/Project/**/*',
-  globOptions: {dot: true}
-};
-const gitInitPlatform = data => ({
-  type: 'gitInit',
-  path: `${process.cwd()}/${data.projectName}/platform/`,
-  verbose: true,
-  abortOnFail: false
-});
-const npmInstallApi = data => ({
-  type: 'npmInstall',
-  path: `${process.cwd()}/${data.projectName}/platform/api`,
-  verbose: true
-});
-const rebuildApi = data => ({
-  type: 'rebuild',
-  path: `${process.cwd()}/${data.projectName}/platform/api`,
-  verbose: true
-});
-const npmInstallCore = data => ({
-  type: 'npmInstall',
-  path: `${process.cwd()}/${data.projectName}/platform/core`,
-  verbose: true
-});
-const rebuildCore = data => ({
-  type: 'rebuild',
-  path: `${process.cwd()}/${data.projectName}/platform/core`,
-  verbose: true
-});
-
-const createPluginFiles = {
-  type: 'addMany',
-  destination: '{{dashCase pluginName}}/',
-  base: 'plop-templates/Plugin/',
-  templateFiles: 'plop-templates/Plugin/**/*',
-  globOptions: {dot: true}
-};
-const gitInitPlugin = (plop, data) => ({
-  type: 'gitInit',
-  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/`,
-  verbose: true,
-  abortOnFail: false
-});
-const npmInstallPlugin = (plop, data) => ({
-  type: 'npmInstall',
-  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/plugin`,
-  verbose: true
-});
-const rebuildPlugin = (plop, data) => ({
-  type: 'rebuild',
-  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/plugin`,
-  verbose: true,
-  abortOnFail: false
-});
-const npmInstallUi = (plop, data) => ({
-  type: 'npmInstall',
-  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/ui`,
-  verbose: true
-});
-const rebuildUi = (plop, data) => ({
-  type: 'rebuild',
-  path: `${process.cwd()}/${plop.getHelper("dashCase")(data.pluginName)}/ui`,
-  verbose: true,
-  abortOnFail: false
-});
-
-const createPluginSpecFiles = {
-  type: 'addMany',
-  destination: 'spec/',
-  base: 'plop-templates/PluginSpec/',
-  templateFiles: 'plop-templates/PluginSpec/**/*',
-  globOptions: {dot: true}
-};
-const gitInitPluginSpec = (plop, data) => ({
-  type: 'gitInit',
-  path: `${process.cwd()}/spec/`,
-  verbose: true,
-  abortOnFail: false
-});
-const npmInstallPluginSpec = (plop, data) => ({
-  type: 'npmInstall',
-  path: `${process.cwd()}/spec`,
-  verbose: true
-});
-const rebuildPluginSpec = (plop, data) => ({
-  type: 'rebuild',
-  path: `${process.cwd()}/spec`,
-  verbose: true,
-  abortOnFail: false
-});
-
-const createSpec = {
-  type: 'add',
-  path: 'src/Aggregates/{{properCase name}}/{{properCase name}}.re',
-  templateFile: 'plop-templates/Aggregate/Spec.re.hbs'
-};
-const createBehaviour = {
-  type: 'add',
-  path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Behaviour.re',
-  templateFile: 'plop-templates/Aggregate/Behaviour.re.hbs'
-};
-const createAggregate = {
-  type: 'add',
-  path: 'src/Aggregates/{{properCase name}}/{{properCase name}}Aggregate.re',
-  templateFile: 'plop-templates/Aggregate/Aggregate.re.hbs'
-};
-const addAggregateToMain = {
-  type: "modify",
-  path: "src/Main.re",
-  pattern: /(~aggregates\W[\S\s]*?\[\|)/,
-  template: "$1(module {{properCase name}}Aggregate),",
-};
-const createTestFixture = {
-  type: 'add',
-  path: 'tests/{{properCase name}}/{{properCase name}}Fixtures.re',
-  templateFile: 'plop-templates/tests/Fixtures.re.hbs'
-};
-const createBehaviourTest = {
-  type: 'add',
-  path: 'tests/{{properCase name}}/{{properCase name}}BehaviourTest.re',
-  templateFile: 'plop-templates/tests/BehaviourTest.re.hbs'
-};
-
-const createView = {
-  type: 'add',
-  path: 'src/ReadModels/{{properCase name}}/{{properCase name}}View.re',
-  templateFile: 'plop-templates/ReadModel/View.re.hbs'
-};
-const createReadModel = {
-  type: 'add',
-  path: 'src/ReadModels/{{properCase name}}/{{properCase name}}ReadModel.re',
-  templateFile: 'plop-templates/ReadModel/ReadModel.re.hbs'
-};
-const addReadModelToMain = {
-  type: "modify",
-  path: "src/Main.re",
-  pattern: /(~readModels\W[\S\s]*?\[\|)/,
-  template: "$1(module {{properCase name}}ReadModel),",
-};
-const createViewTest = {
-  type: 'add',
-  path: 'tests/{{properCase name}}/{{properCase name}}ViewTest.re',
-  templateFile: 'plop-templates/tests/ViewTest.re.hbs'
-};
-
-const createApi = {
-  type: 'add',
-  path: 'src/API/{{properCase name}}/{{properCase name}}Api.re',
-  templateFile: 'plop-templates/API/Api.re.hbs'
-};
-
-const addEmptyTypeStatusToSpec = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /(?<!type status\W[\S\s]*)(\[@decco\]\ntype command =)/,
-  templateFile: "plop-templates/Aggregate/addEmptyTypeStatus.re.hbs",
-};
-const addStatusToSpec = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /(type status\W[\S\s]*?);/,
-  template: "$1\n  | {{properCaseWithOptionalParams status}};",
-};
-const addStatusFieldToBehaviourState = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(type state = {)\.?([\S\s]*?)(?<!status\W[\S\s]*?)(};)/,
-  template: "$1status,$2$3",
-};
-const addStatusSwitchToBehaviourExecute = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let execute\W[\S\s]*?=>.*\n)([\S\s]*?)(    };)(?<!let execute\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
-  templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
-};
-const addStatusSwitchToBehaviourApply = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let apply\W[\S\s]*?=>.*\n)([\S\s]*?)(    };)(?<!let apply\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
-  templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
-};
-const addStatusFieldToBehaviourInit = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let init\W[\S\s]*?switch \(event\).*\n.*?{)(?![\S\s]*?status:)/,
-  template: "$1status: {{properCaseWithOptionalParams status}},",
-};
-const addStatusToBehaviourExecute = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let execute\W[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
-  templateFile: "plop-templates/Aggregate/addStatusToBehaviourExecute.re.hbs",
-};
-const addStatusToBehaviourApply = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(let apply\W[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
-  templateFile: "plop-templates/Aggregate/addStatusToBehaviourApply.re.hbs",
-};
-const addStatusFieldToViewState = {
-  type: "modify",
-  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(type state = {)\.?([\S\s]*?)(?<!status\W[\S\s]*?)(};)/,
-  template: "$1status,$2$3",
-};
-const addStatusFieldToViewInit = {
-  type: "modify",
-  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(let init\W[\S\s]*?\[[\S\s]*?{)([\S\s]*?)(?<!let init\W[\S\s]*?status\W[\S\s]*?)(\])/,
-  template: "$1status: {{properCaseWithOptionalParams status}},$2$3",
-};
-const addStatusSwitchToViewApply = {
-  type: "modify",
-  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(let apply\W[\S\s]*?=>.*\n)([\S\s]*?)(    };)(?<!let apply\W[\S\s]*?switch \(state\.status\)[\S\s]*?)/,
-  templateFile: "plop-templates/Aggregate/addStatusSwitch.re.hbs",
-};
-const addStatusToViewApply = {
-  type: "modify",
-  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(let apply\W[\S\s]*?switch \(state.status\) {[\S\s]*?)(\n    };)/,
-  templateFile: "plop-templates/Aggregate/addStatusToViewApply.re.hbs",
-};
-const addStatusFieldToTestFixture = {
-  type: "modify",
-  path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}Fixtures.re",
-  pattern: /(let state\W[\S\s]*?)(?<!status\W.*)(\n};)/,
-  template: "$1\n  status: {{properCaseWithOptionalParams status}},$2",
-};
-
-const addCommandToSpec = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /(type command\W[\S\s]*?);/,
-  template: "$1\n  | {{properCaseWithOptionalParams command}};",
-};
-const addEventToSpec = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}.re",
-  pattern: /(type event\W[\S\s]*?);/,
-  template: "$1\n  | {{properCaseWithOptionalParams event}};",
-};
-const addCommandToBehaviourCreate = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(?<=let create\W[\S\s]*?)(switch \(command\)[\S\s]*?)(\n *)(};)/,
-  template: "$1$2| {{properCaseWithOptionalParams command}} => error(NotExisting, command, context)$2$3"
-};
-const addCommandAndEventToBehaviourExecute = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(?<=let execute\W[\S\s]*?)( *)(switch \(command\)[\S\s]*?{)/g,
-  template: "$1$2\n$1| {{properCaseWithOptionalParams command}} => [{{properCaseWithOptionalParams event}}] // TODO: check generated implementation",
-};
-const addCommandToBehaviourExecute = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(?<=let execute\W[\S\s]*?)( *)(switch \(command\)[\S\s]*?{)/g,
-  template: "$1$2\n$1| {{properCaseWithOptionalParams command}} => [] // TODO: add implementation",
-};
-const addCommandToApiMutation = {
-  type: "modify",
-  path: "src/API/{{properCase aggregateName}}/{{properCase aggregateName}}Api.re",
-  pattern: /(let mutationsSchema[\S\s]*?)(\|\};)/,
-  templateFile: "plop-templates/API/addCommandToApiMutation.re.hbs",
-};
-
-const addEventToBehaviourInit = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(?<=let init\W[\S\s]*?)(switch \(event\)[\S\s]*?)(\n *)(};)/,
-  template: "$1$2| {{properCaseWithOptionalParams event}} => invalidEvent(event)$2$3"
-};
-const addEventToBehaviourApply = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase aggregateName}}/{{properCase aggregateName}}Behaviour.re",
-  pattern: /(?<=let apply\W[\S\s]*?)( *)(switch \(event\)[\S\s]*?{)/g,
-  template: "$1$2\n$1| {{properCaseWithOptionalParams event}} => state // TODO: add implementation",
-};
-const addEventToViewInit = {
-  type: "modify",
-  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(?<=let init\W[\S\s]*?)(switch \(event\)[\S\s]*?)(\n *)(}[^),\]])/,
-  template: "$1$2| {{properCaseWithOptionalParams event}} => invalidEvent(event)$2$3"
-};
-const addEventToViewApply = {
-  type: "modify",
-  path: "src/ReadModels/{{properCase aggregateName}}/{{properCase aggregateName}}View.re",
-  pattern: /(?<=let apply\W[\S\s]*?)(switch \(event\)[\S\s]*?)(\n *)(}[^),\]])/g,
-  templateFile: "plop-templates/ReadModel/addEventToViewApply.re.hbs",
-};
-const addCommandAndEventToBehaviourTest = {
-  type: "modify",
-  path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}BehaviourTest.re",
-  pattern: /(\n}\);)/,
-  templateFile: "plop-templates/tests/addCommandAndEventToBehaviourTest.re.hbs",
-};
-const addCommandToBehaviourTest = {
-  type: "modify",
-  path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}BehaviourTest.re",
-  pattern: /(\n}\);)/,
-  templateFile: "plop-templates/tests/addCommandToBehaviourTest.re.hbs",
-};
-const addEventToViewTest = {
-  type: "modify",
-  path: "tests/{{properCase aggregateName}}/{{properCase aggregateName}}ViewTest.re",
-  pattern: /(\n}\);)/,
-  templateFile: "plop-templates/tests/addEventToViewTest.re.hbs",
-};
-
-const createEventMappings = {
-  type: 'add',
-  path: 'src/Aggregates/{{properCase target}}/{{properCase target}}EventMappings.re',
-  templateFile: "plop-templates/Aggregate/EventMappings.re.hbs",
-  abortOnFail: false,
-};
-const addEventMappingsToAggregate = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase target}}/{{properCase target}}Aggregate.re",
-  pattern: /\(Reventless.NoEventMappings.Make\(.*?\)\)/,
-  template: "{{properCase target}}EventMappings",
-};
-const addMappingToEventMappings = {
-  type: "modify",
-  path: "src/Aggregates/{{properCase target}}/{{properCase target}}EventMappings.re",
-  pattern: /(module type Mapping[\S\s]*?\[\|)/,
-  templateFile: "plop-templates/Aggregate/addMappingToEventMappings.re.hbs",
-};
+import * as Aggregate from './plop/Aggregate.js';
+import * as API from './plop/API.js';
+import * as Command from './plop/Command.js';
+import * as Event from './plop/Event.js';
+import * as EventMapping from './plop/EventMapping.js';
+import * as Plugin from './plop/Plugin.js';
+import * as PluginSpec from './plop/PluginSpec.js';
+import * as Project from './plop/Project.js';
+import * as ReadModel from './plop/ReadModel.js';
+import * as Status from './plop/Status.js';
 
 export default function (plop) {
   additionalActionTypes(plop);
@@ -355,12 +33,12 @@ export default function (plop) {
     }],
     actions: data => {
       return [
-        createProjectFiles,
-        npmInstallApi(data),
-        rebuildApi(data),
-        npmInstallCore(data),
-        rebuildCore(data),
-        gitInitPlatform(data),
+        Project.createProjectFiles,
+        Project.npmInstallApi(data),
+        Project.rebuildApi(data),
+        Project.npmInstallCore(data),
+        Project.rebuildCore(data),
+        Project.gitInitPlatform(data),
       ]
     }
   });
@@ -383,12 +61,12 @@ export default function (plop) {
       message: 'Pulumi organization:'
     }],
     actions: data => [
-      createPluginFiles,
-      npmInstallPlugin(plop, data),
-      rebuildPlugin(plop, data),
-      npmInstallUi(plop, data),
-      rebuildUi(plop, data),
-      gitInitPlugin(plop, data),
+      Plugin.createPluginFiles,
+      Plugin.npmInstallPlugin(plop, data),
+      Plugin.rebuildPlugin(plop, data),
+      Plugin.npmInstallUi(plop, data),
+      Plugin.rebuildUi(plop, data),
+      Plugin.gitInitPlugin(plop, data),
     ]
   });
   plop.setGenerator('PluginSpec', {
@@ -410,10 +88,10 @@ export default function (plop) {
       message: 'ExtensionPoint name:'
     }],
     actions: data => [
-      createPluginSpecFiles,
-      npmInstallPluginSpec(plop, data),
-      rebuildPluginSpec(plop, data),
-      gitInitPluginSpec(plop, data),
+      PluginSpec.createPluginSpecFiles,
+      PluginSpec.npmInstallPluginSpec(plop, data),
+      PluginSpec.rebuildPluginSpec(plop, data),
+      PluginSpec.gitInitPluginSpec(plop, data),
     ]
   });
   plop.setGenerator('Aggregate+ReadModel', {
@@ -423,17 +101,17 @@ export default function (plop) {
       message: 'Aggregate+ReadModel name:'
     }],
     actions: [
-      createSpec,
-      createBehaviour,
-      createAggregate,
-      addAggregateToMain,
-      createTestFixture,
-      createBehaviourTest,
-      createView,
-      createReadModel,
-      addReadModelToMain,
-      createViewTest,
-      createApi
+      Aggregate.createSpec,
+      Aggregate.createBehaviour,
+      Aggregate.createAggregate,
+      Aggregate.addAggregateToMain,
+      Aggregate.createTestFixture,
+      Aggregate.createBehaviourTest,
+      ReadModel.createView,
+      ReadModel.createReadModel,
+      ReadModel.addReadModelToMain,
+      ReadModel.createViewTest,
+      API.createApi
     ]
   });
   plop.setGenerator('Aggregate', {
@@ -443,12 +121,12 @@ export default function (plop) {
       message: 'Aggregate name:'
     }],
     actions: [
-      createSpec,
-      createBehaviour,
-      createAggregate,
-      addAggregateToMain,
-      createTestFixture,
-      createBehaviourTest,
+      Aggregate.createSpec,
+      Aggregate.createBehaviour,
+      Aggregate.createAggregate,
+      Aggregate.addAggregateToMain,
+      Aggregate.createTestFixture,
+      Aggregate.createBehaviourTest,
     ]
   });
   plop.setGenerator('ReadModel', {
@@ -458,11 +136,11 @@ export default function (plop) {
       message: 'ReadModel name:'
     }],
     actions: [
-      createView,
-      createReadModel,
-      addReadModelToMain,
-      createViewTest,
-      createApi
+      ReadModel.createView,
+      ReadModel.createReadModel,
+      ReadModel.addReadModelToMain,
+      ReadModel.createViewTest,
+      API.createApi
     ]
   });
   plop.setGenerator('Status', {
@@ -477,19 +155,19 @@ export default function (plop) {
       message: 'Status:'
     }],
     actions: [
-      addEmptyTypeStatusToSpec,
-      addStatusToSpec,
-      addStatusFieldToBehaviourState,
-      addStatusFieldToBehaviourInit,
-      addStatusToBehaviourExecute,
-      addStatusSwitchToBehaviourExecute,
-      addStatusToBehaviourApply,
-      addStatusSwitchToBehaviourApply,
-      addStatusFieldToViewState,
-      addStatusFieldToViewInit,
-      addStatusToViewApply,
-      addStatusSwitchToViewApply,
-      addStatusFieldToTestFixture
+      Status.addEmptyTypeStatusToSpec,
+      Status.addStatusToSpec,
+      Status.addStatusFieldToBehaviourState,
+      Status.addStatusFieldToBehaviourInit,
+      Status.addStatusToBehaviourExecute,
+      Status.addStatusSwitchToBehaviourExecute,
+      Status.addStatusToBehaviourApply,
+      Status.addStatusSwitchToBehaviourApply,
+      Status.addStatusFieldToViewState,
+      Status.addStatusFieldToViewInit,
+      Status.addStatusToViewApply,
+      Status.addStatusSwitchToViewApply,
+      Status.addStatusFieldToTestFixture
     ]
   });
   plop.setGenerator('Command+Event', {
@@ -516,19 +194,19 @@ export default function (plop) {
     }],
     actions: function (data) {
       var actions = [
-        addCommandToSpec,
-        addEventToSpec,
-        addCommandToBehaviourCreate,
-        addCommandAndEventToBehaviourExecute,
-        addEventToBehaviourInit,
-        addEventToBehaviourApply,
-        addEventToViewInit,
-        addEventToViewApply,
-        addCommandAndEventToBehaviourTest,
-        addEventToViewTest
+        Command.addCommandToSpec,
+        Command.addCommandToBehaviourCreate,
+        Command.addCommandAndEventToBehaviourExecute,
+        Command.addCommandAndEventToBehaviourTest,
+        Event.addEventToSpec,
+        Event.addEventToBehaviourInit,
+        Event.addEventToBehaviourApply,
+        Event.addEventToViewInit,
+        Event.addEventToViewApply,
+        Event.addEventToViewTest
       ];
       if (data.addMutation) {
-        actions.push(addCommandToApiMutation);
+        actions.push(Command.addCommandToApiMutation);
       }
       return actions;
     },
@@ -552,13 +230,13 @@ export default function (plop) {
     }],
     actions: function (data) {
       var actions = [
-        addCommandToSpec,
-        addCommandToBehaviourCreate,
-        addCommandToBehaviourExecute,
-        addCommandToBehaviourTest
+        Command.addCommandToSpec,
+        Command.addCommandToBehaviourCreate,
+        Command.addCommandToBehaviourExecute,
+        Command.addCommandToBehaviourTest
       ];
       if (data.addMutation) {
-        actions.push(addCommandToApiMutation);
+        actions.push(Command.addCommandToApiMutation);
       }
       return actions;
     },
@@ -575,12 +253,12 @@ export default function (plop) {
       message: 'Event:'
     }],
     actions: [
-      addEventToSpec,
-      addEventToBehaviourInit,
-      addEventToBehaviourApply,
-      addEventToViewInit,
-      addEventToViewApply,
-      addEventToViewTest
+      Event.addEventToSpec,
+      Event.addEventToBehaviourInit,
+      Event.addEventToBehaviourApply,
+      Event.addEventToViewInit,
+      Event.addEventToViewApply,
+      Event.addEventToViewTest
     ]
   });
   plop.setGenerator('EventMapping', {
@@ -595,9 +273,9 @@ export default function (plop) {
       message: 'Source:'
     }],
     actions: [
-      createEventMappings,
-      addEventMappingsToAggregate,
-      addMappingToEventMappings,
+      EventMapping.createEventMappings,
+      EventMapping.addEventMappingsToAggregate,
+      EventMapping.addMappingToEventMappings,
     ]
   });
 
