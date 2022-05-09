@@ -17,6 +17,7 @@ import * as PluginSpec from './plop/PluginSpec.js';
 import * as Project from './plop/Project.js';
 import * as ReadModel from './plop/ReadModel.js';
 import * as Status from './plop/Status.js';
+import * as ExtensionPoint from './plop/ExtensionPoint.js';
 
 export default function (plop) {
   additionalActionTypes(plop);
@@ -275,6 +276,27 @@ export default function (plop) {
       EventMapping.createEventMappings,
       EventMapping.addEventMappingsToAggregate,
       EventMapping.addMappingToEventMappings,
+    ]
+  });
+  plop.setGenerator('ExtensionPoint', {
+    prompts: [{
+      type: 'input',
+      name: 'pluginName',
+      message: 'Plugin name:'
+    },
+    {
+      type: 'input',
+      name: 'extensionPointName',
+      message: 'ExtensionPoint name:'
+    },
+    {
+      type: 'input',
+      name: 'aggregateName',
+      message: 'Aggregate name:'
+    }],
+    actions: [
+      ExtensionPoint.createFiles,
+      ExtensionPoint.addToMain,
     ]
   });
 
