@@ -1,0 +1,291 @@
+open ReventlessSpec;
+open Reventless;
+
+module type T = {
+  module Source: AggregateSpec.T;
+  module Target: AggregateSpec.T;
+
+  let givenSourceEvents: list(Source.event) => list(Source.event);
+  let givenTargetEvents:
+    (list((string, list(Target.event))), list(Source.event)) =>
+    (list((string, list(Target.event))), list(Source.event));
+
+  let whenSourceCmd:
+    (
+      string,
+      Source.command,
+      (list((string, list(Target.event))), list(Source.event))
+    ) =>
+    Js.Promise.t(Js.Dict.t(list(Target.event)));
+
+  let thenTargetEvents:
+    (
+      list((string, list(Target.event))),
+      Js.Promise.t(Js.Dict.t(list(Target.event)))
+    ) =>
+    Js.Promise.t(Jest.assertion);
+
+  let thenTargetEvent:
+    (string, Target.event, Js.Promise.t(Js.Dict.t(list(Target.event)))) =>
+    Js.Promise.t(Jest.assertion);
+
+  let thenNoTargetEvent:
+    Js.Promise.t(Js.Dict.t(list(Target.event))) =>
+    Js.Promise.t(Jest.assertion);
+  // let thenTargetEventWithError:
+  //   (
+  //     Target.Id.t,
+  //     Target.event,
+  //     Target.error,
+  //     list((Target.Id.t, list(Target.event)))
+  //   ) =>
+  //   Jest.assertion;
+  // let thenTargetEventsWithError:
+  //   (
+  //     list((Target.Id.t, list(Target.event))),
+  //     Target.error,
+  //     list((Target.Id.t, list(Target.event)))
+  //   ) =>
+  //   Jest.assertion;
+  // let thenTargetError:
+  //   (Target.error, list((Target.Id.t, list(Target.event)))) =>
+  //   Jest.assertion;
+};
+
+module type Aggregate = {
+  module Spec: AggregateSpec.T;
+  module Behaviour: Reventless.Behaviour.T;
+
+  let apply': (Behaviour.state, Spec.event) => Behaviour.state;
+  let currentState: list(Spec.event) => Behaviour.state;
+  let errors: list(Spec.error);
+  let errorHandler:
+    Message.errorHandler(Spec.error, Spec.command, Spec.event);
+  let exec:
+    (Reventless.Message.context, Spec.command, list(Spec.event)) =>
+    list(Spec.event);
+};
+
+module MakeAggregate =
+       (
+         Spec: AggregateSpec.T,
+         Behaviour: Behaviour.T with module Spec := Spec,
+       ) => {
+  module Spec = Spec;
+  module Behaviour = Behaviour;
+
+  let apply' = (state, event) => Behaviour.apply(. state, event);
+
+  let currentState = events =>
+    Belt.List.(
+      events->tailExn->reduce(Behaviour.init(. events->headExn), apply')
+    );
+
+  let errors = ref([]);
+
+  let errorHandler: Message.errorHandler(Spec.error, Spec.command, Spec.event) =
+    (error, _, _) => {
+      errors := errors^ @ [error];
+      [];
+    };
+
+  let exec = (context, command, history): list(Spec.event) => {
+    errors := [];
+    switch (history) {
+    | [] => Behaviour.create(. command, context, errorHandler)
+    | history =>
+      try (
+        Behaviour.execute(.
+          history->currentState,
+          command,
+          TestFixtures.context,
+          errorHandler,
+        )
+      ) {
+      | Reventless.Message.InvalidEvent(_) => []
+      }
+    };
+  };
+};
+
+module Make =
+       (
+         Source: AggregateSpec.T,
+         SourceBehaviour: Behaviour.T with module Spec = Source,
+         Target: AggregateSpec.T,
+         TargetBehaviour: Behaviour.T with module Spec = Target,
+         EventMapping:
+           EventMapping.T with
+             module Source = Source and module Target := Target,
+       )
+       : (T with module Source = Source and module Target = Target) => {
+  module Source = Source;
+  module Target = Target;
+
+  module SourceAggregate = MakeAggregate(Source, SourceBehaviour);
+  module TargetAggregate = MakeAggregate(Target, TargetBehaviour);
+
+  let queryEngine: QueryEngine.t = {
+    scan: (~viewName, ~filterConfigs, ~limit) => [||]->Js.Promise.resolve,
+    query:
+      (
+        ~viewName: string,
+        ~key: option(string)=?,
+        ~id: QueryEngine.value,
+        ~filterConfigs: option(list(QueryEngine.filterConfig))=?,
+        ~ascending: option(bool)=?,
+        ~limit: option(int)=?,
+        unit,
+      ) =>
+      [||]->Js.Promise.resolve,
+  };
+
+  let givenSourceEvents = sourceHistory => sourceHistory;
+  let givenTargetEvents = (targetHistory, sourceHistory) => (
+    targetHistory,
+    sourceHistory,
+  );
+
+  let logSourceEvents = events =>
+    events->Belt.List.forEachWithIndex((idx, event) => {
+      let eventStr = event->Source.event_encode;
+      Js.log({j|Source event[$idx]: $eventStr|j});
+    });
+  let logTargetCommands = commands => {
+    commands->Belt.Array.forEachWithIndex((idx, (id, command)) => {
+      let commandStr = command->Target.command_encode;
+      Js.log({j|Target command[$idx]: $commandStr id:$id|j});
+    });
+    commands;
+  };
+  let logTargetEvents = events =>
+    events->Belt.List.forEachWithIndex((idx, event) => {
+      let eventStr = event->Target.event_encode;
+      Js.log({j|  new Target event[$idx]: $eventStr|j});
+    });
+  let logTargetEventsDict = (events, prefix) =>
+    events
+    ->Js.Dict.entries
+    ->Belt.Array.forEachWithIndex((idx1, (id, events)) =>
+        events->Belt.List.forEachWithIndex((idx2, event) => {
+          let eventStr = event->Target.event_encode;
+          Js.log({j|$prefix Target event[$idx1,$idx2]: $eventStr id:$id|j});
+        })
+      );
+
+  let whenSourceCmd = (sourceId, cmd, (targetHistory, sourceHistory)) => {
+    let sourceEvents =
+      SourceAggregate.exec(
+        {...TestFixtures.context, id: sourceId},
+        cmd,
+        sourceHistory,
+      );
+    // sourceEvents->logSourceEvents;
+    let targetActions =
+      sourceEvents
+      ->Belt.List.map(sourceEvent =>
+          EventMapping.map(.
+            sourceId->Source.Id.makeFromString,
+            sourceEvent,
+            queryEngine,
+          )
+          ->Belt.List.fromArray
+        )
+      ->Belt.List.flatten
+      ->Belt.List.toArray;
+    let targetHistories = targetHistory->Js.Dict.fromList;
+    targetActions
+    ->Belt.Array.map(
+        fun
+        | Publish(id, command) => [|(id, command)|]->Js.Promise.resolve
+        | PublishDelayed(id, command, _) =>
+          [|(id, command)|]->Js.Promise.resolve
+        | PublishAsync(p) => p
+        | _ => [||]->Js.Promise.resolve,
+      )
+    ->Js.Promise.all
+    |> Js.Promise.then_(commands =>
+         commands
+         ->Belt.Array.concatMany
+         //  ->logTargetCommands
+         ->Belt.Array.reduce(
+             Js.Dict.empty(),
+             (targetEvents, (id, command)) => {
+               let id = id->Target.Id.toString;
+               let targetHistory =
+                 targetHistories
+                 ->Js.Dict.get(id)
+                 ->Belt.Option.getWithDefault([])
+                 ->Belt.List.concat(
+                     targetEvents
+                     ->Js.Dict.get(id)
+                     ->Belt.Option.getWithDefault([]),
+                   );
+               let newEvents =
+                 TargetAggregate.exec(
+                   {...TestFixtures.context, id},
+                   command,
+                   targetHistory,
+                 );
+               //  newEvents->logTargetEvents;
+               targetEvents->Js.Dict.set(
+                 id,
+                 targetEvents
+                 ->Js.Dict.get(id)
+                 ->Belt.Option.getWithDefault([])
+                 ->Belt.List.concat(newEvents),
+               );
+               targetEvents;
+             },
+           )
+         ->Js.Promise.resolve
+       );
+  };
+
+  open Jest.Expect;
+
+  let thenTargetEvents = (expectedTargetEvents, targetEvents) =>
+    targetEvents
+    |> Js.Promise.then_(events => {
+         //  events->logTargetEventsDict("");
+         let assertion =
+           expect((
+             (SourceAggregate.errors^)->Belt.List.length,
+             (TargetAggregate.errors^)->Belt.List.length,
+             events,
+           ))
+           |> toEqual((0, 0, expectedTargetEvents->Js.Dict.fromList));
+         assertion->Js.Promise.resolve;
+       });
+
+  let thenTargetEvent = (id, expectedTargetEvent, targetEvents) =>
+    targetEvents
+    |> Js.Promise.then_(eventsDict => {
+         let events = eventsDict->Js.Dict.entries;
+         expect((
+           (SourceAggregate.errors^)->Belt.List.length,
+           (TargetAggregate.errors^)->Belt.List.length,
+           events->Belt.Array.length,
+           events->Belt.Array.get(0),
+         ))
+         |> toEqual((0, 0, 1, Some((id, [expectedTargetEvent]))))
+         |> Js.Promise.resolve;
+       });
+
+  let thenNoTargetEvent = thenTargetEvents([]);
+  // let thenEventWithError = (expectedEvent, expectedError, events) =>
+  //   expect((
+  //     events->Belt.List.length,
+  //     events->Belt.List.head,
+  //     (errors^)->Belt.List.length,
+  //     (errors^)->Belt.List.head,
+  //   ))
+  //   |> toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
+  // let thenEventsWithError = (expectedEvents, expectedError, events) =>
+  //   expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
+  //   |> toEqual((expectedEvents, 1, Some(expectedError)));
+  // let thenError = (expectedError, events) => {
+  //   expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
+  //   |> toEqual(([], 1, Some(expectedError)));
+  // };
+};
