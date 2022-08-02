@@ -88,7 +88,9 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~name=name ++ "Auth",
                   ~api,
                   ~tableName=
-                    resources->Util_QueryDb.getStorageResource(tableName)##name,
+                    resources
+                    ->Util_QueryDb.getStorageResource(None, tableName)
+                    ->Belt.Option.getExn##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),
@@ -131,17 +133,30 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
             };
           });
 
+        let storageResource =
+            (~pluginName: option(string), ~tableName: string) =>
+          resources->Util_QueryDb.getStorageResource(pluginName, tableName);
+
         let generateTemplate:
-          (~tableName: string, ~template: string => string) =>
+          (
+            ~storageResource: option(ReventlessSpec.Adapter.resource),
+            ~template: string => string
+          ) =>
           Pulumi.Input.t(string) =
-          (~tableName, ~template) =>
-            resources->Util_QueryDb.getStorageResource(tableName)##name
-            ->Pulumi.Output.apply(realTableName => template(realTableName))
-            ->Pulumi.Output.asInput;
+          (~storageResource, ~template) =>
+            switch (storageResource) {
+            | Some(storageResource) =>
+              storageResource##name
+              ->Pulumi.Output.apply(realTableName => template(realTableName))
+              ->Pulumi.Output.asInput
+            | None => null->Pulumi.Input.wrap
+            };
 
         let idResolvers =
           resolveIdConfigs->Belt.List.map(config => {
-            let {View.idFieldName, fieldName, tableName, index} = config;
+            let {View.idFieldName, fieldName, pluginName, tableName, index} = config;
+            let storageResource = storageResource(~pluginName, ~tableName);
+
             switch (index) {
             | None =>
               Resolver.make(
@@ -152,12 +167,12 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 ~field=fieldName->Pulumi.Input.wrap,
                 ~requestTemplate=
                   generateTemplate(
-                    ~tableName,
+                    ~storageResource,
                     ~template=resolveId(~idFieldName),
                   ),
                 ~responseTemplate=
                   generateTemplate(
-                    ~tableName,
+                    ~storageResource,
                     ~template=resolveIdResult(~idFieldName),
                   ),
                 ~kind=Unit,
@@ -165,35 +180,59 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 (),
               )
             | Some(index) =>
-              let resolverDataSource =
-                DataSource.makeDynamoDBDataSourceWithTableName(
-                  ~name=name ++ idFieldName->String.capitalize ++ "Resolver",
+              switch (storageResource) {
+              | Some(storageResource) =>
+                let resolverDataSource =
+                  DataSource.makeDynamoDBDataSourceWithTableName(
+                    ~name=name ++ idFieldName->String.capitalize ++ "Resolver",
+                    ~api,
+                    ~tableName=storageResource##name,
+                    ~serviceRole=apiRole,
+                    ~opts,
+                    (),
+                  );
+                Resolver.make(
+                  ~name=name ++ idFieldName->String.capitalize,
                   ~api,
-                  ~tableName=
-                    resources->Util_QueryDb.getStorageResource(tableName)##name,
-                  ~serviceRole=apiRole,
+                  ~dataSourceName=
+                    resolverDataSource##name->Pulumi.Output.asInput,
+                  ~_type=name->Pulumi.Input.wrap,
+                  ~field=fieldName->Pulumi.Input.wrap,
+                  ~requestTemplate=
+                    resolveIdByIndex(~idFieldName, ~index)->Pulumi.Input.wrap,
+                  ~responseTemplate=firstResult->Pulumi.Input.wrap,
+                  ~kind=Unit,
                   ~opts,
                   (),
                 );
-              Resolver.make(
-                ~name=name ++ idFieldName->String.capitalize,
-                ~api,
-                ~dataSourceName=
-                  resolverDataSource##name->Pulumi.Output.asInput,
-                ~_type=name->Pulumi.Input.wrap,
-                ~field=fieldName->Pulumi.Input.wrap,
-                ~requestTemplate=
-                  resolveIdByIndex(~idFieldName, ~index)->Pulumi.Input.wrap,
-                ~responseTemplate=firstResult->Pulumi.Input.wrap,
-                ~kind=Unit,
-                ~opts,
-                (),
-              );
+              | None =>
+                Resolver.make(
+                  ~name=name ++ idFieldName->String.capitalize,
+                  ~api,
+                  ~dataSourceName,
+                  ~_type=name->Pulumi.Input.wrap,
+                  ~field=fieldName->Pulumi.Input.wrap,
+                  ~requestTemplate=null->Pulumi.Input.wrap,
+                  ~responseTemplate=null->Pulumi.Input.wrap,
+                  ~kind=Unit,
+                  ~opts,
+                  (),
+                )
+              }
             };
           });
+
         let idsResolvers =
           resolveIdsConfigs->Belt.List.map(config => {
-            let {View.fieldName, tableName, idsFieldName, sortField} = config;
+            let {
+              View.idsFieldName,
+              fieldName,
+              pluginName,
+              tableName,
+              sortField,
+            } = config;
+            let storageResource = storageResource(~pluginName, ~tableName);
+
             Resolver.make(
               ~name=name ++ idsFieldName->String.capitalize,
               ~api,
@@ -202,12 +241,12 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               ~field=fieldName->Pulumi.Input.wrap,
               ~requestTemplate=
                 generateTemplate(
-                  ~tableName,
+                  ~storageResource,
                   ~template=resolveIds(~idsFieldName, ~sortField),
                 ),
               ~responseTemplate=
                 generateTemplate(
-                  ~tableName,
+                  ~storageResource,
                   ~template=resolveIdsResult(~idsFieldName),
                 ),
               ~kind=Unit,

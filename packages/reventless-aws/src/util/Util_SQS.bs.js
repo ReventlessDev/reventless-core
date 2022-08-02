@@ -3,12 +3,13 @@
 
 var Aws = require("@pulumi/aws");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 
 var service = "SQS";
 
 function toResource(queue) {
   return {
-          service: service,
+          service: Pulumi.output(service),
           name: queue.name,
           id: queue.id,
           urn: queue.arn,

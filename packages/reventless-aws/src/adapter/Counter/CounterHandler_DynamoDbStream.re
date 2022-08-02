@@ -3,9 +3,13 @@ open Reventless.Util.ReadModel;
 
 let make: Reventless.Counter.Adapter.handlerMaker =
   (~name, ~referencesName, ~countsName, ~counterHandler, ~opts, ~resources) => {
-    let referencesDb = resources->queryDbStorageResource(referencesName);
+    let referencesDb =
+      resources
+      ->queryDbStorageResource(None, referencesName)
+      ->Belt.Option.getExn;
     let referencesStream = referencesDb->Util_DynamoDbStream.toStreamResource;
-    let countsDb = resources->queryDbStorageResource(countsName);
+    let countsDb =
+      resources->queryDbStorageResource(None, countsName)->Belt.Option.getExn;
     let countsStream = countsDb->Util_DynamoDbStream.toStreamResource;
 
     let eventHandlerLambda =

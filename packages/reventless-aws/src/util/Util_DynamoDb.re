@@ -9,7 +9,7 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
 
 let toResource = (table: PulumiAws.DynamoDb.Table.t) =>
   Reventless.Adapter.resource(
-    ~service,
+    ~service=service->Pulumi.Output.make,
     ~name=table##name,
     ~id=table##id,
     ~urn=table##arn,

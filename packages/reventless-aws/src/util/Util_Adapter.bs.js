@@ -12,7 +12,7 @@ function partitionSupportedResources(adapters, supportedServices) {
                       param[0],
                       Belt_Array.getBy(param[1].resources, (function (resource) {
                               return Belt_Array.some(supportedServices, (function (supportedService) {
-                                            return Caml_obj.caml_equal(resource.service, supportedService);
+                                            return Caml_obj.caml_equal(resource.service.get(), supportedService);
                                           }));
                             }))
                     ];
@@ -34,7 +34,7 @@ function partitionSupportedResources(adapters, supportedServices) {
 
 function partitionResourcesByService(resources, service) {
   return Belt_Array.partition(resources, (function (param) {
-                return Caml_obj.caml_equal(param[1].service, service);
+                return Caml_obj.caml_equal(param[1].service.get(), service);
               }));
 }
 

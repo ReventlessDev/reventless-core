@@ -13,13 +13,13 @@ let make: EventTopic.Adapter.publisherMaker =
 
     {
       resources: [|
-        if (eventLogResource##service == Util_DynamoDbStream.service) {
+        if (eventLogResource##service->Pulumi.Output.get
+            == Util_DynamoDbStream.service) {
           eventLogResource->Util_DynamoDbStream.toStreamResource;
         } else {
           Js.Exn.raiseError(
             "EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_"
-            ++
-            eventLogResource##service,
+            ++ eventLogResource##service->OutputFailsafeRuntime.get,
           );
         },
       |],

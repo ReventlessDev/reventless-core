@@ -2,8 +2,13 @@
 'use strict';
 
 var Curry = require("bs-platform/lib/js/curry.js");
+var Js_dict = require("bs-platform/lib/js/js_dict.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Resources$Reventless = require("../adapter/Resources.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
+var Util_StackRefs$Reventless = require("./Util_StackRefs.bs.js");
 
 var storage = "Storage";
 
@@ -21,14 +26,43 @@ function setStorageResource(resources, resource, name) {
                   })(storage)(ComponentType$Reventless.name(name, /* QueryDb */11)), resource);
 }
 
-function getStorageResource(resources, name) {
-  return (function (param) {
-                return (function (param$1) {
-                    var param$2 = param$1;
-                    var param$3 = resources;
-                    return Resources$Reventless.getExn(param, param$2, param$3);
-                  });
-              })(storage)(ComponentType$Reventless.name(name, /* QueryDb */11));
+function getStorageResource(resources, pluginName, name) {
+  if (pluginName !== undefined) {
+    return Belt_Option.map(Util_StackRefs$Reventless.get(pluginName), (function (stackRef) {
+                  var queryDb = stackRef.requireOutput("plugin").apply((function (plugin) {
+                          return Belt_Option.getExn(Belt_Option.map(Belt_Option.flatMap(plugin.readModels, (function (readModels) {
+                                                return Js_dict.get(readModels, name);
+                                              })), (function (readModel) {
+                                            return Caml_array.caml_array_get(readModel.queryDb.resources, 0);
+                                          })));
+                        }));
+                  return {
+                          service: queryDb.apply((function (queryDb) {
+                                  return queryDb.service;
+                                })),
+                          name: queryDb.apply((function (queryDb) {
+                                  return queryDb.name;
+                                })),
+                          id: queryDb.apply((function (queryDb) {
+                                  return queryDb.id;
+                                })),
+                          urn: queryDb.apply((function (queryDb) {
+                                  return queryDb.urn;
+                                })),
+                          info: queryDb.apply((function (queryDb) {
+                                  return queryDb.info;
+                                }))
+                        };
+                }));
+  } else {
+    return Caml_option.some((function (param) {
+                      return (function (param$1) {
+                          var param$2 = param$1;
+                          var param$3 = resources;
+                          return Resources$Reventless.getExn(param, param$2, param$3);
+                        });
+                    })(storage)(ComponentType$Reventless.name(name, /* QueryDb */11)));
+  }
 }
 
 function filterQueryDbStorages(resources, keep) {
@@ -49,4 +83,4 @@ exports.storage = storage;
 exports.setStorageResource = setStorageResource;
 exports.getStorageResource = getStorageResource;
 exports.filterQueryDbStorages = filterQueryDbStorages;
-/* No side effect */
+/* Util_StackRefs-Reventless Not a pure module */

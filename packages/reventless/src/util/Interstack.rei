@@ -1,5 +1,7 @@
 type plugin = {
   .
+  "aggregates": option(Js.Dict.t(Aggregate.outputs)),
+  "readModels": option(Js.Dict.t(ReadModel.outputs)),
   "tasks": option(Js.Dict.t(Task.outputs)),
   "eventMappers": option(Js.Dict.t(EventMapper.outputs)),
   "extensionPoints": option(Js.Dict.t(ExtensionPoint.outputs)),

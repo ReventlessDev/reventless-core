@@ -26,7 +26,7 @@ function construct(setup, queryBucketName, scheduler, queryEngine, allAggregates
             var meta = param[1];
             var idx$1 = idx + 1 | 0;
             console.log("Task.publishCommands " + (String(idx$1) + ("/" + (String(count) + (": " + (String(messageBody) + ""))))));
-            var match = connector.service;
+            var match = connector.service.get();
             if (match === "SQS_FIFO") {
               return SQS$AwsSdk.makeBatchEntryFifo(param[0], messageBody, meta[/* msgId */4], undefined);
             } else {

@@ -8,7 +8,7 @@ let partitionSupportedResources = (adapters, supportedServices) => {
           adapter##resources
           ->Belt.Array.getBy(resource =>
               supportedServices->Belt.Array.some(supportedService =>
-                resource##service == supportedService
+                resource##service->Pulumi.Output.get == supportedService
               )
             ),
         )
@@ -24,5 +24,5 @@ let partitionSupportedResources = (adapters, supportedServices) => {
 
 let partitionResourcesByService = (resources, service) =>
   resources->Belt.Array.partition(((_, resource)) =>
-    resource##service == service
+    resource##service->Pulumi.Output.get == service
   );

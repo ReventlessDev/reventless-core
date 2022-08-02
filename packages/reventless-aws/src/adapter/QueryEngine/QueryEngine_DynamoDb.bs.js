@@ -7,6 +7,7 @@ var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Util_QueryDb$Reventless = require("@reventless/reventless/src/util/Util_QueryDb.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
@@ -161,13 +162,13 @@ function scanByTableName(tableName, filterConfigs, limit) {
 function make(resources) {
   return /* record */[
           /* scan */(function (viewName) {
-              var partial_arg = OutputFailsafeRuntime$Reventless.get(Util_QueryDb$Reventless.getStorageResource(resources, viewName).name);
+              var partial_arg = OutputFailsafeRuntime$Reventless.get(Belt_Option.getExn(Util_QueryDb$Reventless.getStorageResource(resources, undefined, viewName)).name);
               return (function (param, param$1) {
                   return scanByTableName(partial_arg, param, param$1);
                 });
             }),
           /* query */(function (viewName) {
-              var partial_arg = OutputFailsafeRuntime$Reventless.get(Util_QueryDb$Reventless.getStorageResource(resources, viewName).name);
+              var partial_arg = OutputFailsafeRuntime$Reventless.get(Belt_Option.getExn(Util_QueryDb$Reventless.getStorageResource(resources, undefined, viewName)).name);
               return (function (param, param$1, param$2, param$3, param$4, param$5) {
                   return queryByTableName(partial_arg, param, param$1, param$2, param$3, param$4, param$5);
                 });
@@ -180,4 +181,4 @@ exports.createFilters = createFilters;
 exports.queryByTableName = queryByTableName;
 exports.scanByTableName = scanByTableName;
 exports.make = make;
-/* DynamoDb_DocumentClient-AwsSdk Not a pure module */
+/* Util_QueryDb-Reventless Not a pure module */

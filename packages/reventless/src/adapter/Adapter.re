@@ -3,7 +3,7 @@ open ReventlessSpec.Adapter;
 [@bs.obj]
 external resource:
   (
-    ~service: string,
+    ~service: Pulumi.Output.t(string),
     ~name: Pulumi.Output.t(string),
     ~id: Pulumi.Output.t(string),
     ~urn: Pulumi.Output.t(string),

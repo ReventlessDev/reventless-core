@@ -3,7 +3,11 @@
 
 var Util_QueryDb$Reventless = require("./Util_QueryDb.bs.js");
 
-var queryDbStorageResource = Util_QueryDb$Reventless.getStorageResource;
+function queryDbStorageResource(resources, readModelName) {
+  return (function (param) {
+      return Util_QueryDb$Reventless.getStorageResource(resources, readModelName, param);
+    });
+}
 
 exports.queryDbStorageResource = queryDbStorageResource;
-/* No side effect */
+/* Util_QueryDb-Reventless Not a pure module */

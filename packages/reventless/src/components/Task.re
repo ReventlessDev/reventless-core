@@ -95,7 +95,7 @@ let construct =
       ->Belt.Array.mapWithIndex((idx, (id, meta: Message.meta, messageBody)) => {
           let idx = idx + 1;
           Js.log({j|Task.publishCommands $idx/$count: $messageBody|j});
-          switch (connector##service) {
+          switch (connector##service->Pulumi.Output.get) {
           | "SQS_FIFO" =>
             AwsSdk.SQS.makeBatchEntryFifo(
               ~groupId=id,

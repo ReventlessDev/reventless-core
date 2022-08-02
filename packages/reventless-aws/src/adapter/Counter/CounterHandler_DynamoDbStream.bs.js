@@ -3,6 +3,7 @@
 
 var Curry = require("bs-platform/lib/js/curry.js");
 var Aws = require("@pulumi/aws");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var Util_ReadModel$Reventless = require("@reventless/reventless/src/util/Util_ReadModel.bs.js");
@@ -11,9 +12,9 @@ var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSource
 var CounterHandler_DynamoDbStream_Runtime$ReventlessAws = require("./CounterHandler_DynamoDbStream_Runtime.bs.js");
 
 function make(name, referencesName, countsName, counterHandler, opts, resources) {
-  var referencesDb = Util_ReadModel$Reventless.queryDbStorageResource(resources, referencesName);
+  var referencesDb = Belt_Option.getExn(Util_ReadModel$Reventless.queryDbStorageResource(resources, undefined)(referencesName));
   var referencesStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(referencesDb);
-  var countsDb = Util_ReadModel$Reventless.queryDbStorageResource(resources, countsName);
+  var countsDb = Belt_Option.getExn(Util_ReadModel$Reventless.queryDbStorageResource(resources, undefined)(countsName));
   var countsStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(countsDb);
   var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
             (function (param, param$1) {

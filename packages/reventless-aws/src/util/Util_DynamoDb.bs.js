@@ -26,7 +26,7 @@ function toInfo(table) {
 
 function toResource(table) {
   return {
-          service: service,
+          service: Pulumi.output(service),
           name: table.name,
           id: table.id,
           urn: table.arn,

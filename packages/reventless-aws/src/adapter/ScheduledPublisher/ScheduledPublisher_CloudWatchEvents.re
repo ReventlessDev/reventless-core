@@ -41,7 +41,7 @@ let make: scheduledPublisherMaker =
     {
       resource:
         Reventless.Adapter.resource(
-          ~service="CloudWatchEvents",
+          ~service="CloudWatchEvents"->Pulumi.Output.make,
           ~name=""->Pulumi.Output.make,
           ~id=""->Pulumi.Output.make,
           ~urn=""->Pulumi.Output.make,

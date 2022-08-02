@@ -1,6 +1,8 @@
+let service = "AppSync";
+
 let toResource = (resolver: PulumiAws.AppSync.Resolver.t) =>
   Reventless.Adapter.resource(
-    ~service="AppSync",
+    ~service=service->Pulumi.Output.make,
     ~name=resolver##id,
     ~id=resolver##id,
     ~urn=resolver##arn,
