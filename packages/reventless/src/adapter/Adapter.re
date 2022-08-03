@@ -12,6 +12,16 @@ external resource:
   resource =
   "";
 
+let outputToResource = resourceOutput =>
+  resource(
+    ~id=resourceOutput->Pulumi.Output.flatMap(resource => resource##id),
+    ~name=resourceOutput->Pulumi.Output.flatMap(resource => resource##name),
+    ~urn=resourceOutput->Pulumi.Output.flatMap(resource => resource##urn),
+    ~info=resourceOutput->Pulumi.Output.flatMap(resource => resource##info),
+    ~service=
+      resourceOutput->Pulumi.Output.flatMap(resource => resource##service),
+  );
+
 type straightResource = {
   .
   "name": string,
@@ -23,7 +33,7 @@ type straightResource = {
 
 let toResource = straightResource =>
   resource(
-    ~service=straightResource##service,
+    ~service=straightResource##service->Pulumi.Output.make,
     ~name=straightResource##name->Pulumi.Output.make,
     ~id=straightResource##id->Pulumi.Output.make,
     ~urn=straightResource##urn->Pulumi.Output.make,

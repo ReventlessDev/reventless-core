@@ -30,13 +30,7 @@ let getStorageResource = (resources, pluginName, name) =>
               ->Belt.Option.map(readModel => readModel##queryDb##resources[0])
               ->Belt.Option.getExn
             );
-        Adapter.resource(
-          ~id=queryDb->Pulumi.Output.apply(queryDb => queryDb##id),
-          ~name=queryDb->Pulumi.Output.apply(queryDb => queryDb##name),
-          ~urn=queryDb->Pulumi.Output.apply(queryDb => queryDb##urn),
-          ~info=queryDb->Pulumi.Output.apply(queryDb => queryDb##info),
-          ~service=queryDb->Pulumi.Output.apply(queryDb => queryDb##service),
-        );
+        queryDb->Adapter.outputToResource;
       })
   };
 

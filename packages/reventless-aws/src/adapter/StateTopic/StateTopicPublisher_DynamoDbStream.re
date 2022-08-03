@@ -16,14 +16,17 @@ let make: StateTopic.Adapter.publisherMaker =
 
     {
       resource:
-        if (queryDbResource##service->Pulumi.Output.get
-            == Util_DynamoDbStream.service) {
-          queryDbResource->Util_DynamoDbStream.toStreamResource;
-        } else {
-          Js.Exn.raiseError(
-            "StateTopicPublisher_DynamoDbStream cannot connect to QueryDbStorage_"
-            ++ queryDbResource##service->OutputFailsafeRuntime.get,
-          );
-        },
+        queryDbResource##service
+        ->Pulumi.Output.apply(service =>
+            if (service == Util_DynamoDbStream.service) {
+              queryDbResource->Util_DynamoDbStream.toStreamResource;
+            } else {
+              Js.Exn.raiseError(
+                "StateTopicPublisher_DynamoDbStream cannot connect to QueryDbStorage_"
+                ++ service,
+              );
+            }
+          )
+        ->Adapter.outputToResource,
     };
   };

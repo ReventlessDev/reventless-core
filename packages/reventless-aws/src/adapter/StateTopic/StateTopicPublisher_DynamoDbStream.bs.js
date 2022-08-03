@@ -3,15 +3,21 @@
 
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.bs.js");
 var ComponentType$Reventless = require("@reventless/reventless/src/ComponentType.bs.js");
 var Util_ReadModel$Reventless = require("@reventless/reventless/src/util/Util_ReadModel.bs.js");
-var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 
 function make(name, param, resources) {
   var queryDbResource = Belt_Option.getExn(Util_ReadModel$Reventless.queryDbStorageResource(resources, undefined)(name.substring(0, name.indexOf(ComponentType$Reventless.toName(/* ReadModel */12)))));
-  return /* record */[/* resource */queryDbResource.service.get() === Util_DynamoDbStream$ReventlessAws.service ? Util_DynamoDbStream$ReventlessAws.toStreamResource(queryDbResource) : Js_exn.raiseError("StateTopicPublisher_DynamoDbStream cannot connect to QueryDbStorage_" + OutputFailsafeRuntime$Reventless.get(queryDbResource.service))];
+  return /* record */[/* resource */Adapter$Reventless.outputToResource(queryDbResource.service.apply((function (service) {
+                      if (service === Util_DynamoDbStream$ReventlessAws.service) {
+                        return Util_DynamoDbStream$ReventlessAws.toStreamResource(queryDbResource);
+                      } else {
+                        return Js_exn.raiseError("StateTopicPublisher_DynamoDbStream cannot connect to QueryDbStorage_" + service);
+                      }
+                    })))];
 }
 
 exports.make = make;
-/* Util_ReadModel-Reventless Not a pure module */
+/* Adapter-Reventless Not a pure module */
