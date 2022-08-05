@@ -34,6 +34,9 @@ function toResource(straightResource) {
         };
 }
 
+var stackRefResourceToResource = toResource;
+
 exports.outputToResource = outputToResource;
 exports.toResource = toResource;
+exports.stackRefResourceToResource = stackRefResourceToResource;
 /* @pulumi/pulumi Not a pure module */

@@ -239,20 +239,21 @@ module Make =
             coreStackOutput##extensionPoints->Belt.Option.getExn
             -# ReventlessSpec.PluginExtensionPointSpec.name;
 
-          let corePluginCommandTopic =
+          let corePluginCommandTopicResource =
             corePluginExtensionPoint##commandTopic##resources[0] // FIXME: hardcoded resource
-            ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
-            ->Adapter.toResource;
-          let corePluginCommandTopicId = corePluginCommandTopic##id;
+            ->Adapter.stackRefResourceToResource;
+          let corePluginCommandTopicId = corePluginCommandTopicResource##id;
 
           resources->Util.ExtensionPoint.setCommandTopicConnectorResource(
-            corePluginCommandTopic,
+            corePluginCommandTopicResource,
             ReventlessSpec.PluginExtensionPointSpec.name,
           );
-          resources->Util.ExtensionPoint.setEventTopicPublisherResource(
+
+          let corePluginEventTopicResource =
             corePluginExtensionPoint##eventTopic##resources[0] // FIXME
-            ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
-            ->Adapter.toResource,
+            ->Adapter.stackRefResourceToResource;
+          resources->Util.ExtensionPoint.setEventTopicPublisherResource(
+            corePluginEventTopicResource,
             ReventlessSpec.PluginExtensionPointSpec.name,
           );
 
@@ -830,7 +831,11 @@ module Make =
             );
           eventTopics->Js.Dict.set(
             ReventlessSpec.PluginExtensionPointSpec.name,
-            corePluginExtensionPoint##eventTopic,
+            {
+              "resources":
+                corePluginExtensionPoint##eventTopic##resources
+                ->Belt.Array.map(Adapter.stackRefResourceToResource),
+            },
           );
 
           let eventCollector =

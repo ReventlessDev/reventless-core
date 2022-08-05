@@ -87,10 +87,11 @@ function Make(EventCollectorAdapter) {
             Interstack$Reventless.coreStackOutput !== undefined ? Caml_option.valFromOption(Interstack$Reventless.coreStackOutput) : Js_exn.raiseError("No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!")
           ).apply((function (coreStackOutput) {
                 var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(Belt_Option.getExn(coreStackOutput.extensionPoints), PluginExtensionPointSpec$ReventlessSpec.name);
-                var corePluginCommandTopic = Adapter$Reventless.toResource(Caml_array.caml_array_get(corePluginExtensionPoint.commandTopic.resources, 0));
-                var corePluginCommandTopicId = corePluginCommandTopic.id;
-                Util_ExtensionPoint$Reventless.setCommandTopicConnectorResource(resources, corePluginCommandTopic, PluginExtensionPointSpec$ReventlessSpec.name);
-                Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, Adapter$Reventless.toResource(Caml_array.caml_array_get(corePluginExtensionPoint.eventTopic.resources, 0)), PluginExtensionPointSpec$ReventlessSpec.name);
+                var corePluginCommandTopicResource = Adapter$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.commandTopic.resources, 0));
+                var corePluginCommandTopicId = corePluginCommandTopicResource.id;
+                Util_ExtensionPoint$Reventless.setCommandTopicConnectorResource(resources, corePluginCommandTopicResource, PluginExtensionPointSpec$ReventlessSpec.name);
+                var corePluginEventTopicResource = Adapter$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.eventTopic.resources, 0));
+                Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, corePluginEventTopicResource, PluginExtensionPointSpec$ReventlessSpec.name);
                 var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
                         return Curry._5(ExtensionPoint.make, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
                       }));
@@ -435,7 +436,9 @@ function Make(EventCollectorAdapter) {
                 };
                 var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorAdapter);
                 var eventTopics = Util_Aggregate$Reventless.findEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
-                eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = corePluginExtensionPoint.eventTopic;
+                eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
+                  resources: Belt_Array.map(corePluginExtensionPoint.eventTopic.resources, Adapter$Reventless.stackRefResourceToResource)
+                };
                 var eventCollector = Curry._7(EventCollector.make, ComponentType$Reventless.name(name, /* Plugin */2), eventTopics, eventsHandler, undefined, undefined, Caml_option.some(opts), /* () */0);
                 var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
                 match[1](Caml_array.caml_array_get(eventCollectorOutputs.resources, 0).urn);

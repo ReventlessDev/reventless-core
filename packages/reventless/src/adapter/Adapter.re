@@ -39,3 +39,8 @@ let toResource = straightResource =>
     ~urn=straightResource##urn->Pulumi.Output.make,
     ~info=straightResource##info->Pulumi.Output.make,
   );
+
+let stackRefResourceToResource = stackRefResource =>
+  stackRefResource
+  ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
+  ->toResource;
