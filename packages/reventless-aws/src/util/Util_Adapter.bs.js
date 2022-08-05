@@ -64,6 +64,7 @@ function partitionSupportedResources(adapters, supportedServices) {
 }
 
 function partitionResourcesByService(resources, service) {
+  console.log("partitionResourcesByService: resources: ", resources);
   var match = Belt_Array.unzip(Belt_Array.map(resources, (function (param) {
               var resource = param[1];
               return /* tuple */[

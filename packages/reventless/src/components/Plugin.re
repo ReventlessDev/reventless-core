@@ -847,6 +847,7 @@ module Make =
               (),
             );
           let eventCollectorOutputs = eventCollector->Component.extractOutputs;
+          Js.log2("Plugin: eventCollectorOutputs: ", eventCollectorOutputs);
           setEventCollectorUrn(. eventCollectorOutputs##resources[0]##urn); //FIXME
 
           let heartbeat =

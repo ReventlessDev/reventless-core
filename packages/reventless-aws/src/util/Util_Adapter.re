@@ -57,6 +57,7 @@ let partitionSupportedResources = (adapters, supportedServices) => {
 };
 
 let partitionResourcesByService = (resources, service: string) => {
+  Js.log2("partitionResourcesByService: resources: ", resources);
   let (resources, supportedOutputs) =
     resources
     ->Belt.Array.map(((name, resource)) =>
