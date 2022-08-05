@@ -46,17 +46,22 @@ function partitionSupportedResources(adapters, supportedServices) {
             })));
   var names = match[0];
   return Pulumi.all(match[1]).apply((function (resources) {
+                console.log("partitionSupportedResources: resources: ", resources);
                 var match = Belt_Array.partition(Belt_Array.zip(names, resources), (function (param) {
                         return Belt_Option.isSome(param[1]);
                       }));
+                var unsupported = match[1];
+                var supported = match[0];
+                console.log("partitionSupportedResources: supported: ", supported);
+                console.log("partitionSupportedResources: unsupported: ", unsupported);
                 return /* tuple */[
-                        Belt_Array.map(match[0], (function (param) {
+                        Belt_Array.map(supported, (function (param) {
                                 return /* tuple */[
                                         param[0],
                                         Belt_Option.getExn(param[1])
                                       ];
                               })),
-                        Belt_Array.map(match[1], (function (param) {
+                        Belt_Array.map(unsupported, (function (param) {
                                 return param[0];
                               }))
                       ];

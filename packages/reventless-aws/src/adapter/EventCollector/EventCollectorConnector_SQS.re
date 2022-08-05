@@ -85,6 +85,10 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         Util_SNS.service,
       |])
     ->Pulumi.Output.apply(((supportedResources, errorResources)) => {
+        Js.log2(
+          "EventCollectorConnector_SQS: supportedResources: ",
+          supportedResources,
+        );
         let _ =
           supportedResources
           ->Util.Adapter.partitionResourcesByService(Util_SNS.service)

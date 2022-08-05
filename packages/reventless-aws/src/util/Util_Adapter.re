@@ -41,12 +41,15 @@ let partitionSupportedResources = (adapters, supportedServices) => {
   resourceOutputs
   ->Pulumi.Output.all
   ->Pulumi.Output.apply(resources => {
+      Js.log2("partitionSupportedResources: resources: ", resources);
       let (supported, unsupported) =
         names
         ->Belt.Array.zip(resources)
         ->Belt.Array.partition(((_, resource)) =>
             resource->Belt.Option.isSome
           );
+      Js.log2("partitionSupportedResources: supported: ", supported);
+      Js.log2("partitionSupportedResources: unsupported: ", unsupported);
       (
         supported->Belt.Array.map(((name, resource)) =>
           (name, resource->Belt.Option.getExn)

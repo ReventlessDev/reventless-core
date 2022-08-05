@@ -54,7 +54,9 @@ function make(name, eventTopics, policies, handleEvents, memorySize, timeout, op
                 Util_SNS$ReventlessAws.service
               ]).apply((function (param) {
                 var errorResources = param[1];
-                Util_Adapter$ReventlessAws.partitionResourcesByService(param[0], Util_SNS$ReventlessAws.service).apply((function (param) {
+                var supportedResources = param[0];
+                console.log("EventCollectorConnector_SQS: supportedResources: ", supportedResources);
+                Util_Adapter$ReventlessAws.partitionResourcesByService(supportedResources, Util_SNS$ReventlessAws.service).apply((function (param) {
                         Belt_Array.map(param[0], (function (param) {
                                 return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], param[1], opts);
                               }));

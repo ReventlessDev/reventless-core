@@ -838,6 +838,7 @@ module Make =
             },
           );
 
+          Js.log2("Plugin: eventTopics: ", eventTopics);
           let eventCollector =
             EventCollector.make(
               ~name=name->ComponentType.name(componentType),

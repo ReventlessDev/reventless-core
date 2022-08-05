@@ -439,6 +439,7 @@ function Make(EventCollectorAdapter) {
                 eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
                   resources: Belt_Array.map(corePluginExtensionPoint.eventTopic.resources, Adapter$Reventless.stackRefResourceToResource)
                 };
+                console.log("Plugin: eventTopics: ", eventTopics);
                 var eventCollector = Curry._7(EventCollector.make, ComponentType$Reventless.name(name, /* Plugin */2), eventTopics, eventsHandler, undefined, undefined, Caml_option.some(opts), /* () */0);
                 var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
                 console.log("Plugin: eventCollectorOutputs: ", eventCollectorOutputs);
