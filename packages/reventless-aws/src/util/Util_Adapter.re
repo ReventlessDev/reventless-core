@@ -13,10 +13,16 @@ let getBy:
     );
 
 let partitionSupportedResources = (adapters, supportedServices) => {
+  Js.log2("partitionSupportedResources: adapters: ", adapters);
   let (names, resourceOutputs) =
     adapters
     ->Js.Dict.entries
-    ->Belt.Array.map(((name, adapter)) =>
+    ->Belt.Array.map(((name, adapter)) => {
+        Js.log3(
+          "partitionSupportedResources: name, adapter##resources: ",
+          name,
+          adapter##resources,
+        );
         (
           name,
           adapter##resources
@@ -28,8 +34,8 @@ let partitionSupportedResources = (adapters, supportedServices) => {
                   )
                 )
             ),
-        )
-      )
+        );
+      })
     ->Belt.Array.unzip;
 
   resourceOutputs

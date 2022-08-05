@@ -28,10 +28,14 @@ function getBy(resources, pred) {
 }
 
 function partitionSupportedResources(adapters, supportedServices) {
+  console.log("partitionSupportedResources: adapters: ", adapters);
   var match = Belt_Array.unzip(Belt_Array.map(Js_dict.entries(adapters), (function (param) {
+              var adapter = param[1];
+              var name = param[0];
+              console.log("partitionSupportedResources: name, adapter##resources: ", name, adapter.resources);
               return /* tuple */[
-                      param[0],
-                      getBy(param[1].resources, (function (resource) {
+                      name,
+                      getBy(adapter.resources, (function (resource) {
                               return resource.service.apply((function (service) {
                                             return Belt_Array.some(supportedServices, (function (supportedService) {
                                                           return Caml_obj.caml_equal(service, supportedService);
