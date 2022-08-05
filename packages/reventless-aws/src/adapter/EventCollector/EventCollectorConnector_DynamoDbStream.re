@@ -32,43 +32,45 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           )
         );
 
-    let (dynamoDbStreamResources, errorResources) =
-      eventTopics->Util.Adapter.partitionSupportedResources([|
+    eventTopics
+    ->Util.Adapter.partitionSupportedResources([|
         Util_DynamoDbStream.service,
         Util_SNS_FIFO.service,
-      |]);
-
-    let _eventSourceMappings: array(EventSourceMapping.t) =
-      dynamoDbStreamResources->Belt.Array.map(((sourceName, source)) =>
-        Util_EventSourceMapping.subscribe(
-          ~batchSize=25,
-          ~lambda=eventHandlerLambda,
-          ~targetName=name,
-          ~sourceName,
-          ~source,
-          ~opts,
-          (),
-        )
-      );
-
-    if (errorResources->Belt.Array.length > 0) {
-      let eventTopicNames = errorResources->Js.Array2.joinWith(",");
-      Js.Exn.raiseError(
-        __MODULE__ ++ {j| cannot connect to EventTopic(s) $eventTopicNames|j},
-      );
-    } else {
-      {
-        resources: [||],
-        enqueueEvent:
-          (. delay, id, messageBody) =>
-            // TODO: can we check this at deploy time ?
-            Js.log4(
-              __MODULE__ ++ " supports no enqueueEvent:",
-              delay,
-              id,
-              messageBody,
+      |])
+    ->Pulumi.Output.apply(((dynamoDbStreamResources, errorResources)) => {
+        let _eventSourceMappings: array(EventSourceMapping.t) =
+          dynamoDbStreamResources->Belt.Array.map(((sourceName, source)) =>
+            Util_EventSourceMapping.subscribe(
+              ~batchSize=25,
+              ~lambda=eventHandlerLambda,
+              ~targetName=name,
+              ~sourceName,
+              ~source,
+              ~opts,
+              (),
             )
-            ->Js.Promise.resolve,
-      };
-    };
+          );
+
+        if (errorResources->Belt.Array.length > 0) {
+          let eventTopicNames = errorResources->Js.Array2.joinWith(",");
+          Js.Exn.raiseError(
+            __MODULE__
+            ++ {j| cannot connect to EventTopic(s) $eventTopicNames|j},
+          );
+        } else {
+          {
+            Reventless.EventCollector.Adapter.resources: [||],
+            enqueueEvent:
+              (. delay, id, messageBody) =>
+                // TODO: can we check this at deploy time ?
+                Js.log4(
+                  __MODULE__ ++ " supports no enqueueEvent:",
+                  delay,
+                  id,
+                  messageBody,
+                )
+                ->Js.Promise.resolve,
+          };
+        };
+      });
   };

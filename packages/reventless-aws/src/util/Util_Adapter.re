@@ -1,28 +1,74 @@
+let getBy:
+  (array('a), 'a => Pulumi.Output.t(bool)) => Pulumi.Output.t(option('a)) =
+  (resources, pred) =>
+    resources->Belt.Array.reduce(
+      None->Pulumi.Output.make, (supported, resource) =>
+      Pulumi.Output.all2((supported, resource->pred))
+      ->Pulumi.Output.apply(((acc, supported)) =>
+          switch (acc) {
+          | None => supported ? Some(resource) : None
+          | _ => acc
+          }
+        )
+    );
+
 let partitionSupportedResources = (adapters, supportedServices) => {
-  let (supported, unsupported) =
+  let (names, resourceOutputs) =
     adapters
     ->Js.Dict.entries
     ->Belt.Array.map(((name, adapter)) =>
         (
           name,
           adapter##resources
-          ->Belt.Array.getBy(resource =>
-              supportedServices->Belt.Array.some(supportedService =>
-                resource##service->Pulumi.Output.get == supportedService
-              )
+          ->getBy(resource =>
+              resource##service
+              ->Pulumi.Output.apply(service =>
+                  supportedServices->Belt.Array.some(supportedService =>
+                    service == supportedService
+                  )
+                )
             ),
         )
       )
-    ->Belt.Array.partition(((_, resource)) => resource->Belt.Option.isSome);
-  (
-    supported->Belt.Array.map(((name, resource)) =>
-      (name, resource->Belt.Option.getExn)
-    ),
-    unsupported->Belt.Array.map(((name, _)) => name),
-  );
+    ->Belt.Array.unzip;
+
+  resourceOutputs
+  ->Pulumi.Output.all
+  ->Pulumi.Output.apply(resources => {
+      let (supported, unsupported) =
+        names
+        ->Belt.Array.zip(resources)
+        ->Belt.Array.partition(((_, resource)) =>
+            resource->Belt.Option.isSome
+          );
+      (
+        supported->Belt.Array.map(((name, resource)) =>
+          (name, resource->Belt.Option.getExn)
+        ),
+        unsupported->Belt.Array.map(((name, _)) => name),
+      );
+    });
 };
 
-let partitionResourcesByService = (resources, service) =>
-  resources->Belt.Array.partition(((_, resource)) =>
-    resource##service->Pulumi.Output.get == service
-  );
+let partitionResourcesByService = (resources, service: string) => {
+  let (resources, supportedOutputs) =
+    resources
+    ->Belt.Array.map(((name, resource)) =>
+        (
+          (name, resource),
+          resource##service
+          ->Pulumi.Output.apply(resourceService => resourceService == service),
+        )
+      )
+    ->Belt.Array.unzip;
+
+  supportedOutputs
+  ->Pulumi.Output.all
+  ->Pulumi.Output.apply(supported => {
+      let (supported, unsupported) =
+        resources
+        ->Belt.Array.zip(supported)
+        ->Belt.Array.partition(((_, supported)) => supported);
+      (supported->Belt.Array.unzip->fst, unsupported->Belt.Array.unzip->fst);
+    });
+};

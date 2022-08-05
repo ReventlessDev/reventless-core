@@ -49,27 +49,30 @@ function make(name, eventTopics, policies, handleEvents, memorySize, timeout, op
   eventHandlerLambda.apply((function (eventHandlerLambda) {
           return queue.onEvent(name, eventHandlerLambda, undefined, opts);
         }));
-  var match = Util_Adapter$ReventlessAws.partitionSupportedResources(eventTopics, /* array */[
-        Util_DynamoDbStream$ReventlessAws.service,
-        Util_SNS$ReventlessAws.service
-      ]);
-  var errorResources = match[1];
-  var match$1 = Util_Adapter$ReventlessAws.partitionResourcesByService(match[0], Util_SNS$ReventlessAws.service);
-  Belt_Array.map(match$1[0], (function (param) {
-          return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], param[1], opts);
-        }));
-  Belt_Array.map(match$1[1], (function (param) {
-          return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], param[1], opts, /* () */0);
-        }));
-  if (errorResources.length !== 0) {
-    var eventTopicNames = errorResources.join(",");
-    return Js_exn.raiseError("EventCollectorConnector_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + (String(eventTopicNames) + "")));
-  } else {
-    return /* record */[
-            /* resources : array */[Util_SQS$ReventlessAws.toResource(queue)],
-            /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue)
-          ];
-  }
+  return Util_Adapter$ReventlessAws.partitionSupportedResources(eventTopics, /* array */[
+                Util_DynamoDbStream$ReventlessAws.service,
+                Util_SNS$ReventlessAws.service
+              ]).apply((function (param) {
+                var errorResources = param[1];
+                Util_Adapter$ReventlessAws.partitionResourcesByService(param[0], Util_SNS$ReventlessAws.service).apply((function (param) {
+                        Belt_Array.map(param[0], (function (param) {
+                                return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], param[1], opts);
+                              }));
+                        Belt_Array.map(param[1], (function (param) {
+                                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], param[1], opts, /* () */0);
+                              }));
+                        return /* () */0;
+                      }));
+                if (errorResources.length !== 0) {
+                  var eventTopicNames = errorResources.join(",");
+                  return Js_exn.raiseError("EventCollectorConnector_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + (String(eventTopicNames) + "")));
+                } else {
+                  return /* record */[
+                          /* resources : array */[Util_SQS$ReventlessAws.toResource(queue)],
+                          /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue)
+                        ];
+                }
+              }));
 }
 
 exports.make = make;
