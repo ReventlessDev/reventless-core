@@ -89,34 +89,32 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           "EventCollectorConnector_SQS: supportedResources: ",
           supportedResources,
         );
-        let _ =
-          supportedResources
-          ->Util.Adapter.partitionResourcesByService(Util_SNS.service)
-          ->Pulumi.Output.apply(((snsResources, otherResources)) => {
-              let _snsTopicSubscriptions =
-                snsResources->Belt.Array.map(((sourceName, topic)) =>
-                  Util_SQS.subscribeToSnsTopic(
-                    ~queue,
-                    ~targetName=name,
-                    ~sourceName,
-                    ~topic,
-                    ~opts,
-                  )
-                );
+        let (snsResources, otherResources) =
+          supportedResources->Util.Adapter.partitionResourcesByService(
+            Util_SNS.service,
+          );
+        let _snsTopicSubscriptions =
+          snsResources->Belt.Array.map(((sourceName, topic)) =>
+            Util_SQS.subscribeToSnsTopic(
+              ~queue,
+              ~targetName=name,
+              ~sourceName,
+              ~topic=topic->Reventless.Adapter.toResource,
+              ~opts,
+            )
+          );
 
-              let _eventSourceMappings =
-                otherResources->Belt.Array.map(((sourceName, source)) =>
-                  Util_EventSourceMapping.subscribe(
-                    ~lambda=eventHandlerLambda,
-                    ~targetName=name,
-                    ~sourceName,
-                    ~source,
-                    ~opts,
-                    (),
-                  )
-                );
-              ();
-            });
+        let _eventSourceMappings =
+          otherResources->Belt.Array.map(((sourceName, source)) =>
+            Util_EventSourceMapping.subscribe(
+              ~lambda=eventHandlerLambda,
+              ~targetName=name,
+              ~sourceName,
+              ~source=source->Reventless.Adapter.toResource,
+              ~opts,
+              (),
+            )
+          );
 
         if (errorResources->Belt.Array.length > 0) {
           let eventTopicNames = errorResources->Js.Array2.joinWith(",");

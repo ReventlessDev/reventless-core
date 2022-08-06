@@ -45,7 +45,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
               ~lambda=eventHandlerLambda,
               ~targetName=name,
               ~sourceName,
-              ~source,
+              ~source=source->Reventless.Adapter.toResource,
               ~opts,
               (),
             )

@@ -8,6 +8,7 @@ var Aws = require("@pulumi/aws");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.bs.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
 var Util_Adapter$ReventlessAws = require("../../util/Util_Adapter.bs.js");
@@ -59,14 +60,12 @@ function make(name, eventTopics, policies, handleEvents, memorySize, timeout, op
                 Util_SNS_FIFO$ReventlessAws.service
               ]).apply((function (param) {
                 var errorResources = param[1];
-                Util_Adapter$ReventlessAws.partitionResourcesByService(param[0], Util_SNS_FIFO$ReventlessAws.service).apply((function (param) {
-                        Belt_Array.map(param[0], (function (param) {
-                                return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], param[1], opts);
-                              }));
-                        Belt_Array.map(param[1], (function (param) {
-                                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], param[1], opts, /* () */0);
-                              }));
-                        return /* () */0;
+                var match = Util_Adapter$ReventlessAws.partitionResourcesByService(param[0], Util_SNS_FIFO$ReventlessAws.service);
+                Belt_Array.map(match[0], (function (param) {
+                        return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], Adapter$Reventless.toResource(param[1]), opts);
+                      }));
+                Belt_Array.map(match[1], (function (param) {
+                        return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], Adapter$Reventless.toResource(param[1]), opts, /* () */0);
                       }));
                 if (errorResources.length !== 0) {
                   var eventTopicNames = errorResources.join(",");

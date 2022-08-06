@@ -89,34 +89,33 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         Util_SNS_FIFO.service,
       |])
     ->Pulumi.Output.apply(((supportedResources, errorResources)) => {
-        let _ =
-          supportedResources
-          ->Util.Adapter.partitionResourcesByService(Util_SNS_FIFO.service)
-          ->Pulumi.Output.apply(((snsFifoResources, otherResources)) => {
-              let _snsFifoTopicSubscriptions =
-                snsFifoResources->Belt.Array.map(((sourceName, topic)) =>
-                  Util_SQS.subscribeToSnsTopic(
-                    ~queue,
-                    ~targetName=name,
-                    ~sourceName,
-                    ~topic,
-                    ~opts,
-                  )
-                );
+        let (snsFifoResources, otherResources) =
+          supportedResources->Util.Adapter.partitionResourcesByService(
+            Util_SNS_FIFO.service,
+          );
 
-              let _eventSourceMappings =
-                otherResources->Belt.Array.map(((sourceName, source)) =>
-                  Util_EventSourceMapping.subscribe(
-                    ~lambda=eventHandlerLambda,
-                    ~targetName=name,
-                    ~sourceName,
-                    ~source,
-                    ~opts,
-                    (),
-                  )
-                );
-              ();
-            });
+        let _snsFifoTopicSubscriptions =
+          snsFifoResources->Belt.Array.map(((sourceName, topic)) =>
+            Util_SQS.subscribeToSnsTopic(
+              ~queue,
+              ~targetName=name,
+              ~sourceName,
+              ~topic=topic->Reventless.Adapter.toResource,
+              ~opts,
+            )
+          );
+
+        let _eventSourceMappings =
+          otherResources->Belt.Array.map(((sourceName, source)) =>
+            Util_EventSourceMapping.subscribe(
+              ~lambda=eventHandlerLambda,
+              ~targetName=name,
+              ~sourceName,
+              ~source=source->Reventless.Adapter.toResource,
+              ~opts,
+              (),
+            )
+          );
 
         if (errorResources->Belt.Array.length > 0) {
           let eventTopicNames = errorResources->Js.Array2.joinWith(",");

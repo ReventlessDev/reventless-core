@@ -3,7 +3,6 @@
 
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
-var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
@@ -38,7 +37,7 @@ function partitionSupportedResources(adapters, supportedServices) {
                       getBy(adapter.resources, (function (resource) {
                               return resource.service.apply((function (service) {
                                             return Belt_Array.some(supportedServices, (function (supportedService) {
-                                                          return Caml_obj.caml_equal(service, supportedService);
+                                                          return service === supportedService;
                                                         }));
                                           }));
                             }))
@@ -77,21 +76,16 @@ function partitionResourcesByService(resources, service) {
                         param[0],
                         resource
                       ],
-                      resource.service.apply((function (resourceService) {
-                              return resourceService === service;
-                            }))
+                      resource.service === service
                     ];
             })));
-  var resources$1 = match[0];
-  return Pulumi.all(match[1]).apply((function (supported) {
-                var match = Belt_Array.partition(Belt_Array.zip(resources$1, supported), (function (param) {
-                        return param[1];
-                      }));
-                return /* tuple */[
-                        Belt_Array.unzip(match[0])[0],
-                        Belt_Array.unzip(match[1])[0]
-                      ];
-              }));
+  var match$1 = Belt_Array.partition(Belt_Array.zip(match[0], match[1]), (function (param) {
+          return param[1];
+        }));
+  return /* tuple */[
+          Belt_Array.unzip(match$1[0])[0],
+          Belt_Array.unzip(match$1[1])[0]
+        ];
 }
 
 exports.getBy = getBy;
