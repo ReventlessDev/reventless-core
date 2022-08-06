@@ -27,14 +27,10 @@ function getBy(resources, pred) {
 }
 
 function partitionSupportedResources(adapters, supportedServices) {
-  console.log("partitionSupportedResources: adapters: ", adapters);
   var match = Belt_Array.unzip(Belt_Array.map(Js_dict.entries(adapters), (function (param) {
-              var adapter = param[1];
-              var name = param[0];
-              console.log("partitionSupportedResources: name, adapter##resources: ", name, adapter.resources);
               return /* tuple */[
-                      name,
-                      getBy(adapter.resources, (function (resource) {
+                      param[0],
+                      getBy(param[1].resources, (function (resource) {
                               return resource.service.apply((function (service) {
                                             return Belt_Array.some(supportedServices, (function (supportedService) {
                                                           return service === supportedService;
@@ -45,22 +41,17 @@ function partitionSupportedResources(adapters, supportedServices) {
             })));
   var names = match[0];
   return Pulumi.all(match[1]).apply((function (resources) {
-                console.log("partitionSupportedResources: resources: ", resources);
                 var match = Belt_Array.partition(Belt_Array.zip(names, resources), (function (param) {
                         return Belt_Option.isSome(param[1]);
                       }));
-                var unsupported = match[1];
-                var supported = match[0];
-                console.log("partitionSupportedResources: supported: ", supported);
-                console.log("partitionSupportedResources: unsupported: ", unsupported);
                 return /* tuple */[
-                        Belt_Array.map(supported, (function (param) {
+                        Belt_Array.map(match[0], (function (param) {
                                 return /* tuple */[
                                         param[0],
                                         Belt_Option.getExn(param[1])
                                       ];
                               })),
-                        Belt_Array.map(unsupported, (function (param) {
+                        Belt_Array.map(match[1], (function (param) {
                                 return param[0];
                               }))
                       ];
@@ -68,7 +59,6 @@ function partitionSupportedResources(adapters, supportedServices) {
 }
 
 function partitionResourcesByService(resources, service) {
-  console.log("partitionResourcesByService: resources: ", resources);
   var match = Belt_Array.unzip(Belt_Array.map(resources, (function (param) {
               var resource = param[1];
               return /* tuple */[

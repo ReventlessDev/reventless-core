@@ -439,10 +439,8 @@ function Make(EventCollectorAdapter) {
                 eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
                   resources: Belt_Array.map(corePluginExtensionPoint.eventTopic.resources, Adapter$Reventless.stackRefResourceToResource)
                 };
-                console.log("Plugin: eventTopics: ", eventTopics);
                 var eventCollector = Curry._7(EventCollector.make, ComponentType$Reventless.name(name, /* Plugin */2), eventTopics, eventsHandler, undefined, undefined, Caml_option.some(opts), /* () */0);
                 var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
-                console.log("Plugin: eventCollectorOutputs: ", eventCollectorOutputs);
                 match[1](Caml_array.caml_array_get(eventCollectorOutputs.resources, 0).urn);
                 var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName(/* Plugin */2), heartbeatInterval, corePluginCommandTopicId, Caml_option.some(opts), /* () */0);
                 return /* record */[

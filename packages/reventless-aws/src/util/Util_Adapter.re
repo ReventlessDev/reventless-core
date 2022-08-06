@@ -19,16 +19,10 @@ let partitionSupportedResources:
   (Js.Dict.t(Reventless.EventTopic.outputs), array(string)) =>
   Pulumi.Output.t((straightResources, array(string))) =
   (adapters, supportedServices) => {
-    Js.log2("partitionSupportedResources: adapters: ", adapters);
     let (names, resourceOutputs) =
       adapters
       ->Js.Dict.entries
-      ->Belt.Array.map(((name, adapter)) => {
-          Js.log3(
-            "partitionSupportedResources: name, adapter##resources: ",
-            name,
-            adapter##resources,
-          );
+      ->Belt.Array.map(((name, adapter)) =>
           (
             name,
             adapter##resources
@@ -40,22 +34,19 @@ let partitionSupportedResources:
                     )
                   )
               ),
-          );
-        })
+          )
+        )
       ->Belt.Array.unzip;
 
     resourceOutputs
     ->Pulumi.Output.all
     ->Pulumi.Output.apply(resources => {
-        Js.log2("partitionSupportedResources: resources: ", resources);
         let (supported, unsupported) =
           names
           ->Belt.Array.zip(resources)
           ->Belt.Array.partition(((_, resource)) =>
               resource->Belt.Option.isSome
             );
-        Js.log2("partitionSupportedResources: supported: ", supported);
-        Js.log2("partitionSupportedResources: unsupported: ", unsupported);
         (
           supported->Belt.Array.map(((name, resource)) =>
             (name, resource->Obj.magic->Belt.Option.getExn)
@@ -67,7 +58,6 @@ let partitionSupportedResources:
 
 let partitionResourcesByService =
     (resources: straightResources, service: string) => {
-  Js.log2("partitionResourcesByService: resources: ", resources);
   let (resources, supported) =
     resources
     ->Belt.Array.map(((name, resource)) =>

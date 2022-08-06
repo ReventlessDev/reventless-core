@@ -30,16 +30,14 @@ function Make(Policies) {
           parent: self
         };
         var connector = Curry._7(Connector.make, ComponentType$Reventless.name(name, /* EventCollector */5), eventTopics, Policies.policies, eventsHandler, memorySize, timeout, opts);
-        return connector.apply((function (connector) {
-                      self.enqueueEvent = enqueueEventFn(connector);
-                      var self$1 = self;
-                      var outputs = {
-                        name: name,
-                        resources: connector[/* resources */0]
-                      };
-                      self$1.setOutputs(outputs);
-                      return self$1.registerOutputs(outputs);
-                    }));
+        self.enqueueEvent = enqueueEventFn(connector);
+        var self$1 = self;
+        var outputs = {
+          name: name,
+          resources: connector[/* resources */0]
+        };
+        self$1.setOutputs(outputs);
+        return self$1.registerOutputs(outputs);
       };
       var make = function (name, eventTopics, eventsHandler, $staropt$star, $staropt$star$1, opts, param) {
         var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
