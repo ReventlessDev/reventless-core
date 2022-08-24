@@ -2,7 +2,7 @@ let service = "SNS";
 
 let toResource = (topic: PulumiAws.SNS.Topic.t) =>
   Reventless.Adapter.resource(
-    ~service=service->Pulumi.Output.make,
+    ~service=topic##name->Pulumi.Output.apply(_ => service),
     ~name=topic##name,
     ~id=topic##id,
     ~urn=topic##arn,

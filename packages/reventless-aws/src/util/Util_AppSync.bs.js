@@ -7,7 +7,9 @@ var service = "AppSync";
 
 function toResource(resolver) {
   return {
-          service: Pulumi.output(service),
+          service: resolver.id.apply((function (param) {
+                  return service;
+                })),
           name: resolver.id,
           id: resolver.id,
           urn: resolver.arn,

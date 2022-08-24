@@ -41,7 +41,9 @@ function streamArnFromDynamoDbTableResource(table) {
 
 function toResource(table) {
   return {
-          service: Pulumi.output(service),
+          service: table.name.apply((function (param) {
+                  return service;
+                })),
           name: table.name,
           id: table.id,
           urn: table.arn,
@@ -52,7 +54,9 @@ function toResource(table) {
 function toStreamResource(table) {
   var streamArn = streamArnFromDynamoDbTableResource(table);
   return {
-          service: Pulumi.output(service),
+          service: table.name.apply((function (param) {
+                  return service;
+                })),
           name: table.name,
           id: streamArn,
           urn: streamArn,

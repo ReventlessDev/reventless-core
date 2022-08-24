@@ -4,7 +4,7 @@ let service = "SQS";
 
 let toResource = (queue: PulumiAws.SQS.Queue.t) =>
   Reventless.Adapter.resource(
-    ~service=service->Pulumi.Output.make,
+    ~service=queue##name->Pulumi.Output.apply(_ => service),
     ~name=queue##name,
     ~id=queue##id,
     ~urn=queue##arn,
