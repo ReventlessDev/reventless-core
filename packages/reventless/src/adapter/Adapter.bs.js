@@ -2,7 +2,6 @@
 'use strict';
 
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
-var Pulumi = require("@pulumi/pulumi");
 
 function outputToResource(resourceOutput) {
   return {
@@ -26,11 +25,11 @@ function outputToResource(resourceOutput) {
 
 function toResource(straightResource) {
   return {
-          service: Pulumi.output(straightResource.service),
-          name: Pulumi.output(straightResource.name),
-          id: Pulumi.output(straightResource.id),
-          urn: Pulumi.output(straightResource.urn),
-          info: Pulumi.output(straightResource.info)
+          service: straightResource.service,
+          name: straightResource.name,
+          id: straightResource.id,
+          urn: straightResource.urn,
+          info: straightResource.info
         };
 }
 
@@ -39,4 +38,4 @@ var stackRefResourceToResource = toResource;
 exports.outputToResource = outputToResource;
 exports.toResource = toResource;
 exports.stackRefResourceToResource = stackRefResourceToResource;
-/* @pulumi/pulumi Not a pure module */
+/* No side effect */

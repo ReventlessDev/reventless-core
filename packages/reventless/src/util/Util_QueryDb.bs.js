@@ -67,4 +67,4 @@ exports.storage = storage;
 exports.setStorageResource = setStorageResource;
 exports.getStorageResource = getStorageResource;
 exports.filterQueryDbStorages = filterQueryDbStorages;
-/* Adapter-Reventless Not a pure module */
+/* Util_StackRefs-Reventless Not a pure module */

@@ -31,14 +31,15 @@ type straightResource = {
   "service": string,
 };
 
-let toResource = straightResource =>
-  resource(
-    ~service=straightResource##service->Pulumi.Output.make,
-    ~name=straightResource##name->Pulumi.Output.make,
-    ~id=straightResource##id->Pulumi.Output.make,
-    ~urn=straightResource##urn->Pulumi.Output.make,
-    ~info=straightResource##info->Pulumi.Output.make,
-  );
+let toResource: straightResource => resource =
+  straightResource =>
+    resource(
+      ~service=straightResource##service->Obj.magic,
+      ~name=straightResource##name->Obj.magic,
+      ~id=straightResource##id->Obj.magic,
+      ~urn=straightResource##urn->Obj.magic,
+      ~info=straightResource##info->Obj.magic,
+    );
 
 let stackRefResourceToResource = stackRefResource =>
   stackRefResource

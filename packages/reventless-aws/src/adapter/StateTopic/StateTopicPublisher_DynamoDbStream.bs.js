@@ -20,4 +20,4 @@ function make(name, param, resources) {
 }
 
 exports.make = make;
-/* Adapter-Reventless Not a pure module */
+/* Util_ReadModel-Reventless Not a pure module */
