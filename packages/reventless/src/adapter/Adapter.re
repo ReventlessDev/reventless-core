@@ -30,17 +30,3 @@ type straightResource = {
   "info": string,
   "service": string,
 };
-
-let toResource = straightResource =>
-  resource(
-    ~service=straightResource##service->Pulumi.Output.make,
-    ~name=straightResource##name->Pulumi.Output.make,
-    ~id=straightResource##id->Pulumi.Output.make,
-    ~urn=straightResource##urn->Pulumi.Output.make,
-    ~info=straightResource##info->Pulumi.Output.make,
-  );
-
-let stackRefResourceToResource = stackRefResource =>
-  stackRefResource
-  ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
-  ->toResource;
