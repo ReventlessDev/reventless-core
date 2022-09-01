@@ -14,7 +14,7 @@ type getFile =
   (
     ~remotePath: string,
     ~localPath: string,
-    ~options: Reventless.FTP.FastOptions.t=?,
+    ~options: FTP.FastOptions.t=?,
     ~callback: Js.Exn.t => unit
   ) =>
   unit;
@@ -26,8 +26,8 @@ type recordDownload = string => Js.Promise.t(unit);
 type downloadAction =
   (
     ~connectionParams: connectionParams,
-    ~entities: array(Reventless.FTP.entity),
-    ~sftp: Reventless.FTP.t,
+    ~entities: array(FTP.entity),
+    ~sftp: FTP.t,
     ~fail: failFn,
     ~endFtp: endFtpFn
   ) =>
@@ -65,9 +65,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
     |> Client.onTimeout(() =>
          client
          |> Client.error(
-              Reventless.FTP.makeError(
-                "SSH-Client Error: Connection timed out",
-              )
+              FTP.makeError("SSH-Client Error: Connection timed out")
               ->Message.log("Client.onTimeout"),
             )
          |> ignore

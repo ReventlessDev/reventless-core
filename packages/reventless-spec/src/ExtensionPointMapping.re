@@ -1,7 +1,7 @@
 type extensionPointName = string;
 
 type callHandler('msg) =
-  (Schedule.create, Schedule.delete, ReventlessSpec.QueryEngine.t, 'msg) =>
+  (Schedule.create, Schedule.delete, QueryEngine.t, 'msg) =>
   Js.Promise.t(unit);
 
 /* these actions are needed for Impl */
@@ -38,12 +38,12 @@ type mapOutgoingEvent(
   'extensionPointEvent,
   'extensionPointCallCommand,
 ) =
-  (string, 'aggregateEvent, Message.meta, ReventlessSpec.QueryEngine.t) =>
+  (string, 'aggregateEvent, Message.meta, QueryEngine.t) =>
   array(eventAction('extensionPointEvent, 'extensionPointCallCommand));
 
 module type Impl = {
   module ExtensionPoint: Spec;
-  module Aggregate: ReventlessSpec.AggregateSpec.T;
+  module Aggregate: AggregateSpec.T;
 
   let mapIncomingCommand:
     mapIncomingCommand(

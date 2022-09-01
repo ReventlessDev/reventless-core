@@ -297,8 +297,11 @@ function Make(Target) {
     });
 }
 
+var ReventlessEventCollector = 0;
+
 var componentType = /* EventMapper */7;
 
+exports.ReventlessEventCollector = ReventlessEventCollector;
 exports.componentType = componentType;
 exports.Make = Make;
 /* ./Component Not a pure module */

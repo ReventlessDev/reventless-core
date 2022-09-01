@@ -149,8 +149,11 @@ function Make(EventCollector) {
         };
 }
 
+var ReventlessEventCollector = 0;
+
 var componentType = /* SideEffectHandler */15;
 
+exports.ReventlessEventCollector = ReventlessEventCollector;
 exports.componentType = componentType;
 exports.Make = Make;
 /* ./Component Not a pure module */

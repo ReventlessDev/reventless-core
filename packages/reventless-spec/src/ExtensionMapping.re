@@ -71,7 +71,7 @@ module type Spec = {
 
 module type Mapping = {
   module ExtensionPoint: Spec;
-  module Aggregate: ReventlessSpec.AggregateSpec.T;
+  module Aggregate: AggregateSpec.T;
 
   let mapIncomingEvent:
     mapIncomingEvent(

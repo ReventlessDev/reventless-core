@@ -1,5 +1,8 @@
 open ReventlessSpec.Adapter;
 
+module ReventlessQueryDb = QueryDb;
+module ReventlessView = View;
+
 let componentType = ComponentType.ReadModel;
 
 type outputs = {
@@ -81,7 +84,7 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~name: string, ~queryDb: Reventless.QueryDb.outputs) => outputs =
+    (~name: string, ~queryDb: ReventlessQueryDb.outputs) => outputs =
     "";
   [@bs.send]
   external registerOutputs: (component, outputs) => constructed =
@@ -95,7 +98,7 @@ module Make =
   [@bs.set] external setUpdate: (component, update) => unit = "update";
   [@bs.get] external update: component => update = "update";
 
-  open Reventless.View;
+  open ReventlessView;
 
   let applyEvent = (states, event, context) =>
     switch (states) {
@@ -123,9 +126,9 @@ module Make =
           let handleAction =
             fun
             | Create(state) =>
-              save(. id, state, Reventless.QueryDb.Init, None)
+              save(. id, state, ReventlessQueryDb.Init, None)
             | Update(state) =>
-              save(. id, state, Reventless.QueryDb.Overwrite, None)
+              save(. id, state, ReventlessQueryDb.Overwrite, None)
             | Delete(state) =>
               delete(.
                 id,
@@ -142,7 +145,7 @@ module Make =
               action->handleAction
               |> then_(
                    fun
-                   | Error(Reventless.QueryDb.StaleState) => {
+                   | Error(ReventlessQueryDb.StaleState) => {
                        Js.log(
                          "ReadModel.handleActions: retrying due to StaleState",
                        );

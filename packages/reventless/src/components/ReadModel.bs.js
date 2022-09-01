@@ -174,8 +174,14 @@ function Make(Config) {
     });
 }
 
+var ReventlessQueryDb = 0;
+
+var ReventlessView = 0;
+
 var componentType = /* ReadModel */12;
 
+exports.ReventlessQueryDb = ReventlessQueryDb;
+exports.ReventlessView = ReventlessView;
 exports.componentType = componentType;
 exports.Make = Make;
 /* ./Component Not a pure module */

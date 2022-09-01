@@ -1,6 +1,8 @@
 open ReventlessSpec.Adapter;
 open Belt.Result;
 
+module ReventlessCommandTopic = CommandTopic;
+
 let componentType = ComponentType.Aggregate;
 
 type outputs = {
@@ -150,7 +152,7 @@ module Make =
       (
         topicItems:
           array(
-            Reventless.CommandTopic.topicItem(
+            ReventlessCommandTopic.topicItem(
               Message.command'(Spec.Id.t, Spec.command),
             ),
           ),

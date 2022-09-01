@@ -1,5 +1,8 @@
 open ReventlessSpec.Adapter;
 
+module ReventlessCommandTopic = CommandTopic;
+module ReventlessEventTopic = EventTopic;
+
 let componentType = ComponentType.ExtensionPoint;
 
 type outputs = {
@@ -93,8 +96,8 @@ module Make =
       ~aggregateNames: array(string),
       ~outgoingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
                              Js.Promise.t(unit),
-      ~commandTopic: Reventless.CommandTopic.outputs,
-      ~eventTopic: Reventless.EventTopic.outputs
+      ~commandTopic: ReventlessCommandTopic.outputs,
+      ~eventTopic: ReventlessEventTopic.outputs
     ) =>
     outputs =
     "";
@@ -159,7 +162,7 @@ module Make =
 
     let commandTopic:
       ref(
-        option(Component.t(CommandTopic.t, Reventless.CommandTopic.outputs)),
+        option(Component.t(CommandTopic.t, ReventlessCommandTopic.outputs)),
       ) =
       ref(None);
 

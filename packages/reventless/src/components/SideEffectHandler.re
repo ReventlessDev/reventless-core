@@ -1,5 +1,7 @@
 open ReventlessSpec.Adapter;
 
+module ReventlessEventCollector = EventCollector;
+
 let componentType = ComponentType.SideEffectHandler;
 
 type outputs = {
@@ -54,7 +56,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
 
   [@bs.obj]
   external makeOutputs:
-    (~name: string, ~eventCollector: Reventless.EventCollector.outputs) =>
+    (~name: string, ~eventCollector: ReventlessEventCollector.outputs) =>
     outputs =
     "";
   [@bs.send]
@@ -70,11 +72,11 @@ module Make = (EventCollector: EventCollector.T) : T => {
 
   [@bs.set]
   external setEnqueueEvent:
-    (Component.t(t, outputs), Reventless.EventCollector.enqueueEvent) => unit =
+    (Component.t(t, outputs), ReventlessEventCollector.enqueueEvent) => unit =
     "enqueueEvent";
   [@bs.get]
   external enqueueEvent:
-    Component.t(t, outputs) => Reventless.EventCollector.enqueueEvent =
+    Component.t(t, outputs) => ReventlessEventCollector.enqueueEvent =
     "enqueueEvent";
 
   [@bs.set]

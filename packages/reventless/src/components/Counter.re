@@ -262,7 +262,7 @@ module Make =
               countItems->logCountItems;
               Js.Promise.resolve();
             }
-          | Error(Reventless.QueryDb.NotSavedToStorage(err)) => {
+          | Error(QueryDb.NotSavedToStorage(err)) => {
               let batchSize = countItems->Belt.Array.size;
               Js.log(
                 {j|Counter error: couldn't save batch of $batchSize reference(s):|j},
@@ -327,7 +327,12 @@ module Make =
                   __MODULE__
                   ++ {j|.counterHandler: counted down $name($id) to $count|j},
                 );
-                let meta = Message.generateMeta(~service=Source.name, ~user="Counter", ());
+                let meta =
+                  Message.generateMeta(
+                    ~service=Source.name,
+                    ~user="Counter",
+                    (),
+                  );
                 Some(
                   [|
                     ("id", counterId->Js.Json.string),

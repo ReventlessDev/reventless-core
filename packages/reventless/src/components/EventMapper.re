@@ -1,5 +1,7 @@
 open ReventlessSpec.Adapter;
 
+module ReventlessEventCollector = EventCollector;
+
 let componentType = ComponentType.EventMapper;
 
 type outputs = {
@@ -60,7 +62,7 @@ module Make =
   external makeOutputs:
     (
       ~name: string,
-      ~eventCollector: Reventless.EventCollector.outputs,
+      ~eventCollector: ReventlessEventCollector.outputs,
       ~counter: option(Counter.outputs)
     ) =>
     outputs =

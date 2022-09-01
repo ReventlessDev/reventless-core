@@ -316,8 +316,11 @@ function Make(Config) {
     });
 }
 
+var ReventlessCommandTopic = 0;
+
 var componentType = /* Aggregate */0;
 
+exports.ReventlessCommandTopic = ReventlessCommandTopic;
 exports.componentType = componentType;
 exports.Make = Make;
 /* ./Component Not a pure module */

@@ -155,8 +155,14 @@ function Make(Spec) {
     });
 }
 
+var ReventlessCommandTopic = 0;
+
+var ReventlessEventTopic = 0;
+
 var componentType = /* ExtensionPoint */9;
 
+exports.ReventlessCommandTopic = ReventlessCommandTopic;
+exports.ReventlessEventTopic = ReventlessEventTopic;
 exports.componentType = componentType;
 exports.Make = Make;
 /* SQS-AwsSdk Not a pure module */
