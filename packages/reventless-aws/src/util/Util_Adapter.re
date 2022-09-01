@@ -12,7 +12,7 @@ let getBy:
         )
     );
 
-type resources = array((string, ReventlessSpec.Adapter.resource));
+type resources = array((string, Reventless.Adapter.unwrappedResource));
 
 let partitionSupportedResources:
   (Js.Dict.t(Reventless.EventTopic.outputs), array(string)) =>
@@ -48,42 +48,20 @@ let partitionSupportedResources:
             );
         (
           supported->Belt.Array.map(((name, resource)) =>
-            (name, resource->Belt.Option.getExn)
+            (
+              name,
+              resource
+              ->Belt.Option.getExn
+              ->Reventless.AdapterDeploytime.unsafeUnwrapResource // Outputs are unwrapped within Pulumi.Output.all
+            )
           ),
           unsupported->Belt.Array.map(((name, _)) => name),
         );
       });
   };
 
-let partitionResourcesByService:
-  (resources, string) =>
-  (Pulumi.Output.t(resources), Pulumi.Output.t(resources)) =
-  (resources, service) => {
-    let (resources, supportedOutputs) =
-      resources
-      ->Belt.Array.map(((name, resource)) =>
-          (
-            (name, resource),
-            resource##service->Pulumi.Output.apply(s => s == service),
-          )
-        )
-      ->Belt.Array.unzip;
-
-    let x =
-      supportedOutputs
-      ->Pulumi.Output.all
-      ->Pulumi.Output.apply(supported => {
-          let (supported, unsupported) =
-            resources
-            ->Belt.Array.zip(supported)
-            ->Belt.Array.partition(((_, supported)) => supported);
-          (
-            supported->Belt.Array.unzip->fst,
-            unsupported->Belt.Array.unzip->fst,
-          );
-        });
-    (
-      x->Pulumi.Output.apply(y => y->fst),
-      x->Pulumi.Output.apply(y => y->snd),
+let partitionResourcesByService: (resources, string) => (resources, resources) =
+  (resources, service) =>
+    resources->Belt.Array.partition(((_, resource)) =>
+      resource##service == service
     );
-  };

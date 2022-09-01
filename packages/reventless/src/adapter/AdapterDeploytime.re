@@ -1,19 +1,19 @@
 open ReventlessSpec.Adapter;
 open Adapter;
 
-let straightToResource: straightResource => resource =
-  straightResource =>
+let unwrappedToResource: unwrappedResource => resource =
+  unwrappedResource =>
     resource(
-      ~service=straightResource##service->Pulumi.Output.make,
-      ~name=straightResource##name->Pulumi.Output.make,
-      ~id=straightResource##id->Pulumi.Output.make,
-      ~urn=straightResource##urn->Pulumi.Output.make,
-      ~info=straightResource##info->Pulumi.Output.make,
+      ~service=unwrappedResource##service->Pulumi.Output.make,
+      ~name=unwrappedResource##name->Pulumi.Output.make,
+      ~id=unwrappedResource##id->Pulumi.Output.make,
+      ~urn=unwrappedResource##urn->Pulumi.Output.make,
+      ~info=unwrappedResource##info->Pulumi.Output.make,
     );
 
-external unsafeResourceToStraight: resource => straightResource = "%identity";
+external unsafeUnwrapResource: resource => unwrappedResource = "%identity";
 
 let stackRefResourceToResource = stackRefResource =>
   stackRefResource
-  ->unsafeResourceToStraight // StackReference outputs are not wrapped in Pulumi.Outputs !
-  ->straightToResource;
+  ->unsafeUnwrapResource // StackReference outputs are not wrapped in Pulumi.Outputs !
+  ->unwrappedToResource;

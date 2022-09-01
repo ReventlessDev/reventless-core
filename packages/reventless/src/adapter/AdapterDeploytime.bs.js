@@ -3,18 +3,18 @@
 
 var Pulumi = require("@pulumi/pulumi");
 
-function straightToResource(straightResource) {
+function unwrappedToResource(unwrappedResource) {
   return {
-          service: Pulumi.output(straightResource.service),
-          name: Pulumi.output(straightResource.name),
-          id: Pulumi.output(straightResource.id),
-          urn: Pulumi.output(straightResource.urn),
-          info: Pulumi.output(straightResource.info)
+          service: Pulumi.output(unwrappedResource.service),
+          name: Pulumi.output(unwrappedResource.name),
+          id: Pulumi.output(unwrappedResource.id),
+          urn: Pulumi.output(unwrappedResource.urn),
+          info: Pulumi.output(unwrappedResource.info)
         };
 }
 
-var stackRefResourceToResource = straightToResource;
+var stackRefResourceToResource = unwrappedToResource;
 
-exports.straightToResource = straightToResource;
+exports.unwrappedToResource = unwrappedToResource;
 exports.stackRefResourceToResource = stackRefResourceToResource;
 /* @pulumi/pulumi Not a pure module */

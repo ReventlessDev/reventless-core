@@ -59,36 +59,9 @@ function partitionSupportedResources(adapters, supportedServices) {
 }
 
 function partitionResourcesByService(resources, service) {
-  var match = Belt_Array.unzip(Belt_Array.map(resources, (function (param) {
-              var resource = param[1];
-              return /* tuple */[
-                      /* tuple */[
-                        param[0],
-                        resource
-                      ],
-                      resource.service.apply((function (s) {
-                              return s === service;
-                            }))
-                    ];
-            })));
-  var resources$1 = match[0];
-  var x = Pulumi.all(match[1]).apply((function (supported) {
-          var match = Belt_Array.partition(Belt_Array.zip(resources$1, supported), (function (param) {
-                  return param[1];
-                }));
-          return /* tuple */[
-                  Belt_Array.unzip(match[0])[0],
-                  Belt_Array.unzip(match[1])[0]
-                ];
-        }));
-  return /* tuple */[
-          x.apply((function (y) {
-                  return y[0];
-                })),
-          x.apply((function (y) {
-                  return y[1];
-                }))
-        ];
+  return Belt_Array.partition(resources, (function (param) {
+                return param[1].service === service;
+              }));
 }
 
 exports.getBy = getBy;

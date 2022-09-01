@@ -22,7 +22,7 @@ let outputToResource = resourceOutput =>
       resourceOutput->Pulumi.Output.flatMap(resource => resource##service),
   );
 
-type straightResource = {
+type unwrappedResource = {
   .
   "name": string,
   "id": string,
@@ -31,12 +31,12 @@ type straightResource = {
   "service": string,
 };
 
-let straightOutputToResource: Pulumi.Output.t(straightResource) => resource =
-  straightResource =>
+let unwrappedOutputToResource: Pulumi.Output.t(unwrappedResource) => resource =
+  unwrappedResource =>
     resource(
-      ~service=straightResource->Pulumi.Output.apply(r => r##service),
-      ~name=straightResource->Pulumi.Output.apply(r => r##name),
-      ~id=straightResource->Pulumi.Output.apply(r => r##id),
-      ~urn=straightResource->Pulumi.Output.apply(r => r##urn),
-      ~info=straightResource->Pulumi.Output.apply(r => r##info),
+      ~service=unwrappedResource->Pulumi.Output.apply(r => r##service),
+      ~name=unwrappedResource->Pulumi.Output.apply(r => r##name),
+      ~id=unwrappedResource->Pulumi.Output.apply(r => r##id),
+      ~urn=unwrappedResource->Pulumi.Output.apply(r => r##urn),
+      ~info=unwrappedResource->Pulumi.Output.apply(r => r##info),
     );

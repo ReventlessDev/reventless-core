@@ -10,6 +10,7 @@ var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var Util_Adapter$ReventlessAws = require("../../util/Util_Adapter.bs.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.bs.js");
+var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.bs.js");
 var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./EventCollectorConnector_DynamoDbStream_Runtime.bs.js");
@@ -38,7 +39,7 @@ function make(name, eventTopics, policies, handleEvents, memorySize, timeout, op
         ]).apply((function (param) {
           var errorResources = param[1];
           Belt_Array.map(param[0], (function (param) {
-                  return Util_EventSourceMapping$ReventlessAws.subscribe(25, eventHandlerLambda, name, param[0], param[1], opts, /* () */0);
+                  return Util_EventSourceMapping$ReventlessAws.subscribe(25, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts, /* () */0);
                 }));
           if (errorResources.length !== 0) {
             var eventTopicNames = errorResources.join(",");
