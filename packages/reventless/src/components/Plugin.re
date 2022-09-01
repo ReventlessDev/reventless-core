@@ -241,7 +241,7 @@ module Make =
 
           let corePluginCommandTopicResource =
             corePluginExtensionPoint##commandTopic##resources[0] // FIXME: hardcoded resource
-            ->Adapter.stackRefResourceToResource;
+            ->AdapterDeploytime.stackRefResourceToResource;
           let corePluginCommandTopicId = corePluginCommandTopicResource##id;
 
           resources->Util.ExtensionPoint.setCommandTopicConnectorResource(
@@ -251,7 +251,7 @@ module Make =
 
           let corePluginEventTopicResource =
             corePluginExtensionPoint##eventTopic##resources[0] // FIXME
-            ->Adapter.stackRefResourceToResource;
+            ->AdapterDeploytime.stackRefResourceToResource;
           resources->Util.ExtensionPoint.setEventTopicPublisherResource(
             corePluginEventTopicResource,
             ReventlessSpec.PluginExtensionPointSpec.name,
@@ -834,7 +834,9 @@ module Make =
             {
               "resources":
                 corePluginExtensionPoint##eventTopic##resources
-                ->Belt.Array.map(Adapter.stackRefResourceToResource),
+                ->Belt.Array.map(
+                    AdapterDeploytime.stackRefResourceToResource,
+                  ),
             },
           );
 

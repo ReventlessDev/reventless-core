@@ -66,15 +66,28 @@ function partitionResourcesByService(resources, service) {
                         param[0],
                         resource
                       ],
-                      resource.service === service
+                      resource.service.apply((function (s) {
+                              return s === service;
+                            }))
                     ];
             })));
-  var match$1 = Belt_Array.partition(Belt_Array.zip(match[0], match[1]), (function (param) {
-          return param[1];
+  var resources$1 = match[0];
+  var x = Pulumi.all(match[1]).apply((function (supported) {
+          var match = Belt_Array.partition(Belt_Array.zip(resources$1, supported), (function (param) {
+                  return param[1];
+                }));
+          return /* tuple */[
+                  Belt_Array.unzip(match[0])[0],
+                  Belt_Array.unzip(match[1])[0]
+                ];
         }));
   return /* tuple */[
-          Belt_Array.unzip(match$1[0])[0],
-          Belt_Array.unzip(match$1[1])[0]
+          x.apply((function (y) {
+                  return y[0];
+                })),
+          x.apply((function (y) {
+                  return y[1];
+                }))
         ];
 }
 

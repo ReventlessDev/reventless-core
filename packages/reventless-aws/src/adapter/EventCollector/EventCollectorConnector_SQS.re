@@ -91,25 +91,29 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
               Util_SNS.service,
             );
           let _snsTopicSubscriptions =
-            snsResources->Belt.Array.map(((sourceName, topic)) =>
-              Util_SQS.subscribeToSnsTopic(
-                ~queue,
-                ~targetName=name,
-                ~sourceName,
-                ~topic=topic->Reventless.Adapter.toResource,
-                ~opts,
+            snsResources->Pulumi.Output.apply(snsResources =>
+              snsResources->Belt.Array.map(((sourceName, topic)) =>
+                Util_SQS.subscribeToSnsTopic(
+                  ~queue,
+                  ~targetName=name,
+                  ~sourceName,
+                  ~topic,
+                  ~opts,
+                )
               )
             );
 
           let _eventSourceMappings =
-            otherResources->Belt.Array.map(((sourceName, source)) =>
-              Util_EventSourceMapping.subscribe(
-                ~lambda=eventHandlerLambda,
-                ~targetName=name,
-                ~sourceName,
-                ~source=source->Reventless.Adapter.toResource,
-                ~opts,
-                (),
+            otherResources->Pulumi.Output.apply(otherResources =>
+              otherResources->Belt.Array.map(((sourceName, source)) =>
+                Util_EventSourceMapping.subscribe(
+                  ~lambda=eventHandlerLambda,
+                  ~targetName=name,
+                  ~sourceName,
+                  ~source,
+                  ~opts,
+                  (),
+                )
               )
             );
 

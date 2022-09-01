@@ -12,12 +12,11 @@ let getBy:
         )
     );
 
-type straightResources =
-  array((string, Reventless.Adapter.straightResource));
+type resources = array((string, ReventlessSpec.Adapter.resource));
 
 let partitionSupportedResources:
   (Js.Dict.t(Reventless.EventTopic.outputs), array(string)) =>
-  Pulumi.Output.t((straightResources, array(string))) =
+  Pulumi.Output.t((resources, array(string))) =
   (adapters, supportedServices) => {
     let (names, resourceOutputs) =
       adapters
@@ -49,25 +48,42 @@ let partitionSupportedResources:
             );
         (
           supported->Belt.Array.map(((name, resource)) =>
-            (name, resource->Obj.magic->Belt.Option.getExn)
+            (name, resource->Belt.Option.getExn)
           ),
           unsupported->Belt.Array.map(((name, _)) => name),
         );
       });
   };
 
-let partitionResourcesByService =
-    (resources: straightResources, service: string) => {
-  let (resources, supported) =
-    resources
-    ->Belt.Array.map(((name, resource)) =>
-        ((name, resource), resource##service == service)
-      )
-    ->Belt.Array.unzip;
+let partitionResourcesByService:
+  (resources, string) =>
+  (Pulumi.Output.t(resources), Pulumi.Output.t(resources)) =
+  (resources, service) => {
+    let (resources, supportedOutputs) =
+      resources
+      ->Belt.Array.map(((name, resource)) =>
+          (
+            (name, resource),
+            resource##service->Pulumi.Output.apply(s => s == service),
+          )
+        )
+      ->Belt.Array.unzip;
 
-  let (supported, unsupported) =
-    resources
-    ->Belt.Array.zip(supported)
-    ->Belt.Array.partition(((_, supported)) => supported);
-  (supported->Belt.Array.unzip->fst, unsupported->Belt.Array.unzip->fst);
-};
+    let x =
+      supportedOutputs
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(supported => {
+          let (supported, unsupported) =
+            resources
+            ->Belt.Array.zip(supported)
+            ->Belt.Array.partition(((_, supported)) => supported);
+          (
+            supported->Belt.Array.unzip->fst,
+            unsupported->Belt.Array.unzip->fst,
+          );
+        });
+    (
+      x->Pulumi.Output.apply(y => y->fst),
+      x->Pulumi.Output.apply(y => y->snd),
+    );
+  };

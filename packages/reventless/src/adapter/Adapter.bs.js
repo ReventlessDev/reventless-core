@@ -23,19 +23,26 @@ function outputToResource(resourceOutput) {
         };
 }
 
-function toResource(straightResource) {
+function straightOutputToResource(straightResource) {
   return {
-          service: straightResource.service,
-          name: straightResource.name,
-          id: straightResource.id,
-          urn: straightResource.urn,
-          info: straightResource.info
+          service: straightResource.apply((function (r) {
+                  return r.service;
+                })),
+          name: straightResource.apply((function (r) {
+                  return r.name;
+                })),
+          id: straightResource.apply((function (r) {
+                  return r.id;
+                })),
+          urn: straightResource.apply((function (r) {
+                  return r.urn;
+                })),
+          info: straightResource.apply((function (r) {
+                  return r.info;
+                }))
         };
 }
 
-var stackRefResourceToResource = toResource;
-
 exports.outputToResource = outputToResource;
-exports.toResource = toResource;
-exports.stackRefResourceToResource = stackRefResourceToResource;
+exports.straightOutputToResource = straightOutputToResource;
 /* No side effect */

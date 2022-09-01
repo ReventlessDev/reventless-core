@@ -15,7 +15,6 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var AWS$Reventless = require("../util/AWS.bs.js");
 var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
-var Adapter$Reventless = require("../adapter/Adapter.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var Extension$Reventless = require("./Extension.bs.js");
@@ -27,6 +26,7 @@ var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("./EventCollector.bs.js");
 var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 var ExtensionMapping$Reventless = require("../ExtensionMapping.bs.js");
+var AdapterDeploytime$Reventless = require("../adapter/AdapterDeploytime.bs.js");
 var Util_ExtensionPoint$Reventless = require("../util/Util_ExtensionPoint.bs.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.bs.js");
 var ResourceQueryDeploytime$Reventless = require("../util/ResourceQueryDeploytime.bs.js");
@@ -87,10 +87,10 @@ function Make(EventCollectorAdapter) {
             Interstack$Reventless.coreStackOutput !== undefined ? Caml_option.valFromOption(Interstack$Reventless.coreStackOutput) : Js_exn.raiseError("No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!")
           ).apply((function (coreStackOutput) {
                 var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(Belt_Option.getExn(coreStackOutput.extensionPoints), PluginExtensionPointSpec$ReventlessSpec.name);
-                var corePluginCommandTopicResource = Adapter$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.commandTopic.resources, 0));
+                var corePluginCommandTopicResource = AdapterDeploytime$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.commandTopic.resources, 0));
                 var corePluginCommandTopicId = corePluginCommandTopicResource.id;
                 Util_ExtensionPoint$Reventless.setCommandTopicConnectorResource(resources, corePluginCommandTopicResource, PluginExtensionPointSpec$ReventlessSpec.name);
-                var corePluginEventTopicResource = Adapter$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.eventTopic.resources, 0));
+                var corePluginEventTopicResource = AdapterDeploytime$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.eventTopic.resources, 0));
                 Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, corePluginEventTopicResource, PluginExtensionPointSpec$ReventlessSpec.name);
                 var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
                         return Curry._5(ExtensionPoint.make, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
@@ -437,7 +437,7 @@ function Make(EventCollectorAdapter) {
                 var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorAdapter);
                 var eventTopics = Util_Aggregate$Reventless.findEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
                 eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
-                  resources: Belt_Array.map(corePluginExtensionPoint.eventTopic.resources, Adapter$Reventless.stackRefResourceToResource)
+                  resources: Belt_Array.map(corePluginExtensionPoint.eventTopic.resources, AdapterDeploytime$Reventless.stackRefResourceToResource)
                 };
                 var eventCollector = Curry._7(EventCollector.make, ComponentType$Reventless.name(name, /* Plugin */2), eventTopics, eventsHandler, undefined, undefined, Caml_option.some(opts), /* () */0);
                 var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);

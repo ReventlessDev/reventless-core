@@ -30,7 +30,7 @@ let getStorageResource = (resources, pluginName, name) =>
               ->Belt.Option.map(readModel => readModel##queryDb##resources[0])
               ->Belt.Option.getExn
             );
-        queryDb->Adapter.outputToResource;
+        queryDb->Adapter.straightOutputToResource;
       })
   };
 

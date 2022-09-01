@@ -30,7 +30,7 @@ function setStorageResource(resources, resource, name) {
 function getStorageResource(resources, pluginName, name) {
   if (pluginName !== undefined) {
     return Belt_Option.map(Util_StackRefs$Reventless.get(pluginName), (function (stackRef) {
-                  return Adapter$Reventless.outputToResource(stackRef.requireOutput("plugin").apply((function (plugin) {
+                  return Adapter$Reventless.straightOutputToResource(stackRef.requireOutput("plugin").apply((function (plugin) {
                                     return Belt_Option.getExn(Belt_Option.map(Belt_Option.flatMap(plugin.readModels, (function (readModels) {
                                                           return Js_dict.get(readModels, name);
                                                         })), (function (readModel) {

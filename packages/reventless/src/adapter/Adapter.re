@@ -31,17 +31,12 @@ type straightResource = {
   "service": string,
 };
 
-let toResource: straightResource => resource =
+let straightOutputToResource: Pulumi.Output.t(straightResource) => resource =
   straightResource =>
     resource(
-      ~service=straightResource##service->Obj.magic,
-      ~name=straightResource##name->Obj.magic,
-      ~id=straightResource##id->Obj.magic,
-      ~urn=straightResource##urn->Obj.magic,
-      ~info=straightResource##info->Obj.magic,
+      ~service=straightResource->Pulumi.Output.apply(r => r##service),
+      ~name=straightResource->Pulumi.Output.apply(r => r##name),
+      ~id=straightResource->Pulumi.Output.apply(r => r##id),
+      ~urn=straightResource->Pulumi.Output.apply(r => r##urn),
+      ~info=straightResource->Pulumi.Output.apply(r => r##info),
     );
-
-let stackRefResourceToResource = stackRefResource =>
-  stackRefResource
-  ->Obj.magic // StackReference outputs are not wrapped in Pulumi.Outputs !
-  ->toResource;

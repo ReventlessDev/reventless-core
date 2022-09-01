@@ -96,25 +96,29 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
             );
 
           let _snsFifoTopicSubscriptions =
-            snsFifoResources->Belt.Array.map(((sourceName, topic)) =>
-              Util_SQS.subscribeToSnsTopic(
-                ~queue,
-                ~targetName=name,
-                ~sourceName,
-                ~topic=topic->Reventless.Adapter.toResource,
-                ~opts,
+            snsFifoResources->Pulumi.Output.apply(snsFifoResources =>
+              snsFifoResources->Belt.Array.map(((sourceName, topic)) =>
+                Util_SQS.subscribeToSnsTopic(
+                  ~queue,
+                  ~targetName=name,
+                  ~sourceName,
+                  ~topic,
+                  ~opts,
+                )
               )
             );
 
           let _eventSourceMappings =
-            otherResources->Belt.Array.map(((sourceName, source)) =>
-              Util_EventSourceMapping.subscribe(
-                ~lambda=eventHandlerLambda,
-                ~targetName=name,
-                ~sourceName,
-                ~source=source->Reventless.Adapter.toResource,
-                ~opts,
-                (),
+            otherResources->Pulumi.Output.apply(otherResources =>
+              otherResources->Belt.Array.map(((sourceName, source)) =>
+                Util_EventSourceMapping.subscribe(
+                  ~lambda=eventHandlerLambda,
+                  ~targetName=name,
+                  ~sourceName,
+                  ~source,
+                  ~opts,
+                  (),
+                )
               )
             );
 
