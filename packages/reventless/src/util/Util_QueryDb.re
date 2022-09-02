@@ -1,4 +1,4 @@
-let storage = "Storage";
+open Util_QueryDbRuntime;
 
 let setStorageResource = (resources, resource, name) =>
   resources->Resources.set(
@@ -9,13 +9,7 @@ let setStorageResource = (resources, resource, name) =>
 
 let getStorageResource = (resources, pluginName, name) =>
   switch (pluginName) {
-  | None =>
-    resources
-    ->Resources.getExn(
-        ~adapter=storage,
-        ~name=name->ComponentType.name(ComponentType.QueryDb),
-      )
-    ->Some
+  | None => getLocalStorageResource(resources, name)->Some
   | Some(pluginName) =>
     Util_StackRefs.get(pluginName)
     ->Belt.Option.map(stackRef => {

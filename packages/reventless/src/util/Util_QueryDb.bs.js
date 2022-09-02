@@ -10,8 +10,7 @@ var Adapter$Reventless = require("../adapter/Adapter.bs.js");
 var Resources$Reventless = require("../adapter/Resources.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var Util_StackRefs$Reventless = require("./Util_StackRefs.bs.js");
-
-var storage = "Storage";
+var Util_QueryDbRuntime$Reventless = require("./Util_QueryDbRuntime.bs.js");
 
 function setStorageResource(resources, resource, name) {
   return Curry._1((function (param) {
@@ -24,7 +23,7 @@ function setStorageResource(resources, resource, name) {
                             return Curry._2(func$1, param, resources);
                           });
                       });
-                  })(storage)(ComponentType$Reventless.name(name, /* QueryDb */11)), resource);
+                  })(Util_QueryDbRuntime$Reventless.storage)(ComponentType$Reventless.name(name, /* QueryDb */11)), resource);
 }
 
 function getStorageResource(resources, pluginName, name) {
@@ -39,13 +38,7 @@ function getStorageResource(resources, pluginName, name) {
                                   })));
                 }));
   } else {
-    return Caml_option.some((function (param) {
-                      return (function (param$1) {
-                          var param$2 = param$1;
-                          var param$3 = resources;
-                          return Resources$Reventless.getExn(param, param$2, param$3);
-                        });
-                    })(storage)(ComponentType$Reventless.name(name, /* QueryDb */11)));
+    return Caml_option.some(Util_QueryDbRuntime$Reventless.getLocalStorageResource(resources, name));
   }
 }
 
@@ -60,10 +53,9 @@ function filterQueryDbStorages(resources, keep) {
                             return Curry._2(func$1, param, resources);
                           });
                       });
-                  })(ComponentType$Reventless.toName(/* QueryDb */11))(storage), keep);
+                  })(ComponentType$Reventless.toName(/* QueryDb */11))(Util_QueryDbRuntime$Reventless.storage), keep);
 }
 
-exports.storage = storage;
 exports.setStorageResource = setStorageResource;
 exports.getStorageResource = getStorageResource;
 exports.filterQueryDbStorages = filterQueryDbStorages;

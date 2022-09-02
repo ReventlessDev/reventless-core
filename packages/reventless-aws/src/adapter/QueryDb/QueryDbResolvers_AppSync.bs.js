@@ -6,13 +6,13 @@ var $$String = require("bs-platform/lib/js/string.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
-var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Util_QueryDb$Reventless = require("@reventless/reventless/src/util/Util_QueryDb.bs.js");
 var AppSync_Function$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Function.bs.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.bs.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.bs.js");
 var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_DataSource.bs.js");
+var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.bs.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
 
 function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdConfigs, resolveIdsConfigs, opts) {
@@ -28,7 +28,7 @@ function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdC
             if (authorization !== undefined) {
               var match = authorization;
               var group = match[/* group */1];
-              var authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$2 + "Auth", api, Belt_Option.getExn(Util_QueryDb$Reventless.getStorageResource(resources, undefined, match[/* tableName */0])).name, apiRole, Caml_option.some(opts), /* () */0);
+              var authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$2 + "Auth", api, Util_QueryDbRuntime$Reventless.getLocalStorageResource(resources, match[/* tableName */0]).name, apiRole, Caml_option.some(opts), /* () */0);
               var authFunction = AppSync_Function$PulumiAws.make(name$2 + "Auth", api, authDataSource.name, AppSync_Resolver_Templates$PulumiAws.authorizeIndexedAccessRequest(index, group), AppSync_Resolver_Templates$PulumiAws.authorizeIndexedAccessResponse(group), Caml_option.some(opts), /* () */0);
               var queryFunction = AppSync_Function$PulumiAws.make(name$2, api, dataSourceName, AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index), AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), /* () */0);
               return AppSync_Resolver$PulumiAws.make(name$2, api, undefined, "Query", $$String.uncapitalize(name$2), "{}", AppSync_Resolver_Templates$PulumiAws.result, /* Pipeline */[/* array */[

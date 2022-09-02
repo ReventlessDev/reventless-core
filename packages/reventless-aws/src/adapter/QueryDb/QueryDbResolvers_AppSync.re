@@ -88,9 +88,9 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~name=name ++ "Auth",
                   ~api,
                   ~tableName=
-                    resources
-                    ->Util_QueryDb.getStorageResource(None, tableName)
-                    ->Belt.Option.getExn##name,
+                    resources->Util_QueryDbRuntime.getLocalStorageResource(
+                      tableName,
+                    )##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),

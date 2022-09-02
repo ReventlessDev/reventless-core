@@ -137,17 +137,13 @@ let make: QueryDb.Adapter.queryEngineMaker =
     scan: (~viewName) =>
       scanByTableName(
         ~tableName=
-          resources
-          ->Util_QueryDb.getStorageResource(None, viewName)
-          ->Belt.Option.getExn##name
+          resources->Util_QueryDbRuntime.getLocalStorageResource(viewName)##name
           ->OutputFailsafeRuntime.get,
       ),
     query: (~viewName) =>
       queryByTableName(
         ~tableName=
-          resources
-          ->Util_QueryDb.getStorageResource(None, viewName)
-          ->Belt.Option.getExn##name
+          resources->Util_QueryDbRuntime.getLocalStorageResource(viewName)##name
           ->OutputFailsafeRuntime.get,
       ),
   };
