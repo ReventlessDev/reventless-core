@@ -2,11 +2,13 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
+var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.bs.js");
 
 function append(table) {
   return (function (_sequenceNr, _id, jsons) {
-      return DynamoDb_DocumentClient$AwsSdk.putMany(table.name.get(), "attribute_not_exists (sequenceNr)", jsons).then((function (param) {
+      return Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(jsons, Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name.get()), 3).then((function (param) {
                       return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
                     })).catch((function (param) {
                     return Promise.resolve(/* Error */Block.__(1, ["AwsSdk.DynamoDb.DocumentClient.putMany failed !"]));
