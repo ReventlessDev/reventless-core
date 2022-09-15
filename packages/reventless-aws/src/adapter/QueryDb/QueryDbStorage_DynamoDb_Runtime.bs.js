@@ -2,16 +2,12 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
-var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
-var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
-var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
+var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.bs.js");
 
 function load(table) {
   return (function (id) {
@@ -25,32 +21,11 @@ function load(table) {
     });
 }
 
-function calcPurgeTime(ttl) {
-  var now_ms = Message$Reventless.now(/* () */0);
-  var now_s = now_ms / 1000.0;
-  var now_s_rounded = now_s | 0;
-  return now_s_rounded + ttl | 0;
-}
-
-var purgeTimeAttributeName = "reventlessPurgeTime";
-
-function insertTtl(json, ttl) {
-  return Belt_Option.getWithDefault(Belt_Option.flatMap(ttl, (function (ttl) {
-                    return Curry._1(Belt_Option.mapWithDefault(Js_json.decodeObject(json), (function (param) {
-                                      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws.insertTtl: Error: Couldn't decode JSON", JSON.stringify(json));
-                                      return ;
-                                    }), (function (obj, param) {
-                                      obj[purgeTimeAttributeName] = calcPurgeTime(ttl);
-                                      return Caml_option.some(obj);
-                                    })), /* () */0);
-                  })), json);
-}
-
 function save(table) {
   return (function (_id, json, saveMode, ttl) {
       var tableName = table.name.get();
       var stateStr = JSON.stringify(json);
-      var json$1 = insertTtl(json, ttl);
+      var json$1 = Util_DynamoDb_Runtime$ReventlessAws.insertTtl(json, ttl);
       if (saveMode) {
         return DynamoDb_DocumentClient$AwsSdk.putWithTableName(tableName, json$1).then((function (param) {
                         console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: saved Overwrite state to " + (String(tableName) + (": " + (String(stateStr) + "")))));
@@ -81,54 +56,11 @@ function save(table) {
 function saveBatch($staropt$star, table) {
   var maxRetries = $staropt$star !== undefined ? $staropt$star : 3;
   return (function (items) {
-      var tableName = table.name.get();
-      var batchWrite$prime = function (itemRequestMap) {
-        return DynamoDb_DocumentClient$AwsSdk.batchWrite({
-                    RequestItems: itemRequestMap,
-                    ReturnConsumedCapacity: "NONE",
-                    ReturnItemCollectionMetris: "NONE"
-                  });
-      };
-      var wrapWithCount = function (promise, count) {
-        return promise.then((function (pContent) {
-                      return Promise.resolve(/* tuple */[
-                                  pContent,
-                                  count
-                                ]);
-                    }));
-      };
-      var hasUnprocessedItems = function (writeOutput) {
-        return Object.keys(writeOutput.UnprocessedItems).length !== 0;
-      };
-      var retryIfNecessary = function (p) {
-        return p.then((function (originalPromiseContent) {
-                      var numberOfRetries = originalPromiseContent[1];
-                      var writeOutput = originalPromiseContent[0];
-                      var unprocessedItems = writeOutput.UnprocessedItems;
-                      var unprocessedItemsPresent = hasUnprocessedItems(writeOutput);
-                      var numberOfRetriesReached = numberOfRetries >= maxRetries;
-                      if (unprocessedItemsPresent && !numberOfRetriesReached) {
-                        return retryIfNecessary(wrapWithCount(batchWrite$prime(unprocessedItems), numberOfRetries + 1 | 0));
-                      } else {
-                        return Promise.resolve(originalPromiseContent);
-                      }
-                    }));
-      };
-      var writeRequests = Belt_Array.map(items, (function (param) {
-              var __x = {
-                Item: insertTtl(param[1], param[2])
-              };
-              return {
-                      PutRequest: __x
-                    };
-            }));
-      var batchWriteItemRequestMap = Js_dict.fromArray(/* array */[/* tuple */[
-              tableName,
-              writeRequests
-            ]]);
-      var __x = retryIfNecessary(wrapWithCount(batchWrite$prime(batchWriteItemRequestMap), 0));
+      var __x = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(items, (function (param) {
+                      return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
+                    })), table.name.get()), maxRetries);
       return __x.then((function (param) {
-                    if (hasUnprocessedItems(param[0])) {
+                    if (Util_DynamoDb_Runtime$ReventlessAws.hasUnprocessedItems(param[0])) {
                       Js_exn.raiseError("Still unprocessed items present after maxRetries(" + (String(maxRetries) + ")!"));
                     }
                     return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
@@ -181,11 +113,8 @@ function $$delete(table) {
 }
 
 exports.load = load;
-exports.calcPurgeTime = calcPurgeTime;
-exports.purgeTimeAttributeName = purgeTimeAttributeName;
-exports.insertTtl = insertTtl;
 exports.save = save;
 exports.saveBatch = saveBatch;
 exports.count = count;
 exports.$$delete = $$delete;
-/* Message-Reventless Not a pure module */
+/* DynamoDb_DocumentClient-AwsSdk Not a pure module */

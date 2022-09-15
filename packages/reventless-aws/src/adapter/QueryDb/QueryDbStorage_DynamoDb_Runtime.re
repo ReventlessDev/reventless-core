@@ -1,4 +1,5 @@
 open AwsSdk.DynamoDb.DocumentClient;
+open Util_DynamoDb_Runtime;
 open Belt.Result;
 open Js.Promise;
 open Reventless.QueryDb;
@@ -25,42 +26,6 @@ let load = table =>
          );
          Error(NotLoadedFromStorage(err->ofPromise##message))->resolve;
        });
-
-let calcPurgeTime = ttl => {
-  let now_ms = Reventless.Message.now();
-  let now_s = now_ms /. 1000.0;
-  let now_s_rounded = now_s->int_of_float;
-
-  (now_s_rounded + ttl)->float_of_int;
-};
-let purgeTimeAttributeName = "reventlessPurgeTime";
-
-let insertTtl = (json, ttl) =>
-  ttl
-  ->Belt.Option.flatMap(ttl =>
-      (
-        json
-        ->Js.Json.decodeObject
-        ->Belt.Option.mapWithDefault(
-            // TODO: extract mapWithSideEffect to Util module
-            () => {
-              Js.log2(
-                __MODULE__ ++ ".insertTtl: Error: Couldn't decode JSON",
-                json->Js.Json.stringify,
-              );
-              None;
-            },
-            (obj, _) => {
-              obj->Js.Dict.set(
-                purgeTimeAttributeName,
-                ttl->calcPurgeTime->Js.Json.number,
-              );
-              obj->Js.Json.object_->Some;
-            },
-          )
-      )()
-    )
-  ->Belt.Option.getWithDefault(json);
 
 let save = table =>
   (. _id, json, saveMode: saveMode, ttl) => {
@@ -124,56 +89,12 @@ let saveBatch:
   Js.Promise.t(Belt.Result.t(unit, storageError)) =
   (~maxRetries=3, table) =>
     (. items) => {
-      let tableName = table##name->Pulumi.Output.get;
-      let batchWrite' = itemRequestMap =>
-        batchWrite(
-          BatchWriteInput.make(
-            ~_RequestItems=itemRequestMap,
-            ~_ReturnConsumedCapacity=`NONE,
-            ~_ReturnItemCollectionMetris=`NONE,
-          ),
-        );
-
-      let wrapWithCount = (promise, count) =>
-        promise->then_(pContent => (pContent, count)->resolve, _);
-
-      let hasUnprocessedItems = writeOutput =>
-        writeOutput##_UnprocessedItems->Js.Dict.keys->Belt.Array.size > 0;
-
-      let rec retryIfNecessary:
-        Js.Promise.t((BatchWriteItemOutput.t, /*numberOfRetries*/ int)) =>
-        Js.Promise.t((BatchWriteItemOutput.t, /*numberOfRetries*/ int)) =
-        p => {
-          p->then_(
-               ((writeOutput, numberOfRetries) as originalPromiseContent) => {
-                 let unprocessedItems = writeOutput##_UnprocessedItems;
-                 let unprocessedItemsPresent =
-                   hasUnprocessedItems(writeOutput);
-                 let numberOfRetriesReached = numberOfRetries >= maxRetries;
-                 if (unprocessedItemsPresent && !numberOfRetriesReached) {
-                   batchWrite'(unprocessedItems)
-                   ->wrapWithCount(numberOfRetries + 1)
-                   ->retryIfNecessary;
-                 } else {
-                   resolve(originalPromiseContent);
-                 };
-               },
-               _,
-             );
-        };
-
-      let writeRequests =
-        items->Belt.Array.map(((_id, json, ttl)) =>
-          json
-          ->insertTtl(ttl)
-          ->WriteRequest.PutRequest.make(~_Item=_)
-          ->WriteRequest.make(~_PutRequest=_, ())
-        );
-      let batchWriteItemRequestMap =
-        Js.Dict.fromArray([|(tableName, writeRequests)|]);
-      batchWrite'(batchWriteItemRequestMap)
-      ->wrapWithCount(0)
-      ->retryIfNecessary
+      items
+      ->Belt.Array.map(((_id, json, ttl)) =>
+          json->insertTtl(ttl)->toPutRequest
+        )
+      ->toTable(table##name->Pulumi.Output.get)
+      ->batchWriteWithRetries(maxRetries)
       // don't catch any rejections to force retry in stream
       ->then_(
           ((batchWriteItemOutput, _numberOfRetries)) => {

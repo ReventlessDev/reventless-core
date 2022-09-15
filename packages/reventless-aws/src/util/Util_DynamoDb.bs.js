@@ -11,7 +11,6 @@ var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
-var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.bs.js");
 
 var service = "DynamoDb";
 
@@ -45,13 +44,15 @@ function arn2tableName(arn) {
   }
 }
 
+var purgeTimeAttributeName = "reventlessPurgeTime";
+
 function enableTtl(tableName) {
   console.log("" + (String("Util_DynamoDb-ReventlessAws") + (": enableTimeToLive for " + (String(tableName) + ""))));
   var __x = DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
         TableName: tableName,
         TimeToLiveSpecification: {
           Enabled: true,
-          AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+          AttributeName: purgeTimeAttributeName
         }
       });
   return __x.then((function (res) {
@@ -127,7 +128,7 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
   var ttl$1 = Belt_Option.map(ttl, (function (param) {
           return {
                   enabled: true,
-                  attributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+                  attributeName: purgeTimeAttributeName
                 };
         }));
   var restoreDateTime = process.env.RESTORE_DATE_TIME;
@@ -258,6 +259,7 @@ exports.service = service;
 exports.toInfo = toInfo;
 exports.toResource = toResource;
 exports.arn2tableName = arn2tableName;
+exports.purgeTimeAttributeName = purgeTimeAttributeName;
 exports.enableTtl = enableTtl;
 exports.verifyTtl = verifyTtl;
 exports.enablePointInTimeRecovery = enablePointInTimeRecovery;
