@@ -20,6 +20,8 @@ let keysFromResource = (resource: ReventlessSpec.Adapter.resource) =>
   | parts => (parts[0], Some(parts[1]))
   };
 
+let purgeTimeAttributeName = "reventlessPurgeTime";
+
 let calcPurgeTime = ttl => {
   let now_ms = Reventless.Message.now();
   let now_s = now_ms /. 1000.0;
@@ -44,7 +46,7 @@ let insertTtl = (json, ttl) =>
             },
             (obj, _) => {
               obj->Js.Dict.set(
-                Util_DynamoDb.purgeTimeAttributeName,
+                purgeTimeAttributeName,
                 ttl->calcPurgeTime->Js.Json.number,
               );
               obj->Js.Json.object_->Some;

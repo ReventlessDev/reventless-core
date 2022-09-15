@@ -9,7 +9,6 @@ var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
-var Util_DynamoDb$ReventlessAws = require("./Util_DynamoDb.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 
 function put(table, item) {
@@ -56,6 +55,8 @@ function keysFromResource(resource) {
         ];
 }
 
+var purgeTimeAttributeName = "reventlessPurgeTime";
+
 function calcPurgeTime(ttl) {
   var now_ms = Message$Reventless.now(/* () */0);
   var now_s = now_ms / 1000.0;
@@ -69,7 +70,7 @@ function insertTtl(json, ttl) {
                                       console.log("Util_DynamoDb_Runtime-ReventlessAws.insertTtl: Error: Couldn't decode JSON", JSON.stringify(json));
                                       return ;
                                     }), (function (obj, param) {
-                                      obj[Util_DynamoDb$ReventlessAws.purgeTimeAttributeName] = calcPurgeTime(ttl);
+                                      obj[purgeTimeAttributeName] = calcPurgeTime(ttl);
                                       return Caml_option.some(obj);
                                     })), /* () */0);
                   })), json);
@@ -135,6 +136,7 @@ exports.put = put;
 exports.$$delete = $$delete;
 exports.queryById = queryById;
 exports.keysFromResource = keysFromResource;
+exports.purgeTimeAttributeName = purgeTimeAttributeName;
 exports.calcPurgeTime = calcPurgeTime;
 exports.insertTtl = insertTtl;
 exports.batchWrite$prime = batchWrite$prime;

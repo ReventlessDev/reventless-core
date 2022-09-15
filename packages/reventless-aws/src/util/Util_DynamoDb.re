@@ -25,8 +25,6 @@ let arn2tableName = arn =>
 // Workaround when restore enabled: turn on ttl & pointInTimeRecovery again
 open PulumiAws.DynamoDb.Table;
 
-let purgeTimeAttributeName = "reventlessPurgeTime";
-
 let enableTtl: string => Js.Promise.t(PulumiAws.DynamoDb.Table.TableTtl.t) =
   tableName => {
     Js.log({j|$__MODULE__: enableTimeToLive for $tableName|j});
@@ -37,7 +35,7 @@ let enableTtl: string => Js.Promise.t(PulumiAws.DynamoDb.Table.TableTtl.t) =
           ~_TimeToLiveSpecification=
             TimeToLiveSpecification.make(
               ~_Enabled=true,
-              ~_AttributeName=purgeTimeAttributeName,
+              ~_AttributeName=Util_DynamoDb_Runtime.purgeTimeAttributeName,
             ),
         ),
       )
@@ -131,7 +129,7 @@ let makeTableArgs =
     ttl->Belt.Option.map(_ =>
       PulumiAws.DynamoDb.Table.Args.TableTtl.make(
         ~enabled=true,
-        ~attributeName=purgeTimeAttributeName,
+        ~attributeName=Util_DynamoDb_Runtime.purgeTimeAttributeName,
       )
       ->Pulumi.Input.wrap
     );
