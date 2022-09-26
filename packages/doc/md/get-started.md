@@ -37,7 +37,9 @@ graph LR
 
 ### ReadModel
 
-> TODO: add description
+A `ReadModel` is a queryable projection based on events per `Aggregate` id. It takes `event`s and persists a state calculated on the previous state and the incoming event to some storage.
+
+Usually a `ReadModel` doesn't have any outputs, although some infrastructure services may offer "lower level" data, which may be used in some provider specific `adapter`s.
 
 ```mermaid
 graph LR
@@ -55,7 +57,7 @@ graph LR
 
 ### EventMapper
 
-> TODO: add description
+One `EventMapper` maps `event`s of (potentially multiple `Aggregate`s) to `command`s for a single `Aggregate`. This is always needed if some occurrence in one `Aggregate` needs to trigger a reaction for another.
 
 ```mermaid
 graph LR
@@ -74,11 +76,16 @@ graph LR
 
 ### Task
 
-> TODO: add description
+`Task`s are the "escape-hatch" of the dogmatic command/event paradigm. They allow to implement logic loosely coupled to events (or even not at all). An example would be some calculation, which needs to be done in some specific interval.
 
-#### SideEffect
+Another intention of `Task`s is to interface with the outside world (e.g. other systems). An example of this would be up-/downloads or calling foreign APIs.
 
-> TODO: add description
+`Task`s may be implemented provider specific, since it's not possible to provide adapter for any possible scenario.
+
+#### SideEffectHandler
+
+A `SideEffectHandler` is similar to an `EventMapper`, but targeting `Task`s (and functions) outside of the command/event paradigm. For example: calling a foreign API everytime a specific `event` occurs.
+It takes `event`s of (potentially multiple) `Aggregate`s as input and calls functions dependent on the `event`.
 
 ```mermaid
 graph LR
@@ -97,13 +104,25 @@ graph LR
 - **in**: `event`s
 - **out**: -
 
-### Service
-
-> TODO: add content
-
 ### Plugin
 
-> TODO: add content
+A `Plugin` usually corresponds to a [`Bounded Context`](https://www.martinfowler.com/bliki/BoundedContext.html) in `DDD` (Domain Driven Design) as well to a single deployment unit. A `Plugin` is defined by it's configuration (name, version, etc) and it's child-components (`Aggregate`s, `ReadModel`s, `Task`s, etc)
+
+### ExtensionPoint
+
+`ExtensionPoint`s (together with their relatign `Extension`s) are the mechanics to share data between several `Plugin`s. The `ExtensionPoint`'s `Spec` defines the `event`s, which will be sent and the `command`s which will be received by it.
+
+#### ExtensionPointMapping
+An `ExtensionPointMapping` defines a `Plugin`s border. It maps `event`s from single `Aggregate`s to `event`s of the `ExtensionPoint`. These are totally different events (and therefore types), although they may seem similar. This is done to decouple outside dependencies from changes of the plugin and provide a simple interface to interact with.
+A `command` sent to the `ExtensionPoint` will be mapped to a specific `command` inside the plugin by this component.
+
+- **responsibility**: map plugin specific command & events to those of the `ExtensionPoint`
+- **in**: `Plugin` sepcific `event`s (from inside the `Plugin`) / `ExtensionPoint` command`s (from `Extension`s)
+- **out**: `ExtensionPoint` `event`s (to `Extension`s) / `Plugin` specific `command`s (to components inside the `Plugin`)
+
+### Extension
+
+> TODO
 
 ## Development Setup
 
