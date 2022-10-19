@@ -4,9 +4,9 @@
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
+var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
-var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
@@ -17,7 +17,6 @@ var Component$Reventless = require("./Component.bs.js");
 var EventTopic$Reventless = require("./EventTopic.bs.js");
 var CommandTopic$Reventless = require("./CommandTopic.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 
 function Make(Spec) {
   return (function (Mappings) {
@@ -54,7 +53,7 @@ function Make(Spec) {
                   return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$primeJson));
                 }
               };
-              var construct = function (scheduler, queryEngine, self, name, resources) {
+              var construct = function (publishJsonsFns, scheduler, queryEngine, self, name, resources) {
                 var opts = {
                   parent: self
                 };
@@ -72,13 +71,20 @@ function Make(Spec) {
                                   return Promise.resolve(/* Error */Block.__(1, [reference]));
                                 }));
                   } else {
-                    var reference$1 = param[2];
-                    var __x$2 = JSON.stringify(param[3]);
-                    var __x$3 = SQS$AwsSdk.sendMessage(Util_Aggregate$Reventless.commandTopicConnectorResource(resources, param[0]).id.get(), __x$2, param[1], undefined, undefined, /* () */0);
-                    var __x$4 = __x$3.then((function (param) {
+                    var cmdJson = param[2];
+                    var reference$1 = param[1];
+                    var aggregateName = param[0];
+                    var __x$2 = Curry._1(Belt_Option.mapWithDefault(Belt_Option.map(Js_dict.get(publishJsonsFns, aggregateName), (function (publishJsons) {
+                                    return publishJsons(/* array */[cmdJson]);
+                                  })), (function (param) {
+                                return Js_exn.raiseError("ExtensionPoint.applyCommandAction: Aggregate " + (String(aggregateName) + " doesn\'t exist"));
+                              }), (function (x, param) {
+                                return x;
+                              })), /* () */0);
+                    var __x$3 = __x$2.then((function (param) {
                             return Promise.resolve(/* Ok */Block.__(0, [reference$1]));
                           }));
-                    return __x$4.catch((function (err) {
+                    return __x$3.catch((function (err) {
                                   console.log("ExtensionPoint: Error on publish command:", err);
                                   return Promise.resolve(/* Error */Block.__(1, [reference$1]));
                                 }));
@@ -137,11 +143,11 @@ function Make(Spec) {
                 self$1.setOutputs(outputs);
                 return self$1.registerOutputs(outputs);
               };
-              var make = function (scheduler, queryEngine, opts, resources, param) {
+              var make = function (publishJsonsFns, scheduler, queryEngine, opts, resources, param) {
                 var prim = ComponentType$Reventless.toString(/* ExtensionPoint */9);
                 var prim$1 = Spec.name;
                 var prim$2 = function (param, param$1, param$2) {
-                  return construct(scheduler, queryEngine, param, param$1, param$2);
+                  return construct(publishJsonsFns, scheduler, queryEngine, param, param$1, param$2);
                 };
                 var prim$3 = opts;
                 var prim$4 = resources;
@@ -165,4 +171,4 @@ exports.ReventlessCommandTopic = ReventlessCommandTopic;
 exports.ReventlessEventTopic = ReventlessEventTopic;
 exports.componentType = componentType;
 exports.Make = Make;
-/* SQS-AwsSdk Not a pure module */
+/* ./Component Not a pure module */

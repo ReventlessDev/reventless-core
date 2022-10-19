@@ -120,32 +120,40 @@ module Make =
 
     let queryEngine = QueryEngineAdapter.make(resources);
 
+    let publishJsonsFns = Js.Dict.empty();
     let aggregatesOutputs =
       aggregates
       ->Belt.Array.map((module Aggregate: Aggregate.T) => {
           let {module_, readModel} =
             readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
           module ReadModel = (val module_);
-          Aggregate.make(
-            ~queryEngine,
-            ~eventsHandler=
-              (. id, events) =>
-                readModel->ReadModel.update(.
-                  id->Obj.magic,
-                  events->Obj.magic,
-                ), // TODO : remove
-            ~opts,
-            ~resources,
-            (),
+          let aggregate =
+            Aggregate.make(
+              ~queryEngine,
+              ~eventsHandler=
+                (. id, events) =>
+                  readModel->ReadModel.update(.
+                    id->Obj.magic,
+                    events->Obj.magic,
+                  ), // TODO : remove
+              ~opts,
+              ~resources,
+              (),
+            );
+          publishJsonsFns->Js.Dict.set(
+            Aggregate.Spec.name,
+            aggregate->Aggregate.publishJsons,
           );
+          aggregate->Component.extractOutputs;
         })
-      ->Component.extractMultipleOutputs
       ->toDict;
+    // TODO addEventMapperFns
 
     let extensionPoints =
       extensionPoints->Belt.Array.map(
         (module ExtensionPoint: ExtensionPoint.T) =>
         ExtensionPoint.make(
+          ~publishJsonsFns,
           ~scheduler,
           ~queryEngine,
           ~opts=Some(opts),

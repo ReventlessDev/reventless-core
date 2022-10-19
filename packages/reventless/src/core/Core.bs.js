@@ -49,16 +49,19 @@ function Make(Config) {
                             return param[/* readModel */1];
                           })));
                 var queryEngine = Curry._1(QueryEngineAdapter.make, resources);
-                var aggregatesOutputs = toDict(Component$Reventless.extractMultipleOutputs(Belt_Array.map(aggregates, (function (Aggregate) {
-                                var match = readModels$1[Aggregate.Spec.name];
-                                var readModel = match[/* readModel */1];
-                                var module_ = match[/* module_ */0];
-                                return Curry._5(Aggregate.make, queryEngine, (function (id, events) {
-                                              return Curry._1(module_.update, readModel)(id, events);
-                                            }), Caml_option.some(opts), resources, /* () */0);
-                              }))));
+                var publishJsonsFns = { };
+                var aggregatesOutputs = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
+                            var match = readModels$1[Aggregate.Spec.name];
+                            var readModel = match[/* readModel */1];
+                            var module_ = match[/* module_ */0];
+                            var aggregate = Curry._5(Aggregate.make, queryEngine, (function (id, events) {
+                                    return Curry._1(module_.update, readModel)(id, events);
+                                  }), Caml_option.some(opts), resources, /* () */0);
+                            publishJsonsFns[Aggregate.Spec.name] = Curry._1(Aggregate.publishJsons, aggregate);
+                            return Component$Reventless.extractOutputs(aggregate);
+                          })));
                 var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-                        return Curry._5(ExtensionPoint.make, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
+                        return Curry._6(ExtensionPoint.make, publishJsonsFns, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
                       }));
                 var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
                 var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {

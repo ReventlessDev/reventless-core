@@ -211,7 +211,7 @@ module Make =
           );
           publishJsonsFns->Js.Dict.set(
             Aggregate.Spec.name,
-            Aggregate.publishJsons(aggregate),
+            aggregate->Aggregate.publishJsons,
           );
           aggregate->Component.extractOutputs;
         })
@@ -261,6 +261,7 @@ module Make =
             extensionPoints->Belt.Array.map(
               (module ExtensionPoint: ExtensionPoint.T) =>
               ExtensionPoint.make(
+                ~publishJsonsFns,
                 ~scheduler,
                 ~queryEngine,
                 ~opts=Some(opts),

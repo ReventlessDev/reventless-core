@@ -93,7 +93,7 @@ function Make(EventCollectorAdapter) {
                 var corePluginEventTopicResource = AdapterDeploytime$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.eventTopic.resources, 0));
                 Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, corePluginEventTopicResource, PluginExtensionPointSpec$ReventlessSpec.name);
                 var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-                        return Curry._5(ExtensionPoint.make, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
+                        return Curry._6(ExtensionPoint.make, publishJsonsFns, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
                       }));
                 var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
                 var extensions$1 = Belt_Array.map(extensions, (function (Extension) {

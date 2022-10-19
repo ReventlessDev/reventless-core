@@ -2,7 +2,7 @@ open ReventlessSpec.ExtensionPointMapping;
 
 /* these actions are internal to the Mapping Functor */
 type abstractCommandAction =
-  | AbstractPublishCommand(Aggregate.name, string, string, Js.Json.t)
+  | AbstractPublishCommand(Aggregate.name, string, Message.commandJson)
   | AbstractCall(string, unit => Js.Promise.t(unit));
 
 type abstractEventAction('extensionPointEvent) =
@@ -65,21 +65,17 @@ module Make =
 
                 AbstractPublishCommand(
                   aggregateName,
-                  aggregateId,
                   reference,
-                  Message.command'_encode(
-                    Aggregate.Id.t_encode,
-                    Aggregate.command_encode,
-                    {
-                      id: aggregateId->Aggregate.Id.makeFromString,
-                      meta: {
-                        ...meta,
-                        service: Aggregate.name,
-                        msgId: Message.uuid(),
-                      },
-                      command: aggregateCmd,
+                  {
+                    id: aggregateId,
+                    meta: {
+                      ...meta,
+                      service: Aggregate.name,
+                      msgId: Message.uuid(),
                     },
-                  ),
+                    commandJson: aggregateCmd->Aggregate.command_encode,
+                    delay: None,
+                  },
                 );
               }
             | Call(handler, callCommand) => {

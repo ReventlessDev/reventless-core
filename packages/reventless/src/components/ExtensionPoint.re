@@ -21,6 +21,7 @@ type name = string;
 
 type maker =
   (
+    ~publishJsonsFns: Js.Dict.t(CommandTopic.publishJsons),
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
@@ -150,7 +151,8 @@ module Make =
       };
   };
 
-  let construct = (~scheduler, ~queryEngine, self, name, resources) => {
+  let construct =
+      (~publishJsonsFns, ~scheduler, ~queryEngine, self, name, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -170,33 +172,36 @@ module Make =
       fun
       | ExtensionPointMapping.AbstractPublishCommand(
           aggregateName,
-          id,
           reference,
           cmdJson,
-        ) =>
-        cmdJson
-        ->Js.Json.stringify // TODO: move to Adapter
-        ->AwsSdk.SQS.sendMessage(
-            ~queueId=
-              resources->Util_Aggregate.commandTopicConnectorResource(
-                aggregateName,
-              )##id
-              ->Pulumi.Output.get,
-            ~messageGroupId=id,
-            ~messageBody=_,
-            (),
-          )
-        ->Js.Promise.then_(
-            _ => Belt.Result.Ok(reference)->Js.Promise.resolve,
-            _,
-          )
-        ->Js.Promise.catch(
-            err => {
-              Js.log2("ExtensionPoint: Error on publish command:", err);
-              Belt.Result.Error(reference)->Js.Promise.resolve;
-            },
-            _,
-          )
+        ) => {
+          publishJsonsFns
+          ->Js.Dict.get(aggregateName)
+          ->Belt.Option.map(
+              (publishJsons: ReventlessCommandTopic.publishJsons) =>
+              publishJsons(. [|cmdJson|])
+            )
+          ->(
+              Belt.Option.mapWithDefault(
+                () =>
+                  Js.Exn.raiseError(
+                    {j|ExtensionPoint.applyCommandAction: Aggregate $aggregateName doesn't exist|j},
+                  ),
+                (x, ()) => x,
+              )
+            )()
+          ->Js.Promise.then_(
+              _ => Belt.Result.Ok(reference)->Js.Promise.resolve,
+              _,
+            )
+          ->Js.Promise.catch(
+              err => {
+                Js.log2("ExtensionPoint: Error on publish command:", err);
+                Belt.Result.Error(reference)->Js.Promise.resolve;
+              },
+              _,
+            );
+        }
       | AbstractCall(reference, handler) =>
         handler()
         ->Js.Promise.then_(
@@ -312,11 +317,11 @@ module Make =
   };
 
   let make: maker =
-    (~scheduler, ~queryEngine, ~opts, ~resources, _) =>
+    (~publishJsonsFns, ~scheduler, ~queryEngine, ~opts, ~resources, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~scheduler, ~queryEngine),
+        ~construct=construct(~publishJsonsFns, ~scheduler, ~queryEngine),
         ~opts,
         ~resources,
       );

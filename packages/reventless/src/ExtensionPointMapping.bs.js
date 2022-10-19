@@ -36,20 +36,20 @@ function Make(Spec) {
                                           console.log("ExtensionPointMapping incoming from ExtensionPoint " + (String(extensionPointName) + (" to Aggregate " + (String(aggregateName) + (": Publishing command: " + (String(commandStr) + (" id: " + (String(aggregateId) + ""))))))));
                                           return /* AbstractPublishCommand */Block.__(0, [
                                                     aggregateName,
-                                                    aggregateId,
                                                     reference,
-                                                    Message$Reventless.command$prime_encode(Aggregate.Id.t_encode, Aggregate.command_encode, /* record */[
-                                                          /* id */Curry._1(Aggregate.Id.makeFromString, aggregateId),
-                                                          /* meta : record */[
-                                                            /* service */Aggregate.name,
-                                                            /* time */meta[/* time */1],
-                                                            /* ip */meta[/* ip */2],
-                                                            /* user */meta[/* user */3],
-                                                            /* msgId */Message$Reventless.uuid(/* () */0),
-                                                            /* correlationId */meta[/* correlationId */5]
-                                                          ],
-                                                          /* command */aggregateCmd
-                                                        ])
+                                                    /* record */[
+                                                      /* id */aggregateId,
+                                                      /* meta : record */[
+                                                        /* service */Aggregate.name,
+                                                        /* time */meta[/* time */1],
+                                                        /* ip */meta[/* ip */2],
+                                                        /* user */meta[/* user */3],
+                                                        /* msgId */Message$Reventless.uuid(/* () */0),
+                                                        /* correlationId */meta[/* correlationId */5]
+                                                      ],
+                                                      /* commandJson */Curry._1(Aggregate.command_encode, aggregateCmd),
+                                                      /* delay */undefined
+                                                    ]
                                                   ]);
                                         }
                                       }));
