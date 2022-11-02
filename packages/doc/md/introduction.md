@@ -4,19 +4,22 @@ date: 2021-11-22
 draft: true
 ---
 
-# Introduction to Reventless
+**Reventless** is a modern holistic approach for the development of event-based business applications, consisting of
 
-Reventless is a methodology, a programming model and a cloud provider agnostic framework for creating event-based, serverless micro-services.
+- a *Methodology* which covers the full delivery cycle
+- a *Programming Model* which focuses on business value
+- a *Domain Independent* reusable *Framework* to optimize operational costs.
+
+It is used in production for a customer in the financial industry since 2019.
 
 ## The Reventless Mindset
 
 > Focus on business value and ship fast.
 
 other Suggestions:
-> Create value fast and iterate to improve.
 
-> Create value fast and ship with confidence.
-
+- > Create value fast and iterate to improve.
+- > Create value fast and ship with confidence.
 
 ## The Reventless Methodology
 
