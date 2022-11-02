@@ -1,13 +1,13 @@
 {
-  "name": "@{{dashCase projectName}}-{{dashCase pluginName}}/plugin",
+  "name": "@{{dashCase platformName}}-{{dashCase pluginName}}/plugin",
   "version": "0.0.1",
-  "description": "{{projectName}} {{properCase pluginName}} Plugin",
+  "description": "{{platformName}} {{properCase pluginName}} Plugin",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@gitlab.com:reventless/{{dashCase projectName}}/{{dashCase pluginName}}.git"
+    "url": "git+ssh://git@gitlab.com:reventless/{{dashCase platformName}}/{{dashCase pluginName}}.git"
   },
   "bugs": {
-    "url": "https://gitlab.com/reventless/{{dashCase projectName}}/{{dashCase pluginName}}/issues"
+    "url": "https://gitlab.com/reventless/{{dashCase platformName}}/{{dashCase pluginName}}/issues"
   },
   "publishConfig": {
     "@slim:registry": "https://gitlab.com/api/v4/projects/{{gitLabProjectId}}/packages/npm/"

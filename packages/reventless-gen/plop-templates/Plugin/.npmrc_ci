@@ -1,6 +1,6 @@
 //gitlab.com/api/v4/projects/{{gitLabProjectId}}/packages/npm/:_authToken=${CI_JOB_TOKEN}
 //gitlab.com/api/v4/packages/npm/:_authToken=${CI_JOB_TOKEN}
-@{{dashCase projectName}}-{{dashCase pluginName}}:registry=https://gitlab.com/api/v4/projects/{{gitLabProjectId}}/packages/npm/
+@{{dashCase platformName}}-{{dashCase pluginName}}:registry=https://gitlab.com/api/v4/projects/{{gitLabProjectId}}/packages/npm/
 
 @reventless:registry=https://gitlab.com/api/v4/packages/npm/
 

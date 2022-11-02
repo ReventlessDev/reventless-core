@@ -14,7 +14,7 @@ import * as Event from './plop/Event.js';
 import * as EventMapping from './plop/EventMapping.js';
 import * as Plugin from './plop/Plugin.js';
 import * as PluginSpec from './plop/PluginSpec.js';
-import * as Project from './plop/Project.js';
+import * as Platform from './plop/Platform.js';
 import * as ReadModel from './plop/ReadModel.js';
 import * as Status from './plop/Status.js';
 import * as ExtensionPoint from './plop/ExtensionPoint.js';
@@ -23,11 +23,11 @@ import * as Extension from './plop/Extension.js';
 export default function (plop) {
   additionalActionTypes(plop);
 
-  plop.setGenerator('Project', {
+  plop.setGenerator('Platform', {
     prompts: [{
       type: 'input',
-      name: 'projectName',
-      message: 'Project name:'
+      name: 'platformName',
+      message: 'Platform name:'
     }, {
       type: 'input',
       name: 'pulumiOrganization',
@@ -39,20 +39,20 @@ export default function (plop) {
     }],
     actions: data => {
       return [
-        Project.createProjectFiles,
-        Project.npmInstallApi(data),
-        Project.rebuildApi(data),
-        Project.npmInstallCore(data),
-        Project.rebuildCore(data),
-        Project.gitInitPlatform(data),
+        Platform.createPlatformFiles,
+        Platform.npmInstallApi(data),
+        Platform.rebuildApi(data),
+        Platform.npmInstallCore(data),
+        Platform.rebuildCore(data),
+        Platform.gitInitPlatform(data),
       ]
     }
   });
   plop.setGenerator('Plugin', {
     prompts: [{
       type: 'input',
-      name: 'projectName',
-      message: 'Project name:'
+      name: 'platformName',
+      message: 'Platform name:'
     }, {
       type: 'input',
       name: 'pluginName',
@@ -82,8 +82,8 @@ export default function (plop) {
   plop.setGenerator('PluginSpec', {
     prompts: [{
       type: 'input',
-      name: 'projectName',
-      message: 'Project name:'
+      name: 'platformName',
+      message: 'Platform name:'
     }, {
       type: 'input',
       name: 'pluginName',

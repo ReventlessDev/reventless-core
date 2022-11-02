@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-gen",
-  "version": "0.1.0-alpha.24",
+  "version": "0.1.0-alpha.25",
   "description": "Code generator for Reventless",
   "type": "module",
   "author": "Atos",
@@ -24,7 +24,7 @@
     "plop-templates/Plugin/.gitignore",
     "plop-templates/Plugin/plugin/.npmignore",
     "plop-templates/Plugin/ui/.npmignore",
-    "plop-templates/Project/platform/.gitignore"
+    "plop-templates/Platform/platform/.gitignore"
   ],
   "preferGlobal": true,
   "dependencies": {
