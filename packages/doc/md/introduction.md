@@ -75,18 +75,18 @@ other Suggestions:
 
 ### Reventless is based on the following Concepts
 
-- [Domain-Driven-Design]()
-- [Event-Storming]()
-- [Event-Based communication]()
-    - [Event-Sourcing]()
-    - [CQRS (Command Query Responsibility Segregation)]()
-- [Serverless]()
+- [Domain-Driven-Design](https://en.wikipedia.org/wiki/Domain-driven_design)
+- [Event-Storming](https://en.wikipedia.org/wiki/Event_storming)
+- [Microservices with Event-Based communication](https://en.wikipedia.org/wiki/Microservices)
+  - [Event-Sourcing](https://en.wikipedia.org/wiki/Domain-driven_design#Event_sourcing)
+  - [CQRS (Command Query Responsibility Segregation)](https://en.wikipedia.org/wiki/Domain-driven_design#Command_Query_Responsibility_Segregation)
+- [Serverless Computing](https://aws.amazon.com/serverless/)
 
 ### Reventless Framework is based on the following tech-stack
 
-- [Rescript](): Programming Language
-- [Pulumi](): Infrastructure as Code
-- [Node.js](): Compile target & runtime environment
+- [Rescript](https://rescript-lang.org/): functional Programming Language, compiling to JavaScript
+- [Pulumi](https://www.pulumi.com/): Infrastructure as Code
+- [Node.js](https://nodejs.org): Compile target & runtime environment
 
 ## Get Productive
 
