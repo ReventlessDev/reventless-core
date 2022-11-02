@@ -4,8 +4,6 @@ date: 2021-11-22
 draft: true
 ---
 
-# Get Started
-
 ## Basics
 
 When implementing a system based on Reventless you should only think about `commands` and `events`. These provide easy to understand reasoning for anything happening.  
