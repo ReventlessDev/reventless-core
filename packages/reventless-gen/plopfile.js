@@ -32,6 +32,10 @@ export default function (plop) {
       type: 'input',
       name: 'pulumiOrganization',
       message: 'Pulumi organization:'
+    }, {
+      type: 'input',
+      name: 'awsRegion',
+      message: 'AWS region:'
     }],
     actions: data => {
       return [
@@ -61,6 +65,10 @@ export default function (plop) {
       type: 'input',
       name: 'pulumiOrganization',
       message: 'Pulumi organization:'
+    }, {
+      type: 'input',
+      name: 'awsRegion',
+      message: 'AWS region:'
     }],
     actions: data => [
       Plugin.createFiles,
