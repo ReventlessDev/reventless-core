@@ -94,12 +94,12 @@ other Suggestions:
 2. Learn about [avanced usage](./advanced.md) scenarios by reading [this](./advanced.md).
 3. Get your hands dirty by reading an in-depth description about the [inner workings of the Reventless framework](./framework-inner-workings.md).
 
-
 ## Roadmap
-### Todo's until wea are production-ready
-1. FIFO - Messaging ([#95](https://gitlab.com/reventless/reventless-universe/-/issues/95))
-2. Documentation ([#13](https://gitlab.com/reventless/reventless-universe/-/issues/13))
-3. compiler update ([#1](https://gitlab.com/reventless/reventless-universe/-/issues/1))
-4. API Schema generation ([#68](https://gitlab.com/reventless/reventless-universe/-/issues/68))
-5. Command- & Event- Versioning ([#49](https://gitlab.com/reventless/reventless-universe/-/issues/49), [#63](https://gitlab.com/reventless/reventless-universe/-/issues/63))
-6. multiple ReadModels ([#87](https://gitlab.com/reventless/reventless-universe/-/issues/87))
+
+### Important Next Steps
+
+- Documentation ([#13](https://gitlab.com/reventless/reventless-universe/-/issues/13))
+- compiler update ([#1](https://gitlab.com/reventless/reventless-universe/-/issues/1))
+- API Schema generation ([#68](https://gitlab.com/reventless/reventless-universe/-/issues/68))
+- Command- & Event- Versioning ([#49](https://gitlab.com/reventless/reventless-universe/-/issues/49), [#63](https://gitlab.com/reventless/reventless-universe/-/issues/63))
+- multiple ReadModels ([#87](https://gitlab.com/reventless/reventless-universe/-/issues/87))
