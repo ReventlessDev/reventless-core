@@ -335,7 +335,7 @@ function Make(EventCollectorAdapter) {
                   return InterstackResourceQueryRuntime$Reventless.bucketNameOfTaskExn(partial_arg, param);
                 };
                 tasksOutputs[0] = Belt_Array.map(taskMakers, (function (taskMaker) {
-                        return Component$Reventless.extractOutputs(Curry._5(taskMaker, queryBucketName, scheduler, queryEngine, Caml_option.some(opts), resources));
+                        return Component$Reventless.extractOutputs(Curry._6(taskMaker, queryBucketName, scheduler, queryEngine, aggregatesOutputs, Caml_option.some(opts), resources));
                       }));
                 var resolvers = Belt_Array.concatMany(Belt_Array.map(ResourceQueryDeploytime$Reventless.allResolversMakers(readModelsOutputs), (function (resolverMaker) {
                             return Curry._1(resolverMaker, resources);

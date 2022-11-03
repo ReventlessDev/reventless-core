@@ -27,6 +27,7 @@ type maker =
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
+    ~allAggregates: Js.Dict.t(Aggregate.outputs),
     ~opts: option(Pulumi.ComponentResource.Options.t),
     ~resources: resources
   ) =>

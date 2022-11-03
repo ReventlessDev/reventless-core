@@ -665,6 +665,7 @@ module Make =
                 ~queryBucketName,
                 ~scheduler,
                 ~queryEngine,
+                ~allAggregates=aggregatesOutputs,
                 ~opts=Some(opts),
                 ~resources,
               )
