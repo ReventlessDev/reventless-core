@@ -11,13 +11,15 @@ var name = "DeadLetterQueue";
 var nameFifo = "FIFODeadLetterQueue";
 
 var queue = new (Aws.sqs.Queue)(name, {
-      visibilityTimeoutSeconds: 180
+      visibilityTimeoutSeconds: 180,
+      sqsManagedSseEnabled: false
     }, undefined);
 
 var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
       contentBasedDeduplication: true,
       fifoQueue: true,
-      visibilityTimeoutSeconds: 180
+      visibilityTimeoutSeconds: 180,
+      sqsManagedSseEnabled: false
     }, undefined);
 
 function callback(evt, ctx) {

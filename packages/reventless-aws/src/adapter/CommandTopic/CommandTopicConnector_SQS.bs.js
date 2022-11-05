@@ -17,7 +17,8 @@ function make(name, handleCommands, memorySize, timeout, opts, param) {
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply((function (dlqArn) {
                 return Curry._2(SQS_Queue$PulumiAws.Args.RedrivePolicy.make, dlqArn, 5);
               })),
-        visibilityTimeoutSeconds: Caml_int32.imul(6, timeout)
+        visibilityTimeoutSeconds: Caml_int32.imul(6, timeout),
+        sqsManagedSseEnabled: false
       }, opts);
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, /* array */[Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], Caml_option.some(opts), /* () */0);
   var handler = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [

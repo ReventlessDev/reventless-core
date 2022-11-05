@@ -24,7 +24,8 @@ function make(name, eventTopics, policies, handleEvents, memorySize, timeout, op
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply((function (dlqArn) {
                 return Curry._2(SQS_Queue$PulumiAws.Args.RedrivePolicy.make, dlqArn, 5);
               })),
-        visibilityTimeoutSeconds: timeout
+        visibilityTimeoutSeconds: timeout,
+        sqsManagedSseEnabled: false
       }, opts);
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, /* array */[
         Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),

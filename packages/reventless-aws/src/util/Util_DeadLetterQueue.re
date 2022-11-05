@@ -9,6 +9,7 @@ let queue =
     ~args=
       SQS.Queue.Args.make(
         ~visibilityTimeoutSeconds=180->Pulumi.Input.wrap,
+        ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
         (),
       ),
     (),
@@ -22,6 +23,7 @@ let fifoQueue =
         ~fifoQueue=true->Pulumi.Input.wrap,
         ~contentBasedDeduplication=true->Pulumi.Input.wrap,
         ~visibilityTimeoutSeconds=180->Pulumi.Input.wrap,
+        ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
         (),
       ),
     (),

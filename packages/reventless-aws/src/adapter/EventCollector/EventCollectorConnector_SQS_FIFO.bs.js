@@ -29,7 +29,8 @@ function make(name, eventTopics, policies, handleEvents, memorySize, timeout, op
               })),
         visibilityTimeoutSeconds: timeout,
         deduplicationScope: "messageGroup",
-        fifoThroughputLimit: "perMessageGroupId"
+        fifoThroughputLimit: "perMessageGroupId",
+        sqsManagedSseEnabled: false
       }, opts);
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, /* array */[
         Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),

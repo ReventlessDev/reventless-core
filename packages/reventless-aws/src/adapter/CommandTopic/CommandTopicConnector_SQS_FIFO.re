@@ -19,6 +19,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
                   )
                 )
               ->Pulumi.Output.asInput,
+            ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
             (),
           ),
         ~opts,

@@ -17,6 +17,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
                   )
                 )
               ->Pulumi.Output.asInput,
+            ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
             (),
           ),
         ~opts,
@@ -54,6 +55,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
 
     {
       resources: [|queue->Util_SQS.toResource|],
-      publish: queue->CommandTopicConnector_SQS_Runtime.publish(Util_SQS.service),
+      publish:
+        queue->CommandTopicConnector_SQS_Runtime.publish(Util_SQS.service),
     };
   };

@@ -25,6 +25,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
                   )
                 )
               ->Pulumi.Output.asInput,
+            ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
             (),
           ),
         ~opts,
