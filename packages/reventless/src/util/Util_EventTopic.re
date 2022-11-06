@@ -16,9 +16,15 @@ let findEventTopics = (allEventTopics, aggregateNames) =>
   aggregateNames
   ->Belt.Set.String.toArray
   ->Belt.Array.map(aggregateName =>
-      (
+      try (
         aggregateName,
         allEventTopics->Js.Dict.get(aggregateName)->Belt.Option.getExn,
-      )
+      ) {
+      | exn =>
+        Js.log(
+          {j|Util_EventTopic.findEventTopics: Couldn't find Aggregate $aggregateName in $allEventTopics|j},
+        );
+        raise(exn);
+      }
     )
   ->Js.Dict.fromArray;

@@ -37,10 +37,16 @@ function getPublisherResource(resources, name) {
 
 function findEventTopics(allEventTopics, aggregateNames) {
   return Js_dict.fromArray(Belt_Array.map(Belt_SetString.toArray(aggregateNames), (function (aggregateName) {
-                    return /* tuple */[
-                            aggregateName,
-                            Belt_Option.getExn(Js_dict.get(allEventTopics, aggregateName))
-                          ];
+                    try {
+                      return /* tuple */[
+                              aggregateName,
+                              Belt_Option.getExn(Js_dict.get(allEventTopics, aggregateName))
+                            ];
+                    }
+                    catch (exn){
+                      console.log("Util_EventTopic.findEventTopics: Couldn\'t find Aggregate " + (String(aggregateName) + (" in " + (String(allEventTopics) + ""))));
+                      throw exn;
+                    }
                   })));
 }
 
