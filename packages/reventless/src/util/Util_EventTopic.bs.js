@@ -44,7 +44,7 @@ function findEventTopics(allEventTopics, aggregateNames) {
                             ];
                     }
                     catch (exn){
-                      console.log("Util_EventTopic.findEventTopics: Couldn\'t find Aggregate " + (String(aggregateName) + (" in " + (String(allEventTopics) + ""))));
+                      console.log("Util_EventTopic.findEventTopics: Couldn\'t find Aggregate " + (String(aggregateName) + " in"), allEventTopics);
                       throw exn;
                     }
                   })));

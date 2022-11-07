@@ -21,8 +21,9 @@ let findEventTopics = (allEventTopics, aggregateNames) =>
         allEventTopics->Js.Dict.get(aggregateName)->Belt.Option.getExn,
       ) {
       | exn =>
-        Js.log(
-          {j|Util_EventTopic.findEventTopics: Couldn't find Aggregate $aggregateName in $allEventTopics|j},
+        Js.log2(
+          {j|Util_EventTopic.findEventTopics: Couldn't find Aggregate $aggregateName in|j},
+          allEventTopics,
         );
         raise(exn);
       }
