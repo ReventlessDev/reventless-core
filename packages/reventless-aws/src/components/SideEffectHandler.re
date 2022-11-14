@@ -7,16 +7,6 @@ include Reventless.SideEffectHandler.Make(
           ),
         );
 
-module WithQueue =
-  Reventless.SideEffectHandler.Make(
-    (
-      Reventless.EventCollector.Make(
-        Reventless.EventCollector.DefaultPolicies,
-        EventCollectorConnector.SQS,
-      )
-    ),
-  );
-
 module MakeWithPolicies = (Policies: Reventless.EventCollector.Policies) =>
   Reventless.SideEffectHandler.Make(
     (
