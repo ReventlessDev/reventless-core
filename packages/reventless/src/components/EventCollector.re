@@ -131,10 +131,14 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~timeout,
         ~opts,
       );
-    resources->Util_EventCollector.setConnectorResource(
-      connector.resources[0],
-      name,
-    );
+    switch (connector.resources) {
+    | [||] => ()
+    | connectorResources =>
+      resources->Util_EventCollector.setConnectorResource(
+        connectorResources[0],
+        name,
+      )
+    };
 
     self->setEnqueueEvent(connector->enqueueEventFn);
 

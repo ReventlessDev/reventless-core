@@ -32,7 +32,10 @@ function Make(Policies) {
           parent: self
         };
         var connector = Curry._7(Connector.make, ComponentType$Reventless.name(name, /* EventCollector */5), eventTopics, Policies.policies, eventsHandler, memorySize, timeout, opts);
-        Util_EventCollector$Reventless.setConnectorResource(resources, Caml_array.caml_array_get(connector[/* resources */0], 0), name);
+        var connectorResources = connector[/* resources */0];
+        if (connectorResources.length !== 0) {
+          Util_EventCollector$Reventless.setConnectorResource(resources, Caml_array.caml_array_get(connectorResources, 0), name);
+        }
         self.enqueueEvent = enqueueEventFn(connector);
         var self$1 = self;
         var outputs = {
