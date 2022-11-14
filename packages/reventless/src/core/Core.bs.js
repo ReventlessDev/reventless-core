@@ -95,7 +95,7 @@ function Make(Config) {
                               }));
                 };
                 var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorConnector);
-                var eventCollector = Curry._7(EventCollector.make, ComponentType$Reventless.toName(/* Core */18), Util_Aggregate$Reventless.findEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Caml_option.some(opts), /* () */0);
+                var eventCollector = Curry._8(EventCollector.make, ComponentType$Reventless.toName(/* Core */18), Util_Aggregate$Reventless.findEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Caml_option.some(opts), resources, /* () */0);
                 var Cloner = Cloner$Reventless.Make(Config)(ClonerRunner);
                 var cloner = Curry._2(Cloner.make, Caml_option.some(opts), /* () */0);
                 return setOutputs(self, {

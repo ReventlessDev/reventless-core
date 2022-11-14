@@ -268,7 +268,7 @@ function Make(Target) {
                         }
                         
                       })));
-            var eventCollector = Curry._7(EventCollector.make, ComponentType$Reventless.name(Target.name, /* EventMapper */7), Util_EventTopic$Reventless.findEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]), memorySize, timeout, Caml_option.some(opts), /* () */0);
+            var eventCollector = Curry._8(EventCollector.make, ComponentType$Reventless.name(Target.name, /* EventMapper */7), Util_EventTopic$Reventless.findEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]), memorySize, timeout, Caml_option.some(opts), resources, /* () */0);
             var self$1 = self;
             var outputs = {
               name: name,

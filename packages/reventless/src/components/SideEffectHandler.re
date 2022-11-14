@@ -234,6 +234,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
+        ~resources,
         (),
       );
 

@@ -108,7 +108,7 @@ function Make(EventCollector) {
                 return SideEffect.Source.name;
               })));
     var eventsHandler$1 = eventsHandler(sideEffects, queryEngine);
-    var eventCollector = Curry._7(EventCollector.make, name, Util_EventTopic$Reventless.findEventTopics(allEventTopics, aggregateNames), eventsHandler$1, memorySize, timeout, Caml_option.some(opts), /* () */0);
+    var eventCollector = Curry._8(EventCollector.make, name, Util_EventTopic$Reventless.findEventTopics(allEventTopics, aggregateNames), eventsHandler$1, memorySize, timeout, Caml_option.some(opts), resources, /* () */0);
     var enqueueEventFn = function (delay, id, message) {
       return Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
     };

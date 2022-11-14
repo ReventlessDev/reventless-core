@@ -33,6 +33,7 @@ module type T = {
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
@@ -63,7 +64,8 @@ module Adapter = {
 module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
   type t;
   type constructed;
-  type construct = (Component.t(t, outputs), string) => constructed;
+  type construct =
+    (Component.t(t, outputs), string, resources) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -71,7 +73,8 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t)
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -103,7 +106,15 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       connector.Adapter.enqueueEvent(. delay, id, message);
 
   let construct =
-      (~eventTopics, ~eventsHandler, ~memorySize, ~timeout, self, name) => {
+      (
+        ~eventTopics,
+        ~eventsHandler,
+        ~memorySize,
+        ~timeout,
+        self,
+        name,
+        resources,
+      ) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -120,6 +131,10 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~timeout,
         ~opts,
       );
+    resources->Util_EventCollector.setConnectorResource(
+      connector.resources[0],
+      name,
+    );
 
     self->setEnqueueEvent(connector->enqueueEventFn);
 
@@ -134,6 +149,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
+      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs) =
@@ -144,6 +160,7 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~memorySize=128,
       ~timeout=30,
       ~opts,
+      ~resources,
       _,
     ) =>
       make(
@@ -152,5 +169,6 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~construct=
           construct(~eventTopics, ~eventsHandler, ~memorySize, ~timeout),
         ~opts,
+        ~resources,
       );
 };

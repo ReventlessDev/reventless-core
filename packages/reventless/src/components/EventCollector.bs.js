@@ -3,10 +3,12 @@
 
 var Curry = require("bs-platform/lib/js/curry.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
+var Util_EventCollector$Reventless = require("../util/Util_EventCollector.bs.js");
 
 var policies = Belt_Array.map(Lambda$PulumiAws.Policy.defaultPolicies, (function (policy) {
         return Pulumi.output(policy);
@@ -25,11 +27,12 @@ function Make(Policies) {
             return connector[/* enqueueEvent */1](delay, id, message);
           });
       };
-      var construct = function (eventTopics, eventsHandler, memorySize, timeout, self, name) {
+      var construct = function (eventTopics, eventsHandler, memorySize, timeout, self, name, resources) {
         var opts = {
           parent: self
         };
         var connector = Curry._7(Connector.make, ComponentType$Reventless.name(name, /* EventCollector */5), eventTopics, Policies.policies, eventsHandler, memorySize, timeout, opts);
+        Util_EventCollector$Reventless.setConnectorResource(resources, Caml_array.caml_array_get(connector[/* resources */0], 0), name);
         self.enqueueEvent = enqueueEventFn(connector);
         var self$1 = self;
         var outputs = {
@@ -39,16 +42,17 @@ function Make(Policies) {
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (name, eventTopics, eventsHandler, $staropt$star, $staropt$star$1, opts, param) {
+      var make = function (name, eventTopics, eventsHandler, $staropt$star, $staropt$star$1, opts, resources, param) {
         var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
         var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 30;
         var prim = ComponentType$Reventless.toString(/* EventCollector */5);
         var prim$1 = name;
-        var prim$2 = function (param, param$1) {
-          return construct(eventTopics, eventsHandler, memorySize, timeout, param, param$1);
+        var prim$2 = function (param, param$1, param$2) {
+          return construct(eventTopics, eventsHandler, memorySize, timeout, param, param$1, param$2);
         };
         var prim$3 = opts;
-        return new Component.default(prim, prim$1, prim$2, prim$3);
+        var prim$4 = resources;
+        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
       };
       return {
               make: make,
