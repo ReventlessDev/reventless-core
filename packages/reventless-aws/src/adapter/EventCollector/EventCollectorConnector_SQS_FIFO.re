@@ -52,27 +52,37 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let eventHandlerLambda =
-      Lambda.CallbackFunction.make(
-        ~name,
-        ~args=
-          Lambda.CallbackFunction.Args.make(
-            ~callback=
-              EventCollectorConnector_SQS_Runtime.handleCallbackEvent(
-                handleEvents,
-                queue,
+      PulumiAws.Lambda.Policy.customPolicies(policy1, policy2) // TODO calculate real policies
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(policies =>
+          Lambda.CallbackFunction.make(
+            ~name,
+            ~args=
+              Lambda.CallbackFunction.Args.make(
+                ~callback=
+                  EventCollectorConnector_SQS_Runtime.handleCallbackEvent(
+                    handleEvents,
+                    queue,
+                  ),
+                ~policies,
+                ~memorySize=memorySize->Pulumi.Input.wrap,
+                ~timeout=timeout->Pulumi.Input.wrap,
+                (),
               ),
-            ~policies=
-              PulumiAws.Lambda.Policy.customPolicies(policy1, policy2), // TODO calculate real policies
-            ~memorySize=memorySize->Pulumi.Input.wrap,
-            ~timeout=timeout->Pulumi.Input.wrap,
+            ~opts,
             (),
-          ),
-        ~opts,
-        (),
-      );
+          )
+        );
 
     let _queueSubscription =
-      queue->SQS.Queue.onEvent(~name, ~handler=eventHandlerLambda, ~opts, ());
+      eventHandlerLambda->Pulumi.Output.apply(eventHandlerLambda =>
+        queue->SQS.Queue.onEvent(
+          ~name,
+          ~handler=eventHandlerLambda,
+          ~opts,
+          (),
+        )
+      );
 
     let _ =
       eventTopics

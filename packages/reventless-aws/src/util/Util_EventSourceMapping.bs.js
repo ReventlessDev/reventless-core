@@ -3,10 +3,13 @@
 
 var Aws = require("@pulumi/aws");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 
 function subscribe(batchSize, lambda, targetName, sourceName, source, opts, param) {
   var tmp = {
-    functionName: lambda.arn,
+    functionName: Output$Pulumi.flatMap(lambda, (function (lambda) {
+            return lambda.arn;
+          })),
     eventSourceArn: source.urn,
     startingPosition: "LATEST"
   };

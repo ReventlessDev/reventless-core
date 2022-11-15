@@ -4,6 +4,7 @@
 var Curry = require("bs-platform/lib/js/curry.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var Util_ReadModel$Reventless = require("@reventless/reventless/src/util/Util_ReadModel.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
@@ -31,7 +32,7 @@ function make(name, referencesName, countsName, counterHandler, opts, resources)
             /* () */0
           ]), opts);
   var subscribe = function (sourceName, source) {
-    return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, sourceName, source, opts, /* () */0);
+    return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(eventHandlerLambda), name, sourceName, source, opts, /* () */0);
   };
   subscribe(referencesName, referencesStream);
   subscribe(countsName, countsStream);

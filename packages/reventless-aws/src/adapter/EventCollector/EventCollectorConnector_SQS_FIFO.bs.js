@@ -6,6 +6,7 @@ var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
@@ -35,22 +36,26 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
         Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),
         Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents
       ], Caml_option.some(opts), /* () */0);
-  var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
-            (function (param, param$1) {
-                return EventCollectorConnector_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, queue, param, param$1);
-              }),
-            undefined,
-            Lambda$PulumiAws.Policy.customPolicies(policy1, policy2),
-            undefined,
-            undefined,
-            Caml_option.some(memorySize),
-            Caml_option.some(timeout),
-            undefined,
-            undefined,
-            undefined,
-            /* () */0
-          ]), opts);
-  queue.onEvent(name, eventHandlerLambda, undefined, opts);
+  var eventHandlerLambda = Pulumi.all(Lambda$PulumiAws.Policy.customPolicies(policy1, policy2)).apply((function (policies) {
+          return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
+                          (function (param, param$1) {
+                              return EventCollectorConnector_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, queue, param, param$1);
+                            }),
+                          undefined,
+                          policies,
+                          undefined,
+                          undefined,
+                          Caml_option.some(memorySize),
+                          Caml_option.some(timeout),
+                          undefined,
+                          undefined,
+                          undefined,
+                          /* () */0
+                        ]), opts);
+        }));
+  eventHandlerLambda.apply((function (eventHandlerLambda) {
+          return queue.onEvent(name, eventHandlerLambda, undefined, opts);
+        }));
   Util_Adapter$ReventlessAws.partitionSupportedResources(eventTopics, /* array */[
           Util_DynamoDbStream$ReventlessAws.service,
           Util_SNS_FIFO$ReventlessAws.service

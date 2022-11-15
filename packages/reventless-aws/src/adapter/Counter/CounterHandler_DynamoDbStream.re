@@ -31,7 +31,7 @@ let make: Reventless.Counter.Adapter.handlerMaker =
 
     let subscribe = (sourceName, source) =>
       Util_EventSourceMapping.subscribe(
-        ~lambda=eventHandlerLambda,
+        ~lambda=eventHandlerLambda->Pulumi.Output.make,
         ~targetName=name,
         ~sourceName,
         ~source,

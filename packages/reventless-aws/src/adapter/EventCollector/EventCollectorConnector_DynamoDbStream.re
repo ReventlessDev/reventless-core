@@ -12,23 +12,26 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     ~opts,
   ) => {
     let eventHandlerLambda =
-      Lambda.CallbackFunction.make(
-        ~name,
-        ~args=
-          Lambda.CallbackFunction.Args.make(
-            ~callback=
-              EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(
-                handleEvents,
+      PulumiAws.Lambda.Policy.customPolicies(policy1, policy2) // TODO calculate real policies
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(policies =>
+          Lambda.CallbackFunction.make(
+            ~name,
+            ~args=
+              Lambda.CallbackFunction.Args.make(
+                ~callback=
+                  EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(
+                    handleEvents,
+                  ),
+                ~policies,
+                ~memorySize=memorySize->Pulumi.Input.wrap,
+                ~timeout=timeout->Pulumi.Input.wrap,
+                (),
               ),
-            ~policies=
-              PulumiAws.Lambda.Policy.customPolicies(policy1, policy2), // TODO calculate real policies,
-            ~memorySize=memorySize->Pulumi.Input.wrap,
-            ~timeout=timeout->Pulumi.Input.wrap,
+            ~opts,
             (),
-          ),
-        ~opts,
-        (),
-      );
+          )
+        );
 
     let _ =
       eventTopics
