@@ -5,7 +5,7 @@ var EventCollector$Reventless = require("@reventless/reventless/src/components/E
 var SideEffectHandler$Reventless = require("@reventless/reventless/src/components/SideEffectHandler.bs.js");
 var EventCollectorConnector_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_SQS.bs.js");
 
-var include = SideEffectHandler$Reventless.Make(EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorConnector_SQS$ReventlessAws));
+var include = SideEffectHandler$Reventless.Make(EventCollector$Reventless.Make(EventCollectorConnector_SQS$ReventlessAws));
 
 var make = include.make;
 

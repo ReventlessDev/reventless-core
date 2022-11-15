@@ -4,33 +4,31 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
     ~name,
     ~eventTopics,
-    ~policies,
     ~handleEvents,
     ~memorySize,
     ~timeout,
+    ~policy1=?,
+    ~policy2=?,
     ~opts,
   ) => {
     let eventHandlerLambda =
-      policies // Pulumi.Output cannot be pushed into policies parameter !
-      ->Pulumi.Output.all
-      ->Pulumi.Output.apply(policies =>
-          Lambda.CallbackFunction.make(
-            ~name,
-            ~args=
-              Lambda.CallbackFunction.Args.make(
-                ~callback=
-                  EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(
-                    handleEvents,
-                  ),
-                ~policies,
-                ~memorySize=memorySize->Pulumi.Input.wrap,
-                ~timeout=timeout->Pulumi.Input.wrap,
-                (),
+      Lambda.CallbackFunction.make(
+        ~name,
+        ~args=
+          Lambda.CallbackFunction.Args.make(
+            ~callback=
+              EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(
+                handleEvents,
               ),
-            ~opts,
+            ~policies=
+              PulumiAws.Lambda.Policy.customPolicies(policy1, policy2), // TODO calculate real policies,
+            ~memorySize=memorySize->Pulumi.Input.wrap,
+            ~timeout=timeout->Pulumi.Input.wrap,
             (),
-          )
-        );
+          ),
+        ~opts,
+        (),
+      );
 
     let _ =
       eventTopics
