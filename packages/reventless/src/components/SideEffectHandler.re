@@ -179,6 +179,32 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
+  let createScheduleFn = (scheduler, resources, name) =>
+    (. schedule) =>
+      (
+        Schedule.create(
+          scheduler,
+          resources->Util.EventCollector.getConnectorResource(name),
+        )
+      )(.
+        schedule,
+      );
+
+  let deleteScheduleFn = (scheduler, resources, name) =>
+    (. scheduleName) =>
+      (
+        Schedule.delete(
+          scheduler,
+          resources->Util.EventCollector.getConnectorResource(name),
+        )
+      )(.
+        scheduleName,
+      );
+
+  let enqueueEventFn = eventCollector =>
+    (. delay, id, message) =>
+      eventCollector->EventCollector.enqueueEvent(. delay, id, message);
+
   let construct =
       (
         ~sideEffects,
@@ -198,28 +224,6 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~parent=self->Component.toPulumiResource,
         (),
       );
-
-    let createScheduleFn =
-      (. schedule: ReventlessSpec.Schedule.schedule) =>
-        (
-          Schedule.create(
-            scheduler,
-            resources->Util.EventCollector.getConnectorResource(name),
-          )
-        )(.
-          schedule,
-        );
-
-    let deleteScheduleFn =
-      (. scheduleName) =>
-        (
-          Schedule.delete(
-            scheduler,
-            resources->Util.EventCollector.getConnectorResource(name),
-          )
-        )(.
-          scheduleName,
-        );
 
     let aggregateNames =
       sideEffects
@@ -244,13 +248,9 @@ module Make = (EventCollector: EventCollector.T) : T => {
         (),
       );
 
-    let enqueueEventFn =
-      (. delay, id, message) =>
-        eventCollector->EventCollector.enqueueEvent(. delay, id, message);
-
-    self->setEnqueueEvent(enqueueEventFn);
-    self->setCreateSchedule(createScheduleFn);
-    self->setDeleteSchedule(deleteScheduleFn);
+    self->setEnqueueEvent(enqueueEventFn(eventCollector));
+    self->setCreateSchedule(createScheduleFn(scheduler, resources, name));
+    self->setDeleteSchedule(deleteScheduleFn(scheduler, resources, name));
 
     makeOutputs(
       ~name,

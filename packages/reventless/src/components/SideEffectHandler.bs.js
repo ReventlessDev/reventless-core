@@ -94,15 +94,24 @@ function Make(EventCollector) {
                     }));
       });
   };
+  var createScheduleFn = function (scheduler, resources, name) {
+    return (function (schedule) {
+        return Schedule$Reventless.create(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(schedule);
+      });
+  };
+  var deleteScheduleFn = function (scheduler, resources, name) {
+    return (function (scheduleName) {
+        return Schedule$Reventless.$$delete(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(scheduleName);
+      });
+  };
+  var enqueueEventFn = function (eventCollector) {
+    return (function (delay, id, message) {
+        return Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
+      });
+  };
   var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name, resources) {
     var opts = {
       parent: self
-    };
-    var createScheduleFn = function (schedule) {
-      return Schedule$Reventless.create(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(schedule);
-    };
-    var deleteScheduleFn = function (scheduleName) {
-      return Schedule$Reventless.$$delete(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(scheduleName);
     };
     var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(sideEffects, (function (SideEffect) {
                 return SideEffect.Source.name;
@@ -120,12 +129,9 @@ function Make(EventCollector) {
           resources,
           /* () */0
         ]);
-    var enqueueEventFn = function (delay, id, message) {
-      return Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
-    };
-    self.enqueueEvent = enqueueEventFn;
-    self.createSchedule = createScheduleFn;
-    self.deleteSchedule = deleteScheduleFn;
+    self.enqueueEvent = enqueueEventFn(eventCollector);
+    self.createSchedule = createScheduleFn(scheduler, resources, name);
+    self.deleteSchedule = deleteScheduleFn(scheduler, resources, name);
     var self$1 = self;
     var outputs = {
       name: name,
