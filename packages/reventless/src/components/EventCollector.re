@@ -23,8 +23,8 @@ module type T = {
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
-      ~policy1: string=?,
-      ~policy2: string=?,
+      ~policy1: Pulumi.Output.t(string)=?,
+      ~policy2: Pulumi.Output.t(string)=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~resources: resources,
       unit
@@ -46,8 +46,8 @@ module Adapter = {
       ~handleEvents: eventsHandler,
       ~memorySize: int,
       ~timeout: int,
-      ~policy1: string=?,
-      ~policy2: string=?,
+      ~policy1: Pulumi.Output.t(string)=?,
+      ~policy2: Pulumi.Output.t(string)=?,
       ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     connector;
@@ -142,45 +142,32 @@ module Make = (Connector: Adapter.Connector) : T => {
     makeOutputs(~name, ~resources=connector.resources)->setOutputs(self, _);
   };
 
-  let make:
-    (
-      ~name: string,
-      ~eventTopics: Js.Dict.t(EventTopic.outputs),
-      ~eventsHandler: eventsHandler,
-      ~memorySize: int=?,
-      ~timeout: int=?,
-      ~policy1: string=?,
-      ~policy2: string=?,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (
-      ~name,
-      ~eventTopics,
-      ~eventsHandler,
-      ~memorySize=128,
-      ~timeout=30,
-      ~policy1=?,
-      ~policy2=?,
-      ~opts,
-      ~resources,
-      _,
-    ) =>
-      make(
-        ~componentType=componentType->ComponentType.toString,
+  let make =
+      (
         ~name,
-        ~construct=
-          construct(
-            ~eventTopics,
-            ~eventsHandler,
-            ~memorySize,
-            ~timeout,
-            ~policy1?,
-            ~policy2?,
-          ),
+        ~eventTopics,
+        ~eventsHandler,
+        ~memorySize=128,
+        ~timeout=30,
+        ~policy1=?,
+        ~policy2=?,
         ~opts,
         ~resources,
-      );
+        _,
+      ) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct=
+        construct(
+          ~eventTopics,
+          ~eventsHandler,
+          ~memorySize,
+          ~timeout,
+          ~policy1?,
+          ~policy2?,
+        ),
+      ~opts,
+      ~resources,
+    );
 };

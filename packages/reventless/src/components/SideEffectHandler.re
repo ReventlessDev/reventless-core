@@ -23,8 +23,8 @@ module type T = {
       ~scheduler: Scheduler.t,
       ~memorySize: int=?,
       ~timeout: int=?,
-      ~policy1: string=?,
-      ~policy2: string=?,
+      ~policy1: Pulumi.Output.t(string)=?,
+      ~policy2: Pulumi.Output.t(string)=?,
       ~opts: Pulumi.CustomResourceOptions.t=?,
       ~resources: resources,
       unit
