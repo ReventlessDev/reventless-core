@@ -257,7 +257,7 @@ function Make(Config) {
                                         var queryEngine$1 = param$2;
                                         var opts$1 = param$3;
                                         var resources$1 = param$4;
-                                        var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorConnector);
+                                        var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
                                         var EventMapper = EventMapper$Reventless.Make({
                                                   name: Spec.name,
                                                   Id: Spec.Id,

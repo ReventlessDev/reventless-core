@@ -348,11 +348,7 @@ module Make =
 
   let addEventMapperFn =
       (component, allAggregates, ~queryEngine, ~opts, ~resources) => {
-    module EventCollector =
-      EventCollector.Make(
-        EventCollector.DefaultPolicies,
-        EventCollectorConnector,
-      );
+    module EventCollector = EventCollector.Make(EventCollectorConnector);
     module EventMapper =
       EventMapper.Make(Spec, EventCollector, EventMappings);
 

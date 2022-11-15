@@ -94,7 +94,7 @@ function Make(EventCollector) {
                     }));
       });
   };
-  var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, self, name, resources) {
+  var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name, resources) {
     var opts = {
       parent: self
     };
@@ -108,7 +108,18 @@ function Make(EventCollector) {
                 return SideEffect.Source.name;
               })));
     var eventsHandler$1 = eventsHandler(sideEffects, queryEngine);
-    var eventCollector = Curry._8(EventCollector.make, name, Util_EventTopic$Reventless.findEventTopics(allEventTopics, aggregateNames), eventsHandler$1, memorySize, timeout, Caml_option.some(opts), resources, /* () */0);
+    var eventCollector = Curry.app(EventCollector.make, [
+          name,
+          Util_EventTopic$Reventless.findEventTopics(allEventTopics, aggregateNames),
+          eventsHandler$1,
+          memorySize,
+          timeout,
+          policy1,
+          policy2,
+          Caml_option.some(opts),
+          resources,
+          /* () */0
+        ]);
     var enqueueEventFn = function (delay, id, message) {
       return Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
     };
@@ -123,13 +134,13 @@ function Make(EventCollector) {
     self$1.setOutputs(outputs);
     return self$1.registerOutputs(outputs);
   };
-  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, $staropt$star, $staropt$star$1, opts, resources, param) {
+  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, $staropt$star, $staropt$star$1, policy1, policy2, opts, resources, param) {
     var memorySize = $staropt$star !== undefined ? $staropt$star : 2048;
     var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 180;
     var prim = ComponentType$Reventless.toString(/* SideEffectHandler */15);
     var prim$1 = name;
     var prim$2 = function (param, param$1, param$2) {
-      return construct(sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, param, param$1, param$2);
+      return construct(sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, param, param$1, param$2);
     };
     var prim$3 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions);
     var prim$4 = resources;

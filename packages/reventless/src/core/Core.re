@@ -201,11 +201,7 @@ module Make =
         ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
       };
 
-    module EventCollector =
-      EventCollector.Make(
-        EventCollector.DefaultPolicies,
-        EventCollectorConnector,
-      );
+    module EventCollector = EventCollector.Make(EventCollectorConnector);
 
     let eventCollector =
       EventCollector.make(

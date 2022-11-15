@@ -14,15 +14,6 @@ type outputs = {
 
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
-type arn = string;
-module type Policies = {let policies: array(Pulumi.Output.t(arn));};
-module DefaultPolicies: Policies = {
-  let policies =
-    PulumiAws.Lambda.Policy.defaultPolicies->Belt.Array.map(policy =>
-      Pulumi.Output.make(policy)
-    );
-};
-
 module type T = {
   type t;
   let make:
@@ -32,6 +23,8 @@ module type T = {
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
+      ~policy1: string=?,
+      ~policy2: string=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~resources: resources,
       unit
@@ -50,10 +43,11 @@ module Adapter = {
     (
       ~name: string,
       ~eventTopics: Js.Dict.t(EventTopic.outputs),
-      ~policies: array(Pulumi.Output.t(arn)),
       ~handleEvents: eventsHandler,
       ~memorySize: int,
       ~timeout: int,
+      ~policy1: string=?,
+      ~policy2: string=?,
       ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     connector;
@@ -61,7 +55,7 @@ module Adapter = {
   module type Connector = {let make: connectorMaker;};
 };
 
-module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
+module Make = (Connector: Adapter.Connector) : T => {
   type t;
   type constructed;
   type construct =
@@ -111,6 +105,8 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~eventsHandler,
         ~memorySize,
         ~timeout,
+        ~policy1=?,
+        ~policy2=?,
         self,
         name,
         resources,
@@ -125,7 +121,8 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       Connector.make(
         ~name=name->ComponentType.name(componentType),
         ~eventTopics,
-        ~policies=Policies.policies,
+        ~policy1?,
+        ~policy2?,
         ~handleEvents=eventsHandler,
         ~memorySize,
         ~timeout,
@@ -152,6 +149,8 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
+      ~policy1: string=?,
+      ~policy2: string=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~resources: resources,
       unit
@@ -163,6 +162,8 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~eventsHandler,
       ~memorySize=128,
       ~timeout=30,
+      ~policy1=?,
+      ~policy2=?,
       ~opts,
       ~resources,
       _,
@@ -171,7 +172,14 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
         ~componentType=componentType->ComponentType.toString,
         ~name,
         ~construct=
-          construct(~eventTopics, ~eventsHandler, ~memorySize, ~timeout),
+          construct(
+            ~eventTopics,
+            ~eventsHandler,
+            ~memorySize,
+            ~timeout,
+            ~policy1?,
+            ~policy2?,
+          ),
         ~opts,
         ~resources,
       );

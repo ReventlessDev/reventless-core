@@ -434,12 +434,23 @@ function Make(EventCollectorAdapter) {
                                 return Promise.resolve(/* () */0);
                               }));
                 };
-                var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorAdapter);
+                var EventCollector = EventCollector$Reventless.Make(EventCollectorAdapter);
                 var eventTopics = Util_Aggregate$Reventless.findEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
                 eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
                   resources: Belt_Array.map(corePluginExtensionPoint.eventTopic.resources, AdapterDeploytime$Reventless.stackRefResourceToResource)
                 };
-                var eventCollector = Curry._8(EventCollector.make, ComponentType$Reventless.name(name, /* Plugin */2), eventTopics, eventsHandler, undefined, undefined, Caml_option.some(opts), resources, /* () */0);
+                var eventCollector = Curry.app(EventCollector.make, [
+                      ComponentType$Reventless.name(name, /* Plugin */2),
+                      eventTopics,
+                      eventsHandler,
+                      undefined,
+                      undefined,
+                      undefined,
+                      undefined,
+                      Caml_option.some(opts),
+                      resources,
+                      /* () */0
+                    ]);
                 var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
                 match[1](Caml_array.caml_array_get(eventCollectorOutputs.resources, 0).urn);
                 var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName(/* Plugin */2), heartbeatInterval, corePluginCommandTopicId, Caml_option.some(opts), /* () */0);

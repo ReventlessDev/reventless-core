@@ -818,11 +818,7 @@ module Make =
               ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
             };
 
-          module EventCollector =
-            EventCollector.Make(
-              EventCollector.DefaultPolicies,
-              EventCollectorAdapter,
-            );
+          module EventCollector = EventCollector.Make(EventCollectorAdapter);
 
           let eventTopics =
             Util.Aggregate.findEventTopics(
