@@ -53,7 +53,7 @@ function Make(Spec) {
                   return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$primeJson));
                 }
               };
-              var construct = function (publishJsonsFns, scheduler, queryEngine, self, name, resources) {
+              var construct = function (publishToAggregates, scheduler, queryEngine, self, name, resources) {
                 var opts = {
                   parent: self
                 };
@@ -74,7 +74,7 @@ function Make(Spec) {
                     var cmdJson = param[2];
                     var reference$1 = param[1];
                     var aggregateName = param[0];
-                    var __x$2 = Curry._1(Belt_Option.mapWithDefault(Belt_Option.map(Js_dict.get(publishJsonsFns, aggregateName), (function (publishJsons) {
+                    var __x$2 = Curry._1(Belt_Option.mapWithDefault(Belt_Option.map(Js_dict.get(publishToAggregates, aggregateName), (function (publishJsons) {
                                     return publishJsons(/* array */[cmdJson]);
                                   })), (function (param) {
                                 return Js_exn.raiseError("ExtensionPoint.applyCommandAction: Aggregate " + (String(aggregateName) + " doesn\'t exist"));
@@ -143,11 +143,11 @@ function Make(Spec) {
                 self$1.setOutputs(outputs);
                 return self$1.registerOutputs(outputs);
               };
-              var make = function (publishJsonsFns, scheduler, queryEngine, opts, resources, param) {
+              var make = function (publishToAggregates, scheduler, queryEngine, opts, resources, param) {
                 var prim = ComponentType$Reventless.toString(/* ExtensionPoint */9);
                 var prim$1 = Spec.name;
                 var prim$2 = function (param, param$1, param$2) {
-                  return construct(publishJsonsFns, scheduler, queryEngine, param, param$1, param$2);
+                  return construct(publishToAggregates, scheduler, queryEngine, param, param$1, param$2);
                 };
                 var prim$3 = opts;
                 var prim$4 = resources;

@@ -19,18 +19,6 @@ let sendFifoMessage =
     (),
   );
 
-let toMessageBody = ({id, meta, commandJson}) => {
-  let commandMeta: meta = {...meta, msgId: uuid(), time: nowAsISOString()};
-  [|
-    ("id", id->Js.Json.string),
-    ("meta", commandMeta->Reventless.Message.meta_encode),
-    ("command", commandJson),
-  |]
-  ->Js.Dict.fromArray
-  ->Js.Json.object_
-  ->Js.Json.stringify;
-};
-
 let send = (queue, queueService, {id, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody;
   if (queueService == Util_SQS_FIFO.service) {

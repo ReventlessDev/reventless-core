@@ -53,8 +53,9 @@ let makeId = (name, version) => {j|$name@$version|j};
 
 module Make =
        (
-         EventCollectorAdapter: EventCollector.Adapter.Connector,
+         EventCollectorConnector: EventCollector.Adapter.Connector,
          QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
+         CorePluginExtensionPointRemoteConnector: CommandTopic.Adapter.RemoteConnector,
        )
        : T => {
   type constructed;
@@ -185,7 +186,7 @@ module Make =
     let queryEngine = QueryEngineAdapter.make(resources);
 
     let addEventMapperFns = Js.Dict.empty();
-    let publishJsonsFns = Js.Dict.empty();
+    let publishToAggregates = Js.Dict.empty();
     let aggregatesWithoutEventMappers =
       aggregates
       ->Belt.Array.map((module Aggregate: Aggregate.T) => {
@@ -209,7 +210,7 @@ module Make =
             Aggregate.Spec.name,
             Aggregate.addEventMapper(aggregate),
           );
-          publishJsonsFns->Js.Dict.set(
+          publishToAggregates->Js.Dict.set(
             Aggregate.Spec.name,
             aggregate->Aggregate.publishJsons,
           );
@@ -261,7 +262,7 @@ module Make =
             extensionPoints->Belt.Array.map(
               (module ExtensionPoint: ExtensionPoint.T) =>
               ExtensionPoint.make(
-                ~publishJsonsFns,
+                ~publishToAggregates,
                 ~scheduler,
                 ~queryEngine,
                 ~opts=Some(opts),
@@ -272,10 +273,18 @@ module Make =
           let extensionPointsOutputs =
             extensionPoints->Component.extractMultipleOutputs;
 
+          let corePluginExtensionPointCommandTopicRemoteConnector =
+            CorePluginExtensionPointRemoteConnector.make(
+              ~resource=corePluginEventTopicResource,
+            );
+          let publishToCorePluginExtensionPoint =
+            corePluginExtensionPointCommandTopicRemoteConnector.remotePublish;
+
           let extensions =
             extensions->Belt.Array.map((module Extension: Extension.T) =>
               Extension.make(
-                ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
+                ~publishToCorePluginExtensionPoint,
+                ~publishToAggregates,
                 ~queryEngine,
                 ~opts=Some(opts),
                 ~resources,
@@ -646,7 +655,8 @@ module Make =
 
           let connectPluginExtension =
             ConnectPluginExtension.make(
-              ~pluginExtensionPointCommandTopicId=corePluginCommandTopicId,
+              ~publishToCorePluginExtensionPoint,
+              ~publishToAggregates,
               ~queryEngine,
               ~opts=Some(opts),
               ~resources,
@@ -818,7 +828,8 @@ module Make =
               ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
             };
 
-          module EventCollector = EventCollector.Make(EventCollectorAdapter);
+          module EventCollector =
+            EventCollector.Make(EventCollectorConnector);
 
           let eventTopics =
             Util.Aggregate.findEventTopics(

@@ -20,6 +20,14 @@ function toResource(queue) {
         };
 }
 
+function fromResource(resource) {
+  return {
+          arn: resource.urn,
+          name: resource.name,
+          id: resource.id
+        };
+}
+
 function arn2Account(arn) {
   var match = arn.split(":");
   if (match.length !== 6) {
@@ -40,6 +48,7 @@ function subscribeToSnsTopic(queue, targetName, sourceName, topic, opts) {
 
 exports.service = service;
 exports.toResource = toResource;
+exports.fromResource = fromResource;
 exports.arn2Account = arn2Account;
 exports.subscribeToSnsTopic = subscribeToSnsTopic;
 /* @pulumi/aws Not a pure module */

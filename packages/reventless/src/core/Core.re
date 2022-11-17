@@ -120,7 +120,7 @@ module Make =
 
     let queryEngine = QueryEngineAdapter.make(resources);
 
-    let publishJsonsFns = Js.Dict.empty();
+    let publishToAggregates = Js.Dict.empty();
     let aggregatesOutputs =
       aggregates
       ->Belt.Array.map((module Aggregate: Aggregate.T) => {
@@ -140,20 +140,19 @@ module Make =
               ~resources,
               (),
             );
-          publishJsonsFns->Js.Dict.set(
+          publishToAggregates->Js.Dict.set(
             Aggregate.Spec.name,
             aggregate->Aggregate.publishJsons,
           );
           aggregate->Component.extractOutputs;
         })
       ->toDict;
-    // TODO addEventMapperFns
 
     let extensionPoints =
       extensionPoints->Belt.Array.map(
         (module ExtensionPoint: ExtensionPoint.T) =>
         ExtensionPoint.make(
-          ~publishJsonsFns,
+          ~publishToAggregates,
           ~scheduler,
           ~queryEngine,
           ~opts=Some(opts),

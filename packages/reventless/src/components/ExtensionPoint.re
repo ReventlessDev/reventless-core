@@ -21,7 +21,7 @@ type name = string;
 
 type maker =
   (
-    ~publishJsonsFns: Js.Dict.t(CommandTopic.publishJsons),
+    ~publishToAggregates: Js.Dict.t(CommandTopic.publishJsons),
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
@@ -152,7 +152,7 @@ module Make =
   };
 
   let construct =
-      (~publishJsonsFns, ~scheduler, ~queryEngine, self, name, resources) => {
+      (~publishToAggregates, ~scheduler, ~queryEngine, self, name, resources) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -175,7 +175,7 @@ module Make =
           reference,
           cmdJson,
         ) => {
-          publishJsonsFns
+          publishToAggregates
           ->Js.Dict.get(aggregateName)
           ->Belt.Option.map(
               (publishJsons: ReventlessCommandTopic.publishJsons) =>
@@ -317,11 +317,11 @@ module Make =
   };
 
   let make: maker =
-    (~publishJsonsFns, ~scheduler, ~queryEngine, ~opts, ~resources, _) =>
+    (~publishToAggregates, ~scheduler, ~queryEngine, ~opts, ~resources, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
-        ~construct=construct(~publishJsonsFns, ~scheduler, ~queryEngine),
+        ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine),
         ~opts,
         ~resources,
       );

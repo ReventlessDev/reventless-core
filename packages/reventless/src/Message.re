@@ -16,6 +16,12 @@ module type Service = {
 
 include ReventlessSpec.Message;
 
+let uuid = Uuid.v4;
+
+let now = () => Js.Date.make()->Js.Date.getTime;
+
+let nowAsISOString = () => Js.Date.make()->Js.Date.toISOString;
+
 [@decco]
 type statusChange = {
   at: string,
@@ -37,6 +43,18 @@ type commandJson = {
   meta,
   commandJson: Js.Json.t,
   delay: option(int),
+};
+
+let toMessageBody = ({id, meta, commandJson}) => {
+  let commandMeta: meta = {...meta, msgId: uuid(), time: nowAsISOString()};
+  [|
+    ("id", id->Js.Json.string),
+    ("meta", commandMeta->meta_encode),
+    ("command", commandJson),
+  |]
+  ->Js.Dict.fromArray
+  ->Js.Json.object_
+  ->Js.Json.stringify;
 };
 
 type commandHandler('id, 'command) =
@@ -110,12 +128,6 @@ let logEvent'Json = (event'Json, description) => {
   | _ => Js.log2("Couldn't log event:", eventStr)
   };
 };
-
-let uuid = Uuid.v4;
-
-let now = () => Js.Date.make()->Js.Date.getTime;
-
-let nowAsISOString = () => Js.Date.make()->Js.Date.toISOString;
 
 type hrtime = (int, int);
 [@bs.val] [@bs.scope "process"] external hrtime: unit => hrtime = "hrtime";

@@ -16,6 +16,14 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.bs.js");
 
+function now(param) {
+  return new Date().getTime();
+}
+
+function nowAsISOString(param) {
+  return new Date().toISOString();
+}
+
 function statusChange_encode(v) {
   return Js_dict.fromArray(/* array */[
               /* tuple */[
@@ -196,6 +204,38 @@ function commandJson_decode(v) {
   }
 }
 
+function toMessageBody(param) {
+  var meta = param[/* meta */1];
+  var commandMeta_000 = /* service */meta[/* service */0];
+  var commandMeta_001 = /* time */new Date().toISOString();
+  var commandMeta_002 = /* ip */meta[/* ip */2];
+  var commandMeta_003 = /* user */meta[/* user */3];
+  var commandMeta_004 = /* msgId */Uuid.v4(/* () */0);
+  var commandMeta_005 = /* correlationId */meta[/* correlationId */5];
+  var commandMeta = /* record */[
+    commandMeta_000,
+    commandMeta_001,
+    commandMeta_002,
+    commandMeta_003,
+    commandMeta_004,
+    commandMeta_005
+  ];
+  return JSON.stringify(Js_dict.fromArray(/* array */[
+                  /* tuple */[
+                    "id",
+                    param[/* id */0]
+                  ],
+                  /* tuple */[
+                    "meta",
+                    Message$ReventlessSpec.meta_encode(commandMeta)
+                  ],
+                  /* tuple */[
+                    "command",
+                    param[/* commandJson */2]
+                  ]
+                ]));
+}
+
 function event$prime_encode(encoder_id, encoder_event, v) {
   return Js_dict.fromArray(/* array */[
               /* tuple */[
@@ -303,14 +343,6 @@ function logEvent$primeJson(event$primeJson, description) {
   }
 }
 
-function now(param) {
-  return new Date().getTime();
-}
-
-function nowAsISOString(param) {
-  return new Date().toISOString();
-}
-
 function hrtimeToString(hrtime, now) {
   var milString = String(hrtime[1]);
   var milLength = milString.length;
@@ -391,12 +423,16 @@ exports.service_encode = service_encode;
 exports.service_decode = service_decode;
 exports.meta_encode = meta_encode;
 exports.meta_decode = meta_decode;
+exports.uuid = uuid;
+exports.now = now;
+exports.nowAsISOString = nowAsISOString;
 exports.statusChange_encode = statusChange_encode;
 exports.statusChange_decode = statusChange_decode;
 exports.command$prime_encode = command$prime_encode;
 exports.command$prime_decode = command$prime_decode;
 exports.commandJson_encode = commandJson_encode;
 exports.commandJson_decode = commandJson_decode;
+exports.toMessageBody = toMessageBody;
 exports.event$prime_encode = event$prime_encode;
 exports.event$prime_decode = event$prime_decode;
 exports.serviceNameOfMsg = serviceNameOfMsg;
@@ -404,9 +440,6 @@ exports.InvalidEvent = InvalidEvent;
 exports.InvalidCommand = InvalidCommand;
 exports.log = log;
 exports.logEvent$primeJson = logEvent$primeJson;
-exports.uuid = uuid;
-exports.now = now;
-exports.nowAsISOString = nowAsISOString;
 exports.hrtimeToString = hrtimeToString;
 exports.generateMeta = generateMeta;
 exports.decomposeMeta = decomposeMeta;
