@@ -3,12 +3,12 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var Decco = require("@ryb73/decco/src/Decco.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Id$Reventless = require("../Id.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.bs.js");
@@ -111,7 +111,7 @@ function Make(Spec) {
           }
         };
         var incomingEventHandler = function (event$primeJson, pluginDef) {
-          var event$prime = Message$Reventless.event$prime_decode(Decco.stringFromJson, Spec.event_decode, event$primeJson);
+          var event$prime = Message$Reventless.event$prime_decode(Id$Reventless.StringPure.t_decode, Spec.event_decode, event$primeJson);
           if (event$prime.tag) {
             console.log("Could not decode event':", event$prime[0]);
             return Promise.resolve(/* () */0);

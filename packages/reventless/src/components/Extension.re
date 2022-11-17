@@ -197,10 +197,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
           commandJson,
         ) =>
         publishCorePluginExtensionPointCommand(commandJson)
-      | ExtensionMapping.AbstractPublishExtensionPointCommand(
-          extensionPointName,
-          commandJson,
-        ) =>
+      | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
         forwardCommand(extensionPointName, commandJson)
       | AbstractCall(handler) =>
         handler()
@@ -214,7 +211,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
       (. event'Json, pluginDef) => {
         let event' =
           Message.event'_decode(
-            Decco.stringFromJson,
+            Id.StringPure.t_decode,
             Spec.event_decode,
             event'Json,
           );

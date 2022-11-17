@@ -66,13 +66,14 @@ module Make =
       );
       {
         Message.id: aggregateId,
-        meta: encodeMeta(meta, extensionPointName),
+        meta: encodeMeta(meta, aggregateName),
         commandJson: aggregateCmd->Aggregate.command_encode,
         delay: None,
       };
     };
 
-    let encodeExtensionPointCommandJson = (commandJson, ~id, ~action) => {
+    let encodeExtensionPointCommandJson =
+        (commandJson, ~id, ~extensionPointName, ~action) => {
       let commandStr = commandJson->Js.Json.stringify;
       Js.log(
         {j|ExtensionMapping incoming from ExtensionPoint $extensionPointName: $action: $commandStr id: $id|j},
@@ -85,10 +86,11 @@ module Make =
       };
     };
 
-    let encodeExtensionPointCommand = (command, ~id, ~action) =>
+    let encodeExtensionPointCommand =
+        (command, ~id, ~extensionPointName, ~action) =>
       command
       ->Spec.command_encode
-      ->encodeExtensionPointCommandJson(~id, ~action);
+      ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action);
 
     MappingImpl.mapIncomingEvent(id, event, meta, pluginDef, queryEngine)
     ->Belt.Array.map(
@@ -137,6 +139,7 @@ module Make =
             AbstractPublishPluginExtensionPointCommand(
               command->encodeExtensionPointCommand(
                 ~id,
+                ~extensionPointName,
                 ~action="Publish PluginExtensionPoint command",
               ),
             );
@@ -146,6 +149,7 @@ module Make =
               extensionPointName,
               command->encodeExtensionPointCommand(
                 ~id,
+                ~extensionPointName,
                 ~action="Publish ExtensionPoint command",
               ),
             );
@@ -155,6 +159,7 @@ module Make =
               extensionPointName,
               commandJson->encodeExtensionPointCommandJson(
                 ~id,
+                ~extensionPointName,
                 ~action="Forward ExtensionPoint command",
               ),
             );
@@ -179,7 +184,8 @@ module Make =
       )
     ) {
     | Ok({id, meta, event}) =>
-      let encodeExtensionPointCommandJson = (commandJson, ~id, ~action) => {
+      let encodeExtensionPointCommandJson =
+          (commandJson, ~id, ~extensionPointName, ~action) => {
         let commandStr = commandJson->Js.Json.stringify;
         Js.log(
           {j|ExtensionMapping outgoing from Aggregate $aggregateName: $action: $commandStr id: $id|j},
@@ -192,10 +198,11 @@ module Make =
         };
       };
 
-      let encodeExtensionPointCommand = (command, ~id, ~action) =>
+      let encodeExtensionPointCommand =
+          (command, ~id, ~extensionPointName, ~action) =>
         command
         ->Spec.command_encode
-        ->encodeExtensionPointCommandJson(~id, ~action);
+        ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action);
 
       MappingImpl.mapOutgoingEvent(
         id->Aggregate.Id.toString,
@@ -210,6 +217,7 @@ module Make =
             AbstractPublishPluginExtensionPointCommand(
               command->encodeExtensionPointCommand(
                 ~id,
+                ~extensionPointName,
                 ~action="Publish PluginExtensionPoint command",
               ),
             )
@@ -219,6 +227,7 @@ module Make =
               extensionPointName,
               command->encodeExtensionPointCommand(
                 ~id,
+                ~extensionPointName,
                 ~action="Publish ExtensionPoint command",
               ),
             )
@@ -227,6 +236,7 @@ module Make =
                 extensionPointName,
                 commandJson->encodeExtensionPointCommandJson(
                   ~id,
+                  ~extensionPointName,
                   ~action="Forward ExtensionPoint command",
                 ),
               );

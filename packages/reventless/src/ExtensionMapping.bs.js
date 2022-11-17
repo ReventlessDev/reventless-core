@@ -30,12 +30,12 @@ function Make(Spec) {
           console.log("ExtensionMapping incoming from ExtensionPoint " + (String(extensionPointName) + (" to Aggregate " + (String(aggregateName) + (": Publishing command: " + (String(commandStr) + (" id: " + (String(aggregateId) + ""))))))));
           return /* record */[
                   /* id */aggregateId,
-                  /* meta */encodeMeta(meta, extensionPointName),
+                  /* meta */encodeMeta(meta, aggregateName),
                   /* commandJson */Curry._1(Aggregate.command_encode, aggregateCmd),
                   /* delay */undefined
                 ];
         };
-        var encodeExtensionPointCommandJson = function (commandJson, id, action) {
+        var encodeExtensionPointCommandJson = function (commandJson, id, extensionPointName, action) {
           var commandStr = JSON.stringify(commandJson);
           console.log("ExtensionMapping incoming from ExtensionPoint " + (String(extensionPointName) + (": " + (String(action) + (": " + (String(commandStr) + (" id: " + (String(id) + ""))))))));
           return /* record */[
@@ -45,8 +45,8 @@ function Make(Spec) {
                   /* delay */undefined
                 ];
         };
-        var encodeExtensionPointCommand = function (command, id, action) {
-          return encodeExtensionPointCommandJson(Curry._1(Spec.command_encode, command), id, action);
+        var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
+          return encodeExtensionPointCommandJson(Curry._1(Spec.command_encode, command), id, extensionPointName, action);
         };
         return Belt_Array.map(Curry._5(MappingImpl.mapIncomingEvent, param[/* id */0], param[/* event */2], meta, pluginDef, queryEngine), (function (param) {
                       switch (param.tag | 0) {
@@ -77,18 +77,19 @@ function Make(Spec) {
                             var command = param[1];
                             var id = param[0];
                             if (Spec.name === PluginExtensionPointSpec$ReventlessSpec.name) {
-                              return /* AbstractPublishPluginExtensionPointCommand */Block.__(3, [encodeExtensionPointCommand(command, id, "Publish PluginExtensionPoint command")]);
+                              return /* AbstractPublishPluginExtensionPointCommand */Block.__(3, [encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")]);
                             } else {
                               return /* AbstractPublishExtensionPointCommand */Block.__(4, [
                                         extensionPointName,
-                                        encodeExtensionPointCommand(command, id, "Publish ExtensionPoint command")
+                                        encodeExtensionPointCommand(command, id, extensionPointName, "Publish ExtensionPoint command")
                                       ]);
                             }
                         case /* ForwardCommand */4 :
                             var match = param[0];
+                            var extensionPointName$1 = match[/* extensionPointName */0];
                             return /* AbstractPublishExtensionPointCommand */Block.__(4, [
-                                      match[/* extensionPointName */0],
-                                      encodeExtensionPointCommandJson(match[/* commandJson */2], match[/* id */1], "Forward ExtensionPoint command")
+                                      extensionPointName$1,
+                                      encodeExtensionPointCommandJson(match[/* commandJson */2], match[/* id */1], extensionPointName$1, "Forward ExtensionPoint command")
                                     ]);
                         case /* Call */5 :
                             var callCommand = param[1];
@@ -108,7 +109,7 @@ function Make(Spec) {
         } else {
           var match$1 = match[0];
           var meta = match$1[/* meta */1];
-          var encodeExtensionPointCommandJson = function (commandJson, id, action) {
+          var encodeExtensionPointCommandJson = function (commandJson, id, extensionPointName, action) {
             var commandStr = JSON.stringify(commandJson);
             console.log("ExtensionMapping outgoing from Aggregate " + (String(aggregateName) + (": " + (String(action) + (": " + (String(commandStr) + (" id: " + (String(id) + ""))))))));
             return /* record */[
@@ -118,8 +119,8 @@ function Make(Spec) {
                     /* delay */undefined
                   ];
           };
-          var encodeExtensionPointCommand = function (command, id, action) {
-            return encodeExtensionPointCommandJson(Curry._1(Spec.command_encode, command), id, action);
+          var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
+            return encodeExtensionPointCommandJson(Curry._1(Spec.command_encode, command), id, extensionPointName, action);
           };
           return Belt_Array.map(Curry._4(MappingImpl.mapOutgoingEvent, Curry._1(Aggregate.Id.toString, match$1[/* id */0]), match$1[/* event */2], meta, pluginDef), (function (param) {
                         switch (param.tag | 0) {
@@ -127,18 +128,19 @@ function Make(Spec) {
                               var command = param[1];
                               var id = param[0];
                               if (Spec.name === PluginExtensionPointSpec$ReventlessSpec.name) {
-                                return /* AbstractPublishPluginExtensionPointCommand */Block.__(0, [encodeExtensionPointCommand(command, id, "Publish PluginExtensionPoint command")]);
+                                return /* AbstractPublishPluginExtensionPointCommand */Block.__(0, [encodeExtensionPointCommand(command, id, extensionPointName, "Publish PluginExtensionPoint command")]);
                               } else {
                                 return /* AbstractPublishExtensionPointCommand */Block.__(1, [
                                           extensionPointName,
-                                          encodeExtensionPointCommand(command, id, "Publish ExtensionPoint command")
+                                          encodeExtensionPointCommand(command, id, extensionPointName, "Publish ExtensionPoint command")
                                         ]);
                               }
                           case /* ForwardCommand */1 :
                               var match = param[0];
+                              var extensionPointName$1 = match[/* extensionPointName */0];
                               return /* AbstractPublishExtensionPointCommand */Block.__(1, [
-                                        match[/* extensionPointName */0],
-                                        encodeExtensionPointCommandJson(match[/* commandJson */2], match[/* id */1], "Forward ExtensionPoint command")
+                                        extensionPointName$1,
+                                        encodeExtensionPointCommandJson(match[/* commandJson */2], match[/* id */1], extensionPointName$1, "Forward ExtensionPoint command")
                                       ]);
                           case /* Call */2 :
                               var callCommand = param[1];
