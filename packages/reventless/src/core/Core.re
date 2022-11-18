@@ -206,7 +206,7 @@ module Make =
       EventCollector.make(
         ~name=componentType->ComponentType.toName,
         ~eventTopics=
-          Util.Aggregate.findEventTopics(aggregatesOutputs, aggregateNames),
+          aggregatesOutputs->Util.Aggregate.filterEventTopics(aggregateNames),
         ~eventsHandler,
         ~opts=Some(opts),
         (),

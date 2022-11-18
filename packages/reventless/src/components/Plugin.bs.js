@@ -438,7 +438,7 @@ function Make(EventCollectorConnector) {
                                   }));
                     };
                     var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-                    var eventTopics = Util_Aggregate$Reventless.findEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
+                    var eventTopics = Util_Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
                     eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
                       resources: Belt_Array.map(corePluginExtensionPoint.eventTopic.resources, AdapterDeploytime$Reventless.stackRefResourceToResource)
                     };

@@ -384,7 +384,7 @@ module Make =
       EventCollector.make(
         ~name=Target.name->ComponentType.name(componentType),
         ~eventTopics=
-          Util.EventTopic.findEventTopics(allEventTopics, aggregateNames),
+          allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
         ~eventsHandler=
           eventCollectorEventsHandler(
             publishJsons,

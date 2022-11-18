@@ -26,7 +26,7 @@ let allEventTopics = allAggregates =>
     allAggregates,
   );
 
-let findEventTopics = (allAggregates, aggregateNames) =>
+let filterEventTopics = (allAggregates, aggregateNames) =>
   aggregateNames
   ->Belt.Set.String.toArray
   ->Belt.Array.keepMap(aggregateName =>

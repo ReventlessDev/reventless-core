@@ -119,7 +119,7 @@ function Make(EventCollector) {
     var eventsHandler$1 = eventsHandler(sideEffects, queryEngine);
     var eventCollector = Curry.app(EventCollector.make, [
           name,
-          Util_EventTopic$Reventless.findEventTopics(allEventTopics, aggregateNames),
+          Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames),
           eventsHandler$1,
           memorySize,
           timeout,

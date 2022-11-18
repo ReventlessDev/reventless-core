@@ -217,7 +217,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
       EventCollector.make(
         ~name,
         ~eventTopics=
-          Util.EventTopic.findEventTopics(allEventTopics, aggregateNames),
+          allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
         ~eventsHandler,
         ~memorySize,
         ~timeout,

@@ -46,7 +46,7 @@ function allEventTopics(allAggregates) {
               }), allAggregates);
 }
 
-function findEventTopics(allAggregates, aggregateNames) {
+function filterEventTopics(allAggregates, aggregateNames) {
   return Js_dict.fromArray(Belt_Array.keepMap(Belt_SetString.toArray(aggregateNames), (function (aggregateName) {
                     return Belt_Option.map(Js_dict.get(allAggregates, aggregateName), (function (aggregateOutput) {
                                   return /* tuple */[
@@ -62,5 +62,5 @@ exports.eventLogStorageResource = eventLogStorageResource;
 exports.eventTopicPublisherResource = eventTopicPublisherResource;
 exports.eventTopics = eventTopics;
 exports.allEventTopics = allEventTopics;
-exports.findEventTopics = findEventTopics;
+exports.filterEventTopics = filterEventTopics;
 /* No side effect */

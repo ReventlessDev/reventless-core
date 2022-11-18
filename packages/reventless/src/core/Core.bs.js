@@ -97,7 +97,7 @@ function Make(Config) {
                 var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
                 var eventCollector = Curry.app(EventCollector.make, [
                       ComponentType$Reventless.toName(/* Core */18),
-                      Util_Aggregate$Reventless.findEventTopics(aggregatesOutputs, aggregateNames),
+                      Util_Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames),
                       eventsHandler,
                       undefined,
                       undefined,

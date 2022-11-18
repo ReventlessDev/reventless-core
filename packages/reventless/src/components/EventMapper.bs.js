@@ -270,7 +270,7 @@ function Make(Target) {
                       })));
             var eventCollector = Curry.app(EventCollector.make, [
                   ComponentType$Reventless.name(Target.name, /* EventMapper */7),
-                  Util_EventTopic$Reventless.findEventTopics(allEventTopics, aggregateNames),
+                  Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames),
                   eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]),
                   memorySize,
                   timeout,

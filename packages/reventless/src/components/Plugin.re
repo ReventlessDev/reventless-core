@@ -832,8 +832,7 @@ module Make =
             EventCollector.Make(EventCollectorConnector);
 
           let eventTopics =
-            Util.Aggregate.findEventTopics(
-              aggregatesOutputs,
+            aggregatesOutputs->Util.Aggregate.filterEventTopics(
               extensionPointAggregateNames->Set.union(
                 extensionAggregateNames,
               ),

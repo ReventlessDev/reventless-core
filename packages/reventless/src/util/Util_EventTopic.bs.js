@@ -35,7 +35,7 @@ function getPublisherResource(resources, name) {
               })(publisher)(ComponentType$Reventless.name(name, /* EventTopic */8));
 }
 
-function findEventTopics(allEventTopics, aggregateNames) {
+function filterEventTopics(allEventTopics, aggregateNames) {
   return Js_dict.fromArray(Belt_Array.map(Belt_SetString.toArray(aggregateNames), (function (aggregateName) {
                     try {
                       return /* tuple */[
@@ -44,7 +44,7 @@ function findEventTopics(allEventTopics, aggregateNames) {
                             ];
                     }
                     catch (exn){
-                      console.log("Util_EventTopic.findEventTopics: Couldn\'t find Aggregate " + (String(aggregateName) + " in"), allEventTopics);
+                      console.log("Util_EventTopic.filterEventTopics: Couldn\'t find Aggregate " + (String(aggregateName) + " in"), allEventTopics);
                       throw exn;
                     }
                   })));
@@ -53,5 +53,5 @@ function findEventTopics(allEventTopics, aggregateNames) {
 exports.publisher = publisher;
 exports.setPublisherResource = setPublisherResource;
 exports.getPublisherResource = getPublisherResource;
-exports.findEventTopics = findEventTopics;
+exports.filterEventTopics = filterEventTopics;
 /* No side effect */
