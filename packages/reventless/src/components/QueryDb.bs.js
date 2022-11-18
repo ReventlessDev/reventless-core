@@ -114,7 +114,7 @@ function Make(Config) {
                             return config[/* sortField */0];
                           }));
                     var storageName = ComponentType$Reventless.name(name, /* QueryDb */11);
-                    var storage = Curry._8($$Storage.make, storageName, ViewSpec.indexes, sortField, ttl, api, apiRole, opts, resources);
+                    var storage = Curry._7($$Storage.make, storageName, ViewSpec.indexes, sortField, ttl, api, apiRole, opts);
                     Util_QueryDb$Reventless.setStorageResource(resources, Caml_array.caml_array_get(storage[/* resources */0], 0), name);
                     self.load = loadFn(storage);
                     self.save = saveFn(storage);

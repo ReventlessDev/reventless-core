@@ -101,8 +101,7 @@ module Adapter = {
       ~ttl: int=?,
       ~api: 'api,
       ~apiRole: 'role,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
+      ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     storage;
 
@@ -333,7 +332,6 @@ module Make =
         ~api,
         ~apiRole,
         ~opts,
-        ~resources,
       );
     resources->Util_QueryDb.setStorageResource(storage.resources[0], name);
 

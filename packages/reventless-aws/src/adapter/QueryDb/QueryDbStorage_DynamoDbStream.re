@@ -5,16 +5,7 @@ type api = Pulumi.Output.t(AppSync.GraphQLApi.t);
 type role = Pulumi.Output.t(IAM.Role.t);
 
 let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
-  (
-    ~name,
-    ~indexes,
-    ~sortField=?,
-    ~ttl=?,
-    ~api,
-    ~apiRole,
-    ~opts,
-    ~resources as _,
-  ) => {
+  (~name, ~indexes, ~sortField=?, ~ttl=?, ~api, ~apiRole, ~opts) => {
     let globalSecondaryIndexes =
       indexes
       ->Belt.List.toArray
