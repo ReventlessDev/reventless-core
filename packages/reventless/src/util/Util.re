@@ -2,7 +2,6 @@ module Aggregate = Util_Aggregate;
 module Array = Util_Array;
 module CommandTopic = Util_CommandTopic;
 module Error = Util_Error;
-module EventCollector = Util_EventCollector;
 module EventLog = Util_EventLog;
 module EventTopic = Util_EventTopic;
 module ExtensionPoint = Util_ExtensionPoint;

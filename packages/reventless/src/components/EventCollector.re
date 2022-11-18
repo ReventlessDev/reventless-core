@@ -26,7 +26,6 @@ module type T = {
       ~policy1: Pulumi.Output.t(string)=?,
       ~policy2: Pulumi.Output.t(string)=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
@@ -58,8 +57,7 @@ module Adapter = {
 module Make = (Connector: Adapter.Connector) : T => {
   type t;
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -67,8 +65,7 @@ module Make = (Connector: Adapter.Connector) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -109,7 +106,6 @@ module Make = (Connector: Adapter.Connector) : T => {
         ~policy2=?,
         self,
         name,
-        resources,
       ) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
@@ -128,14 +124,6 @@ module Make = (Connector: Adapter.Connector) : T => {
         ~timeout,
         ~opts,
       );
-    switch (connector.resources) {
-    | [||] => ()
-    | connectorResources =>
-      resources->Util_EventCollector.setConnectorResource(
-        connectorResources[0],
-        name,
-      )
-    };
 
     self->setEnqueueEvent(connector->enqueueEventFn);
 
@@ -152,7 +140,6 @@ module Make = (Connector: Adapter.Connector) : T => {
         ~policy1=?,
         ~policy2=?,
         ~opts,
-        ~resources,
         _,
       ) =>
     make(
@@ -168,6 +155,5 @@ module Make = (Connector: Adapter.Connector) : T => {
           ~policy2?,
         ),
       ~opts,
-      ~resources,
     );
 };

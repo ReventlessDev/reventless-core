@@ -209,7 +209,6 @@ module Make =
           Util.Aggregate.findEventTopics(aggregatesOutputs, aggregateNames),
         ~eventsHandler,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
 

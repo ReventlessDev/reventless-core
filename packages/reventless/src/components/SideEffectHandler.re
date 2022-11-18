@@ -26,7 +26,6 @@ module type T = {
       ~policy1: Pulumi.Output.t(string)=?,
       ~policy2: Pulumi.Output.t(string)=?,
       ~opts: Pulumi.CustomResourceOptions.t=?,
-      ~resources: resources,
       unit
     ) =>
     Component.t(t, outputs);
@@ -41,8 +40,7 @@ module type T = {
 module Make = (EventCollector: EventCollector.T) : T => {
   type t;
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (Component.t(t, outputs), string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -50,8 +48,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     Component.t(t, outputs) =
     "default";
@@ -179,27 +176,11 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
-  let createScheduleFn = (scheduler, resources, name) =>
-    (. schedule) =>
-      (
-        Schedule.create(
-          scheduler,
-          resources->Util.EventCollector.getConnectorResource(name),
-        )
-      )(.
-        schedule,
-      );
+  let createScheduleFn = (scheduler, queue) =>
+    (. schedule) => (Schedule.create(scheduler, queue))(. schedule);
 
-  let deleteScheduleFn = (scheduler, resources, name) =>
-    (. scheduleName) =>
-      (
-        Schedule.delete(
-          scheduler,
-          resources->Util.EventCollector.getConnectorResource(name),
-        )
-      )(.
-        scheduleName,
-      );
+  let deleteScheduleFn = (scheduler, queue) =>
+    (. scheduleName) => (Schedule.delete(scheduler, queue))(. scheduleName);
 
   let enqueueEventFn = eventCollector =>
     (. delay, id, message) =>
@@ -217,7 +198,6 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~policy2=?,
         self,
         name,
-        resources,
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
@@ -244,13 +224,13 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~policy1?,
         ~policy2?,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
+    let queue = eventCollector->Component.extractOutputs##resources[0]; // TODO
 
     self->setEnqueueEvent(enqueueEventFn(eventCollector));
-    self->setCreateSchedule(createScheduleFn(scheduler, resources, name));
-    self->setDeleteSchedule(deleteScheduleFn(scheduler, resources, name));
+    self->setCreateSchedule(createScheduleFn(scheduler, queue));
+    self->setDeleteSchedule(deleteScheduleFn(scheduler, queue));
 
     makeOutputs(
       ~name,
@@ -271,7 +251,6 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~policy1=?,
         ~policy2=?,
         ~opts=?,
-        ~resources,
         _,
       ) => {
     make(
@@ -292,7 +271,6 @@ module Make = (EventCollector: EventCollector.T) : T => {
         opts->Belt.Option.map(
           Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
         ),
-      ~resources,
     );
   };
 };

@@ -451,7 +451,6 @@ function Make(EventCollectorConnector) {
                           undefined,
                           undefined,
                           Caml_option.some(opts),
-                          resources,
                           /* () */0
                         ]);
                     var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);

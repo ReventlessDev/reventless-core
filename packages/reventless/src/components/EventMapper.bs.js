@@ -277,7 +277,6 @@ function Make(Target) {
                   undefined,
                   undefined,
                   Caml_option.some(opts),
-                  resources,
                   /* () */0
                 ]);
             var self$1 = self;

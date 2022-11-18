@@ -104,7 +104,6 @@ function Make(Config) {
                       undefined,
                       undefined,
                       Caml_option.some(opts),
-                      resources,
                       /* () */0
                     ]);
                 var Cloner = Cloner$Reventless.Make(Config)(ClonerRunner);

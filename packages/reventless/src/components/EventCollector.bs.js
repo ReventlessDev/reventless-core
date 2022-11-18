@@ -2,10 +2,8 @@
 'use strict';
 
 var Curry = require("bs-platform/lib/js/curry.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_EventCollector$Reventless = require("../util/Util_EventCollector.bs.js");
 
 var Adapter = { };
 
@@ -15,15 +13,11 @@ function Make(Connector) {
         return connector[/* enqueueEvent */1](delay, id, message);
       });
   };
-  var construct = function (eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, self, name, resources) {
+  var construct = function (eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, self, name) {
     var opts = {
       parent: self
     };
     var connector = Curry._8(Connector.make, ComponentType$Reventless.name(name, /* EventCollector */5), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
-    var connectorResources = connector[/* resources */0];
-    if (connectorResources.length !== 0) {
-      Util_EventCollector$Reventless.setConnectorResource(resources, Caml_array.caml_array_get(connectorResources, 0), name);
-    }
     self.enqueueEvent = enqueueEventFn(connector);
     var self$1 = self;
     var outputs = {
@@ -33,17 +27,16 @@ function Make(Connector) {
     self$1.setOutputs(outputs);
     return self$1.registerOutputs(outputs);
   };
-  var make = function (name, eventTopics, eventsHandler, $staropt$star, $staropt$star$1, policy1, policy2, opts, resources, param) {
+  var make = function (name, eventTopics, eventsHandler, $staropt$star, $staropt$star$1, policy1, policy2, opts, param) {
     var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
     var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 30;
     var prim = ComponentType$Reventless.toString(/* EventCollector */5);
     var prim$1 = name;
-    var prim$2 = function (param, param$1, param$2) {
-      return construct(eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, param, param$1, param$2);
+    var prim$2 = function (param, param$1) {
+      return construct(eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, param, param$1);
     };
     var prim$3 = opts;
-    var prim$4 = resources;
-    return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+    return new Component.default(prim, prim$1, prim$2, prim$3);
   };
   return {
           make: make,

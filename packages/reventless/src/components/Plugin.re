@@ -855,7 +855,6 @@ module Make =
               ~eventTopics,
               ~eventsHandler,
               ~opts=Some(opts),
-              ~resources,
               (),
             );
           let eventCollectorOutputs = eventCollector->Component.extractOutputs;

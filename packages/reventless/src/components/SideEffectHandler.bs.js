@@ -5,6 +5,7 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
@@ -15,7 +16,6 @@ var Component$Reventless = require("./Component.bs.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var Util_EventTopic$Reventless = require("../util/Util_EventTopic.bs.js");
-var Util_EventCollector$Reventless = require("../util/Util_EventCollector.bs.js");
 
 function Make(EventCollector) {
   var findSideEffect = function (sideEffects, event$primeJson) {
@@ -94,14 +94,14 @@ function Make(EventCollector) {
                     }));
       });
   };
-  var createScheduleFn = function (scheduler, resources, name) {
+  var createScheduleFn = function (scheduler, queue) {
     return (function (schedule) {
-        return Schedule$Reventless.create(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(schedule);
+        return Schedule$Reventless.create(scheduler, queue)(schedule);
       });
   };
-  var deleteScheduleFn = function (scheduler, resources, name) {
+  var deleteScheduleFn = function (scheduler, queue) {
     return (function (scheduleName) {
-        return Schedule$Reventless.$$delete(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(scheduleName);
+        return Schedule$Reventless.$$delete(scheduler, queue)(scheduleName);
       });
   };
   var enqueueEventFn = function (eventCollector) {
@@ -109,7 +109,7 @@ function Make(EventCollector) {
         return Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
       });
   };
-  var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name, resources) {
+  var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name) {
     var opts = {
       parent: self
     };
@@ -126,12 +126,12 @@ function Make(EventCollector) {
           policy1,
           policy2,
           Caml_option.some(opts),
-          resources,
           /* () */0
         ]);
+    var queue = Caml_array.caml_array_get(Component$Reventless.extractOutputs(eventCollector).resources, 0);
     self.enqueueEvent = enqueueEventFn(eventCollector);
-    self.createSchedule = createScheduleFn(scheduler, resources, name);
-    self.deleteSchedule = deleteScheduleFn(scheduler, resources, name);
+    self.createSchedule = createScheduleFn(scheduler, queue);
+    self.deleteSchedule = deleteScheduleFn(scheduler, queue);
     var self$1 = self;
     var outputs = {
       name: name,
@@ -140,17 +140,16 @@ function Make(EventCollector) {
     self$1.setOutputs(outputs);
     return self$1.registerOutputs(outputs);
   };
-  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, $staropt$star, $staropt$star$1, policy1, policy2, opts, resources, param) {
+  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, $staropt$star, $staropt$star$1, policy1, policy2, opts, param) {
     var memorySize = $staropt$star !== undefined ? $staropt$star : 2048;
     var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 180;
     var prim = ComponentType$Reventless.toString(/* SideEffectHandler */15);
     var prim$1 = name;
-    var prim$2 = function (param, param$1, param$2) {
-      return construct(sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, param, param$1, param$2);
+    var prim$2 = function (param, param$1) {
+      return construct(sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, param, param$1);
     };
     var prim$3 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions);
-    var prim$4 = resources;
-    return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+    return new Component.default(prim, prim$1, prim$2, prim$3);
   };
   return {
           make: make,

@@ -396,7 +396,6 @@ module Make =
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
 
