@@ -11,7 +11,7 @@ let make: Reventless.StateTopic.Adapter.publisherMaker =
               ),
           ),
         )
-      ->Reventless.Util.Adapter.findResource(Util.DynamoDbStream.service);
+      ->Util.DynamoDbStream.findResource;
 
     {
       resource:

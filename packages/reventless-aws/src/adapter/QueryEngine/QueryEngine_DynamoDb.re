@@ -135,7 +135,7 @@ let make: Reventless.QueryDb.Adapter.queryEngineMaker =
     let tableName = viewName =>
       allQueryDbs
       ->Reventless.Util_QueryDbRuntime.getLocalStorageResources(viewName)
-      ->Reventless.Util.Adapter.findResource(Util.DynamoDbStream.service)##name
+      ->Util_DynamoDbStream.findResource##name
       ->Reventless.OutputFailsafeRuntime.get;
     {
       scan: (~viewName) => scanByTableName(~tableName=tableName(viewName)),

@@ -90,9 +90,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~tableName=
                     allQueryDbs
                     ->Util_QueryDbRuntime.getLocalStorageResources(tableName)
-                    ->Reventless.Util.Adapter.findResource(
-                        Util_DynamoDbStream.service,
-                      )##name,
+                    ->Util_DynamoDbStream.findResource##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),

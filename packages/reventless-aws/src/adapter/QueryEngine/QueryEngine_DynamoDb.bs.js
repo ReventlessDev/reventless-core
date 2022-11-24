@@ -8,7 +8,6 @@ var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
-var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.bs.js");
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
@@ -162,7 +161,7 @@ function scanByTableName(tableName, filterConfigs, limit) {
 
 function make(allQueryDbs) {
   var tableName = function (viewName) {
-    return OutputFailsafeRuntime$Reventless.get(Util_Adapter$Reventless.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, viewName), Util_DynamoDbStream$ReventlessAws.service).name);
+    return OutputFailsafeRuntime$Reventless.get(Util_DynamoDbStream$ReventlessAws.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, viewName)).name);
   };
   return /* record */[
           /* scan */(function (viewName) {
@@ -185,4 +184,4 @@ exports.createFilters = createFilters;
 exports.queryByTableName = queryByTableName;
 exports.scanByTableName = scanByTableName;
 exports.make = make;
-/* Util_Adapter-Reventless Not a pure module */
+/* DynamoDb_DocumentClient-AwsSdk Not a pure module */

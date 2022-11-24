@@ -3,11 +3,10 @@
 
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.bs.js");
-var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 
 function make(param, storageResources, param$1) {
-  var storageResource = Util_Adapter$Reventless.findResource(storageResources, Util_DynamoDbStream$ReventlessAws.service);
+  var storageResource = Util_DynamoDbStream$ReventlessAws.findResource(storageResources);
   return /* record */[
           /* resources : array */[Adapter$Reventless.outputToResource(storageResource.service.apply((function (service) {
                         if (service === Util_DynamoDbStream$ReventlessAws.service) {
@@ -23,4 +22,4 @@ function make(param, storageResources, param$1) {
 }
 
 exports.make = make;
-/* Util_Adapter-Reventless Not a pure module */
+/* Util_DynamoDbStream-ReventlessAws Not a pure module */
