@@ -49,7 +49,7 @@ function findResource(resources, service) {
                     if (resources.length !== 0) {
                       return Caml_array.caml_array_get(resources, 0);
                     } else {
-                      var err = "Util.Adapter.findResource: Couldn\'t find " + (String(service) + " in resources");
+                      var err = "Util.Adapter.findResource: Couldn\'t find service " + (String(service) + (" in resources: " + (String(resources) + "")));
                       console.log(err);
                       return Js_exn.raiseError(err);
                     }
@@ -67,7 +67,7 @@ function findUnwrappedResource(resources, service) {
   if (resources$1.length !== 0) {
     return Caml_array.caml_array_get(resources$1, 0);
   } else {
-    var err = "Util.Adapter.findUnwrappedResource: Couldn\'t find " + (String(service) + " in resources");
+    var err = "Util.Adapter.findUnwrappedResource: Couldn\'t find service " + (String(service) + (" in resources: " + (String(resources) + "")));
     console.log(err);
     return Js_exn.raiseError(err);
   }
