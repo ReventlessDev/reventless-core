@@ -1,5 +1,5 @@
 open ReventlessSpec.Adapter;
-open Reventless.Adapter;
+open Adapter;
 
 let filterByOutput:
   (array(resource), resource => Pulumi.Output.t(bool)) =>
@@ -45,14 +45,14 @@ let findResource = (resources, service) =>
         }
       | resources => resources[0],
     )
-  ->Reventless.Adapter.outputToResource;
+  ->outputToResource;
 
 let findResourceInOutput = (resourcesOutput, service) =>
   resourcesOutput
   ->Pulumi.Output.flatMap(resources =>
       resources->filterSupportedResources([|service|])
     )
-  ->Reventless.Adapter.resourcesOutputToResource;
+  ->resourcesOutputToResource;
 
 let findUnwrappedResource = (resources, service) =>
   switch (resources->filterSupportedUnwrappedResources([|service|])) {
@@ -99,8 +99,7 @@ let partitionSupportedResources = (adapters, supportedServices) => {
     });
 };
 
-type unwrappedResources =
-  array((string, array(Reventless.Adapter.unwrappedResource)));
+type unwrappedResources = array((string, array(unwrappedResource)));
 
 let partitionUnwrappedResourcesByService:
   (unwrappedResources, string) => (unwrappedResources, unwrappedResources) =
