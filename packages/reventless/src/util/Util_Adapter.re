@@ -89,9 +89,7 @@ let partitionSupportedResources = (adapters, supportedServices) => {
         supported->Belt.Array.map(((name, resources)) =>
           (
             name,
-            resources->Belt.Array.map(
-              Reventless.AdapterDeploytime.unsafeUnwrapResource,
-            ) // Outputs are unwrapped within Pulumi.Output.all
+            resources->Belt.Array.map(AdapterDeploytime.unsafeUnwrapResource) // Outputs are unwrapped within Pulumi.Output.all
           )
         ),
         unsupported->Belt.Array.map(((name, _)) => name),
