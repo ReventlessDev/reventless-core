@@ -146,6 +146,10 @@ function findResource(resources) {
   return Util_Adapter$Reventless.findResource(resources, service);
 }
 
+function findResourceInOutput(resourcesOutput) {
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, service);
+}
+
 exports.service = service;
 exports.toInfo = toInfo;
 exports.streamArnFromDynamoDbTableResource = streamArnFromDynamoDbTableResource;
@@ -156,4 +160,5 @@ exports.verifyStream = verifyStream;
 exports.updateTable = updateTable;
 exports.makeTable = makeTable;
 exports.findResource = findResource;
+exports.findResourceInOutput = findResourceInOutput;
 /* @pulumi/aws Not a pure module */

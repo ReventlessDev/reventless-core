@@ -259,6 +259,10 @@ function findResource(resources) {
   return Util_Adapter$Reventless.findResource(resources, service);
 }
 
+function findResourceInOutput(resourcesOutput) {
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, service);
+}
+
 exports.service = service;
 exports.toInfo = toInfo;
 exports.toResource = toResource;
@@ -272,4 +276,5 @@ exports.makeTableArgs = makeTableArgs;
 exports.option2Str = option2Str;
 exports.makeTable = makeTable;
 exports.findResource = findResource;
+exports.findResourceInOutput = findResourceInOutput;
 /* @pulumi/aws Not a pure module */

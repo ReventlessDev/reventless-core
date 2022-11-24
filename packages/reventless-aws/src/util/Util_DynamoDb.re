@@ -208,3 +208,6 @@ let makeTable =
 
 let findResource = resources =>
   resources->Reventless.Util.Adapter.findResource(service);
+
+let findResourceInOutput = resourcesOutput =>
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(service);

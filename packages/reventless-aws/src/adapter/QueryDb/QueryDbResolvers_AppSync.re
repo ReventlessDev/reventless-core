@@ -90,7 +90,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~tableName=
                     allQueryDbs
                     ->Util_QueryDbRuntime.getLocalStorageResources(tableName)
-                    ->Util_DynamoDbStream.findResource##name,
+                    ->Util_DynamoDb.findResource##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),
@@ -137,7 +137,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
             (~pluginName: option(string), ~tableName: string) =>
           allQueryDbs
           ->Util_QueryDb.getStorageResources(pluginName, tableName)
-          ->Util.Adapter.findResourceInOutput(Util_DynamoDb.service);
+          ->Util_DynamoDb.findResourceInOutput;
 
         let generateTemplate:
           (
