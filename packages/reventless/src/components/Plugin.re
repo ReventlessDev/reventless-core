@@ -22,7 +22,6 @@ type outputs = {
     Pulumi.Output.t(Js.Dict.t(array(Extension.outputs))),
   "incomingServiceNameToExtensionsMapping":
     Pulumi.Output.t(Js.Dict.t(array(Extension.outputs))),
-  "resources": Pulumi.Output.t(resources),
 };
 
 type t;
@@ -100,8 +99,7 @@ module Make =
                                                  Js.Dict.t(
                                                    array(Extension.outputs),
                                                  ),
-                                               ),
-      ~resources: Pulumi.Output.t(resources)
+                                               )
     ) =>
     outputs =
     "";
@@ -125,7 +123,6 @@ module Make =
       Js.Dict.t(array(Extension.outputs)),
     incomingServiceNameToExtensionsMapping:
       Js.Dict.t(array(Extension.outputs)),
-    resources,
   };
 
   [@bs.send]
@@ -162,8 +159,6 @@ module Make =
       );
 
     let id = makeId(name, version);
-
-    let resources: resources = Js.Dict.empty();
 
     let readModels =
       readModels
@@ -248,18 +243,9 @@ module Make =
             ->AdapterDeploytime.stackRefResourceToResource;
           let corePluginCommandTopicId = corePluginCommandTopicResource##id;
 
-          resources->Util.ExtensionPoint.setCommandTopicConnectorResource(
-            corePluginCommandTopicResource,
-            ReventlessSpec.PluginExtensionPointSpec.name,
-          );
-
           let corePluginEventTopicResource =
             corePluginExtensionPoint##eventTopic##resources[0] // FIXME
             ->AdapterDeploytime.stackRefResourceToResource;
-          resources->Util.ExtensionPoint.setEventTopicPublisherResource(
-            corePluginEventTopicResource,
-            ReventlessSpec.PluginExtensionPointSpec.name,
-          );
 
           let extensionPoints =
             extensionPoints->Belt.Array.map(
@@ -674,10 +660,10 @@ module Make =
               taskMaker(
                 ~queryBucketName,
                 ~scheduler,
+                ~publishToAggregates,
                 ~queryEngine,
                 ~allAggregates=aggregatesOutputs,
                 ~opts=Some(opts),
-                ~resources,
               )
               ->Component.extractOutputs
             );
@@ -885,7 +871,6 @@ module Make =
             serviceNameToExtensionPointsMapping,
             outgoingServiceNameToExtensionsMapping,
             incomingServiceNameToExtensionsMapping,
-            resources,
           };
         });
     makeOutputs(
@@ -920,8 +905,6 @@ module Make =
         pureOutputs->Pulumi.Output.apply(outputs =>
           outputs.incomingServiceNameToExtensionsMapping
         ),
-      ~resources=
-        pureOutputs->Pulumi.Output.apply(outputs => outputs.resources),
     )
     ->setOutputs(self, _);
   };

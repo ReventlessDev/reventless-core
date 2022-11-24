@@ -29,7 +29,6 @@ var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 var Util_ReadModel$Reventless = require("../util/Util_ReadModel.bs.js");
 var ExtensionMapping$Reventless = require("../ExtensionMapping.bs.js");
 var AdapterDeploytime$Reventless = require("../adapter/AdapterDeploytime.bs.js");
-var Util_ExtensionPoint$Reventless = require("../util/Util_ExtensionPoint.bs.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 var InterstackResourceQueryRuntime$Reventless = require("../util/InterstackResourceQueryRuntime.bs.js");
@@ -55,7 +54,6 @@ function Make(EventCollectorConnector) {
               parent: self
             };
             var id = makeId(name, version);
-            var resources = { };
             var readModels$1 = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
                         return /* tuple */[
                                 ReadModel.Spec.name,
@@ -95,9 +93,7 @@ function Make(EventCollectorConnector) {
                     var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(Belt_Option.getExn(coreStackOutput.extensionPoints), PluginExtensionPointSpec$ReventlessSpec.name);
                     var corePluginCommandTopicResource = AdapterDeploytime$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.commandTopic.resources, 0));
                     var corePluginCommandTopicId = corePluginCommandTopicResource.id;
-                    Util_ExtensionPoint$Reventless.setCommandTopicConnectorResource(resources, corePluginCommandTopicResource, PluginExtensionPointSpec$ReventlessSpec.name);
                     var corePluginEventTopicResource = AdapterDeploytime$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.eventTopic.resources, 0));
-                    Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, corePluginEventTopicResource, PluginExtensionPointSpec$ReventlessSpec.name);
                     var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
                             return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), /* () */0);
                           }));
@@ -343,7 +339,7 @@ function Make(EventCollectorConnector) {
                       return InterstackResourceQueryRuntime$Reventless.bucketNameOfTaskExn(partial_arg, param);
                     };
                     tasksOutputs[0] = Belt_Array.map(taskMakers, (function (taskMaker) {
-                            return Component$Reventless.extractOutputs(Curry._6(taskMaker, queryBucketName, scheduler, queryEngine, aggregatesOutputs, Caml_option.some(opts), resources));
+                            return Component$Reventless.extractOutputs(Curry._6(taskMaker, queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, Caml_option.some(opts)));
                           }));
                     var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
                     var resolvers = Belt_Array.concatMany(Belt_Array.map(Util_QueryDb$Reventless.allResolversMakers(allQueryDbs), (function (resolverMaker) {
@@ -476,8 +472,7 @@ function Make(EventCollectorConnector) {
                             /* heartbeat */Component$Reventless.extractOutputs(heartbeat),
                             /* serviceNameToExtensionPointsMapping */serviceNameToExtensionPointsMapping,
                             /* outgoingServiceNameToExtensionsMapping */outgoingServiceNameToExtensionsMapping,
-                            /* incomingServiceNameToExtensionsMapping */incomingServiceNameToExtensionsMapping,
-                            /* resources */resources
+                            /* incomingServiceNameToExtensionsMapping */incomingServiceNameToExtensionsMapping
                           ];
                   }));
             var self$1 = self;
@@ -523,9 +518,6 @@ function Make(EventCollectorConnector) {
                     })),
               incomingServiceNameToExtensionsMapping: pureOutputs.apply((function (outputs) {
                       return outputs[/* incomingServiceNameToExtensionsMapping */13];
-                    })),
-              resources: pureOutputs.apply((function (outputs) {
-                      return outputs[/* resources */14];
                     }))
             };
             self$1.setOutputs(outputs);

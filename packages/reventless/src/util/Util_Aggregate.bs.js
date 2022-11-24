@@ -5,40 +5,6 @@ var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
-var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_EventLog$Reventless = require("./Util_EventLog.bs.js");
-var Util_EventTopic$Reventless = require("./Util_EventTopic.bs.js");
-var Util_CommandTopic$Reventless = require("./Util_CommandTopic.bs.js");
-
-function commandTopicConnectorResource(resources, aggregateName) {
-  return Util_CommandTopic$Reventless.getConnectorResource(resources, ComponentType$Reventless.name(aggregateName, /* Aggregate */0));
-}
-
-function eventLogStorageResource(resources, aggregateName) {
-  return Util_EventLog$Reventless.getStorageResource(resources, ComponentType$Reventless.name(aggregateName, /* Aggregate */0));
-}
-
-function eventTopicPublisherResource(resources, aggregateName) {
-  return Util_EventTopic$Reventless.getPublisherResource(resources, ComponentType$Reventless.name(aggregateName, /* Aggregate */0));
-}
-
-function eventTopics(resources, aggregateNames) {
-  return Belt_Array.map(Belt_Array.map(aggregateNames, (function (aggregateName) {
-                    return /* tuple */[
-                            aggregateName,
-                            eventTopicPublisherResource(resources, aggregateName)
-                          ];
-                  })), (function (param) {
-                var topic = param[1];
-                return /* tuple */[
-                        topic.service,
-                        /* tuple */[
-                          param[0],
-                          topic
-                        ]
-                      ];
-              }));
-}
 
 function allEventTopics(allAggregates) {
   return Js_dict.map((function (aggregate) {
@@ -57,10 +23,6 @@ function filterEventTopics(allAggregates, aggregateNames) {
                   })));
 }
 
-exports.commandTopicConnectorResource = commandTopicConnectorResource;
-exports.eventLogStorageResource = eventLogStorageResource;
-exports.eventTopicPublisherResource = eventTopicPublisherResource;
-exports.eventTopics = eventTopics;
 exports.allEventTopics = allEventTopics;
 exports.filterEventTopics = filterEventTopics;
 /* No side effect */

@@ -4,10 +4,7 @@ open ReventlessSpec.Adapter;
 let componentType = ComponentType.Task;
 
 type publishCommands =
-  (
-    . /*~queueName:*/ string,
-    array((/*~id:*/ string, /*~meta*/ Message.meta, /*~message:*/ string))
-  ) =>
+  (. /*~aggregateName:*/ string, array(Message.commandJson)) =>
   Js.Promise.t(unit);
 
 type outputs = {
@@ -26,10 +23,10 @@ type maker =
   (
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
+    ~publishToAggregates: Js.Dict.t(CommandTopic.publishJsons),
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~allAggregates: Js.Dict.t(Aggregate.outputs),
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources
+    ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   component;
 
@@ -40,13 +37,12 @@ type setup =
     publishCommands,
     queryBucketName,
     EventTopic.allOutputs,
-    Pulumi.CustomResourceOptions.t,
-    resources
+    Pulumi.CustomResourceOptions.t
   ) =>
   outputs;
 
 type constructed;
-type construct = (component, string, resources) => constructed;
+type construct = (component, string) => constructed;
 
 [@bs.module "./Component"] [@bs.new]
 external make:
@@ -74,11 +70,11 @@ let construct =
       ~setup: setup,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
+      ~publishToAggregates,
       ~queryEngine,
       ~allAggregates,
       self,
       _name,
-      resources,
     ) => {
   let opts =
     Pulumi.CustomResourceOptions.make(
@@ -86,47 +82,17 @@ let construct =
       (),
     );
 
-  let publishCommands =
-    (. queueName, entries) => {
-      // TODO: move to Adapter
-      let count = entries->Belt.Array.size;
-      let connector =
-        resources->Util.Aggregate.commandTopicConnectorResource(queueName);
-      entries
-      ->Belt.Array.mapWithIndex((idx, (id, meta: Message.meta, messageBody)) => {
-          let idx = idx + 1;
-          Js.log({j|Task.publishCommands $idx/$count: $messageBody|j});
-          switch (connector##service->Pulumi.Output.get) {
-          | "SQS_FIFO" =>
-            AwsSdk.SQS.makeBatchEntryFifo(
-              ~groupId=id,
-              ~messageBody,
-              ~messageId=meta.msgId,
-              ~delay=None,
-            )
-          | _ =>
-            AwsSdk.SQS.makeBatchEntry(
-              ~messageBody,
-              ~messageId=meta.msgId,
-              ~delay=None,
-            )
-          };
-        })
-      ->AwsSdk.SQS.sendMessageBatch(
-          ~queueId=connector##id->OutputFailsafeRuntime.get,
-        )
-      ->Util.Promise.allSettled
-      |> Js.Promise.then_(results => {
-           results
-           ->Util.Promise.filterRejected
-           ->Belt.Array.forEach(((idx, reason)) =>
-               Js.log({j|SQS.sendMessageBatch request $idx failed: $reason|j})
-             );
-           Js.Promise.resolve(); // TODO: error handling
-         })
-      |> Js.Promise.catch(err =>
-           Js.Promise.resolve(Js.log2("Task.publishCommands Error:", err))
-         );
+  let publishCommands: publishCommands =
+    (. aggregateName, cmdJsons) => {
+      let count = cmdJsons->Belt.Array.size;
+      cmdJsons->Belt.Array.forEachWithIndex((idx, {Message.id, commandJson}) => {
+        let idx = idx + 1;
+        let messageBody = commandJson->Js.Json.stringify;
+        Js.log({j|Task.publishCommands $idx/$count: id=$id, $messageBody|j});
+      });
+      publishToAggregates
+      ->Js.Dict.get(aggregateName)
+      ->Belt.Option.getExn(. cmdJsons);
     };
 
   setup(.
@@ -136,7 +102,6 @@ let construct =
     queryBucketName,
     Util.Aggregate.allEventTopics(allAggregates),
     opts,
-    resources,
   )
   ->setOutputs(self, _);
 };
@@ -147,10 +112,10 @@ let make =
       ~setup,
       ~queryBucketName,
       ~scheduler,
+      ~publishToAggregates,
       ~queryEngine,
       ~allAggregates,
       ~opts,
-      ~resources,
     ) => {
   make(
     ~componentType=componentType->ComponentType.toString,
@@ -160,10 +125,10 @@ let make =
         ~setup,
         ~queryBucketName,
         ~scheduler,
+        ~publishToAggregates,
         ~queryEngine,
         ~allAggregates,
       ),
     ~opts,
-    ~resources,
   );
 };

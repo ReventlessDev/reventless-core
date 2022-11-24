@@ -36,7 +36,6 @@ function Make(Config) {
                 var opts = {
                   parent: self
                 };
-                var resources = { };
                 var readModels$1 = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
                             return /* tuple */[
                                     ReadModel.Spec.name,
@@ -119,8 +118,7 @@ function Make(Config) {
                             extensionPoints: toDict(extensionPointsOutputs),
                             aggregates: aggregatesOutputs,
                             readModels: readModelsOutputs,
-                            cloner: Component$Reventless.extractOutputs(cloner),
-                            resources: resources
+                            cloner: Component$Reventless.extractOutputs(cloner)
                           });
               };
               var make = function (version, extensionPoints, aggregates, readModels, scheduler) {

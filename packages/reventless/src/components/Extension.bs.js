@@ -39,12 +39,12 @@ function Make(Spec) {
       var construct = function (publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, self, name) {
         var publishAggregateCommand = function (aggregateName, cmdJson) {
           return Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName))(/* array */[cmdJson]).catch((function (err) {
-                        return Promise.resolve((console.log("Extension: Error on publish command to aggregate $aggregateName:", err), /* () */0));
+                        return Promise.resolve((console.log("Extension: Error on publish command to aggregate " + (String(aggregateName) + (": " + (String(err) + "")))), /* () */0));
                       }));
         };
         var publishCorePluginExtensionPointCommand = function (cmdJson) {
           return publishToCorePluginExtensionPoint(/* array */[cmdJson]).catch((function (err) {
-                        return Promise.resolve((console.log("Extension: Error on publish command to Core.Plugin ExtensionPoint:", err), /* () */0));
+                        return Promise.resolve((console.log("Extension: Error on publish command to Core.Plugin ExtensionPoint: " + (String(err) + "")), /* () */0));
                       }));
         };
         var forwardCommand = function (extensionPointName, commandJson) {

@@ -116,21 +116,19 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
       ->Js.Dict.get(aggregateName)
       ->Belt.Option.getExn(. [|cmdJson|])
       |> Js.Promise.catch(err =>
-           err
-           |> Js.log2(
-                "Extension: Error on publish command to aggregate $aggregateName:",
-              )
-           |> Js.Promise.resolve
+           Js.log(
+             {j|Extension: Error on publish command to aggregate $aggregateName: $err|j},
+           )
+           ->Js.Promise.resolve
          );
 
     let publishCorePluginExtensionPointCommand = cmdJson =>
       publishToCorePluginExtensionPoint(. [|cmdJson|])
       |> Js.Promise.catch(err =>
-           err
-           |> Js.log2(
-                "Extension: Error on publish command to Core.Plugin ExtensionPoint:",
-              )
-           |> Js.Promise.resolve
+           Js.log(
+             {j|Extension: Error on publish command to Core.Plugin ExtensionPoint: $err|j},
+           )
+           ->Js.Promise.resolve
          );
 
     let forwardCommand =

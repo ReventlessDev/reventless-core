@@ -1,4 +1,3 @@
-open ReventlessSpec.Adapter;
 open Belt.Result;
 
 module ReventlessCommandTopic = CommandTopic;

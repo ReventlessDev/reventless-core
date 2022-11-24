@@ -1,5 +1,3 @@
-open ReventlessSpec.Adapter;
-
 let componentType = ComponentType.Core;
 
 type extensionPointMakers = array(ExtensionPoint.maker);
@@ -12,7 +10,6 @@ type outputs = {
   "aggregates": Pulumi.Output.t(Js.Dict.t(Aggregate.outputs)),
   "readModels": Pulumi.Output.t(Js.Dict.t(ReadModel.outputs)),
   "cloner": Cloner.outputs,
-  "resources": resources,
 };
 
 type t;
@@ -62,8 +59,7 @@ module Make =
       ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
       ~aggregates: Js.Dict.t(Aggregate.outputs),
       ~readModels: Js.Dict.t(ReadModel.outputs),
-      ~cloner: Cloner.outputs,
-      ~resources: resources
+      ~cloner: Cloner.outputs
     ) =>
     outputs =
     "";
@@ -97,8 +93,6 @@ module Make =
         ~parent=self->Component.toPulumiResource,
         (),
       );
-
-    let resources: resources = Js.Dict.empty();
 
     let readModels =
       readModels
@@ -224,7 +218,6 @@ module Make =
       ~aggregates=aggregatesOutputs,
       ~readModels=readModelsOutputs,
       ~cloner=cloner->Component.extractOutputs,
-      ~resources,
     )
     ->setOutputs(self, _);
   };
