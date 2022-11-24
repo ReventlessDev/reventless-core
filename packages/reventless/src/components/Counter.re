@@ -53,7 +53,6 @@ module type T = {
   let make:
     (
       ~name: string,
-      ~allQueryDbs: QueryDb.allOutputs,
       ~counterEventsHandler: counterEventsHandler,
       ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
@@ -70,9 +69,10 @@ module Adapter = {
   type handlerMaker =
     (
       ~name: string,
-      ~allQueryDbs: QueryDb.allOutputs,
       ~referencesName: string,
+      ~referencesDb: QueryDb.outputs,
       ~countsName: string,
+      ~countsDb: QueryDb.outputs,
       ~counterHandler: counterHandler,
       ~opts: Pulumi.CustomResourceOptions.t
     ) =>
@@ -130,7 +130,6 @@ module Make =
 
   let construct =
       (
-        ~allQueryDbs,
         ~counterEventsHandler: counterEventsHandler,
         ~ttl: option(int),
         self,
@@ -360,9 +359,10 @@ module Make =
     let handler =
       Handler.make(
         ~name,
-        ~allQueryDbs,
         ~referencesName,
+        ~referencesDb=referencesDb->Component.extractOutputs,
         ~countsName,
+        ~countsDb=countsDb->Component.extractOutputs,
         ~counterHandler,
         ~opts=opts2,
       );
@@ -379,13 +379,11 @@ module Make =
 
   let oneWeek = 60 * 60 * 24 * 7; //604800 sec
 
-  let make =
-      (~name, ~allQueryDbs, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?, _) => {
+  let make = (~name, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?, _) => {
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=name->ComponentType.name(componentType),
-      ~construct=
-        construct(~allQueryDbs, ~counterEventsHandler, ~ttl=Some(ttl)),
+      ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl)),
       ~opts,
     );
   };

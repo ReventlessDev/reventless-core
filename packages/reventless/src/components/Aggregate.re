@@ -26,7 +26,6 @@ module type T = {
 
   let make:
     (
-      ~allQueryDbs: QueryDb.allOutputs,
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~eventsHandler: Message.eventsHandler(Spec.Id.t, Spec.event),
       ~opts: Pulumi.ComponentResource.Options.t=?,
@@ -345,8 +344,7 @@ module Make =
          );
     };
 
-  let addEventMapperFn =
-      (component, allAggregates, ~allQueryDbs, ~queryEngine, ~opts) => {
+  let addEventMapperFn = (component, allAggregates, ~queryEngine, ~opts) => {
     module EventCollector = EventCollector.Make(EventCollectorConnector);
     module EventMapper =
       EventMapper.Make(Spec, EventCollector, EventMappings);
@@ -356,7 +354,6 @@ module Make =
         ? Some(
             EventMapper.make(
               ~allEventTopics=Util.Aggregate.allEventTopics(allAggregates),
-              ~allQueryDbs,
               ~queryEngine,
               ~publishJsons=component->publishJsons,
               ~opts,
@@ -374,7 +371,7 @@ module Make =
     );
   };
 
-  let construct = (~allQueryDbs, ~queryEngine, ~eventsHandler, self, name) => {
+  let construct = (~queryEngine, ~eventsHandler, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -409,9 +406,7 @@ module Make =
       );
 
     self->setPublishJsons(commandTopic->CommandTopic.publishJsons);
-    self->setAddEventMapper(
-      self->addEventMapperFn(~allQueryDbs, ~queryEngine, ~opts),
-    );
+    self->setAddEventMapper(self->addEventMapperFn(~queryEngine, ~opts));
 
     makeOutputs(
       ~name,
@@ -423,11 +418,11 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make = (~allQueryDbs, ~queryEngine, ~eventsHandler, ~opts=?, _) =>
+  let make = (~queryEngine, ~eventsHandler, ~opts=?, _) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~allQueryDbs, ~queryEngine, ~eventsHandler),
+      ~construct=construct(~queryEngine, ~eventsHandler),
       ~opts,
     );
 };

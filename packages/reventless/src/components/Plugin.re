@@ -193,7 +193,6 @@ module Make =
           module ReadModel = (val module_);
           let aggregate =
             Aggregate.make(
-              ~allQueryDbs,
               ~queryEngine,
               ~eventsHandler=
                 (. id, events) =>

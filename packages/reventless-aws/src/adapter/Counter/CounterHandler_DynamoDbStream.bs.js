@@ -5,17 +5,16 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Aws = require("@pulumi/aws");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
-var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
-var Util_ReadModel$Reventless = require("@reventless/reventless/src/util/Util_ReadModel.bs.js");
+var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.bs.js");
 var CounterHandler_DynamoDbStream_Runtime$ReventlessAws = require("./CounterHandler_DynamoDbStream_Runtime.bs.js");
 
-function make(name, allQueryDbs, referencesName, countsName, counterHandler, opts) {
-  var referencesDb = Util_Adapter$Reventless.findResource(Util_ReadModel$Reventless.queryDbStorageResources(allQueryDbs, referencesName), Util_DynamoDbStream$ReventlessAws.service);
-  var referencesStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(referencesDb);
-  var countsDb = Util_Adapter$Reventless.findResource(Util_ReadModel$Reventless.queryDbStorageResources(allQueryDbs, countsName), Util_DynamoDbStream$ReventlessAws.service);
-  var countsStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(countsDb);
+function make(name, referencesName, referencesDb, countsName, countsDb, counterHandler, opts) {
+  var referencesDbResource = Util_DynamoDb$ReventlessAws.findResource(referencesDb.resources);
+  var referencesStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(referencesDbResource);
+  var countsDbResource = Util_DynamoDb$ReventlessAws.findResource(countsDb.resources);
+  var countsStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(countsDbResource);
   var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
             (function (param, param$1) {
                 return CounterHandler_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(referencesStream, countsStream, counterHandler, param, param$1);
@@ -37,7 +36,7 @@ function make(name, allQueryDbs, referencesName, countsName, counterHandler, opt
   subscribe(referencesName, referencesStream);
   subscribe(countsName, countsStream);
   return /* record */[/* addToCounterTarget */(function (param) {
-              return CounterHandler_DynamoDbStream_Runtime$ReventlessAws.addToCounterTarget(countsDb, param);
+              return CounterHandler_DynamoDbStream_Runtime$ReventlessAws.addToCounterTarget(countsDbResource, param);
             })];
 }
 

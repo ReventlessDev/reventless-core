@@ -15,6 +15,7 @@ var Id$Reventless = require("../Id.bs.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var QueryDb$Reventless = require("./QueryDb.bs.js");
+var Component$Reventless = require("./Component.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 var NotCounted = Caml_exceptions.create("Counter-Reventless.NotCounted");
@@ -57,7 +58,7 @@ var Adapter = { };
 function Make(Config) {
   return (function (QueryDbStorage) {
       return (function (Handler) {
-          var construct = function (allQueryDbs, counterEventsHandler, ttl, self, name$1) {
+          var construct = function (counterEventsHandler, ttl, self, name$1) {
             var opts = {
               parent: self
             };
@@ -315,7 +316,7 @@ function Make(Config) {
                             return Promise.resolve(/* () */0);
                           }));
             };
-            var handler = Curry._6(Handler.make, name$1, allQueryDbs, referencesName, countsName, counterHandler, opts2);
+            var handler = Curry._7(Handler.make, name$1, referencesName, Component$Reventless.extractOutputs(referencesDb), countsName, Component$Reventless.extractOutputs(countsDb), counterHandler, opts2);
             var partial_arg = Curry._1(ReferencesDb.saveBatch, referencesDb);
             self.count = (function (param) {
                 var saveBatch = partial_arg;
@@ -372,13 +373,13 @@ function Make(Config) {
             self$1.setOutputs(outputs);
             return self$1.registerOutputs(outputs);
           };
-          var make = function (name, allQueryDbs, counterEventsHandler, $staropt$star, opts, param) {
+          var make = function (name, counterEventsHandler, $staropt$star, opts, param) {
             var ttl = $staropt$star !== undefined ? $staropt$star : 604800;
             var partial_arg = ttl;
             var prim = ComponentType$Reventless.toString(/* Counter */1);
             var prim$1 = ComponentType$Reventless.name(name, /* Counter */1);
             var prim$2 = function (param, param$1) {
-              return construct(allQueryDbs, counterEventsHandler, partial_arg, param, param$1);
+              return construct(counterEventsHandler, partial_arg, param, param$1);
             };
             var prim$3 = opts;
             return new Component.default(prim, prim$1, prim$2, prim$3);

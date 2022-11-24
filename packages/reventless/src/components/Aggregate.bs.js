@@ -233,7 +233,7 @@ function Make(Config) {
                                                     }));
                                       });
                                   };
-                                  var construct = function (allQueryDbs, queryEngine, eventsHandler, self, name) {
+                                  var construct = function (queryEngine, eventsHandler, self, name) {
                                     var opts = {
                                       parent: self
                                     };
@@ -249,14 +249,12 @@ function Make(Config) {
                                     self.publishJsons = Curry._1(CommandTopic.publishJsons, commandTopic);
                                     self.addEventMapper = (function (param) {
                                         var param$1 = param;
-                                        var param$2 = allQueryDbs;
-                                        var param$3 = queryEngine;
-                                        var param$4 = opts;
+                                        var param$2 = queryEngine;
+                                        var param$3 = opts;
                                         var component = self;
                                         var allAggregates = param$1;
-                                        var allQueryDbs$1 = param$2;
-                                        var queryEngine$1 = param$3;
-                                        var opts$1 = param$4;
+                                        var queryEngine$1 = param$2;
+                                        var opts$1 = param$3;
                                         var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
                                         var EventMapper = EventMapper$Reventless.Make({
                                                   name: Spec.name,
@@ -265,7 +263,7 @@ function Make(Config) {
                                                   command_decode: Spec.command_decode
                                                 })(EventCollector)(EventMappings);
                                         var match = EventMappings.mappings.length !== 0;
-                                        var eventMapper = match ? Caml_option.some(Curry._8(EventMapper.make, Util_Aggregate$Reventless.allEventTopics(allAggregates), allQueryDbs$1, queryEngine$1, component.publishJsons, undefined, undefined, Caml_option.some(opts$1), /* () */0)) : undefined;
+                                        var eventMapper = match ? Caml_option.some(Curry._7(EventMapper.make, Util_Aggregate$Reventless.allEventTopics(allAggregates), queryEngine$1, component.publishJsons, undefined, undefined, Caml_option.some(opts$1), /* () */0)) : undefined;
                                         var outputs = Component$Reventless.extractOutputs(component);
                                         return {
                                                 name: outputs.name,
@@ -286,11 +284,11 @@ function Make(Config) {
                                     self$1.setOutputs(outputs);
                                     return self$1.registerOutputs(outputs);
                                   };
-                                  var make = function (allQueryDbs, queryEngine, eventsHandler, opts, param) {
+                                  var make = function (queryEngine, eventsHandler, opts, param) {
                                     var prim = ComponentType$Reventless.toString(/* Aggregate */0);
                                     var prim$1 = Spec.name;
                                     var prim$2 = function (param, param$1) {
-                                      return construct(allQueryDbs, queryEngine, eventsHandler, param, param$1);
+                                      return construct(queryEngine, eventsHandler, param, param$1);
                                     };
                                     var prim$3 = opts;
                                     return new Component.default(prim, prim$1, prim$2, prim$3);

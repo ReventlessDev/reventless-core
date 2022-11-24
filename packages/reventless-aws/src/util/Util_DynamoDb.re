@@ -205,3 +205,6 @@ let makeTable =
     // Workaround when restore enabled
     ? updateTable(~ttl?, table) : table;
 };
+
+let findResource = resources =>
+  resources->Reventless.Util.Adapter.findResource(service);

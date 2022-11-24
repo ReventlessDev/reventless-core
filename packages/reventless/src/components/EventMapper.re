@@ -16,7 +16,6 @@ module type T = {
   let make:
     (
       ~allEventTopics: EventTopic.allOutputs,
-      ~allQueryDbs: QueryDb.allOutputs,
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~publishJsons: CommandTopic.publishJsons,
       ~memorySize: int=?,
@@ -314,7 +313,6 @@ module Make =
   let construct =
       (
         ~allEventTopics,
-        ~allQueryDbs,
         ~queryEngine,
         ~publishJsons,
         ~memorySize,
@@ -352,7 +350,6 @@ module Make =
                   queryEngine,
                 ),
               ~opts,
-              ~allQueryDbs,
               (),
             );
           (
@@ -405,7 +402,6 @@ module Make =
   let make =
       (
         ~allEventTopics,
-        ~allQueryDbs,
         ~queryEngine,
         ~publishJsons,
         ~memorySize=128,
@@ -419,7 +415,6 @@ module Make =
       ~construct=
         construct(
           ~allEventTopics,
-          ~allQueryDbs,
           ~queryEngine,
           ~publishJsons,
           ~memorySize,

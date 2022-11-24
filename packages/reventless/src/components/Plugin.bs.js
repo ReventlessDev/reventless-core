@@ -77,7 +77,7 @@ function Make(EventCollectorConnector) {
                         var match = readModels$1[Aggregate.Spec.name];
                         var readModel = match[/* readModel */1];
                         var module_ = match[/* module_ */0];
-                        var aggregate = Curry._5(Aggregate.make, allQueryDbs, queryEngine, (function (id, events) {
+                        var aggregate = Curry._4(Aggregate.make, queryEngine, (function (id, events) {
                                 return Curry._1(module_.update, readModel)(id, events);
                               }), Caml_option.some(opts), /* () */0);
                         addEventMapperFns[Aggregate.Spec.name] = Curry._1(Aggregate.addEventMapper, aggregate);
