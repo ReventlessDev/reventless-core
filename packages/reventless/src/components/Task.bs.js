@@ -31,18 +31,13 @@ function construct(setup, queryBucketName, scheduler, publishToAggregates, query
 }
 
 function make(name, setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, opts) {
-  var partial_arg = ComponentType$Reventless.name(name, /* Task */16);
-  var partial_arg$1 = ComponentType$Reventless.toString(/* Task */16);
-  return (function (param) {
-      var prim = partial_arg$1;
-      var prim$1 = partial_arg;
-      var prim$2 = function (param, param$1) {
-        return construct(setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, param, param$1);
-      };
-      var prim$3 = opts;
-      var prim$4 = param;
-      return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
-    });
+  var prim = ComponentType$Reventless.toString(/* Task */16);
+  var prim$1 = ComponentType$Reventless.name(name, /* Task */16);
+  var prim$2 = function (param, param$1) {
+    return construct(setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, param, param$1);
+  };
+  var prim$3 = opts;
+  return new Component.default(prim, prim$1, prim$2, prim$3);
 }
 
 var componentType = /* Task */16;

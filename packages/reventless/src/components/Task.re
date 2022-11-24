@@ -1,6 +1,4 @@
 // TODO: refactor to abstractions
-open ReventlessSpec.Adapter;
-
 let componentType = ComponentType.Task;
 
 type publishCommands =
@@ -50,8 +48,7 @@ external make:
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources
+    ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   component =
   "default";
