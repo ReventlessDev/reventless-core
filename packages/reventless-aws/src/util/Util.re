@@ -1,4 +1,3 @@
-module Adapter = Util_Adapter;
 module AppSync = Util_AppSync;
 module Cognito_Runtime = Util_Cognito_Runtime;
 module CognitoGroupUser = Util_CognitoGroupUser;

@@ -1,3 +1,4 @@
+module Adapter = Util_Adapter;
 module Aggregate = Util_Aggregate;
 module Array = Util_Array;
 module CommandTopic = Util_CommandTopic;

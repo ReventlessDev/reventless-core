@@ -4,6 +4,9 @@ let componentType = ComponentType.CommandGenerator;
 
 type outputs = {. "resources": array(resource)};
 
+type t;
+type component = Component.t(t, outputs);
+
 module type Spec = {
   module Id: ReventlessSpec.Id.T;
 
@@ -24,8 +27,6 @@ module type T = {
 
   type publish = Message.commandHandler(Spec.Id.t, Spec.command);
 
-  type t;
-
   let make:
     (
       ~name: string,
@@ -33,7 +34,7 @@ module type T = {
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 };
 
 type payload = {
@@ -76,15 +77,13 @@ module Make =
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type t;
 
   type api = Config.api;
 
   type publish = Message.commandHandler(Spec.Id.t, Spec.command);
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, api, publish) => constructed;
+  type construct = (component, string, api, publish) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -96,14 +95,14 @@ module Make =
       ~api: api,
       ~publish: publish
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
   external makeOutputs: (~resources: array(resource)) => outputs = "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
   //[@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
 
@@ -178,22 +177,14 @@ module Make =
     self->registerOutputs(outputs);
   };
 
-  let make:
-    (
-      ~name: string,
-      ~publish: publish,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~name, ~publish, ~opts=?, _) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name,
-        ~construct,
-        ~opts,
-        ~api=Config.api,
-        ~publish,
-      );
-    };
+  let make = (~name, ~publish, ~opts=?, _) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct,
+      ~opts,
+      ~api=Config.api,
+      ~publish,
+    );
+  };
 };

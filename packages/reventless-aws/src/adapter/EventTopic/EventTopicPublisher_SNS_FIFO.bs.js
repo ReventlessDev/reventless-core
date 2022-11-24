@@ -5,7 +5,7 @@ var Aws = require("@pulumi/aws");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.bs.js");
 var EventTopicPublisher_SNS_Runtime$ReventlessAws = require("./EventTopicPublisher_SNS_Runtime.bs.js");
 
-function make(name, opts, param) {
+function make(name, param, opts) {
   var topic = new (Aws.sns.Topic)(name, {
         contentBasedDeduplication: true,
         fifoTopic: true

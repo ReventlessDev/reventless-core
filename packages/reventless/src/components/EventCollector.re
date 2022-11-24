@@ -12,6 +12,9 @@ type outputs = {
   "resources": array(resource),
 };
 
+type t;
+type component = Component.t(t, outputs);
+
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
 module type T = {
@@ -19,7 +22,7 @@ module type T = {
   let make:
     (
       ~name: string,
-      ~eventTopics: Js.Dict.t(EventTopic.outputs),
+      ~eventTopics: EventTopic.allOutputs,
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
@@ -28,9 +31,9 @@ module type T = {
       ~opts: option(Pulumi.ComponentResource.Options.t),
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 
-  let enqueueEvent: Component.t(t, outputs) => enqueueEvent;
+  let enqueueEvent: component => enqueueEvent;
 };
 
 module Adapter = {
@@ -41,7 +44,7 @@ module Adapter = {
   type connectorMaker =
     (
       ~name: string,
-      ~eventTopics: Js.Dict.t(EventTopic.outputs),
+      ~eventTopics: EventTopic.allOutputs,
       ~handleEvents: eventsHandler,
       ~memorySize: int,
       ~timeout: int,
@@ -57,7 +60,7 @@ module Adapter = {
 module Make = (Connector: Adapter.Connector) : T => {
   type t;
   type constructed;
-  type construct = (Component.t(t, outputs), string) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -67,7 +70,7 @@ module Make = (Connector: Adapter.Connector) : T => {
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -75,22 +78,17 @@ module Make = (Connector: Adapter.Connector) : T => {
     (~name: string, ~resources: array(resource)) => outputs =
     "";
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
   [@bs.set]
-  external setEnqueueEvent: (Component.t(t, outputs), enqueueEvent) => unit =
-    "enqueueEvent";
-  [@bs.get]
-  external enqueueEvent: Component.t(t, outputs) => enqueueEvent =
-    "enqueueEvent";
+  external setEnqueueEvent: (component, enqueueEvent) => unit = "enqueueEvent";
+  [@bs.get] external enqueueEvent: component => enqueueEvent = "enqueueEvent";
 
   let enqueueEventFn = connector =>
     (. delay, id, message) =>

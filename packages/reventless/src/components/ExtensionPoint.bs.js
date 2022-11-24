@@ -53,7 +53,7 @@ function Make(Spec) {
                   return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$primeJson));
                 }
               };
-              var construct = function (publishToAggregates, scheduler, queryEngine, self, name, resources) {
+              var construct = function (publishToAggregates, scheduler, queryEngine, self, name) {
                 var opts = {
                   parent: self
                 };
@@ -90,7 +90,7 @@ function Make(Spec) {
                                 }));
                   }
                 };
-                var eventTopic = Curry._4(EventTopic.make, childName, Caml_option.some(opts), resources, /* () */0);
+                var eventTopic = Curry._4(EventTopic.make, childName, /* array */[], Caml_option.some(opts), /* () */0);
                 var applyEventAction = function (param) {
                   switch (param.tag | 0) {
                     case /* AbstractPublishEvent */0 :
@@ -129,7 +129,7 @@ function Make(Spec) {
                   var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, scheduler, queryEngine, queue);
                   return Promise.all(Belt_Array.map(commandActions, applyCommandAction));
                 };
-                commandTopic[0] = Caml_option.some(Curry._7(CommandTopic.make, childName, incomingCommandsHandler, undefined, undefined, Caml_option.some(opts), resources, /* () */0));
+                commandTopic[0] = Caml_option.some(Curry._6(CommandTopic.make, childName, incomingCommandsHandler, undefined, undefined, Caml_option.some(opts), /* () */0));
                 var self$1 = self;
                 var outputs = {
                   name: name,
@@ -143,15 +143,14 @@ function Make(Spec) {
                 self$1.setOutputs(outputs);
                 return self$1.registerOutputs(outputs);
               };
-              var make = function (publishToAggregates, scheduler, queryEngine, opts, resources, param) {
+              var make = function (publishToAggregates, scheduler, queryEngine, opts, param) {
                 var prim = ComponentType$Reventless.toString(/* ExtensionPoint */9);
                 var prim$1 = Spec.name;
-                var prim$2 = function (param, param$1, param$2) {
-                  return construct(publishToAggregates, scheduler, queryEngine, param, param$1, param$2);
+                var prim$2 = function (param, param$1) {
+                  return construct(publishToAggregates, scheduler, queryEngine, param, param$1);
                 };
                 var prim$3 = opts;
-                var prim$4 = resources;
-                return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+                return new Component.default(prim, prim$1, prim$2, prim$3);
               };
               return {
                       make: make

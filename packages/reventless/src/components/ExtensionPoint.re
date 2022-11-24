@@ -1,5 +1,3 @@
-open ReventlessSpec.Adapter;
-
 module ReventlessCommandTopic = CommandTopic;
 module ReventlessEventTopic = EventTopic;
 
@@ -25,7 +23,6 @@ type maker =
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources,
     unit
   ) =>
   component;
@@ -76,7 +73,7 @@ module Make =
   module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter);
 
   type constructed;
-  type construct = (component, string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -84,8 +81,7 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     component =
     "default";
@@ -151,8 +147,7 @@ module Make =
       };
   };
 
-  let construct =
-      (~publishToAggregates, ~scheduler, ~queryEngine, self, name, resources) => {
+  let construct = (~publishToAggregates, ~scheduler, ~queryEngine, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -164,7 +159,12 @@ module Make =
 
     let commandTopic:
       ref(
-        option(Component.t(CommandTopic.t, ReventlessCommandTopic.outputs)),
+        option(
+          Component.t(
+            ReventlessCommandTopic.t,
+            ReventlessCommandTopic.outputs,
+          ),
+        ),
       ) =
       ref(None);
 
@@ -216,7 +216,8 @@ module Make =
             _,
           );
 
-    let eventTopic = EventTopic.make(~name=childName, ~opts, ~resources, ());
+    let eventTopic =
+      EventTopic.make(~name=childName, ~storageResources=[||], ~opts, ());
 
     let applyEventAction =
       fun
@@ -297,7 +298,6 @@ module Make =
           ~name=childName,
           ~commandsHandler=incomingCommandsHandler,
           ~opts,
-          ~resources,
           (),
         ),
       );
@@ -317,12 +317,11 @@ module Make =
   };
 
   let make: maker =
-    (~publishToAggregates, ~scheduler, ~queryEngine, ~opts, ~resources, _) =>
+    (~publishToAggregates, ~scheduler, ~queryEngine, ~opts, _) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name=Spec.name,
         ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine),
         ~opts,
-        ~resources,
       );
 };

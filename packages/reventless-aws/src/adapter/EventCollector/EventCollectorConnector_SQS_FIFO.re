@@ -86,13 +86,13 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
 
     let _ =
       eventTopics
-      ->Util.Adapter.partitionSupportedResources([|
+      ->Reventless.Util.Adapter.partitionSupportedResources([|
           Util_DynamoDbStream.service,
           Util_SNS_FIFO.service,
         |])
       ->Pulumi.Output.apply(((supportedResources, errorResources)) => {
           let (snsFifoResources, otherResources) =
-            supportedResources->Util.Adapter.partitionResourcesByService(
+            supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
               Util_SNS_FIFO.service,
             );
 
@@ -102,19 +102,26 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
                 ~queue,
                 ~targetName=name,
                 ~sourceName,
-                ~topic=topic->Reventless.AdapterDeploytime.unwrappedToResource,
+                ~topic=
+                  topic
+                  ->Util.SNS_FIFO.findTopicInUnwrappedResources
+                  ->Reventless.AdapterDeploytime.unwrappedToResource,
                 ~opts,
               )
             );
 
           let _eventSourceMappings =
-            otherResources->Belt.Array.map(((sourceName, source)) =>
+            otherResources->Belt.Array.map(((sourceName, resources)) =>
               Util_EventSourceMapping.subscribe(
                 ~lambda=eventHandlerLambda,
                 ~targetName=name,
                 ~sourceName,
                 ~source=
-                  source->Reventless.AdapterDeploytime.unwrappedToResource,
+                  resources
+                  ->Reventless.Util.Adapter.findUnwrappedResource(
+                      Util.DynamoDbStream.service,
+                    )
+                  ->Reventless.AdapterDeploytime.unwrappedToResource,
                 ~opts,
                 (),
               )

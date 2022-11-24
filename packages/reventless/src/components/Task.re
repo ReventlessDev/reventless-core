@@ -39,7 +39,7 @@ type setup =
     Scheduler.t,
     publishCommands,
     queryBucketName,
-    Js.Dict.t(EventTopic.outputs),
+    EventTopic.allOutputs,
     Pulumi.CustomResourceOptions.t,
     resources
   ) =>

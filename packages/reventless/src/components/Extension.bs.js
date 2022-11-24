@@ -146,15 +146,14 @@ function Make(Spec) {
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, opts, resources, param) {
+      var make = function (publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, opts, param) {
         var prim = ComponentType$Reventless.toString(/* Extension */10);
         var prim$1 = Spec.name + ("." + Mappings.name);
         var prim$2 = function (param, param$1) {
           return construct(publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, param, param$1);
         };
         var prim$3 = opts;
-        var prim$4 = resources;
-        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+        return new Component.default(prim, prim$1, prim$2, prim$3);
       };
       return {
               make: make

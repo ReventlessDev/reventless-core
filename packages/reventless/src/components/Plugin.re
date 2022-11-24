@@ -28,23 +28,23 @@ type outputs = {
 type t;
 type component = Component.t(t, outputs);
 
-type maker =
-  (
-    ~name: string,
-    ~version: string,
-    ~heartbeatInterval: int,
-    ~extensionPoints: array(module ExtensionPoint.T),
-    ~extensions: array(module Extension.T),
-    ~aggregates: array(module Aggregate.T),
-    ~readModels: array(module ReadModel.T),
-    ~taskMakers: array(Task.maker),
-    ~scheduler: Scheduler.t,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
-    unit
-  ) =>
-  component;
-
-module type T = {let make: maker;};
+module type T = {
+  let make:
+    (
+      ~name: string,
+      ~version: string,
+      ~heartbeatInterval: int,
+      ~extensionPoints: array(module ExtensionPoint.T),
+      ~extensions: array(module Extension.T),
+      ~aggregates: array(module Aggregate.T),
+      ~readModels: array(module ReadModel.T),
+      ~taskMakers: array(Task.maker),
+      ~scheduler: Scheduler.t,
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      unit
+    ) =>
+    component;
+};
 
 let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
@@ -172,18 +172,21 @@ module Make =
             ReadModel.Spec.name,
             {
               module_: (module ReadModel),
-              readModel: ReadModel.make(~opts, ~resources, ()),
+              readModel: ReadModel.make(~opts, ()),
             },
           )
         )
       ->Js.Dict.fromArray;
     let readModelsOutputs =
       readModels
-      ->Js.Dict.values
-      ->Belt.Array.map(({readModel}) => readModel)
-      ->Component.extractMultipleOutputs;
+      ->Js.Dict.entries
+      ->Belt.Array.map(((name, {readModel})) =>
+          (name, readModel->Component.extractOutputs)
+        )
+      ->Js.Dict.fromArray;
+    let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs;
 
-    let queryEngine = QueryEngineAdapter.make(resources);
+    let queryEngine = QueryEngineAdapter.make(allQueryDbs);
 
     let addEventMapperFns = Js.Dict.empty();
     let publishToAggregates = Js.Dict.empty();
@@ -195,6 +198,7 @@ module Make =
           module ReadModel = (val module_);
           let aggregate =
             Aggregate.make(
+              ~allQueryDbs,
               ~queryEngine,
               ~eventsHandler=
                 (. id, events) =>
@@ -203,7 +207,6 @@ module Make =
                     events->Obj.magic,
                   ), // TODO : remove
               ~opts,
-              ~resources,
               (),
             );
           addEventMapperFns->Js.Dict.set(
@@ -266,7 +269,6 @@ module Make =
                 ~scheduler,
                 ~queryEngine,
                 ~opts=Some(opts),
-                ~resources,
                 (),
               )
             );
@@ -287,7 +289,6 @@ module Make =
                 ~publishToAggregates,
                 ~queryEngine,
                 ~opts=Some(opts),
-                ~resources,
                 (),
               )
             );
@@ -659,7 +660,6 @@ module Make =
               ~publishToAggregates,
               ~queryEngine,
               ~opts=Some(opts),
-              ~resources,
               (),
             );
 
@@ -682,10 +682,11 @@ module Make =
               ->Component.extractOutputs
             );
 
+          let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs;
           let resolvers =
-            readModelsOutputs
-            ->ResourceQueryDeploytime.allResolversMakers
-            ->Belt.Array.map(resolverMaker => resolverMaker(resources))
+            allQueryDbs
+            ->Util.QueryDb.allResolversMakers
+            ->Belt.Array.map(resolverMaker => resolverMaker(allQueryDbs))
             ->Belt.Array.concatMany;
 
           module Set = Belt.Set.String;
@@ -877,7 +878,7 @@ module Make =
             extensionPoints: extensionPointsOutputs->toDict,
             extensions: extensionsOutputs->toDict,
             aggregates: aggregatesOutputs,
-            readModels: readModelsOutputs->toDict,
+            readModels: readModelsOutputs,
             tasks: (tasksOutputs^)->toDict,
             resolvers,
             heartbeat: heartbeat->Component.extractOutputs,
@@ -925,34 +926,34 @@ module Make =
     ->setOutputs(self, _);
   };
 
-  let make: maker =
-    (
-      ~name,
-      ~version,
-      ~heartbeatInterval,
-      ~extensionPoints,
-      ~extensions,
-      ~aggregates,
-      ~readModels,
-      ~taskMakers,
-      ~scheduler,
-      ~opts=?,
-      _unit,
-    ) =>
-      make(
-        ~componentType=componentType->ComponentType.toString,
+  let make =
+      (
         ~name,
-        ~construct=
-          construct(
-            ~version,
-            ~heartbeatInterval,
-            ~extensionPoints,
-            ~extensions,
-            ~aggregates,
-            ~readModels,
-            ~taskMakers,
-            ~scheduler,
-          ),
-        ~opts,
-      );
+        ~version,
+        ~heartbeatInterval,
+        ~extensionPoints,
+        ~extensions,
+        ~aggregates,
+        ~readModels,
+        ~taskMakers,
+        ~scheduler,
+        ~opts=?,
+        _unit,
+      ) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct=
+        construct(
+          ~version,
+          ~heartbeatInterval,
+          ~extensionPoints,
+          ~extensions,
+          ~aggregates,
+          ~readModels,
+          ~taskMakers,
+          ~scheduler,
+        ),
+      ~opts,
+    );
 };

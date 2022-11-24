@@ -13,6 +13,7 @@ var Component = require("../components/Component");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("../components/EventCollector.bs.js");
 var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
+var Util_ReadModel$Reventless = require("../util/Util_ReadModel.bs.js");
 
 function toDict(els) {
   return Js_dict.fromArray(Belt_Array.map(els, (function (el) {
@@ -41,27 +42,31 @@ function Make(Config) {
                                     ReadModel.Spec.name,
                                     /* record */[
                                       /* module_ */ReadModel,
-                                      /* readModel */Curry._3(ReadModel.make, Caml_option.some(opts), resources, /* () */0)
+                                      /* readModel */Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0)
                                     ]
                                   ];
                           })));
-                var readModelsOutputs = Component$Reventless.extractMultipleOutputs(Belt_Array.map(Js_dict.values(readModels$1), (function (param) {
-                            return param[/* readModel */1];
+                var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(readModels$1), (function (param) {
+                            return /* tuple */[
+                                    param[0],
+                                    Component$Reventless.extractOutputs(param[1][/* readModel */1])
+                                  ];
                           })));
-                var queryEngine = Curry._1(QueryEngineAdapter.make, resources);
+                var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
+                var queryEngine = Curry._1(QueryEngineAdapter.make, allQueryDbs);
                 var publishToAggregates = { };
                 var aggregatesOutputs = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
                             var match = readModels$1[Aggregate.Spec.name];
                             var readModel = match[/* readModel */1];
                             var module_ = match[/* module_ */0];
-                            var aggregate = Curry._5(Aggregate.make, queryEngine, (function (id, events) {
+                            var aggregate = Curry._5(Aggregate.make, allQueryDbs, queryEngine, (function (id, events) {
                                     return Curry._1(module_.update, readModel)(id, events);
-                                  }), Caml_option.some(opts), resources, /* () */0);
+                                  }), Caml_option.some(opts), /* () */0);
                             publishToAggregates[Aggregate.Spec.name] = Curry._1(Aggregate.publishJsons, aggregate);
                             return Component$Reventless.extractOutputs(aggregate);
                           })));
                 var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-                        return Curry._6(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
+                        return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), /* () */0);
                       }));
                 var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
                 var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
@@ -113,7 +118,7 @@ function Make(Config) {
                             eventCollector: Component$Reventless.extractOutputs(eventCollector),
                             extensionPoints: toDict(extensionPointsOutputs),
                             aggregates: aggregatesOutputs,
-                            readModels: toDict(readModelsOutputs),
+                            readModels: readModelsOutputs,
                             cloner: Component$Reventless.extractOutputs(cloner),
                             resources: resources
                           });

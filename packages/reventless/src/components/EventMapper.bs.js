@@ -242,7 +242,7 @@ function Make(Target) {
                             }));
               });
           };
-          var construct = function (allEventTopics, queryEngine, publishJsons, memorySize, timeout, self, name, resources) {
+          var construct = function (allEventTopics, allQueryDbs, queryEngine, publishJsons, memorySize, timeout, self, name) {
             var opts = {
               parent: self
             };
@@ -255,7 +255,7 @@ function Make(Target) {
                     }),
                   undefined
                 ], (function (Counter) {
-                    var counter = Curry._6(Counter.make, name, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, Caml_option.some(opts), resources, /* () */0);
+                    var counter = Curry._6(Counter.make, name, allQueryDbs, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, Caml_option.some(opts), /* () */0);
                     return /* tuple */[
                             Curry._1(Counter.count, counter),
                             Curry._1(Counter.addToCounterTarget, counter),
@@ -288,17 +288,16 @@ function Make(Target) {
             self$1.setOutputs(outputs);
             return self$1.registerOutputs(outputs);
           };
-          var make = function (allEventTopics, queryEngine, publishJsons, $staropt$star, $staropt$star$1, opts, resources, param) {
+          var make = function (allEventTopics, allQueryDbs, queryEngine, publishJsons, $staropt$star, $staropt$star$1, opts, param) {
             var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
             var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 180;
             var prim = ComponentType$Reventless.toString(/* EventMapper */7);
             var prim$1 = Target.name;
-            var prim$2 = function (param, param$1, param$2) {
-              return construct(allEventTopics, queryEngine, publishJsons, memorySize, timeout, param, param$1, param$2);
+            var prim$2 = function (param, param$1) {
+              return construct(allEventTopics, allQueryDbs, queryEngine, publishJsons, memorySize, timeout, param, param$1);
             };
             var prim$3 = opts;
-            var prim$4 = resources;
-            return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+            return new Component.default(prim, prim$1, prim$2, prim$3);
           };
           return {
                   make: make

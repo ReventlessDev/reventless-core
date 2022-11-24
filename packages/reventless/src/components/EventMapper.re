@@ -1,5 +1,3 @@
-open ReventlessSpec.Adapter;
-
 module ReventlessEventCollector = EventCollector;
 
 let componentType = ComponentType.EventMapper;
@@ -11,21 +9,23 @@ type outputs = {
   "counter": option(Counter.outputs),
 };
 
-type eventMapper;
-type maker =
-  (
-    ~allEventTopics: Js.Dict.t(EventTopic.outputs),
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~publishJsons: CommandTopic.publishJsons,
-    ~memorySize: int=?,
-    ~timeout: int=?,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
-    ~resources: resources,
-    unit
-  ) =>
-  Component.t(eventMapper, outputs);
+type t;
+type component = Component.t(t, outputs);
 
-module type T = {let make: maker;};
+module type T = {
+  let make:
+    (
+      ~allEventTopics: EventTopic.allOutputs,
+      ~allQueryDbs: QueryDb.allOutputs,
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
+      ~publishJsons: CommandTopic.publishJsons,
+      ~memorySize: int=?,
+      ~timeout: int=?,
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      unit
+    ) =>
+    component;
+};
 
 module type Mappings = {
   module Target: ReventlessSpec.EventMapping.Target;
@@ -43,8 +43,7 @@ module Make =
        )
        : T => {
   type constructed;
-  type construct =
-    (Component.t(eventMapper, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -52,10 +51,9 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(eventMapper, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -68,12 +66,9 @@ module Make =
     outputs =
     "";
   [@bs.send]
-  external registerOutputs:
-    (Component.t(eventMapper, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(eventMapper, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -319,13 +314,13 @@ module Make =
   let construct =
       (
         ~allEventTopics,
+        ~allQueryDbs,
         ~queryEngine,
         ~publishJsons,
         ~memorySize,
         ~timeout,
         self,
         name,
-        resources,
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
@@ -357,7 +352,7 @@ module Make =
                   queryEngine,
                 ),
               ~opts,
-              ~resources,
+              ~allQueryDbs,
               (),
             );
           (
@@ -407,30 +402,30 @@ module Make =
     ->setOutputs(self, _);
   };
 
-  let make: maker =
-    (
-      ~allEventTopics,
-      ~queryEngine,
-      ~publishJsons,
-      ~memorySize=128,
-      ~timeout=180,
-      ~opts=?,
-      ~resources,
-      _,
-    ) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=Target.name,
-        ~construct=
-          construct(
-            ~allEventTopics,
-            ~queryEngine,
-            ~publishJsons,
-            ~memorySize,
-            ~timeout,
-          ),
-        ~opts,
-        ~resources,
-      );
-    };
+  let make =
+      (
+        ~allEventTopics,
+        ~allQueryDbs,
+        ~queryEngine,
+        ~publishJsons,
+        ~memorySize=128,
+        ~timeout=180,
+        ~opts=?,
+        _,
+      ) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=Target.name,
+      ~construct=
+        construct(
+          ~allEventTopics,
+          ~allQueryDbs,
+          ~queryEngine,
+          ~publishJsons,
+          ~memorySize,
+          ~timeout,
+        ),
+      ~opts,
+    );
+  };
 };

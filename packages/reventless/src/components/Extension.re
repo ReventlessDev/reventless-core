@@ -1,5 +1,3 @@
-open ReventlessSpec.Adapter;
-
 let componentType = ComponentType.Extension;
 
 type outputs = {
@@ -17,20 +15,19 @@ type component = Component.t(t, outputs);
 
 type name = string;
 
-type maker =
-  (
-    ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
-    ~publishToAggregates: Js.Dict.t(CommandTopic.publishJsons),
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources,
-    unit
-  ) =>
-  component;
-
 open ReventlessSpec.ExtensionMapping;
 
-module type T = {let make: maker;};
+module type T = {
+  let make:
+    (
+      ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
+      ~publishToAggregates: Js.Dict.t(CommandTopic.publishJsons),
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      unit
+    ) =>
+    component;
+};
 
 module type Mappings = {
   module Spec: ReventlessSpec.ExtensionMapping.Spec;
@@ -49,8 +46,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     component =
     "default";
@@ -251,25 +247,23 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
     ->setOutputs(self, _);
   };
 
-  let make: maker =
-    (
-      ~publishToCorePluginExtensionPoint,
-      ~publishToAggregates,
-      ~queryEngine,
-      ~opts,
-      ~resources,
-      _,
-    ) =>
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name ++ "." ++ Mappings.name,
-        ~construct=
-          construct(
-            ~publishToCorePluginExtensionPoint,
-            ~publishToAggregates,
-            ~queryEngine,
-          ),
+  let make =
+      (
+        ~publishToCorePluginExtensionPoint,
+        ~publishToAggregates,
+        ~queryEngine,
         ~opts,
-        ~resources,
-      );
+        _,
+      ) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=Spec.name ++ "." ++ Mappings.name,
+      ~construct=
+        construct(
+          ~publishToCorePluginExtensionPoint,
+          ~publishToAggregates,
+          ~queryEngine,
+        ),
+      ~opts,
+    );
 };

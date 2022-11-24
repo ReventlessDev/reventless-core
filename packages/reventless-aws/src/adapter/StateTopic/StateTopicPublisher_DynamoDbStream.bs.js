@@ -2,14 +2,14 @@
 'use strict';
 
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
-var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.bs.js");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var ComponentType$Reventless = require("@reventless/reventless/src/ComponentType.bs.js");
 var Util_ReadModel$Reventless = require("@reventless/reventless/src/util/Util_ReadModel.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 
-function make(name, param, resources) {
-  var queryDbResource = Belt_Option.getExn(Util_ReadModel$Reventless.queryDbStorageResource(resources, undefined)(name.substring(0, name.indexOf(ComponentType$Reventless.toName(/* ReadModel */12)))));
+function make(name, param, allQueryDbs) {
+  var queryDbResource = Util_Adapter$Reventless.findResource(Util_ReadModel$Reventless.queryDbStorageResources(allQueryDbs, name.substring(0, name.indexOf(ComponentType$Reventless.toName(/* ReadModel */12)))), Util_DynamoDbStream$ReventlessAws.service);
   return /* record */[/* resource */Adapter$Reventless.outputToResource(queryDbResource.service.apply((function (service) {
                       if (service === Util_DynamoDbStream$ReventlessAws.service) {
                         return Util_DynamoDbStream$ReventlessAws.toStreamResource(queryDbResource);
@@ -20,4 +20,4 @@ function make(name, param, resources) {
 }
 
 exports.make = make;
-/* Util_ReadModel-Reventless Not a pure module */
+/* Util_Adapter-Reventless Not a pure module */

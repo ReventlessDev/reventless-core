@@ -1,7 +1,10 @@
-let storage = "Storage";
-
-let getLocalStorageResource = (resources, name) =>
-  resources->Resources.getExn(
-    ~adapter=storage,
-    ~name=name->ComponentType.name(ComponentType.QueryDb),
-  );
+let getLocalStorageResources =
+    (allQueryDbs, queryDbName): array(ReventlessSpec.Adapter.resource) =>
+  try (allQueryDbs->Js.Dict.get(queryDbName)->Belt.Option.getExn##resources) {
+  | exn =>
+    Js.log2(
+      {j|Util_QueryDbRuntime.getLocalStorageResources: Couldn't find QueryDb $queryDbName in|j},
+      allQueryDbs,
+    );
+    raise(exn);
+  };

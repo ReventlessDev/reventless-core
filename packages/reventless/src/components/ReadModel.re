@@ -1,5 +1,3 @@
-open ReventlessSpec.Adapter;
-
 module ReventlessQueryDb = QueryDb;
 module ReventlessView = View;
 
@@ -37,13 +35,7 @@ module type T = {
        */
   let update: component => update(Spec.Id.t, Spec.event);
 
-  let make:
-    (
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    component;
+  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component;
 };
 
 module Make =
@@ -65,7 +57,7 @@ module Make =
   type update = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct = (component, string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -73,8 +65,7 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     component =
     "default";
@@ -207,14 +198,14 @@ module Make =
         }
       );
 
-  let construct = (self, name, resources) => {
+  let construct = (self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
         (),
       );
 
-    let queryDb = QueryDb.make(~opts, ~resources, ());
+    let queryDb = QueryDb.make(~opts, ());
 
     updateFn(
       queryDb->QueryDb.load,
@@ -227,13 +218,12 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make = (~opts=?, ~resources, _) => {
+  let make = (~opts=?, _) => {
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=View.name |> Js.Option.getWithDefault(Spec.name),
       ~construct,
       ~opts,
-      ~resources,
     );
   };
 };

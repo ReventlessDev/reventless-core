@@ -13,23 +13,24 @@ type outputs = {
   "eventLog": EventLog.outputs,
   "eventMapper": option(EventMapper.outputs),
 };
+type allOutputs = Js.Dict.t(outputs);
 
 type name = string;
 
 type t;
 type component = Component.t(t, outputs);
 
-type addEventMapper = Js.Dict.t(outputs) => outputs;
+type addEventMapper = allOutputs => outputs;
 
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T;
 
   let make:
     (
+      ~allQueryDbs: QueryDb.allOutputs,
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~eventsHandler: Message.eventsHandler(Spec.Id.t, Spec.event),
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
       unit
     ) =>
     component;
@@ -55,7 +56,7 @@ module Make =
   module Spec = Spec;
 
   type constructed;
-  type construct = (component, string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -63,8 +64,7 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
     component =
     "default";
@@ -347,7 +347,7 @@ module Make =
     };
 
   let addEventMapperFn =
-      (component, allAggregates, ~queryEngine, ~opts, ~resources) => {
+      (component, allAggregates, ~allQueryDbs, ~queryEngine, ~opts) => {
     module EventCollector = EventCollector.Make(EventCollectorConnector);
     module EventMapper =
       EventMapper.Make(Spec, EventCollector, EventMappings);
@@ -357,10 +357,10 @@ module Make =
         ? Some(
             EventMapper.make(
               ~allEventTopics=Util.Aggregate.allEventTopics(allAggregates),
+              ~allQueryDbs,
               ~queryEngine,
               ~publishJsons=component->publishJsons,
               ~opts,
-              ~resources,
               (),
             ),
           )
@@ -375,7 +375,7 @@ module Make =
     );
   };
 
-  let construct = (~queryEngine, ~eventsHandler, self, name, resources) => {
+  let construct = (~allQueryDbs, ~queryEngine, ~eventsHandler, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -384,7 +384,7 @@ module Make =
 
     let childName = name->ComponentType.name(componentType);
 
-    let eventLog = EventLog.make(~name=childName, ~opts, ~resources, ());
+    let eventLog = EventLog.make(~name=childName, ~opts, ());
 
     let handleCommands =
       handleCommands((
@@ -398,7 +398,6 @@ module Make =
         ~name=childName,
         ~commandsHandler=handleCommands,
         ~opts,
-        ~resources,
         (),
       );
 
@@ -412,7 +411,7 @@ module Make =
 
     self->setPublishJsons(commandTopic->CommandTopic.publishJsons);
     self->setAddEventMapper(
-      self->addEventMapperFn(~queryEngine, ~opts, ~resources),
+      self->addEventMapperFn(~allQueryDbs, ~queryEngine, ~opts),
     );
 
     makeOutputs(
@@ -425,12 +424,11 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make = (~queryEngine, ~eventsHandler, ~opts=?, ~resources, _) =>
+  let make = (~allQueryDbs, ~queryEngine, ~eventsHandler, ~opts=?, _) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~queryEngine, ~eventsHandler),
+      ~construct=construct(~allQueryDbs, ~queryEngine, ~eventsHandler),
       ~opts,
-      ~resources,
     );
 };

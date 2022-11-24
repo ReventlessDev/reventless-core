@@ -1,5 +1,3 @@
-open ReventlessSpec.Adapter;
-
 module ReventlessEventCollector = EventCollector;
 
 let componentType = ComponentType.SideEffectHandler;
@@ -10,15 +8,17 @@ type outputs = {
   "eventCollector": EventCollector.outputs,
 };
 
+type t;
+type component = Component.t(t, outputs);
+
 type sideEffects = array(module ReventlessSpec.SideEffect.T);
 
 module type T = {
-  type t;
   let make:
     (
       ~name: string,
       ~sideEffects: sideEffects,
-      ~allEventTopics: Js.Dict.t(EventTopic.outputs),
+      ~allEventTopics: EventTopic.allOutputs,
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~scheduler: Scheduler.t,
       ~memorySize: int=?,
@@ -28,19 +28,16 @@ module type T = {
       ~opts: Pulumi.CustomResourceOptions.t=?,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 
-  let enqueueEvent: Component.t(t, outputs) => EventCollector.enqueueEvent;
-  let createSchedule:
-    Component.t(t, outputs) => ReventlessSpec.Schedule.create;
-  let deleteSchedule:
-    Component.t(t, outputs) => ReventlessSpec.Schedule.delete;
+  let enqueueEvent: component => EventCollector.enqueueEvent;
+  let createSchedule: component => ReventlessSpec.Schedule.create;
+  let deleteSchedule: component => ReventlessSpec.Schedule.delete;
 };
 
 module Make = (EventCollector: EventCollector.T) : T => {
-  type t;
   type constructed;
-  type construct = (Component.t(t, outputs), string) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -50,7 +47,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -59,11 +56,9 @@ module Make = (EventCollector: EventCollector.T) : T => {
     outputs =
     "";
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -71,29 +66,26 @@ module Make = (EventCollector: EventCollector.T) : T => {
 
   [@bs.set]
   external setEnqueueEvent:
-    (Component.t(t, outputs), ReventlessEventCollector.enqueueEvent) => unit =
+    (component, ReventlessEventCollector.enqueueEvent) => unit =
     "enqueueEvent";
   [@bs.get]
-  external enqueueEvent:
-    Component.t(t, outputs) => ReventlessEventCollector.enqueueEvent =
+  external enqueueEvent: component => ReventlessEventCollector.enqueueEvent =
     "enqueueEvent";
 
   [@bs.set]
   external setCreateSchedule:
-    (Component.t(t, outputs), ReventlessSpec.Schedule.create) => unit =
+    (component, ReventlessSpec.Schedule.create) => unit =
     "createSchedule";
   [@bs.get]
-  external createSchedule:
-    Component.t(t, outputs) => ReventlessSpec.Schedule.create =
+  external createSchedule: component => ReventlessSpec.Schedule.create =
     "createSchedule";
 
   [@bs.set]
   external setDeleteSchedule:
-    (Component.t(t, outputs), ReventlessSpec.Schedule.delete) => unit =
+    (component, ReventlessSpec.Schedule.delete) => unit =
     "deleteSchedule";
   [@bs.get]
-  external deleteSchedule:
-    Component.t(t, outputs) => ReventlessSpec.Schedule.delete =
+  external deleteSchedule: component => ReventlessSpec.Schedule.delete =
     "deleteSchedule";
 
   let findSideEffect = (sideEffects, event'Json) => {

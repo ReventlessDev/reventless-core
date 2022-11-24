@@ -4,12 +4,10 @@
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_CommandTopic$Reventless = require("../util/Util_CommandTopic.bs.js");
 
 var NotPublishedToConnector = Caml_exceptions.create("CommandTopic-Reventless.NotPublishedToConnector");
 
@@ -75,12 +73,11 @@ function Make(Spec) {
                         }));
           });
       };
-      var construct = function (memorySize, timeout, self, name, commandsHandler, resources) {
+      var construct = function (memorySize, timeout, self, name, commandsHandler) {
         var opts = {
           parent: self
         };
-        var connector = Curry._6(Connector.make, ComponentType$Reventless.name(name, /* CommandTopic */4), handleCommands(commandsHandler), memorySize, timeout, opts, resources);
-        Util_CommandTopic$Reventless.setConnectorResource(resources, Caml_array.caml_array_get(connector[/* resources */0], 0), name);
+        var connector = Curry._5(Connector.make, ComponentType$Reventless.name(name, /* CommandTopic */4), handleCommands(commandsHandler), memorySize, timeout, opts);
         self.publish = publishFn(connector);
         self.publishJsons = publishJsonsFn(connector);
         var self$1 = self;
@@ -90,18 +87,17 @@ function Make(Spec) {
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (name, commandsHandler, $staropt$star, $staropt$star$1, opts, resources, param) {
+      var make = function (name, commandsHandler, $staropt$star, $staropt$star$1, opts, param) {
         var memorySize = $staropt$star !== undefined ? $staropt$star : 1024;
         var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 30;
         var prim = ComponentType$Reventless.toString(/* CommandTopic */4);
         var prim$1 = name;
-        var prim$2 = function (param, param$1, param$2, param$3) {
-          return construct(memorySize, timeout, param, param$1, param$2, param$3);
+        var prim$2 = function (param, param$1, param$2) {
+          return construct(memorySize, timeout, param, param$1, param$2);
         };
         var prim$3 = opts;
         var prim$4 = commandsHandler;
-        var prim$5 = resources;
-        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4, prim$5);
+        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
       };
       return {
               Spec: Spec,

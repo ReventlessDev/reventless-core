@@ -1,4 +1,5 @@
 open PulumiAws;
+open Reventless.Util.Adapter;
 
 let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
@@ -83,34 +84,39 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
 
     let _ =
       eventTopics
-      ->Util.Adapter.partitionSupportedResources([|
-          Util_DynamoDbStream.service,
-          Util_SNS.service,
+      ->partitionSupportedResources([|
+          Util.DynamoDbStream.service,
+          Util.SNS.service,
         |])
       ->Pulumi.Output.apply(((supportedResources, errorResources)) => {
           let (snsResources, otherResources) =
-            supportedResources->Util.Adapter.partitionResourcesByService(
-              Util_SNS.service,
+            supportedResources->partitionUnwrappedResourcesByService(
+              Util.SNS.service,
             );
           let _snsTopicSubscriptions =
-            snsResources->Belt.Array.map(((sourceName, topic)) =>
-              Util_SQS.subscribeToSnsTopic(
+            snsResources->Belt.Array.map(((sourceName, resources)) =>
+              Util.SQS.subscribeToSnsTopic(
                 ~queue,
                 ~targetName=name,
                 ~sourceName,
-                ~topic=topic->Reventless.AdapterDeploytime.unwrappedToResource,
+                ~topic=
+                  resources
+                  ->findUnwrappedResource(Util.SNS.service)
+                  ->Reventless.AdapterDeploytime.unwrappedToResource,
                 ~opts,
               )
             );
 
           let _eventSourceMappings =
             otherResources->Belt.Array.map(((sourceName, source)) =>
-              Util_EventSourceMapping.subscribe(
+              Util.EventSourceMapping.subscribe(
                 ~lambda=eventHandlerLambda,
                 ~targetName=name,
                 ~sourceName,
                 ~source=
-                  source->Reventless.AdapterDeploytime.unwrappedToResource,
+                  source
+                  ->findUnwrappedResource(Util.DynamoDbStream.service)
+                  ->Reventless.AdapterDeploytime.unwrappedToResource,
                 ~opts,
                 (),
               )

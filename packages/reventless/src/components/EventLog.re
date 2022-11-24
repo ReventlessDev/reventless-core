@@ -8,6 +8,9 @@ type outputs = {
   "eventTopic": EventTopic.outputs,
 };
 
+type t;
+type component = Component.t(t, outputs);
+
 exception ReplayError(string);
 
 type append('id, 'event) =
@@ -25,21 +28,14 @@ module type Spec = {
 
 module type T = {
   module Spec: Spec;
-  type t;
 
   let make:
-    (
-      ~name: string,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs);
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    component;
 
   let append:
-    Component.t(t, outputs) =>
-    append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
-  let replay: Component.t(t, outputs) => replay(Spec.Id.t, Spec.event);
+    component => append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
+  let replay: component => replay(Spec.Id.t, Spec.event);
 };
 
 module Adapter = {
@@ -49,12 +45,7 @@ module Adapter = {
     replay: replay(string, Js.Json.t),
   };
   type storageMaker =
-    (
-      ~name: string,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
-    ) =>
-    storage;
+    (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage;
 
   module type Storage = {let make: storageMaker;};
 };
@@ -67,11 +58,9 @@ module Make =
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type t;
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   type nonrec append =
     append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
@@ -83,10 +72,9 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -95,22 +83,18 @@ module Make =
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
-  external setAppend: (Component.t(t, outputs), append) => unit = "append";
-  [@bs.set]
-  external setReplay: (Component.t(t, outputs), replay) => unit = "replay";
-  [@bs.get] external append: Component.t(t, outputs) => append = "append";
-  [@bs.get] external replay: Component.t(t, outputs) => replay = "replay";
+  [@bs.set] external setAppend: (component, append) => unit = "append";
+  [@bs.set] external setReplay: (component, replay) => unit = "replay";
+  [@bs.get] external append: component => append = "append";
+  [@bs.get] external replay: component => replay = "replay";
 
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher);
 
@@ -203,7 +187,7 @@ module Make =
          );
     };
 
-  let construct = (self, name, resources) => {
+  let construct = (self, name) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -211,19 +195,14 @@ module Make =
       );
 
     let storage =
-      Storage.make(
-        ~name=name->ComponentType.name(componentType),
-        ~opts,
-        ~resources,
-      );
-    resources->Util_EventLog.setStorageResource(storage.resources[0], name);
+      Storage.make(~name=name->ComponentType.name(componentType), ~opts);
 
     let eventTopic =
       EventTopic.make(
         ~name,
+        ~storageResources=storage.resources,
         ~opts=
           opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
-        ~resources,
         (),
       );
 
@@ -237,21 +216,12 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make:
-    (
-      ~name: string,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~name, ~opts=?, ~resources, _) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name,
-        ~construct,
-        ~opts,
-        ~resources,
-      );
-    };
+  let make = (~name, ~opts=?, _) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct,
+      ~opts,
+    );
+  };
 };

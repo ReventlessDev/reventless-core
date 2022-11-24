@@ -57,7 +57,7 @@ var Adapter = { };
 function Make(Config) {
   return (function (QueryDbStorage) {
       return (function (Handler) {
-          var construct = function (counterEventsHandler, ttl, self, name$1, resources) {
+          var construct = function (allQueryDbs, counterEventsHandler, ttl, self, name$1) {
             var opts = {
               parent: self
             };
@@ -250,8 +250,8 @@ function Make(Config) {
                             return /* () */0;
                           }));
             };
-            var referencesDb = Curry._4(ReferencesDb.make, ttl, Caml_option.some(opts), resources, /* () */0);
-            var countsDb = Curry._4(CountsDb.make, ttl, Caml_option.some(opts), resources, /* () */0);
+            var referencesDb = Curry._3(ReferencesDb.make, ttl, Caml_option.some(opts), /* () */0);
+            var countsDb = Curry._3(CountsDb.make, ttl, Caml_option.some(opts), /* () */0);
             var referencesName = Belt_Option.getWithDefault(name$2, name$1);
             var countsName = Belt_Option.getWithDefault(name$3, name$1);
             var groupByCounterId = function (references) {
@@ -315,7 +315,7 @@ function Make(Config) {
                             return Promise.resolve(/* () */0);
                           }));
             };
-            var handler = Curry._6(Handler.make, name$1, referencesName, countsName, counterHandler, opts2, resources);
+            var handler = Curry._6(Handler.make, name$1, allQueryDbs, referencesName, countsName, counterHandler, opts2);
             var partial_arg = Curry._1(ReferencesDb.saveBatch, referencesDb);
             self.count = (function (param) {
                 var saveBatch = partial_arg;
@@ -372,17 +372,16 @@ function Make(Config) {
             self$1.setOutputs(outputs);
             return self$1.registerOutputs(outputs);
           };
-          var make = function (name, counterEventsHandler, $staropt$star, opts, resources, param) {
+          var make = function (name, allQueryDbs, counterEventsHandler, $staropt$star, opts, param) {
             var ttl = $staropt$star !== undefined ? $staropt$star : 604800;
             var partial_arg = ttl;
             var prim = ComponentType$Reventless.toString(/* Counter */1);
             var prim$1 = ComponentType$Reventless.name(name, /* Counter */1);
-            var prim$2 = function (param, param$1, param$2) {
-              return construct(counterEventsHandler, partial_arg, param, param$1, param$2);
+            var prim$2 = function (param, param$1) {
+              return construct(allQueryDbs, counterEventsHandler, partial_arg, param, param$1);
             };
             var prim$3 = opts;
-            var prim$4 = resources;
-            return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+            return new Component.default(prim, prim$1, prim$2, prim$3);
           };
           return {
                   make: make,

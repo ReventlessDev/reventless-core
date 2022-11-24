@@ -4,11 +4,12 @@
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
-var Util_Adapter$ReventlessAws = require("../../util/Util_Adapter.bs.js");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.bs.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
@@ -33,13 +34,13 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                           /* () */0
                         ]), opts);
         }));
-  Util_Adapter$ReventlessAws.partitionSupportedResources(eventTopics, /* array */[
+  Util_Adapter$Reventless.partitionSupportedResources(eventTopics, /* array */[
           Util_DynamoDbStream$ReventlessAws.service,
           Util_SNS_FIFO$ReventlessAws.service
         ]).apply((function (param) {
           var errorResources = param[1];
           Belt_Array.map(param[0], (function (param) {
-                  return Util_EventSourceMapping$ReventlessAws.subscribe(25, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts, /* () */0);
+                  return Util_EventSourceMapping$ReventlessAws.subscribe(25, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Caml_array.caml_array_get(param[1], 0)), opts, /* () */0);
                 }));
           if (errorResources.length !== 0) {
             var eventTopicNames = errorResources.join(",");

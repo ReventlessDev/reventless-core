@@ -2,6 +2,8 @@
 'use strict';
 
 
+var Adapter = 0;
+
 var Aggregate = 0;
 
 var $$Array = 0;
@@ -26,6 +28,7 @@ var ReadModel = 0;
 
 var VPC = 0;
 
+exports.Adapter = Adapter;
 exports.Aggregate = Aggregate;
 exports.$$Array = $$Array;
 exports.CommandTopic = CommandTopic;

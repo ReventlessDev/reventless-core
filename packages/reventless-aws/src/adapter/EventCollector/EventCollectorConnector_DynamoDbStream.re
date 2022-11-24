@@ -35,20 +35,20 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
 
     let _ =
       eventTopics
-      ->Util.Adapter.partitionSupportedResources([|
+      ->Reventless.Util.Adapter.partitionSupportedResources([|
           Util_DynamoDbStream.service,
           Util_SNS_FIFO.service,
         |])
       ->Pulumi.Output.apply(((dynamoDbStreamResources, errorResources)) => {
           let _eventSourceMappings: array(EventSourceMapping.t) =
-            dynamoDbStreamResources->Belt.Array.map(((sourceName, source)) =>
+            dynamoDbStreamResources->Belt.Array.map(((sourceName, sources)) =>
               Util_EventSourceMapping.subscribe(
                 ~batchSize=25,
                 ~lambda=eventHandlerLambda,
                 ~targetName=name,
                 ~sourceName,
                 ~source=
-                  source->Reventless.AdapterDeploytime.unwrappedToResource,
+                  sources[0]->Reventless.AdapterDeploytime.unwrappedToResource,
                 ~opts,
                 (),
               )

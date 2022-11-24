@@ -10,7 +10,7 @@ var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
-var Util_Adapter$ReventlessAws = require("../../util/Util_Adapter.bs.js");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.bs.js");
 var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.bs.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.bs.js");
@@ -56,17 +56,17 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
   eventHandlerLambda.apply((function (eventHandlerLambda) {
           return queue.onEvent(name, eventHandlerLambda, undefined, opts);
         }));
-  Util_Adapter$ReventlessAws.partitionSupportedResources(eventTopics, /* array */[
+  Util_Adapter$Reventless.partitionSupportedResources(eventTopics, /* array */[
           Util_DynamoDbStream$ReventlessAws.service,
           Util_SNS_FIFO$ReventlessAws.service
         ]).apply((function (param) {
           var errorResources = param[1];
-          var match = Util_Adapter$ReventlessAws.partitionResourcesByService(param[0], Util_SNS_FIFO$ReventlessAws.service);
+          var match = Util_Adapter$Reventless.partitionUnwrappedResourcesByService(param[0], Util_SNS_FIFO$ReventlessAws.service);
           Belt_Array.map(match[0], (function (param) {
-                  return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts);
+                  return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_SNS_FIFO$ReventlessAws.findTopicInUnwrappedResources(param[1])), opts);
                 }));
           Belt_Array.map(match[1], (function (param) {
-                  return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts, /* () */0);
+                  return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_Adapter$Reventless.findUnwrappedResource(param[1], Util_DynamoDbStream$ReventlessAws.service)), opts, /* () */0);
                 }));
           if (errorResources.length !== 0) {
             var eventTopicNames = errorResources.join(",");

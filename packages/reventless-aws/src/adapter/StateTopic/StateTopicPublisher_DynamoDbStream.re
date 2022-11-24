@@ -1,18 +1,17 @@
-open Reventless;
-open ComponentType;
-
-let make: StateTopic.Adapter.publisherMaker =
-  (~name, ~opts as _, ~resources) => {
+let make: Reventless.StateTopic.Adapter.publisherMaker =
+  (~name, ~opts as _, ~allQueryDbs) => {
     let queryDbResource =
-      resources
-      ->Reventless.Util.ReadModel.queryDbStorageResource(
-          None,
+      allQueryDbs
+      ->Reventless.Util.ReadModel.queryDbStorageResources(
           name->Js.String2.substring(
             ~from=0,
-            ~to_=name->Js.String2.indexOf(ReadModel->toName),
+            ~to_=
+              name->Js.String2.indexOf(
+                ReadModel->Reventless.ComponentType.toName,
+              ),
           ),
         )
-      ->Belt.Option.getExn;
+      ->Reventless.Util.Adapter.findResource(Util.DynamoDbStream.service);
 
     {
       resource:
@@ -27,6 +26,6 @@ let make: StateTopic.Adapter.publisherMaker =
               );
             }
           )
-        ->Adapter.outputToResource,
+        ->Reventless.Adapter.outputToResource,
     };
   };

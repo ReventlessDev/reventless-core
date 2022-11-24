@@ -18,7 +18,6 @@ var Component$Reventless = require("./Component.bs.js");
 var EventTopic$Reventless = require("./EventTopic.bs.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_EventLog$Reventless = require("../util/Util_EventLog.bs.js");
 
 var ReplayError = Caml_exceptions.create("EventLog-Reventless.ReplayError");
 
@@ -101,13 +100,12 @@ function Make(Spec) {
                             }));
               });
           };
-          var construct = function (self, name, resources) {
+          var construct = function (self, name) {
             var opts = {
               parent: self
             };
-            var storage = Curry._3($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts, resources);
-            Util_EventLog$Reventless.setStorageResource(resources, Caml_array.caml_array_get(storage[/* resources */0], 0), name);
-            var eventTopic = Curry._4(EventTopic.make, name, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), resources, /* () */0);
+            var storage = Curry._2($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts);
+            var eventTopic = Curry._4(EventTopic.make, name, storage[/* resources */0], Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), /* () */0);
             self.append = appendFn(storage, eventTopic);
             self.replay = replayFn(storage);
             var self$1 = self;
@@ -118,13 +116,12 @@ function Make(Spec) {
             self$1.setOutputs(outputs);
             return self$1.registerOutputs(outputs);
           };
-          var make = function (name, opts, resources, param) {
+          var make = function (name, opts, param) {
             var prim = ComponentType$Reventless.toString(/* EventLog */6);
             var prim$1 = name;
             var prim$2 = construct;
             var prim$3 = opts;
-            var prim$4 = resources;
-            return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+            return new Component.default(prim, prim$1, prim$2, prim$3);
           };
           return {
                   Spec: Spec,

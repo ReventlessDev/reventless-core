@@ -1,36 +1,39 @@
-open Util_QueryDbRuntime;
-
-let setStorageResource = (resources, resource, name) =>
-  resources->Resources.set(
-    ~adapter=storage,
-    ~name=name->ComponentType.name(ComponentType.QueryDb),
-    ~resource,
-  );
-
-let getStorageResource = (resources, pluginName, name) =>
-  switch (pluginName) {
-  | None => getLocalStorageResource(resources, name)->Some
-  | Some(pluginName) =>
+let getRemoteStorageResources = (pluginName, queryDbName) =>
+  switch (
     Util_StackRefs.get(pluginName)
-    ->Belt.Option.map(stackRef => {
-        let queryDb =
-          stackRef
-          ->Pulumi.StackReference.requireOutput("plugin"->Pulumi.Input.wrap)
-          ->Pulumi.Output.apply(plugin =>
-              plugin##readModels
-              ->Belt.Option.flatMap(readModels =>
-                  readModels->Js.Dict.get(name)
-                )
-              ->Belt.Option.map(readModel => readModel##queryDb##resources[0])
-              ->Belt.Option.getExn
-            );
-        queryDb->Adapter.unwrappedOutputToResource;
-      })
+    ->Belt.Option.map(stackRef =>
+        stackRef
+        ->Pulumi.StackReference.requireOutput("plugin"->Pulumi.Input.wrap)
+        ->Pulumi.Output.apply(plugin =>
+            plugin##readModels
+            ->Belt.Option.flatMap(readModels =>
+                readModels->Js.Dict.get(queryDbName)
+              )
+            ->Belt.Option.map(readModel =>
+                readModel##queryDb##resources
+                ->Belt.Array.map(Adapter.unwrappedOutputToResource)
+              )
+            ->Belt.Option.getWithDefault([||])
+          )
+      )
+  ) {
+  | Some(resources) => resources
+  | None =>
+    Js.log(
+      "Util_QueryDbRuntime.getLocalStorageResources: Couldn't find Plugin $pluginName",
+    );
+    [||]->Pulumi.Output.make;
   };
 
-let filterQueryDbStorages = (resources, keep) =>
-  resources->Resources.filter(
-    ~name=ComponentType.QueryDb->ComponentType.toName,
-    ~adapter=storage,
-    ~keep,
-  );
+let getStorageResources = (allQueryDbs, pluginName, queryDbName) =>
+  switch (pluginName) {
+  | None =>
+    Util_QueryDbRuntime.getLocalStorageResources(allQueryDbs, queryDbName)
+    ->Pulumi.Output.make
+  | Some(pluginName) => getRemoteStorageResources(pluginName, queryDbName)
+  };
+
+let allResolversMakers = allQueryDbs =>
+  allQueryDbs
+  ->Js.Dict.values
+  ->Belt.Array.map(queryDb => queryDb##resolversMaker);

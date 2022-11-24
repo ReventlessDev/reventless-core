@@ -3,16 +3,15 @@
 
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.bs.js");
-var ComponentType$Reventless = require("@reventless/reventless/src/ComponentType.bs.js");
-var Util_Aggregate$Reventless = require("@reventless/reventless/src/util/Util_Aggregate.bs.js");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 
-function make(name, param, resources) {
-  var eventLogResource = Util_Aggregate$Reventless.eventLogStorageResource(resources, name.substring(0, name.indexOf(ComponentType$Reventless.toName(/* Aggregate */0))));
+function make(param, storageResources, param$1) {
+  var storageResource = Util_Adapter$Reventless.findResource(storageResources, Util_DynamoDbStream$ReventlessAws.service);
   return /* record */[
-          /* resources : array */[Adapter$Reventless.outputToResource(eventLogResource.service.apply((function (service) {
+          /* resources : array */[Adapter$Reventless.outputToResource(storageResource.service.apply((function (service) {
                         if (service === Util_DynamoDbStream$ReventlessAws.service) {
-                          return Util_DynamoDbStream$ReventlessAws.toStreamResource(eventLogResource);
+                          return Util_DynamoDbStream$ReventlessAws.toStreamResource(storageResource);
                         } else {
                           return Js_exn.raiseError("EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_" + service);
                         }
@@ -24,4 +23,4 @@ function make(name, param, resources) {
 }
 
 exports.make = make;
-/* Util_DynamoDbStream-ReventlessAws Not a pure module */
+/* Util_Adapter-Reventless Not a pure module */

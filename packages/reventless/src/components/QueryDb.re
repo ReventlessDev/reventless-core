@@ -2,13 +2,16 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.QueryDb;
 
-type resolversResourcesMaker = resources => array(resource);
-
-type outputs = {
+type resolversResourcesMaker = Js.Dict.t(outputs) => array(resource)
+and outputs = {
   .
   "resources": array(resource),
   "resolversMaker": resolversResourcesMaker,
 };
+type allOutputs = Js.Dict.t(outputs);
+
+type t;
+type component = Component.t(t, outputs);
 
 type saveMode =
   | Init
@@ -58,7 +61,6 @@ module type T = {
   module Spec: AggregateSpec;
   module ViewSpec: ViewSpec;
 
-  type t;
   type nonrec load = load(Spec.Id.t, ViewSpec.state);
   type nonrec save = save(Spec.Id.t, ViewSpec.state);
   type nonrec saveBatch = saveBatch(Spec.Id.t, ViewSpec.state);
@@ -66,21 +68,16 @@ module type T = {
   type nonrec delete = delete(Spec.Id.t);
 
   let make:
-    (
-      ~ttl: int=?,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs);
+    (~ttl: int=?, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    component;
 
-  let load: Component.t(t, outputs) => load;
-  let save: Component.t(t, outputs) => save;
-  let saveBatch: Component.t(t, outputs) => saveBatch;
-  let count: Component.t(t, outputs) => count;
-  let delete: Component.t(t, outputs) => delete;
+  let load: component => load;
+  let save: component => save;
+  let saveBatch: component => saveBatch;
+  let count: component => count;
+  let delete: component => delete;
 
-  let outputs: Component.t(t, outputs) => outputs;
+  let outputs: component => outputs;
 };
 
 module Adapter = {
@@ -112,7 +109,7 @@ module Adapter = {
     let make: storageMaker(api, role);
   };
 
-  type queryEngineMaker = resources => ReventlessSpec.QueryEngine.t;
+  type queryEngineMaker = Js.Dict.t(outputs) => ReventlessSpec.QueryEngine.t;
 
   module type QueryEngineAdapter = {let make: queryEngineMaker;};
 
@@ -180,8 +177,6 @@ module Make =
   type api = Config.api;
   type role = Config.role;
 
-  type t;
-
   type nonrec load = load(Spec.Id.t, ViewSpec.state);
   type nonrec save = save(Spec.Id.t, ViewSpec.state);
   type nonrec saveBatch = saveBatch(Spec.Id.t, ViewSpec.state);
@@ -189,8 +184,7 @@ module Make =
   type nonrec delete = delete(Spec.Id.t);
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, api, role, resources) => constructed;
+  type construct = (component, string, api, role) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -200,10 +194,9 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~api: api,
-      ~apiRole: role,
-      ~resources: resources
+      ~apiRole: role
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -213,34 +206,26 @@ module Make =
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
+  [@bs.set] external setLoad: (component, load) => unit = "load";
+  [@bs.set] external setSave: (component, save) => unit = "save";
   [@bs.set]
-  external setLoad: (Component.t(t, outputs), load) => unit = "load";
-  [@bs.set]
-  external setSave: (Component.t(t, outputs), save) => unit = "save";
-  [@bs.set]
-  external setSaveBatch: (Component.t(t, outputs), saveBatch) => unit =
-    "saveBatch";
-  [@bs.set]
-  external setCount: (Component.t(t, outputs), count) => unit = "count";
-  [@bs.set]
-  external setDelete: (Component.t(t, outputs), delete) => unit = "delete";
+  external setSaveBatch: (component, saveBatch) => unit = "saveBatch";
+  [@bs.set] external setCount: (component, count) => unit = "count";
+  [@bs.set] external setDelete: (component, delete) => unit = "delete";
 
-  [@bs.get] external load: Component.t(t, outputs) => load = "load";
-  [@bs.get] external save: Component.t(t, outputs) => save = "save";
-  [@bs.get]
-  external saveBatch: Component.t(t, outputs) => saveBatch = "saveBatch";
-  [@bs.get] external count: Component.t(t, outputs) => count = "count";
-  [@bs.get] external delete: Component.t(t, outputs) => delete = "delete";
+  [@bs.get] external load: component => load = "load";
+  [@bs.get] external save: component => save = "save";
+  [@bs.get] external saveBatch: component => saveBatch = "saveBatch";
+  [@bs.get] external count: component => count = "count";
+  [@bs.get] external delete: component => delete = "delete";
 
   let decode = (id, item) =>
     switch (ViewSpec.state_decode(item)) {
@@ -310,10 +295,10 @@ module Make =
       storage.Adapter.delete(. id->Spec.Id.toString, sort);
     };
 
-  let outputs: Component.t(t, outputs) => outputs =
+  let outputs: component => outputs =
     component => Component.extractOutputs(component);
 
-  let construct = (~ttl=?, self, name, api, apiRole, resources) => {
+  let construct = (~ttl=?, self, name, api, apiRole) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -333,7 +318,6 @@ module Make =
         ~apiRole,
         ~opts,
       );
-    resources->Util_QueryDb.setStorageResource(storage.resources[0], name);
 
     self->setLoad(storage->loadFn);
     self->setSave(storage->saveFn);
@@ -361,23 +345,14 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make:
-    (
-      ~ttl: int=?,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~ttl=?, ~opts=?, ~resources, _) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=ViewSpec.name->Belt.Option.getWithDefault(Spec.name),
-        ~construct=construct(~ttl?),
-        ~opts,
-        ~api=Config.api,
-        ~apiRole=Config.apiRole,
-        ~resources,
-      );
-    };
+  let make = (~ttl=?, ~opts=?, _) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=ViewSpec.name->Belt.Option.getWithDefault(Spec.name),
+      ~construct=construct(~ttl?),
+      ~opts,
+      ~api=Config.api,
+      ~apiRole=Config.apiRole,
+    );
+  };
 };

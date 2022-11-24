@@ -22,14 +22,15 @@ var Heartbeat$Reventless = require("./Heartbeat.bs.js");
 var Interstack$Reventless = require("../util/Interstack.bs.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.bs.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
+var Util_QueryDb$Reventless = require("../util/Util_QueryDb.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("./EventCollector.bs.js");
 var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
+var Util_ReadModel$Reventless = require("../util/Util_ReadModel.bs.js");
 var ExtensionMapping$Reventless = require("../ExtensionMapping.bs.js");
 var AdapterDeploytime$Reventless = require("../adapter/AdapterDeploytime.bs.js");
 var Util_ExtensionPoint$Reventless = require("../util/Util_ExtensionPoint.bs.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.bs.js");
-var ResourceQueryDeploytime$Reventless = require("../util/ResourceQueryDeploytime.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 var InterstackResourceQueryRuntime$Reventless = require("../util/InterstackResourceQueryRuntime.bs.js");
 
@@ -60,23 +61,27 @@ function Make(EventCollectorConnector) {
                                 ReadModel.Spec.name,
                                 /* record */[
                                   /* module_ */ReadModel,
-                                  /* readModel */Curry._3(ReadModel.make, Caml_option.some(opts), resources, /* () */0)
+                                  /* readModel */Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0)
                                 ]
                               ];
                       })));
-            var readModelsOutputs = Component$Reventless.extractMultipleOutputs(Belt_Array.map(Js_dict.values(readModels$1), (function (param) {
-                        return param[/* readModel */1];
+            var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(readModels$1), (function (param) {
+                        return /* tuple */[
+                                param[0],
+                                Component$Reventless.extractOutputs(param[1][/* readModel */1])
+                              ];
                       })));
-            var queryEngine = Curry._1(QueryEngineAdapter.make, resources);
+            var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
+            var queryEngine = Curry._1(QueryEngineAdapter.make, allQueryDbs);
             var addEventMapperFns = { };
             var publishToAggregates = { };
             var aggregatesWithoutEventMappers = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
                         var match = readModels$1[Aggregate.Spec.name];
                         var readModel = match[/* readModel */1];
                         var module_ = match[/* module_ */0];
-                        var aggregate = Curry._5(Aggregate.make, queryEngine, (function (id, events) {
+                        var aggregate = Curry._5(Aggregate.make, allQueryDbs, queryEngine, (function (id, events) {
                                 return Curry._1(module_.update, readModel)(id, events);
-                              }), Caml_option.some(opts), resources, /* () */0);
+                              }), Caml_option.some(opts), /* () */0);
                         addEventMapperFns[Aggregate.Spec.name] = Curry._1(Aggregate.addEventMapper, aggregate);
                         publishToAggregates[Aggregate.Spec.name] = Curry._1(Aggregate.publishJsons, aggregate);
                         return Component$Reventless.extractOutputs(aggregate);
@@ -94,13 +99,13 @@ function Make(EventCollectorConnector) {
                     var corePluginEventTopicResource = AdapterDeploytime$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.eventTopic.resources, 0));
                     Util_ExtensionPoint$Reventless.setEventTopicPublisherResource(resources, corePluginEventTopicResource, PluginExtensionPointSpec$ReventlessSpec.name);
                     var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-                            return Curry._6(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), resources, /* () */0);
+                            return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), /* () */0);
                           }));
                     var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
                     var corePluginExtensionPointCommandTopicRemoteConnector = Curry._1(CorePluginExtensionPointRemoteConnector.make, corePluginEventTopicResource);
                     var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector[/* remotePublish */0];
                     var extensions$1 = Belt_Array.map(extensions, (function (Extension) {
-                            return Curry._6(Extension.make, publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, Caml_option.some(opts), resources, /* () */0);
+                            return Curry._5(Extension.make, publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, Caml_option.some(opts), /* () */0);
                           }));
                     var extensionsOutputs = Component$Reventless.extractMultipleOutputs(extensions$1);
                     var match = Curry._1(Util_Pulumi$Reventless.Output.Async.make, /* () */0);
@@ -331,7 +336,7 @@ function Make(EventCollectorConnector) {
                           name: "Connect",
                           mappings: mappings
                         });
-                    var connectPluginExtension = Curry._6(ConnectPluginExtension.make, publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, Caml_option.some(opts), resources, /* () */0);
+                    var connectPluginExtension = Curry._5(ConnectPluginExtension.make, publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, Caml_option.some(opts), /* () */0);
                     var tasksOutputs = /* record */[/* contents : array */[]];
                     var partial_arg = Interstack$Reventless.mergeTasks(tasksOutputs);
                     var queryBucketName = function (param) {
@@ -340,8 +345,9 @@ function Make(EventCollectorConnector) {
                     tasksOutputs[0] = Belt_Array.map(taskMakers, (function (taskMaker) {
                             return Component$Reventless.extractOutputs(Curry._6(taskMaker, queryBucketName, scheduler, queryEngine, aggregatesOutputs, Caml_option.some(opts), resources));
                           }));
-                    var resolvers = Belt_Array.concatMany(Belt_Array.map(ResourceQueryDeploytime$Reventless.allResolversMakers(readModelsOutputs), (function (resolverMaker) {
-                                return Curry._1(resolverMaker, resources);
+                    var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
+                    var resolvers = Belt_Array.concatMany(Belt_Array.map(Util_QueryDb$Reventless.allResolversMakers(allQueryDbs), (function (resolverMaker) {
+                                return Curry._1(resolverMaker, allQueryDbs);
                               })));
                     var collectAggregateNames = function (exs) {
                       return Belt_Array.reduce(Belt_Array.map(exs, (function (ex) {
@@ -464,7 +470,7 @@ function Make(EventCollectorConnector) {
                             /* extensionPoints */toDict(extensionPointsOutputs),
                             /* extensions */toDict(extensionsOutputs),
                             /* aggregates */aggregatesOutputs,
-                            /* readModels */toDict(readModelsOutputs),
+                            /* readModels */readModelsOutputs,
                             /* tasks */toDict(tasksOutputs[0]),
                             /* resolvers */resolvers,
                             /* heartbeat */Component$Reventless.extractOutputs(heartbeat),

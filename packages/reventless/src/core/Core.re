@@ -107,18 +107,21 @@ module Make =
             ReadModel.Spec.name,
             {
               module_: (module ReadModel),
-              readModel: ReadModel.make(~opts, ~resources, ()),
+              readModel: ReadModel.make(~opts, ()),
             },
           )
         )
       ->Js.Dict.fromArray;
     let readModelsOutputs =
       readModels
-      ->Js.Dict.values
-      ->Belt.Array.map(({readModel}) => readModel)
-      ->Component.extractMultipleOutputs;
+      ->Js.Dict.entries
+      ->Belt.Array.map(((name, {readModel})) =>
+          (name, readModel->Component.extractOutputs)
+        )
+      ->Js.Dict.fromArray;
+    let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs;
 
-    let queryEngine = QueryEngineAdapter.make(resources);
+    let queryEngine = QueryEngineAdapter.make(allQueryDbs);
 
     let publishToAggregates = Js.Dict.empty();
     let aggregatesOutputs =
@@ -129,6 +132,7 @@ module Make =
           module ReadModel = (val module_);
           let aggregate =
             Aggregate.make(
+              ~allQueryDbs,
               ~queryEngine,
               ~eventsHandler=
                 (. id, events) =>
@@ -137,7 +141,6 @@ module Make =
                     events->Obj.magic,
                   ), // TODO : remove
               ~opts,
-              ~resources,
               (),
             );
           publishToAggregates->Js.Dict.set(
@@ -156,7 +159,6 @@ module Make =
           ~scheduler,
           ~queryEngine,
           ~opts=Some(opts),
-          ~resources,
           (),
         )
       );
@@ -220,7 +222,7 @@ module Make =
       ~eventCollector=eventCollector->Component.extractOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
       ~aggregates=aggregatesOutputs,
-      ~readModels=readModelsOutputs->toDict,
+      ~readModels=readModelsOutputs,
       ~cloner=cloner->Component.extractOutputs,
       ~resources,
     )

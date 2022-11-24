@@ -63,7 +63,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
       );
 
     let resourcesMaker: QueryDb.resolversResourcesMaker =
-      resources => {
+      allQueryDbs => {
         let resolversByIndex =
           indexes->Belt.List.map(({View.index, authorization}) => {
             let name = name ++ "By" ++ index->String.capitalize;
@@ -88,9 +88,11 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~name=name ++ "Auth",
                   ~api,
                   ~tableName=
-                    resources->Util_QueryDbRuntime.getLocalStorageResource(
-                      tableName,
-                    )##name,
+                    allQueryDbs
+                    ->Util_QueryDbRuntime.getLocalStorageResources(tableName)
+                    ->Reventless.Util.Adapter.findResource(
+                        Util_DynamoDbStream.service,
+                      )##name,
                   ~serviceRole=apiRole,
                   ~opts,
                   (),
@@ -135,7 +137,9 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
 
         let storageResource =
             (~pluginName: option(string), ~tableName: string) =>
-          resources->Util_QueryDb.getStorageResource(pluginName, tableName);
+          allQueryDbs
+          ->Util_QueryDb.getStorageResources(pluginName, tableName)
+          ->Util.Adapter.findResourceInOutput(Util_DynamoDb.service);
 
         let generateTemplate:
           (

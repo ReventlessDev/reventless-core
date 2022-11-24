@@ -4,6 +4,9 @@ let componentType = ComponentType.CommandTopic;
 
 type outputs = {. "resources": array(resource)};
 
+type t;
+type component = Component.t(t, outputs);
+
 type publish('id, 'command) =
   (. Message.command'('id, 'command)) => Js.Promise.t(unit);
 type publishJsons = (. array(Message.commandJson)) => Js.Promise.t(unit);
@@ -31,7 +34,6 @@ module type T = {
 
   type nonrec commandsHandler =
     commandsHandler(Message.command'(Spec.Id.t, Spec.command));
-  type t;
 
   let make:
     (
@@ -40,13 +42,12 @@ module type T = {
       ~memorySize: int=?,
       ~timeout: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 
-  let publish: Component.t(t, outputs) => publish(Spec.Id.t, Spec.command);
-  let publishJsons: Component.t(t, outputs) => publishJsons;
+  let publish: component => publish(Spec.Id.t, Spec.command);
+  let publishJsons: component => publishJsons;
 };
 
 module Adapter = {
@@ -60,8 +61,7 @@ module Adapter = {
       ~handleCommands: commandsHandler(Js.Json.t),
       ~memorySize: int,
       ~timeout: int,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
+      ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     connector;
 
@@ -80,12 +80,9 @@ module Make =
 
   type nonrec commandsHandler =
     commandsHandler(Message.command'(Spec.Id.t, Spec.command));
-  type t;
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, commandsHandler, resources) =>
-    constructed;
+  type construct = (component, string, commandsHandler) => constructed;
 
   type nonrec publish = publish(Spec.Id.t, Spec.command);
 
@@ -96,35 +93,28 @@ module Make =
       ~name: string,
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~commandsHandler: commandsHandler,
-      ~resources: resources
+      ~commandsHandler: commandsHandler
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
   external makeOutputs: (~resources: array(resource)) => outputs = "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
+  [@bs.set] external setPublish: (component, publish) => unit = "publish";
+  [@bs.get] external publish: component => publish = "publish";
   [@bs.set]
-  external setPublish: (Component.t(t, outputs), publish) => unit = "publish";
-  [@bs.get] external publish: Component.t(t, outputs) => publish = "publish";
-  [@bs.set]
-  external setPublishJsons: (Component.t(t, outputs), publishJsons) => unit =
-    "publishJsons";
-  [@bs.get]
-  external publishJsons: Component.t(t, outputs) => publishJsons =
-    "publishJsons";
+  external setPublishJsons: (component, publishJsons) => unit = "publishJsons";
+  [@bs.get] external publishJsons: component => publishJsons = "publishJsons";
 
   let publishJsonsFn = connector =>
     (. jsons) => {
@@ -195,8 +185,7 @@ module Make =
          });
     };
 
-  let construct =
-      (~memorySize, ~timeout, self, name, commandsHandler, resources) => {
+  let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -210,12 +199,7 @@ module Make =
         ~memorySize,
         ~timeout,
         ~opts,
-        ~resources,
       );
-    resources->Util_CommandTopic.setConnectorResource(
-      connector.resources[0],
-      name,
-    );
 
     self->setPublish(connector->publishFn);
     self->setPublishJsons(connector->publishJsonsFn);
@@ -223,33 +207,14 @@ module Make =
     makeOutputs(~resources=connector.resources)->setOutputs(self, _);
   };
 
-  let make:
-    (
-      ~name: string,
-      ~commandsHandler: commandsHandler,
-      ~memorySize: int=?,
-      ~timeout: int=?,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (
+  let make =
+      (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?, _) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
       ~name,
+      ~construct=construct(~memorySize, ~timeout),
+      ~opts,
       ~commandsHandler,
-      ~memorySize=1024,
-      ~timeout=30,
-      ~opts=?,
-      ~resources,
-      _,
-    ) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name,
-        ~construct=construct(~memorySize, ~timeout),
-        ~opts,
-        ~commandsHandler,
-        ~resources,
-      );
-    };
+    );
+  };
 };

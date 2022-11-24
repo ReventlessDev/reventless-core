@@ -6,13 +6,11 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Component$Reventless = require("./Component.bs.js");
-var Util_QueryDb$Reventless = require("../util/Util_QueryDb.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 function NoResolvers(Config) {
@@ -106,7 +104,7 @@ function Make(Config) {
                       });
                   };
                   var outputs = Component$Reventless.extractOutputs;
-                  var construct = function (ttl, self, name, api, apiRole, resources) {
+                  var construct = function (ttl, self, name, api, apiRole) {
                     var opts = {
                       parent: self
                     };
@@ -115,7 +113,6 @@ function Make(Config) {
                           }));
                     var storageName = ComponentType$Reventless.name(name, /* QueryDb */11);
                     var storage = Curry._7($$Storage.make, storageName, ViewSpec.indexes, sortField, ttl, api, apiRole, opts);
-                    Util_QueryDb$Reventless.setStorageResource(resources, Caml_array.caml_array_get(storage[/* resources */0], 0), name);
                     self.load = loadFn(storage);
                     self.save = saveFn(storage);
                     self.saveBatch = saveBatchFn(storage);
@@ -140,17 +137,16 @@ function Make(Config) {
                     self$1.setOutputs(outputs);
                     return self$1.registerOutputs(outputs);
                   };
-                  var make = function (ttl, opts, resources, param) {
+                  var make = function (ttl, opts, param) {
                     var prim = ComponentType$Reventless.toString(/* QueryDb */11);
                     var prim$1 = Belt_Option.getWithDefault(ViewSpec.name, Spec.name);
-                    var prim$2 = function (param, param$1, param$2, param$3, param$4) {
-                      return construct(ttl, param, param$1, param$2, param$3, param$4);
+                    var prim$2 = function (param, param$1, param$2, param$3) {
+                      return construct(ttl, param, param$1, param$2, param$3);
                     };
                     var prim$3 = opts;
                     var prim$4 = Config.api;
                     var prim$5 = Config.apiRole;
-                    var prim$6 = resources;
-                    return new Component.default(prim, prim$1, prim$2, prim$3, prim$4, prim$5, prim$6);
+                    return new Component.default(prim, prim$1, prim$2, prim$3, prim$4, prim$5);
                   };
                   return {
                           Spec: Spec,

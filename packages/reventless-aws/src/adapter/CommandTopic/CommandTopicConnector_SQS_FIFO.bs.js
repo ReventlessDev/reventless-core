@@ -12,7 +12,7 @@ var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.bs.js");
 var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_Runtime.bs.js");
 
-function make(name, handleCommands, memorySize, timeout, opts, param) {
+function make(name, handleCommands, memorySize, timeout, opts) {
   var queue = new (Aws.sqs.Queue)(name, {
         contentBasedDeduplication: true,
         fifoQueue: true,
