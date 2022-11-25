@@ -3,10 +3,8 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Component = require("./Component");
 var Aws = require("@pulumi/aws");
-var Id$Reventless = require("../Id.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -15,33 +13,26 @@ var Cloudwatch_EventRule$PulumiAws = require("@reventless/bs-pulumi-aws/src/Clou
 var Cloudwatch_EventTarget$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 
-function construct(id, timeout, commandTopicId, self, name) {
+function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
   var opts = {
     parent: self
   };
   var childName = ComponentType$Reventless.name(name, /* Heartbeat */19);
   var heartBeatCallback = function (param, param$1) {
     var msgId = Message$Reventless.uuid(/* () */0);
-    var __x_000 = /* id */Id$Reventless.$$String.makeFromString(id);
-    var __x_001 = /* meta : record */[
-      /* service */PluginExtensionPointSpec$ReventlessSpec.name,
-      /* time */Message$Reventless.nowAsISOString(/* () */0),
-      /* ip */"",
-      /* user */"Heartbeat",
-      /* msgId */msgId,
-      /* correlationId */msgId
-    ];
-    var __x_002 = /* command : Heartbeat */Block.__(0, [timeout]);
-    var __x = /* record */[
-      __x_000,
-      __x_001,
-      __x_002
-    ];
-    var __x$1 = Message$Reventless.log(JSON.stringify(Message$Reventless.command$prime_encode(Id$Reventless.$$String.t_encode, PluginExtensionPointSpec$ReventlessSpec.command_encode, __x)), "Sending Heartbeat:");
-    var __x$2 = SQS$AwsSdk.sendMessage(commandTopicId.get(), __x$1, undefined, undefined, undefined, /* () */0);
-    return __x$2.catch((function (err) {
-                  return Promise.resolve((console.log("Extension: Error on publish command:", err), /* () */0));
-                }));
+    return publishToCorePluginExtensionPoint(/* array */[/* record */[
+                  /* id */id,
+                  /* meta : record */[
+                    /* service */PluginExtensionPointSpec$ReventlessSpec.name,
+                    /* time */Message$Reventless.nowAsISOString(/* () */0),
+                    /* ip */"",
+                    /* user */"Heartbeat",
+                    /* msgId */msgId,
+                    /* correlationId */msgId
+                  ],
+                  /* commandJson */PluginExtensionPointSpec$ReventlessSpec.command_encode(/* Heartbeat */Block.__(0, [timeout])),
+                  /* delay */undefined
+                ]]);
   };
   var cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + childName), {
         description: "Send a heartbeat to the Core Plugin ExtensionPoint",
@@ -82,12 +73,12 @@ function construct(id, timeout, commandTopicId, self, name) {
             });
 }
 
-function make(id, name, $staropt$star, commandTopicId, opts, param) {
+function make(id, name, $staropt$star, publishToCorePluginExtensionPoint, opts, param) {
   var timeout = $staropt$star !== undefined ? $staropt$star : 10;
   var prim = ComponentType$Reventless.toString(/* Heartbeat */19);
   var prim$1 = name;
   var prim$2 = function (param, param$1) {
-    return construct(id, timeout, commandTopicId, param, param$1);
+    return construct(id, timeout, publishToCorePluginExtensionPoint, param, param$1);
   };
   var prim$3 = opts;
   return new Component.default(prim, prim$1, prim$2, prim$3);
@@ -98,4 +89,4 @@ var componentType = /* Heartbeat */19;
 exports.componentType = componentType;
 exports.construct = construct;
 exports.make = make;
-/* SQS-AwsSdk Not a pure module */
+/* ./Component Not a pure module */

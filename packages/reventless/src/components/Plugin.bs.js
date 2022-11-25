@@ -92,7 +92,7 @@ function Make(EventCollectorConnector) {
               ).apply((function (coreStackOutput) {
                     var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(Belt_Option.getExn(coreStackOutput.extensionPoints), PluginExtensionPointSpec$ReventlessSpec.name);
                     var corePluginCommandTopicResource = AdapterDeploytime$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.commandTopic.resources, 0));
-                    var corePluginCommandTopicId = corePluginCommandTopicResource.id;
+                    corePluginCommandTopicResource.id;
                     var corePluginEventTopicResource = AdapterDeploytime$Reventless.stackRefResourceToResource(Caml_array.caml_array_get(corePluginExtensionPoint.eventTopic.resources, 0));
                     var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
                             return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), /* () */0);
@@ -457,7 +457,7 @@ function Make(EventCollectorConnector) {
                         ]);
                     var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
                     match[1](Caml_array.caml_array_get(eventCollectorOutputs.resources, 0).urn);
-                    var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName(/* Plugin */2), heartbeatInterval, corePluginCommandTopicId, Caml_option.some(opts), /* () */0);
+                    var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName(/* Plugin */2), heartbeatInterval, publishToCorePluginExtensionPoint, Caml_option.some(opts), /* () */0);
                     return /* record */[
                             /* id */id,
                             /* version */version,

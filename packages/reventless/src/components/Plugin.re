@@ -850,7 +850,7 @@ module Make =
               ~id,
               ~name=name ++ componentType->ComponentType.toName,
               ~timeout=heartbeatInterval,
-              ~commandTopicId=corePluginCommandTopicId,
+              ~publishToCorePluginExtensionPoint,
               ~opts,
               (),
             );
