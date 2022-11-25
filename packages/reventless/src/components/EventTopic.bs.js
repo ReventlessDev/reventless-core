@@ -15,7 +15,7 @@ var Adapter = { };
 
 function Make(Spec) {
   return (function (Publisher) {
-      var publishFn = function (publisher) {
+      var publishFn = function (publisher, name) {
         return (function (events$prime) {
             var eventCount = events$prime.length;
             return Promise.all(Belt_Array.mapWithIndex(events$prime, (function (idx, event$prime) {
@@ -24,15 +24,14 @@ function Make(Spec) {
                                 var $$event = JSON.stringify(json);
                                 var eventName = Caml_array.caml_array_get(Curry._1(Spec.event_encode, event$prime[/* event */2]), 0);
                                 var idx$1 = idx + 1 | 0;
-                                var resourceName = Caml_array.caml_array_get(publisher[/* resources */0], 0).name.get();
                                 return publisher[/* publish */1](Curry._1(Spec.Id.toString, id), event$prime[/* meta */1], json).catch((function (e) {
-                                                console.log("EventTopic: Couldn\'t publish event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(resourceName) + ""))))))))));
+                                                console.log("EventTopic: Couldn\'t publish event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + ""))))))))));
                                                 return Promise.reject([
                                                             NotPublishedToPublisher,
                                                             e
                                                           ]);
                                               })).then((function (param) {
-                                              return Promise.resolve((console.log("EventTopic: Published event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(resourceName) + (": " + (String($$event) + "")))))))))))), /* () */0));
+                                              return Promise.resolve((console.log("EventTopic: Published event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + (": " + (String($$event) + "")))))))))))), /* () */0));
                                             }));
                               }))).then((function (param) {
                           return Promise.resolve(/* () */0);
@@ -44,7 +43,7 @@ function Make(Spec) {
           parent: self
         };
         var publisher = Curry._3(Publisher.make, ComponentType$Reventless.name(name, /* EventTopic */8), storageResources, opts);
-        self.publish = publishFn(publisher);
+        self.publish = publishFn(publisher, name);
         var self$1 = self;
         var outputs = {
           resources: publisher[/* resources */0]

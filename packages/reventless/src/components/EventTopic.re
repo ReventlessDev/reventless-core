@@ -89,7 +89,7 @@ module Make =
   [@bs.set] external setPublish: (component, publish) => unit = "publish";
   [@bs.get] external publish: component => publish = "publish";
 
-  let publishFn = publisher =>
+  let publishFn = (publisher: Adapter.publisher, name) =>
     (. events') => {
       let eventCount = events'->Belt.Array.length;
       events'->Belt.Array.mapWithIndex((idx, event') => {
@@ -100,19 +100,17 @@ module Make =
         let event = json->Js.Json.stringify;
         let eventName: string = event'.event->Spec.event_encode->Obj.magic[0];
         let idx = idx + 1;
-        let resourceName =
-          publisher.Adapter.resources[0]##name->Pulumi.Output.get; // FIXME
 
         publisher.publish(. id->Spec.Id.toString, event'.meta, json)
         |> Js.Promise.catch(e => {
              Js.log(
-               {j|EventTopic: Couldn't publish event $idx/$eventCount: $eventName($id) to $resourceName|j},
+               {j|EventTopic: Couldn't publish event $idx/$eventCount: $eventName($id) to $name|j},
              );
              NotPublishedToPublisher(e)->Js.Promise.reject;
            })
         |> Js.Promise.then_(_ =>
              Js.log(
-               {j|EventTopic: Published event $idx/$eventCount: $eventName($id) to $resourceName: $event|j},
+               {j|EventTopic: Published event $idx/$eventCount: $eventName($id) to $name: $event|j},
              )
              ->Js.Promise.resolve
            );
@@ -135,7 +133,7 @@ module Make =
         ~opts,
       );
 
-    self->setPublish(publisher->publishFn);
+    self->setPublish(publisher->publishFn(name));
 
     makeOutputs(~resources=publisher.resources) |> self->setOutputs;
   };

@@ -124,10 +124,8 @@ module Make =
           data =>
             storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, data)
             |> Js.Promise.catch(err => {
-                 let serviceName = Spec.name;
-                 let resourceName =
-                   storage.resources[0]##name->Pulumi.Output.get;
-                 let err = {j|EventLog: Error: Couldn't append for $serviceName($id) on $resourceName: $err|j};
+                 let aggregateName = Spec.name;
+                 let err = {j|EventLog: Error: Couldn't append for $aggregateName($id): $err|j};
                  Js.log(err);
                  err->Belt.Result.Error->Js.Promise.resolve;
                })

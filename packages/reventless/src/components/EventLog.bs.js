@@ -7,7 +7,6 @@ var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
@@ -47,9 +46,8 @@ function Make(Spec) {
                                         ], Message$Reventless.decomposeMeta(event$prime[/* meta */1])));
                         }));
                   return storage[/* append */1](sequenceNr, Curry._1(Spec.Id.toString, id), data).catch((function (err) {
-                                  var serviceName = Spec.name;
-                                  var resourceName = Caml_array.caml_array_get(storage[/* resources */0], 0).name.get();
-                                  var err$1 = "EventLog: Error: Couldn\'t append for " + (String(serviceName) + ("(" + (String(id) + (") on " + (String(resourceName) + (": " + (String(err) + "")))))));
+                                  var aggregateName = Spec.name;
+                                  var err$1 = "EventLog: Error: Couldn\'t append for " + (String(aggregateName) + ("(" + (String(id) + ("): " + (String(err) + "")))));
                                   console.log(err$1);
                                   return Promise.resolve(/* Error */Block.__(1, [err$1]));
                                 })).then((function (result) {
