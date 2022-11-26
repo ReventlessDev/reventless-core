@@ -44,3 +44,9 @@ let subscribeToSnsTopic = (~queue, ~targetName, ~sourceName, ~topic, ~opts) =>
       ),
     ~opts=Some(opts),
   );
+
+let findResource = resources =>
+  resources->Reventless.Util.Adapter.findResource(service);
+
+let findResourceInOutput = resourcesOutput =>
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(service);

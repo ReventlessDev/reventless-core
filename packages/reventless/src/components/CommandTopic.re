@@ -68,7 +68,7 @@ module Adapter = {
   module type Connector = {let make: connectorMaker;};
 
   type remoteConnector = {remotePublish: publishJsons};
-  type remoteConnectorMaker = (~resource: resource) => remoteConnector;
+  type remoteConnectorMaker = outputs => remoteConnector;
 
   module type RemoteConnector = {let make: remoteConnectorMaker;};
 };

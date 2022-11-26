@@ -205,7 +205,7 @@ module Make =
             );
           addEventMapperFns->Js.Dict.set(
             Aggregate.Spec.name,
-            Aggregate.addEventMapper(aggregate),
+            aggregate->Aggregate.addEventMapper,
           );
           publishToAggregates->Js.Dict.set(
             Aggregate.Spec.name,
@@ -237,15 +237,6 @@ module Make =
             coreStackOutput##extensionPoints->Belt.Option.getExn
             -# ReventlessSpec.PluginExtensionPointSpec.name;
 
-          let corePluginCommandTopicResource =
-            corePluginExtensionPoint##commandTopic##resources[0] // FIXME: hardcoded resource
-            ->AdapterDeploytime.stackRefResourceToResource;
-          let corePluginCommandTopicId = corePluginCommandTopicResource##id;
-
-          let corePluginEventTopicResource =
-            corePluginExtensionPoint##eventTopic##resources[0] // FIXME
-            ->AdapterDeploytime.stackRefResourceToResource;
-
           let extensionPoints =
             extensionPoints->Belt.Array.map(
               (module ExtensionPoint: ExtensionPoint.T) =>
@@ -262,7 +253,7 @@ module Make =
 
           let corePluginExtensionPointCommandTopicRemoteConnector =
             CorePluginExtensionPointRemoteConnector.make(
-              ~resource=corePluginEventTopicResource,
+              corePluginExtensionPoint##commandTopic,
             );
           let publishToCorePluginExtensionPoint =
             corePluginExtensionPointCommandTopicRemoteConnector.remotePublish;

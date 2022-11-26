@@ -1,8 +1,9 @@
 let make: Reventless.CommandTopic.Adapter.remoteConnectorMaker =
-  (~resource) => {
+  commandTopicOutputs => {
     {
       remotePublish:
-        resource
+        commandTopicOutputs##resources
+        ->Util.SQS.findResource
         ->Util.SQS.fromResource
         ->CommandTopicConnector_SQS_Runtime.publish(Util_SQS.service),
     };
