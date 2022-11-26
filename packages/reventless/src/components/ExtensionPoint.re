@@ -17,16 +17,6 @@ type component = Component.t(t, outputs);
 
 type name = string;
 
-type maker =
-  (
-    ~publishToAggregates: Js.Dict.t(CommandTopic.publishJsons),
-    ~scheduler: Scheduler.t,
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    unit
-  ) =>
-  component;
-
 module type Spec = {
   module Id = Id.String;
 
@@ -40,7 +30,17 @@ module type Spec = {
   type callCommand;
 };
 
-module type T = {let make: maker;};
+module type T = {
+  let make:
+    (
+      ~publishToAggregates: Js.Dict.t(CommandTopic.publishJsons),
+      ~scheduler: Scheduler.t,
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      unit
+    ) =>
+    component;
+};
 
 module type Mappings = {
   module Spec: ReventlessSpec.ExtensionPointMapping.Spec;
@@ -316,12 +316,11 @@ module Make =
     ->setOutputs(self, _);
   };
 
-  let make: maker =
-    (~publishToAggregates, ~scheduler, ~queryEngine, ~opts, _) =>
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name,
-        ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine),
-        ~opts,
-      );
+  let make = (~publishToAggregates, ~scheduler, ~queryEngine, ~opts, _) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=Spec.name,
+      ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine),
+      ~opts,
+    );
 };

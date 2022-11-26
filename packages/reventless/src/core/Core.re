@@ -1,7 +1,5 @@
 let componentType = ComponentType.Core;
 
-type extensionPointMakers = array(ExtensionPoint.maker);
-
 type outputs = {
   .
   "version": string,
