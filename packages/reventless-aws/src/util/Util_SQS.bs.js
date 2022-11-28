@@ -51,6 +51,10 @@ function findResource(resources) {
   return Util_Adapter$Reventless.findResource(resources, service);
 }
 
+function findUnwrappedResource(resources) {
+  return Util_Adapter$Reventless.findUnwrappedResource(resources, service);
+}
+
 function findResourceInOutput(resourcesOutput) {
   return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, service);
 }
@@ -61,5 +65,6 @@ exports.fromResource = fromResource;
 exports.arn2Account = arn2Account;
 exports.subscribeToSnsTopic = subscribeToSnsTopic;
 exports.findResource = findResource;
+exports.findUnwrappedResource = findUnwrappedResource;
 exports.findResourceInOutput = findResourceInOutput;
 /* @pulumi/aws Not a pure module */
