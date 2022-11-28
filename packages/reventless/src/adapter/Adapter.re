@@ -47,6 +47,16 @@ type unwrappedResource = {
   "service": string,
 };
 
+let unwrappedToResource: unwrappedResource => resource =
+  unwrappedResource =>
+    resource(
+      ~service=unwrappedResource##service->make,
+      ~name=unwrappedResource##name->make,
+      ~id=unwrappedResource##id->make,
+      ~urn=unwrappedResource##urn->make,
+      ~info=unwrappedResource##info->make,
+    );
+
 let unwrappedOutputToResource: t(unwrappedResource) => resource =
   unwrappedResource =>
     resource(

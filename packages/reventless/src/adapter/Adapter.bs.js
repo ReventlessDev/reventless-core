@@ -3,6 +3,7 @@
 
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
+var Pulumi = require("@pulumi/pulumi");
 
 function outputToResource(resourceOutput) {
   return {
@@ -49,6 +50,16 @@ function resourcesOutputToResource(resourcesOutput) {
   }
 }
 
+function unwrappedToResource(unwrappedResource) {
+  return {
+          service: Pulumi.output(unwrappedResource.service),
+          name: Pulumi.output(unwrappedResource.name),
+          id: Pulumi.output(unwrappedResource.id),
+          urn: Pulumi.output(unwrappedResource.urn),
+          info: Pulumi.output(unwrappedResource.info)
+        };
+}
+
 function unwrappedOutputToResource(unwrappedResource) {
   return {
           service: unwrappedResource.apply((function (r) {
@@ -71,5 +82,6 @@ function unwrappedOutputToResource(unwrappedResource) {
 
 exports.outputToResource = outputToResource;
 exports.resourcesOutputToResource = resourcesOutputToResource;
+exports.unwrappedToResource = unwrappedToResource;
 exports.unwrappedOutputToResource = unwrappedOutputToResource;
-/* No side effect */
+/* @pulumi/pulumi Not a pure module */
