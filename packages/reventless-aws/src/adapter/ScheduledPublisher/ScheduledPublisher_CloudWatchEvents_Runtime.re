@@ -22,31 +22,46 @@ let toScheduleExpression =
   | Weekdays(hour, minute) => {j|cron($minute $hour ? * MON-FRI *)|j}
   | WeekdaysAndSaturday(hour, minute) => {j|cron($minute $hour ? * MON-SAT *)|j};
 
-let createSchedule = role =>
-  (. {id, urn}, schedule) => {
-    putRule(
-      ~name=schedule.name,
-      ~scheduleExpression=schedule.rate->toScheduleExpression,
-      ~roleArn=role##arn->Pulumi.Output.get,
-      ~state="ENABLED",
-      (),
-    )
-    |> Js.Promise.then_(_ =>
-         putTarget(
-           ~rule=schedule.name,
-           ~arn=urn,
-           ~id,
-           ~input=schedule.payload,
-         )
-       )
-    |> Js.Promise.then_(_ => Js.Promise.resolve());
-  };
+let createSchedule: PulumiAws.IAM.Role.t => Reventless.Scheduler.createSchedule =
+  role =>
+    (. queueResources, schedule) =>
+      switch (queueResources) {
+      | [||] =>
+        let err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !";
+        Js.log(err);
+        Js.Exn.raiseError(err);
+      | resources =>
+        let resource = resources[0]; // FIXME
+        putRule(
+          ~name=schedule.name,
+          ~scheduleExpression=schedule.rate->toScheduleExpression,
+          ~roleArn=role##arn->Pulumi.Output.get,
+          ~state="ENABLED",
+          (),
+        )
+        |> Js.Promise.then_(_ =>
+             putTarget(
+               ~rule=schedule.name,
+               ~arn=resource##urn->Pulumi.Output.get,
+               ~id=resource##name->Pulumi.Output.get,
+               ~input=schedule.payload,
+             )
+           )
+        |> Js.Promise.then_(_ => Js.Promise.resolve());
+      };
 
-let deleteSchedule =
-  (. {id}, name) => {
-    removeTarget(~rule=name, ~id)
-    |> Js.Promise.then_(_ =>
-         deleteRule(~name) |> Js.Promise.then_(_ => Js.Promise.resolve())
-       )
-    |> Js.Promise.then_(_ => Js.Promise.resolve());
-  };
+let deleteSchedule: Reventless.Scheduler.deleteSchedule =
+  (. queueResources, name) =>
+    switch (queueResources) {
+    | [||] =>
+      let err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !";
+      Js.log(err);
+      Js.Exn.raiseError(err);
+    | resources =>
+      let resource = resources[0]; // FIXME
+      removeTarget(~rule=name, ~id=resource##name->Pulumi.Output.get)
+      |> Js.Promise.then_(_ =>
+           deleteRule(~name) |> Js.Promise.then_(_ => Js.Promise.resolve())
+         )
+      |> Js.Promise.then_(_ => Js.Promise.resolve());
+    };

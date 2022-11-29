@@ -13,53 +13,35 @@ let minutesFromNow = minutes => {
   Single(m->year, m->month + 1, m->date, m->hour, m->minute);
 };
 
-exception ScheduleNotCreated(schedule, string, Js.Promise.error);
-exception ScheduleNotDeleted(string, string, Js.Promise.error);
+exception ScheduleNotCreated(schedule, Js.Promise.error);
+exception ScheduleNotDeleted(string, Js.Promise.error);
 
-let create: (Scheduler.t, resource) => create =
-  (scheduler, queue) =>
-    (. schedule: schedule) => {
-      let queueId = queue##name->OutputFailsafeRuntime.get;
-      let name = schedule.name->forQueue(queueId);
-      let schedule = {...schedule, name};
-      let target = {
-        id: queue##name->Pulumi.Output.get,
-        urn: queue##urn->Pulumi.Output.get,
-      };
-      let createSchedule = scheduler##createSchedule;
-      createSchedule(. target, schedule)
-      |> Js.Promise.then_(_ =>
-           Js.log4("Schedule.create: created", schedule, queueId, target)
-           ->Js.Promise.resolve
-         )
-      |> Js.Promise.catch(err => {
-           Js.log4(
-             "Schedule.create: couldn't create",
-             schedule,
-             queueId,
-             err,
-           );
-           ScheduleNotCreated(schedule, queueId, err)->Js.Promise.reject;
-         });
-    };
+let create = (scheduler, queueResources) =>
+  (. schedule) => {
+    let name = schedule.name->AWS.validateName;
+    let schedule = {...schedule, name};
+    let createSchedule = scheduler##createSchedule;
+    createSchedule(. queueResources, schedule)
+    |> Js.Promise.then_(_ =>
+         Js.log2("Schedule.create: created", schedule)->Js.Promise.resolve
+       )
+    |> Js.Promise.catch(err => {
+         Js.log3("Schedule.create: couldn't create", schedule, err);
+         ScheduleNotCreated(schedule, err)->Js.Promise.reject;
+       });
+  };
 
-let delete: (Scheduler.t, resource) => delete =
-  (scheduler, queue) =>
+let delete: (Scheduler.t, array(resource)) => delete =
+  (scheduler, queueResources) =>
     (. name) => {
-      let queueId = queue##name->OutputFailsafeRuntime.get;
-      let name = name->forQueue(queueId);
-      let target = {
-        id: queue##name->Pulumi.Output.get,
-        urn: queue##urn->Pulumi.Output.get,
-      };
+      let name = name->AWS.validateName;
       let deleteSchedule = scheduler##deleteSchedule;
-      deleteSchedule(. target, name)
+      deleteSchedule(. queueResources, name)
       |> Js.Promise.then_(_ =>
-           Js.log3("Schedule.delete: deleted", name, queueId)
-           ->Js.Promise.resolve
+           Js.log2("Schedule.delete: deleted", name)->Js.Promise.resolve
          )
       |> Js.Promise.catch(err => {
-           Js.log4("Schedule.delete: couldn't delete", name, queueId, err);
-           ScheduleNotDeleted(name, queueId, err)->Js.Promise.reject;
+           Js.log3("Schedule.delete: couldn't delete", name, err);
+           ScheduleNotDeleted(name, err)->Js.Promise.reject;
          });
     };

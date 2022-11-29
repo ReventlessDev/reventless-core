@@ -262,12 +262,11 @@ module Make =
     let outgoingEventHandler =
       (. event'Json, pluginDef) => {
         let commandTopic = (commandTopic^)->Belt.Option.getExn;
-        let queue = commandTopic->Component.extractOutputs##resources[0]; // FIXME: hardcoded resource
         let eventActions =
           event'Json->Mapper.mapOutgoingEvent(
             Mappings.mappings,
             scheduler,
-            queue,
+            commandTopic->Component.extractOutputs##resources,
             pluginDef,
             queryEngine,
           );
@@ -280,13 +279,12 @@ module Make =
     let incomingCommandsHandler =
       (. topicItems) => {
         let commandTopic = (commandTopic^)->Belt.Option.getExn;
-        let queue = commandTopic->Component.extractOutputs##resources[0]; // FIXME: hardcoded resource
         let commandActions =
           topicItems->Mapper.mapIncomingCommands(
             Mappings.mappings,
             scheduler,
             queryEngine,
-            queue,
+            commandTopic->Component.extractOutputs##resources,
           );
 
         commandActions->Belt.Array.map(applyCommandAction)->Js.Promise.all;

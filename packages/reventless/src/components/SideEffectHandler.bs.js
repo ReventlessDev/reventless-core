@@ -5,12 +5,10 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
-var Adapter$Reventless = require("../adapter/Adapter.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
 var Component$Reventless = require("./Component.bs.js");
@@ -95,14 +93,14 @@ function Make(EventCollector) {
                     }));
       });
   };
-  var createScheduleFn = function (scheduler, queue) {
+  var createScheduleFn = function (scheduler, queueResources) {
     return (function (schedule) {
-        return Schedule$Reventless.create(scheduler, queue)(schedule);
+        return Schedule$Reventless.create(scheduler, queueResources)(schedule);
       });
   };
-  var deleteScheduleFn = function (scheduler, queue) {
+  var deleteScheduleFn = function (scheduler, queueResources) {
     return (function (scheduleName) {
-        return Schedule$Reventless.$$delete(scheduler, queue)(scheduleName);
+        return Schedule$Reventless.$$delete(scheduler, queueResources)(scheduleName);
       });
   };
   var enqueueEventFn = function (eventCollector) {
@@ -129,13 +127,10 @@ function Make(EventCollector) {
           Caml_option.some(opts),
           /* () */0
         ]);
-    var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
-    console.log("SideEffectHandler EventCollector", name);
-    Belt_Array.forEach(eventCollectorOutputs.resources, Adapter$Reventless.logResource);
-    var queue = Caml_array.caml_array_get(eventCollectorOutputs.resources, 0);
+    var eventCollectorResources = Component$Reventless.extractOutputs(eventCollector).resources;
     self.enqueueEvent = enqueueEventFn(eventCollector);
-    self.createSchedule = createScheduleFn(scheduler, queue);
-    self.deleteSchedule = deleteScheduleFn(scheduler, queue);
+    self.createSchedule = createScheduleFn(scheduler, eventCollectorResources);
+    self.deleteSchedule = deleteScheduleFn(scheduler, eventCollectorResources);
     var self$1 = self;
     var outputs = {
       name: name,

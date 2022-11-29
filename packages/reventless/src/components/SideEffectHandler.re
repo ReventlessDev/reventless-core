@@ -168,11 +168,13 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
-  let createScheduleFn = (scheduler, queue) =>
-    (. schedule) => (Schedule.create(scheduler, queue))(. schedule);
+  let createScheduleFn = (scheduler, queueResources) =>
+    (. schedule) =>
+      (Schedule.create(scheduler, queueResources))(. schedule);
 
-  let deleteScheduleFn = (scheduler, queue) =>
-    (. scheduleName) => (Schedule.delete(scheduler, queue))(. scheduleName);
+  let deleteScheduleFn = (scheduler, queueResources) =>
+    (. scheduleName) =>
+      (Schedule.delete(scheduler, queueResources))(. scheduleName);
 
   let enqueueEventFn = eventCollector =>
     (. delay, id, message) =>
@@ -218,14 +220,16 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~opts=Some(opts),
         (),
       );
-    let eventCollectorOutputs = eventCollector->Component.extractOutputs;
-    Js.log2("SideEffectHandler EventCollector", name);
-    eventCollectorOutputs##resources->Belt.Array.forEach(Adapter.logResource);
-    let queue = eventCollectorOutputs##resources[0]; // TODO
+    let eventCollectorResources =
+      eventCollector->Component.extractOutputs##resources;
 
     self->setEnqueueEvent(enqueueEventFn(eventCollector));
-    self->setCreateSchedule(createScheduleFn(scheduler, queue));
-    self->setDeleteSchedule(deleteScheduleFn(scheduler, queue));
+    self->setCreateSchedule(
+      createScheduleFn(scheduler, eventCollectorResources),
+    );
+    self->setDeleteSchedule(
+      deleteScheduleFn(scheduler, eventCollectorResources),
+    );
 
     makeOutputs(
       ~name,

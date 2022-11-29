@@ -6,7 +6,6 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
@@ -117,16 +116,14 @@ function Make(Spec) {
                 };
                 var outgoingEventHandler = function (event$primeJson, pluginDef) {
                   var commandTopic$1 = Belt_Option.getExn(commandTopic[0]);
-                  var queue = Caml_array.caml_array_get(Component$Reventless.extractOutputs(commandTopic$1).resources, 0);
-                  var eventActions = Curry._2(mapOutgoingEvent(event$primeJson, Mappings.mappings, scheduler, queue), pluginDef, queryEngine);
+                  var eventActions = Curry._2(mapOutgoingEvent(event$primeJson, Mappings.mappings, scheduler, Component$Reventless.extractOutputs(commandTopic$1).resources), pluginDef, queryEngine);
                   return Promise.all(Belt_Array.map(eventActions, applyEventAction)).then((function (param) {
                                 return Promise.resolve(/* () */0);
                               }));
                 };
                 var incomingCommandsHandler = function (topicItems) {
                   var commandTopic$1 = Belt_Option.getExn(commandTopic[0]);
-                  var queue = Caml_array.caml_array_get(Component$Reventless.extractOutputs(commandTopic$1).resources, 0);
-                  var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, scheduler, queryEngine, queue);
+                  var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, scheduler, queryEngine, Component$Reventless.extractOutputs(commandTopic$1).resources);
                   return Promise.all(Belt_Array.map(commandActions, applyCommandAction));
                 };
                 commandTopic[0] = Caml_option.some(Curry._6(CommandTopic.make, childName, incomingCommandsHandler, undefined, undefined, Caml_option.some(opts), /* () */0));
