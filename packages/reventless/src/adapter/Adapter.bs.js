@@ -80,8 +80,29 @@ function unwrappedOutputToResource(unwrappedResource) {
         };
 }
 
+function logResource(r) {
+  r.name.apply((function (name) {
+          console.log("Resource: ", name);
+          return /* () */0;
+        }));
+  r.id.apply((function (id) {
+          console.log("  id: ", id);
+          return /* () */0;
+        }));
+  r.urn.apply((function (urn) {
+          console.log("  urn: ", urn);
+          return /* () */0;
+        }));
+  r.service.apply((function (service) {
+          console.log("  service: ", service);
+          return /* () */0;
+        }));
+  return /* () */0;
+}
+
 exports.outputToResource = outputToResource;
 exports.resourcesOutputToResource = resourcesOutputToResource;
 exports.unwrappedToResource = unwrappedToResource;
 exports.unwrappedOutputToResource = unwrappedOutputToResource;
+exports.logResource = logResource;
 /* @pulumi/pulumi Not a pure module */

@@ -10,6 +10,7 @@ var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
+var Adapter$Reventless = require("../adapter/Adapter.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
 var Component$Reventless = require("./Component.bs.js");
@@ -128,7 +129,10 @@ function Make(EventCollector) {
           Caml_option.some(opts),
           /* () */0
         ]);
-    var queue = Caml_array.caml_array_get(Component$Reventless.extractOutputs(eventCollector).resources, 0);
+    var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
+    console.log("SideEffectHandler EventCollector", name);
+    Belt_Array.forEach(eventCollectorOutputs.resources, Adapter$Reventless.logResource);
+    var queue = Caml_array.caml_array_get(eventCollectorOutputs.resources, 0);
     self.enqueueEvent = enqueueEventFn(eventCollector);
     self.createSchedule = createScheduleFn(scheduler, queue);
     self.deleteSchedule = deleteScheduleFn(scheduler, queue);

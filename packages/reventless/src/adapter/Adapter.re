@@ -66,3 +66,13 @@ let unwrappedOutputToResource: t(unwrappedResource) => resource =
       ~urn=unwrappedResource->apply(r => r##urn),
       ~info=unwrappedResource->apply(r => r##info),
     );
+
+let logResource = r => {
+  let _ = r##name->Pulumi.Output.apply(name => Js.log2("Resource: ", name));
+  let _ = r##id->Pulumi.Output.apply(id => Js.log2("  id: ", id));
+  let _ = r##urn->Pulumi.Output.apply(urn => Js.log2("  urn: ", urn));
+  let _ =
+    r##service
+    ->Pulumi.Output.apply(service => Js.log2("  service: ", service));
+  ();
+};

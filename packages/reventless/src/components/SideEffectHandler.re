@@ -218,7 +218,10 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~opts=Some(opts),
         (),
       );
-    let queue = eventCollector->Component.extractOutputs##resources[0]; // TODO
+    let eventCollectorOutputs = eventCollector->Component.extractOutputs;
+    Js.log2("SideEffectHandler EventCollector", name);
+    eventCollectorOutputs##resources->Belt.Array.forEach(Adapter.logResource);
+    let queue = eventCollectorOutputs##resources[0]; // TODO
 
     self->setEnqueueEvent(enqueueEventFn(eventCollector));
     self->setCreateSchedule(createScheduleFn(scheduler, queue));
