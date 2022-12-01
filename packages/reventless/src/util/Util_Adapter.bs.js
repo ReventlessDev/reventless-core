@@ -44,24 +44,6 @@ function filterSupportedUnwrappedResources(resources, supportedServices) {
               }));
 }
 
-function findResource(resources, service) {
-  return Adapter$Reventless.outputToResource(filterSupportedResources(resources, /* array */[service]).apply((function (resources) {
-                    if (resources.length !== 0) {
-                      return Caml_array.caml_array_get(resources, 0);
-                    } else {
-                      var err = "Util.Adapter.findResource: Couldn\'t find service " + (String(service) + (" in resources: " + (String(resources) + "")));
-                      console.log(err);
-                      return Js_exn.raiseError(err);
-                    }
-                  })));
-}
-
-function findResourceInOutput(resourcesOutput, service) {
-  return Adapter$Reventless.resourcesOutputToResource(Output$Pulumi.flatMap(resourcesOutput, (function (resources) {
-                    return filterSupportedResources(resources, /* array */[service]);
-                  })));
-}
-
 function findUnwrappedResource(resources, service) {
   var resources$1 = filterSupportedUnwrappedResources(resources, /* array */[service]);
   if (resources$1.length !== 0) {
@@ -71,6 +53,12 @@ function findUnwrappedResource(resources, service) {
     console.log(err);
     return Js_exn.raiseError(err);
   }
+}
+
+function findResourceInOutput(resourcesOutput, service) {
+  return Adapter$Reventless.resourcesOutputToResource(Output$Pulumi.flatMap(resourcesOutput, (function (resources) {
+                    return filterSupportedResources(resources, /* array */[service]);
+                  })));
 }
 
 function partitionSupportedResources(adapters, supportedServices) {
@@ -112,9 +100,8 @@ function partitionUnwrappedResourcesByService(resources, supportedService) {
 exports.filterByOutput = filterByOutput;
 exports.filterSupportedResources = filterSupportedResources;
 exports.filterSupportedUnwrappedResources = filterSupportedUnwrappedResources;
-exports.findResource = findResource;
-exports.findResourceInOutput = findResourceInOutput;
 exports.findUnwrappedResource = findUnwrappedResource;
+exports.findResourceInOutput = findResourceInOutput;
 exports.partitionSupportedResources = partitionSupportedResources;
 exports.partitionUnwrappedResourcesByService = partitionUnwrappedResourcesByService;
 /* @pulumi/pulumi Not a pure module */

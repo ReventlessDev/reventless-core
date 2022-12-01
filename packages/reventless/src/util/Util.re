@@ -1,4 +1,5 @@
 module Adapter = Util_Adapter;
+module AdapterRuntime = Util_AdapterRuntime;
 module Aggregate = Util_Aggregate;
 module Array = Util_Array;
 module Error = Util_Error;
