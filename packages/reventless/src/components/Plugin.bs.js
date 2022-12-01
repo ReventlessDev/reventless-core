@@ -54,25 +54,28 @@ function Make(EventCollectorConnector) {
               parent: self
             };
             var id = makeId(name, version);
-            var readModelsForAggregates = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
+            var match = Belt_Array.unzip(Belt_Array.map(readModels, (function (ReadModel) {
+                        var readModel = Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0);
+                        var viewName = Belt_Option.getWithDefault(ReadModel.View.name, ReadModel.Spec.name);
                         return /* tuple */[
-                                ReadModel.Spec.name,
-                                /* record */[
-                                  /* module_ */ReadModel,
-                                  /* readModel */Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0)
+                                /* tuple */[
+                                  viewName,
+                                  /* record */[
+                                    /* module_ */ReadModel,
+                                    /* readModel */readModel
+                                  ]
+                                ],
+                                /* tuple */[
+                                  ReadModel.Spec.name,
+                                  /* record */[
+                                    /* module_ */ReadModel,
+                                    /* readModel */readModel
+                                  ]
                                 ]
                               ];
                       })));
-            var readModels$1 = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
-                        return /* tuple */[
-                                Belt_Option.getWithDefault(ReadModel.View.name, ReadModel.Spec.name),
-                                /* record */[
-                                  /* module_ */ReadModel,
-                                  /* readModel */Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0)
-                                ]
-                              ];
-                      })));
-            var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(readModels$1), (function (param) {
+            var readModelsForAggregates = match[1];
+            var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(Js_dict.fromArray(match[0])), (function (param) {
                         return /* tuple */[
                                 param[0],
                                 Component$Reventless.extractOutputs(param[1][/* readModel */1])
@@ -83,7 +86,7 @@ function Make(EventCollectorConnector) {
             var addEventMapperFns = { };
             var publishToAggregates = { };
             var aggregatesWithoutEventMappers = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
-                        var match = readModelsForAggregates[Aggregate.Spec.name];
+                        var match = Js_dict.fromArray(readModelsForAggregates)[Aggregate.Spec.name];
                         var readModel = match[/* readModel */1];
                         var module_ = match[/* module_ */0];
                         var aggregate = Curry._4(Aggregate.make, queryEngine, (function (id, events) {

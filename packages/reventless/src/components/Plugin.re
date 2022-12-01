@@ -160,35 +160,23 @@ module Make =
 
     let id = makeId(name, version);
 
-    let readModelsForAggregates =
-      // TODO: remove when introducing multiple ReadModels
+    let (readModels, readModelsForAggregates) =
       readModels
-      ->Belt.Array.map((module ReadModel: ReadModel.T) =>
-          (
-            ReadModel.Spec.name,
-            {
-              module_: (module ReadModel),
-              readModel: ReadModel.make(~opts, ()),
-            },
-          )
-        )
-      ->Js.Dict.fromArray;
-    let readModels =
-      readModels
-      ->Belt.Array.map((module ReadModel: ReadModel.T) =>
-          (
+      ->Belt.Array.map((module ReadModel: ReadModel.T) => {
+          let readModel = ReadModel.make(~opts, ());
+          let viewName =
             ReadModel.View.name->Belt.Option.getWithDefault(
               ReadModel.Spec.name,
-            ),
-            {
-              module_: (module ReadModel),
-              readModel: ReadModel.make(~opts, ()),
-            },
-          )
-        )
-      ->Js.Dict.fromArray;
+            );
+          (
+            (viewName, {module_: (module ReadModel), readModel}),
+            (ReadModel.Spec.name, {module_: (module ReadModel), readModel}),
+          );
+        })
+      ->Belt.Array.unzip;
     let readModelsOutputs =
       readModels
+      ->Js.Dict.fromArray
       ->Js.Dict.entries
       ->Belt.Array.map(((name, {readModel})) =>
           (name, readModel->Component.extractOutputs)
@@ -204,7 +192,9 @@ module Make =
       aggregates
       ->Belt.Array.map((module Aggregate: Aggregate.T) => {
           let {module_, readModel} =
-            readModelsForAggregates->Js.Dict.unsafeGet(Aggregate.Spec.name);
+            readModelsForAggregates
+            ->Js.Dict.fromArray
+            ->Js.Dict.unsafeGet(Aggregate.Spec.name);
           module ReadModel = (val module_);
           let aggregate =
             Aggregate.make(
