@@ -164,7 +164,9 @@ module Make =
       readModels
       ->Belt.Array.map((module ReadModel: ReadModel.T) =>
           (
-            ReadModel.Spec.name,
+            ReadModel.View.name->Belt.Option.getWithDefault(
+              ReadModel.Spec.name,
+            ),
             {
               module_: (module ReadModel),
               readModel: ReadModel.make(~opts, ()),

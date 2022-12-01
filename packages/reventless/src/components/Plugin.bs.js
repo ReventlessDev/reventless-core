@@ -56,7 +56,7 @@ function Make(EventCollectorConnector) {
             var id = makeId(name, version);
             var readModels$1 = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
                         return /* tuple */[
-                                ReadModel.Spec.name,
+                                Belt_Option.getWithDefault(ReadModel.View.name, ReadModel.Spec.name),
                                 /* record */[
                                   /* module_ */ReadModel,
                                   /* readModel */Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0)
