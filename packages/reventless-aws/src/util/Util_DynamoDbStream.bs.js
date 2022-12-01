@@ -11,8 +11,8 @@ var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
 var Util_DynamoDb$ReventlessAws = require("./Util_DynamoDb.bs.js");
-var Util_DynamoDb_Runtime$ReventlessAws = require("./Util_DynamoDb_Runtime.bs.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
+var Util_DynamoDbStream_Runtime$ReventlessAws = require("./Util_DynamoDbStream_Runtime.bs.js");
 
 function toInfo(table) {
   return Pulumi.all(/* tuple */[
@@ -41,7 +41,7 @@ function streamArnFromDynamoDbTableResource(table) {
 function toResource(table) {
   return {
           service: table.name.apply((function (param) {
-                  return Util_DynamoDb_Runtime$ReventlessAws.service;
+                  return Util_DynamoDbStream_Runtime$ReventlessAws.service;
                 })),
           name: table.name,
           id: table.id,
@@ -54,7 +54,7 @@ function toStreamResource(table) {
   var streamArn = streamArnFromDynamoDbTableResource(table);
   return {
           service: table.name.apply((function (param) {
-                  return Util_DynamoDb_Runtime$ReventlessAws.service;
+                  return Util_DynamoDbStream_Runtime$ReventlessAws.service;
                 })),
           name: table.name,
           id: streamArn,
