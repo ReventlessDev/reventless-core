@@ -16,11 +16,11 @@ function filterByOutput(resources, pred) {
                               acc,
                               Curry._1(pred, resource)
                             ]).apply((function (param) {
-                              var acc = param[0];
+                              var resources = Belt_Array.map(param[0], Adapter$Reventless.unwrappedToResource);
                               if (param[1]) {
-                                return Belt_Array.concat(acc, /* array */[resource]);
+                                return Belt_Array.concat(resources, /* array */[resource]);
                               } else {
-                                return acc;
+                                return resources;
                               }
                             }));
               }));

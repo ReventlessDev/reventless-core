@@ -6,10 +6,16 @@ let filterByOutput:
   Pulumi.Output.t(array(resource)) =
   (resources, pred) =>
     resources->Belt.Array.reduce([||]->Pulumi.Output.make, (acc, resource) =>
-      Pulumi.Output.all2((acc, resource->pred))
-      ->Pulumi.Output.apply(((acc, supported)) =>
-          supported ? acc->Belt.Array.concat([|resource|]) : acc
-        )
+      Pulumi.Output.all2((acc, resource->pred)) // Outputs are unwrapped within Pulumi.Output.all2 !
+      ->Pulumi.Output.apply(((acc, supported)) => {
+          let resources =
+            acc->Belt.Array.map(resource =>
+              resource
+              ->AdapterDeploytime.unsafeUnwrapResource
+              ->Adapter.unwrappedToResource
+            );
+          supported ? resources->Belt.Array.concat([|resource|]) : resources;
+        })
     );
 
 let filterSupportedResources:
@@ -77,7 +83,7 @@ let partitionSupportedResources = (adapters, supportedServices) => {
     ->Belt.Array.unzip;
 
   resourceOutputs
-  ->Pulumi.Output.all
+  ->Pulumi.Output.all // Outputs are unwrapped within Pulumi.Output.all !
   ->Pulumi.Output.apply(resources => {
       let (supported, unsupported) =
         names
@@ -89,7 +95,7 @@ let partitionSupportedResources = (adapters, supportedServices) => {
         supported->Belt.Array.map(((name, resources)) =>
           (
             name,
-            resources->Belt.Array.map(AdapterDeploytime.unsafeUnwrapResource) // Outputs are unwrapped within Pulumi.Output.all
+            resources->Belt.Array.map(AdapterDeploytime.unsafeUnwrapResource),
           )
         ),
         unsupported->Belt.Array.map(((name, _)) => name),
