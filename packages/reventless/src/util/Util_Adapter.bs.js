@@ -28,11 +28,18 @@ function filterByOutput(resources, pred) {
 
 function filterSupportedResources(resources, supportedServices) {
   return filterByOutput(resources, (function (resource) {
-                return resource.service.apply((function (service) {
-                              return Belt_Array.some(supportedServices, (function (supportedService) {
-                                            return service === supportedService;
-                                          }));
-                            }));
+                try {
+                  return resource.service.apply((function (service) {
+                                return Belt_Array.some(supportedServices, (function (supportedService) {
+                                              return service === supportedService;
+                                            }));
+                              }));
+                }
+                catch (exn){
+                  var err = "Util.Adapter.filterSupportedResources failed";
+                  console.log(err, "resource:", resource, resources);
+                  return Js_exn.raiseError(err);
+                }
               }));
 }
 

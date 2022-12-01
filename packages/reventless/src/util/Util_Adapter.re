@@ -22,12 +22,19 @@ let filterSupportedResources:
   (array(resource), array(string)) => Pulumi.Output.t(array(resource)) =
   (resources, supportedServices) =>
     resources->filterByOutput(resource =>
-      resource##service
-      ->Pulumi.Output.apply(service =>
-          supportedServices->Belt.Array.some(supportedService =>
-            service == supportedService
+      try (
+        resource##service
+        ->Pulumi.Output.apply(service =>
+            supportedServices->Belt.Array.some(supportedService =>
+              service == supportedService
+            )
           )
-        )
+      ) {
+      | _ =>
+        let err = "Util.Adapter.filterSupportedResources failed";
+        Js.log4(err, "resource:", resource, resources);
+        Js.Exn.raiseError(err);
+      }
     );
 
 let filterSupportedUnwrappedResources:
