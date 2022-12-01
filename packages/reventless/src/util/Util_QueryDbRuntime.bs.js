@@ -6,7 +6,6 @@ var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 
 function getLocalStorageResources(allQueryDbs, queryDbName) {
   try {
-    console.log("Util_queryDbRuntime.getLocalStorageResources: allQueryDbs:", allQueryDbs);
     return Belt_Option.getExn(Js_dict.get(allQueryDbs, queryDbName)).resources;
   }
   catch (exn){

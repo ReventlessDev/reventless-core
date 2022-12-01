@@ -41,9 +41,7 @@ function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdC
             }
           }));
     var storageResource = function (pluginName, tableName) {
-      var resources = Util_QueryDb$Reventless.getStorageResources(allQueryDbs, pluginName, tableName);
-      console.log("QueryDbResolvers_AppSync.storageResource: resources:", resources);
-      return Util_DynamoDb$ReventlessAws.findResourceInOutput(resources);
+      return Util_DynamoDb$ReventlessAws.findResourceInOutput(Util_QueryDb$Reventless.getStorageResources(allQueryDbs, pluginName, tableName));
     };
     var generateTemplate = function (storageResource, template) {
       if (storageResource !== undefined) {
