@@ -8,6 +8,7 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
+var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.bs.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.bs.js");
 var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_Runtime.bs.js");
@@ -39,7 +40,7 @@ function make(name, handleCommands, memorySize, timeout, opts) {
   queue.onEvent(name, handler, undefined, opts);
   return /* record */[
           /* resources : array */[Util_SQS$ReventlessAws.toResource(queue)],
-          /* publish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(queue, Util_SQS$ReventlessAws.service)
+          /* publish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(queue, Util_SQS_Runtime$ReventlessAws.service)
         ];
 }
 

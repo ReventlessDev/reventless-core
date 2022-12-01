@@ -4,12 +4,13 @@
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
+var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
 var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_Runtime.bs.js");
 
 function make(commandTopicOutputs) {
-  return /* record */[/* remotePublish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS$ReventlessAws.fromResource(Adapter$Reventless.unwrappedToResource(Util_SQS$ReventlessAws.findUnwrappedResource(Belt_Array.map(commandTopicOutputs.resources, (function (prim) {
+  return /* record */[/* remotePublish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS$ReventlessAws.fromResource(Adapter$Reventless.unwrappedToResource(Util_SQS_Runtime$ReventlessAws.findUnwrappedResource(Belt_Array.map(commandTopicOutputs.resources, (function (prim) {
                                   return prim;
-                                }))))), Util_SQS$ReventlessAws.service)];
+                                }))))), Util_SQS_Runtime$ReventlessAws.service)];
 }
 
 exports.make = make;

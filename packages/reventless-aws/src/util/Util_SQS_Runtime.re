@@ -1,6 +1,8 @@
 open Reventless.Message;
 open AwsSdk;
 
+let service = "SQS";
+
 let sendMessage = (queue: PulumiAws.SQS.Queue.t, ~delay=?, messageBody) =>
   SQS.sendMessage(
     ~queueId=queue##id->Pulumi.Output.get,
@@ -73,3 +75,12 @@ let parseSqsRecord = record => {
     None;
   };
 };
+
+let findResource = resources =>
+  resources->Reventless.Util.Adapter.findResource(service);
+
+let findUnwrappedResource = resources =>
+  resources->Reventless.Util.Adapter.findUnwrappedResource(service);
+
+let findResourceInOutput = resourcesOutput =>
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(service);

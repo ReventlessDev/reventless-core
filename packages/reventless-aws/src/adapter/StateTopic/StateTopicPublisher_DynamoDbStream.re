@@ -11,13 +11,13 @@ let make: Reventless.StateTopic.Adapter.publisherMaker =
               ),
           ),
         )
-      ->Util.DynamoDbStream.findResource;
+      ->Util.DynamoDbStream_Runtime.findResource;
 
     {
       resource:
         queryDbResource##service
         ->Pulumi.Output.apply(service =>
-            if (service == Util_DynamoDbStream.service) {
+            if (service == Util_DynamoDbStream_Runtime.service) {
               queryDbResource->Util_DynamoDbStream.toStreamResource;
             } else {
               Js.Exn.raiseError(

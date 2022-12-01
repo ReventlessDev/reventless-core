@@ -4,12 +4,13 @@
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
+var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
 function make(param, storageResources, param$1) {
-  var storageResource = Util_DynamoDbStream$ReventlessAws.findResource(storageResources);
+  var storageResource = Util_DynamoDbStream_Runtime$ReventlessAws.findResource(storageResources);
   return /* record */[
           /* resources : array */[Adapter$Reventless.outputToResource(storageResource.service.apply((function (service) {
-                        if (service === Util_DynamoDbStream$ReventlessAws.service) {
+                        if (service === Util_DynamoDbStream_Runtime$ReventlessAws.service) {
                           return Util_DynamoDbStream$ReventlessAws.toStreamResource(storageResource);
                         } else {
                           return Js_exn.raiseError("EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_" + service);

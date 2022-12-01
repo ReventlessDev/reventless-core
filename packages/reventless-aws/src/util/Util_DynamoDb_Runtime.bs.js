@@ -9,7 +9,10 @@ var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
+
+var service = "DynamoDb";
 
 function put(table, item) {
   return DynamoDb_DocumentClient$AwsSdk.putWithTableName(table.name.get(), item);
@@ -132,6 +135,15 @@ function batchWriteWithRetries(batchWriteItemRequestMap, maxRetries) {
   return retryIfNecessary(wrapWithCount(batchWrite$prime(batchWriteItemRequestMap), 0), maxRetries);
 }
 
+function findResource(resources) {
+  return Util_Adapter$Reventless.findResource(resources, service);
+}
+
+function findResourceInOutput(resourcesOutput) {
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, service);
+}
+
+exports.service = service;
 exports.put = put;
 exports.$$delete = $$delete;
 exports.queryById = queryById;
@@ -146,4 +158,6 @@ exports.retryIfNecessary = retryIfNecessary;
 exports.toPutRequest = toPutRequest;
 exports.toTable = toTable;
 exports.batchWriteWithRetries = batchWriteWithRetries;
+exports.findResource = findResource;
+exports.findResourceInOutput = findResourceInOutput;
 /* Message-Reventless Not a pure module */

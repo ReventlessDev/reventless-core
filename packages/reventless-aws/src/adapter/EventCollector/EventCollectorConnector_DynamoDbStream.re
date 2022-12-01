@@ -36,7 +36,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     let _ =
       eventTopics
       ->Reventless.Util.Adapter.partitionSupportedResources([|
-          Util_DynamoDbStream.service,
+          Util_DynamoDbStream_Runtime.service,
           Util_SNS_FIFO.service,
         |])
       ->Pulumi.Output.apply(((dynamoDbStreamResources, errorResources)) => {

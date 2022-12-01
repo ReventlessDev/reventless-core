@@ -1,5 +1,7 @@
 open AwsSdk.DynamoDb.DocumentClient;
 
+let service = "DynamoDb";
+
 let put = (table: PulumiAws.DynamoDb.Table.t, item) =>
   putWithTableName(table##name->Pulumi.Output.get, item);
 
@@ -107,3 +109,9 @@ let batchWriteWithRetries = (batchWriteItemRequestMap, maxRetries) =>
   batchWrite'(batchWriteItemRequestMap)
   ->wrapWithCount(0)
   ->retryIfNecessary(maxRetries);
+
+let findResource = resources =>
+  resources->Reventless.Util.Adapter.findResource(service);
+
+let findResourceInOutput = resourcesOutput =>
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(service);

@@ -1,12 +1,13 @@
 let make: Reventless.EventTopic.Adapter.publisherMaker =
   (~name as _, ~storageResources, ~opts as _) => {
-    let storageResource = storageResources->Util.DynamoDbStream.findResource;
+    let storageResource =
+      storageResources->Util.DynamoDbStream_Runtime.findResource;
 
     {
       resources: [|
         storageResource##service
         ->Pulumi.Output.apply(service =>
-            if (service == Util_DynamoDbStream.service) {
+            if (service == Util_DynamoDbStream_Runtime.service) {
               storageResource->Util_DynamoDbStream.toStreamResource;
             } else {
               Js.Exn.raiseError(

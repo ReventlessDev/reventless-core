@@ -6,8 +6,11 @@ var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.bs.js");
 var Util_SQS_FIFO$ReventlessAws = require("./Util_SQS_FIFO.bs.js");
+
+var service = "SQS";
 
 function sendMessage(queue, delay, messageBody) {
   return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, undefined, undefined, delay, /* () */0);
@@ -78,6 +81,19 @@ function parseSqsRecord(record) {
   return Caml_option.some(json);
 }
 
+function findResource(resources) {
+  return Util_Adapter$Reventless.findResource(resources, service);
+}
+
+function findUnwrappedResource(resources) {
+  return Util_Adapter$Reventless.findUnwrappedResource(resources, service);
+}
+
+function findResourceInOutput(resourcesOutput) {
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, service);
+}
+
+exports.service = service;
 exports.sendMessage = sendMessage;
 exports.sendFifoMessage = sendFifoMessage;
 exports.send = send;
@@ -86,4 +102,7 @@ exports.sendBatch = sendBatch;
 exports.deleteMessage = deleteMessage;
 exports.deleteMessageBatch = deleteMessageBatch;
 exports.parseSqsRecord = parseSqsRecord;
+exports.findResource = findResource;
+exports.findUnwrappedResource = findUnwrappedResource;
+exports.findResourceInOutput = findResourceInOutput;
 /* SQS-AwsSdk Not a pure module */

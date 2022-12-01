@@ -7,6 +7,9 @@ var AwsSdk = require("aws-sdk");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
+
+var service = "DynamoDbStream";
 
 function buildEvent$primeJson(dict) {
   return Js_dict.fromArray(/* array */[
@@ -81,9 +84,20 @@ function parseDynamoDbStreamRecordState(param) {
   return parseDynamoDbStreamRecord(buildStateJson, param);
 }
 
+function findResource(resources) {
+  return Util_Adapter$Reventless.findResource(resources, service);
+}
+
+function findResourceInOutput(resourcesOutput) {
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, service);
+}
+
+exports.service = service;
 exports.buildEvent$primeJson = buildEvent$primeJson;
 exports.buildStateJson = buildStateJson;
 exports.parseDynamoDbStreamRecord = parseDynamoDbStreamRecord;
 exports.parseDynamoDbStreamRecordEvent = parseDynamoDbStreamRecordEvent;
 exports.parseDynamoDbStreamRecordState = parseDynamoDbStreamRecordState;
+exports.findResource = findResource;
+exports.findResourceInOutput = findResourceInOutput;
 /* aws-sdk Not a pure module */

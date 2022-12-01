@@ -12,8 +12,8 @@ var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.j
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.bs.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.bs.js");
-var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.bs.js");
+var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./EventCollectorConnector_DynamoDbStream_Runtime.bs.js");
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
@@ -35,7 +35,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                         ]), opts);
         }));
   Util_Adapter$Reventless.partitionSupportedResources(eventTopics, /* array */[
-          Util_DynamoDbStream$ReventlessAws.service,
+          Util_DynamoDbStream_Runtime$ReventlessAws.service,
           Util_SNS_FIFO$ReventlessAws.service
         ]).apply((function (param) {
           var errorResources = param[1];

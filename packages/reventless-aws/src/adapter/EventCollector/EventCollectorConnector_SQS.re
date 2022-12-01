@@ -85,7 +85,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     let _ =
       eventTopics
       ->partitionSupportedResources([|
-          Util.DynamoDbStream.service,
+          Util.DynamoDbStream_Runtime.service,
           Util.SNS.service,
         |])
       ->Pulumi.Output.apply(((supportedResources, errorResources)) => {
@@ -115,7 +115,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
                 ~sourceName,
                 ~source=
                   source
-                  ->findUnwrappedResource(Util.DynamoDbStream.service)
+                  ->findUnwrappedResource(Util.DynamoDbStream_Runtime.service)
                   ->Reventless.AdapterDeploytime.unwrappedToResource,
                 ~opts,
                 (),

@@ -56,6 +56,8 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
     {
       resources: [|queue->Util_SQS.toResource|],
       publish:
-        queue->CommandTopicConnector_SQS_Runtime.publish(Util_SQS.service),
+        queue->CommandTopicConnector_SQS_Runtime.publish(
+          Util_SQS_Runtime.service,
+        ),
     };
   };

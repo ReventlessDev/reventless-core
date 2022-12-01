@@ -9,12 +9,10 @@ var Aws = require("@pulumi/aws");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
-var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
 var Util_DynamoDb$ReventlessAws = require("./Util_DynamoDb.bs.js");
+var Util_DynamoDb_Runtime$ReventlessAws = require("./Util_DynamoDb_Runtime.bs.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
-
-var service = "DynamoDbStream";
 
 function toInfo(table) {
   return Pulumi.all(/* tuple */[
@@ -43,7 +41,7 @@ function streamArnFromDynamoDbTableResource(table) {
 function toResource(table) {
   return {
           service: table.name.apply((function (param) {
-                  return service;
+                  return Util_DynamoDb_Runtime$ReventlessAws.service;
                 })),
           name: table.name,
           id: table.id,
@@ -56,7 +54,7 @@ function toStreamResource(table) {
   var streamArn = streamArnFromDynamoDbTableResource(table);
   return {
           service: table.name.apply((function (param) {
-                  return service;
+                  return Util_DynamoDb_Runtime$ReventlessAws.service;
                 })),
           name: table.name,
           id: streamArn,
@@ -142,15 +140,6 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, streamView
   }
 }
 
-function findResource(resources) {
-  return Util_Adapter$Reventless.findResource(resources, service);
-}
-
-function findResourceInOutput(resourcesOutput) {
-  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, service);
-}
-
-exports.service = service;
 exports.toInfo = toInfo;
 exports.streamArnFromDynamoDbTableResource = streamArnFromDynamoDbTableResource;
 exports.toResource = toResource;
@@ -159,6 +148,4 @@ exports.enableStream = enableStream;
 exports.verifyStream = verifyStream;
 exports.updateTable = updateTable;
 exports.makeTable = makeTable;
-exports.findResource = findResource;
-exports.findResourceInOutput = findResourceInOutput;
 /* @pulumi/aws Not a pure module */

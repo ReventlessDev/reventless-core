@@ -1,5 +1,3 @@
-let service = "DynamoDb";
-
 let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
   (table##hashKey, table##rangeKey)
   ->Pulumi.Output.all2
@@ -9,7 +7,8 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
 
 let toResource = (table: PulumiAws.DynamoDb.Table.t) =>
   Reventless.Adapter.resource(
-    ~service=table##name->Pulumi.Output.apply(_ => service),
+    ~service=
+      table##name->Pulumi.Output.apply(_ => Util_DynamoDb_Runtime.service),
     ~name=table##name,
     ~id=table##id,
     ~urn=table##arn,
@@ -205,9 +204,3 @@ let makeTable =
     // Workaround when restore enabled
     ? updateTable(~ttl?, table) : table;
 };
-
-let findResource = resources =>
-  resources->Reventless.Util.Adapter.findResource(service);
-
-let findResourceInOutput = resourcesOutput =>
-  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(service);
