@@ -28,6 +28,7 @@ function filterByOutput(resources, pred) {
 
 function filterSupportedResources(resources, supportedServices) {
   return filterByOutput(resources, (function (resource) {
+                console.log("Util.Adapter.filterSupportedResources: resource:", resource);
                 return resource.service.apply((function (service) {
                               return Belt_Array.some(supportedServices, (function (supportedService) {
                                             return service === supportedService;
@@ -68,6 +69,7 @@ function findUnwrappedResource(resources, service) {
 }
 
 function findResourceInOutput(resourcesOutput, service) {
+  console.log("Util.Adapter.findResourceInOutput: service:", service);
   return Adapter$Reventless.resourcesOutputToResource(Output$Pulumi.flatMap(resourcesOutput, (function (resources) {
                     return filterSupportedResources(resources, /* array */[service]);
                   })));
