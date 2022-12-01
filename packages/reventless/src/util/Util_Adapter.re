@@ -33,6 +33,20 @@ let filterSupportedUnwrappedResources:
       )
     );
 
+let findResource = (resources, service) =>
+  resources
+  ->filterSupportedResources([|service|])
+  ->Pulumi.Output.apply(resources =>
+      switch (resources) {
+      | [||] =>
+        let err = {j|Util.Adapter.findResource: Couldn't find service $service in resources: $resources|j};
+        Js.log(err);
+        Js.Exn.raiseError(err);
+      | matching => matching[0]
+      }
+    )
+  ->outputToResource;
+
 let findUnwrappedResource = (resources, service) =>
   switch (resources->filterSupportedUnwrappedResources([|service|])) {
   | [||] =>
