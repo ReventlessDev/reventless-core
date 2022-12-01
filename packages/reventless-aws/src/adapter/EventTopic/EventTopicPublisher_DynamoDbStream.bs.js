@@ -7,7 +7,7 @@ var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
 function make(param, storageResources, param$1) {
-  var storageResource = Util_DynamoDbStream_Runtime$ReventlessAws.findResource(storageResources);
+  var storageResource = Util_DynamoDbStream$ReventlessAws.findResource(storageResources);
   return /* record */[
           /* resources : array */[Adapter$Reventless.outputToResource(storageResource.service.apply((function (service) {
                         if (service === Util_DynamoDbStream_Runtime$ReventlessAws.service) {

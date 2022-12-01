@@ -167,7 +167,7 @@ let makeTable =
 };
 
 let findResource = resources =>
-  resources->Reventless.Util.AdapterRuntime.findResource(
+  resources->Reventless.Util.Adapter.findResource(
     Util_DynamoDbStream_Runtime.service,
   );
 

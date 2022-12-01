@@ -1,7 +1,6 @@
 let make: Reventless.EventTopic.Adapter.publisherMaker =
   (~name as _, ~storageResources, ~opts as _) => {
-    let storageResource =
-      storageResources->Util.DynamoDbStream_Runtime.findResource;
+    let storageResource = storageResources->Util.DynamoDbStream.findResource;
 
     {
       resources: [|

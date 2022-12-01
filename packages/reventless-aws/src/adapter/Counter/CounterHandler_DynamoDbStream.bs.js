@@ -7,13 +7,12 @@ var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.bs.js");
-var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 var CounterHandler_DynamoDbStream_Runtime$ReventlessAws = require("./CounterHandler_DynamoDbStream_Runtime.bs.js");
 
 function make(name, referencesName, referencesDb, countsName, countsDb, counterHandler, opts) {
-  var referencesDbResource = Util_DynamoDbStream_Runtime$ReventlessAws.findResource(referencesDb.resources);
+  var referencesDbResource = Util_DynamoDbStream$ReventlessAws.findResource(referencesDb.resources);
   var referencesStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(referencesDbResource);
-  var countsDbResource = Util_DynamoDbStream_Runtime$ReventlessAws.findResource(countsDb.resources);
+  var countsDbResource = Util_DynamoDbStream$ReventlessAws.findResource(countsDb.resources);
   var countsStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(countsDbResource);
   var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
             (function (param, param$1) {

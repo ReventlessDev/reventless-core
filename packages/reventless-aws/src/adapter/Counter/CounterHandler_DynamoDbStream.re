@@ -11,11 +11,11 @@ let make: Reventless.Counter.Adapter.handlerMaker =
     ~opts,
   ) => {
     let referencesDbResource =
-      referencesDb##resources->Util.DynamoDbStream_Runtime.findResource;
+      referencesDb##resources->Util.DynamoDbStream.findResource;
     let referencesStream =
       referencesDbResource->Util.DynamoDbStream.toStreamResource;
     let countsDbResource =
-      countsDb##resources->Util.DynamoDbStream_Runtime.findResource;
+      countsDb##resources->Util.DynamoDbStream.findResource;
     let countsStream = countsDbResource->Util.DynamoDbStream.toStreamResource;
 
     let eventHandlerLambda =

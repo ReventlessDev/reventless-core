@@ -11,7 +11,6 @@ var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
-var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.bs.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("./Util_DynamoDb_Runtime.bs.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
 
@@ -255,7 +254,7 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name
 }
 
 function findResource(resources) {
-  return Util_AdapterRuntime$Reventless.findResource(resources, Util_DynamoDb_Runtime$ReventlessAws.service);
+  return Util_Adapter$Reventless.findResource(resources, Util_DynamoDb_Runtime$ReventlessAws.service);
 }
 
 function findUnwrappedResource(resources) {
