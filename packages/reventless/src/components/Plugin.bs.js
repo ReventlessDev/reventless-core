@@ -54,6 +54,15 @@ function Make(EventCollectorConnector) {
               parent: self
             };
             var id = makeId(name, version);
+            var readModelsForAggregates = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
+                        return /* tuple */[
+                                ReadModel.Spec.name,
+                                /* record */[
+                                  /* module_ */ReadModel,
+                                  /* readModel */Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0)
+                                ]
+                              ];
+                      })));
             var readModels$1 = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
                         return /* tuple */[
                                 Belt_Option.getWithDefault(ReadModel.View.name, ReadModel.Spec.name),
@@ -74,7 +83,7 @@ function Make(EventCollectorConnector) {
             var addEventMapperFns = { };
             var publishToAggregates = { };
             var aggregatesWithoutEventMappers = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
-                        var match = readModels$1[Aggregate.Spec.name];
+                        var match = readModelsForAggregates[Aggregate.Spec.name];
                         var readModel = match[/* readModel */1];
                         var module_ = match[/* module_ */0];
                         var aggregate = Curry._4(Aggregate.make, queryEngine, (function (id, events) {

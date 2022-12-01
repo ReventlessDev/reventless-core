@@ -160,6 +160,19 @@ module Make =
 
     let id = makeId(name, version);
 
+    let readModelsForAggregates =
+      // TODO: remove when introducing multiple ReadModels
+      readModels
+      ->Belt.Array.map((module ReadModel: ReadModel.T) =>
+          (
+            ReadModel.Spec.name,
+            {
+              module_: (module ReadModel),
+              readModel: ReadModel.make(~opts, ()),
+            },
+          )
+        )
+      ->Js.Dict.fromArray;
     let readModels =
       readModels
       ->Belt.Array.map((module ReadModel: ReadModel.T) =>
@@ -191,7 +204,7 @@ module Make =
       aggregates
       ->Belt.Array.map((module Aggregate: Aggregate.T) => {
           let {module_, readModel} =
-            readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
+            readModelsForAggregates->Js.Dict.unsafeGet(Aggregate.Spec.name);
           module ReadModel = (val module_);
           let aggregate =
             Aggregate.make(
@@ -201,7 +214,7 @@ module Make =
                   readModel->ReadModel.update(.
                     id->Obj.magic,
                     events->Obj.magic,
-                  ), // TODO : remove
+                  ), // TODO: remove when introducing multiple ReadModels
               ~opts,
               (),
             );
