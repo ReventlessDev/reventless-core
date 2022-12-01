@@ -111,7 +111,4 @@ let batchWriteWithRetries = (batchWriteItemRequestMap, maxRetries) =>
   ->retryIfNecessary(maxRetries);
 
 let findResource = resources =>
-  resources->Reventless.Util.Adapter.findResource(service);
-
-let findResourceInOutput = resourcesOutput =>
-  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(service);
+  resources->Reventless.Util.AdapterRuntime.findResource(service);

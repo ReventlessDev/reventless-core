@@ -8,3 +8,6 @@ let toResource = (topic: PulumiAws.SNS.Topic.t) =>
     ~urn=topic##arn,
     ~info=topic##name->Pulumi.Output.apply(_ => ""),
   );
+
+let findUnwrappedResource = resources =>
+  resources->Reventless.Util.Adapter.findUnwrappedResource(service);

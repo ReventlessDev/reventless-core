@@ -204,3 +204,18 @@ let makeTable =
     // Workaround when restore enabled
     ? updateTable(~ttl?, table) : table;
 };
+
+let findResource = resources =>
+  resources->Reventless.Util.AdapterRuntime.findResource(
+    Util_DynamoDb_Runtime.service,
+  );
+
+let findUnwrappedResource = resources =>
+  resources->Reventless.Util.Adapter.findUnwrappedResource(
+    Util_DynamoDb_Runtime.service,
+  );
+
+let findResourceInOutput = resourcesOutput =>
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(
+    Util_DynamoDb_Runtime.service,
+  );

@@ -58,7 +58,4 @@ let parseDynamoDbStreamRecordState: Record.t => result =
   parseDynamoDbStreamRecord(buildStateJson);
 
 let findResource = resources =>
-  resources->Reventless.Util.Adapter.findResource(service);
-
-let findResourceInOutput = resourcesOutput =>
-  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(service);
+  resources->Reventless.Util.AdapterRuntime.findResource(service);

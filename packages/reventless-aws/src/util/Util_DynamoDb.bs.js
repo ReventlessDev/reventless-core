@@ -9,7 +9,9 @@ var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
+var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.bs.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("./Util_DynamoDb_Runtime.bs.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
 
@@ -252,6 +254,18 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name
   }
 }
 
+function findResource(resources) {
+  return Util_AdapterRuntime$Reventless.findResource(resources, Util_DynamoDb_Runtime$ReventlessAws.service);
+}
+
+function findUnwrappedResource(resources) {
+  return Util_Adapter$Reventless.findUnwrappedResource(resources, Util_DynamoDb_Runtime$ReventlessAws.service);
+}
+
+function findResourceInOutput(resourcesOutput) {
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, Util_DynamoDb_Runtime$ReventlessAws.service);
+}
+
 exports.toInfo = toInfo;
 exports.toResource = toResource;
 exports.arn2tableName = arn2tableName;
@@ -263,4 +277,7 @@ exports.updateTable = updateTable;
 exports.makeTableArgs = makeTableArgs;
 exports.option2Str = option2Str;
 exports.makeTable = makeTable;
+exports.findResource = findResource;
+exports.findUnwrappedResource = findUnwrappedResource;
+exports.findResourceInOutput = findResourceInOutput;
 /* @pulumi/aws Not a pure module */

@@ -9,19 +9,6 @@ let toResource = (queue: PulumiAws.SQS.Queue.t) =>
     ~info=queue##name->Pulumi.Output.apply(_ => ""),
   );
 
-[@bs.obj]
-external makeQueue:
-  (
-    ~arn: Pulumi.Output.t(string),
-    ~name: Pulumi.Output.t(string),
-    ~id: Pulumi.Output.t(string)
-  ) =>
-  SQS.Queue.t =
-  "";
-
-let fromResource = (resource: ReventlessSpec.Adapter.resource) =>
-  makeQueue(~id=resource##id, ~name=resource##name, ~arn=resource##urn);
-
 // Example ARN: arn:aws:sqs:eu-west-1:xxxxxx:MarketplaceServiceExtensionPointCommandTopic-0101023
 let arn2Account = arn =>
   switch (arn->Js.String2.split(":")) {
@@ -41,4 +28,9 @@ let subscribeToSnsTopic = (~queue, ~targetName, ~sourceName, ~topic, ~opts) =>
         (),
       ),
     ~opts=Some(opts),
+  );
+
+let findResourceInOutput = resourcesOutput =>
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(
+    Util_SQS_Runtime.service,
   );

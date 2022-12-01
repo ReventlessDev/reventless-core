@@ -101,7 +101,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
                 ~sourceName,
                 ~topic=
                   resources
-                  ->findUnwrappedResource(Util.SNS.service)
+                  ->Util.SNS.findUnwrappedResource
                   ->Reventless.AdapterDeploytime.unwrappedToResource,
                 ~opts,
               )
@@ -115,7 +115,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
                 ~sourceName,
                 ~source=
                   source
-                  ->findUnwrappedResource(Util.DynamoDbStream_Runtime.service)
+                  ->Util.DynamoDbStream.findUnwrappedResource
                   ->Reventless.AdapterDeploytime.unwrappedToResource,
                 ~opts,
                 (),
