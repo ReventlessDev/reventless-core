@@ -134,10 +134,18 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           });
 
         let storageResource =
-            (~pluginName: option(string), ~tableName: string) =>
-          allQueryDbs
-          ->Util_QueryDb.getStorageResources(pluginName, tableName)
-          ->Util_DynamoDb.findResourceInOutput;
+            (~pluginName: option(string), ~tableName: string) => {
+          let resources =
+            allQueryDbs->Util_QueryDb.getStorageResources(
+              pluginName,
+              tableName,
+            );
+          Js.log2(
+            "QueryDbResolvers_AppSync.storageResource: resources:",
+            resources,
+          );
+          resources->Util_DynamoDb.findResourceInOutput;
+        };
 
         let generateTemplate:
           (

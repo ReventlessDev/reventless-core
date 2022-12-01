@@ -15,15 +15,14 @@ let filterByOutput:
 let filterSupportedResources:
   (array(resource), array(string)) => Pulumi.Output.t(array(resource)) =
   (resources, supportedServices) =>
-    resources->filterByOutput(resource => {
-      Js.log2("Util.Adapter.filterSupportedResources: resource:", resource);
+    resources->filterByOutput(resource =>
       resource##service
       ->Pulumi.Output.apply(service =>
           supportedServices->Belt.Array.some(supportedService =>
             service == supportedService
           )
-        );
-    });
+        )
+    );
 
 let filterSupportedUnwrappedResources:
   (array(unwrappedResource), array(string)) => array(unwrappedResource) =
@@ -33,20 +32,6 @@ let filterSupportedUnwrappedResources:
         resource##service == supportedService
       )
     );
-
-let findResource = (resources, service) =>
-  resources
-  ->filterSupportedResources([|service|])
-  ->Pulumi.Output.apply(resources =>
-      switch (resources) {
-      | [||] =>
-        let err = {j|Util.Adapter.findResource: Couldn't find service $service in resources: $resources|j};
-        Js.log(err);
-        Js.Exn.raiseError(err);
-      | matching => matching[0]
-      }
-    )
-  ->outputToResource;
 
 let findUnwrappedResource = (resources, service) =>
   switch (resources->filterSupportedUnwrappedResources([|service|])) {
@@ -58,14 +43,12 @@ let findUnwrappedResource = (resources, service) =>
   | resources => resources[0]
   };
 
-let findResourceInOutput = (resourcesOutput, service) => {
-  Js.log2("Util.Adapter.findResourceInOutput: service:", service);
+let findResourceInOutput = (resourcesOutput, service) =>
   resourcesOutput
   ->Pulumi.Output.flatMap(resources =>
       resources->filterSupportedResources([|service|])
     )
   ->resourcesOutputToResource;
-};
 
 let partitionSupportedResources = (adapters, supportedServices) => {
   let (names, resourceOutputs) =
