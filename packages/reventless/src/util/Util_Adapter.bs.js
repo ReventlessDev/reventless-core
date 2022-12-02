@@ -9,6 +9,7 @@ var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var Adapter$Reventless = require("../adapter/Adapter.bs.js");
+var Message$Reventless = require("../Message.bs.js");
 
 function filterByOutput(resources, pred) {
   return Belt_Array.reduce(resources, Pulumi.output(/* array */[]), (function (acc, resource) {
@@ -36,9 +37,10 @@ function filterSupportedResources(resources, supportedServices) {
                               }));
                 }
                 catch (exn){
-                  var err = "Util.Adapter.filterSupportedResources failed";
-                  console.log(err, "resource:", resource, resources);
-                  return Js_exn.raiseError(err);
+                  console.log("Util.Adapter.filterSupportedResources failed", "resource:", resource);
+                  return Pulumi.output(Message$Reventless.log(Belt_Array.some(supportedServices, (function (supportedService) {
+                                        return resource.service === supportedService;
+                                      })), "Matching:"));
                 }
               }));
 }

@@ -14,6 +14,7 @@ let filterByOutput:
               ->AdapterDeploytime.unsafeUnwrapResource
               ->Adapter.unwrappedToResource
             );
+
           supported ? resources->Belt.Array.concat([|resource|]) : resources;
         })
     );
@@ -32,8 +33,14 @@ let filterSupportedResources:
       ) {
       | _ =>
         let err = "Util.Adapter.filterSupportedResources failed";
-        Js.log4(err, "resource:", resource, resources);
-        Js.Exn.raiseError(err);
+        Js.log3(err, "resource:", resource);
+        supportedServices
+        ->Belt.Array.some(supportedService =>
+            resource->AdapterDeploytime.unsafeUnwrapResource##service
+            == supportedService
+          )
+        ->Message.log({j|Matching:|j})
+        ->Pulumi.Output.make;
       }
     );
 
