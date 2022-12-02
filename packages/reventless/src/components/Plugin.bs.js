@@ -82,14 +82,6 @@ function Make(EventCollectorConnector) {
                               ];
                       })));
             var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
-            console.log("allQueryDbs:");
-            Belt_Array.forEach(Js_dict.entries(allQueryDbs), (function (param) {
-                    console.log(param[0] + ": ------------");
-                    return Belt_Array.forEach(param[1].resources, (function (resource) {
-                                  console.log(resource);
-                                  return /* () */0;
-                                }));
-                  }));
             var queryEngine = Curry._1(QueryEngineAdapter.make, allQueryDbs);
             var addEventMapperFns = { };
             var publishToAggregates = { };

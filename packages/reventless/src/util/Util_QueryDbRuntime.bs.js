@@ -2,10 +2,19 @@
 'use strict';
 
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 
 function getLocalStorageResources(allQueryDbs, queryDbName) {
   try {
+    console.log("Util_QueryDbRuntime.getLocalStorageResources.allQueryDbs:");
+    Belt_Array.forEach(Js_dict.entries(allQueryDbs), (function (param) {
+            console.log(param[0] + ": ------------");
+            return Belt_Array.forEach(param[1].resources, (function (resource) {
+                          console.log(resource);
+                          return /* () */0;
+                        }));
+          }));
     return Belt_Option.getExn(Js_dict.get(allQueryDbs, queryDbName)).resources;
   }
   catch (exn){

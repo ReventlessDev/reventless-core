@@ -183,15 +183,6 @@ module Make =
         )
       ->Js.Dict.fromArray;
     let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs;
-    Js.log("allQueryDbs:");
-    let _ =
-      allQueryDbs
-      ->Js.Dict.entries
-      ->Belt.Array.forEach(((name, queryDb)) => {
-          Js.log(name ++ ": ------------");
-          queryDb##resources
-          ->Belt.Array.forEach(resource => Js.log(resource));
-        });
 
     let queryEngine = QueryEngineAdapter.make(allQueryDbs);
 
