@@ -17,21 +17,7 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
           )
       )
   ) {
-  | Some(resources) =>
-    Js.log4(
-      "Util_QueryDb.getRemoteStorageResources: pluginName:",
-      pluginName,
-      ", queryDbName:",
-      queryDbName,
-    );
-    Js.log(
-      "Util_QueryDb.getRemoteStorageResources: resources: ----------------",
-    );
-    let _ =
-      resources->Pulumi.Output.apply(resources =>
-        resources->Belt.Array.forEach(resource => Js.log(resource))
-      );
-    resources;
+  | Some(resources) => resources
   | None =>
     Js.log(
       "Util_QueryDbRuntime.getLocalStorageResources: Couldn't find Plugin $pluginName",

@@ -2,15 +2,23 @@ let getLocalStorageResources =
     (allQueryDbs, queryDbName): array(ReventlessSpec.Adapter.resource) =>
   try (
     {
-      Js.log("Util_QueryDbRuntime.getLocalStorageResources.allQueryDbs:");
-      let _ =
-        allQueryDbs
-        ->Js.Dict.entries
-        ->Belt.Array.forEach(((name, queryDb)) => {
-            Js.log(name ++ ": ------------");
-            queryDb##resources
-            ->Belt.Array.forEach(resource => Js.log(resource));
-          });
+      allQueryDbs
+      ->Js.Dict.entries
+      ->Belt.Array.forEach(((name, queryDb)) =>
+          queryDb##resources
+          ->Belt.Array.map(resource =>
+              try (resource##service->Pulumi.Output.apply(_ => ())) {
+              | _ =>
+                Js.log3(
+                  "Util_QueryDbRuntime.getLocalStorageResources: no Output !",
+                  name,
+                  resource##service,
+                )
+                ->Pulumi.Output.make
+              }
+            )
+          ->ignore
+        );
 
       allQueryDbs->Js.Dict.get(queryDbName)->Belt.Option.getExn##resources;
     }

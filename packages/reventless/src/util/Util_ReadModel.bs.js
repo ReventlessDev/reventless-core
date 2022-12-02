@@ -14,4 +14,4 @@ function allQueryDbs(allReadModels) {
 
 exports.queryDbStorageResources = queryDbStorageResources;
 exports.allQueryDbs = allQueryDbs;
-/* No side effect */
+/* Util_QueryDbRuntime-Reventless Not a pure module */

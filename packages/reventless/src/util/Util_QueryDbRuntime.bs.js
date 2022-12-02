@@ -4,16 +4,23 @@
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Pulumi = require("@pulumi/pulumi");
 
 function getLocalStorageResources(allQueryDbs, queryDbName) {
   try {
-    console.log("Util_QueryDbRuntime.getLocalStorageResources.allQueryDbs:");
     Belt_Array.forEach(Js_dict.entries(allQueryDbs), (function (param) {
-            console.log(param[0] + ": ------------");
-            return Belt_Array.forEach(param[1].resources, (function (resource) {
-                          console.log(resource);
-                          return /* () */0;
-                        }));
+            var name = param[0];
+            Belt_Array.map(param[1].resources, (function (resource) {
+                    try {
+                      return resource.service.apply((function (param) {
+                                    return /* () */0;
+                                  }));
+                    }
+                    catch (exn){
+                      return Pulumi.output((console.log("Util_QueryDbRuntime.getLocalStorageResources: no Output !", name, resource.service), /* () */0));
+                    }
+                  }));
+            return /* () */0;
           }));
     return Belt_Option.getExn(Js_dict.get(allQueryDbs, queryDbName)).resources;
   }
@@ -24,4 +31,4 @@ function getLocalStorageResources(allQueryDbs, queryDbName) {
 }
 
 exports.getLocalStorageResources = getLocalStorageResources;
-/* No side effect */
+/* @pulumi/pulumi Not a pure module */

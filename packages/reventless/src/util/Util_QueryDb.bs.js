@@ -21,16 +21,7 @@ function getRemoteStorageResources(pluginName, queryDbName) {
                       }));
         }));
   if (match !== undefined) {
-    var resources = Caml_option.valFromOption(match);
-    console.log("Util_QueryDb.getRemoteStorageResources: pluginName:", pluginName, ", queryDbName:", queryDbName);
-    console.log("Util_QueryDb.getRemoteStorageResources: resources: ----------------");
-    resources.apply((function (resources) {
-            return Belt_Array.forEach(resources, (function (resource) {
-                          console.log(resource);
-                          return /* () */0;
-                        }));
-          }));
-    return resources;
+    return Caml_option.valFromOption(match);
   } else {
     console.log("Util_QueryDbRuntime.getLocalStorageResources: Couldn't find Plugin $pluginName");
     return Pulumi.output(/* array */[]);
