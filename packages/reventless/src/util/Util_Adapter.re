@@ -1,48 +1,22 @@
 open ReventlessSpec.Adapter;
 open Adapter;
 
-let filterByOutput:
-  (array(resource), resource => Pulumi.Output.t(bool)) =>
-  Pulumi.Output.t(array(resource)) =
-  (resources, pred) =>
-    resources->Belt.Array.reduce([||]->Pulumi.Output.make, (acc, resource) =>
-      Pulumi.Output.all2((acc, resource->pred)) // Outputs are unwrapped within Pulumi.Output.all2 !
-      ->Pulumi.Output.apply(((acc, supported)) => {
-          let resources =
-            acc->Belt.Array.map(resource =>
-              resource
-              ->AdapterDeploytime.unsafeUnwrapResource
-              ->Adapter.unwrappedToResource
-            );
-
-          supported ? resources->Belt.Array.concat([|resource|]) : resources;
-        })
-    );
-
 let filterSupportedResources:
   (array(resource), array(string)) => Pulumi.Output.t(array(resource)) =
   (resources, supportedServices) =>
-    resources->filterByOutput(resource =>
-      try (
-        resource##service
-        ->Pulumi.Output.apply(service =>
+    resources
+    ->Belt.Array.map(resource => resource##service)
+    ->Pulumi.Output.all
+    ->Pulumi.Output.apply(services =>
+        resources
+        ->Belt.Array.zip(services)
+        ->Belt.Array.keep(((_resource, service)) =>
             supportedServices->Belt.Array.some(supportedService =>
               service == supportedService
             )
           )
-      ) {
-      | _ =>
-        let err = "Util.Adapter.filterSupportedResources failed";
-        Js.log3(err, "resource:", resource);
-        supportedServices
-        ->Belt.Array.some(supportedService =>
-            resource->AdapterDeploytime.unsafeUnwrapResource##service
-            == supportedService
-          )
-        ->Message.log({j|Matching:|j})
-        ->Pulumi.Output.make;
-      }
-    );
+        ->Belt.Array.map(((resource, _)) => resource)
+      );
 
 let filterSupportedUnwrappedResources:
   (array(unwrappedResource), array(string)) => array(unwrappedResource) =
@@ -96,7 +70,7 @@ let partitionSupportedResources = (adapters, supportedServices) => {
       )
     ->Belt.Array.unzip;
 
-  resourceOutputs
+  resourceOutputs // TODO: Avoid waiting for all resourceOutputs, call apply only on needed Outputs
   ->Pulumi.Output.all // Outputs are unwrapped within Pulumi.Output.all !
   ->Pulumi.Output.apply(resources => {
       let (supported, unsupported) =
