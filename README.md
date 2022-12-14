@@ -22,6 +22,7 @@ For individual Readmes per package see inside the package's directory `./package
 
 This repo uses [Lerna](https://lerna.js.org/) to manage all the packages.
 
+0. use a node version manager like [fnm](https://github.com/Schniz/fnm) and configure it to respect `.node_version` files *recursively* (if not present in current directory, try to traverse over parent directories to find a version file). For fnm, this can be done by setting the env var `FNM_VERSION_FILE_STRATEGY` to `recursive` (default is `local`). (see [fnm docs](https://github.com/Schniz/fnm/blob/master/docs/commands.md))
 1. install general devDependencies by invoking `npm install` in the repository's root directory
 2. invoke `lerna bootstrap` (if lerna is globally installed - otherwise `npm run bootstrap`) to download all dependencies of the packages in this repository and link them together
 3. Done!
