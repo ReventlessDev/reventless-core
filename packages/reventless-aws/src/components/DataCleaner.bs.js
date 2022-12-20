@@ -9,11 +9,19 @@ var Aws = require("@pulumi/aws");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
-var Promise$Reventless = require("@reventless/reventless/src/util/Promise.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("../util/Util_DynamoDb_Runtime.bs.js");
 
-function handeDeleteResult(result) {
+function promiseToResult(p) {
+  var __x = p.then((function (res) {
+          return Promise.resolve(/* Ok */Block.__(0, [res]));
+        }));
+  return __x.catch((function (err) {
+                return Promise.resolve(/* Error */Block.__(1, [err]));
+              }));
+}
+
+function handleDeleteResult(result) {
   if (result.tag) {
     console.log("Couldn't delete item:", result[0]);
     return /* Error */Block.__(1, ["Couldn't delete item."]);
@@ -23,7 +31,31 @@ function handeDeleteResult(result) {
 }
 
 function deleteAllItems(tableConfig, items) {
-  Promise$Reventless.map((function (result) {
+  var __x = Promise.all(Belt_Array.map(items, (function (item) {
+              var id = Js_dict.get(item, tableConfig.id);
+              var sort = Belt_Option.flatMap(tableConfig.sort, (function (sortField) {
+                      return Js_dict.get(item, sortField);
+                    }));
+              if (id !== undefined) {
+                var id$1 = id;
+                if (sort !== undefined) {
+                  var __x = promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteByIdSort(tableConfig.name, id$1, Belt_Option.getExn(tableConfig.sort), sort));
+                  return __x.then((function (res) {
+                                return Promise.resolve(handleDeleteResult(res));
+                              }));
+                } else {
+                  var __x$1 = promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteById(tableConfig.name, id$1));
+                  return __x$1.then((function (res) {
+                                return Promise.resolve(handleDeleteResult(res));
+                              }));
+                }
+              } else {
+                return new Promise((function (resolve, param) {
+                              return resolve(/* Error */Block.__(1, ["No valid Config found!"]));
+                            }));
+              }
+            })));
+  __x.then((function (result) {
           var __x = Belt_Array.reduce(result, 0, (function (state, item) {
                   if (item.tag) {
                     return state;
@@ -31,24 +63,8 @@ function deleteAllItems(tableConfig, items) {
                     return state + 1 | 0;
                   }
                 }));
-          console.log("Deleted", __x, "of " + (String(result.length) + (" items in table " + tableConfig.name)));
-          return /* () */0;
-        }), Promise$Reventless.all_inArray(Belt_Array.map(items, (function (item) {
-                  var id = Js_dict.get(item, tableConfig.id);
-                  var sort = Belt_Option.flatMap(tableConfig.sort, (function (sortField) {
-                          return Js_dict.get(item, sortField);
-                        }));
-                  if (id !== undefined) {
-                    var id$1 = id;
-                    if (sort !== undefined) {
-                      return Promise$Reventless.handlePromise(handeDeleteResult, DynamoDb_DocumentClient$AwsSdk.deleteByIdSort(tableConfig.name, id$1, Belt_Option.getExn(tableConfig.sort), sort));
-                    } else {
-                      return Promise$Reventless.handlePromise(handeDeleteResult, DynamoDb_DocumentClient$AwsSdk.deleteById(tableConfig.name, id$1));
-                    }
-                  } else {
-                    return Promise$Reventless.resolved(/* Error */Block.__(1, ["No valid Config found!"]));
-                  }
-                }))));
+          return Promise.resolve((console.log("Deleted", __x, "of " + (String(result.length) + (" items in table " + tableConfig.name))), /* () */0));
+        }));
   return /* () */0;
 }
 
@@ -97,19 +113,17 @@ function scanTableAndClean(tableConfig) {
           ])
     ];
   }
-  return Promise$Reventless.map((function (param) {
-                if (param.tag) {
-                  return /* Error */Block.__(1, [tableConfig.name + " [ERROR]"]);
-                } else {
-                  return /* Ok */Block.__(0, [tableConfig.name + (" [" + (String(param[0]) + "]"))]);
-                }
-              }), Promise$Reventless.handlePromise((function (param) {
-                    return handleScanResult(tableConfig, param);
-                  }), DynamoDb_DocumentClient$AwsSdk.scan({
-                      TableName: tableConfig.name,
-                      ExpressionAttributeNames: match$1[1],
-                      ProjectionExpression: match$1[0]
-                    })));
+  var __x = promiseToResult(DynamoDb_DocumentClient$AwsSdk.scan({
+            TableName: tableConfig.name,
+            ExpressionAttributeNames: match$1[1],
+            ProjectionExpression: match$1[0]
+          }));
+  return __x.then((function (res) {
+                var scanResult = handleScanResult(tableConfig, res);
+                var tmp;
+                tmp = scanResult.tag ? /* Error */Block.__(1, [tableConfig.name + " [ERROR]"]) : /* Ok */Block.__(0, [tableConfig.name + (" [" + (String(scanResult[0]) + "]"))]);
+                return Promise.resolve(tmp);
+              }));
 }
 
 function toTableConfig(resource) {
@@ -124,11 +138,19 @@ function toTableConfig(resource) {
 
 function cleanerFn(tablesToClean, _event, _context) {
   var tableConfigs = Belt_Array.map(tablesToClean, toTableConfig);
-  return Promise$Reventless.toJs(tableConfigs.length === 0 ? Promise$Reventless.resolved("No tables to clean.") : Promise$Reventless.map((function (arr) {
-                      return "Cleaned tables " + Belt_Array.reduce(arr, "", (function (state, item) {
-                                    return state + (" | " + item[0]);
-                                  }));
-                    }), Promise$Reventless.all_inArray(Belt_Array.map(tableConfigs, scanTableAndClean))));
+  if (tableConfigs.length === 0) {
+    return new Promise((function (resolve, param) {
+                  return resolve("No tables to clean.");
+                }));
+  } else {
+    var __x = Promise.all(Belt_Array.map(tableConfigs, scanTableAndClean));
+    return __x.then((function (arr) {
+                  var summary = Belt_Array.reduce(arr, "", (function (state, item) {
+                          return state + (" | " + item[0]);
+                        }));
+                  return Promise.resolve("Cleaned tables " + summary);
+                }));
+  }
 }
 
 function stackName(prefix) {
@@ -158,7 +180,8 @@ function make(prefix, tablesToClean) {
 var mode = /* production */817923577;
 
 exports.mode = mode;
-exports.handeDeleteResult = handeDeleteResult;
+exports.promiseToResult = promiseToResult;
+exports.handleDeleteResult = handleDeleteResult;
 exports.deleteAllItems = deleteAllItems;
 exports.handleScanResult = handleScanResult;
 exports.scanTableAndClean = scanTableAndClean;

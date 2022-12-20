@@ -11,7 +11,13 @@ type tableConfig = {
 };
 type event = {. "tables": Js.nullable(array(tableConfig))};
 
-let handeDeleteResult = result => {
+let promiseToResult: Js.Promise.t('a) => Js.Promise.t(Belt.Result.t('a, 'b)) =
+  p =>
+    p
+    ->Js.Promise.then_(res => Belt.Result.Ok(res)->Js.Promise.resolve, _)
+    ->Js.Promise.catch(err => Belt.Result.Error(err)->Js.Promise.resolve, _);
+
+let handleDeleteResult = result => {
   if (mode == `debug) {
     Js.log("Handle delete result");
   };
@@ -27,38 +33,53 @@ let handeDeleteResult = result => {
 
 let deleteAllItems =
     (tableConfig: tableConfig, items: array(Js.Dict.t(string))): unit => {
-  items->Belt.Array.map((item: Js.Dict.t(string)) => {
-    let id = item->Js.Dict.get(tableConfig##id);
-    let sort =
-      tableConfig##sort
-      ->Belt.Option.flatMap(sortField => item->Js.Dict.get(sortField));
-    switch (id, sort) {
-    | (Some(id), Some(sort)) =>
-      AwsSdk.DynamoDb.DocumentClient.deleteByIdSort(
-        ~tableName=tableConfig##name,
-        ~id,
-        ~sortField=tableConfig##sort->Belt.Option.getExn,
-        ~sortKey=sort,
-      )
-      |> Promise.handlePromise(handeDeleteResult)
-    | (Some(id), None) =>
-      AwsSdk.DynamoDb.DocumentClient.deleteById(
-        ~tableName=tableConfig##name,
-        ~id,
-      )
-      |> Promise.handlePromise(handeDeleteResult)
-    | _ => Promise.resolved(Belt.Result.Error("No valid Config found!"))
-    };
-  })
-  |> Promise.all_inArray
-  |> Promise.map(result =>
-       result->Belt.Array.reduce(0, (state, item) =>
-         switch (item) {
-         | Belt.Result.Ok(_) => state + 1
-         | Belt.Result.Error(_) => state
-         }
-       )
-       |> Js.log3(
+  items
+  ->Belt.Array.map((item: Js.Dict.t(string)) => {
+      let id = item->Js.Dict.get(tableConfig##id);
+      let sort =
+        tableConfig##sort
+        ->Belt.Option.flatMap(sortField => item->Js.Dict.get(sortField));
+      switch (id, sort) {
+      | (Some(id), Some(sort)) =>
+        AwsSdk.DynamoDb.DocumentClient.deleteByIdSort(
+          ~tableName=tableConfig##name,
+          ~id,
+          ~sortField=tableConfig##sort->Belt.Option.getExn,
+          ~sortKey=sort,
+        )
+        ->promiseToResult
+        ->Js.Promise.then_(
+            res => res->handleDeleteResult->Js.Promise.resolve,
+            _,
+          )
+      | (Some(id), None) =>
+        AwsSdk.DynamoDb.DocumentClient.deleteById(
+          ~tableName=tableConfig##name,
+          ~id,
+        )
+        ->promiseToResult
+        ->Js.Promise.then_(
+            res => res->handleDeleteResult->Js.Promise.resolve,
+            _,
+          )
+      //Promise.handlePromise(handeDeleteResult)
+      | _ =>
+        Js.Promise.make((~resolve, ~reject as _) =>
+          resolve(. Belt.Result.Error("No valid Config found!"))
+        )
+      };
+    })
+  ->Js.Promise.all
+  ->Js.Promise.then_(
+      result =>
+        result
+        ->Belt.Array.reduce(0, (state, item) =>
+            switch (item) {
+            | Belt.Result.Ok(_) => state + 1
+            | Belt.Result.Error(_) => state
+            }
+          )
+        ->Js.log3(
             "Deleted",
             _,
             "of "
@@ -67,7 +88,9 @@ let deleteAllItems =
             ++
             tableConfig##name,
           )
-     )
+        ->Js.Promise.resolve,
+      _,
+    )
   |> ignore;
 };
 
@@ -100,8 +123,7 @@ let handleScanResult =
 };
 
 let scanTableAndClean =
-    (tableConfig: tableConfig)
-    : Promise.unrejectable(Belt.Result.t(string, string)) => {
+    (tableConfig: tableConfig): Js.Promise.t(Belt.Result.t(string, string)) => {
   if (mode == `debug) {
     Js.log("Scan " ++ tableConfig##name);
   };
@@ -126,20 +148,26 @@ let scanTableAndClean =
         (),
       ),
   )
-  |> Promise.handlePromise(handleScanResult(tableConfig))
-  /*|> Promise.map(_res => tableConfig##name);*/
-  |> Promise.map(
-       fun
-       | Belt.Result.Ok(deletedItemsCount) =>
-         Belt.Result.Ok(
-           tableConfig##name
-           ++ " ["
-           ++ string_of_int(deletedItemsCount)
-           ++ "]",
-         )
-       | Belt.Result.Error(_err) =>
-         Belt.Result.Error(tableConfig##name ++ " [ERROR]"),
-     );
+  ->promiseToResult
+  ->Js.Promise.then_(
+      res => {
+        let scanResult = handleScanResult(tableConfig, res);
+        let deletedItemsCount =
+          switch (scanResult) {
+          | Belt.Result.Ok(deletedItemsCount) =>
+            Belt.Result.Ok(
+              tableConfig##name
+              ++ " ["
+              ++ string_of_int(deletedItemsCount)
+              ++ "]",
+            )
+          | Belt.Result.Error(_err) =>
+            Belt.Result.Error(tableConfig##name ++ " [ERROR]")
+          };
+        deletedItemsCount->Js.Promise.resolve;
+      },
+      _,
+    );
 };
 
 let toTableConfig: resource => tableConfig =
@@ -157,28 +185,31 @@ let cleanerFn: array(resource) => eventHandler(event, string) =
     ->(
         fun
         | tableConfigs when tableConfigs->Belt.Array.length == 0 =>
-          Promise.resolved("No tables to clean.")
+          Js.Promise.make((~resolve, ~reject as _) =>
+            resolve(. "No tables to clean.")
+          )
         | tableConfigs => {
-            tableConfigs->Belt.Array.map(scanTableAndClean)
-            |> Promise.all_inArray
-            |> Promise.map(arr =>
-                 "Cleaned tables "
-                 ++ arr->Belt.Array.reduce("", (state, item) =>
+            tableConfigs
+            ->Belt.Array.map(scanTableAndClean)
+            ->Js.Promise.all
+            ->Js.Promise.then_(
+                arr => {
+                  let summary =
+                    arr->Belt.Array.reduce("", (state, item) =>
                       state
                       ++ " | "
-                      ++ (
-                        item
-                        |> (
-                          fun
-                          | Belt.Result.Ok(successMsg) => successMsg
-                          | Belt.Result.Error(errorMsg) => errorMsg
-                        )
-                      )
-                    )
-               );
+                      ++ item->(
+                                 fun
+                                 | Belt.Result.Ok(successMsg) => successMsg
+                                 | Belt.Result.Error(errorMsg) => errorMsg
+                               )
+                    );
+                  ("Cleaned tables " ++ summary)->Js.Promise.resolve;
+                },
+                _,
+              );
           }
-      )
-    |> Promise.toJs;
+      );
   };
 
 let stackName = prefix =>
