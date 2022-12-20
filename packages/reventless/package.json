@@ -1,69 +1,69 @@
 {
-  "name": "@reventless/reventless",
-  "version": "1.1.1-alpha.0",
-  "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
-  "author": "Atos",
-  "license": "proprietary",
-  "keywords": [
-    "bucklescript",
-    "reasonml",
-    "event",
-    "event-sourcing",
-    "cqrs",
-    "serverless"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
-  },
-  "publishConfig": {
-    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
-  },
-  "jest": {
-    "testMatch": [
-      "**/tests/**/*Test.bs.js"
-    ]
-  },
-  "scripts": {
-    "build": "bsb -make-world",
-    "start": "bsb -make-world -w",
-    "clean": "bsb -clean-world",
-    "rebuild": "npm run clean && npm run build",
-    "deploy": "./scripts/deploy.sh",
-    "test": "jest",
-    "test:watch": "jest --coverage --watchAll",
-    "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
-    "dev": "jest --watchAll",
-    "watch:screen": "screen -c .screenrc",
-    "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
-  },
-  "dependencies": {
-    "@aantron/repromise": "^0.6.0",
-    "@reventless/bs-aws-sdk": "^1.1.1-alpha.0",
-    "@reventless/bs-fast-csv": "^0.2.8",
-    "@reventless/bs-hash-obj": "^0.1.5",
-    "@reventless/bs-node-streams": "^0.1.5",
-    "@reventless/bs-pulumi-aws": "^1.1.1-alpha.0",
-    "@reventless/bs-pulumi-pulumi": "^1.1.0-alpha.3",
-    "@reventless/bs-ssh2": "^0.1.5",
-    "@reventless/bs-uuid": "^0.1.6",
-    "@reventless/reventless-spec": "^1.1.1-alpha.0",
-    "@ryb73/decco": "0.0.12",
-    "bs-moment": "^0.6.0",
-    "fast-csv": "^3.2.0",
-    "hash-obj": "^2.0.0",
-    "moment": "^2.27.0",
-    "ssh2": "^0.8.5",
-    "uuid": "^3.4.0"
-  },
-  "devDependencies": {
-    "@glennsl/bs-jest": "^0.4.8",
-    "@pulumi/aws": "4.37.4",
-    "@pulumi/pulumi": "3.24.1",
-    "aws-sdk": "^2.556.0"
-  },
-  "peerDependencies": {
-    "bs-platform": "^5.2.1"
-  },
-  "gitHead": "1016edd2eceed939132c050a8ec292dc898a405f"
+    "name": "@reventless/reventless",
+    "version": "1.1.1-alpha.0",
+    "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
+    "author": "Atos",
+    "license": "proprietary",
+    "keywords": [
+        "bucklescript",
+        "reasonml",
+        "event",
+        "event-sourcing",
+        "cqrs",
+        "serverless"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "ssh://git@gitlab.com:reventless/reventless-universe.git"
+    },
+    "publishConfig": {
+        "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+    },
+    "jest": {
+        "testMatch": [
+            "**/tests/**/*Test.bs.js"
+        ]
+    },
+    "scripts": {
+        "build": "bsb -make-world",
+        "start": "bsb -make-world -w",
+        "clean": "bsb -clean-world",
+        "rebuild": "npm run clean && npm run build",
+        "deploy": "./scripts/deploy.sh",
+        "test": "jest",
+        "test:watch": "jest --coverage --watchAll",
+        "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
+        "dev": "jest --watchAll",
+        "watch:screen": "screen -c .screenrc",
+        "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
+    },
+    "dependencies": {
+        "@aantron/repromise": "^0.6.0",
+        "@reventless/bs-aws-sdk": "^1.1.1-alpha.0",
+        "@reventless/bs-fast-csv": "^0.2.8",
+        "@reventless/bs-hash-obj": "^0.1.5",
+        "@reventless/bs-node-streams": "^0.1.5",
+        "@reventless/bs-pulumi-aws": "^1.1.1-alpha.0",
+        "@reventless/bs-pulumi-pulumi": "^1.1.0-alpha.3",
+        "@reventless/bs-ssh2": "^0.1.5",
+        "@reventless/bs-uuid": "^0.1.6",
+        "@reventless/reventless-spec": "^1.1.1-alpha.0",
+        "@ryb73/decco": "0.0.12",
+        "bs-moment": "^0.6.0",
+        "fast-csv": "^3.2.0",
+        "hash-obj": "^2.0.0",
+        "moment": "^2.27.0",
+        "ssh2": "^0.8.5",
+        "uuid": "^3.4.0"
+    },
+    "devDependencies": {
+        "@glennsl/bs-jest": "^0.4.8",
+        "@pulumi/aws": "^5.24.0",
+        "@pulumi/pulumi": "^3.50.0",
+        "aws-sdk": "^2.556.0"
+    },
+    "peerDependencies": {
+        "bs-platform": "^5.2.1"
+    },
+    "gitHead": "1016edd2eceed939132c050a8ec292dc898a405f"
 }
