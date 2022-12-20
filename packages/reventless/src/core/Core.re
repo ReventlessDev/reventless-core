@@ -92,48 +92,17 @@ module Make =
         (),
       );
 
-    let readModels =
-      readModels
-      ->Belt.Array.map((module ReadModel: ReadModel.T) =>
-          (
-            ReadModel.Spec.name,
-            {
-              module_: (module ReadModel),
-              readModel: ReadModel.make(~opts, ()),
-            },
-          )
-        )
-      ->Js.Dict.fromArray;
-    let readModelsOutputs =
-      readModels
-      ->Js.Dict.entries
-      ->Belt.Array.map(((name, {readModel})) =>
-          (name, readModel->Component.extractOutputs)
-        )
-      ->Js.Dict.fromArray;
-    let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs;
-
-    let queryEngine = QueryEngineAdapter.make(allQueryDbs);
-
+    let addEventMapperFns = Js.Dict.empty();
     let publishToAggregates = Js.Dict.empty();
-    let aggregatesOutputs =
+
+    let aggregatesWithoutEventMappers =
       aggregates
       ->Belt.Array.map((module Aggregate: Aggregate.T) => {
-          let {module_, readModel} =
-            readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
-          module ReadModel = (val module_);
-          let aggregate =
-            Aggregate.make(
-              ~queryEngine,
-              ~eventsHandler=
-                (. id, events) =>
-                  readModel->ReadModel.update(.
-                    id->Obj.magic,
-                    events->Obj.magic,
-                  ), // TODO : remove
-              ~opts,
-              (),
-            );
+          let aggregate = Aggregate.make(~opts, ());
+          addEventMapperFns->Js.Dict.set(
+            Aggregate.Spec.name,
+            aggregate->Aggregate.addEventMapper,
+          );
           publishToAggregates->Js.Dict.set(
             Aggregate.Spec.name,
             aggregate->Aggregate.publishJsons,
@@ -141,6 +110,33 @@ module Make =
           aggregate->Component.extractOutputs;
         })
       ->toDict;
+
+    let allEventTopics =
+      Util.Aggregate.allEventTopics(aggregatesWithoutEventMappers);
+
+    let readModels =
+      readModels->Belt.Array.map((module ReadModel: ReadModel.T) => {
+        let readModel = ReadModel.make(~allEventTopics, ~opts, ());
+        (ReadModel.Spec.name, {module_: (module ReadModel), readModel});
+      });
+    let readModelsOutputs =
+      readModels
+      ->Js.Dict.fromArray
+      ->Js.Dict.entries
+      ->Belt.Array.map(((name, {readModel})) =>
+          (name, readModel->Component.extractOutputs)
+        )
+      ->Js.Dict.fromArray;
+
+    let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs;
+    let queryEngine = QueryEngineAdapter.make(allQueryDbs);
+
+    let aggregatesOutputs =
+      Js.Dict.map(
+        (. addEventMapperFn) =>
+          addEventMapperFn(allEventTopics, queryEngine),
+        addEventMapperFns,
+      );
 
     let extensionPoints =
       extensionPoints->Belt.Array.map(

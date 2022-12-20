@@ -146,14 +146,9 @@ module Make =
         (),
       );
 
-    module AggregateSpec = {
+    module ReferencesSpec = {
       module Id = Id.StringPure;
-      let name = name;
-    };
-
-    module ReferencesViewSpec = {
-      module Spec = AggregateSpec;
-      let name = Some(name ++ "References");
+      let name = name ++ "References";
       [@decco]
       type state = {
         id: string,
@@ -162,22 +157,21 @@ module Make =
 
       let resolveIdConfigs = [];
       let resolveIdsConfigs = [];
-      let sortConfig = None;
+      let subIdConfig = None;
       let indexes = [];
     };
 
     module ReferencesDb =
       QueryDb.Make(
         Config,
-        AggregateSpec,
-        ReferencesViewSpec,
+        ReferencesSpec,
         QueryDbStorage,
         (QueryDb.Adapter.NoResolvers(Config)),
       );
 
-    module CountsViewSpec = {
-      module Spec = AggregateSpec;
-      let name = Some(name ++ "Counts");
+    module CountsSpec = {
+      module Id = Id.StringPure;
+      let name = name ++ "Counts";
       [@decco]
       type state = {
         id: string,
@@ -186,15 +180,14 @@ module Make =
 
       let resolveIdConfigs = [];
       let resolveIdsConfigs = [];
-      let sortConfig = None;
+      let subIdConfig = None;
       let indexes = [];
     };
 
     module CountsDb =
       QueryDb.Make(
         Config,
-        AggregateSpec,
-        CountsViewSpec,
+        CountsSpec,
         QueryDbStorage,
         (QueryDb.Adapter.NoResolvers(Config)),
       );
@@ -240,7 +233,7 @@ module Make =
       saveBatch(.
         countItems->Belt.Array.map(({counterId, reference, inc}) => {
           let id = makeId((counterId, reference));
-          let state: ReferencesViewSpec.state = {id, inc};
+          let state: ReferencesSpec.state = {id, inc};
           (id, state, ttl);
         }),
       )
@@ -254,7 +247,7 @@ module Make =
               countItems->logCountItems;
               Js.Promise.resolve();
             }
-          | Error(QueryDb.NotSavedToStorage(err)) => {
+          | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) => {
               let batchSize = countItems->Belt.Array.size;
               Js.log(
                 {j|Counter error: couldn't save batch of $batchSize reference(s):|j},
@@ -276,10 +269,8 @@ module Make =
     let referencesDb = ReferencesDb.make(~ttl?, ~opts, ());
     let countsDb = CountsDb.make(~ttl?, ~opts, ());
 
-    let referencesName =
-      ReferencesViewSpec.name->Belt.Option.getWithDefault(AggregateSpec.name);
-    let countsName =
-      CountsViewSpec.name->Belt.Option.getWithDefault(AggregateSpec.name);
+    let referencesName = ReferencesSpec.name;
+    let countsName = CountsSpec.name;
 
     let groupByCounterId = references => {
       let dict = Js.Dict.empty();
@@ -301,7 +292,7 @@ module Make =
           ->groupByCounterId
           ->Belt.Array.map(((counterId, dec)) =>
               countsDb->CountsDb.count(.
-                counterId->AggregateSpec.Id.makeFromString,
+                counterId->CountsSpec.Id.makeFromString,
                 countFieldName,
                 - dec,
               )
@@ -312,7 +303,7 @@ module Make =
         let counterEventsHandlerP =
           counterEventsHandler(.
             counts->Belt.Array.keepMap(state =>
-              switch (state->CountsViewSpec.state_decode) {
+              switch (state->CountsSpec.state_decode) {
               | Ok({id, count}) when count == 0 =>
                 let (counterId, _) = id->unmakeId;
                 Js.log(

@@ -152,62 +152,21 @@ module Make =
         self,
         name,
       ) => {
+    let id = makeId(name, version);
+
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
         (),
       );
 
-    let id = makeId(name, version);
-
-    let (readModels, readModelsForAggregates) =
-      readModels
-      ->Belt.Array.map((module ReadModel: ReadModel.T) => {
-          let readModel = ReadModel.make(~opts, ());
-          let viewName =
-            ReadModel.View.name->Belt.Option.getWithDefault(
-              ReadModel.Spec.name,
-            );
-          (
-            (viewName, {module_: (module ReadModel), readModel}),
-            (ReadModel.Spec.name, {module_: (module ReadModel), readModel}),
-          );
-        })
-      ->Belt.Array.unzip;
-    let readModelsOutputs =
-      readModels
-      ->Js.Dict.fromArray
-      ->Js.Dict.entries
-      ->Belt.Array.map(((name, {readModel})) =>
-          (name, readModel->Component.extractOutputs)
-        )
-      ->Js.Dict.fromArray;
-    let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs;
-
-    let queryEngine = QueryEngineAdapter.make(allQueryDbs);
-
     let addEventMapperFns = Js.Dict.empty();
     let publishToAggregates = Js.Dict.empty();
+
     let aggregatesWithoutEventMappers =
       aggregates
       ->Belt.Array.map((module Aggregate: Aggregate.T) => {
-          let {module_, readModel} =
-            readModelsForAggregates
-            ->Js.Dict.fromArray
-            ->Js.Dict.unsafeGet(Aggregate.Spec.name);
-          module ReadModel = (val module_);
-          let aggregate =
-            Aggregate.make(
-              ~queryEngine,
-              ~eventsHandler=
-                (. id, events) =>
-                  readModel->ReadModel.update(.
-                    id->Obj.magic,
-                    events->Obj.magic,
-                  ), // TODO: remove when introducing multiple ReadModels
-              ~opts,
-              (),
-            );
+          let aggregate = Aggregate.make(~opts, ());
           addEventMapperFns->Js.Dict.set(
             Aggregate.Spec.name,
             aggregate->Aggregate.addEventMapper,
@@ -219,12 +178,47 @@ module Make =
           aggregate->Component.extractOutputs;
         })
       ->toDict;
+
+    let allEventTopics =
+      Util.Aggregate.allEventTopics(aggregatesWithoutEventMappers);
+
+    let readModels =
+      readModels->Belt.Array.map((module ReadModel: ReadModel.T) => {
+        let readModel = ReadModel.make(~allEventTopics, ~opts, ());
+        (ReadModel.Spec.name, {module_: (module ReadModel), readModel});
+      });
+    let readModelsOutputs =
+      readModels
+      ->Js.Dict.fromArray
+      ->Js.Dict.entries
+      ->Belt.Array.map(((name, {readModel})) =>
+          (name, readModel->Component.extractOutputs)
+        )
+      ->Js.Dict.fromArray;
+
+    let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs;
+    let queryEngine = QueryEngineAdapter.make(allQueryDbs);
+
     let aggregatesOutputs =
       Js.Dict.map(
         (. addEventMapperFn) =>
-          addEventMapperFn(aggregatesWithoutEventMappers),
+          addEventMapperFn(allEventTopics, queryEngine),
         addEventMapperFns,
       );
+
+    let extensionPoints =
+      extensionPoints->Belt.Array.map(
+        (module ExtensionPoint: ExtensionPoint.T) =>
+        ExtensionPoint.make(
+          ~publishToAggregates,
+          ~scheduler,
+          ~queryEngine,
+          ~opts=Some(opts),
+          (),
+        )
+      );
+    let extensionPointsOutputs =
+      extensionPoints->Component.extractMultipleOutputs;
 
     let pureOutputs =
       (
@@ -241,20 +235,6 @@ module Make =
           let corePluginExtensionPoint =
             coreStackOutput##extensionPoints->Belt.Option.getExn
             -# ReventlessSpec.PluginExtensionPointSpec.name;
-
-          let extensionPoints =
-            extensionPoints->Belt.Array.map(
-              (module ExtensionPoint: ExtensionPoint.T) =>
-              ExtensionPoint.make(
-                ~publishToAggregates,
-                ~scheduler,
-                ~queryEngine,
-                ~opts=Some(opts),
-                (),
-              )
-            );
-          let extensionPointsOutputs =
-            extensionPoints->Component.extractMultipleOutputs;
 
           let corePluginExtensionPointCommandTopicRemoteConnector =
             CorePluginExtensionPointRemoteConnector.make(

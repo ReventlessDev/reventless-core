@@ -19,19 +19,13 @@ type name = string;
 type t;
 type component = Component.t(t, outputs);
 
-type addEventMapper = allOutputs => outputs;
+type addEventMapper =
+  (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs;
 
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T;
 
-  let make:
-    (
-      ~queryEngine: ReventlessSpec.QueryEngine.t,
-      ~eventsHandler: Message.eventsHandler(Spec.Id.t, Spec.event),
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      unit
-    ) =>
-    component;
+  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component;
 
   let publishJsons: component => CommandTopic.publishJsons;
   let addEventMapper: component => addEventMapper;
@@ -164,7 +158,7 @@ module Make =
       );
   };
 
-  let handleCommands = ((eventLogAppend, eventLogReplay, eventsHandler)) =>
+  let handleCommands = ((eventLogAppend, eventLogReplay)) =>
     (. allTopicItems) => {
       let apply' = (stateOpt, event) =>
         switch (stateOpt) {
@@ -301,35 +295,26 @@ module Make =
                             event'->eventName
                           ),
                         );
-                        eventsHandler(. id, generatedEvents')
-                        |> Js.Promise.catch(err => {
-                             let msg = errorMessage(id, "eventsHandler", err);
-                             Js.log(msg);
-                             Js.Exn.raiseError(msg);
-                           })
-                        |> Js.Promise.then_(_ => {
-                             Js.log({j|finished eventsHandler for id $id|j});
-                             eventLogAppend(.
-                               history->Belt.Array.length,
-                               id,
-                               generatedEvents',
+                        eventLogAppend(.
+                          history->Belt.Array.length,
+                          id,
+                          generatedEvents',
+                        )
+                        |> Js.Promise.then_(result =>
+                             (
+                               switch (result) {
+                               | Ok(_) =>
+                                 references->Belt.Array.map(reference =>
+                                   Ok(reference)
+                                 )
+                               | Error(_) =>
+                                 references->Belt.Array.map(reference =>
+                                   Error(reference)
+                                 )
+                               }
                              )
-                             |> Js.Promise.then_(result =>
-                                  (
-                                    switch (result) {
-                                    | Ok(_) =>
-                                      references->Belt.Array.map(reference =>
-                                        Ok(reference)
-                                      )
-                                    | Error(_) =>
-                                      references->Belt.Array.map(reference =>
-                                        Error(reference)
-                                      )
-                                    }
-                                  )
-                                  ->Js.Promise.resolve
-                                );
-                           })
+                             ->Js.Promise.resolve
+                           )
                         |> Js.Promise.then_(results => {
                              Js.log({j|finished eventLogAppend for id $id|j});
                              results->Js.Promise.resolve;
@@ -344,7 +329,7 @@ module Make =
          );
     };
 
-  let addEventMapperFn = (component, allAggregates, ~queryEngine, ~opts) => {
+  let addEventMapperFn = (component, allEventTopics, queryEngine, ~opts) => {
     module EventCollector = EventCollector.Make(EventCollectorConnector);
     module EventMapper =
       EventMapper.Make(Spec, EventCollector, EventMappings);
@@ -353,7 +338,7 @@ module Make =
       EventMappings.mappings->Belt.Array.length > 0
         ? Some(
             EventMapper.make(
-              ~allEventTopics=Util.Aggregate.allEventTopics(allAggregates),
+              ~allEventTopics,
               ~queryEngine,
               ~publishJsons=component->publishJsons,
               ~opts,
@@ -371,7 +356,7 @@ module Make =
     );
   };
 
-  let construct = (~queryEngine, ~eventsHandler, self, name) => {
+  let construct = (self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -383,11 +368,7 @@ module Make =
     let eventLog = EventLog.make(~name=childName, ~opts, ());
 
     let handleCommands =
-      handleCommands((
-        eventLog->EventLog.append,
-        eventLog->EventLog.replay,
-        eventsHandler,
-      ));
+      handleCommands((eventLog->EventLog.append, eventLog->EventLog.replay));
 
     let commandTopic =
       CommandTopic.make(
@@ -406,7 +387,7 @@ module Make =
       );
 
     self->setPublishJsons(commandTopic->CommandTopic.publishJsons);
-    self->setAddEventMapper(self->addEventMapperFn(~queryEngine, ~opts));
+    self->setAddEventMapper(self->addEventMapperFn(~opts));
 
     makeOutputs(
       ~name,
@@ -418,11 +399,11 @@ module Make =
     |> self->setOutputs;
   };
 
-  let make = (~queryEngine, ~eventsHandler, ~opts=?, _) =>
+  let make = (~opts=?, _) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~queryEngine, ~eventsHandler),
+      ~construct,
       ~opts,
     );
 };

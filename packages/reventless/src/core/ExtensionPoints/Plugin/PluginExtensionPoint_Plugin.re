@@ -26,10 +26,10 @@ let forwardCommand =
       | plugins => {
           let plugin = plugins->Belt.Array.getExn(0);
           plugin
-          ->PluginView.state_decode
+          ->PluginReadModelSpec.state_decode
           ->(
               fun
-              | Belt.Result.Ok((plugin: PluginView.state)) => {
+              | Belt.Result.Ok((plugin: PluginReadModelSpec.state)) => {
                   plugin.extensionPoints
                   ->Belt.Array.getBy(extensionPoint =>
                       extensionPoint.name == extensionPointName

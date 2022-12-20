@@ -111,28 +111,26 @@ function Make(Config) {
               }
             };
             var ReferencesDb = QueryDb$Reventless.Make(Config)({
-                        Id: {
-                          t_encode: Id$Reventless.StringPure.t_encode,
-                          t_decode: Id$Reventless.StringPure.t_decode,
-                          make: (function (prim) {
-                              return prim;
-                            }),
-                          makeFromString: (function (prim) {
-                              return prim;
-                            }),
-                          toString: (function (prim) {
-                              return prim;
-                            }),
-                          cmp: Id$Reventless.StringPure.cmp
-                        },
-                        name: name$1
-                      })({
+                      Id: {
+                        t_encode: Id$Reventless.StringPure.t_encode,
+                        t_decode: Id$Reventless.StringPure.t_decode,
+                        make: (function (prim) {
+                            return prim;
+                          }),
+                        makeFromString: (function (prim) {
+                            return prim;
+                          }),
+                        toString: (function (prim) {
+                            return prim;
+                          }),
+                        cmp: Id$Reventless.StringPure.cmp
+                      },
                       name: name$2,
                       state_encode: state_encode,
                       state_decode: state_decode,
                       resolveIdConfigs: /* [] */0,
                       resolveIdsConfigs: /* [] */0,
-                      sortConfig: undefined,
+                      subIdConfig: undefined,
                       indexes: /* [] */0
                     })(QueryDbStorage)(QueryDb$Reventless.Adapter.NoResolvers(Config));
             var name$3 = name$1 + "Counts";
@@ -181,28 +179,26 @@ function Make(Config) {
               }
             };
             var CountsDb = QueryDb$Reventless.Make(Config)({
-                        Id: {
-                          t_encode: Id$Reventless.StringPure.t_encode,
-                          t_decode: Id$Reventless.StringPure.t_decode,
-                          make: (function (prim) {
-                              return prim;
-                            }),
-                          makeFromString: (function (prim) {
-                              return prim;
-                            }),
-                          toString: (function (prim) {
-                              return prim;
-                            }),
-                          cmp: Id$Reventless.StringPure.cmp
-                        },
-                        name: name$1
-                      })({
+                      Id: {
+                        t_encode: Id$Reventless.StringPure.t_encode,
+                        t_decode: Id$Reventless.StringPure.t_decode,
+                        make: (function (prim) {
+                            return prim;
+                          }),
+                        makeFromString: (function (prim) {
+                            return prim;
+                          }),
+                        toString: (function (prim) {
+                            return prim;
+                          }),
+                        cmp: Id$Reventless.StringPure.cmp
+                      },
                       name: name$3,
                       state_encode: state_encode$1,
                       state_decode: state_decode$1,
                       resolveIdConfigs: /* [] */0,
                       resolveIdsConfigs: /* [] */0,
-                      sortConfig: undefined,
+                      subIdConfig: undefined,
                       indexes: /* [] */0
                     })(QueryDbStorage)(QueryDb$Reventless.Adapter.NoResolvers(Config));
             var separator = "#";
@@ -253,8 +249,6 @@ function Make(Config) {
             };
             var referencesDb = Curry._3(ReferencesDb.make, ttl, Caml_option.some(opts), /* () */0);
             var countsDb = Curry._3(CountsDb.make, ttl, Caml_option.some(opts), /* () */0);
-            var referencesName = Belt_Option.getWithDefault(name$2, name$1);
-            var countsName = Belt_Option.getWithDefault(name$3, name$1);
             var groupByCounterId = function (references) {
               var dict = { };
               Belt_Array.forEach(references, (function (param) {
@@ -316,7 +310,7 @@ function Make(Config) {
                             return Promise.resolve(/* () */0);
                           }));
             };
-            var handler = Curry._7(Handler.make, name$1, referencesName, Component$Reventless.extractOutputs(referencesDb), countsName, Component$Reventless.extractOutputs(countsDb), counterHandler, opts2);
+            var handler = Curry._7(Handler.make, name$1, name$2, Component$Reventless.extractOutputs(referencesDb), name$3, Component$Reventless.extractOutputs(countsDb), counterHandler, opts2);
             var partial_arg = Curry._1(ReferencesDb.saveBatch, referencesDb);
             self.count = (function (param) {
                 var saveBatch = partial_arg;

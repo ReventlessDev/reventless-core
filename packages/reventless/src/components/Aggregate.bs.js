@@ -22,7 +22,6 @@ var EventMapper$Reventless = require("./EventMapper.bs.js");
 var CommandTopic$Reventless = require("./CommandTopic.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("./EventCollector.bs.js");
-var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
 var CommandGenerator$Reventless = require("./CommandGenerator.bs.js");
 
 function Make(Config) {
@@ -54,9 +53,6 @@ function Make(Config) {
                                     console.log("Behaviour error " + (String(errorJson) + (" in " + (String(serviceName) + ("(" + (String(id) + ("): Command: " + (String(commandJson) + ""))))))));
                                     return /* [] */0;
                                   };
-                                  var errorMessage = function (id, kind, err) {
-                                    return "Aggregate.execCommand(" + (String(id) + ("): " + (String(kind) + " Error: "))) + err.message;
-                                  };
                                   var groupTopicItemsById = function (topicItems) {
                                     var ids = Belt_Array.map(topicItems, (function (param) {
                                             return param[/* command */0][/* id */0];
@@ -74,7 +70,6 @@ function Make(Config) {
                                                 }));
                                   };
                                   var handleCommands = function (param) {
-                                    var eventsHandler = param[2];
                                     var eventLogReplay = param[1];
                                     var eventLogAppend = param[0];
                                     return (function (allTopicItems) {
@@ -202,21 +197,14 @@ function Make(Config) {
                                                                                                       var event$prime$1 = event$prime;
                                                                                                       return Caml_array.caml_array_get(Curry._1(Spec.event_encode, event$prime$1[/* event */2]), 0);
                                                                                                     })));
-                                                                                          return eventsHandler(id, generatedEvents$prime).catch((function (err) {
-                                                                                                            var msg = errorMessage(id, "eventsHandler", err);
-                                                                                                            console.log(msg);
-                                                                                                            return Js_exn.raiseError(msg);
-                                                                                                          })).then((function (param) {
-                                                                                                          console.log("finished eventsHandler for id " + (String(id) + ""));
-                                                                                                          return eventLogAppend(history.length, id, generatedEvents$prime).then((function (result) {
-                                                                                                                        var tmp;
-                                                                                                                        tmp = result.tag ? Belt_Array.map(references, (function (reference) {
-                                                                                                                                  return /* Error */Block.__(1, [reference]);
-                                                                                                                                })) : Belt_Array.map(references, (function (reference) {
-                                                                                                                                  return /* Ok */Block.__(0, [reference]);
-                                                                                                                                }));
-                                                                                                                        return Promise.resolve(tmp);
-                                                                                                                      }));
+                                                                                          return eventLogAppend(history.length, id, generatedEvents$prime).then((function (result) {
+                                                                                                          var tmp;
+                                                                                                          tmp = result.tag ? Belt_Array.map(references, (function (reference) {
+                                                                                                                    return /* Error */Block.__(1, [reference]);
+                                                                                                                  })) : Belt_Array.map(references, (function (reference) {
+                                                                                                                    return /* Ok */Block.__(0, [reference]);
+                                                                                                                  }));
+                                                                                                          return Promise.resolve(tmp);
                                                                                                         })).then((function (results) {
                                                                                                         console.log("finished eventLogAppend for id " + (String(id) + ""));
                                                                                                         return Promise.resolve(results);
@@ -233,7 +221,7 @@ function Make(Config) {
                                                     }));
                                       });
                                   };
-                                  var construct = function (queryEngine, eventsHandler, self, name) {
+                                  var construct = function (self, name) {
                                     var opts = {
                                       parent: self
                                     };
@@ -241,37 +229,40 @@ function Make(Config) {
                                     var eventLog = Curry._3(EventLog.make, childName, Caml_option.some(opts), /* () */0);
                                     var handleCommands$1 = handleCommands(/* tuple */[
                                           Curry._1(EventLog.append, eventLog),
-                                          Curry._1(EventLog.replay, eventLog),
-                                          eventsHandler
+                                          Curry._1(EventLog.replay, eventLog)
                                         ]);
                                     var commandTopic = Curry._6(CommandTopic.make, childName, handleCommands$1, undefined, undefined, Caml_option.some(opts), /* () */0);
                                     var commandGenerator = Curry._4(CommandGenerator.make, childName, Curry._1(CommandTopic.publish, commandTopic), Caml_option.some(opts), /* () */0);
                                     self.publishJsons = Curry._1(CommandTopic.publishJsons, commandTopic);
                                     self.addEventMapper = (function (param) {
-                                        var param$1 = param;
-                                        var param$2 = queryEngine;
-                                        var param$3 = opts;
-                                        var component = self;
-                                        var allAggregates = param$1;
-                                        var queryEngine$1 = param$2;
-                                        var opts$1 = param$3;
-                                        var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-                                        var EventMapper = EventMapper$Reventless.Make({
-                                                  name: Spec.name,
-                                                  Id: Spec.Id,
-                                                  command_encode: Spec.command_encode,
-                                                  command_decode: Spec.command_decode
-                                                })(EventCollector)(EventMappings);
-                                        var match = EventMappings.mappings.length !== 0;
-                                        var eventMapper = match ? Caml_option.some(Curry._7(EventMapper.make, Util_Aggregate$Reventless.allEventTopics(allAggregates), queryEngine$1, component.publishJsons, undefined, undefined, Caml_option.some(opts$1), /* () */0)) : undefined;
-                                        var outputs = Component$Reventless.extractOutputs(component);
-                                        return {
-                                                name: outputs.name,
-                                                commandGenerator: outputs.commandGenerator,
-                                                commandTopic: outputs.commandTopic,
-                                                eventLog: outputs.eventLog,
-                                                eventMapper: Belt_Option.map(eventMapper, Component$Reventless.extractOutputs)
-                                              };
+                                        return (function (param$1) {
+                                            var param$2 = param$1;
+                                            var param$3 = opts;
+                                            var param$4 = param;
+                                            var param$5 = param$2;
+                                            var param$6 = param$3;
+                                            var component = self;
+                                            var allEventTopics = param$4;
+                                            var queryEngine = param$5;
+                                            var opts$1 = param$6;
+                                            var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+                                            var EventMapper = EventMapper$Reventless.Make({
+                                                      name: Spec.name,
+                                                      Id: Spec.Id,
+                                                      command_encode: Spec.command_encode,
+                                                      command_decode: Spec.command_decode
+                                                    })(EventCollector)(EventMappings);
+                                            var match = EventMappings.mappings.length !== 0;
+                                            var eventMapper = match ? Caml_option.some(Curry._7(EventMapper.make, allEventTopics, queryEngine, component.publishJsons, undefined, undefined, Caml_option.some(opts$1), /* () */0)) : undefined;
+                                            var outputs = Component$Reventless.extractOutputs(component);
+                                            return {
+                                                    name: outputs.name,
+                                                    commandGenerator: outputs.commandGenerator,
+                                                    commandTopic: outputs.commandTopic,
+                                                    eventLog: outputs.eventLog,
+                                                    eventMapper: Belt_Option.map(eventMapper, Component$Reventless.extractOutputs)
+                                                  };
+                                          });
                                       });
                                     var self$1 = self;
                                     var outputs = {
@@ -284,12 +275,10 @@ function Make(Config) {
                                     self$1.setOutputs(outputs);
                                     return self$1.registerOutputs(outputs);
                                   };
-                                  var make = function (queryEngine, eventsHandler, opts, param) {
+                                  var make = function (opts, param) {
                                     var prim = ComponentType$Reventless.toString(/* Aggregate */0);
                                     var prim$1 = Spec.name;
-                                    var prim$2 = function (param, param$1) {
-                                      return construct(queryEngine, eventsHandler, param, param$1);
-                                    };
+                                    var prim$2 = construct;
                                     var prim$3 = opts;
                                     return new Component.default(prim, prim$1, prim$2, prim$3);
                                   };

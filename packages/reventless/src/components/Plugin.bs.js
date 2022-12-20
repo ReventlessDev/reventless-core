@@ -50,32 +50,30 @@ function Make(EventCollectorConnector) {
   return (function (QueryEngineAdapter) {
       return (function (CorePluginExtensionPointRemoteConnector) {
           var construct = function (version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, self, name) {
+            var id = makeId(name, version);
             var opts = {
               parent: self
             };
-            var id = makeId(name, version);
-            var match = Belt_Array.unzip(Belt_Array.map(readModels, (function (ReadModel) {
-                        var readModel = Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0);
-                        var viewName = Belt_Option.getWithDefault(ReadModel.View.name, ReadModel.Spec.name);
-                        return /* tuple */[
-                                /* tuple */[
-                                  viewName,
-                                  /* record */[
-                                    /* module_ */ReadModel,
-                                    /* readModel */readModel
-                                  ]
-                                ],
-                                /* tuple */[
-                                  ReadModel.Spec.name,
-                                  /* record */[
-                                    /* module_ */ReadModel,
-                                    /* readModel */readModel
-                                  ]
-                                ]
-                              ];
+            var addEventMapperFns = { };
+            var publishToAggregates = { };
+            var aggregatesWithoutEventMappers = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
+                        var aggregate = Curry._2(Aggregate.make, Caml_option.some(opts), /* () */0);
+                        addEventMapperFns[Aggregate.Spec.name] = Curry._1(Aggregate.addEventMapper, aggregate);
+                        publishToAggregates[Aggregate.Spec.name] = Curry._1(Aggregate.publishJsons, aggregate);
+                        return Component$Reventless.extractOutputs(aggregate);
                       })));
-            var readModelsForAggregates = match[1];
-            var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(Js_dict.fromArray(match[0])), (function (param) {
+            var allEventTopics = Util_Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
+            var readModels$1 = Belt_Array.map(readModels, (function (ReadModel) {
+                    var readModel = Curry._3(ReadModel.make, allEventTopics, Caml_option.some(opts), /* () */0);
+                    return /* tuple */[
+                            ReadModel.Spec.name,
+                            /* record */[
+                              /* module_ */ReadModel,
+                              /* readModel */readModel
+                            ]
+                          ];
+                  }));
+            var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(Js_dict.fromArray(readModels$1)), (function (param) {
                         return /* tuple */[
                                 param[0],
                                 Component$Reventless.extractOutputs(param[1][/* readModel */1])
@@ -83,30 +81,17 @@ function Make(EventCollectorConnector) {
                       })));
             var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
             var queryEngine = Curry._1(QueryEngineAdapter.make, allQueryDbs);
-            var addEventMapperFns = { };
-            var publishToAggregates = { };
-            var aggregatesWithoutEventMappers = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
-                        var match = Js_dict.fromArray(readModelsForAggregates)[Aggregate.Spec.name];
-                        var readModel = match[/* readModel */1];
-                        var module_ = match[/* module_ */0];
-                        var aggregate = Curry._4(Aggregate.make, queryEngine, (function (id, events) {
-                                return Curry._1(module_.update, readModel)(id, events);
-                              }), Caml_option.some(opts), /* () */0);
-                        addEventMapperFns[Aggregate.Spec.name] = Curry._1(Aggregate.addEventMapper, aggregate);
-                        publishToAggregates[Aggregate.Spec.name] = Curry._1(Aggregate.publishJsons, aggregate);
-                        return Component$Reventless.extractOutputs(aggregate);
-                      })));
             var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
-                    return Curry._1(addEventMapperFn, aggregatesWithoutEventMappers);
+                    return Curry._2(addEventMapperFn, allEventTopics, queryEngine);
                   }), addEventMapperFns);
+            var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
+                    return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), /* () */0);
+                  }));
+            var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
             var pureOutputs = (
                 Interstack$Reventless.coreStackOutput !== undefined ? Caml_option.valFromOption(Interstack$Reventless.coreStackOutput) : Js_exn.raiseError("No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!")
               ).apply((function (coreStackOutput) {
                     var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(Belt_Option.getExn(coreStackOutput.extensionPoints), PluginExtensionPointSpec$ReventlessSpec.name);
-                    var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-                            return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), /* () */0);
-                          }));
-                    var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
                     var corePluginExtensionPointCommandTopicRemoteConnector = Curry._1(CorePluginExtensionPointRemoteConnector.make, corePluginExtensionPoint.commandTopic);
                     var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector[/* remotePublish */0];
                     var extensions$1 = Belt_Array.map(extensions, (function (Extension) {

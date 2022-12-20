@@ -10,3 +10,9 @@ type meta = {
   msgId: string,
   correlationId: string,
 };
+
+[@decco]
+type context = {
+  id: string,
+  meta,
+};

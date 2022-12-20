@@ -1,39 +1,36 @@
-open Jest;
-
-module PluginTest = Reventless.ViewTest.Make(PluginSpec, PluginView);
-open PluginTest;
 open PluginSpec;
 open PluginFixture;
+include Reventless.ProjectionTest.Make(PluginProjection.Impl);
 
 describe("PluginView:", () => {
   test("UnknownPluginDetected", () =>
-    givenEvents([])  //
-    |> whenEvent(UnknownPluginDetected)
-    |> thenNoState
+    givenEvents([]) //
+    ->whenEvent(UnknownPluginDetected)
+    ->thenNoState
   );
 
   test("UnknownPluginDetected (already detected)", () =>
     givenEvents([UnknownPluginDetected])
-    |> whenEvent(UnknownPluginDetected)
-    |> thenNoState
+    ->whenEvent(UnknownPluginDetected)
+    ->thenNoState
   );
 
   test("Connected", () =>
     givenEvents([UnknownPluginDetected])
-    |> whenEvent(Connected(pluginDefinition))
-    |> thenState({...state, status: Connected})
+    ->whenEvent(Connected(pluginDefinition))
+    ->thenState({...state, status: Connected})
   );
 
   test("Disconnected", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    |> whenEvent(Disconnected(pluginDefinition))
-    |> thenState({...state, status: Disconnected})
+    ->whenEvent(Disconnected(pluginDefinition))
+    ->thenState({...state, status: Disconnected})
   );
 
   test("Deactivated", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    |> whenEvent(Deactivated(pluginDefinition))
-    |> thenState({...state, status: Inactive})
+    ->whenEvent(Deactivated(pluginDefinition))
+    ->thenState({...state, status: Inactive})
   );
 
   test("Activated", () =>
@@ -42,8 +39,8 @@ describe("PluginView:", () => {
       Connected(pluginDefinition),
       Deactivated(pluginDefinition),
     ])
-    |> whenEvent(Activated(pluginDefinition))
-    |> thenState({...state, status: Disconnected})
+    ->whenEvent(Activated(pluginDefinition))
+    ->thenState({...state, status: Disconnected})
   );
 
   test("Reconnected (after activated)", () =>
@@ -53,7 +50,7 @@ describe("PluginView:", () => {
       Deactivated(pluginDefinition),
       Activated(pluginDefinition),
     ])
-    |> whenEvent(Reconnected(pluginDefinition))
-    |> thenState({...state, status: Connected})
+    ->whenEvent(Reconnected(pluginDefinition))
+    ->thenState({...state, status: Connected})
   );
 });

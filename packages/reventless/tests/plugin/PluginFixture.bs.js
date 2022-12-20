@@ -2,8 +2,8 @@
 'use strict';
 
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var PluginView$Reventless = require("../../src/core/ReadModels/Plugin/PluginView.bs.js");
 var TestFixtures$Reventless = require("../../test-helper/TestFixtures.bs.js");
+var PluginProjection$Reventless = require("../../src/core/ReadModels/Plugin/PluginProjection.bs.js");
 
 var pluginDefinition_003 = /* extensionPoints : array */[];
 
@@ -23,9 +23,9 @@ var pluginDefinition = /* record */[
 
 var state_003 = pluginDefinition_003;
 
-var state_004 = /* extensionPointNames */PluginView$Reventless.extractExtensionPointNames(pluginDefinition_003);
+var state_004 = /* extensionPointNames */PluginProjection$Reventless.extractExtensionPointNames(pluginDefinition_003);
 
-var state_005 = /* extensionNames */PluginView$Reventless.extractExtensionNames(pluginDefinition_004);
+var state_005 = /* extensionNames */PluginProjection$Reventless.extractExtensionNames(pluginDefinition_004);
 
 var state_006 = pluginDefinition_004;
 
