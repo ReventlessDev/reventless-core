@@ -36,16 +36,26 @@ function Make(Config) {
                 var opts = {
                   parent: self
                 };
-                var readModels$1 = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
-                            return /* tuple */[
-                                    ReadModel.Spec.name,
-                                    /* record */[
-                                      /* module_ */ReadModel,
-                                      /* readModel */Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0)
-                                    ]
-                                  ];
+                var addEventMapperFns = { };
+                var publishToAggregates = { };
+                var aggregatesWithoutEventMappers = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
+                            var aggregate = Curry._2(Aggregate.make, Caml_option.some(opts), /* () */0);
+                            addEventMapperFns[Aggregate.Spec.name] = Curry._1(Aggregate.addEventMapper, aggregate);
+                            publishToAggregates[Aggregate.Spec.name] = Curry._1(Aggregate.publishJsons, aggregate);
+                            return Component$Reventless.extractOutputs(aggregate);
                           })));
-                var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(readModels$1), (function (param) {
+                var allEventTopics = Util_Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
+                var readModels$1 = Belt_Array.map(readModels, (function (ReadModel) {
+                        var readModel = Curry._3(ReadModel.make, allEventTopics, Caml_option.some(opts), /* () */0);
+                        return /* tuple */[
+                                ReadModel.Spec.name,
+                                /* record */[
+                                  /* module_ */ReadModel,
+                                  /* readModel */readModel
+                                ]
+                              ];
+                      }));
+                var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(Js_dict.fromArray(readModels$1)), (function (param) {
                             return /* tuple */[
                                     param[0],
                                     Component$Reventless.extractOutputs(param[1][/* readModel */1])
@@ -53,17 +63,9 @@ function Make(Config) {
                           })));
                 var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
                 var queryEngine = Curry._1(QueryEngineAdapter.make, allQueryDbs);
-                var publishToAggregates = { };
-                var aggregatesOutputs = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
-                            var match = readModels$1[Aggregate.Spec.name];
-                            var readModel = match[/* readModel */1];
-                            var module_ = match[/* module_ */0];
-                            var aggregate = Curry._4(Aggregate.make, queryEngine, (function (id, events) {
-                                    return Curry._1(module_.update, readModel)(id, events);
-                                  }), Caml_option.some(opts), /* () */0);
-                            publishToAggregates[Aggregate.Spec.name] = Curry._1(Aggregate.publishJsons, aggregate);
-                            return Component$Reventless.extractOutputs(aggregate);
-                          })));
+                var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
+                        return Curry._2(addEventMapperFn, allEventTopics, queryEngine);
+                      }), addEventMapperFns);
                 var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
                         return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), /* () */0);
                       }));

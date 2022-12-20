@@ -1,5 +1,4 @@
 module ReventlessQueryDb = QueryDb;
-module ReventlessView = View;
 
 let componentType = ComponentType.ReadModel;
 
@@ -7,54 +6,42 @@ type outputs = {
   .
   "name": string,
   "queryDb": QueryDb.outputs,
+  "eventCollector": EventCollector.outputs,
 };
-
-type update('id, 'event) = Message.eventsHandler('id, 'event);
-
-// type functions('id, 'event) = {. "update": update('id, 'event)};
-
-// external toOutputs: functions('id, 'event) => outputs = "%identity";
-
-// type t('id, 'event) = functions('id, 'event);
 
 type t;
 type component = Component.t(t, outputs);
 
 module type T = {
-  module Spec: View.Spec;
-  module View: View.T with module Spec := Spec;
+  module Spec: ReventlessSpec.ReadModelSpec.T;
 
-  /* Is this necessary? For test?
-     let update:
-       (
-         QueryDb.load(Spec.Id.t, View.state),
-         QueryDb.save(Spec.Id.t, View.state),
-         QueryDb.delete(Spec.Id.t)
-       ) =>
-       update(Spec.Id.t, Spec.event);
-       */
-  let update: component => update(Spec.Id.t, Spec.event);
-
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component;
+  let make:
+    (
+      ~allEventTopics: EventTopic.allOutputs,
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      unit
+    ) =>
+    component;
 };
 
 module Make =
        (
          Config: Config.T,
-         Spec: View.Spec,
-         View: View.T with module Spec := Spec,
+         Spec: ReventlessSpec.ReadModelSpec.T,
+         Mappings:
+           ReventlessSpec.MapperNto1.Mappings with
+             module Spec := ReventlessSpec.ProjectionSpec and
+             module Target = ReventlessSpec.Mapper.MakeGenericTargetFromStateTarget(Spec),
          QueryDbStorage:
            QueryDb.Adapter.Storage with
              type api = Config.api and type role = Config.role,
          QueryDbResolvers:
            QueryDb.Adapter.Resolvers with
              type api = Config.api and type role = Config.role,
+         EventCollectorConnector: EventCollector.Adapter.Connector,
        )
-       : (T with module Spec = Spec and module View = View) => {
+       : (T with module Spec = Spec) => {
   module Spec = Spec;
-  module View = View;
-
-  type update = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
   type construct = (component, string) => constructed;
@@ -71,11 +58,16 @@ module Make =
     "default";
 
   module QueryDb =
-    QueryDb.Make(Config, Spec, View, QueryDbStorage, QueryDbResolvers);
+    QueryDb.Make(Config, Spec, QueryDbStorage, QueryDbResolvers);
 
   [@bs.obj]
   external makeOutputs:
-    (~name: string, ~queryDb: ReventlessQueryDb.outputs) => outputs =
+    (
+      ~name: string,
+      ~queryDb: ReventlessQueryDb.outputs,
+      ~eventCollector: EventCollector.outputs
+    ) =>
+    outputs =
     "";
   [@bs.send]
   external registerOutputs: (component, outputs) => constructed =
@@ -86,119 +78,7 @@ module Make =
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setUpdate: (component, update) => unit = "update";
-  [@bs.get] external update: component => update = "update";
-
-  open ReventlessView;
-
-  let applyEvent = (states, event, context) =>
-    switch (states) {
-    | [] =>
-      let newStates = View.init(. event, context);
-      newStates->Belt.List.map(state => Create(state));
-    | [oldState] => View.apply(. oldState, event, context)
-    | oldStates => View.applyMulti(. oldStates, event, context)
-    };
-
-  let applyAction = action =>
-    switch (action) {
-    | Create(state) => [state]
-    | Update(newState) => [newState]
-    | Delete(_) => []
-    | Unchanged(state) => [state]
-    };
-
-  open Belt.Result;
-
-  let updateFn = (load, save, delete): update =>
-    (. id, event's) =>
-      Js.Promise.(
-        {
-          let handleAction =
-            fun
-            | Create(state) =>
-              save(. id, state, ReventlessQueryDb.Init, None)
-            | Update(state) =>
-              save(. id, state, ReventlessQueryDb.Overwrite, None)
-            | Delete(state) =>
-              delete(.
-                id,
-                View.sortConfig->Belt.Option.map(config =>
-                  (config.sortField, config.getSortKey(state))
-                ),
-              )
-            | Unchanged(_) => Ok()->resolve;
-
-          let rec handleActions =
-            fun
-            | [] => Ok()->resolve
-            | [action, ...unhandledActions] as actions =>
-              action->handleAction
-              |> then_(
-                   fun
-                   | Error(ReventlessQueryDb.StaleState) => {
-                       Js.log(
-                         "ReadModel.handleActions: retrying due to StaleState",
-                       );
-                       Error([])->resolve;
-                     }
-                   | Error(_) => Error(actions)->resolve
-                   | Ok () => handleActions(unhandledActions),
-                 );
-
-          let rec handleEvents =
-                  (
-                    states,
-                    event's: list(Message.event'(Spec.Id.t, Spec.event)),
-                    unhandledActions,
-                  ) => {
-            switch (event's) {
-            | [] => Ok()->resolve
-            | [event', ...unhandledEvent's] =>
-              let context = {
-                Message.meta: event'.meta,
-                id: event'.id |> Spec.Id.toString,
-              };
-              let actions =
-                switch (unhandledActions) {
-                | [] => states->applyEvent(event'.event, context)
-                | _ => unhandledActions
-                };
-              handleActions(actions)
-              |> then_(
-                   fun
-                   | Ok () => {
-                       let newStates =
-                         actions
-                         ->Belt.List.map(applyAction)
-                         ->Belt.List.flatten;
-                       handleEvents(newStates, unhandledEvent's, []);
-                     }
-                   | Error(unhandledActions) =>
-                     Error((event's, unhandledActions))->resolve,
-                 );
-            };
-          };
-
-          let rec process = (event's, unhandledActions) =>
-            load(. id)
-            |> then_(
-                 fun
-                 | Ok(states) =>
-                   handleEvents(states, event's, unhandledActions)
-                   |> then_(
-                        fun
-                        | Ok () => resolve()
-                        | Error((unhandledEvent's, unhandledActions)) =>
-                          process(unhandledEvent's, unhandledActions),
-                      )
-                 | Error(_) => process(event's, []),
-               );
-          process(event's->Belt.List.fromArray, []);
-        }
-      );
-
-  let construct = (self, name) => {
+  let construct = (~allEventTopics, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -207,22 +87,97 @@ module Make =
 
     let queryDb = QueryDb.make(~opts, ());
 
-    updateFn(
-      queryDb->QueryDb.load,
-      queryDb->QueryDb.save,
-      queryDb->QueryDb.delete,
-    )
-    |> self->setUpdate;
+    let load: ReventlessSpec.QueryDb.load(string, Spec.state) =
+      (. id) => queryDb->QueryDb.load(. id->Spec.Id.makeFromString);
+    let save: ReventlessSpec.QueryDb.save(string, Spec.state) =
+      (. id, state, saveMode, opt) =>
+        queryDb->QueryDb.save(.
+          id->Spec.Id.makeFromString,
+          state,
+          saveMode,
+          opt,
+        );
+    let saveBatch: ReventlessSpec.QueryDb.saveBatch(string, Spec.state) =
+      (. states) =>
+        queryDb->QueryDb.saveBatch(.
+          states->Belt.Array.map(((id, state, ttl)) =>
+            (id->Spec.Id.makeFromString, state, ttl)
+          ),
+        );
+    let delete: ReventlessSpec.QueryDb.delete(string) =
+      (. id, sort) =>
+        queryDb->QueryDb.delete(. id->Spec.Id.makeFromString, sort);
 
-    makeOutputs(~name, ~queryDb=queryDb->Component.extractOutputs)
+    let primitives = {ReventlessSpec.ReadModel.load, save, saveBatch, delete};
+
+    module EventProjector =
+      MapperNto1.Mapper(
+        ReventlessSpec.ProjectionSpec,
+        Mappings.Target,
+        Mappings,
+      );
+
+    let handleActions = (actions, primitives) =>
+      actions
+      ->ReventlessSpec.ProjectionSpec.handleActions(primitives)
+      ->Js.Promise.all
+      ->Js.Promise.then_(_ => Js.Promise.resolve(), _); // TODO: error handling
+
+    let eventsHandler =
+      (. jsons) => {
+        jsons
+        ->Belt.Array.map(json => {
+            let sourceName =
+              json
+              ->ReventlessSpec.Message.context_decode
+              ->Belt.Result.map(context => context.meta.service)
+              ->Belt.Result.getWithDefault("");
+            json->EventProjector.map(~sourceName=Some(sourceName));
+          })
+        ->Belt.Array.concatMany
+        ->handleActions(primitives);
+      };
+
+    module Set = Belt.Set.String;
+    let aggregateNames =
+      Mappings.mappings
+      ->Belt.Array.map((module Mapping: Mappings.Mapping) =>
+          Mapping.sourceName
+        )
+      ->Set.fromArray;
+
+    module EventCollector = EventCollector.Make(EventCollectorConnector);
+    let eventCollector =
+      EventCollector.make(
+        ~name=name->ComponentType.name(componentType),
+        ~eventTopics=
+          allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
+        ~eventsHandler,
+        ~opts=Some(opts),
+        (),
+      );
+
+    // updateFn(
+    //   projections,
+    //   queryDb->QueryDb.load,
+    //   queryDb->QueryDb.save,
+    //   queryDb->QueryDb.delete,
+    // )
+    // |> self->setUpdate;
+
+    makeOutputs(
+      ~name,
+      ~queryDb=queryDb->Component.extractOutputs,
+      ~eventCollector=eventCollector->Component.extractOutputs,
+    )
     |> self->setOutputs;
   };
 
-  let make = (~opts=?, _) => {
+  let make = (~allEventTopics, ~opts=?, _) => {
     make(
       ~componentType=componentType->ComponentType.toString,
-      ~name=View.name |> Js.Option.getWithDefault(Spec.name),
-      ~construct,
+      ~name=Spec.name,
+      ~construct=construct(~allEventTopics),
       ~opts,
     );
   };

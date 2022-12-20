@@ -1,4 +1,5 @@
 open ReventlessSpec.Adapter;
+open ReventlessSpec.QueryDb;
 
 let componentType = ComponentType.QueryDb;
 
@@ -13,57 +14,17 @@ type allOutputs = Js.Dict.t(outputs);
 type t;
 type component = Component.t(t, outputs);
 
-type saveMode =
-  | Init
-  | Overwrite;
-
-type storageError =
-  | NotSavedToStorage(string)
-  | NotLoadedFromStorage(string)
-  | NotCountedOnStorage(string)
-  | NotDeletedFromStorage(string)
-  | StaleState;
-
-type load('id, 'state) =
-  (. 'id) => Js.Promise.t(Belt.Result.t(list('state), storageError));
-type save('id, 'state) =
-  (. 'id, 'state, saveMode, option(int)) =>
-  Js.Promise.t(Belt.Result.t(unit, storageError));
-type saveBatch('id, 'state) =
-  (. array(('id, 'state, option(int)))) =>
-  Js.Promise.t(Belt.Result.t(unit, storageError));
-type count('id) =
-  (. 'id, string, int) => Js.Promise.t(Belt.Result.t(int, storageError));
-type delete('id) =
-  (. 'id, option((string, string))) =>
-  Js.Promise.t(Belt.Result.t(unit, storageError));
-
 module type AggregateSpec = {
   module Id: ReventlessSpec.Id.T;
   let name: string;
 };
 
-module type ViewSpec = {
-  let name: option(string);
-
-  [@decco]
-  type state;
-
-  let resolveIdConfigs: list(View.resolveIdConfig);
-  let resolveIdsConfigs: list(View.resolveIdsConfig);
-
-  let sortConfig: option(View.sortConfig(state));
-
-  let indexes: list(View.index);
-};
-
 module type T = {
-  module Spec: AggregateSpec;
-  module ViewSpec: ViewSpec;
+  module Spec: ReventlessSpec.ReadModelSpec.T;
 
-  type nonrec load = load(Spec.Id.t, ViewSpec.state);
-  type nonrec save = save(Spec.Id.t, ViewSpec.state);
-  type nonrec saveBatch = saveBatch(Spec.Id.t, ViewSpec.state);
+  type nonrec load = load(Spec.Id.t, Spec.state);
+  type nonrec save = save(Spec.Id.t, Spec.state);
+  type nonrec saveBatch = saveBatch(Spec.Id.t, Spec.state);
   type nonrec count = count(Spec.Id.t);
   type nonrec delete = delete(Spec.Id.t);
 
@@ -93,7 +54,7 @@ module Adapter = {
   type storageMaker('api, 'role) =
     (
       ~name: string,
-      ~indexes: list(View.index),
+      ~indexes: list(ReventlessSpec.ReadModelSpec.index),
       ~sortField: string=?,
       ~ttl: int=?,
       ~api: 'api,
@@ -123,10 +84,10 @@ module Adapter = {
       ~api: 'api,
       ~apiRole: 'role,
       ~dataSourceName: Pulumi.Output.t(string),
-      ~indexes: list(View.index),
+      ~indexes: list(ReventlessSpec.ReadModelSpec.index),
       ~sortField: option(string),
-      ~resolveIdConfigs: list(View.resolveIdConfig),
-      ~resolveIdsConfigs: list(View.resolveIdsConfig),
+      ~resolveIdConfigs: list(ReventlessSpec.ReadModelSpec.resolveIdConfig),
+      ~resolveIdsConfigs: list(ReventlessSpec.ReadModelSpec.resolveIdsConfig),
       ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     resolvers;
@@ -148,10 +109,12 @@ module Adapter = {
         ~api as _: api,
         ~apiRole as _: role,
         ~dataSourceName as _,
-        ~indexes as _: list(View.index),
+        ~indexes as _: list(ReventlessSpec.ReadModelSpec.index),
         ~sortField as _,
-        ~resolveIdConfigs as _: list(View.resolveIdConfig),
-        ~resolveIdsConfigs as _: list(View.resolveIdsConfig),
+        ~resolveIdConfigs as
+          _: list(ReventlessSpec.ReadModelSpec.resolveIdConfig),
+        ~resolveIdsConfigs as
+          _: list(ReventlessSpec.ReadModelSpec.resolveIdsConfig),
         ~opts as _,
       ) => {
         {resources: [||], resourcesMaker: _ => [||]};
@@ -162,8 +125,7 @@ module Adapter = {
 module Make =
        (
          Config: Config.T,
-         Spec: AggregateSpec,
-         ViewSpec: ViewSpec,
+         Spec: ReventlessSpec.ReadModelSpec.T,
          Storage:
            Adapter.Storage with
              type api = Config.api and type role = Config.role,
@@ -171,15 +133,15 @@ module Make =
            Adapter.Resolvers with
              type api = Config.api and type role = Config.role,
        )
-       : (T with module Spec = Spec and module ViewSpec := ViewSpec) => {
+       : (T with module Spec = Spec) => {
   module Spec = Spec;
 
   type api = Config.api;
   type role = Config.role;
 
-  type nonrec load = load(Spec.Id.t, ViewSpec.state);
-  type nonrec save = save(Spec.Id.t, ViewSpec.state);
-  type nonrec saveBatch = saveBatch(Spec.Id.t, ViewSpec.state);
+  type nonrec load = load(Spec.Id.t, Spec.state);
+  type nonrec save = save(Spec.Id.t, Spec.state);
+  type nonrec saveBatch = saveBatch(Spec.Id.t, Spec.state);
   type nonrec count = count(Spec.Id.t);
   type nonrec delete = delete(Spec.Id.t);
 
@@ -228,7 +190,7 @@ module Make =
   [@bs.get] external delete: component => delete = "delete";
 
   let decode = (id, item) =>
-    switch (ViewSpec.state_decode(item)) {
+    switch (Spec.state_decode(item)) {
     | Ok(state) => [state]
     | Error(err) =>
       Js.log({j|QueryDb: Error: Couldn't decode state for $id: $err|j});
@@ -248,7 +210,7 @@ module Make =
 
   let saveFn = storage =>
     (. id, state, saveMode, ttl) => {
-      switch (state->ViewSpec.state_encode->Js.Json.decodeObject) {
+      switch (state->Spec.state_encode->Js.Json.decodeObject) {
       | Some(dict) =>
         dict->Js.Dict.set("id", Spec.Id.t_encode(id));
         let json = Js.Json.object_(dict);
@@ -269,7 +231,7 @@ module Make =
     (. items) => {
       let batch =
         items->Belt.Array.keepMap(((id, state, ttl)) =>
-          switch (state->ViewSpec.state_encode->Js.Json.decodeObject) {
+          switch (state->Spec.state_encode->Js.Json.decodeObject) {
           | Some(dict) =>
             dict->Js.Dict.set("id", Spec.Id.t_encode(id));
             let json = Js.Json.object_(dict);
@@ -306,12 +268,12 @@ module Make =
       );
 
     let sortField =
-      ViewSpec.sortConfig->Belt.Option.map(config => config.sortField);
+      Spec.subIdConfig->Belt.Option.map(config => config.subIdField);
     let storageName = name->ComponentType.name(componentType);
     let storage =
       Storage.make(
         ~name=storageName,
-        ~indexes=ViewSpec.indexes,
+        ~indexes=Spec.indexes,
         ~sortField?,
         ~ttl?,
         ~api,
@@ -331,10 +293,10 @@ module Make =
         ~api,
         ~apiRole,
         ~dataSourceName=storage.dataSourceName,
-        ~indexes=ViewSpec.indexes,
+        ~indexes=Spec.indexes,
         ~sortField,
-        ~resolveIdConfigs=ViewSpec.resolveIdConfigs,
-        ~resolveIdsConfigs=ViewSpec.resolveIdsConfigs,
+        ~resolveIdConfigs=Spec.resolveIdConfigs,
+        ~resolveIdsConfigs=Spec.resolveIdsConfigs,
         ~opts,
       );
 
@@ -348,7 +310,7 @@ module Make =
   let make = (~ttl=?, ~opts=?, _) => {
     make(
       ~componentType=componentType->ComponentType.toString,
-      ~name=ViewSpec.name->Belt.Option.getWithDefault(Spec.name),
+      ~name=Spec.name,
       ~construct=construct(~ttl?),
       ~opts,
       ~api=Config.api,

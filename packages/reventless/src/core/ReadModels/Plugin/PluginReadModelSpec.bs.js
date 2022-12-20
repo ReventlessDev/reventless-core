@@ -5,8 +5,6 @@ var Block = require("bs-platform/lib/js/block.js");
 var Decco = require("@ryb73/decco/src/Decco.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
-var Belt_List = require("bs-platform/lib/js/belt_List.js");
-var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Message$Reventless = require("../../../Message.bs.js");
@@ -207,156 +205,7 @@ function state_decode(v) {
   }
 }
 
-function extractExtensionPointNames(__x) {
-  return Belt_Array.map(__x, (function (extensionPoint) {
-                return extensionPoint[/* name */0];
-              }));
-}
-
-function extractExtensionNames(__x) {
-  return Belt_Array.map(__x, (function (extension) {
-                return extension[/* extensionPointName */1];
-              }));
-}
-
-function init($$event, param) {
-  var match = param[/* meta */1];
-  if (typeof $$event === "number") {
-    return /* [] */0;
-  } else if ($$event.tag) {
-    throw [
-          Message$Reventless.InvalidEvent,
-          PluginSpec$Reventless.event_encode($$event)
-        ];
-  } else {
-    var match$1 = $$event[0];
-    var extensions = match$1[/* extensions */4];
-    var extensionPoints = match$1[/* extensionPoints */3];
-    return /* :: */[
-            /* record */[
-              /* name */match$1[/* name */1],
-              /* version */match$1[/* version */2],
-              /* eventCollector */match$1[/* eventCollector */5],
-              /* extensionPoints */extensionPoints,
-              /* extensionPointNames */Belt_Array.map(extensionPoints, (function (extensionPoint) {
-                      return extensionPoint[/* name */0];
-                    })),
-              /* extensionNames */Belt_Array.map(extensions, (function (extension) {
-                      return extension[/* extensionPointName */1];
-                    })),
-              /* extensions */extensions,
-              /* status : Connected */0,
-              /* statusChange : record */[
-                /* at */match[/* time */1],
-                /* by */match[/* user */3]
-              ]
-            ],
-            /* [] */0
-          ];
-  }
-}
-
-function apply(state, $$event, param) {
-  var match = param[/* meta */1];
-  var user = match[/* user */3];
-  var time = match[/* time */1];
-  if (typeof $$event === "number") {
-    return /* [] */0;
-  } else {
-    switch ($$event.tag | 0) {
-      case /* Connected */0 :
-          var match$1 = $$event[0];
-          var extensions = match$1[/* extensions */4];
-          var extensionPoints = match$1[/* extensionPoints */3];
-          return /* :: */[
-                  /* Update */Block.__(1, [/* record */[
-                        /* name */match$1[/* name */1],
-                        /* version */match$1[/* version */2],
-                        /* eventCollector */match$1[/* eventCollector */5],
-                        /* extensionPoints */extensionPoints,
-                        /* extensionPointNames */Belt_Array.map(extensionPoints, (function (extensionPoint) {
-                                return extensionPoint[/* name */0];
-                              })),
-                        /* extensionNames */Belt_Array.map(extensions, (function (extension) {
-                                return extension[/* extensionPointName */1];
-                              })),
-                        /* extensions */extensions,
-                        /* status : Connected */0,
-                        /* statusChange : record */[
-                          /* at */time,
-                          /* by */user
-                        ]
-                      ]]),
-                  /* [] */0
-                ];
-      case /* Reconnected */1 :
-          return /* :: */[
-                  /* Update */Block.__(1, [/* record */[
-                        /* name */state[/* name */0],
-                        /* version */state[/* version */1],
-                        /* eventCollector */state[/* eventCollector */2],
-                        /* extensionPoints */state[/* extensionPoints */3],
-                        /* extensionPointNames */state[/* extensionPointNames */4],
-                        /* extensionNames */state[/* extensionNames */5],
-                        /* extensions */state[/* extensions */6],
-                        /* status : Connected */0,
-                        /* statusChange : record */[
-                          /* at */time,
-                          /* by */user
-                        ]
-                      ]]),
-                  /* [] */0
-                ];
-      case /* Disconnected */2 :
-      case /* Activated */3 :
-          break;
-      case /* Deactivated */4 :
-          return /* :: */[
-                  /* Update */Block.__(1, [/* record */[
-                        /* name */state[/* name */0],
-                        /* version */state[/* version */1],
-                        /* eventCollector */state[/* eventCollector */2],
-                        /* extensionPoints */state[/* extensionPoints */3],
-                        /* extensionPointNames */state[/* extensionPointNames */4],
-                        /* extensionNames */state[/* extensionNames */5],
-                        /* extensions */state[/* extensions */6],
-                        /* status : Inactive */2,
-                        /* statusChange : record */[
-                          /* at */time,
-                          /* by */user
-                        ]
-                      ]]),
-                  /* [] */0
-                ];
-      
-    }
-  }
-  return /* :: */[
-          /* Update */Block.__(1, [/* record */[
-                /* name */state[/* name */0],
-                /* version */state[/* version */1],
-                /* eventCollector */state[/* eventCollector */2],
-                /* extensionPoints */state[/* extensionPoints */3],
-                /* extensionPointNames */state[/* extensionPointNames */4],
-                /* extensionNames */state[/* extensionNames */5],
-                /* extensions */state[/* extensions */6],
-                /* status : Disconnected */1,
-                /* statusChange : record */[
-                  /* at */time,
-                  /* by */user
-                ]
-              ]]),
-          /* [] */0
-        ];
-}
-
-function applyMulti(states, $$event, context) {
-  return Belt_List.flatten(Belt_List.map(states, (function (state) {
-                    return apply(state, $$event, context);
-                  })));
-}
-
-var name = undefined;
+var name = "Plugin";
 
 var resolveIdConfigs = /* [] */0;
 
@@ -375,9 +224,4 @@ exports.resolveIdConfigs = resolveIdConfigs;
 exports.resolveIdsConfigs = resolveIdsConfigs;
 exports.sortConfig = sortConfig;
 exports.indexes = indexes;
-exports.extractExtensionPointNames = extractExtensionPointNames;
-exports.extractExtensionNames = extractExtensionNames;
-exports.init = init;
-exports.apply = apply;
-exports.applyMulti = applyMulti;
 /* Message-Reventless Not a pure module */

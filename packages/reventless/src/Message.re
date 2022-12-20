@@ -143,13 +143,8 @@ let hrtimeToString: (~hrtime: hrtime, ~now: float) => string =
     ++ milString;
   };
 
-type context = {
-  id: string,
-  meta,
-};
-
 type errorHandler('error, 'command, 'event) =
-  ('error, 'command, context) => list('event);
+  ('error, 'command, ReventlessSpec.Message.context) => list('event);
 
 let generateMeta = (~service, ~ip="", ~user="unknown", ()) => {
   let msgId = uuid();

@@ -11,15 +11,15 @@ let pluginDefinition = {
   eventCollector: "eventCollector",
 };
 
-let state: PluginView.state = {
+let state: PluginReadModelSpec.state = {
   name: pluginDefinition.name,
   version: pluginDefinition.version,
   eventCollector: pluginDefinition.eventCollector,
   extensionPoints: pluginDefinition.extensionPoints,
   extensionPointNames:
-    pluginDefinition.extensionPoints->PluginView.extractExtensionPointNames,
+    pluginDefinition.extensionPoints->PluginProjection.extractExtensionPointNames,
   extensionNames:
-    pluginDefinition.extensions->PluginView.extractExtensionNames,
+    pluginDefinition.extensions->PluginProjection.extractExtensionNames,
   extensions: pluginDefinition.extensions,
   status: Connected,
   statusChange: TestFixtures.statusChange,

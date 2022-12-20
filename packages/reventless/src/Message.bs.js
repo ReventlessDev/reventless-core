@@ -417,12 +417,18 @@ var meta_encode = Message$ReventlessSpec.meta_encode;
 
 var meta_decode = Message$ReventlessSpec.meta_decode;
 
+var context_encode = Message$ReventlessSpec.context_encode;
+
+var context_decode = Message$ReventlessSpec.context_decode;
+
 var uuid = Uuid.v4;
 
 exports.service_encode = service_encode;
 exports.service_decode = service_decode;
 exports.meta_encode = meta_encode;
 exports.meta_decode = meta_decode;
+exports.context_encode = context_encode;
+exports.context_decode = context_decode;
 exports.uuid = uuid;
 exports.now = now;
 exports.nowAsISOString = nowAsISOString;

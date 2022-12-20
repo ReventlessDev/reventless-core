@@ -10,7 +10,7 @@ var Id$Reventless = require("../../../Id.bs.js");
 var Message$Reventless = require("../../../Message.bs.js");
 var Schedule$Reventless = require("../../../util/Schedule.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
-var PluginView$Reventless = require("../../ReadModels/Plugin/PluginView.bs.js");
+var PluginReadModelSpec$Reventless = require("../../ReadModels/Plugin/PluginReadModelSpec.bs.js");
 var ExtensionPointMapping$Reventless = require("../../../ExtensionPointMapping.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 
@@ -33,7 +33,7 @@ function forwardCommand(_id, command, extensionPointName, queryEngine) {
   return __x.then((function (plugins) {
                 if (plugins.length !== 0) {
                   var plugin = Belt_Array.getExn(plugins, 0);
-                  var param = PluginView$Reventless.state_decode(plugin);
+                  var param = PluginReadModelSpec$Reventless.state_decode(plugin);
                   if (param.tag) {
                     return Promise.resolve((console.log("ForwardCommand: Couldn't decode Plugin", plugin, param[0]), /* () */0));
                   } else {
