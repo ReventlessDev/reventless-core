@@ -3,10 +3,8 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Mapper$ReventlessSpec = require("@reventless/reventless-spec/src/Mapper.bs.js");
-var MapperNto1$Reventless = require("../../../components/MapperNto1.bs.js");
+var Id$Reventless = require("../../../Id.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
-var PluginReadModelSpec$Reventless = require("./PluginReadModelSpec.bs.js");
 
 function extractExtensionPointNames(__x) {
   return Belt_Array.map(__x, (function (extensionPoint) {
@@ -19,17 +17,6 @@ function extractExtensionNames(__x) {
                 return extension[/* extensionPointName */1];
               }));
 }
-
-var Source = Mapper$ReventlessSpec.MakeGenericSourceFromEventSource({
-      name: PluginSpec$Reventless.name,
-      event_decode: PluginSpec$Reventless.event_decode
-    });
-
-var Target = Mapper$ReventlessSpec.MakeGenericTargetFromStateTarget({
-      name: PluginReadModelSpec$Reventless.name,
-      state_decode: PluginReadModelSpec$Reventless.state_decode,
-      state_encode: PluginReadModelSpec$Reventless.state_encode
-    });
 
 function map($$event, param) {
   var match = param[/* meta */1];
@@ -132,23 +119,26 @@ function map($$event, param) {
           ]);
 }
 
-var Impl = {
-  Source: Source,
-  Target: Target,
+var PluginMapping = {
+  Source: 0,
   map: map
 };
 
-var Mapping = MapperNto1$Reventless.Mapping({ })(Impl);
+var mappings = /* array */[{
+    Source: {
+      Id: Id$Reventless.$$String,
+      name: PluginSpec$Reventless.name,
+      event_encode: PluginSpec$Reventless.event_encode,
+      event_decode: PluginSpec$Reventless.event_decode
+    },
+    map: map
+  }];
 
-var mappings = /* array */[Mapping];
-
-var Mapppings = {
-  mappings: mappings
-};
+var Target = 0;
 
 exports.extractExtensionPointNames = extractExtensionPointNames;
 exports.extractExtensionNames = extractExtensionNames;
-exports.Impl = Impl;
-exports.Mapping = Mapping;
-exports.Mapppings = Mapppings;
-/* Source Not a pure module */
+exports.Target = Target;
+exports.PluginMapping = PluginMapping;
+exports.mappings = mappings;
+/* No side effect */

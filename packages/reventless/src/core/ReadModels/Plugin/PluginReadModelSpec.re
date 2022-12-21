@@ -1,3 +1,5 @@
+module Id = Id.String;
+
 open PluginSpec;
 
 [@decco]

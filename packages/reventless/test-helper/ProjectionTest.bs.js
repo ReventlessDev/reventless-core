@@ -18,173 +18,174 @@ function unpack(p) {
   return p[1];
 }
 
-function Make(Projection) {
-  var states = function (store, id) {
-    return Belt_Option.getWithDefault(Js_dict.get(store, id), /* [] */0);
-  };
-  var setStates = function (store, id, states) {
-    store[id] = states;
-    return /* () */0;
-  };
-  var deleteStates = function (store, id) {
-    store[id] = /* [] */0;
-    return /* () */0;
-  };
-  var load = function (store) {
-    return (function (id) {
-        return Promise.resolve(/* Ok */Block.__(0, [states(store, id)]));
-      });
-  };
-  var save = function (store) {
-    return (function (id, state, saveMode, _ttl) {
-        var match = states(store, id);
-        if (match) {
-          if (match[1] || !saveMode) {
-            return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
-          }
-          
-        } else if (saveMode) {
-          return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
-        }
-        setStates(store, id, /* :: */[
-              state,
-              /* [] */0
+function Make(Target) {
+  return (function (Projection) {
+      var states = function (store, id) {
+        return Belt_Option.getWithDefault(Js_dict.get(store, id), /* [] */0);
+      };
+      var setStates = function (store, id, states) {
+        store[id] = states;
+        return /* () */0;
+      };
+      var deleteStates = function (store, id) {
+        store[id] = /* [] */0;
+        return /* () */0;
+      };
+      var load = function (store) {
+        return (function (id) {
+            return Promise.resolve(/* Ok */Block.__(0, [states(store, id)]));
+          });
+      };
+      var save = function (store) {
+        return (function (id, state, saveMode, _ttl) {
+            var match = states(store, id);
+            if (match) {
+              if (match[1] || !saveMode) {
+                return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
+              }
+              
+            } else if (saveMode) {
+              return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
+            }
+            setStates(store, id, /* :: */[
+                  state,
+                  /* [] */0
+                ]);
+            return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+          });
+      };
+      var saveBatch = function (store) {
+        return (function (batch) {
+            Belt_Array.forEach(batch, (function (param) {
+                    var store$1 = store;
+                    var id = param[0];
+                    var state = param[1];
+                    store$1[id] = Pervasives.$at(Belt_Option.getWithDefault(Js_dict.get(store$1, id), /* [] */0), /* :: */[
+                          state,
+                          /* [] */0
+                        ]);
+                    return /* () */0;
+                  }));
+            return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+          });
+      };
+      var $$delete = function (store) {
+        return (function (id, _sort) {
+            deleteStates(store, id);
+            return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+          });
+      };
+      var handleActions = function (actions, primitives) {
+        var __x = Promise.all(ProjectionSpec$ReventlessSpec.handleActions(actions, primitives));
+        return __x.then((function (param) {
+                      return Promise.resolve(/* () */0);
+                    }));
+      };
+      var update = function (store, $$event) {
+        var __x = handleActions(/* array */[Curry._2(Projection.map, $$event, TestFixtures$Reventless.context)], /* record */[
+              /* load */load(store),
+              /* save */save(store),
+              /* saveBatch */saveBatch(store),
+              /* delete */$$delete(store)
             ]);
-        return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
-      });
-  };
-  var saveBatch = function (store) {
-    return (function (batch) {
-        Belt_Array.forEach(batch, (function (param) {
-                var store$1 = store;
-                var id = param[0];
-                var state = param[1];
-                store$1[id] = Pervasives.$at(Belt_Option.getWithDefault(Js_dict.get(store$1, id), /* [] */0), /* :: */[
-                      state,
-                      /* [] */0
-                    ]);
-                return /* () */0;
-              }));
-        return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
-      });
-  };
-  var $$delete = function (store) {
-    return (function (id, _sort) {
-        deleteStates(store, id);
-        return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
-      });
-  };
-  var handleActions = function (actions, primitives) {
-    var __x = Promise.all(ProjectionSpec$ReventlessSpec.handleActions(actions, primitives));
-    return __x.then((function (param) {
-                  return Promise.resolve(/* () */0);
-                }));
-  };
-  var update = function (store, $$event) {
-    var __x = handleActions(/* array */[Curry._2(Projection.map, $$event, TestFixtures$Reventless.context)], /* record */[
-          /* load */load(store),
-          /* save */save(store),
-          /* saveBatch */saveBatch(store),
-          /* delete */$$delete(store)
-        ]);
-    return __x.then((function (param) {
-                  return Promise.resolve(store);
-                }));
-  };
-  var givenEvents = function (events) {
-    var store = { };
-    var __x = Promise.all(Belt_List.toArray(Belt_List.map(events, (function (param) {
-                    return update(store, param);
-                  }))));
-    return __x.then((function (param) {
-                  return Promise.resolve(store);
-                }));
-  };
-  var whenEvent = function (p, $$event) {
-    return Jest.Expect.expect((function (param) {
-                  return p.then((function (store) {
-                                return update(store, $$event);
-                              }));
-                }));
-  };
-  var thenStates = function (p, expectedStates) {
-    var __x = Curry._1(p[1], /* () */0);
-    return __x.then((function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
-                                  1,
-                                  TestFixtures$Reventless.context[/* id */0],
-                                  expectedStates
-                                ], Jest.Expect.expect(/* tuple */[
-                                      Object.keys(store).length,
-                                      Belt_Array.get(Object.keys(store), 0),
-                                      Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)
-                                    ])));
-                }));
-  };
-  var thenAllStates = function (p, expectedStore) {
-    var __x = Curry._1(p[1], /* () */0);
-    return __x.then((function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(expectedStore, Jest.Expect.expect(store)));
-                }));
-  };
-  var thenState = function (p, expectedState) {
-    var __x = Curry._1(p[1], /* () */0);
-    return __x.then((function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
-                                  1,
-                                  TestFixtures$Reventless.context[/* id */0],
-                                  1,
-                                  Caml_option.some(expectedState)
-                                ], Jest.Expect.expect(/* tuple */[
-                                      Object.keys(store).length,
-                                      Belt_Array.get(Object.keys(store), 0),
-                                      Belt_List.length(Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)),
-                                      Belt_List.head(Caml_array.caml_array_get(Js_dict.values(store), 0))
-                                    ])));
-                }));
-  };
-  var thenStateWithId = function (p, id, expectedState) {
-    var __x = Curry._1(p[1], /* () */0);
-    return __x.then((function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
-                                  1,
-                                  id,
-                                  1,
-                                  Caml_option.some(expectedState)
-                                ], Jest.Expect.expect(/* tuple */[
-                                      Object.keys(store).length,
-                                      Belt_Array.get(Object.keys(store), 0),
-                                      Belt_List.length(Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)),
-                                      Belt_List.head(Caml_array.caml_array_get(Js_dict.values(store), 0))
-                                    ])));
-                }));
-  };
-  var thenNoState = function (p) {
-    var __x = Curry._1(p[1], /* () */0);
-    return __x.then((function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual({ }, Jest.Expect.expect(store)));
-                }));
-  };
-  var thenThrow = function (p) {
-    var __x = Curry._1(p[1], /* () */0);
-    return __x.then((function (param) {
-                  return Promise.resolve(Jest.Expect.toThrow(p));
-                }));
-  };
-  return {
-          Source: Projection.Source,
-          Target: Projection.Target,
-          describe: Jest.describe,
-          test: Jest.testPromise,
-          givenEvents: givenEvents,
-          whenEvent: whenEvent,
-          thenStates: thenStates,
-          thenAllStates: thenAllStates,
-          thenState: thenState,
-          thenStateWithId: thenStateWithId,
-          thenNoState: thenNoState,
-          thenThrow: thenThrow
-        };
+        return __x.then((function (param) {
+                      return Promise.resolve(store);
+                    }));
+      };
+      var givenEvents = function (events) {
+        var store = { };
+        var __x = Promise.all(Belt_List.toArray(Belt_List.map(events, (function (param) {
+                        return update(store, param);
+                      }))));
+        return __x.then((function (param) {
+                      return Promise.resolve(store);
+                    }));
+      };
+      var whenEvent = function (p, $$event) {
+        return Jest.Expect.expect((function (param) {
+                      return p.then((function (store) {
+                                    return update(store, $$event);
+                                  }));
+                    }));
+      };
+      var thenStates = function (p, expectedStates) {
+        var __x = Curry._1(p[1], /* () */0);
+        return __x.then((function (store) {
+                      return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
+                                      1,
+                                      TestFixtures$Reventless.context[/* id */0],
+                                      expectedStates
+                                    ], Jest.Expect.expect(/* tuple */[
+                                          Object.keys(store).length,
+                                          Belt_Array.get(Object.keys(store), 0),
+                                          Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)
+                                        ])));
+                    }));
+      };
+      var thenAllStates = function (p, expectedStore) {
+        var __x = Curry._1(p[1], /* () */0);
+        return __x.then((function (store) {
+                      return Promise.resolve(Jest.Expect.toEqual(expectedStore, Jest.Expect.expect(store)));
+                    }));
+      };
+      var thenState = function (p, expectedState) {
+        var __x = Curry._1(p[1], /* () */0);
+        return __x.then((function (store) {
+                      return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
+                                      1,
+                                      TestFixtures$Reventless.context[/* id */0],
+                                      1,
+                                      Caml_option.some(expectedState)
+                                    ], Jest.Expect.expect(/* tuple */[
+                                          Object.keys(store).length,
+                                          Belt_Array.get(Object.keys(store), 0),
+                                          Belt_List.length(Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)),
+                                          Belt_List.head(Caml_array.caml_array_get(Js_dict.values(store), 0))
+                                        ])));
+                    }));
+      };
+      var thenStateWithId = function (p, id, expectedState) {
+        var __x = Curry._1(p[1], /* () */0);
+        return __x.then((function (store) {
+                      return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
+                                      1,
+                                      id,
+                                      1,
+                                      Caml_option.some(expectedState)
+                                    ], Jest.Expect.expect(/* tuple */[
+                                          Object.keys(store).length,
+                                          Belt_Array.get(Object.keys(store), 0),
+                                          Belt_List.length(Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)),
+                                          Belt_List.head(Caml_array.caml_array_get(Js_dict.values(store), 0))
+                                        ])));
+                    }));
+      };
+      var thenNoState = function (p) {
+        var __x = Curry._1(p[1], /* () */0);
+        return __x.then((function (store) {
+                      return Promise.resolve(Jest.Expect.toEqual({ }, Jest.Expect.expect(store)));
+                    }));
+      };
+      var thenThrow = function (p) {
+        var __x = Curry._1(p[1], /* () */0);
+        return __x.then((function (param) {
+                      return Promise.resolve(Jest.Expect.toThrow(p));
+                    }));
+      };
+      return {
+              Source: Projection.Source,
+              describe: Jest.describe,
+              test: Jest.testPromise,
+              givenEvents: givenEvents,
+              whenEvent: whenEvent,
+              thenStates: thenStates,
+              thenAllStates: thenAllStates,
+              thenState: thenState,
+              thenStateWithId: thenStateWithId,
+              thenNoState: thenNoState,
+              thenThrow: thenThrow
+            };
+    });
 }
 
 exports.unpack = unpack;

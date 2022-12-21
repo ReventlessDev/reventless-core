@@ -17,18 +17,27 @@ module type MappingImpl = {
   let map: (Source.t, Message.context) => Spec.action(string, Target.t);
 };
 
+/* kept for reasons to rstore
+   module type Mapping = {
+     module Spec: Spec; // to be removed via destructive replace in functor call
+     let sourceName: string;
+     module Target: Mapper.GenericTarget; // to be removed via destructive replace in functor call
+
+     let map: Js.Json.t => Spec.action(string, Target.t);
+   };
+   */
+
 module type Mapping = {
   module Spec: Spec; // to be removed via destructive replace in functor call
   let sourceName: string;
-  module Target: Mapper.GenericTarget; // to be removed via destructive replace in functor call
+  //type target;
 
-  let map: Js.Json.t => Spec.action(string, Target.t);
+  let map: Js.Json.t => Spec.action(string, 'target);
 };
 
 module type Mappings = {
   module Spec: Spec; // to be removed via destructive replace in functor call
   module Target: Mapper.GenericTarget; // to be removed via destructive replace in functor call
-  module type Mapping =
-    Mapping with module Spec := Spec and module Target := Target;
+  module type Mapping = Mapping with module Spec := Spec /* and type target := Target.t*/;
   let mappings: array(module Mapping);
 };

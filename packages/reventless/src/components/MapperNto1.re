@@ -3,14 +3,17 @@ open ReventlessSpec.MapperNto1;
 
 module Mapping =
        (
-         Spec: Spec,
+         Spec: ReventlessSpec.MapperNto1.Spec,
          //  Source: Spec.Source,
          //  Target: Spec.Target,
          Impl:
-           MappingImpl with
+           ReventlessSpec.MapperNto1.MappingImpl with
              module Spec := Spec /*and  type source = Spec.ToGenericSource(Source).t and  type target = Spec.ToGenericTarget(Target).t*/,
        )
-       : (Mapping with module Spec := Spec and module Target := Impl.Target) => {
+
+         : (
+           ReventlessSpec.MapperNto1.Mapping with module Spec := Spec /* FIXME: 'target is to generic - this needs to be a specific (matching) type*/
+       ) => {
   let sourceName = Impl.Source.name;
   module Target = Impl.Target;
 
@@ -25,6 +28,20 @@ module Mapping =
     };
   };
 };
+
+type mapGeneric('action) = Js.Json.t => 'action;
+type mapImpl('msg, 'action) =
+  ('msg, ReventlessSpec.Message.context) => 'action;
+let makeGenericMap:
+  (ReventlessSpec.Mapper.decode('msg), mapImpl('msg, 'action)) =>
+  mapGeneric('action) =
+  (msgDecode, map, json) => {
+    switch (json->ReventlessSpec.Message.context_decode, json->msgDecode) {
+    | (Ok(context), Ok(source)) => source->map(context)
+    | _ =>
+      Js.Exn.raiseError("Couldn't decode source:" ++ json->Js.Json.stringify)
+    };
+  };
 
 module type Mapper = {
   module Spec: Spec; // to be removed via destructive replace in functor call

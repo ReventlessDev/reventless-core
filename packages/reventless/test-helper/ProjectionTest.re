@@ -1,36 +1,33 @@
 open ReventlessSpec;
 
 module type T = {
-  module Source: Mapper.GenericSource;
-  module Target: Mapper.GenericTarget;
+  module Source: ProjectionSpec.Source;
+  type target;
 
   let describe: (string, unit => unit) => unit;
   let test:
     (string, ~timeout: int=?, unit => Js.Promise.t(Jest.assertion)) => unit;
 
-  type store = Js.Dict.t(list(Target.t));
+  type store = Js.Dict.t(list(target));
 
-  let givenEvents: list(Source.t) => Js.Promise.t(store);
+  let givenEvents: list(Source.event) => Js.Promise.t(store);
   let whenEvent:
-    (Js.Promise.t(store), Source.t) =>
+    (Js.Promise.t(store), Source.event) =>
     Jest.Expect.plainPartial(unit => Js.Promise.t(store));
   let thenStates:
-    (
-      Jest.Expect.plainPartial(unit => Js.Promise.t(store)),
-      list(Target.t)
-    ) =>
+    (Jest.Expect.plainPartial(unit => Js.Promise.t(store)), list(target)) =>
     Js.Promise.t(Jest.assertion);
   let thenAllStates:
     (Jest.Expect.plainPartial(unit => Js.Promise.t(store)), store) =>
     Js.Promise.t(Jest.assertion);
   let thenState:
-    (Jest.Expect.plainPartial(unit => Js.Promise.t(store)), Target.t) =>
+    (Jest.Expect.plainPartial(unit => Js.Promise.t(store)), target) =>
     Js.Promise.t(Jest.assertion);
   let thenStateWithId:
     (
       Jest.Expect.plainPartial(unit => Js.Promise.t(store)),
       string,
-      Target.t
+      target
     ) =>
     Js.Promise.t(Jest.assertion);
   let thenNoState:
@@ -49,20 +46,23 @@ let unpack: Jest.Expect.plainPartial('a) => 'a =
   };
 
 module Make =
-       (Projection: MapperNto1.MappingImpl with module Spec := ProjectionSpec)
+       (
+         Target: ReventlessSpec.ProjectionSpec.Target,
+         Projection:
+           ProjectionMapping.ProjectionImpl with
+             module Spec := ProjectionSpec and type target := Target.state,
+       )
 
          : (
            T with
-             module Source = Projection.Source and
-             module Target = Projection.Target
+             module Source = Projection.Source and type target := Target.state
        ) => {
   module Source = Projection.Source;
-  module Target = Projection.Target;
 
   let describe = Jest.describe;
   let test = Jest.testPromise;
 
-  type store = Js.Dict.t(list(Target.t));
+  type store = Js.Dict.t(list(Target.state));
 
   let states = (store, id) =>
     store->Js.Dict.get(id)->Belt.Option.getWithDefault([]);
@@ -76,9 +76,9 @@ module Make =
 
   open Belt.Result;
   open ReventlessSpec.QueryDb;
-  let load: store => ReventlessSpec.QueryDb.load(string, Target.t) =
+  let load: store => ReventlessSpec.QueryDb.load(string, Target.state) =
     store => (. id) => store->states(id)->Ok->Js.Promise.resolve;
-  let save: store => ReventlessSpec.QueryDb.save(string, Target.t) =
+  let save: store => ReventlessSpec.QueryDb.save(string, Target.state) =
     store =>
       (. id, state, saveMode, _ttl) =>
         switch (store->states(id), saveMode) {
@@ -88,7 +88,8 @@ module Make =
           Ok()->Js.Promise.resolve;
         | _ => Error(StaleState)->Js.Promise.resolve
         };
-  let saveBatch: store => ReventlessSpec.QueryDb.saveBatch(string, Target.t) =
+  let saveBatch:
+    store => ReventlessSpec.QueryDb.saveBatch(string, Target.state) =
     store =>
       (. batch) => {
         batch->Belt.Array.forEach(((id, state, _ttl)) =>
