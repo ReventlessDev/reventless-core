@@ -205,6 +205,8 @@ function state_decode(v) {
   }
 }
 
+var Id = 0;
+
 var name = "Plugin";
 
 var resolveIdConfigs = /* [] */0;
@@ -215,6 +217,7 @@ var sortConfig = undefined;
 
 var indexes = /* [] */0;
 
+exports.Id = Id;
 exports.status_encode = status_encode;
 exports.status_decode = status_decode;
 exports.state_encode = state_encode;

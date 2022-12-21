@@ -1,20 +1,23 @@
+type encode('a) = 'a => Js.Json.t;
+type decode('a) = Js.Json.t => Belt.Result.t('a, Decco.decodeError);
+
 module type GenericSource = {
   let name: string;
   type t;
-  let decode: Js.Json.t => Belt.Result.t(t, Decco.decodeError); // TODO: is it possible to remove Decco here?
+  let decode: decode(t); // TODO: is it possible to remove Decco here?
 };
 
 module type GenericTarget = {
   let name: string;
   type t;
-  let decode: Js.Json.t => Belt.Result.t(t, Decco.decodeError); // TODO: is it possible to remove Decco here?
-  let encode: t => Js.Json.t;
+  let decode: decode(t); // TODO: is it possible to remove Decco here?
+  let encode: encode(t);
 };
 
 module type EventSource = {
   let name: string;
   type event;
-  let event_decode: Js.Json.t => Belt.Result.t(event, Decco.decodeError); // TODO: is it possible to remove Decco here?
+  let event_decode: decode(event); // TODO: is it possible to remove Decco here?
 };
 
 module MakeGenericSourceFromEventSource =
