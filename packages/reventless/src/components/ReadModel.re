@@ -29,9 +29,7 @@ module Make =
          Config: Config.T,
          Spec: ReventlessSpec.ReadModelSpec.T,
          Mappings:
-           ReventlessSpec.MapperNto1.Mappings with
-             module Spec := ReventlessSpec.ProjectionSpec and
-             module Target = ReventlessSpec.Mapper.MakeGenericTargetFromStateTarget(Spec),
+           ReventlessSpec.Projection.Mappings with module Target := Spec,
          QueryDbStorage:
            QueryDb.Adapter.Storage with
              type api = Config.api and type role = Config.role,
@@ -110,16 +108,11 @@ module Make =
 
     let primitives = {ReventlessSpec.ReadModel.load, save, saveBatch, delete};
 
-    module EventProjector =
-      MapperNto1.Mapper(
-        ReventlessSpec.ProjectionSpec,
-        Mappings.Target,
-        Mappings,
-      );
+    module EventProjector = ProjectionMapper.Make(Spec, Mappings);
 
     let handleActions = (actions, primitives) =>
       actions
-      ->ReventlessSpec.ProjectionSpec.handleActions(primitives)
+      ->Projection.handleActions(primitives)
       ->Js.Promise.all
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _); // TODO: error handling
 
@@ -142,7 +135,7 @@ module Make =
     let aggregateNames =
       Mappings.mappings
       ->Belt.Array.map((module Mapping: Mappings.Mapping) =>
-          Mapping.sourceName
+          Mapping.Source.name
         )
       ->Set.fromArray;
 

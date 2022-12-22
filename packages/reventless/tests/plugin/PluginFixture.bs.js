@@ -23,9 +23,9 @@ var pluginDefinition = /* record */[
 
 var state_003 = pluginDefinition_003;
 
-var state_004 = /* extensionPointNames */PluginProjection$Reventless.extractExtensionPointNames(pluginDefinition_003);
+var state_004 = /* extensionPointNames */PluginProjection$Reventless.Util.extractExtensionPointNames(pluginDefinition_003);
 
-var state_005 = /* extensionNames */PluginProjection$Reventless.extractExtensionNames(pluginDefinition_004);
+var state_005 = /* extensionNames */PluginProjection$Reventless.Util.extractExtensionNames(pluginDefinition_004);
 
 var state_006 = pluginDefinition_004;
 

@@ -73,186 +73,170 @@ let construct: construct =
       );
 
     let vpc =
-      PulumiAws.EC2.Vpc.(
-        make(
-          ~name=name ++ "VPC",
-          ~args=
-            Args.make(
-              ~cidrBlock="172.31.0.0/16",
-              ~enableDnsHostnames=true,
-              (),
-            ),
-          ~opts,
-          (),
-        )
+      PulumiAws.EC2.Vpc.make(
+        ~name=name ++ "VPC",
+        ~args=
+          PulumiAws.EC2.Vpc.Args.make(
+            ~cidrBlock="172.31.0.0/16",
+            ~enableDnsHostnames=true,
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     let securityGroup =
-      SecurityGroup.(
-        make(
-          ~name=name ++ "SecurityGroup",
-          ~args=
+      SecurityGroup.make(
+        ~name=name ++ "SecurityGroup",
+        ~args=
+          SecurityGroup.(
             Args.make(
               ~name=name ++ "SecurityGroup",
               ~vpcId=vpc##id->Pulumi.Output.asInput,
               ~ingress=[|Args.Ingress.allowAll|],
               ~egress=[|Args.Egress.allowAll|],
               (),
-            ),
-          ~opts,
-          (),
-        )
+            )
+          ),
+        ~opts,
+        (),
       );
 
     let publicSubnet =
-      Subnet.(
-        make(
-          ~name=name ++ "PublicSubnet",
-          ~args=
-            Args.make(
-              ~cidrBlock="172.31.0.0/17",
-              ~vpcId=vpc##id->Pulumi.Output.asInput,
-              ~availabilityZone?,
-              (),
-            ),
-          ~opts,
-          (),
-        )
+      Subnet.make(
+        ~name=name ++ "PublicSubnet",
+        ~args=
+          Subnet.Args.make(
+            ~cidrBlock="172.31.0.0/17",
+            ~vpcId=vpc##id->Pulumi.Output.asInput,
+            ~availabilityZone?,
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     let privateSubnet =
-      Subnet.(
-        make(
-          ~name=name ++ "PrivateSubnet",
-          ~args=
-            Args.make(
-              ~cidrBlock="172.31.128.0/17",
-              ~vpcId=vpc##id->Pulumi.Output.asInput,
-              ~availabilityZone?,
-              (),
-            ),
-          ~opts,
-          (),
-        )
+      Subnet.make(
+        ~name=name ++ "PrivateSubnet",
+        ~args=
+          Subnet.Args.make(
+            ~cidrBlock="172.31.128.0/17",
+            ~vpcId=vpc##id->Pulumi.Output.asInput,
+            ~availabilityZone?,
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     let internetGateway =
-      InternetGateway.(
-        make(
-          ~name=name ++ "InternetGateway",
-          ~args=Args.make(~vpcId=vpc##id->Pulumi.Output.asInput, ()),
-          ~opts,
-          (),
-        )
+      InternetGateway.make(
+        ~name=name ++ "InternetGateway",
+        ~args=
+          InternetGateway.Args.make(
+            ~vpcId=vpc##id->Pulumi.Output.asInput,
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     let eip =
-      Eip.(
-        make(
-          ~name=name ++ "Eip",
-          ~args=Args.make(~vpc=true, ()),
-          ~opts=
-            Pulumi.CustomResourceOptions.make(
-              ~parent=self->Pulumi.Resource.makeFromJs,
-              ~dependsOn=
-                [|internetGateway->Pulumi.Resource.makeFromJs|]
-                ->Pulumi.Input.wrap,
-              (),
-            ),
-          (),
-        )
+      Eip.make(
+        ~name=name ++ "Eip",
+        ~args=Eip.Args.make(~vpc=true, ()),
+        ~opts=
+          Pulumi.CustomResourceOptions.make(
+            ~parent=self->Pulumi.Resource.makeFromJs,
+            ~dependsOn=
+              [|internetGateway->Pulumi.Resource.makeFromJs|]
+              ->Pulumi.Input.wrap,
+            (),
+          ),
+        (),
       );
 
     let natGateway =
-      NatGateway.(
-        make(
-          ~name=name ++ "NatGateway",
-          ~args=
-            Args.make(
-              ~allocationId=eip##id->Pulumi.Output.asInput,
-              ~subnetId=publicSubnet##id->Pulumi.Output.asInput,
-              (),
-            ),
-          ~opts=
-            Pulumi.CustomResourceOptions.make(
-              ~parent=self->Pulumi.Resource.makeFromJs,
-              ~dependsOn=
-                [|internetGateway->Pulumi.Resource.makeFromJs|]
-                ->Pulumi.Input.wrap,
-              (),
-            ),
-          (),
-        )
+      NatGateway.make(
+        ~name=name ++ "NatGateway",
+        ~args=
+          NatGateway.Args.make(
+            ~allocationId=eip##id->Pulumi.Output.asInput,
+            ~subnetId=publicSubnet##id->Pulumi.Output.asInput,
+            (),
+          ),
+        ~opts=
+          Pulumi.CustomResourceOptions.make(
+            ~parent=self->Pulumi.Resource.makeFromJs,
+            ~dependsOn=
+              [|internetGateway->Pulumi.Resource.makeFromJs|]
+              ->Pulumi.Input.wrap,
+            (),
+          ),
+        (),
       );
 
     let publicSubnetRouteTable =
-      RouteTable.(
-        make(
-          ~name=name ++ "PublicSubnetRouteTable",
-          ~args=
-            Args.make(
-              ~vpcId=vpc##id->Pulumi.Output.asInput,
-              ~routes=[|
-                Args.Route.makeInternetGatewayRoute(
-                  ~cidrBlock="0.0.0.0/0",
-                  ~gatewayId=internetGateway##id->Pulumi.Output.asInput,
-                ),
-              |],
-              (),
-            ),
-          ~opts,
-          (),
-        )
+      RouteTable.make(
+        ~name=name ++ "PublicSubnetRouteTable",
+        ~args=
+          RouteTable.Args.make(
+            ~vpcId=vpc##id->Pulumi.Output.asInput,
+            ~routes=[|
+              RouteTable.Args.Route.makeInternetGatewayRoute(
+                ~cidrBlock="0.0.0.0/0",
+                ~gatewayId=internetGateway##id->Pulumi.Output.asInput,
+              ),
+            |],
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     let privateSubnetRouteTable =
-      RouteTable.(
-        make(
-          ~name=name ++ "PrivateSubnetRouteTable",
-          ~args=
-            Args.make(
-              ~vpcId=vpc##id->Pulumi.Output.asInput,
-              ~routes=[|
-                Args.Route.makeNatGatewayRoute(
-                  ~cidrBlock="0.0.0.0/0",
-                  ~natGatewayId=natGateway##id->Pulumi.Output.asInput,
-                ),
-              |],
-              (),
-            ),
-          ~opts,
-          (),
-        )
+      RouteTable.make(
+        ~name=name ++ "PrivateSubnetRouteTable",
+        ~args=
+          RouteTable.Args.make(
+            ~vpcId=vpc##id->Pulumi.Output.asInput,
+            ~routes=[|
+              RouteTable.Args.Route.makeNatGatewayRoute(
+                ~cidrBlock="0.0.0.0/0",
+                ~natGatewayId=natGateway##id->Pulumi.Output.asInput,
+              ),
+            |],
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     let publicSubnetRouteTableAssociation =
-      RouteTableAssociation.(
-        make(
-          ~name=name ++ "PublicSubnetRouteTableAssociation",
-          ~args=
-            Args.make(
-              ~routeTableId=publicSubnetRouteTable##id->Pulumi.Output.asInput,
-              ~subnetId=publicSubnet##id->Pulumi.Output.asInput,
-              (),
-            ),
-          ~opts,
-          (),
-        )
+      RouteTableAssociation.make(
+        ~name=name ++ "PublicSubnetRouteTableAssociation",
+        ~args=
+          RouteTableAssociation.Args.make(
+            ~routeTableId=publicSubnetRouteTable##id->Pulumi.Output.asInput,
+            ~subnetId=publicSubnet##id->Pulumi.Output.asInput,
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     let privateSubnetRouteTableAssociation =
-      RouteTableAssociation.(
-        make(
-          ~name=name ++ "PrivateSubnetRouteTableAssociation",
-          ~args=
-            Args.make(
-              ~routeTableId=privateSubnetRouteTable##id->Pulumi.Output.asInput,
-              ~subnetId=privateSubnet##id->Pulumi.Output.asInput,
-              (),
-            ),
-          ~opts,
-          (),
-        )
+      RouteTableAssociation.make(
+        ~name=name ++ "PrivateSubnetRouteTableAssociation",
+        ~args=
+          RouteTableAssociation.Args.make(
+            ~routeTableId=privateSubnetRouteTable##id->Pulumi.Output.asInput,
+            ~subnetId=privateSubnet##id->Pulumi.Output.asInput,
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     let region = PulumiAws.Aws.getRegion();
@@ -262,51 +246,47 @@ let construct: construct =
     |];
 
     let s3Endpoint =
-      VpcEndpoint.(
-        make(
-          ~name=name ++ "S3Endpoint",
-          ~args=
-            Args.make(
-              ~serviceName=
-                (
-                  region
-                  |> Js.Promise.then_(region =>
-                       ("com.amazonaws." ++ region##name ++ ".s3")
-                       ->Js.Promise.resolve
-                     )
-                )
-                ->Pulumi.Input.ofPromise,
-              ~vpcId=vpc##id->Pulumi.Output.asInput,
-              ~routeTableIds,
-              (),
-            ),
-          ~opts,
-          (),
-        )
+      VpcEndpoint.make(
+        ~name=name ++ "S3Endpoint",
+        ~args=
+          VpcEndpoint.Args.make(
+            ~serviceName=
+              (
+                region
+                |> Js.Promise.then_(region =>
+                     ("com.amazonaws." ++ region##name ++ ".s3")
+                     ->Js.Promise.resolve
+                   )
+              )
+              ->Pulumi.Input.ofPromise,
+            ~vpcId=vpc##id->Pulumi.Output.asInput,
+            ~routeTableIds,
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     let dynamoDbEndpoint =
-      VpcEndpoint.(
-        make(
-          ~name=name ++ "DynamoDbEndpoint",
-          ~args=
-            Args.make(
-              ~serviceName=
-                (
-                  region
-                  |> Js.Promise.then_(region =>
-                       ("com.amazonaws." ++ region##name ++ ".dynamodb")
-                       ->Js.Promise.resolve
-                     )
-                )
-                ->Pulumi.Input.ofPromise,
-              ~vpcId=vpc##id->Pulumi.Output.asInput,
-              ~routeTableIds,
-              (),
-            ),
-          ~opts,
-          (),
-        )
+      VpcEndpoint.make(
+        ~name=name ++ "DynamoDbEndpoint",
+        ~args=
+          VpcEndpoint.Args.make(
+            ~serviceName=
+              (
+                region
+                |> Js.Promise.then_(region =>
+                     ("com.amazonaws." ++ region##name ++ ".dynamodb")
+                     ->Js.Promise.resolve
+                   )
+              )
+              ->Pulumi.Input.ofPromise,
+            ~vpcId=vpc##id->Pulumi.Output.asInput,
+            ~routeTableIds,
+            (),
+          ),
+        ~opts,
+        (),
       );
 
     makeOutputs(

@@ -1,14 +1,12 @@
-open ReventlessSpec.Mapper;
-
+// TODO
+//
 // module type Spec = {
 //   module type Source;
 //   module type Target;
 //   // module ToGenericSource: (Source) => GenericSource;
 //   // module ToGenericTarget: (Target) => GenericTarget;
-
 //   type action('a);
 //   type abstractAction;
-
 //   let toAbstractAction:
 //     (
 //       action('a),
@@ -17,27 +15,22 @@ open ReventlessSpec.Mapper;
 //     ) =>
 //     abstractAction;
 // };
-
 // module type MappingImpl = {
 //   module Spec: Spec; // to be removed via destructive replace in functor call
 //   module Source: GenericSource;
 //   module Target: GenericTarget;
-
 //   [@decco]
 //   type source;
 //   [@decco]
 //   type target;
-
 //   let map: (source, ReventlessSpec.Message.context) => Spec.action(target);
 // };
-
 //   module type Mapping = {
 //     module Spec: Spec; // to be removed via destructive replace in functor call
 //     module Source: GenericSource;
 //     let targetName: string;
 //     let map: Js.Json.t => Spec.action(Js.Json.t);
 //   };
-
 //   module Mapping =
 //          (
 //            Spec: Spec,
@@ -47,7 +40,6 @@ open ReventlessSpec.Mapper;
 //                           type source := Spec.ToGenericSource(Source).t and
 //                type target := Spec.ToGenericTarget(Target).t,
 //          )
-
 //            : (
 //              Mapping with
 //                module Spec := Spec and
@@ -56,7 +48,6 @@ open ReventlessSpec.Mapper;
 //     module Source = Spec.ToGenericSource(Impl.Source);
 //     module Target = Spec.ToGenericTarget(Impl.Target);
 //     let targetName = Target.name;
-
 //     let map = json => {
 //       switch (
 //         json->ReventlessSpec.Message.context_decode,
@@ -73,7 +64,6 @@ open ReventlessSpec.Mapper;
 //       };
 //     };
 //   };
-
 //   module type Mappings = {
 //     module Spec: Spec; // to be removed via destructive replace in functor call
 //     module Source: GenericSource; // to be removed via destructive replace in functor call
@@ -81,14 +71,12 @@ open ReventlessSpec.Mapper;
 //       Mapping with module Spec := Spec and module Source := Source;
 //     let mappings: array(module Mapping);
 //   };
-
 //   module type Mapper = {
 //     module Spec: Spec; // to be removed via destructive replace in functor call
 //     let map:
 //       (~targetName: option(string), Js.Json.t) =>
 //       array(Spec.action(Js.Json.t));
 //   };
-
 //   module Mapper =
 //          (
 //            Spec: Spec,

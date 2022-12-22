@@ -1,53 +1,50 @@
 // functor to create specific Mapper for projections
-module Spec = ReventlessSpec.ProjectionSpec;
+module Spec = ReventlessSpec.Projection.Spec;
 
-module type Mappings = {
-  module Target: ReventlessSpec.ProjectionSpec.Target; // to be removed via destructive replace in functor call
-  module type Mapping =
-    ProjectionMapping.ProjectionImpl with module Spec := Spec;
-  /*
-   ReventlessSpec.MapperNto1.Mapping with
-     module Spec := Spec and
-     module Target := ReventlessSpec.Mapper.MakeGenericTargetFromStateTarget(Target);*/
-  let mappings: array(module Mapping);
+module type StateTarget = {
+  let name: string;
+  type state;
+  let state_decode: Js.Json.t => Belt.Result.t(state, Decco.decodeError); // TODO: is it possible to remove Decco here?
+  let state_encode: state => Js.Json.t;
+};
+
+module MakeGenericTargetFromStateTarget =
+       (StateTarget: StateTarget)
+       : (Mapper.GenericTarget with type t = StateTarget.state) => {
+  let name = StateTarget.name;
+  type t = StateTarget.state;
+  let decode = StateTarget.state_decode;
+  let encode = StateTarget.state_encode;
 };
 
 module Make =
        (
-         Target: ReventlessSpec.ProjectionSpec.Target,
-         Mappings: Mappings with module Target := Target,
+         DiscreteTarget: ReventlessSpec.Projection.Spec.Target,
+         Mappings:
+           ReventlessSpec.Projection.Mappings with
+             module Target := DiscreteTarget,
        )
 
          : (
            MapperNto1.Mapper with
              module Spec := Spec and
-             module Target := ReventlessSpec.Mapper.MakeGenericTargetFromStateTarget(Target)
+             module Target := MakeGenericTargetFromStateTarget(DiscreteTarget)
        ) => {
-  module GenericTarget =
-    ReventlessSpec.Mapper.MakeGenericTargetFromStateTarget(Target);
+  module GenericTarget = MakeGenericTargetFromStateTarget(DiscreteTarget);
   module GenericMappings = {
-    /* TODO: convert
-           module type ProjectionMapper.Mappings (see above)
-           to
-           module type ReventlessSpec.MapperNto1.Mappings
-       */
-    module type GenericMapping =
-      ReventlessSpec.MapperNto1.Mapping with module Spec := Spec;
     module Target = GenericTarget;
+    module type Mapping =
+      MapperNto1.Mapping with
+        module Spec := Spec and type target := DiscreteTarget.state;
 
-    /*(module {
-        let sourceName = M.Source.name;
-        let map = M.map;
-      }: ReventlessSpec.MapperNto1.Mapping)*/
-    let mappings: array(module GenericMapping) =
+    let mappings: array(module Mapping) =
       Mappings.mappings->Belt.Array.map(((module M)) => {
         module GenericMapping = {
           let sourceName = M.Source.name;
-          module Source =
-            ReventlessSpec.Mapper.MakeGenericSourceFromEventSource(M.Source);
+          module Source = Mapper.MakeGenericSourceFromEventSource(M.Source);
           let map = MapperNto1.makeGenericMap(Source.decode, M.map);
         };
-        ((module GenericMapping): (module GenericMapping));
+        ((module GenericMapping): (module Mapping));
       });
   };
   include MapperNto1.Mapper(Spec, GenericTarget, GenericMappings);

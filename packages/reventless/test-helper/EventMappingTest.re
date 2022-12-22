@@ -1,9 +1,9 @@
-open ReventlessSpec;
-open Reventless;
+//open ReventlessSpec;
+//open Reventless;
 
 module type T = {
-  module Source: AggregateSpec.T;
-  module Target: AggregateSpec.T;
+  module Source: ReventlessSpec.AggregateSpec.T;
+  module Target: ReventlessSpec.AggregateSpec.T;
 
   let givenSourceEvents: list(Source.event) => list(Source.event);
   let givenTargetEvents:
@@ -53,14 +53,14 @@ module type T = {
 };
 
 module type Aggregate = {
-  module Spec: AggregateSpec.T;
+  module Spec: ReventlessSpec.AggregateSpec.T;
   module Behaviour: Reventless.Behaviour.T;
 
   let apply': (Behaviour.state, Spec.event) => Behaviour.state;
   let currentState: list(Spec.event) => Behaviour.state;
   let errors: list(Spec.error);
   let errorHandler:
-    Message.errorHandler(Spec.error, Spec.command, Spec.event);
+    Reventless.Message.errorHandler(Spec.error, Spec.command, Spec.event);
   let exec:
     (Reventless.Message.context, Spec.command, list(Spec.event)) =>
     list(Spec.event);
@@ -68,7 +68,7 @@ module type Aggregate = {
 
 module MakeAggregate =
        (
-         Spec: AggregateSpec.T,
+         Spec: ReventlessSpec.AggregateSpec.T,
          Behaviour: Behaviour.T with module Spec := Spec,
        ) => {
   module Spec = Spec;
@@ -110,12 +110,12 @@ module MakeAggregate =
 
 module Make =
        (
-         Source: AggregateSpec.T,
+         Source: ReventlessSpec.AggregateSpec.T,
          SourceBehaviour: Behaviour.T with module Spec = Source,
-         Target: AggregateSpec.T,
+         Target: ReventlessSpec.AggregateSpec.T,
          TargetBehaviour: Behaviour.T with module Spec = Target,
          EventMapping:
-           EventMapping.T with
+           ReventlessSpec.EventMapping.T with
              module Source = Source and module Target := Target,
        )
        : (T with module Source = Source and module Target = Target) => {
@@ -125,17 +125,19 @@ module Make =
   module SourceAggregate = MakeAggregate(Source, SourceBehaviour);
   module TargetAggregate = MakeAggregate(Target, TargetBehaviour);
 
-  let queryEngine: QueryEngine.t = {
-    scan: (~viewName, ~filterConfigs, ~limit) => [||]->Js.Promise.resolve,
+  let queryEngine: ReventlessSpec.QueryEngine.t = {
+    scan: (~viewName as _, ~filterConfigs as _, ~limit as _) =>
+      [||]->Js.Promise.resolve,
     query:
       (
-        ~viewName: string,
-        ~key: option(string)=?,
-        ~id: QueryEngine.value,
-        ~filterConfigs: option(list(QueryEngine.filterConfig))=?,
-        ~ascending: option(bool)=?,
-        ~limit: option(int)=?,
-        unit,
+        ~viewName as _: string,
+        ~key as _: option(string)=?,
+        ~id as _: ReventlessSpec.QueryEngine.value,
+        ~filterConfigs as
+          _: option(list(ReventlessSpec.QueryEngine.filterConfig))=?,
+        ~ascending as _: option(bool)=?,
+        ~limit as _: option(int)=?,
+        _: unit,
       ) =>
       [||]->Js.Promise.resolve,
   };

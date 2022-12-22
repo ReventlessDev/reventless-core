@@ -11,8 +11,8 @@ var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Projection$Reventless = require("../src/Projection.bs.js");
 var TestFixtures$Reventless = require("./TestFixtures.bs.js");
-var ProjectionSpec$ReventlessSpec = require("@reventless/reventless-spec/src/ProjectionSpec.bs.js");
 
 function unpack(p) {
   return p[1];
@@ -76,7 +76,7 @@ function Make(Target) {
           });
       };
       var handleActions = function (actions, primitives) {
-        var __x = Promise.all(ProjectionSpec$ReventlessSpec.handleActions(actions, primitives));
+        var __x = Promise.all(Projection$Reventless.handleActions(actions, primitives));
         return __x.then((function (param) {
                       return Promise.resolve(/* () */0);
                     }));
@@ -188,6 +188,9 @@ function Make(Target) {
     });
 }
 
+var handleActions = Projection$Reventless.handleActions;
+
 exports.unpack = unpack;
+exports.handleActions = handleActions;
 exports.Make = Make;
 /* Jest Not a pure module */

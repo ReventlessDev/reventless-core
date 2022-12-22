@@ -1,7 +1,5 @@
-open ReventlessSpec;
-
 module type T = {
-  module Source: ProjectionSpec.Source;
+  module Source: ReventlessSpec.Projection.Spec.Source;
   type target;
 
   let describe: (string, unit => unit) => unit;
@@ -45,12 +43,13 @@ let unpack: Jest.Expect.plainPartial('a) => 'a =
     };
   };
 
+let handleActions = Projection.handleActions; // create alias to avoid shadowing of same named modules
+
 module Make =
        (
-         Target: ReventlessSpec.ProjectionSpec.Target,
+         Target: ReventlessSpec.Projection.Spec.Target,
          Projection:
-           ProjectionMapping.ProjectionImpl with
-             module Spec := ProjectionSpec and type target := Target.state,
+           ReventlessSpec.Projection.Mapping with type target := Target.state,
        )
 
          : (
@@ -106,7 +105,7 @@ module Make =
 
   let handleActions = (actions, primitives) =>
     actions
-    ->ReventlessSpec.ProjectionSpec.handleActions(primitives)
+    ->handleActions(primitives)
     ->Js.Promise.all
     ->Js.Promise.then_(_ => Js.Promise.resolve(), _); // TODO: error handling
 

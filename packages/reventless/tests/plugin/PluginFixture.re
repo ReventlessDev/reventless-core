@@ -17,9 +17,10 @@ let state: PluginReadModelSpec.state = {
   eventCollector: pluginDefinition.eventCollector,
   extensionPoints: pluginDefinition.extensionPoints,
   extensionPointNames:
-    pluginDefinition.extensionPoints->PluginProjection.extractExtensionPointNames,
+    pluginDefinition.extensionPoints
+    ->PluginProjection.Util.extractExtensionPointNames,
   extensionNames:
-    pluginDefinition.extensions->PluginProjection.extractExtensionNames,
+    pluginDefinition.extensions->PluginProjection.Util.extractExtensionNames,
   extensions: pluginDefinition.extensions,
   status: Connected,
   statusChange: TestFixtures.statusChange,
