@@ -43,19 +43,3 @@ module MakeGenericTargetFromCommandTarget =
   let decode = CommandTarget.command_decode;
   let encode = CommandTarget.command_encode;
 };
-
-module type StateTarget = {
-  let name: string;
-  type state;
-  let state_decode: Js.Json.t => Belt.Result.t(state, Decco.decodeError); // TODO: is it possible to remove Decco here?
-  let state_encode: state => Js.Json.t;
-};
-
-module MakeGenericTargetFromStateTarget =
-       (StateTarget: StateTarget)
-       : (GenericTarget with type t = StateTarget.state) => {
-  let name = StateTarget.name;
-  type t = StateTarget.state;
-  let decode = StateTarget.state_decode;
-  let encode = StateTarget.state_encode;
-};

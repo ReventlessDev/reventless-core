@@ -5,22 +5,6 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Mapper$ReventlessSpec = require("./Mapper.bs.js");
-
-function ToGenericSource(Source) {
-  return Mapper$ReventlessSpec.MakeGenericSourceFromEventSource({
-              name: Source.name,
-              event_decode: Source.event_decode
-            });
-}
-
-function ToGenericTarget(Target) {
-  return Mapper$ReventlessSpec.MakeGenericTargetFromStateTarget({
-              name: Target.name,
-              state_decode: Target.state_decode,
-              state_encode: Target.state_encode
-            });
-}
 
 function handleActions(actions, param) {
   var $$delete = param[/* delete */3];
@@ -87,7 +71,5 @@ function handleActions(actions, param) {
               }));
 }
 
-exports.ToGenericSource = ToGenericSource;
-exports.ToGenericTarget = ToGenericTarget;
 exports.handleActions = handleActions;
 /* No side effect */

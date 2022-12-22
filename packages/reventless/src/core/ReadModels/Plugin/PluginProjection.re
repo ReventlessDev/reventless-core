@@ -1,23 +1,22 @@
-open PluginSpec;
-open ReventlessSpec.ProjectionSpec;
-
-let extractExtensionPointNames =
-  Belt.Array.map(_, (extensionPoint: extensionPointDefinition) =>
-    extensionPoint.name
-  );
-let extractExtensionNames =
-  Belt.Array.map(_, (extension: extensionDefinition) =>
-    extension.extensionPointName
-  );
-
 module Target = PluginReadModelSpec;
+
+module Util = {
+  let extractExtensionPointNames =
+    Belt.Array.map(_, (extensionPoint: PluginSpec.extensionPointDefinition) =>
+      extensionPoint.name
+    );
+  let extractExtensionNames =
+    Belt.Array.map(_, (extension: PluginSpec.extensionDefinition) =>
+      extension.extensionPointName
+    );
+};
 
 module PluginMapping = {
   module Source = PluginSpec;
 
   let map = (event, {ReventlessSpec.Message.id, meta: {time, user}}) =>
     switch (event) {
-    | UnknownPluginDetected => Ignore
+    | PluginSpec.UnknownPluginDetected => ReventlessSpec.Projection.Spec.Ignore
     | Connected({name, version, eventCollector, extensionPoints, extensions}) =>
       Set(
         id,
@@ -26,8 +25,9 @@ module PluginMapping = {
           version,
           eventCollector,
           extensionPoints,
-          extensionPointNames: extensionPoints->extractExtensionPointNames,
-          extensionNames: extensions->extractExtensionNames,
+          extensionPointNames:
+            extensionPoints->Util.extractExtensionPointNames,
+          extensionNames: extensions->Util.extractExtensionNames,
           extensions,
           status: Connected,
           statusChange: {
@@ -79,11 +79,7 @@ module PluginMapping = {
     };
 };
 
-//module Mapping = ProjectionMapping.Make(Impl);
-
 module type Mapping =
-  Reventless.ProjectionMapping.ProjectionImpl with
-    module Spec := ReventlessSpec.ProjectionSpec and
-    type target := Target.state;
+  ReventlessSpec.Projection.Mapping with type target := Target.state;
 
 let mappings: array(module Mapping) = [|(module PluginMapping)|];

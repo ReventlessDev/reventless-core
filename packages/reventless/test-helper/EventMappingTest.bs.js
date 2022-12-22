@@ -137,10 +137,10 @@ function Make(Source) {
                       return Behaviour_create$1(command, context, errorHandler$1);
                     }
                   };
-                  var queryEngine_000 = function (viewName, filterConfigs, limit) {
+                  var queryEngine_000 = function (param, param$1, param$2) {
                     return Promise.resolve(/* array */[]);
                   };
-                  var queryEngine_001 = function (viewName, key, id, filterConfigs, ascending, limit, unit) {
+                  var queryEngine_001 = function (param, param$1, param$2, param$3, param$4, param$5, param$6) {
                     return Promise.resolve(/* array */[]);
                   };
                   var queryEngine = /* record */[

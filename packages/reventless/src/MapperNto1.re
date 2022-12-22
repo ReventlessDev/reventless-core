@@ -1,40 +1,9 @@
-open ReventlessSpec.Mapper;
-open ReventlessSpec.MapperNto1;
-
-module Mapping =
-       (
-         Spec: ReventlessSpec.MapperNto1.Spec,
-         //  Source: Spec.Source,
-         //  Target: Spec.Target,
-         Impl:
-           ReventlessSpec.MapperNto1.MappingImpl with
-             module Spec := Spec /*and  type source = Spec.ToGenericSource(Source).t and  type target = Spec.ToGenericTarget(Target).t*/,
-       )
-
-         : (
-           ReventlessSpec.MapperNto1.Mapping with module Spec := Spec /* FIXME: 'target is to generic - this needs to be a specific (matching) type*/
-       ) => {
-  let sourceName = Impl.Source.name;
-  module Target = Impl.Target;
-
-  let map = json => {
-    switch (
-      json->ReventlessSpec.Message.context_decode,
-      json->Impl.Source.decode,
-    ) {
-    | (Ok(context), Ok(source)) => source->Impl.map(context)
-    | _ =>
-      Js.Exn.raiseError("Couldn't decode source:" ++ json->Js.Json.stringify)
-    };
-  };
-};
-
 type mapGeneric('action) = Js.Json.t => 'action;
 type mapImpl('msg, 'action) =
   ('msg, ReventlessSpec.Message.context) => 'action;
+
 let makeGenericMap:
-  (ReventlessSpec.Mapper.decode('msg), mapImpl('msg, 'action)) =>
-  mapGeneric('action) =
+  (Mapper.decode('msg), mapImpl('msg, 'action)) => mapGeneric('action) =
   (msgDecode, map, json) => {
     switch (json->ReventlessSpec.Message.context_decode, json->msgDecode) {
     | (Ok(context), Ok(source)) => source->map(context)
@@ -43,18 +12,40 @@ let makeGenericMap:
     };
   };
 
+module type Spec = {
+  module type Source;
+  module type Target;
+
+  type action('id, 'a);
+};
+
 module type Mapper = {
   module Spec: Spec; // to be removed via destructive replace in functor call
-  module Target: GenericTarget;
+  module Target: Mapper.GenericTarget;
   let map:
     (~sourceName: option(string), Js.Json.t) =>
     array(Spec.action(string, Target.t));
 };
 
+module type Mapping = {
+  module Spec: Spec; // to be removed via destructive replace in functor call
+  let sourceName: string;
+  type target;
+
+  let map: Js.Json.t => Spec.action(string, target);
+};
+
+module type Mappings = {
+  module Spec: Spec; // to be removed via destructive replace in functor call
+  module Target: Mapper.GenericTarget; // to be removed via destructive replace in functor call
+  module type Mapping = Mapping with module Spec := Spec and type target := Target.t /* and type target := Target.t*/;
+  let mappings: array(module Mapping);
+};
+
 module Mapper =
        (
          Spec: Spec,
-         Target: GenericTarget,
+         Target: Mapper.GenericTarget,
          Mappings:
            Mappings with module Spec := Spec and module Target := Target,
        )

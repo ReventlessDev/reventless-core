@@ -73,8 +73,7 @@ let init: Behaviour.init(state, event) =
     | Reconnected(_)
     | Disconnected(_)
     | Activated(_)
-    | Deactivated(_) =>
-      raise(Reventless.Message.InvalidEvent(event_encode(event)))
+    | Deactivated(_) => raise(Message.InvalidEvent(event_encode(event)))
     };
 
 let apply: Behaviour.apply(state, event) =
@@ -87,8 +86,7 @@ let apply: Behaviour.apply(state, event) =
       | Reconnected(_)
       | Disconnected(_)
       | Activated(_)
-      | Deactivated(_) =>
-        raise(Reventless.Message.InvalidEvent(event_encode(event)))
+      | Deactivated(_) => raise(Message.InvalidEvent(event_encode(event)))
       }
     | Connected(pluginDefinition) =>
       switch (event) {
@@ -97,8 +95,7 @@ let apply: Behaviour.apply(state, event) =
       | UnknownPluginDetected
       | Connected(_)
       | Reconnected(_)
-      | Activated(_) =>
-        raise(Reventless.Message.InvalidEvent(event_encode(event)))
+      | Activated(_) => raise(Message.InvalidEvent(event_encode(event)))
       }
     | Disconnected(pluginDefinition) =>
       switch (event) {
@@ -107,8 +104,7 @@ let apply: Behaviour.apply(state, event) =
       | UnknownPluginDetected
       | Connected(_)
       | Disconnected(_)
-      | Activated(_) =>
-        raise(Reventless.Message.InvalidEvent(event_encode(event)))
+      | Activated(_) => raise(Message.InvalidEvent(event_encode(event)))
       }
     | Inactive(pluginDefinition) =>
       switch (event) {
@@ -117,8 +113,7 @@ let apply: Behaviour.apply(state, event) =
       | Connected(_)
       | Reconnected(_)
       | Disconnected(_)
-      | Deactivated(_) =>
-        raise(Reventless.Message.InvalidEvent(event_encode(event)))
+      | Deactivated(_) => raise(Message.InvalidEvent(event_encode(event)))
       }
     };
   };

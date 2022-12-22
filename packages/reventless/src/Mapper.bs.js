@@ -22,18 +22,6 @@ function MakeGenericTargetFromCommandTarget(CommandTarget) {
         };
 }
 
-function MakeGenericTargetFromStateTarget(StateTarget) {
-  var name = StateTarget.name;
-  var decode = StateTarget.state_decode;
-  var encode = StateTarget.state_encode;
-  return {
-          name: name,
-          decode: decode,
-          encode: encode
-        };
-}
-
 exports.MakeGenericSourceFromEventSource = MakeGenericSourceFromEventSource;
 exports.MakeGenericTargetFromCommandTarget = MakeGenericTargetFromCommandTarget;
-exports.MakeGenericTargetFromStateTarget = MakeGenericTargetFromStateTarget;
 /* No side effect */

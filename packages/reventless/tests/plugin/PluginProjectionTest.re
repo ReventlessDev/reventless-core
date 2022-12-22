@@ -1,6 +1,9 @@
 open PluginSpec;
 open PluginFixture;
-include Reventless.ProjectionTest.Make(PluginProjection.Impl);
+include ProjectionTest.Make(
+          PluginReadModelSpec,
+          PluginProjection.PluginMapping,
+        );
 
 describe("PluginView:", () => {
   test("UnknownPluginDetected", () =>

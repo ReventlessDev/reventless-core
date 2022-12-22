@@ -18,6 +18,11 @@ function extractExtensionNames(__x) {
               }));
 }
 
+var Util = {
+  extractExtensionPointNames: extractExtensionPointNames,
+  extractExtensionNames: extractExtensionNames
+};
+
 function map($$event, param) {
   var match = param[/* meta */1];
   var user = match[/* user */3];
@@ -136,9 +141,8 @@ var mappings = /* array */[{
 
 var Target = 0;
 
-exports.extractExtensionPointNames = extractExtensionPointNames;
-exports.extractExtensionNames = extractExtensionNames;
 exports.Target = Target;
+exports.Util = Util;
 exports.PluginMapping = PluginMapping;
 exports.mappings = mappings;
 /* No side effect */

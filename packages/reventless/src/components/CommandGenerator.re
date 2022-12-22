@@ -125,7 +125,7 @@ module Make =
           };
         let params =
           payload##arguments
-          |> Message.stringify
+          |> Message.stringify  // FIXME: find another way to transform a Js.t into Js.Json.t
           |> Js.Json.parseExn
           |> Js.Json.decodeObject
           |> (
