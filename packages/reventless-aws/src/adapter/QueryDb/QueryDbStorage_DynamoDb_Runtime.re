@@ -64,19 +64,19 @@ let save = table =>
              Error(NotSavedToStorage(err->ofPromise##message))->resolve;
            };
          })
+    | Any
     | Overwrite =>
       tableName->putWithTableName(json)
       |> then_(_ => {
            Js.log(
-             __MODULE__
-             ++ {j|.save: saved Overwrite state to $tableName: $stateStr|j},
+             __MODULE__ ++ {j|.save: saved state to $tableName: $stateStr|j},
            );
            Ok()->resolve;
          })
       |> catch(err => {
            Js.log(
              __MODULE__
-             ++ {j|.save: Error: Couldn't save Overwrite state to $tableName: $err|j},
+             ++ {j|.save: Error: Couldn't save state to $tableName: $err|j},
            );
            Error(NotSavedToStorage(err->ofPromise##message))->resolve;
          })
