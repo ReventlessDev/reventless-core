@@ -1,10 +1,16 @@
 module Make =
-       (Config: Config.T, Spec: ReventlessSpec.ReadModelSpec.T)
+       (
+         Config: Config.T,
+         Spec: ReventlessSpec.ReadModelSpec.T,
+         Mappings:
+           ReventlessSpec.Projection.Mappings with module Target := Spec,
+       )
        : Reventless.ReadModel.T =>
   Reventless.ReadModel.Make(
     Config,
     Spec,
-    View,
+    Mappings,
     QueryDbStorage.DynamoDb,
     QueryDbResolvers.AppSync,
+    EventCollectorConnector.DynamoDbStream,
   );

@@ -2,7 +2,7 @@ open AwsSdk.DynamoDb.DocumentClient;
 open Util_DynamoDb_Runtime;
 open Belt.Result;
 open Js.Promise;
-open Reventless.QueryDb;
+open ReventlessSpec.QueryDb;
 open Reventless.Util.Error;
 
 let load = table =>

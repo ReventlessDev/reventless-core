@@ -4,16 +4,12 @@
 var ReadModel$Reventless = require("@reventless/reventless/src/components/ReadModel.bs.js");
 var QueryDbStorage_DynamoDb$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb.bs.js");
 var QueryDbResolvers_AppSync$ReventlessAws = require("../adapter/QueryDb/QueryDbResolvers_AppSync.bs.js");
+var EventCollectorConnector_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_DynamoDbStream.bs.js");
 
 function Make(Config) {
   return (function (Spec) {
-      return (function (View) {
-          return ReadModel$Reventless.Make(Config)({
-                            Id: Spec.Id,
-                            name: Spec.name,
-                            event_encode: Spec.event_encode,
-                            event_decode: Spec.event_decode
-                          })(View)(QueryDbStorage_DynamoDb$ReventlessAws)(QueryDbResolvers_AppSync$ReventlessAws);
+      return (function (Mappings) {
+          return ReadModel$Reventless.Make(Config)(Spec)(Mappings)(QueryDbStorage_DynamoDb$ReventlessAws)(QueryDbResolvers_AppSync$ReventlessAws)(EventCollectorConnector_DynamoDbStream$ReventlessAws);
         });
     });
 }
