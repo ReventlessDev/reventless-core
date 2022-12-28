@@ -2,6 +2,7 @@
 type resolveIdConfig = {
   idFieldName: string,
   fieldName: string,
+  pluginName: option(string),
   tableName: string,
   index: option(string),
 };
@@ -10,6 +11,7 @@ type resolveIdConfig = {
 type resolveIdsConfig = {
   idsFieldName: string,
   fieldName: string,
+  pluginName: option(string),
   tableName: string,
   sortField: option(string),
 };
