@@ -26,12 +26,12 @@ function save(table) {
       var tableName = table.name.get();
       var stateStr = JSON.stringify(json);
       var json$1 = Util_DynamoDb_Runtime$ReventlessAws.insertTtl(json, ttl);
-      if (saveMode) {
+      if (saveMode !== 0) {
         return DynamoDb_DocumentClient$AwsSdk.putWithTableName(tableName, json$1).then((function (param) {
-                        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: saved Overwrite state to " + (String(tableName) + (": " + (String(stateStr) + "")))));
+                        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: saved state to " + (String(tableName) + (": " + (String(stateStr) + "")))));
                         return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
                       })).catch((function (err) {
-                      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: Error: Couldn\'t save Overwrite state to " + (String(tableName) + (": " + (String(err) + "")))));
+                      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: Error: Couldn\'t save state to " + (String(tableName) + (": " + (String(err) + "")))));
                       return Promise.resolve(/* Error */Block.__(1, [/* NotSavedToStorage */Block.__(0, [err.message])]));
                     }));
       } else {
