@@ -5,7 +5,7 @@ include ProjectionTest.Make(
           PluginProjection.PluginMapping,
         );
 
-describe("PluginView:", () => {
+describe("PluginProjection:", () => {
   test("UnknownPluginDetected", () =>
     givenEvents([]) //
     ->whenEvent(UnknownPluginDetected)

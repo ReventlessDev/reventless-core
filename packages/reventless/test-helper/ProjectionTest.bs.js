@@ -39,13 +39,16 @@ function Make(Target) {
       var save = function (store) {
         return (function (id, state, saveMode, _ttl) {
             var match = states(store, id);
-            if (match) {
-              if (match[1] || !saveMode) {
+            if (saveMode < 2) {
+              if (match) {
+                if (match[1] || saveMode === 0) {
+                  return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
+                }
+                
+              } else if (saveMode !== 0) {
                 return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
               }
               
-            } else if (saveMode) {
-              return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
             }
             setStates(store, id, /* :: */[
                   state,
@@ -94,8 +97,8 @@ function Make(Target) {
       };
       var givenEvents = function (events) {
         var store = { };
-        var __x = Promise.all(Belt_List.toArray(Belt_List.map(events, (function (param) {
-                        return update(store, param);
+        var __x = Promise.all(Belt_List.toArray(Belt_List.map(events, (function ($$event) {
+                        return update(store, $$event);
                       }))));
         return __x.then((function (param) {
                       return Promise.resolve(store);
