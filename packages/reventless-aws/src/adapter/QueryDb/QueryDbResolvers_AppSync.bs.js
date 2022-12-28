@@ -23,7 +23,7 @@ function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdC
   var resolverAll = AppSync_Resolver$PulumiAws.make($$String.capitalize(fieldNameForAll), api, Caml_option.some(dataSourceName), "Query", fieldNameForAll, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
   var resourcesMaker = function (allQueryDbs) {
     var resolversByIndex = Belt_List.map(indexes, (function (param) {
-            var authorization = param[/* authorization */5];
+            var authorization = param[/* authorization */4];
             var index = param[/* index */0];
             var name$2 = name$1 + ("By" + $$String.capitalize(index));
             if (authorization !== undefined) {

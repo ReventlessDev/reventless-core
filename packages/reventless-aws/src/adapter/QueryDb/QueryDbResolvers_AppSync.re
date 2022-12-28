@@ -1,4 +1,5 @@
 open PulumiAws.AppSync;
+open ReventlessSpec.ReadModelSpec;
 open Reventless;
 
 type api = Pulumi.Output.t(PulumiAws.AppSync.GraphQLApi.t);
@@ -10,10 +11,10 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     ~api: api,
     ~apiRole: role,
     ~dataSourceName,
-    ~indexes: list(View.index),
+    ~indexes: list(index),
     ~sortField,
-    ~resolveIdConfigs: list(View.resolveIdConfig),
-    ~resolveIdsConfigs: list(View.resolveIdsConfig),
+    ~resolveIdConfigs: list(resolveIdConfig),
+    ~resolveIdsConfigs: list(resolveIdsConfig),
     ~opts,
   ) => {
     open Resolver.Templates;
@@ -65,7 +66,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     let resourcesMaker: QueryDb.resolversResourcesMaker =
       allQueryDbs => {
         let resolversByIndex =
-          indexes->Belt.List.map(({View.index, authorization}) => {
+          indexes->Belt.List.map(({index, authorization}) => {
             let name = name ++ "By" ++ index->String.capitalize;
             switch (authorization) {
             | None =>
@@ -156,7 +157,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
 
         let idResolvers =
           resolveIdConfigs->Belt.List.map(config => {
-            let {View.idFieldName, fieldName, pluginName, tableName, index} = config;
+            let {idFieldName, fieldName, pluginName, tableName, index} = config;
             let storageResource = storageResource(~pluginName, ~tableName);
 
             switch (index) {
@@ -226,13 +227,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
 
         let idsResolvers =
           resolveIdsConfigs->Belt.List.map(config => {
-            let {
-              View.idsFieldName,
-              fieldName,
-              pluginName,
-              tableName,
-              sortField,
-            } = config;
+            let {idsFieldName, fieldName, pluginName, tableName, sortField} = config;
             let storageResource = storageResource(~pluginName, ~tableName);
 
             Resolver.make(

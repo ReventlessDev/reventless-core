@@ -1,5 +1,6 @@
 open PulumiAws;
 open DynamoDb.Table;
+open ReventlessSpec.ReadModelSpec;
 
 type api = Pulumi.Output.t(AppSync.GraphQLApi.t);
 type role = Pulumi.Output.t(IAM.Role.t);
@@ -9,7 +10,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
     let globalSecondaryIndexes =
       indexes
       ->Belt.List.toArray
-      ->Belt.Array.map(({Reventless.View.index, sortField, projectionType}) =>
+      ->Belt.Array.map(({index, sortField, projectionType}) =>
           (
             switch (projectionType) {
             | `ALL as projectionType
@@ -43,7 +44,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
           [{"name": sortField, "type": "S"}]
         ),
         indexes
-        ->Belt.List.map(({Reventless.View.index, _type, sortField}) =>
+        ->Belt.List.map(({index, _type, sortField}) =>
             [
               {"name": index, "type": _type},
               ...sortField->Belt.Option.mapWithDefault([], sortField =>
