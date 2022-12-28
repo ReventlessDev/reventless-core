@@ -81,6 +81,7 @@ module Make =
     store =>
       (. id, state, saveMode, _ttl) =>
         switch (store->states(id), saveMode) {
+        | (_, Any)
         | ([], Init)
         | ([_], Overwrite) =>
           store->setStates(id, [state]);
@@ -122,7 +123,7 @@ module Make =
   let givenEvents = events => {
     let store = Js.Dict.empty();
     events
-    ->Belt.List.map(update(store))
+    ->Belt.List.map(event => store->update(event))
     ->Belt.List.toArray
     ->Js.Promise.all
     ->Js.Promise.then_(_ => store->Js.Promise.resolve, _);

@@ -37,7 +37,7 @@ var thenState = include.thenState;
 
 var thenNoState = include.thenNoState;
 
-Curry._2(describe, "PluginView:", (function (param) {
+Curry._2(describe, "PluginProjection:", (function (param) {
         Curry._3(test, "UnknownPluginDetected", undefined, (function (param) {
                 return Curry._1(thenNoState, Curry._2(whenEvent, Curry._1(givenEvents, /* [] */0), /* UnknownPluginDetected */0));
               }));
