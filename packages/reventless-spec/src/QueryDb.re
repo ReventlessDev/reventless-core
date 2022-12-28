@@ -1,6 +1,7 @@
 type saveMode =
   | Init
-  | Overwrite;
+  | Overwrite
+  | Any;
 
 type storageError =
   | NotSavedToStorage(string)
