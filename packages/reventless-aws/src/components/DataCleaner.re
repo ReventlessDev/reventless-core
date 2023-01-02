@@ -1,6 +1,5 @@
 let mode = `production; // opposed to `debug
 open PulumiAws.Lambda;
-open Reventless;
 open ReventlessSpec.Adapter;
 
 type tableConfig = {
