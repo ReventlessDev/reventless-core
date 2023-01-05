@@ -84,7 +84,28 @@ function handleActions(actions, param) {
                             return Belt_Array.map(action[0], (function (id) {
                                           return $$delete(id, undefined);
                                         }));
-                        case /* UpdateMultiState */12 :
+                        case /* CreateMultiStates */12 :
+                            var states = action[1];
+                            var id$2 = action[0];
+                            var len = states.length;
+                            if (len !== 1) {
+                              if (len !== 0) {
+                                var batch$2 = Belt_Array.map(states, (function (state) {
+                                        return /* tuple */[
+                                                id$2,
+                                                state,
+                                                undefined
+                                              ];
+                                      }));
+                                return /* array */[saveBatch(batch$2)];
+                              } else {
+                                return /* array */[Promise.resolve(/* Ok */Block.__(0, [/* () */0]))];
+                              }
+                            } else {
+                              var state = states[0];
+                              return /* array */[save(id$2, state, /* Init */0, undefined)];
+                            }
+                        case /* UpdateMultiState */13 :
                             var update$2 = action[1];
                             var id$3 = action[0];
                             var __x$2 = load(id$3);
