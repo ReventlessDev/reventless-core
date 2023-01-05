@@ -1,4 +1,5 @@
 open ReventlessSpec.Projection.Spec;
+open ReventlessSpec.QueryDb;
 
 let handleActions =
     (actions, {ReventlessSpec.ReadModel.load, save, saveBatch, delete}) => {
@@ -24,15 +25,11 @@ let handleActions =
                 fun
                 | Ok(states) =>
                   switch (states) {
-                  | [] =>
-                    Error(ReventlessSpec.QueryDb.StaleState)
-                    ->Js.Promise.resolve
+                  | [] => Error(StaleState)->Js.Promise.resolve
                   | [state] =>
                     let newState = state->update;
                     save(. id, newState, Overwrite, None);
-                  | _ =>
-                    Error(ReventlessSpec.QueryDb.StaleState)
-                    ->Js.Promise.resolve
+                  | _ => Error(StaleState)->Js.Promise.resolve
                   }
                 | Error(err) => Error(err)->Js.Promise.resolve,
                 _,
@@ -44,13 +41,11 @@ let handleActions =
                 fun
                 | Ok(states) =>
                   switch (states) {
-                  | [] => save(. id, default, Overwrite, None)
+                  | [] => save(. id, default, Init, None)
                   | [state] =>
                     let newState = state->update;
                     save(. id, newState, Overwrite, None);
-                  | _ =>
-                    Error(ReventlessSpec.QueryDb.StaleState)
-                    ->Js.Promise.resolve
+                  | _ => Error(StaleState)->Js.Promise.resolve
                   }
                 | Error(err) => Error(err)->Js.Promise.resolve,
                 _,
@@ -60,6 +55,7 @@ let handleActions =
             load(. id)
             ->Js.Promise.then_(
                 fun
+                | Ok([]) => Ok()->Js.Promise.resolve
                 | Ok(states) => {
                     let newStates = states->Belt.List.toArray->update;
                     saveBatch(.
