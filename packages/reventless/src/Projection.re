@@ -9,6 +9,14 @@ let handleActions =
     ->Belt.Array.map(action =>
         switch (action) {
         | Create(id, state) => [|save(. id, state, Init, None)|]
+        | CreateMultiStates(id, states) =>
+          switch (states) {
+          | [||] => [|Ok()->Js.Promise.resolve|]
+          | [|state|] => [|save(. id, state, Init, None)|]
+          | states =>
+            let batch = states->Belt.Array.map(state => (id, state, None));
+            [|saveBatch(. batch)|];
+          }
         | CreateMany(states) =>
           let batch =
             states->Belt.Array.map(((id, state)) => (id, state, None));
