@@ -121,12 +121,11 @@ module Make =
     ->Js.Promise.then_(_ => store->Js.Promise.resolve, _);
 
   let givenEvents = events => {
-    let store = Js.Dict.empty();
     events
-    ->Belt.List.map(event => store->update(event))
-    ->Belt.List.toArray
-    ->Js.Promise.all
-    ->Js.Promise.then_(_ => store->Js.Promise.resolve, _);
+    ->Belt.List.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, event) =>
+        p->Js.Promise.then_(store => store->update(event), _)
+      )
+    ->Js.Promise.then_(store => store->Js.Promise.resolve, _);
   };
 
   open Jest.Expect;

@@ -62,7 +62,7 @@ function handleActions(actions, param) {
                                                   return save(id$1, newState, /* Overwrite */1, undefined);
                                                 }
                                               } else {
-                                                return save(id$1, $$default, /* Overwrite */1, undefined);
+                                                return save(id$1, $$default, /* Init */0, undefined);
                                               }
                                             }
                                           }))];
@@ -86,20 +86,25 @@ function handleActions(actions, param) {
                                         }));
                         case /* UpdateMultiState */12 :
                             var update$2 = action[1];
-                            var id$2 = action[0];
-                            var __x$2 = load(id$2);
+                            var id$3 = action[0];
+                            var __x$2 = load(id$3);
                             return /* array */[__x$2.then((function (param) {
                                             if (param.tag) {
                                               return Promise.resolve(/* Error */Block.__(1, [param[0]]));
                                             } else {
-                                              var newStates = Curry._1(update$2, Belt_List.toArray(param[0]));
-                                              return saveBatch(Belt_Array.map(newStates, (function (newState) {
-                                                                return /* tuple */[
-                                                                        id$2,
-                                                                        newState,
-                                                                        undefined
-                                                                      ];
-                                                              })));
+                                              var states = param[0];
+                                              if (states) {
+                                                var newStates = Curry._1(update$2, Belt_List.toArray(states));
+                                                return saveBatch(Belt_Array.map(newStates, (function (newState) {
+                                                                  return /* tuple */[
+                                                                          id$3,
+                                                                          newState,
+                                                                          undefined
+                                                                        ];
+                                                                })));
+                                              } else {
+                                                return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                                              }
                                             }
                                           }))];
                         default:

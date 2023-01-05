@@ -96,11 +96,12 @@ function Make(Target) {
                     }));
       };
       var givenEvents = function (events) {
-        var store = { };
-        var __x = Promise.all(Belt_List.toArray(Belt_List.map(events, (function ($$event) {
-                        return update(store, $$event);
-                      }))));
-        return __x.then((function (param) {
+        var __x = Belt_List.reduce(events, Promise.resolve({ }), (function (p, $$event) {
+                return p.then((function (store) {
+                              return update(store, $$event);
+                            }));
+              }));
+        return __x.then((function (store) {
                       return Promise.resolve(store);
                     }));
       };
