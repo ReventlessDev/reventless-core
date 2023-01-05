@@ -63,14 +63,26 @@ module Make =
 
   type store = Js.Dict.t(list(Target.state));
 
+  let getSubId = state =>
+    Target.subIdConfig->Belt.Option.map(({getSubId}) => state->getSubId);
   let states = (store, id) =>
     store->Js.Dict.get(id)->Belt.Option.getWithDefault([]);
   let setStates = (store, id, states) => store->Js.Dict.set(id, states);
-  let addState = (store, id, state) =>
-    store->Js.Dict.set(
-      id,
-      store->Js.Dict.get(id)->Belt.Option.getWithDefault([]) @ [state],
-    );
+  let addState = (store, id, state) => {
+    let states = store->Js.Dict.get(id)->Belt.Option.getWithDefault([]);
+    let newStates =
+      (
+        switch (state->getSubId) {
+        | Some(subId) =>
+          states->Belt.List.keep(state =>
+            state->getSubId->Belt.Option.getExn != subId
+          )
+        | None => states
+        }
+      )
+      @ [state];
+    store->Js.Dict.set(id, newStates);
+  };
   let deleteStates = (store, id) => store->Js.Dict.set(id, []);
 
   open Belt.Result;
