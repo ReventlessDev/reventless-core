@@ -11,6 +11,7 @@ module type Target = {
   let name: string;
   [@decco]
   type state;
+  let subIdConfig: option(ReadModelSpec.subIdConfig(state));
 };
 
 type action('id, 'state) =

@@ -14,7 +14,8 @@ var include = ProjectionTest$Reventless.Make({
         Id: Id$Reventless.$$String,
         name: PluginReadModelSpec$Reventless.name,
         state_encode: PluginReadModelSpec$Reventless.state_encode,
-        state_decode: PluginReadModelSpec$Reventless.state_decode
+        state_decode: PluginReadModelSpec$Reventless.state_decode,
+        subIdConfig: PluginReadModelSpec$Reventless.subIdConfig
       })({
       Source: {
         Id: Id$Reventless.$$String,
@@ -152,6 +153,8 @@ Curry._2(describe, "PluginProjection:", (function (param) {
 
 var Source = include.Source;
 
+var Target = include.Target;
+
 var thenStates = include.thenStates;
 
 var thenAllStates = include.thenAllStates;
@@ -161,6 +164,7 @@ var thenStateWithId = include.thenStateWithId;
 var thenThrow = include.thenThrow;
 
 exports.Source = Source;
+exports.Target = Target;
 exports.describe = describe;
 exports.test = test;
 exports.givenEvents = givenEvents;

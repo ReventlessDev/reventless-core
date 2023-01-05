@@ -56,7 +56,8 @@ function Make(Config) {
                                 Id: Spec.Id,
                                 name: Spec.name,
                                 state_encode: Spec.state_encode,
-                                state_decode: Spec.state_decode
+                                state_decode: Spec.state_decode,
+                                subIdConfig: Spec.subIdConfig
                               })(Mappings);
                         var eventsHandler = function (jsons) {
                           var actions = Belt_Array.concatMany(Belt_Array.map(jsons, (function (json) {
