@@ -20,6 +20,11 @@ function unpack(p) {
 
 function Make(Target) {
   return (function (Projection) {
+      var getSubId = function (state) {
+        return Belt_Option.map(Target.subIdConfig, (function (param) {
+                      return Curry._1(param[/* getSubId */1], state);
+                    }));
+      };
       var states = function (store, id) {
         return Belt_Option.getWithDefault(Js_dict.get(store, id), /* [] */0);
       };
@@ -63,10 +68,22 @@ function Make(Target) {
                     var store$1 = store;
                     var id = param[0];
                     var state = param[1];
-                    store$1[id] = Pervasives.$at(Belt_Option.getWithDefault(Js_dict.get(store$1, id), /* [] */0), /* :: */[
+                    var states = Belt_Option.getWithDefault(Js_dict.get(store$1, id), /* [] */0);
+                    var match = getSubId(state);
+                    var tmp;
+                    if (match !== undefined) {
+                      var subId = match;
+                      tmp = Belt_List.keep(states, (function (state) {
+                              return Belt_Option.getExn(getSubId(state)) !== subId;
+                            }));
+                    } else {
+                      tmp = states;
+                    }
+                    var newStates = Pervasives.$at(tmp, /* :: */[
                           state,
                           /* [] */0
                         ]);
+                    store$1[id] = newStates;
                     return /* () */0;
                   }));
             return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
@@ -178,6 +195,7 @@ function Make(Target) {
       };
       return {
               Source: Projection.Source,
+              Target: Target,
               describe: Jest.describe,
               test: Jest.testPromise,
               givenEvents: givenEvents,

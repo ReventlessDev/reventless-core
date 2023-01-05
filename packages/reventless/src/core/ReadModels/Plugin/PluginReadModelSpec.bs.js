@@ -213,7 +213,7 @@ var resolveIdConfigs = /* [] */0;
 
 var resolveIdsConfigs = /* [] */0;
 
-var sortConfig = undefined;
+var subIdConfig = undefined;
 
 var indexes = /* [] */0;
 
@@ -225,6 +225,6 @@ exports.state_decode = state_decode;
 exports.name = name;
 exports.resolveIdConfigs = resolveIdConfigs;
 exports.resolveIdsConfigs = resolveIdsConfigs;
-exports.sortConfig = sortConfig;
+exports.subIdConfig = subIdConfig;
 exports.indexes = indexes;
 /* Message-Reventless Not a pure module */
