@@ -38,6 +38,6 @@ let name = "Plugin";
 let resolveIdConfigs = [];
 let resolveIdsConfigs = [];
 
-let sortConfig = None;
+let subIdConfig = None;
 
 let indexes = [];

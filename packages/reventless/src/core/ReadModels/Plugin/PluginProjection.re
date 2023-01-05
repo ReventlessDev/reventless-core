@@ -80,6 +80,6 @@ module PluginMapping = {
 };
 
 module type Mapping =
-  ReventlessSpec.Projection.Mapping with type target := Target.state;
+  ReventlessSpec.Projection.Mapping with module Target := Target;
 
 let mappings: array(module Mapping) = [|(module PluginMapping)|];

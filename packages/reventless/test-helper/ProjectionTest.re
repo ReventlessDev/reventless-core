@@ -1,31 +1,34 @@
 module type T = {
   module Source: ReventlessSpec.Projection.Spec.Source;
-  type target;
+  module Target: ReventlessSpec.Projection.Spec.Target;
 
   let describe: (string, unit => unit) => unit;
   let test:
     (string, ~timeout: int=?, unit => Js.Promise.t(Jest.assertion)) => unit;
 
-  type store = Js.Dict.t(list(target));
+  type store = Js.Dict.t(list(Target.state));
 
   let givenEvents: list(Source.event) => Js.Promise.t(store);
   let whenEvent:
     (Js.Promise.t(store), Source.event) =>
     Jest.Expect.plainPartial(unit => Js.Promise.t(store));
   let thenStates:
-    (Jest.Expect.plainPartial(unit => Js.Promise.t(store)), list(target)) =>
+    (
+      Jest.Expect.plainPartial(unit => Js.Promise.t(store)),
+      list(Target.state)
+    ) =>
     Js.Promise.t(Jest.assertion);
   let thenAllStates:
     (Jest.Expect.plainPartial(unit => Js.Promise.t(store)), store) =>
     Js.Promise.t(Jest.assertion);
   let thenState:
-    (Jest.Expect.plainPartial(unit => Js.Promise.t(store)), target) =>
+    (Jest.Expect.plainPartial(unit => Js.Promise.t(store)), Target.state) =>
     Js.Promise.t(Jest.assertion);
   let thenStateWithId:
     (
       Jest.Expect.plainPartial(unit => Js.Promise.t(store)),
       string,
-      target
+      Target.state
     ) =>
     Js.Promise.t(Jest.assertion);
   let thenNoState:
@@ -49,14 +52,11 @@ module Make =
        (
          Target: ReventlessSpec.Projection.Spec.Target,
          Projection:
-           ReventlessSpec.Projection.Mapping with type target := Target.state,
+           ReventlessSpec.Projection.Mapping with module Target := Target,
        )
-
-         : (
-           T with
-             module Source = Projection.Source and type target := Target.state
-       ) => {
+       : (T with module Source = Projection.Source and module Target = Target) => {
   module Source = Projection.Source;
+  module Target = Target;
 
   let describe = Jest.describe;
   let test = Jest.testPromise;
