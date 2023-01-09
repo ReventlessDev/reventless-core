@@ -4,6 +4,7 @@
 var Jest = require("@glennsl/bs-jest/src/jest.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
@@ -95,14 +96,21 @@ function Make(Target) {
             return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
           });
       };
-      var handleActions = function (actions, primitives) {
-        var __x = Promise.all(Projection$Reventless.handleActions(actions, primitives));
-        return __x.then((function (param) {
+      var handleAction = function (action, primitives) {
+        var __x = Promise.all(Projection$Reventless.handleAction(action, primitives));
+        return __x.then((function (results) {
+                      Belt_Array.forEach(results, (function (result) {
+                              if (result.tag) {
+                                return Js_exn.raiseError("");
+                              } else {
+                                return /* () */0;
+                              }
+                            }));
                       return Promise.resolve(/* () */0);
                     }));
       };
       var update = function (store, $$event) {
-        var __x = handleActions(/* array */[Curry._2(Projection.map, $$event, TestFixtures$Reventless.context)], /* record */[
+        var __x = handleAction(Curry._2(Projection.map, $$event, TestFixtures$Reventless.context), /* record */[
               /* load */load(store),
               /* save */save(store),
               /* saveBatch */saveBatch(store),
@@ -193,6 +201,15 @@ function Make(Target) {
                       return Promise.resolve(Jest.Expect.toThrow(p));
                     }));
       };
+      var thenFail = function (p) {
+        var __x = Curry._1(p[1], /* () */0);
+        var __x$1 = __x.then((function (param) {
+                return Promise.resolve(Jest.fail("Expected Failure"));
+              }));
+        return __x$1.catch((function (param) {
+                      return Promise.resolve(Jest.pass);
+                    }));
+      };
       return {
               Source: Projection.Source,
               Target: Target,
@@ -205,14 +222,15 @@ function Make(Target) {
               thenState: thenState,
               thenStateWithId: thenStateWithId,
               thenNoState: thenNoState,
-              thenThrow: thenThrow
+              thenThrow: thenThrow,
+              thenFail: thenFail
             };
     });
 }
 
-var handleActions = Projection$Reventless.handleActions;
+var handleAction = Projection$Reventless.handleAction;
 
 exports.unpack = unpack;
-exports.handleActions = handleActions;
+exports.handleAction = handleAction;
 exports.Make = Make;
 /* Jest Not a pure module */

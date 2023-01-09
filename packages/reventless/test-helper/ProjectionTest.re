@@ -37,6 +37,9 @@ module type T = {
   let thenThrow:
     Jest.Expect.plainPartial(unit => Js.Promise.t(store)) =>
     Js.Promise.t(Jest.assertion);
+  let thenFail:
+    Jest.Expect.plainPartial(unit => Js.Promise.t(store)) =>
+    Js.Promise.t(Jest.assertion);
 };
 
 let unpack: Jest.Expect.plainPartial('a) => 'a =
@@ -46,7 +49,7 @@ let unpack: Jest.Expect.plainPartial('a) => 'a =
     };
   };
 
-let handleActions = Projection.handleActions; // create alias to avoid shadowing of same named modules
+let handleAction = Projection.handleAction; // create alias to avoid shadowing of same named modules
 
 module Make =
        (
@@ -116,15 +119,27 @@ module Make =
         Ok()->Js.Promise.resolve;
       };
 
-  let handleActions = (actions, primitives) =>
-    actions
-    ->handleActions(primitives)
+  let handleAction = (action, primitives) =>
+    action
+    ->handleAction(primitives)
     ->Js.Promise.all
-    ->Js.Promise.then_(_ => Js.Promise.resolve(), _); // TODO: error handling
+    ->Js.Promise.then_(
+        results => {
+          results->Belt.Array.forEach(result =>
+            switch (result) {
+            | Error(_) => Js.Exn.raiseError("")
+            | _ => ()
+            }
+          );
+          Js.Promise.resolve();
+        },
+        _,
+      );
 
   let update = (store, event) =>
-    [|event->Projection.map(TestFixtures.context)|]
-    ->handleActions({
+    event
+    ->Projection.map(TestFixtures.context)
+    ->handleAction({
         ReventlessSpec.ReadModel.load: load(store),
         save: save(store),
         saveBatch: saveBatch(store),
@@ -235,4 +250,13 @@ module Make =
   };
   let thenThrow = p =>
     p->unpack()->Js.Promise.then_(_ => p->toThrow->Js.Promise.resolve, _);
+
+  let thenFail = p =>
+    p
+    ->unpack()
+    ->Js.Promise.then_(
+        _ => Jest.fail("Expected Failure")->Js.Promise.resolve,
+        _,
+      )
+    ->Js.Promise.catch(_ => Jest.pass->Js.Promise.resolve, _);
 };
