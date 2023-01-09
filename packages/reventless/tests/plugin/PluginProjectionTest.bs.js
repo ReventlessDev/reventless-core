@@ -163,6 +163,8 @@ var thenStateWithId = include.thenStateWithId;
 
 var thenThrow = include.thenThrow;
 
+var thenFail = include.thenFail;
+
 exports.Source = Source;
 exports.Target = Target;
 exports.describe = describe;
@@ -175,4 +177,5 @@ exports.thenState = thenState;
 exports.thenStateWithId = thenStateWithId;
 exports.thenNoState = thenNoState;
 exports.thenThrow = thenThrow;
+exports.thenFail = thenFail;
 /* include Not a pure module */
