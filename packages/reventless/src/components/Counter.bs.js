@@ -364,11 +364,18 @@ function Make(Config) {
                               }
                             }));
               });
-            self.addToCounterTarget = handler[/* addToCounterTarget */0];
+            self.addToCounterTarget = handler[/* addToCounterTarget */1];
+            var referencesDbResources = Curry._1(ReferencesDb.outputs, referencesDb).resources;
+            var countsDbResources = Curry._1(CountsDb.outputs, countsDb).resources;
             var self$1 = self;
             var outputs = {
-              referencesDb: Curry._1(ReferencesDb.outputs, referencesDb).resources,
-              countsDb: Curry._1(CountsDb.outputs, countsDb).resources
+              resources: Belt_Array.concatMany(/* array */[
+                    referencesDbResources,
+                    countsDbResources,
+                    handler[/* resources */0]
+                  ]),
+              referencesDb: referencesDbResources,
+              countsDb: countsDbResources
             };
             self$1.setOutputs(outputs);
             return self$1.registerOutputs(outputs);

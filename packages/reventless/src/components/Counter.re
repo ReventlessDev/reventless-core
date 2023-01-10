@@ -7,6 +7,7 @@ let countFieldName = "count";
 
 type outputs = {
   .
+  "resources": array(resource), // TODO: only use resources - remove everything else in the outputs
   "referencesDb": array(resource),
   "countsDb": array(resource),
 };
@@ -65,7 +66,10 @@ module type T = {
 };
 
 module Adapter = {
-  type handler = {addToCounterTarget};
+  type handler = {
+    resources: array(resource),
+    addToCounterTarget,
+  };
   type handlerMaker =
     (
       ~name: string,
@@ -106,7 +110,12 @@ module Make =
 
   [@bs.obj]
   external makeOutputs:
-    (~referencesDb: array(resource), ~countsDb: array(resource)) => outputs =
+    (
+      ~resources: array(resource),
+      ~referencesDb: array(resource),
+      ~countsDb: array(resource)
+    ) =>
+    outputs =
     "";
 
   [@bs.send]
@@ -370,9 +379,18 @@ module Make =
     self->setCount(count(referencesDb->ReferencesDb.saveBatch));
     self->setAddToCounterTarget(handler.addToCounterTarget);
 
+    let referencesDbResources = referencesDb->ReferencesDb.outputs##resources;
+    let countsDbResources = countsDb->CountsDb.outputs##resources;
+
     makeOutputs(
-      ~referencesDb=referencesDb->ReferencesDb.outputs##resources,
-      ~countsDb=countsDb->CountsDb.outputs##resources,
+      ~resources=
+        Belt.Array.concatMany([|
+          referencesDbResources,
+          countsDbResources,
+          handler.resources,
+        |]),
+      ~referencesDb=referencesDbResources,
+      ~countsDb=countsDbResources,
     )
     |> self->setOutputs;
   };

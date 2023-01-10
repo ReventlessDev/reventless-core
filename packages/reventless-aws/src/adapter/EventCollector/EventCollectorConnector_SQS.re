@@ -134,6 +134,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     {
       Reventless.EventCollector.Adapter.resources: [|
         queue->Util_SQS.toResource,
+        eventHandlerLambda->Util.Lambda.outputToResource,
       |],
       enqueueEvent: queue->EventCollectorConnector_SQS_Runtime.enqueueEvent,
     };

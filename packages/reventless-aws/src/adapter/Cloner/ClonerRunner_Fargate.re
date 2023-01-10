@@ -297,7 +297,10 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
               (),
             );
 
-          [|resolver->Util_AppSync.toResource|];
+          [|
+            resolver->Util_AppSync.toResource,
+            lambda->Util.Lambda.toResource,
+          |];
         });
 
     {resources: resources};

@@ -10,6 +10,7 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
+var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.bs.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.bs.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.bs.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.bs.js");
@@ -50,7 +51,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
           }
         }));
   return /* record */[
-          /* resources : array */[],
+          /* resources : array */[Util_Lambda$ReventlessAws.outputToResource(eventHandlerLambda)],
           /* enqueueEvent */(function (delay, id, messageBody) {
               return Promise.resolve((console.log("EventCollectorConnector_DynamoDbStream-ReventlessAws supports no enqueueEvent:", delay, id, messageBody), /* () */0));
             })
