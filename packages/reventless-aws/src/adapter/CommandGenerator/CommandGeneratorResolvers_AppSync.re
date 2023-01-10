@@ -132,10 +132,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
         );
       });
 
-    let resources =
-      resolvers
-      ->Belt.Array.map(Util_AppSync.toResource)
-      ->Belt.Array.concat([|commandGeneratorLambda->Util.Lambda.toResource|]);
+    let resources = resolvers->Belt.Array.map(Util_AppSync.toResource);
 
     {resources: resources};
   };

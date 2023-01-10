@@ -36,8 +36,6 @@ let callback: Lambda.eventHandlerNoResult('a) =
       resolve(. Js.log3("DEAD LETTER ITEM:", evt, ctx))
     );
 
-// NOTE: since there is no component for the DeadLetterQueue we don't use resources here
-//       but we should still SOMEWHERE collect this lambda resource
 let handler =
   PulumiAws.Lambda.CallbackFunction.make(
     ~name,

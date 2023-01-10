@@ -12,7 +12,6 @@ var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.b
 var Util_SNS$ReventlessAws = require("../../util/Util_SNS.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
-var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.bs.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.bs.js");
@@ -73,10 +72,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
           }
         }));
   return /* record */[
-          /* resources : array */[
-            Util_SQS$ReventlessAws.toResource(queue),
-            Util_Lambda$ReventlessAws.outputToResource(eventHandlerLambda)
-          ],
+          /* resources : array */[Util_SQS$ReventlessAws.toResource(queue)],
           /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue)
         ];
 }

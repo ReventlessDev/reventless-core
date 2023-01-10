@@ -64,9 +64,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         });
 
     {
-      Reventless.EventCollector.Adapter.resources: [|
-        eventHandlerLambda->Util.Lambda.outputToResource,
-      |],
+      Reventless.EventCollector.Adapter.resources: [||],
       enqueueEvent:
         (. delay, id, messageBody) =>
           // TODO: can we check this at deploy time ?

@@ -5,7 +5,6 @@ var Curry = require("bs-platform/lib/js/curry.js");
 var Aws = require("@pulumi/aws");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
-var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.bs.js");
 var CounterHandler_DynamoDbStream_Runtime$ReventlessAws = require("./CounterHandler_DynamoDbStream_Runtime.bs.js");
@@ -35,12 +34,9 @@ function make(name, referencesName, referencesDb, countsName, countsDb, counterH
   };
   subscribe(referencesName, referencesStream);
   subscribe(countsName, countsStream);
-  return /* record */[
-          /* resources : array */[Util_Lambda$ReventlessAws.toResource(eventHandlerLambda)],
-          /* addToCounterTarget */(function (param) {
+  return /* record */[/* addToCounterTarget */(function (param) {
               return CounterHandler_DynamoDbStream_Runtime$ReventlessAws.addToCounterTarget(countsDbResource, param);
-            })
-        ];
+            })];
 }
 
 exports.make = make;

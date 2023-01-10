@@ -4,33 +4,33 @@
 
 var AppSync = 0;
 
+var Cognito_Runtime = 0;
+
 var CognitoGroupUser = 0;
 
 var CognitoGroupUser_Runtime = 0;
-
-var Cognito_Runtime = 0;
 
 var DeadLetterQueue = 0;
 
 var DynamoDb = 0;
 
-var DynamoDbStream = 0;
-
-var DynamoDbStream_Runtime = 0;
-
 var DynamoDb_Runtime = 0;
 
 var DynamoDb_TableManager = 0;
+
+var DynamoDbStream_Runtime = 0;
+
+var DynamoDbStream = 0;
 
 var EventSourceMapping = 0;
 
 var Kinesis_Runtime = 0;
 
-var Lambda = 0;
-
 var S3_Runtime = 0;
 
 var SES_Runtime = 0;
+
+var SesPolicy_Runtime = 0;
 
 var SNS = 0;
 
@@ -44,31 +44,28 @@ var SQS_FIFO = 0;
 
 var SQS_Runtime = 0;
 
-var SesPolicy_Runtime = 0;
-
 var SqsQueuePolicy = 0;
 
 exports.AppSync = AppSync;
+exports.Cognito_Runtime = Cognito_Runtime;
 exports.CognitoGroupUser = CognitoGroupUser;
 exports.CognitoGroupUser_Runtime = CognitoGroupUser_Runtime;
-exports.Cognito_Runtime = Cognito_Runtime;
 exports.DeadLetterQueue = DeadLetterQueue;
 exports.DynamoDb = DynamoDb;
-exports.DynamoDbStream = DynamoDbStream;
-exports.DynamoDbStream_Runtime = DynamoDbStream_Runtime;
 exports.DynamoDb_Runtime = DynamoDb_Runtime;
 exports.DynamoDb_TableManager = DynamoDb_TableManager;
+exports.DynamoDbStream_Runtime = DynamoDbStream_Runtime;
+exports.DynamoDbStream = DynamoDbStream;
 exports.EventSourceMapping = EventSourceMapping;
 exports.Kinesis_Runtime = Kinesis_Runtime;
-exports.Lambda = Lambda;
 exports.S3_Runtime = S3_Runtime;
 exports.SES_Runtime = SES_Runtime;
+exports.SesPolicy_Runtime = SesPolicy_Runtime;
 exports.SNS = SNS;
 exports.SNS_FIFO = SNS_FIFO;
 exports.SNS_Runtime = SNS_Runtime;
 exports.SQS = SQS;
 exports.SQS_FIFO = SQS_FIFO;
 exports.SQS_Runtime = SQS_Runtime;
-exports.SesPolicy_Runtime = SesPolicy_Runtime;
 exports.SqsQueuePolicy = SqsQueuePolicy;
 /* No side effect */

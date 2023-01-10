@@ -49,7 +49,6 @@ let make: Reventless.Counter.Adapter.handlerMaker =
     let _ = subscribe(countsName, countsStream);
 
     {
-      resources: [|eventHandlerLambda->Util.Lambda.toResource|],
       addToCounterTarget:
         countsDbResource->CounterHandler_DynamoDbStream_Runtime.addToCounterTarget,
     };

@@ -12,7 +12,6 @@ var Pulumi = require("@pulumi/pulumi");
 var Iam = require("@pulumi/aws/iam");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var Util_Vpc$Reventless = require("@reventless/reventless/src/util/Util_Vpc.bs.js");
-var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.bs.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.bs.js");
 var GetSecretVersion$PulumiAws = require("@reventless/bs-pulumi-aws/src/SecretsManager/GetSecretVersion.bs.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.bs.js");
@@ -141,10 +140,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               }, opts);
           var field = "clone";
           var resolver = AppSync_Resolver$PulumiAws.make(field, api, Caml_option.some(dataSource.name), "Mutation", field, "{\n            \"version\": \"2017-02-28\",\n            \"operation\": \"Invoke\",\n            \"payload\": {\n                \"restoreDateTime\": \$utils.toJson(\$context.arguments.restoreDateTime),\n                \"meta\": {\n                  \"ip\": \$util.toJson(\$context.identity.sourceIp),\n                  \"user\": \$util.toJson(\$context.identity.username)\n                }\n            }\n          }\n          ", AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, opts, /* () */0);
-          return /* array */[
-                  Util_AppSync$ReventlessAws.toResource(resolver),
-                  Util_Lambda$ReventlessAws.toResource(lambda)
-                ];
+          return /* array */[Util_AppSync$ReventlessAws.toResource(resolver)];
         }));
   return /* record */[/* resources */resources];
 }
