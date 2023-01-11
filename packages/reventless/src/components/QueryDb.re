@@ -220,9 +220,7 @@ module Make =
           "QueryDB.save: Error: Couldn't decodeObject:",
           state->Js.Json.stringifyAny,
         );
-        Belt.Result.Error(
-          NotSavedToStorage("Couldn't decodeObject"->Obj.magic),
-        )
+        Belt.Result.Error(NotSavedToStorage("Couldn't decodeObject"))
         ->Js.Promise.resolve;
       };
     };
