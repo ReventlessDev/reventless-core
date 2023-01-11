@@ -3,7 +3,7 @@ let apply:
   (output, f) =>
     (
       if (output->Js.typeof == "string") {
-        output->Obj.magic->Pulumi.Output.make;
+        output->Pulumi.Output.unwrap->Pulumi.Output.make;
       } else {
         output;
       }
@@ -16,7 +16,7 @@ let flatMap:
   (output, f) =>
     (
       if (output->Js.typeof == "string") {
-        output->Obj.magic->Pulumi.Output.make;
+        output->Pulumi.Output.unwrap->Pulumi.Output.make;
       } else {
         output;
       }
