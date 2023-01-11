@@ -2,210 +2,212 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
-var Decco = require("@ryb73/decco/src/Decco.js");
+var Decco = require("decco/src/Decco.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Message$Reventless = require("../../../Message.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
 
 function status_encode(v) {
   switch (v) {
     case /* Connected */0 :
-        return /* array */["Connected"];
+        return ["Connected"];
     case /* Disconnected */1 :
-        return /* array */["Disconnected"];
+        return ["Disconnected"];
     case /* Inactive */2 :
-        return /* array */["Inactive"];
+        return ["Inactive"];
     
   }
 }
 
 function status_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONArray */3) {
+  var jsonArr = Js_json.classify(v);
+  if (typeof jsonArr === "number") {
     return Decco.error(undefined, "Not a variant", v);
-  } else {
-    var jsonArr = match[0];
-    var tagged = jsonArr.map(Js_json.classify);
-    var match$1 = Caml_array.caml_array_get(tagged, 0);
-    if (typeof match$1 !== "number" && !match$1.tag) {
-      switch (match$1[0]) {
-        case "Connected" :
-            var match$2 = tagged.length !== 1;
-            if (match$2) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              return /* Ok */Block.__(0, [/* Connected */0]);
-            }
-        case "Disconnected" :
-            var match$3 = tagged.length !== 1;
-            if (match$3) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              return /* Ok */Block.__(0, [/* Disconnected */1]);
-            }
-        case "Inactive" :
-            var match$4 = tagged.length !== 1;
-            if (match$4) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              return /* Ok */Block.__(0, [/* Inactive */2]);
-            }
-        default:
-          
-      }
-    }
-    return Decco.error(undefined, "Invalid variant constructor", Caml_array.caml_array_get(jsonArr, 0));
   }
+  if (jsonArr.tag !== /* JSONArray */3) {
+    return Decco.error(undefined, "Not a variant", v);
+  }
+  var jsonArr$1 = jsonArr[0];
+  if (jsonArr$1.length === 0) {
+    return Decco.error(undefined, "Expected variant, found empty array", v);
+  }
+  var tagged = jsonArr$1.map(Js_json.classify);
+  var match = Belt_Array.getExn(tagged, 0);
+  if (typeof match !== "number" && !match.tag) {
+    switch (match[0]) {
+      case "Connected" :
+          if (tagged.length !== 1) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          } else {
+            return /* Ok */Block.__(0, [/* Connected */0]);
+          }
+      case "Disconnected" :
+          if (tagged.length !== 1) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          } else {
+            return /* Ok */Block.__(0, [/* Disconnected */1]);
+          }
+      case "Inactive" :
+          if (tagged.length !== 1) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          } else {
+            return /* Ok */Block.__(0, [/* Inactive */2]);
+          }
+      default:
+        
+    }
+  }
+  return Decco.error(undefined, "Invalid variant constructor", Belt_Array.getExn(jsonArr$1, 0));
 }
 
 function state_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "name",
-                PluginSpec$Reventless.name_encode(v[/* name */0])
+                PluginSpec$Reventless.name_encode(v.name)
               ],
               /* tuple */[
                 "version",
-                PluginSpec$Reventless.version_encode(v[/* version */1])
+                PluginSpec$Reventless.version_encode(v.version)
               ],
               /* tuple */[
                 "eventCollector",
-                Decco.stringToJson(v[/* eventCollector */2])
+                Decco.stringToJson(v.eventCollector)
               ],
               /* tuple */[
                 "extensionPoints",
-                Decco.arrayToJson(PluginSpec$Reventless.extensionPointDefinition_encode, v[/* extensionPoints */3])
+                Decco.arrayToJson(PluginSpec$Reventless.extensionPointDefinition_encode, v.extensionPoints)
               ],
               /* tuple */[
                 "extensionPointNames",
-                Decco.arrayToJson(Decco.stringToJson, v[/* extensionPointNames */4])
+                Decco.arrayToJson(Decco.stringToJson, v.extensionPointNames)
               ],
               /* tuple */[
                 "extensionNames",
-                Decco.arrayToJson(Decco.stringToJson, v[/* extensionNames */5])
+                Decco.arrayToJson(Decco.stringToJson, v.extensionNames)
               ],
               /* tuple */[
                 "extensions",
-                Decco.arrayToJson(PluginSpec$Reventless.extensionDefinition_encode, v[/* extensions */6])
+                Decco.arrayToJson(PluginSpec$Reventless.extensionDefinition_encode, v.extensions)
               ],
               /* tuple */[
                 "status",
-                status_encode(v[/* status */7])
+                status_encode(v.status)
               ],
               /* tuple */[
                 "statusChange",
-                Message$Reventless.statusChange_encode(v[/* statusChange */8])
+                Message$Reventless.statusChange_encode(v.statusChange)
               ]
             ]);
 }
 
 function state_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "name");
-    var match$2 = PluginSpec$Reventless.name_decode(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "version");
-    var match$4 = PluginSpec$Reventless.version_decode(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "eventCollector");
-    var match$6 = Decco.stringFromJson(match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    var match$7 = Js_dict.get(dict, "extensionPoints");
-    var match$8 = Decco.arrayFromJson(PluginSpec$Reventless.extensionPointDefinition_decode, match$7 !== undefined ? Caml_option.valFromOption(match$7) : null);
-    var match$9 = Js_dict.get(dict, "extensionPointNames");
-    var match$10 = Decco.arrayFromJson(Decco.stringFromJson, match$9 !== undefined ? Caml_option.valFromOption(match$9) : null);
-    var match$11 = Js_dict.get(dict, "extensionNames");
-    var match$12 = Decco.arrayFromJson(Decco.stringFromJson, match$11 !== undefined ? Caml_option.valFromOption(match$11) : null);
-    var match$13 = Js_dict.get(dict, "extensions");
-    var match$14 = Decco.arrayFromJson(PluginSpec$Reventless.extensionDefinition_decode, match$13 !== undefined ? Caml_option.valFromOption(match$13) : null);
-    var match$15 = Js_dict.get(dict, "status");
-    var match$16 = status_decode(match$15 !== undefined ? Caml_option.valFromOption(match$15) : null);
-    var match$17 = Js_dict.get(dict, "statusChange");
-    var match$18 = Message$Reventless.statusChange_decode(match$17 !== undefined ? Caml_option.valFromOption(match$17) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".name" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".version" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".eventCollector" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else if (match$8.tag) {
-      var e$3 = match$8[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".extensionPoints" + e$3[/* path */0],
-                  /* message */e$3[/* message */1],
-                  /* value */e$3[/* value */2]
-                ]]);
-    } else if (match$10.tag) {
-      var e$4 = match$10[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".extensionPointNames" + e$4[/* path */0],
-                  /* message */e$4[/* message */1],
-                  /* value */e$4[/* value */2]
-                ]]);
-    } else if (match$12.tag) {
-      var e$5 = match$12[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".extensionNames" + e$5[/* path */0],
-                  /* message */e$5[/* message */1],
-                  /* value */e$5[/* value */2]
-                ]]);
-    } else if (match$14.tag) {
-      var e$6 = match$14[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".extensions" + e$6[/* path */0],
-                  /* message */e$6[/* message */1],
-                  /* value */e$6[/* value */2]
-                ]]);
-    } else if (match$16.tag) {
-      var e$7 = match$16[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".status" + e$7[/* path */0],
-                  /* message */e$7[/* message */1],
-                  /* value */e$7[/* value */2]
-                ]]);
-    } else if (match$18.tag) {
-      var e$8 = match$18[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".statusChange" + e$8[/* path */0],
-                  /* message */e$8[/* message */1],
-                  /* value */e$8[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* name */match$2[0],
-                  /* version */match$4[0],
-                  /* eventCollector */match$6[0],
-                  /* extensionPoints */match$8[0],
-                  /* extensionPointNames */match$10[0],
-                  /* extensionNames */match$12[0],
-                  /* extensions */match$14[0],
-                  /* status */match$16[0],
-                  /* statusChange */match$18[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var name = PluginSpec$Reventless.name_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "name"), null));
+  if (name.tag) {
+    var e = name[0];
+    return /* Error */Block.__(1, [{
+                path: ".name" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var version = PluginSpec$Reventless.version_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "version"), null));
+  if (version.tag) {
+    var e$1 = version[0];
+    return /* Error */Block.__(1, [{
+                path: ".version" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var eventCollector = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "eventCollector"), null));
+  if (eventCollector.tag) {
+    var e$2 = eventCollector[0];
+    return /* Error */Block.__(1, [{
+                path: ".eventCollector" + e$2.path,
+                message: e$2.message,
+                value: e$2.value
+              }]);
+  }
+  var extensionPoints = Decco.arrayFromJson(PluginSpec$Reventless.extensionPointDefinition_decode, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionPoints"), null));
+  if (extensionPoints.tag) {
+    var e$3 = extensionPoints[0];
+    return /* Error */Block.__(1, [{
+                path: ".extensionPoints" + e$3.path,
+                message: e$3.message,
+                value: e$3.value
+              }]);
+  }
+  var extensionPointNames = Decco.arrayFromJson(Decco.stringFromJson, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionPointNames"), null));
+  if (extensionPointNames.tag) {
+    var e$4 = extensionPointNames[0];
+    return /* Error */Block.__(1, [{
+                path: ".extensionPointNames" + e$4.path,
+                message: e$4.message,
+                value: e$4.value
+              }]);
+  }
+  var extensionNames = Decco.arrayFromJson(Decco.stringFromJson, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionNames"), null));
+  if (extensionNames.tag) {
+    var e$5 = extensionNames[0];
+    return /* Error */Block.__(1, [{
+                path: ".extensionNames" + e$5.path,
+                message: e$5.message,
+                value: e$5.value
+              }]);
+  }
+  var extensions = Decco.arrayFromJson(PluginSpec$Reventless.extensionDefinition_decode, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensions"), null));
+  if (extensions.tag) {
+    var e$6 = extensions[0];
+    return /* Error */Block.__(1, [{
+                path: ".extensions" + e$6.path,
+                message: e$6.message,
+                value: e$6.value
+              }]);
+  }
+  var status = status_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "status"), null));
+  if (status.tag) {
+    var e$7 = status[0];
+    return /* Error */Block.__(1, [{
+                path: ".status" + e$7.path,
+                message: e$7.message,
+                value: e$7.value
+              }]);
+  }
+  var statusChange = Message$Reventless.statusChange_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "statusChange"), null));
+  if (!statusChange.tag) {
+    return /* Ok */Block.__(0, [{
+                name: name[0],
+                version: version[0],
+                eventCollector: eventCollector[0],
+                extensionPoints: extensionPoints[0],
+                extensionPointNames: extensionPointNames[0],
+                extensionNames: extensionNames[0],
+                extensions: extensions[0],
+                status: status[0],
+                statusChange: statusChange[0]
+              }]);
+  }
+  var e$8 = statusChange[0];
+  return /* Error */Block.__(1, [{
+              path: ".statusChange" + e$8.path,
+              message: e$8.message,
+              value: e$8.value
+            }]);
 }
 
-var Id = 0;
+var Id;
 
 var name = "Plugin";
 
@@ -213,7 +215,7 @@ var resolveIdConfigs = /* [] */0;
 
 var resolveIdsConfigs = /* [] */0;
 
-var subIdConfig = undefined;
+var subIdConfig;
 
 var indexes = /* [] */0;
 

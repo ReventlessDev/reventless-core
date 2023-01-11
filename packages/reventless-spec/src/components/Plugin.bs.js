@@ -2,10 +2,10 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
-var Decco = require("@ryb73/decco/src/Decco.js");
+var Decco = require("decco/src/Decco.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 
 var name_encode = Decco.stringToJson;
 
@@ -16,211 +16,211 @@ var version_encode = Decco.stringToJson;
 var version_decode = Decco.stringFromJson;
 
 function extensionPointDefinition_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "name",
-                Decco.stringToJson(v[/* name */0])
+                Decco.stringToJson(v.name)
               ],
               /* tuple */[
                 "commandTopic",
-                Decco.stringToJson(v[/* commandTopic */1])
+                Decco.stringToJson(v.commandTopic)
               ],
               /* tuple */[
                 "eventTopic",
-                Decco.stringToJson(v[/* eventTopic */2])
+                Decco.stringToJson(v.eventTopic)
               ]
             ]);
 }
 
 function extensionPointDefinition_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "name");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "commandTopic");
-    var match$4 = Decco.stringFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "eventTopic");
-    var match$6 = Decco.stringFromJson(match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".name" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".commandTopic" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".eventTopic" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* name */match$2[0],
-                  /* commandTopic */match$4[0],
-                  /* eventTopic */match$6[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var name = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "name"), null));
+  if (name.tag) {
+    var e = name[0];
+    return /* Error */Block.__(1, [{
+                path: ".name" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var commandTopic = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "commandTopic"), null));
+  if (commandTopic.tag) {
+    var e$1 = commandTopic[0];
+    return /* Error */Block.__(1, [{
+                path: ".commandTopic" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var eventTopic = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "eventTopic"), null));
+  if (!eventTopic.tag) {
+    return /* Ok */Block.__(0, [{
+                name: name[0],
+                commandTopic: commandTopic[0],
+                eventTopic: eventTopic[0]
+              }]);
+  }
+  var e$2 = eventTopic[0];
+  return /* Error */Block.__(1, [{
+              path: ".eventTopic" + e$2.path,
+              message: e$2.message,
+              value: e$2.value
+            }]);
 }
 
 function extensionDefinition_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "name",
-                Decco.stringToJson(v[/* name */0])
+                Decco.stringToJson(v.name)
               ],
               /* tuple */[
                 "extensionPointName",
-                Decco.stringToJson(v[/* extensionPointName */1])
+                Decco.stringToJson(v.extensionPointName)
               ]
             ]);
 }
 
 function extensionDefinition_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "name");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "extensionPointName");
-    var match$4 = Decco.stringFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".name" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".extensionPointName" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* name */match$2[0],
-                  /* extensionPointName */match$4[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var name = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "name"), null));
+  if (name.tag) {
+    var e = name[0];
+    return /* Error */Block.__(1, [{
+                path: ".name" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var extensionPointName = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionPointName"), null));
+  if (!extensionPointName.tag) {
+    return /* Ok */Block.__(0, [{
+                name: name[0],
+                extensionPointName: extensionPointName[0]
+              }]);
+  }
+  var e$1 = extensionPointName[0];
+  return /* Error */Block.__(1, [{
+              path: ".extensionPointName" + e$1.path,
+              message: e$1.message,
+              value: e$1.value
+            }]);
 }
 
 function pluginDefinition_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "id",
-                Decco.stringToJson(v[/* id */0])
+                Decco.stringToJson(v.id)
               ],
               /* tuple */[
                 "name",
-                Decco.stringToJson(v[/* name */1])
+                Decco.stringToJson(v.name)
               ],
               /* tuple */[
                 "version",
-                Decco.stringToJson(v[/* version */2])
+                Decco.stringToJson(v.version)
               ],
               /* tuple */[
                 "extensionPoints",
-                Decco.arrayToJson(extensionPointDefinition_encode, v[/* extensionPoints */3])
+                Decco.arrayToJson(extensionPointDefinition_encode, v.extensionPoints)
               ],
               /* tuple */[
                 "extensions",
-                Decco.arrayToJson(extensionDefinition_encode, v[/* extensions */4])
+                Decco.arrayToJson(extensionDefinition_encode, v.extensions)
               ],
               /* tuple */[
                 "eventCollector",
-                Decco.stringToJson(v[/* eventCollector */5])
+                Decco.stringToJson(v.eventCollector)
               ]
             ]);
 }
 
 function pluginDefinition_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "name");
-    var match$4 = Decco.stringFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "version");
-    var match$6 = Decco.stringFromJson(match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    var match$7 = Js_dict.get(dict, "extensionPoints");
-    var match$8 = Decco.arrayFromJson(extensionPointDefinition_decode, match$7 !== undefined ? Caml_option.valFromOption(match$7) : null);
-    var match$9 = Js_dict.get(dict, "extensions");
-    var match$10 = Decco.arrayFromJson(extensionDefinition_decode, match$9 !== undefined ? Caml_option.valFromOption(match$9) : null);
-    var match$11 = Js_dict.get(dict, "eventCollector");
-    var match$12 = Decco.stringFromJson(match$11 !== undefined ? Caml_option.valFromOption(match$11) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".name" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".version" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else if (match$8.tag) {
-      var e$3 = match$8[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".extensionPoints" + e$3[/* path */0],
-                  /* message */e$3[/* message */1],
-                  /* value */e$3[/* value */2]
-                ]]);
-    } else if (match$10.tag) {
-      var e$4 = match$10[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".extensions" + e$4[/* path */0],
-                  /* message */e$4[/* message */1],
-                  /* value */e$4[/* value */2]
-                ]]);
-    } else if (match$12.tag) {
-      var e$5 = match$12[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".eventCollector" + e$5[/* path */0],
-                  /* message */e$5[/* message */1],
-                  /* value */e$5[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* name */match$4[0],
-                  /* version */match$6[0],
-                  /* extensionPoints */match$8[0],
-                  /* extensions */match$10[0],
-                  /* eventCollector */match$12[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var id = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
+  if (id.tag) {
+    var e = id[0];
+    return /* Error */Block.__(1, [{
+                path: ".id" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var name = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "name"), null));
+  if (name.tag) {
+    var e$1 = name[0];
+    return /* Error */Block.__(1, [{
+                path: ".name" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var version = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "version"), null));
+  if (version.tag) {
+    var e$2 = version[0];
+    return /* Error */Block.__(1, [{
+                path: ".version" + e$2.path,
+                message: e$2.message,
+                value: e$2.value
+              }]);
+  }
+  var extensionPoints = Decco.arrayFromJson(extensionPointDefinition_decode, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionPoints"), null));
+  if (extensionPoints.tag) {
+    var e$3 = extensionPoints[0];
+    return /* Error */Block.__(1, [{
+                path: ".extensionPoints" + e$3.path,
+                message: e$3.message,
+                value: e$3.value
+              }]);
+  }
+  var extensions = Decco.arrayFromJson(extensionDefinition_decode, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensions"), null));
+  if (extensions.tag) {
+    var e$4 = extensions[0];
+    return /* Error */Block.__(1, [{
+                path: ".extensions" + e$4.path,
+                message: e$4.message,
+                value: e$4.value
+              }]);
+  }
+  var eventCollector = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "eventCollector"), null));
+  if (!eventCollector.tag) {
+    return /* Ok */Block.__(0, [{
+                id: id[0],
+                name: name[0],
+                version: version[0],
+                extensionPoints: extensionPoints[0],
+                extensions: extensions[0],
+                eventCollector: eventCollector[0]
+              }]);
+  }
+  var e$5 = eventCollector[0];
+  return /* Error */Block.__(1, [{
+              path: ".eventCollector" + e$5.path,
+              message: e$5.message,
+              value: e$5.value
+            }]);
 }
 
 exports.name_encode = name_encode;

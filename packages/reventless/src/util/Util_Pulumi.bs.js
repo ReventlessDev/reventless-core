@@ -4,14 +4,16 @@
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 
 function make(param) {
-  var set = /* record */[/* contents */(function (_eventCollector) {
-        return /* () */0;
-      })];
+  var set = {
+    contents: (function (_eventCollector) {
+        
+      })
+  };
   var output = new Promise((function (resolve, param) {
-          set[0] = resolve;
-          return /* () */0;
+          set.contents = resolve;
+          
         }));
-  var set$1 = set[0];
+  var set$1 = set.contents;
   return /* tuple */[
           output,
           set$1

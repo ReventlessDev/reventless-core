@@ -4,7 +4,7 @@
 
 var name = "StateTopicPublisher";
 
-var DynamoDbStream = 0;
+var DynamoDbStream;
 
 exports.name = name;
 exports.DynamoDbStream = DynamoDbStream;

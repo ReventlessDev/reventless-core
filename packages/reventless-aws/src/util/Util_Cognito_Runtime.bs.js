@@ -20,9 +20,9 @@ function signUp(region, userPoolId, userPoolClientId, userName, password) {
 
 function signUpIfMissing(region, userPoolId, userPoolClientId, userName, password) {
   return signUp(region, userPoolId, userPoolClientId, userName, password).then((function (result) {
-                  return Promise.resolve((console.log("Created User", userName, result.UserSub), /* () */0));
+                  return Promise.resolve((console.log("Created User", userName, result.UserSub), undefined));
                 })).catch((function (param) {
-                return Promise.resolve((console.log("Didn't create user:", userName), /* () */0));
+                return Promise.resolve((console.log("Didn't create user:", userName), undefined));
               }));
 }
 

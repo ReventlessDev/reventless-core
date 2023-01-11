@@ -9,7 +9,7 @@ var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runt
 function append(table) {
   return (function (_sequenceNr, _id, jsons) {
       return Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(jsons, Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name.get()), 3).then((function (param) {
-                      return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                      return Promise.resolve(/* Ok */Block.__(0, [undefined]));
                     })).catch((function (param) {
                     return Promise.resolve(/* Error */Block.__(1, ["AwsSdk.DynamoDb.DocumentClient.putMany failed !"]));
                   }));

@@ -2,9 +2,9 @@
 'use strict';
 
 
-var AppSync = 0;
+var AppSync;
 
-var NoOp = 0;
+var NoOp;
 
 exports.AppSync = AppSync;
 exports.NoOp = NoOp;

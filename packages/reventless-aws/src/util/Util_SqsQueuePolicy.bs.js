@@ -37,10 +37,9 @@ function allowResourcesSendMessage(queue, resources) {
                       }))
               ]).apply((function (param) {
                 var queueArn = param[0];
-                var __x = Belt_List.fromArray(Belt_Array.mapWithIndex(param[1], (function (param, param$1) {
-                            return allowResourceSendMessage(queueArn, param, param$1);
-                          })));
-                return $$String.concat(",", __x);
+                return $$String.concat(",", Belt_List.fromArray(Belt_Array.mapWithIndex(param[1], (function (param, param$1) {
+                                      return allowResourceSendMessage(queueArn, param, param$1);
+                                    }))));
               }));
 }
 
@@ -48,8 +47,7 @@ var allowCloudWatchEvents = Pulumi.output("{\n      \"Effect\": \"Allow\",\n    
 
 function make(name, queue, statements, opts, param) {
   var policy = Pulumi.all(statements).apply((function (statementStrs) {
-          var __x = Belt_List.fromArray(statementStrs);
-          var statementStr = $$String.concat(",", __x);
+          var statementStr = $$String.concat(",", Belt_List.fromArray(statementStrs));
           return "{\n              \"Version\": \"2012-10-17\",\n              \"Id\": \"" + (String(name) + ("\",\n              \"Statement\": [\n                " + (String(statementStr) + "\n              ]\n            }")));
         }));
   return new (Aws.sqs.QueuePolicy)(name, {

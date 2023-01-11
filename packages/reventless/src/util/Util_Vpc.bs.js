@@ -14,8 +14,8 @@ function getVpcConfig(stackName, outputName) {
                   var match$1 = vpc.privateSubnet.id;
                   if (match !== undefined && match$1 !== undefined) {
                     return {
-                            securityGroupIds: /* array */[match],
-                            subnetIds: /* array */[match$1],
+                            securityGroupIds: [match],
+                            subnetIds: [match$1],
                             vpcId: undefined
                           };
                   } else {

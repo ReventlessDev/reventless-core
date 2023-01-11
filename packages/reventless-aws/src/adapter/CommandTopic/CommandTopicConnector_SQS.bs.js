@@ -21,7 +21,7 @@ function make(name, handleCommands, memorySize, timeout, opts) {
         visibilityTimeoutSeconds: Caml_int32.imul(6, timeout),
         sqsManagedSseEnabled: false
       }, opts);
-  Util_SqsQueuePolicy$ReventlessAws.make(name, queue, /* array */[Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], Caml_option.some(opts), /* () */0);
+  Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], Caml_option.some(opts), undefined);
   var handler = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
             (function (param, param$1) {
                 return CommandTopicConnector_SQS_Runtime$ReventlessAws.handleQueueEvent(handleCommands, queue, param, param$1);
@@ -35,13 +35,13 @@ function make(name, handleCommands, memorySize, timeout, opts) {
             undefined,
             undefined,
             undefined,
-            /* () */0
+            undefined
           ]), opts);
   queue.onEvent(name, handler, undefined, opts);
-  return /* record */[
-          /* resources : array */[Util_SQS$ReventlessAws.toResource(queue)],
-          /* publish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(queue, Util_SQS_Runtime$ReventlessAws.service)
-        ];
+  return {
+          resources: [Util_SQS$ReventlessAws.toResource(queue)],
+          publish: CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(queue, Util_SQS_Runtime$ReventlessAws.service)
+        };
 }
 
 exports.make = make;

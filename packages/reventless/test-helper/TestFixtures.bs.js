@@ -4,24 +4,24 @@
 
 var id = "id";
 
-var meta = /* record */[
-  /* service */"service",
-  /* time */"time",
-  /* ip */"ip",
-  /* user */"ViewTest",
-  /* msgId */"msgId",
-  /* correlationId */"correlationId"
-];
+var meta = {
+  service: "service",
+  time: "time",
+  ip: "ip",
+  user: "ViewTest",
+  msgId: "msgId",
+  correlationId: "correlationId"
+};
 
-var context = /* record */[
-  /* id */id,
-  /* meta */meta
-];
+var context = {
+  id: id,
+  meta: meta
+};
 
-var statusChange = /* record */[
-  /* at */"time",
-  /* by */"ViewTest"
-];
+var statusChange = {
+  at: "time",
+  by: "ViewTest"
+};
 
 exports.id = id;
 exports.meta = meta;

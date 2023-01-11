@@ -23,25 +23,23 @@ function filterSupportedUnwrappedResources(resources, supportedServices) {
 }
 
 function findResource(resources, service) {
-  var matching = filterSupportedResources(resources, /* array */[service]);
+  var matching = filterSupportedResources(resources, [service]);
   if (matching.length !== 0) {
     return Caml_array.caml_array_get(matching, 0);
-  } else {
-    var err = "Util.Adapter.findResource: Couldn\'t find service " + (String(service) + (" in resources: " + (String(resources) + "")));
-    console.log(err);
-    return Js_exn.raiseError(err);
   }
+  var err = "Util.Adapter.findResource: Couldn\'t find service " + (String(service) + (" in resources: " + (String(resources) + "")));
+  console.log(err);
+  return Js_exn.raiseError(err);
 }
 
 function findUnwrappedResource(resources, service) {
-  var resources$1 = filterSupportedUnwrappedResources(resources, /* array */[service]);
+  var resources$1 = filterSupportedUnwrappedResources(resources, [service]);
   if (resources$1.length !== 0) {
     return Caml_array.caml_array_get(resources$1, 0);
-  } else {
-    var err = "Util.Adapter.findUnwrappedResource: Couldn\'t find service " + (String(service) + (" in resources: " + (String(resources) + "")));
-    console.log(err);
-    return Js_exn.raiseError(err);
   }
+  var err = "Util.Adapter.findUnwrappedResource: Couldn\'t find service " + (String(service) + (" in resources: " + (String(resources) + "")));
+  console.log(err);
+  return Js_exn.raiseError(err);
 }
 
 exports.filterSupportedResources = filterSupportedResources;

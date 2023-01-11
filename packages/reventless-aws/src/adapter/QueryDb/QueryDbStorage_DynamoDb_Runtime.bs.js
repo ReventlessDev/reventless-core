@@ -29,7 +29,7 @@ function save(table) {
       if (saveMode !== 0) {
         return DynamoDb_DocumentClient$AwsSdk.putWithTableName(tableName, json$1).then((function (param) {
                         console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: saved state to " + (String(tableName) + (": " + (String(stateStr) + "")))));
-                        return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                        return Promise.resolve(/* Ok */Block.__(0, [undefined]));
                       })).catch((function (err) {
                       console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: Error: Couldn\'t save state to " + (String(tableName) + (": " + (String(err) + "")))));
                       return Promise.resolve(/* Error */Block.__(1, [/* NotSavedToStorage */Block.__(0, [err.message])]));
@@ -37,24 +37,23 @@ function save(table) {
       } else {
         return DynamoDb_DocumentClient$AwsSdk.putIfNotExists(tableName, table.hashKey.get(), table.rangeKey.get(), json$1).then((function (param) {
                         console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: saved Init state to " + (String(tableName) + (": " + (String(stateStr) + "")))));
-                        return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                        return Promise.resolve(/* Ok */Block.__(0, [undefined]));
                       })).catch((function (err) {
                       var tableName = table.name.get();
                       var match = err.code;
                       if (match === "ConditionalCheckFailedException") {
                         console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: Error: Stale State in " + (String(tableName) + "")));
                         return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
-                      } else {
-                        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: Error: Couldn\'t save Init state to " + (String(tableName) + (": " + (String(err) + "")))));
-                        return Promise.resolve(/* Error */Block.__(1, [/* NotSavedToStorage */Block.__(0, [err.message])]));
                       }
+                      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: Error: Couldn\'t save Init state to " + (String(tableName) + (": " + (String(err) + "")))));
+                      return Promise.resolve(/* Error */Block.__(1, [/* NotSavedToStorage */Block.__(0, [err.message])]));
                     }));
       }
     });
 }
 
-function saveBatch($staropt$star, table) {
-  var maxRetries = $staropt$star !== undefined ? $staropt$star : 3;
+function saveBatch(maxRetriesOpt, table) {
+  var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 3;
   return (function (items) {
       var __x = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(items, (function (param) {
                       return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
@@ -63,7 +62,7 @@ function saveBatch($staropt$star, table) {
                     if (Util_DynamoDb_Runtime$ReventlessAws.hasUnprocessedItems(param[0])) {
                       Js_exn.raiseError("Still unprocessed items present after maxRetries(" + (String(maxRetries) + ")!"));
                     }
-                    return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                    return Promise.resolve(/* Ok */Block.__(0, [undefined]));
                   }));
     });
 }
@@ -104,7 +103,7 @@ function $$delete(table) {
       console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws.delete: tableName, id, sort", table.name.get(), id, sort);
       return DynamoDb_DocumentClient$AwsSdk.deleteWithTableName(tableName, id, sort).then((function (param) {
                       console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".delete: deleted state for " + (String(id) + (" from " + (String(tableName) + "")))));
-                      return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                      return Promise.resolve(/* Ok */Block.__(0, [undefined]));
                     })).catch((function (err) {
                     console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".delete: Error: Couldn\'t delete state for " + (String(id) + (" from " + (String(tableName) + (": " + (String(err) + "")))))));
                     return Promise.resolve(/* Error */Block.__(1, [/* NotDeletedFromStorage */Block.__(3, [err.message])]));

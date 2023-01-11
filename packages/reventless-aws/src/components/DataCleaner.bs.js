@@ -22,12 +22,11 @@ function promiseToResult(p) {
 }
 
 function handleDeleteResult(result) {
-  if (result.tag) {
-    console.log("Couldn't delete item:", result[0]);
-    return /* Error */Block.__(1, ["Couldn't delete item."]);
-  } else {
-    return /* Ok */Block.__(0, [/* () */0]);
+  if (!result.tag) {
+    return /* Ok */Block.__(0, [undefined]);
   }
+  console.log("Couldn't delete item:", result[0]);
+  return /* Error */Block.__(1, ["Couldn't delete item."]);
 }
 
 function deleteAllItems(tableConfig, items) {
@@ -36,24 +35,21 @@ function deleteAllItems(tableConfig, items) {
               var sort = Belt_Option.flatMap(tableConfig.sort, (function (sortField) {
                       return Js_dict.get(item, sortField);
                     }));
-              if (id !== undefined) {
-                var id$1 = id;
-                if (sort !== undefined) {
-                  var __x = promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteByIdSort(tableConfig.name, id$1, Belt_Option.getExn(tableConfig.sort), sort));
-                  return __x.then((function (res) {
-                                return Promise.resolve(handleDeleteResult(res));
-                              }));
-                } else {
-                  var __x$1 = promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteById(tableConfig.name, id$1));
-                  return __x$1.then((function (res) {
-                                return Promise.resolve(handleDeleteResult(res));
-                              }));
-                }
-              } else {
+              if (id === undefined) {
                 return new Promise((function (resolve, param) {
                               return resolve(/* Error */Block.__(1, ["No valid Config found!"]));
                             }));
               }
+              if (sort !== undefined) {
+                var __x = promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteByIdSort(tableConfig.name, id, Belt_Option.getExn(tableConfig.sort), sort));
+                return __x.then((function (res) {
+                              return Promise.resolve(handleDeleteResult(res));
+                            }));
+              }
+              var __x$1 = promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteById(tableConfig.name, id));
+              return __x$1.then((function (res) {
+                            return Promise.resolve(handleDeleteResult(res));
+                          }));
             })));
   __x.then((function (result) {
           var __x = Belt_Array.reduce(result, 0, (function (state, item) {
@@ -63,29 +59,25 @@ function deleteAllItems(tableConfig, items) {
                     return state + 1 | 0;
                   }
                 }));
-          return Promise.resolve((console.log("Deleted", __x, "of " + (String(result.length) + (" items in table " + tableConfig.name))), /* () */0));
+          return Promise.resolve((console.log("Deleted", __x, "of " + (String(result.length) + (" items in table " + tableConfig.name))), undefined));
         }));
-  return /* () */0;
+  
 }
 
 function handleScanResult(tableConfig, scanResult) {
   if (scanResult.tag) {
     var error = scanResult[0];
     return /* Error */Block.__(1, [error]);
-  } else {
-    var scanResult$1 = scanResult[0];
-    deleteAllItems(tableConfig, scanResult$1.Items);
-    return /* Ok */Block.__(0, [-1]);
   }
+  var scanResult$1 = scanResult[0];
+  deleteAllItems(tableConfig, scanResult$1.Items);
+  return /* Ok */Block.__(0, [-1]);
 }
 
 function scanTableAndClean(tableConfig) {
   var idKey = tableConfig.id;
-  var match = tableConfig.sort;
-  var match$1;
-  if (match !== undefined) {
-    var sortKey = match;
-    match$1 = /* tuple */[
+  var sortKey = tableConfig.sort;
+  var match = sortKey !== undefined ? /* tuple */[
       "#" + (idKey + (",#" + sortKey)),
       Js_dict.fromList(/* :: */[
             /* tuple */[
@@ -100,9 +92,7 @@ function scanTableAndClean(tableConfig) {
               /* [] */0
             ]
           ])
-    ];
-  } else {
-    match$1 = /* tuple */[
+    ] : /* tuple */[
       "#" + idKey,
       Js_dict.fromList(/* :: */[
             /* tuple */[
@@ -112,11 +102,10 @@ function scanTableAndClean(tableConfig) {
             /* [] */0
           ])
     ];
-  }
   var __x = promiseToResult(DynamoDb_DocumentClient$AwsSdk.scan({
             TableName: tableConfig.name,
-            ExpressionAttributeNames: match$1[1],
-            ProjectionExpression: match$1[0]
+            ExpressionAttributeNames: match[1],
+            ProjectionExpression: match[0]
           }));
   return __x.then((function (res) {
                 var scanResult = handleScanResult(tableConfig, res);
@@ -142,15 +131,14 @@ function cleanerFn(tablesToClean, _event, _context) {
     return new Promise((function (resolve, param) {
                   return resolve("No tables to clean.");
                 }));
-  } else {
-    var __x = Promise.all(Belt_Array.map(tableConfigs, scanTableAndClean));
-    return __x.then((function (arr) {
-                  var summary = Belt_Array.reduce(arr, "", (function (state, item) {
-                          return state + (" | " + item[0]);
-                        }));
-                  return Promise.resolve("Cleaned tables " + summary);
-                }));
   }
+  var __x = Promise.all(Belt_Array.map(tableConfigs, scanTableAndClean));
+  return __x.then((function (arr) {
+                var summary = Belt_Array.reduce(arr, "", (function (state, item) {
+                        return state + (" | " + item[0]);
+                      }));
+                return Promise.resolve("Cleaned tables " + summary);
+              }));
 }
 
 function stackName(prefix) {
@@ -173,7 +161,7 @@ function make(prefix, tablesToClean) {
                   undefined,
                   undefined,
                   undefined,
-                  /* () */0
+                  undefined
                 ]), undefined);
 }
 

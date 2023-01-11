@@ -28,10 +28,10 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
         visibilityTimeoutSeconds: timeout,
         sqsManagedSseEnabled: false
       }, opts);
-  Util_SqsQueuePolicy$ReventlessAws.make(name, queue, /* array */[
+  Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [
         Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),
         Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents
-      ], Caml_option.some(opts), /* () */0);
+      ], Caml_option.some(opts), undefined);
   var eventHandlerLambda = Pulumi.all(Lambda$PulumiAws.Policy.customPolicies(policy1, policy2)).apply((function (policies) {
           return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                           (function (param, param$1) {
@@ -46,13 +46,13 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                           undefined,
                           undefined,
                           undefined,
-                          /* () */0
+                          undefined
                         ]), opts);
         }));
   eventHandlerLambda.apply((function (eventHandlerLambda) {
           return queue.onEvent(name, eventHandlerLambda, undefined, opts);
         }));
-  Util_Adapter$Reventless.partitionSupportedResources(eventTopics, /* array */[
+  Util_Adapter$Reventless.partitionSupportedResources(eventTopics, [
           Util_DynamoDbStream_Runtime$ReventlessAws.service,
           Util_SNS$ReventlessAws.service
         ]).apply((function (param) {
@@ -62,19 +62,18 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                   return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_SNS$ReventlessAws.findUnwrappedResource(param[1])), opts);
                 }));
           Belt_Array.map(match[1], (function (param) {
-                  return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts, /* () */0);
+                  return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts, undefined);
                 }));
-          if (errorResources.length !== 0) {
-            var eventTopicNames = errorResources.join(",");
-            return Js_exn.raiseError("EventCollectorConnector_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + (String(eventTopicNames) + "")));
-          } else {
-            return 0;
+          if (errorResources.length === 0) {
+            return ;
           }
+          var eventTopicNames = errorResources.join(",");
+          return Js_exn.raiseError("EventCollectorConnector_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + (String(eventTopicNames) + "")));
         }));
-  return /* record */[
-          /* resources : array */[Util_SQS$ReventlessAws.toResource(queue)],
-          /* enqueueEvent */EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue)
-        ];
+  return {
+          resources: [Util_SQS$ReventlessAws.toResource(queue)],
+          enqueueEvent: EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue)
+        };
 }
 
 exports.make = make;

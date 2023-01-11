@@ -9,10 +9,10 @@ var coreStackReference = Belt_Option.map(new Pulumi.Config("core").get("stack"),
         return new Pulumi.StackReference(stack);
       }));
 
-var stackDependencies = Belt_Array.concat(Belt_Array.map(Belt_Option.getWithDefault(new Pulumi.Config("interstack").getObject("dependencies"), /* array */[]), (function (stackName) {
+var stackDependencies = Belt_Array.concat(Belt_Array.map(Belt_Option.getWithDefault(new Pulumi.Config("interstack").getObject("dependencies"), []), (function (stackName) {
             return new Pulumi.StackReference(stackName);
-          })), Belt_Option.mapWithDefault(coreStackReference, /* array */[], (function (coreStack) {
-            return /* array */[coreStack];
+          })), Belt_Option.mapWithDefault(coreStackReference, [], (function (coreStack) {
+            return [coreStack];
           })));
 
 function getOutputs(name) {

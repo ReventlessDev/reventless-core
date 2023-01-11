@@ -13,30 +13,30 @@ var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 var service = "SQS";
 
 function sendMessage(queue, delay, messageBody) {
-  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, undefined, undefined, delay, /* () */0);
+  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, undefined, undefined, delay, undefined);
 }
 
 function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
-  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, messageGroupId, undefined, delay, /* () */0);
+  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, messageGroupId, undefined, delay, undefined);
 }
 
 function send(queue, queueService, commandJson) {
-  var delay = commandJson[/* delay */3];
+  var delay = commandJson.delay;
   var messageBody = Message$Reventless.toMessageBody(commandJson);
   if (queueService === Util_SQS_FIFO$ReventlessAws.service) {
-    return sendFifoMessage(queue, delay, commandJson[/* id */0], messageBody);
+    return sendFifoMessage(queue, delay, commandJson.id, messageBody);
   } else {
     return sendMessage(queue, delay, messageBody);
   }
 }
 
 function makeEntry(queueService, commandJson) {
-  var delay = commandJson[/* delay */3];
-  var match = commandJson[/* meta */1];
-  var messageId = match[/* msgId */4];
-  var id = commandJson[/* id */0];
+  var delay = commandJson.delay;
+  var match = commandJson.meta;
+  var messageId = match.msgId;
+  var id = commandJson.id;
   var messageBody = Message$Reventless.toMessageBody(commandJson);
-  console.log("Publishing command to Aggregate " + (String(match[/* service */0]) + (": " + (String(messageBody) + (" id: " + (String(id) + ""))))));
+  console.log("Publishing command to Aggregate " + (String(match.service) + (": " + (String(messageBody) + (" id: " + (String(id) + ""))))));
   if (queueService === Util_SQS_FIFO$ReventlessAws.service) {
     return SQS$AwsSdk.makeBatchEntryFifo(id, messageBody, messageId, delay);
   } else {
@@ -53,9 +53,9 @@ function sendBatch(queue, queueService, commandJsons) {
                   })(queue.id.get())).then((function (results) {
                 Belt_Array.forEach(Util_Promise$Reventless.filterRejected(results), (function (param) {
                         console.log("SQS.sendMessageBatch request " + (String(param[0]) + (" failed: " + (String(param[1]) + ""))));
-                        return /* () */0;
+                        
                       }));
-                return Promise.resolve(/* () */0);
+                return Promise.resolve(undefined);
               }));
 }
 

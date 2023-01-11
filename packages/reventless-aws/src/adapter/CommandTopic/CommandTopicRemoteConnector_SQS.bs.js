@@ -7,9 +7,11 @@ var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js"
 var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_Runtime.bs.js");
 
 function make(commandTopicOutputs) {
-  return /* record */[/* remotePublish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS_Runtime$ReventlessAws.fromResource(Adapter$Reventless.unwrappedToResource(Util_SQS_Runtime$ReventlessAws.findUnwrappedResource(Belt_Array.map(commandTopicOutputs.resources, (function (prim) {
+  return {
+          remotePublish: CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS_Runtime$ReventlessAws.fromResource(Adapter$Reventless.unwrappedToResource(Util_SQS_Runtime$ReventlessAws.findUnwrappedResource(Belt_Array.map(commandTopicOutputs.resources, (function (prim) {
                                   return prim;
-                                }))))), Util_SQS_Runtime$ReventlessAws.service)];
+                                }))))), Util_SQS_Runtime$ReventlessAws.service)
+        };
 }
 
 exports.make = make;

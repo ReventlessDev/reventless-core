@@ -15,21 +15,18 @@ function Make(ScheduledPublisher) {
       parent: self
     };
     var scheduledPublisher = Curry._2(ScheduledPublisher.make, name, opts);
-    self.createSchedule = scheduledPublisher[/* create */1];
-    self.deleteSchedule = scheduledPublisher[/* delete */2];
-    var self$1 = self;
+    self.createSchedule = scheduledPublisher.create;
+    self.deleteSchedule = scheduledPublisher.delete;
     var outputs = {
-      scheduledPublisher: scheduledPublisher[/* resource */0]
+      scheduledPublisher: scheduledPublisher.resource
     };
-    self$1.setOutputs(outputs);
-    return self$1.registerOutputs(outputs);
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
   };
   var make = function (opts, param) {
     var prim = ComponentType$Reventless.toString(/* Scheduler */13);
     var prim$1 = ComponentType$Reventless.toName(/* Scheduler */13);
-    var prim$2 = construct;
-    var prim$3 = opts;
-    return new Component.default(prim, prim$1, prim$2, prim$3);
+    return new Component.default(prim, prim$1, construct, opts);
   };
   return {
           make: make

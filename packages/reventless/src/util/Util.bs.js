@@ -2,29 +2,29 @@
 'use strict';
 
 
-var Adapter = 0;
+var Adapter;
 
-var AdapterRuntime = 0;
+var AdapterRuntime;
 
-var Aggregate = 0;
+var Aggregate;
 
-var $$Array = 0;
+var $$Array;
 
-var Decco = 0;
+var Decco;
 
-var $$Error = 0;
+var $$Error;
 
-var EventTopic = 0;
+var EventTopic;
 
-var $$Promise = 0;
+var $$Promise;
 
-var Pulumi = 0;
+var Pulumi;
 
-var QueryDb = 0;
+var QueryDb;
 
-var ReadModel = 0;
+var ReadModel;
 
-var VPC = 0;
+var VPC;
 
 exports.Adapter = Adapter;
 exports.AdapterRuntime = AdapterRuntime;
