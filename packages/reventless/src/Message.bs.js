@@ -10,10 +10,10 @@ var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Js_option = require("bs-platform/lib/js/js_option.js");
-var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var Util_Decco$Reventless = require("./util/Util_Decco.bs.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.bs.js");
 
 function now(param) {
@@ -272,9 +272,7 @@ function logEvent$primeJson(event$primeJson, description) {
   try {
     var event$prime = Belt_Option.getExn(Js_json.decodeObject(event$primeJson));
     var id = Js_json.decodeString(event$prime["id"]);
-    var eventName = Belt_Option.getExn(Belt_Option.flatMap(Belt_Option.flatMap(Js_json.decodeArray(event$prime["event"]), (function (evtArr) {
-                    return Belt_Array.get(evtArr, 0);
-                  })), Js_json.decodeString));
+    var eventName = Belt_Option.getExn(Util_Decco$Reventless.Json.variantName(event$prime["event"]));
     console.log("" + (String(description) + (" " + (String(eventName) + ("(" + (String(id) + (") complete event: " + (String(eventStr) + ""))))))));
     return /* () */0;
   }
