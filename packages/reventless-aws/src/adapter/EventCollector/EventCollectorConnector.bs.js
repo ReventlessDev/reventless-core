@@ -4,13 +4,13 @@
 
 var name = "EventCollectorConnector";
 
-var SQS = 0;
+var SQS;
 
-var SQS_Runtime = 0;
+var SQS_Runtime;
 
-var SQS_FIFO = 0;
+var SQS_FIFO;
 
-var DynamoDbStream = 0;
+var DynamoDbStream;
 
 exports.name = name;
 exports.SQS = SQS;

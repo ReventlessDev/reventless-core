@@ -10,14 +10,16 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Message$Reventless = require("../Message.bs.js");
 
 function ftp(connectionParams, ftpAction) {
-  var readyTimeout = connectionParams[/* readyTimeout */5];
-  var password = connectionParams[/* password */4];
-  var userName = connectionParams[/* userName */3];
-  var path = connectionParams[/* path */2];
-  var port = connectionParams[/* port */1];
-  var host = connectionParams[/* host */0];
+  var readyTimeout = connectionParams.readyTimeout;
+  var password = connectionParams.password;
+  var userName = connectionParams.userName;
+  var path = connectionParams.path;
+  var port = connectionParams.port;
+  var host = connectionParams.host;
   return new Promise((function (resolvePromise, _rejectPromise) {
-                var isDone = /* record */[/* contents */false];
+                var isDone = {
+                  contents: false
+                };
                 var client = new Ssh2.Client();
                 var tmp = {
                   host: host,
@@ -34,69 +36,66 @@ function ftp(connectionParams, ftpAction) {
                           client.sftp((function (sftpError, sftp) {
                                   var fail = function (err) {
                                     sftp.emit("error", err);
-                                    return /* () */0;
+                                    
                                   };
                                   var endFtp = function (param) {
                                     sftp.end();
-                                    return /* () */0;
+                                    
                                   };
                                   sftp.on("end", (function (param) {
                                             console.log("end sftp stream");
                                             client.end();
-                                            return /* () */0;
+                                            
                                           })).on("error", (function (err) {
                                           client.emit("error", Message$Reventless.log(err, "SFTP.onError"));
                                           sftp.end();
-                                          return /* () */0;
+                                          
                                         }));
                                   if (sftpError !== undefined) {
                                     return fail(Message$Reventless.log(Caml_option.valFromOption(sftpError), "Couldn't establish SFTP connection:"));
-                                  } else if (ftpAction.tag) {
+                                  }
+                                  if (ftpAction.tag) {
                                     var __x = Message$Reventless.log(path + ("/" + ftpAction[1]), "path for write stream");
-                                    ftpAction[0].pipe((function (param) {
-                                                    return param.createWriteStream(__x, undefined);
-                                                  })(sftp).on("finish", (function (param) {
-                                                    isDone[0] = true;
+                                    ftpAction[0].pipe(sftp.createWriteStream(__x, undefined).on("finish", (function (param) {
+                                                    isDone.contents = true;
                                                     console.log("writable ended");
-                                                    return /* () */0;
+                                                    
                                                   })).on("close", (function (param) {
                                                   console.log("writable closed");
                                                   sftp.end();
-                                                  return /* () */0;
+                                                  
                                                 })).on("error", (function (err) {
                                                 console.error("Error in Write Stream:", err);
                                                 return fail(new Error("Error in Write Stream"));
                                               })));
-                                    return /* () */0;
-                                  } else {
-                                    var downloadAction = ftpAction[0];
-                                    sftp.readdir(path, (function (readdirError, entities) {
-                                            if (readdirError !== undefined) {
-                                              console.error("Could not read directory:", Caml_option.valFromOption(readdirError));
-                                              return fail(new Error("Could not read directory"));
-                                            } else {
-                                              Curry._5(downloadAction, connectionParams, entities, sftp, fail, endFtp);
-                                              isDone[0] = true;
-                                              return /* () */0;
-                                            }
-                                          }));
-                                    return /* () */0;
+                                    return ;
                                   }
+                                  var downloadAction = ftpAction[0];
+                                  sftp.readdir(path, (function (readdirError, entities) {
+                                          if (readdirError !== undefined) {
+                                            console.error("Could not read directory:", Caml_option.valFromOption(readdirError));
+                                            return fail(new Error("Could not read directory"));
+                                          } else {
+                                            Curry._5(downloadAction, connectionParams, entities, sftp, fail, endFtp);
+                                            isDone.contents = true;
+                                            return ;
+                                          }
+                                        }));
+                                  
                                 }));
-                          return /* () */0;
+                          
                         }), client.on("end", (function (param) {
                                   console.log("Client.onEnd");
-                                  var match = isDone[0];
-                                  return resolvePromise(match ? /* Ok */Block.__(0, [true]) : /* Error */Block.__(1, ["Stream ended before action handling!"]));
+                                  return resolvePromise(isDone.contents ? /* Ok */Block.__(0, [true]) : /* Error */Block.__(1, ["Stream ended before action handling!"]));
                                 })).on("error", (function (err) {
                                 resolvePromise(/* Error */Block.__(1, [Belt_Option.getWithDefault(err.message, "Error contains no message.")]));
                                 client.end();
-                                return /* () */0;
+                                
                               })).on("timeout", (function (param) {
                               client.emit("error", Message$Reventless.log(new Error("SSH-Client Error: Connection timed out"), "Client.onTimeout"));
-                              return /* () */0;
+                              
                             }))).connect(tmp);
-                return /* () */0;
+                
               }));
 }
 

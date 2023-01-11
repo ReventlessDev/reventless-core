@@ -3,22 +3,17 @@
 
 
 function MakeGenericSourceFromEventSource($$EventSource) {
-  var name = $$EventSource.name;
-  var decode = $$EventSource.event_decode;
   return {
-          name: name,
-          decode: decode
+          name: $$EventSource.name,
+          decode: $$EventSource.event_decode
         };
 }
 
 function MakeGenericTargetFromCommandTarget(CommandTarget) {
-  var name = CommandTarget.name;
-  var decode = CommandTarget.command_decode;
-  var encode = CommandTarget.command_encode;
   return {
-          name: name,
-          decode: decode,
-          encode: encode
+          name: CommandTarget.name,
+          decode: CommandTarget.command_decode,
+          encode: CommandTarget.command_encode
         };
 }
 

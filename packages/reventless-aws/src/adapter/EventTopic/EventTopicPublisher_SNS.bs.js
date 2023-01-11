@@ -7,10 +7,10 @@ var EventTopicPublisher_SNS_Runtime$ReventlessAws = require("./EventTopicPublish
 
 function make(name, param, opts) {
   var topic = new (Aws.sns.Topic)(name, { }, opts);
-  return /* record */[
-          /* resources : array */[Util_SNS$ReventlessAws.toResource(topic)],
-          /* publish */EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(topic)
-        ];
+  return {
+          resources: [Util_SNS$ReventlessAws.toResource(topic)],
+          publish: EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(topic)
+        };
 }
 
 exports.make = make;

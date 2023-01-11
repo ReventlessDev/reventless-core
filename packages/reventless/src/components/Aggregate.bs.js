@@ -24,284 +24,277 @@ var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("./EventCollector.bs.js");
 var CommandGenerator$Reventless = require("./CommandGenerator.bs.js");
 
-function Make(Config) {
-  return (function (Spec) {
-      return (function (Behaviour) {
-          return (function (EventMappings) {
-              return (function (CommandGeneratorResolvers) {
-                  return (function (CommandTopicConnector) {
-                      return (function (EventLogStorage) {
-                          return (function (EventTopicPublisher) {
-                              return (function (EventCollectorConnector) {
-                                  var CommandGenerator = CommandGenerator$Reventless.Make(Config)(Spec)(Behaviour)(CommandGeneratorResolvers);
-                                  var CommandTopic = CommandTopic$Reventless.Make({
-                                          Id: Spec.Id,
-                                          command_encode: Spec.command_encode,
-                                          command_decode: Spec.command_decode
-                                        })(CommandTopicConnector);
-                                  var EventLog = EventLog$Reventless.Make({
-                                            Id: Spec.Id,
-                                            name: Spec.name,
-                                            event_encode: Spec.event_encode,
-                                            event_decode: Spec.event_decode
-                                          })(EventLogStorage)(EventTopicPublisher);
-                                  var errorHandler = function (error, command, context) {
-                                    var errorJson = JSON.stringify(Curry._1(Spec.error_encode, error));
-                                    var commandJson = JSON.stringify(Curry._1(Spec.command_encode, command));
-                                    var serviceName = Spec.name;
-                                    var id = context[/* id */0];
-                                    console.log("Behaviour error " + (String(errorJson) + (" in " + (String(serviceName) + ("(" + (String(id) + ("): Command: " + (String(commandJson) + ""))))))));
-                                    return /* [] */0;
-                                  };
-                                  var groupTopicItemsById = function (topicItems) {
-                                    var ids = Belt_Array.map(topicItems, (function (param) {
-                                            return param[/* command */0][/* id */0];
-                                          }));
-                                    var $$let = Spec.Id;
-                                    return Belt_Array.map(Belt_Set.toArray(Belt_Set.fromArray(ids, Belt_Id.MakeComparable({
-                                                            cmp: $$let.cmp
-                                                          }))), (function (id) {
-                                                  return /* tuple */[
-                                                          id,
-                                                          Belt_Array.keep(topicItems, (function (param) {
-                                                                  return Caml_obj.caml_equal(param[/* command */0][/* id */0], id);
-                                                                }))
-                                                        ];
+function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers, CommandTopicConnector, EventLogStorage, EventTopicPublisher, EventCollectorConnector) {
+  var partial_arg = CommandGenerator$Reventless.Make;
+  var partial_arg$1 = function (param, param$1) {
+    return partial_arg(Config, Spec, param, param$1);
+  };
+  var CommandGenerator = partial_arg$1(Behaviour, CommandGeneratorResolvers);
+  var partial_arg_Id = Spec.Id;
+  var partial_arg_command_encode = Spec.command_encode;
+  var partial_arg_command_decode = Spec.command_decode;
+  var partial_arg$2 = {
+    Id: partial_arg_Id,
+    command_encode: partial_arg_command_encode,
+    command_decode: partial_arg_command_decode
+  };
+  var partial_arg$3 = CommandTopic$Reventless.Make;
+  var CommandTopic = (function (param) {
+        return partial_arg$3(partial_arg$2, param);
+      })(CommandTopicConnector);
+  var partial_arg_Id$1 = Spec.Id;
+  var partial_arg_name = Spec.name;
+  var partial_arg_event_encode = Spec.event_encode;
+  var partial_arg_event_decode = Spec.event_decode;
+  var partial_arg$4 = {
+    Id: partial_arg_Id$1,
+    name: partial_arg_name,
+    event_encode: partial_arg_event_encode,
+    event_decode: partial_arg_event_decode
+  };
+  var partial_arg$5 = EventLog$Reventless.Make;
+  var partial_arg$6 = function (param, param$1) {
+    return partial_arg$5(partial_arg$4, param, param$1);
+  };
+  var EventLog = partial_arg$6(EventLogStorage, EventTopicPublisher);
+  var errorHandler = function (error, command, context) {
+    var errorJson = JSON.stringify(Curry._1(Spec.error_encode, error));
+    var commandJson = JSON.stringify(Curry._1(Spec.command_encode, command));
+    var id = context.id;
+    console.log("Behaviour error " + (String(errorJson) + (" in " + (String(Spec.name) + ("(" + (String(id) + ("): Command: " + (String(commandJson) + ""))))))));
+    return /* [] */0;
+  };
+  var groupTopicItemsById = function (topicItems) {
+    var ids = Belt_Array.map(topicItems, (function (param) {
+            return param.command.id;
+          }));
+    return Belt_Array.map(Belt_Set.toArray(Belt_Set.fromArray(ids, Belt_Id.MakeComparable({
+                            cmp: Spec.Id.cmp
+                          }))), (function (id) {
+                  return /* tuple */[
+                          id,
+                          Belt_Array.keep(topicItems, (function (param) {
+                                  return Caml_obj.caml_equal(param.command.id, id);
+                                }))
+                        ];
+                }));
+  };
+  var handleCommands = function (param) {
+    var eventLogReplay = param[1];
+    var eventLogAppend = param[0];
+    return (function (allTopicItems) {
+        var apply$prime = function (stateOpt, $$event) {
+          if (stateOpt !== undefined) {
+            return Caml_option.some(Behaviour.apply(Caml_option.valFromOption(stateOpt), $$event));
+          } else {
+            return Caml_option.some(Behaviour.init($$event));
+          }
+        };
+        var updateMeta = function (command$prime) {
+          var init = command$prime.meta;
+          return {
+                  service: init.service,
+                  time: Message$Reventless.nowAsISOString(undefined),
+                  ip: init.ip,
+                  user: init.user,
+                  msgId: Message$Reventless.uuid(undefined),
+                  correlationId: init.correlationId
+                };
+        };
+        console.log("starting Aggregate.execCommands");
+        return Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (function (param) {
+                            var topicItems = param[1];
+                            var id = param[0];
+                            return eventLogReplay(id).then((function (history) {
+                                          var processCommand = function (accP, command$prime) {
+                                            return accP.then((function (acc) {
+                                                          if (acc.tag) {
+                                                            return Promise.resolve(acc);
+                                                          } else {
+                                                            var param = acc[0];
+                                                            var events = param[1];
+                                                            var stateO = param[0];
+                                                            if (stateO !== undefined) {
+                                                              var generatedEvents;
+                                                              try {
+                                                                generatedEvents = Behaviour.execute(Caml_option.valFromOption(stateO), command$prime.command, {
+                                                                      id: Curry._1(Spec.Id.toString, command$prime.id),
+                                                                      meta: command$prime.meta
+                                                                    }, errorHandler);
+                                                              }
+                                                              catch (raw_event){
+                                                                var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
+                                                                if ($$event[0] === Message$Reventless.InvalidEvent) {
+                                                                  console.log("Aggregate.processCommand: InvalidEvent", JSON.stringify($$event[1]));
+                                                                  generatedEvents = /* [] */0;
+                                                                } else {
+                                                                  throw $$event;
+                                                                }
+                                                              }
+                                                              return Promise.resolve(/* Ok */Block.__(0, [/* tuple */[
+                                                                              Belt_List.reduce(generatedEvents, stateO, apply$prime),
+                                                                              Pervasives.$at(events, /* :: */[
+                                                                                    /* tuple */[
+                                                                                      generatedEvents,
+                                                                                      updateMeta(command$prime)
+                                                                                    ],
+                                                                                    /* [] */0
+                                                                                  ])
+                                                                            ]]));
+                                                            }
+                                                            var generatedEvents$1 = Behaviour.create(command$prime.command, {
+                                                                  id: Curry._1(Spec.Id.toString, command$prime.id),
+                                                                  meta: command$prime.meta
+                                                                }, errorHandler);
+                                                            return Promise.resolve(/* Ok */Block.__(0, [/* tuple */[
+                                                                            Belt_List.reduce(generatedEvents$1, undefined, apply$prime),
+                                                                            Pervasives.$at(events, /* :: */[
+                                                                                  /* tuple */[
+                                                                                    generatedEvents$1,
+                                                                                    updateMeta(command$prime)
+                                                                                  ],
+                                                                                  /* [] */0
+                                                                                ])
+                                                                          ]]));
+                                                          }
+                                                        }));
+                                          };
+                                          console.log("finished eventLogReplay for id " + (String(id) + ""));
+                                          Belt_Array.mapWithIndex(topicItems, (function (idx, param) {
+                                                  var count = topicItems.length;
+                                                  var reference = param.reference;
+                                                  var command$prime = param.command;
+                                                  var id = command$prime.id;
+                                                  var commandName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.command_encode, command$prime.command)), "Could not get command-name");
+                                                  var commandStr = JSON.stringify(Message$Reventless.command$prime_encode(Spec.Id.t_encode, Spec.command_encode, command$prime));
+                                                  var idx$1 = idx + 1 | 0;
+                                                  console.log("CommandTopic: handling command " + (String(idx$1) + ("/" + (String(count) + (": " + (String(commandName) + ("(" + (String(id) + (") ref: " + (String(reference) + (", complete command: " + (String(commandStr) + ""))))))))))));
+                                                  
                                                 }));
-                                  };
-                                  var handleCommands = function (param) {
-                                    var eventLogReplay = param[1];
-                                    var eventLogAppend = param[0];
-                                    return (function (allTopicItems) {
-                                        var apply$prime = function (stateOpt, $$event) {
-                                          if (stateOpt !== undefined) {
-                                            return Caml_option.some(Behaviour.apply(Caml_option.valFromOption(stateOpt), $$event));
-                                          } else {
-                                            return Caml_option.some(Behaviour.init($$event));
-                                          }
-                                        };
-                                        var updateMeta = function (command$prime) {
-                                          var init = command$prime[/* meta */1];
-                                          return /* record */[
-                                                  /* service */init[/* service */0],
-                                                  /* time */Message$Reventless.nowAsISOString(/* () */0),
-                                                  /* ip */init[/* ip */2],
-                                                  /* user */init[/* user */3],
-                                                  /* msgId */Message$Reventless.uuid(/* () */0),
-                                                  /* correlationId */init[/* correlationId */5]
-                                                ];
-                                        };
-                                        console.log("starting Aggregate.execCommands");
-                                        return Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (function (param) {
-                                                            var topicItems = param[1];
-                                                            var id = param[0];
-                                                            return eventLogReplay(id).then((function (history) {
-                                                                          var processCommand = function (accP, command$prime) {
-                                                                            return accP.then((function (error) {
-                                                                                          if (error.tag) {
-                                                                                            return Promise.resolve(error);
-                                                                                          } else {
-                                                                                            var param = error[0];
-                                                                                            var events = param[1];
-                                                                                            var stateO = param[0];
-                                                                                            if (stateO !== undefined) {
-                                                                                              var generatedEvents;
-                                                                                              try {
-                                                                                                generatedEvents = Behaviour.execute(Caml_option.valFromOption(stateO), command$prime[/* command */2], /* record */[
-                                                                                                      /* id */Curry._1(Spec.Id.toString, command$prime[/* id */0]),
-                                                                                                      /* meta */command$prime[/* meta */1]
-                                                                                                    ], errorHandler);
-                                                                                              }
-                                                                                              catch (raw_exn){
-                                                                                                var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-                                                                                                if (exn[0] === Message$Reventless.InvalidEvent) {
-                                                                                                  console.log("Aggregate.processCommand: InvalidEvent", JSON.stringify(exn[1]));
-                                                                                                  generatedEvents = /* [] */0;
-                                                                                                } else {
-                                                                                                  throw exn;
-                                                                                                }
-                                                                                              }
-                                                                                              return Promise.resolve(/* Ok */Block.__(0, [/* tuple */[
-                                                                                                              Belt_List.reduce(generatedEvents, stateO, apply$prime),
-                                                                                                              Pervasives.$at(events, /* :: */[
-                                                                                                                    /* tuple */[
-                                                                                                                      generatedEvents,
-                                                                                                                      updateMeta(command$prime)
-                                                                                                                    ],
-                                                                                                                    /* [] */0
-                                                                                                                  ])
-                                                                                                            ]]));
-                                                                                            } else {
-                                                                                              var generatedEvents$1 = Behaviour.create(command$prime[/* command */2], /* record */[
-                                                                                                    /* id */Curry._1(Spec.Id.toString, command$prime[/* id */0]),
-                                                                                                    /* meta */command$prime[/* meta */1]
-                                                                                                  ], errorHandler);
-                                                                                              return Promise.resolve(/* Ok */Block.__(0, [/* tuple */[
-                                                                                                              Belt_List.reduce(generatedEvents$1, undefined, apply$prime),
-                                                                                                              Pervasives.$at(events, /* :: */[
-                                                                                                                    /* tuple */[
-                                                                                                                      generatedEvents$1,
-                                                                                                                      updateMeta(command$prime)
-                                                                                                                    ],
-                                                                                                                    /* [] */0
-                                                                                                                  ])
-                                                                                                            ]]));
-                                                                                            }
-                                                                                          }
-                                                                                        }));
-                                                                          };
-                                                                          console.log("finished eventLogReplay for id " + (String(id) + ""));
-                                                                          Belt_Array.mapWithIndex(topicItems, (function (idx, param) {
-                                                                                  var idx$1 = idx;
-                                                                                  var count = topicItems.length;
-                                                                                  var reference = param[/* reference */1];
-                                                                                  var command$prime = param[/* command */0];
-                                                                                  var id = command$prime[/* id */0];
-                                                                                  var commandName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.command_encode, command$prime[/* command */2])), "Could not get command-name");
-                                                                                  var commandStr = JSON.stringify(Message$Reventless.command$prime_encode(Spec.Id.t_encode, Spec.command_encode, command$prime));
-                                                                                  var idx$2 = idx$1 + 1 | 0;
-                                                                                  console.log("CommandTopic: handling command " + (String(idx$2) + ("/" + (String(count) + (": " + (String(commandName) + ("(" + (String(id) + (") ref: " + (String(reference) + (", complete command: " + (String(commandStr) + ""))))))))))));
-                                                                                  return /* () */0;
+                                          var match = Belt_Array.unzip(Belt_Array.map(topicItems, (function (param) {
+                                                      return /* tuple */[
+                                                              param.reference,
+                                                              param.command
+                                                            ];
+                                                    })));
+                                          var references = match[0];
+                                          return Belt_Array.reduce(match[1], Promise.resolve(/* Ok */Block.__(0, [/* tuple */[
+                                                                  Belt_List.reduce(Belt_List.fromArray(history), undefined, apply$prime),
+                                                                  /* [] */0
+                                                                ]])), processCommand).then((function (error) {
+                                                          if (error.tag) {
+                                                            return Js_exn.raiseError(error[0]);
+                                                          } else {
+                                                            return Promise.resolve(Belt_List.toArray(Belt_List.flatten(Belt_List.map(error[0][1], (function (param) {
+                                                                                      var meta = param[1];
+                                                                                      return Belt_List.map(param[0], (function ($$event) {
+                                                                                                    return {
+                                                                                                            id: id,
+                                                                                                            meta: meta,
+                                                                                                            event: $$event
+                                                                                                          };
+                                                                                                  }));
+                                                                                    })))));
+                                                          }
+                                                        })).then((function (generatedEvents$prime) {
+                                                        if (generatedEvents$prime.length === 0) {
+                                                          return Promise.resolve((console.log("Aggregate.handleCommands(" + (String(id) + "): no Event generated")), Belt_Array.map(references, (function (reference) {
+                                                                              return /* Ok */Block.__(0, [reference]);
+                                                                            }))));
+                                                        }
+                                                        var eventCount = generatedEvents$prime.length;
+                                                        console.log("Aggregate.handleCommands(" + (String(id) + ("): " + (String(eventCount) + " Event(s) generated:"))), Belt_Array.map(generatedEvents$prime, (function (event$prime) {
+                                                                    return Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$prime.event)), "Could not get event-name!");
+                                                                  })));
+                                                        return eventLogAppend(history.length, id, generatedEvents$prime).then((function (result) {
+                                                                        var tmp;
+                                                                        tmp = result.tag ? Belt_Array.map(references, (function (reference) {
+                                                                                  return /* Error */Block.__(1, [reference]);
+                                                                                })) : Belt_Array.map(references, (function (reference) {
+                                                                                  return /* Ok */Block.__(0, [reference]);
                                                                                 }));
-                                                                          var match = Belt_Array.unzip(Belt_Array.map(topicItems, (function (param) {
-                                                                                      return /* tuple */[
-                                                                                              param[/* reference */1],
-                                                                                              param[/* command */0]
-                                                                                            ];
-                                                                                    })));
-                                                                          var references = match[0];
-                                                                          var events = Belt_List.fromArray(history);
-                                                                          return Belt_Array.reduce(match[1], Promise.resolve(/* Ok */Block.__(0, [/* tuple */[
-                                                                                                  Belt_List.reduce(events, undefined, apply$prime),
-                                                                                                  /* [] */0
-                                                                                                ]])), processCommand).then((function (param) {
-                                                                                          if (param.tag) {
-                                                                                            return Js_exn.raiseError(param[0]);
-                                                                                          } else {
-                                                                                            return Promise.resolve(Belt_List.toArray(Belt_List.flatten(Belt_List.map(param[0][1], (function (param) {
-                                                                                                                      var meta = param[1];
-                                                                                                                      return Belt_List.map(param[0], (function ($$event) {
-                                                                                                                                    return /* record */[
-                                                                                                                                            /* id */id,
-                                                                                                                                            /* meta */meta,
-                                                                                                                                            /* event */$$event
-                                                                                                                                          ];
-                                                                                                                                  }));
-                                                                                                                    })))));
-                                                                                          }
-                                                                                        })).then((function (generatedEvents$prime) {
-                                                                                        if (generatedEvents$prime.length !== 0) {
-                                                                                          var eventCount = generatedEvents$prime.length;
-                                                                                          console.log("Aggregate.handleCommands(" + (String(id) + ("): " + (String(eventCount) + " Event(s) generated:"))), Belt_Array.map(generatedEvents$prime, (function (event$prime) {
-                                                                                                      var event$prime$1 = event$prime;
-                                                                                                      return Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$prime$1[/* event */2])), "Could not get event-name!");
-                                                                                                    })));
-                                                                                          return eventLogAppend(history.length, id, generatedEvents$prime).then((function (result) {
-                                                                                                          var tmp;
-                                                                                                          tmp = result.tag ? Belt_Array.map(references, (function (reference) {
-                                                                                                                    return /* Error */Block.__(1, [reference]);
-                                                                                                                  })) : Belt_Array.map(references, (function (reference) {
-                                                                                                                    return /* Ok */Block.__(0, [reference]);
-                                                                                                                  }));
-                                                                                                          return Promise.resolve(tmp);
-                                                                                                        })).then((function (results) {
-                                                                                                        console.log("finished eventLogAppend for id " + (String(id) + ""));
-                                                                                                        return Promise.resolve(results);
-                                                                                                      }));
-                                                                                        } else {
-                                                                                          return Promise.resolve((console.log("Aggregate.handleCommands(" + (String(id) + "): no Event generated")), Belt_Array.map(references, (function (reference) {
-                                                                                                              return /* Ok */Block.__(0, [reference]);
-                                                                                                            }))));
-                                                                                        }
-                                                                                      }));
-                                                                        }));
-                                                          }))).then((function (results) {
-                                                      return Promise.resolve(Belt_Array.concatMany(results));
-                                                    }));
-                                      });
-                                  };
-                                  var construct = function (self, name) {
-                                    var opts = {
-                                      parent: self
-                                    };
-                                    var childName = ComponentType$Reventless.name(name, /* Aggregate */0);
-                                    var eventLog = Curry._3(EventLog.make, childName, Caml_option.some(opts), /* () */0);
-                                    var handleCommands$1 = handleCommands(/* tuple */[
-                                          Curry._1(EventLog.append, eventLog),
-                                          Curry._1(EventLog.replay, eventLog)
-                                        ]);
-                                    var commandTopic = Curry._6(CommandTopic.make, childName, handleCommands$1, undefined, undefined, Caml_option.some(opts), /* () */0);
-                                    var commandGenerator = Curry._4(CommandGenerator.make, childName, Curry._1(CommandTopic.publish, commandTopic), Caml_option.some(opts), /* () */0);
-                                    self.publishJsons = Curry._1(CommandTopic.publishJsons, commandTopic);
-                                    self.addEventMapper = (function (param) {
-                                        return (function (param$1) {
-                                            var param$2 = param$1;
-                                            var param$3 = opts;
-                                            var param$4 = param;
-                                            var param$5 = param$2;
-                                            var param$6 = param$3;
-                                            var component = self;
-                                            var allEventTopics = param$4;
-                                            var queryEngine = param$5;
-                                            var opts$1 = param$6;
-                                            var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-                                            var EventMapper = EventMapper$Reventless.Make({
-                                                      name: Spec.name,
-                                                      Id: Spec.Id,
-                                                      command_encode: Spec.command_encode,
-                                                      command_decode: Spec.command_decode
-                                                    })(EventCollector)(EventMappings);
-                                            var match = EventMappings.mappings.length !== 0;
-                                            var eventMapper = match ? Caml_option.some(Curry._7(EventMapper.make, allEventTopics, queryEngine, component.publishJsons, undefined, undefined, Caml_option.some(opts$1), /* () */0)) : undefined;
-                                            var outputs = Component$Reventless.extractOutputs(component);
-                                            return {
-                                                    name: outputs.name,
-                                                    commandGenerator: outputs.commandGenerator,
-                                                    commandTopic: outputs.commandTopic,
-                                                    eventLog: outputs.eventLog,
-                                                    eventMapper: Belt_Option.map(eventMapper, Component$Reventless.extractOutputs)
-                                                  };
-                                          });
-                                      });
-                                    var self$1 = self;
-                                    var outputs = {
-                                      name: name,
-                                      commandGenerator: Component$Reventless.extractOutputs(commandGenerator),
-                                      commandTopic: Component$Reventless.extractOutputs(commandTopic),
-                                      eventLog: Component$Reventless.extractOutputs(eventLog),
-                                      eventMapper: undefined
-                                    };
-                                    self$1.setOutputs(outputs);
-                                    return self$1.registerOutputs(outputs);
-                                  };
-                                  var make = function (opts, param) {
-                                    var prim = ComponentType$Reventless.toString(/* Aggregate */0);
-                                    var prim$1 = Spec.name;
-                                    var prim$2 = construct;
-                                    var prim$3 = opts;
-                                    return new Component.default(prim, prim$1, prim$2, prim$3);
-                                  };
-                                  return {
-                                          Spec: Spec,
-                                          make: make,
-                                          publishJsons: (function (prim) {
-                                              return prim.publishJsons;
-                                            }),
-                                          addEventMapper: (function (prim) {
-                                              return prim.addEventMapper;
-                                            })
-                                        };
-                                });
-                            });
-                        });
-                    });
-                });
-            });
-        });
-    });
+                                                                        return Promise.resolve(tmp);
+                                                                      })).then((function (results) {
+                                                                      console.log("finished eventLogAppend for id " + (String(id) + ""));
+                                                                      return Promise.resolve(results);
+                                                                    }));
+                                                      }));
+                                        }));
+                          }))).then((function (results) {
+                      return Promise.resolve(Belt_Array.concatMany(results));
+                    }));
+      });
+  };
+  var construct = function (self, name) {
+    var opts = {
+      parent: self
+    };
+    var childName = ComponentType$Reventless.name(name, /* Aggregate */0);
+    var eventLog = Curry._3(EventLog.make, childName, Caml_option.some(opts), undefined);
+    var handleCommands$1 = handleCommands(/* tuple */[
+          Curry._1(EventLog.append, eventLog),
+          Curry._1(EventLog.replay, eventLog)
+        ]);
+    var commandTopic = Curry._6(CommandTopic.make, childName, handleCommands$1, undefined, undefined, Caml_option.some(opts), undefined);
+    var commandGenerator = Curry._4(CommandGenerator.make, childName, Curry._1(CommandTopic.publish, commandTopic), Caml_option.some(opts), undefined);
+    self.publishJsons = Curry._1(CommandTopic.publishJsons, commandTopic);
+    self.addEventMapper = (function (param) {
+        return (function (param$1) {
+            var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+            var partial_arg_name = Spec.name;
+            var partial_arg_Id = Spec.Id;
+            var partial_arg_command_encode = Spec.command_encode;
+            var partial_arg_command_decode = Spec.command_decode;
+            var partial_arg = {
+              name: partial_arg_name,
+              Id: partial_arg_Id,
+              command_encode: partial_arg_command_encode,
+              command_decode: partial_arg_command_decode
+            };
+            var partial_arg$1 = EventMapper$Reventless.Make;
+            var partial_arg$2 = function (param, param$1) {
+              return partial_arg$1(partial_arg, param, param$1);
+            };
+            var EventMapper = partial_arg$2(EventCollector, EventMappings);
+            var eventMapper = EventMappings.mappings.length !== 0 ? Caml_option.some(Curry._7(EventMapper.make, param, param$1, self.publishJsons, undefined, undefined, Caml_option.some(opts), undefined)) : undefined;
+            var outputs = Component$Reventless.extractOutputs(self);
+            return {
+                    name: outputs.name,
+                    commandGenerator: outputs.commandGenerator,
+                    commandTopic: outputs.commandTopic,
+                    eventLog: outputs.eventLog,
+                    eventMapper: Belt_Option.map(eventMapper, Component$Reventless.extractOutputs)
+                  };
+          });
+      });
+    var outputs = {
+      name: name,
+      commandGenerator: Component$Reventless.extractOutputs(commandGenerator),
+      commandTopic: Component$Reventless.extractOutputs(commandTopic),
+      eventLog: Component$Reventless.extractOutputs(eventLog),
+      eventMapper: undefined
+    };
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
+  };
+  var make = function (opts, param) {
+    var prim = ComponentType$Reventless.toString(/* Aggregate */0);
+    var prim$1 = Spec.name;
+    return new Component.default(prim, prim$1, construct, opts);
+  };
+  return {
+          Spec: Spec,
+          make: make,
+          publishJsons: (function (prim) {
+              return prim.publishJsons;
+            }),
+          addEventMapper: (function (prim) {
+              return prim.addEventMapper;
+            })
+        };
 }
 
-var ReventlessCommandTopic = 0;
+var ReventlessCommandTopic;
 
 var componentType = /* Aggregate */0;
 

@@ -14,9 +14,9 @@ var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_Dy
 
 function make(name, indexes, sortField, ttl, api, apiRole, opts) {
   var globalSecondaryIndexes = Belt_Array.map(Belt_List.toArray(indexes), (function (param) {
-          var projectionType = param[/* projectionType */3];
-          var sortField = param[/* sortField */2];
-          var index = param[/* index */0];
+          var projectionType = param.projectionType;
+          var sortField = param.sortField;
+          var index = param.index;
           if (typeof projectionType === "number") {
             var tmp = {
               hashKey: index,
@@ -37,18 +37,17 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts) {
               tmp.rangeKey = Caml_option.valFromOption(sortField);
             }
             return tmp;
-          } else {
-            var tmp$1 = {
-              hashKey: index,
-              name: index,
-              projectionType: "INCLUDE",
-              nonKeyAttributes: projectionType[1]
-            };
-            if (sortField !== undefined) {
-              tmp$1.rangeKey = Caml_option.valFromOption(sortField);
-            }
-            return tmp$1;
           }
+          var tmp$1 = {
+            hashKey: index,
+            name: index,
+            projectionType: "INCLUDE",
+            nonKeyAttributes: projectionType[1]
+          };
+          if (sortField !== undefined) {
+            tmp$1.rangeKey = Caml_option.valFromOption(sortField);
+          }
+          return tmp$1;
         }));
   var attributes = Belt_List.toArray(Belt_List.flatten(/* :: */[
             /* :: */[
@@ -72,10 +71,10 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts) {
                 Belt_List.flatten(Belt_List.map(indexes, (function (param) {
                             return /* :: */[
                                     {
-                                      name: param[/* index */0],
-                                      type: param[/* _type */1]
+                                      name: param.index,
+                                      type: param._type
                                     },
-                                    Belt_Option.mapWithDefault(param[/* sortField */2], /* [] */0, (function (sortField) {
+                                    Belt_Option.mapWithDefault(param.sortField, /* [] */0, (function (sortField) {
                                             return /* :: */[
                                                     {
                                                       name: sortField,
@@ -93,22 +92,22 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts) {
   var table = Util_DynamoDbStream$ReventlessAws.makeTable(attributes, Caml_option.some(globalSecondaryIndexes), ttl, sortField, /* NEW_AND_OLD_IMAGES */546078935, opts, name);
   new (Aws.iam.RolePolicy)(name, {
         policy: table.arn.apply((function (tableArn) {
-                return IAM$PulumiAws.RolePolicy.generatePolicy(/* array */[tableArn + "*"], "dynamodb:*");
+                return IAM$PulumiAws.RolePolicy.generatePolicy([tableArn + "*"], "dynamodb:*");
               })),
         role: Output$Pulumi.flatMap(apiRole, (function (role) {
                 return role.id;
               }))
       }, opts);
-  var dataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), /* () */0);
-  return /* record */[
-          /* resources : array */[Util_DynamoDbStream$ReventlessAws.toResource(table)],
-          /* dataSourceName */dataSource.name,
-          /* load */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(table),
-          /* save */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table),
-          /* saveBatch */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(undefined, table),
-          /* count */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(table),
-          /* delete */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table)
-        ];
+  var dataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), undefined);
+  return {
+          resources: [Util_DynamoDbStream$ReventlessAws.toResource(table)],
+          dataSourceName: dataSource.name,
+          load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(table),
+          save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table),
+          saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(undefined, table),
+          count: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(table),
+          delete: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table)
+        };
 }
 
 exports.make = make;

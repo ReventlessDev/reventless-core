@@ -9,14 +9,20 @@ var BehaviourTest$Reventless = require("../../test-helper/BehaviourTest.bs.js");
 var PluginFixture$Reventless = require("./PluginFixture.bs.js");
 var PluginBehaviour$Reventless = require("../../src/core/Aggregates/Plugin/PluginBehaviour.bs.js");
 
-var PluginTest = BehaviourTest$Reventless.Make({
-        command_encode: PluginSpec$Reventless.command_encode,
-        command_decode: PluginSpec$Reventless.command_decode,
-        event_encode: PluginSpec$Reventless.event_encode,
-        event_decode: PluginSpec$Reventless.event_decode,
-        error_encode: PluginSpec$Reventless.error_encode,
-        error_decode: PluginSpec$Reventless.error_decode
-      })({
+var partial_arg = {
+  command_encode: PluginSpec$Reventless.command_encode,
+  command_decode: PluginSpec$Reventless.command_decode,
+  event_encode: PluginSpec$Reventless.event_encode,
+  event_decode: PluginSpec$Reventless.event_decode,
+  error_encode: PluginSpec$Reventless.error_encode,
+  error_decode: PluginSpec$Reventless.error_decode
+};
+
+var partial_arg$1 = BehaviourTest$Reventless.Make;
+
+var PluginTest = (function (param) {
+      return partial_arg$1(partial_arg, param);
+    })({
       resolverConfig: PluginBehaviour$Reventless.resolverConfig,
       init: PluginBehaviour$Reventless.init,
       apply: PluginBehaviour$Reventless.apply,

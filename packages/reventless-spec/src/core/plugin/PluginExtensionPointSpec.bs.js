@@ -2,11 +2,11 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
-var Decco = require("@ryb73/decco/src/Decco.js");
+var Decco = require("decco/src/Decco.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Plugin$ReventlessSpec = require("../../components/Plugin.bs.js");
 
 var timeout_encode = Decco.intToJson;
@@ -14,336 +14,318 @@ var timeout_encode = Decco.intToJson;
 var timeout_decode = Decco.intFromJson;
 
 function forwardCommand_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "extensionPointName",
-                Decco.stringToJson(v[/* extensionPointName */0])
+                Decco.stringToJson(v.extensionPointName)
               ],
               /* tuple */[
                 "id",
-                Decco.stringToJson(v[/* id */1])
+                Decco.stringToJson(v.id)
               ],
               /* tuple */[
                 "command",
-                Decco.stringToJson(v[/* command */2])
+                Decco.stringToJson(v.command)
               ]
             ]);
 }
 
 function forwardCommand_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "extensionPointName");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "id");
-    var match$4 = Decco.stringFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "command");
-    var match$6 = Decco.stringFromJson(match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".extensionPointName" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".command" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* extensionPointName */match$2[0],
-                  /* id */match$4[0],
-                  /* command */match$6[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var extensionPointName = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionPointName"), null));
+  if (extensionPointName.tag) {
+    var e = extensionPointName[0];
+    return /* Error */Block.__(1, [{
+                path: ".extensionPointName" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var id = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
+  if (id.tag) {
+    var e$1 = id[0];
+    return /* Error */Block.__(1, [{
+                path: ".id" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var command = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "command"), null));
+  if (!command.tag) {
+    return /* Ok */Block.__(0, [{
+                extensionPointName: extensionPointName[0],
+                id: id[0],
+                command: command[0]
+              }]);
+  }
+  var e$2 = command[0];
+  return /* Error */Block.__(1, [{
+              path: ".command" + e$2.path,
+              message: e$2.message,
+              value: e$2.value
+            }]);
 }
 
 function command_encode(v) {
   if (typeof v === "number") {
-    return /* array */["DisconnectPlugin"];
-  } else {
-    switch (v.tag | 0) {
-      case /* Heartbeat */0 :
-          return /* array */[
-                  "Heartbeat",
-                  Decco.intToJson(v[0])
-                ];
-      case /* ConnectPlugin */1 :
-          return /* array */[
-                  "ConnectPlugin",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
-                ];
-      case /* ForwardCommand */2 :
-          return /* array */[
-                  "ForwardCommand",
-                  forwardCommand_encode(v[0])
-                ];
-      
-    }
+    return ["DisconnectPlugin"];
+  }
+  switch (v.tag | 0) {
+    case /* Heartbeat */0 :
+        return [
+                "Heartbeat",
+                Decco.intToJson(v[0])
+              ];
+    case /* ConnectPlugin */1 :
+        return [
+                "ConnectPlugin",
+                Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+              ];
+    case /* ForwardCommand */2 :
+        return [
+                "ForwardCommand",
+                forwardCommand_encode(v[0])
+              ];
+    
   }
 }
 
 function command_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONArray */3) {
+  var jsonArr = Js_json.classify(v);
+  if (typeof jsonArr === "number") {
     return Decco.error(undefined, "Not a variant", v);
-  } else {
-    var jsonArr = match[0];
-    var tagged = jsonArr.map(Js_json.classify);
-    var match$1 = Caml_array.caml_array_get(tagged, 0);
-    if (typeof match$1 !== "number" && !match$1.tag) {
-      switch (match$1[0]) {
-        case "ConnectPlugin" :
-            var match$2 = tagged.length !== 2;
-            if (match$2) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$3 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$3.tag) {
-                var e = match$3[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e[/* path */0],
-                            /* message */e[/* message */1],
-                            /* value */e[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* ConnectPlugin */Block.__(1, [match$3[0]])]);
-              }
-            }
-        case "DisconnectPlugin" :
-            var match$4 = tagged.length !== 1;
-            if (match$4) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              return /* Ok */Block.__(0, [/* DisconnectPlugin */0]);
-            }
-        case "ForwardCommand" :
-            var match$5 = tagged.length !== 2;
-            if (match$5) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$6 = forwardCommand_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$6.tag) {
-                var e$1 = match$6[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$1[/* path */0],
-                            /* message */e$1[/* message */1],
-                            /* value */e$1[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* ForwardCommand */Block.__(2, [match$6[0]])]);
-              }
-            }
-        case "Heartbeat" :
-            var match$7 = tagged.length !== 2;
-            if (match$7) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$8 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$8.tag) {
-                var e$2 = match$8[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$2[/* path */0],
-                            /* message */e$2[/* message */1],
-                            /* value */e$2[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* Heartbeat */Block.__(0, [match$8[0]])]);
-              }
-            }
-        default:
-          
-      }
-    }
-    return Decco.error(undefined, "Invalid variant constructor", Caml_array.caml_array_get(jsonArr, 0));
   }
+  if (jsonArr.tag !== /* JSONArray */3) {
+    return Decco.error(undefined, "Not a variant", v);
+  }
+  var jsonArr$1 = jsonArr[0];
+  if (jsonArr$1.length === 0) {
+    return Decco.error(undefined, "Expected variant, found empty array", v);
+  }
+  var tagged = jsonArr$1.map(Js_json.classify);
+  var match = Belt_Array.getExn(tagged, 0);
+  if (typeof match !== "number" && !match.tag) {
+    switch (match[0]) {
+      case "ConnectPlugin" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0.tag) {
+            return /* Ok */Block.__(0, [/* ConnectPlugin */Block.__(1, [v0[0]])]);
+          }
+          var e = v0[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e.path,
+                      message: e.message,
+                      value: e.value
+                    }]);
+      case "DisconnectPlugin" :
+          if (tagged.length !== 1) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          } else {
+            return /* Ok */Block.__(0, [/* DisconnectPlugin */0]);
+          }
+      case "ForwardCommand" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$1 = forwardCommand_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$1.tag) {
+            return /* Ok */Block.__(0, [/* ForwardCommand */Block.__(2, [v0$1[0]])]);
+          }
+          var e$1 = v0$1[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$1.path,
+                      message: e$1.message,
+                      value: e$1.value
+                    }]);
+      case "Heartbeat" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$2 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$2.tag) {
+            return /* Ok */Block.__(0, [/* Heartbeat */Block.__(0, [v0$2[0]])]);
+          }
+          var e$2 = v0$2[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$2.path,
+                      message: e$2.message,
+                      value: e$2.value
+                    }]);
+      default:
+        
+    }
+  }
+  return Decco.error(undefined, "Invalid variant constructor", Belt_Array.getExn(jsonArr$1, 0));
 }
 
 function event_encode(v) {
   if (typeof v === "number") {
-    return /* array */["UnknownPluginDetected"];
-  } else {
-    switch (v.tag | 0) {
-      case /* PluginConnected */0 :
-          return /* array */[
-                  "PluginConnected",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
-                ];
-      case /* PluginReconnected */1 :
-          return /* array */[
-                  "PluginReconnected",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
-                ];
-      case /* PluginDisconnected */2 :
-          return /* array */[
-                  "PluginDisconnected",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
-                ];
-      case /* PluginDeactivated */3 :
-          return /* array */[
-                  "PluginDeactivated",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
-                ];
-      case /* PluginActivated */4 :
-          return /* array */[
-                  "PluginActivated",
-                  Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
-                ];
-      
-    }
+    return ["UnknownPluginDetected"];
+  }
+  switch (v.tag | 0) {
+    case /* PluginConnected */0 :
+        return [
+                "PluginConnected",
+                Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+              ];
+    case /* PluginReconnected */1 :
+        return [
+                "PluginReconnected",
+                Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+              ];
+    case /* PluginDisconnected */2 :
+        return [
+                "PluginDisconnected",
+                Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+              ];
+    case /* PluginDeactivated */3 :
+        return [
+                "PluginDeactivated",
+                Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+              ];
+    case /* PluginActivated */4 :
+        return [
+                "PluginActivated",
+                Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
+              ];
+    
   }
 }
 
 function event_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONArray */3) {
+  var jsonArr = Js_json.classify(v);
+  if (typeof jsonArr === "number") {
     return Decco.error(undefined, "Not a variant", v);
-  } else {
-    var jsonArr = match[0];
-    var tagged = jsonArr.map(Js_json.classify);
-    var match$1 = Caml_array.caml_array_get(tagged, 0);
-    if (typeof match$1 !== "number" && !match$1.tag) {
-      switch (match$1[0]) {
-        case "PluginActivated" :
-            var match$2 = tagged.length !== 2;
-            if (match$2) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$3 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$3.tag) {
-                var e = match$3[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e[/* path */0],
-                            /* message */e[/* message */1],
-                            /* value */e[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* PluginActivated */Block.__(4, [match$3[0]])]);
-              }
-            }
-        case "PluginConnected" :
-            var match$4 = tagged.length !== 2;
-            if (match$4) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$5 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$5.tag) {
-                var e$1 = match$5[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$1[/* path */0],
-                            /* message */e$1[/* message */1],
-                            /* value */e$1[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* PluginConnected */Block.__(0, [match$5[0]])]);
-              }
-            }
-        case "PluginDeactivated" :
-            var match$6 = tagged.length !== 2;
-            if (match$6) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$7 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$7.tag) {
-                var e$2 = match$7[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$2[/* path */0],
-                            /* message */e$2[/* message */1],
-                            /* value */e$2[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* PluginDeactivated */Block.__(3, [match$7[0]])]);
-              }
-            }
-        case "PluginDisconnected" :
-            var match$8 = tagged.length !== 2;
-            if (match$8) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$9 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$9.tag) {
-                var e$3 = match$9[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$3[/* path */0],
-                            /* message */e$3[/* message */1],
-                            /* value */e$3[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* PluginDisconnected */Block.__(2, [match$9[0]])]);
-              }
-            }
-        case "PluginReconnected" :
-            var match$10 = tagged.length !== 2;
-            if (match$10) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$11 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$11.tag) {
-                var e$4 = match$11[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$4[/* path */0],
-                            /* message */e$4[/* message */1],
-                            /* value */e$4[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* PluginReconnected */Block.__(1, [match$11[0]])]);
-              }
-            }
-        case "UnknownPluginDetected" :
-            var match$12 = tagged.length !== 1;
-            if (match$12) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              return /* Ok */Block.__(0, [/* UnknownPluginDetected */0]);
-            }
-        default:
-          
-      }
-    }
-    return Decco.error(undefined, "Invalid variant constructor", Caml_array.caml_array_get(jsonArr, 0));
   }
+  if (jsonArr.tag !== /* JSONArray */3) {
+    return Decco.error(undefined, "Not a variant", v);
+  }
+  var jsonArr$1 = jsonArr[0];
+  if (jsonArr$1.length === 0) {
+    return Decco.error(undefined, "Expected variant, found empty array", v);
+  }
+  var tagged = jsonArr$1.map(Js_json.classify);
+  var match = Belt_Array.getExn(tagged, 0);
+  if (typeof match !== "number" && !match.tag) {
+    switch (match[0]) {
+      case "PluginActivated" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0.tag) {
+            return /* Ok */Block.__(0, [/* PluginActivated */Block.__(4, [v0[0]])]);
+          }
+          var e = v0[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e.path,
+                      message: e.message,
+                      value: e.value
+                    }]);
+      case "PluginConnected" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$1 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$1.tag) {
+            return /* Ok */Block.__(0, [/* PluginConnected */Block.__(0, [v0$1[0]])]);
+          }
+          var e$1 = v0$1[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$1.path,
+                      message: e$1.message,
+                      value: e$1.value
+                    }]);
+      case "PluginDeactivated" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$2 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$2.tag) {
+            return /* Ok */Block.__(0, [/* PluginDeactivated */Block.__(3, [v0$2[0]])]);
+          }
+          var e$2 = v0$2[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$2.path,
+                      message: e$2.message,
+                      value: e$2.value
+                    }]);
+      case "PluginDisconnected" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$3 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$3.tag) {
+            return /* Ok */Block.__(0, [/* PluginDisconnected */Block.__(2, [v0$3[0]])]);
+          }
+          var e$3 = v0$3[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$3.path,
+                      message: e$3.message,
+                      value: e$3.value
+                    }]);
+      case "PluginReconnected" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$4 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$4.tag) {
+            return /* Ok */Block.__(0, [/* PluginReconnected */Block.__(1, [v0$4[0]])]);
+          }
+          var e$4 = v0$4[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$4.path,
+                      message: e$4.message,
+                      value: e$4.value
+                    }]);
+      case "UnknownPluginDetected" :
+          if (tagged.length !== 1) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          } else {
+            return /* Ok */Block.__(0, [/* UnknownPluginDetected */0]);
+          }
+      default:
+        
+    }
+  }
+  return Decco.error(undefined, "Invalid variant constructor", Belt_Array.getExn(jsonArr$1, 0));
 }
 
 function callCommand_encode(v) {
   switch (v.tag | 0) {
     case /* CreateDisconnectSchedule */0 :
-        return /* array */[
+        return [
                 "CreateDisconnectSchedule",
                 Decco.stringToJson(v[0]),
                 Decco.intToJson(v[1])
               ];
     case /* DeleteDisconnectSchedule */1 :
-        return /* array */[
+        return [
                 "DeleteDisconnectSchedule",
                 Decco.stringToJson(v[0])
               ];
     case /* DoConnectPlugin */2 :
-        return /* array */[
+        return [
                 "DoConnectPlugin",
                 Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
               ];
     case /* DoDisconnectPlugin */3 :
-        return /* array */[
+        return [
                 "DoDisconnectPlugin",
                 Plugin$ReventlessSpec.pluginDefinition_encode(v[0])
               ];
     case /* ForwardCommand */4 :
-        return /* array */[
+        return [
                 "ForwardCommand",
                 forwardCommand_encode(v[0])
               ];
@@ -352,117 +334,108 @@ function callCommand_encode(v) {
 }
 
 function callCommand_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONArray */3) {
+  var jsonArr = Js_json.classify(v);
+  if (typeof jsonArr === "number") {
     return Decco.error(undefined, "Not a variant", v);
-  } else {
-    var jsonArr = match[0];
-    var tagged = jsonArr.map(Js_json.classify);
-    var match$1 = Caml_array.caml_array_get(tagged, 0);
-    if (typeof match$1 !== "number" && !match$1.tag) {
-      switch (match$1[0]) {
-        case "CreateDisconnectSchedule" :
-            var match$2 = tagged.length !== 3;
-            if (match$2) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$3 = Decco.stringFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              var match$4 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 2));
-              if (match$3.tag) {
-                var e = match$3[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e[/* path */0],
-                            /* message */e[/* message */1],
-                            /* value */e[/* value */2]
-                          ]]);
-              } else if (match$4.tag) {
-                var e$1 = match$4[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[1]" + e$1[/* path */0],
-                            /* message */e$1[/* message */1],
-                            /* value */e$1[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* CreateDisconnectSchedule */Block.__(0, [
-                              match$3[0],
-                              match$4[0]
-                            ])]);
-              }
-            }
-        case "DeleteDisconnectSchedule" :
-            var match$5 = tagged.length !== 2;
-            if (match$5) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$6 = Decco.stringFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$6.tag) {
-                var e$2 = match$6[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$2[/* path */0],
-                            /* message */e$2[/* message */1],
-                            /* value */e$2[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* DeleteDisconnectSchedule */Block.__(1, [match$6[0]])]);
-              }
-            }
-        case "DoConnectPlugin" :
-            var match$7 = tagged.length !== 2;
-            if (match$7) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$8 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$8.tag) {
-                var e$3 = match$8[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$3[/* path */0],
-                            /* message */e$3[/* message */1],
-                            /* value */e$3[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* DoConnectPlugin */Block.__(2, [match$8[0]])]);
-              }
-            }
-        case "DoDisconnectPlugin" :
-            var match$9 = tagged.length !== 2;
-            if (match$9) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$10 = Plugin$ReventlessSpec.pluginDefinition_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$10.tag) {
-                var e$4 = match$10[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$4[/* path */0],
-                            /* message */e$4[/* message */1],
-                            /* value */e$4[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* DoDisconnectPlugin */Block.__(3, [match$10[0]])]);
-              }
-            }
-        case "ForwardCommand" :
-            var match$11 = tagged.length !== 2;
-            if (match$11) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$12 = forwardCommand_decode(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$12.tag) {
-                var e$5 = match$12[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$5[/* path */0],
-                            /* message */e$5[/* message */1],
-                            /* value */e$5[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* ForwardCommand */Block.__(4, [match$12[0]])]);
-              }
-            }
-        default:
-          
-      }
-    }
-    return Decco.error(undefined, "Invalid variant constructor", Caml_array.caml_array_get(jsonArr, 0));
   }
+  if (jsonArr.tag !== /* JSONArray */3) {
+    return Decco.error(undefined, "Not a variant", v);
+  }
+  var jsonArr$1 = jsonArr[0];
+  if (jsonArr$1.length === 0) {
+    return Decco.error(undefined, "Expected variant, found empty array", v);
+  }
+  var tagged = jsonArr$1.map(Js_json.classify);
+  var match = Belt_Array.getExn(tagged, 0);
+  if (typeof match !== "number" && !match.tag) {
+    switch (match[0]) {
+      case "CreateDisconnectSchedule" :
+          if (tagged.length !== 3) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var match$1 = Decco.stringFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          var match$2 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 2));
+          if (match$1.tag) {
+            var e = match$1[0];
+            return /* Error */Block.__(1, [{
+                        path: "[0]" + e.path,
+                        message: e.message,
+                        value: e.value
+                      }]);
+          }
+          if (!match$2.tag) {
+            return /* Ok */Block.__(0, [/* CreateDisconnectSchedule */Block.__(0, [
+                          match$1[0],
+                          match$2[0]
+                        ])]);
+          }
+          var e$1 = match$2[0];
+          return /* Error */Block.__(1, [{
+                      path: "[1]" + e$1.path,
+                      message: e$1.message,
+                      value: e$1.value
+                    }]);
+      case "DeleteDisconnectSchedule" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0 = Decco.stringFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0.tag) {
+            return /* Ok */Block.__(0, [/* DeleteDisconnectSchedule */Block.__(1, [v0[0]])]);
+          }
+          var e$2 = v0[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$2.path,
+                      message: e$2.message,
+                      value: e$2.value
+                    }]);
+      case "DoConnectPlugin" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$1 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$1.tag) {
+            return /* Ok */Block.__(0, [/* DoConnectPlugin */Block.__(2, [v0$1[0]])]);
+          }
+          var e$3 = v0$1[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$3.path,
+                      message: e$3.message,
+                      value: e$3.value
+                    }]);
+      case "DoDisconnectPlugin" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$2 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$2.tag) {
+            return /* Ok */Block.__(0, [/* DoDisconnectPlugin */Block.__(3, [v0$2[0]])]);
+          }
+          var e$4 = v0$2[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$4.path,
+                      message: e$4.message,
+                      value: e$4.value
+                    }]);
+      case "ForwardCommand" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$3 = forwardCommand_decode(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$3.tag) {
+            return /* Ok */Block.__(0, [/* ForwardCommand */Block.__(4, [v0$3[0]])]);
+          }
+          var e$5 = v0$3[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$5.path,
+                      message: e$5.message,
+                      value: e$5.value
+                    }]);
+      default:
+        
+    }
+  }
+  return Decco.error(undefined, "Invalid variant constructor", Belt_Array.getExn(jsonArr$1, 0));
 }
 
 var name = "Core.Plugin";

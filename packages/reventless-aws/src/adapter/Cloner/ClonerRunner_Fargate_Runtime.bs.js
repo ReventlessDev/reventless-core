@@ -5,10 +5,10 @@ var AwsSdk = require("aws-sdk");
 
 function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, payload, param) {
   console.log("clone: requested by user " + (payload.meta.user + (" from ip " + payload.meta.ip)));
-  var environment = /* array */[
+  var environment = [
     {
       name: "REVENTLESS_CORE_STACK",
-      value: "" + (String(fullQualifiedStackName[/* organization */0]) + ("/" + (String(fullQualifiedStackName[/* project */1]) + ("/" + (String(fullQualifiedStackName[/* stack */2]) + "")))))
+      value: "" + (String(fullQualifiedStackName.organization) + ("/" + (String(fullQualifiedStackName.project) + ("/" + (String(fullQualifiedStackName.stack) + "")))))
     },
     {
       name: "RESTORE_DATE_TIME",
@@ -25,9 +25,9 @@ function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, payload
                   }
                 },
                 overrides: {
-                  containerOverrides: /* array */[{
+                  containerOverrides: [{
                       name: "reventless-ci",
-                      command: /* array */[
+                      command: [
                         "reventless-ci",
                         "clone-environment"
                       ],

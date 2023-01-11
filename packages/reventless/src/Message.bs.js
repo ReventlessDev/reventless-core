@@ -4,7 +4,7 @@
 var Uuid = require("@reventless/bs-uuid/src/Uuid.bs.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var Decco = require("@ryb73/decco/src/Decco.js");
+var Decco = require("decco/src/Decco.js");
 var $$String = require("bs-platform/lib/js/string.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
@@ -25,205 +25,205 @@ function nowAsISOString(param) {
 }
 
 function statusChange_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "at",
-                Decco.stringToJson(v[/* at */0])
+                Decco.stringToJson(v.at)
               ],
               /* tuple */[
                 "by",
-                Decco.stringToJson(v[/* by */1])
+                Decco.stringToJson(v.by)
               ]
             ]);
 }
 
 function statusChange_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "at");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "by");
-    var match$4 = Decco.stringFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".at" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".by" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* at */match$2[0],
-                  /* by */match$4[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var at = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "at"), null));
+  if (at.tag) {
+    var e = at[0];
+    return /* Error */Block.__(1, [{
+                path: ".at" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var by = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "by"), null));
+  if (!by.tag) {
+    return /* Ok */Block.__(0, [{
+                at: at[0],
+                by: by[0]
+              }]);
+  }
+  var e$1 = by[0];
+  return /* Error */Block.__(1, [{
+              path: ".by" + e$1.path,
+              message: e$1.message,
+              value: e$1.value
+            }]);
 }
 
 function command$prime_encode(encoder_id, encoder_command, v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "id",
-                Curry._1(encoder_id, v[/* id */0])
+                Curry._1(encoder_id, v.id)
               ],
               /* tuple */[
                 "meta",
-                Message$ReventlessSpec.meta_encode(v[/* meta */1])
+                Message$ReventlessSpec.meta_encode(v.meta)
               ],
               /* tuple */[
                 "command",
-                Curry._1(encoder_command, v[/* command */2])
+                Curry._1(encoder_command, v.command)
               ]
             ]);
 }
 
 function command$prime_decode(decoder_id, decoder_command, v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Curry._1(decoder_id, match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "meta");
-    var match$4 = Message$ReventlessSpec.meta_decode(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "command");
-    var match$6 = Curry._1(decoder_command, match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".meta" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".command" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* meta */match$4[0],
-                  /* command */match$6[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var id = Curry._1(decoder_id, Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
+  if (id.tag) {
+    var e = id[0];
+    return /* Error */Block.__(1, [{
+                path: ".id" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var meta = Message$ReventlessSpec.meta_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "meta"), null));
+  if (meta.tag) {
+    var e$1 = meta[0];
+    return /* Error */Block.__(1, [{
+                path: ".meta" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var command = Curry._1(decoder_command, Belt_Option.getWithDefault(Js_dict.get(dict$1, "command"), null));
+  if (!command.tag) {
+    return /* Ok */Block.__(0, [{
+                id: id[0],
+                meta: meta[0],
+                command: command[0]
+              }]);
+  }
+  var e$2 = command[0];
+  return /* Error */Block.__(1, [{
+              path: ".command" + e$2.path,
+              message: e$2.message,
+              value: e$2.value
+            }]);
 }
 
 function commandJson_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "id",
-                Decco.stringToJson(v[/* id */0])
+                Decco.stringToJson(v.id)
               ],
               /* tuple */[
                 "meta",
-                Message$ReventlessSpec.meta_encode(v[/* meta */1])
+                Message$ReventlessSpec.meta_encode(v.meta)
               ],
               /* tuple */[
                 "commandJson",
-                v[/* commandJson */2]
+                v.commandJson
               ],
               /* tuple */[
                 "delay",
-                Decco.optionToJson(Decco.intToJson, v[/* delay */3])
+                Decco.optionToJson(Decco.intToJson, v.delay)
               ]
             ]);
 }
 
 function commandJson_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "meta");
-    var match$4 = Message$ReventlessSpec.meta_decode(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "commandJson");
-    var match$6 = /* Ok */Block.__(0, [match$5 !== undefined ? Caml_option.valFromOption(match$5) : null]);
-    var match$7 = Js_dict.get(dict, "delay");
-    var match$8 = Decco.optionFromJson(Decco.intFromJson, match$7 !== undefined ? Caml_option.valFromOption(match$7) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".meta" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".commandJson" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else if (match$8.tag) {
-      var e$3 = match$8[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".delay" + e$3[/* path */0],
-                  /* message */e$3[/* message */1],
-                  /* value */e$3[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* meta */match$4[0],
-                  /* commandJson */match$6[0],
-                  /* delay */match$8[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var id = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
+  if (id.tag) {
+    var e = id[0];
+    return /* Error */Block.__(1, [{
+                path: ".id" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var meta = Message$ReventlessSpec.meta_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "meta"), null));
+  if (meta.tag) {
+    var e$1 = meta[0];
+    return /* Error */Block.__(1, [{
+                path: ".meta" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var commandJson = /* Ok */Block.__(0, [Belt_Option.getWithDefault(Js_dict.get(dict$1, "commandJson"), null)]);
+  if (commandJson.tag) {
+    var e$2 = commandJson[0];
+    return /* Error */Block.__(1, [{
+                path: ".commandJson" + e$2.path,
+                message: e$2.message,
+                value: e$2.value
+              }]);
+  }
+  var delay = Decco.optionFromJson(Decco.intFromJson, Belt_Option.getWithDefault(Js_dict.get(dict$1, "delay"), null));
+  if (!delay.tag) {
+    return /* Ok */Block.__(0, [{
+                id: id[0],
+                meta: meta[0],
+                commandJson: commandJson[0],
+                delay: delay[0]
+              }]);
+  }
+  var e$3 = delay[0];
+  return /* Error */Block.__(1, [{
+              path: ".delay" + e$3.path,
+              message: e$3.message,
+              value: e$3.value
+            }]);
 }
 
 function toMessageBody(param) {
-  var meta = param[/* meta */1];
-  var commandMeta_000 = /* service */meta[/* service */0];
-  var commandMeta_001 = /* time */new Date().toISOString();
-  var commandMeta_002 = /* ip */meta[/* ip */2];
-  var commandMeta_003 = /* user */meta[/* user */3];
-  var commandMeta_004 = /* msgId */Uuid.v4(/* () */0);
-  var commandMeta_005 = /* correlationId */meta[/* correlationId */5];
-  var commandMeta = /* record */[
-    commandMeta_000,
-    commandMeta_001,
-    commandMeta_002,
-    commandMeta_003,
-    commandMeta_004,
-    commandMeta_005
-  ];
-  return JSON.stringify(Js_dict.fromArray(/* array */[
+  var meta = param.meta;
+  var commandMeta_service = meta.service;
+  var commandMeta_time = new Date().toISOString();
+  var commandMeta_ip = meta.ip;
+  var commandMeta_user = meta.user;
+  var commandMeta_msgId = Uuid.v4(undefined);
+  var commandMeta_correlationId = meta.correlationId;
+  var commandMeta = {
+    service: commandMeta_service,
+    time: commandMeta_time,
+    ip: commandMeta_ip,
+    user: commandMeta_user,
+    msgId: commandMeta_msgId,
+    correlationId: commandMeta_correlationId
+  };
+  return JSON.stringify(Js_dict.fromArray([
                   /* tuple */[
                     "id",
-                    param[/* id */0]
+                    param.id
                   ],
                   /* tuple */[
                     "meta",
@@ -231,91 +231,87 @@ function toMessageBody(param) {
                   ],
                   /* tuple */[
                     "command",
-                    param[/* commandJson */2]
+                    param.commandJson
                   ]
                 ]));
 }
 
 function event$prime_encode(encoder_id, encoder_event, v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "id",
-                Curry._1(encoder_id, v[/* id */0])
+                Curry._1(encoder_id, v.id)
               ],
               /* tuple */[
                 "meta",
-                Message$ReventlessSpec.meta_encode(v[/* meta */1])
+                Message$ReventlessSpec.meta_encode(v.meta)
               ],
               /* tuple */[
                 "event",
-                Curry._1(encoder_event, v[/* event */2])
+                Curry._1(encoder_event, v.event)
               ]
             ]);
 }
 
 function event$prime_decode(decoder_id, decoder_event, v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Curry._1(decoder_id, match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "meta");
-    var match$4 = Message$ReventlessSpec.meta_decode(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "event");
-    var match$6 = Curry._1(decoder_event, match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".meta" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".event" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* meta */match$4[0],
-                  /* event */match$6[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var id = Curry._1(decoder_id, Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
+  if (id.tag) {
+    var e = id[0];
+    return /* Error */Block.__(1, [{
+                path: ".id" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var meta = Message$ReventlessSpec.meta_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "meta"), null));
+  if (meta.tag) {
+    var e$1 = meta[0];
+    return /* Error */Block.__(1, [{
+                path: ".meta" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var $$event = Curry._1(decoder_event, Belt_Option.getWithDefault(Js_dict.get(dict$1, "event"), null));
+  if (!$$event.tag) {
+    return /* Ok */Block.__(0, [{
+                id: id[0],
+                meta: meta[0],
+                event: $$event[0]
+              }]);
+  }
+  var e$2 = $$event[0];
+  return /* Error */Block.__(1, [{
+              path: ".event" + e$2.path,
+              message: e$2.message,
+              value: e$2.value
+            }]);
 }
 
 function serviceNameOfMsg(msgJson) {
-  var match = Js_json.decodeObject(msgJson);
-  if (match !== undefined) {
-    var param = Belt_Option.map(Js_dict.get(Caml_option.valFromOption(match), "meta"), Message$ReventlessSpec.meta_decode);
+  var msgObj = Js_json.decodeObject(msgJson);
+  if (msgObj !== undefined) {
+    var param = Belt_Option.map(Js_dict.get(Caml_option.valFromOption(msgObj), "meta"), Message$ReventlessSpec.meta_decode);
     if (param !== undefined) {
-      var match$1 = param;
-      if (match$1.tag) {
-        console.log("Message.serviceNameOfMsg: Couldn't decode meta:", match$1[0]);
-        return ;
-      } else {
-        return match$1[0][/* service */0];
+      if (!param.tag) {
+        return param[0].service;
       }
-    } else {
-      console.log("Message.serviceNameOfMsg: Invalid JSON object");
+      console.log("Message.serviceNameOfMsg: Couldn't decode meta:", param[0]);
       return ;
     }
-  } else {
-    console.log("Message.serviceNameOfMsg:", msgJson);
+    console.log("Message.serviceNameOfMsg: Invalid JSON object");
     return ;
   }
+  console.log("Message.serviceNameOfMsg:", msgJson);
+  
 }
 
 var InvalidEvent = Caml_exceptions.create("Message-Reventless.InvalidEvent");
@@ -334,11 +330,11 @@ function logEvent$primeJson(event$primeJson, description) {
     var id = Js_json.decodeString(event$prime["id"]);
     var eventName = Belt_Option.getExn(Util_Decco$Reventless.Json.variantName(event$prime["event"]));
     console.log("" + (String(description) + (" " + (String(eventName) + ("(" + (String(id) + (") complete event: " + (String(eventStr) + ""))))))));
-    return /* () */0;
+    return ;
   }
   catch (exn){
     console.log("Couldn't log event:", eventStr);
-    return /* () */0;
+    return ;
   }
 }
 
@@ -348,39 +344,38 @@ function hrtimeToString(hrtime, now) {
   return now.toString() + ("-" + ($$String.make(9 - milLength | 0, /* "0" */48) + milString));
 }
 
-function generateMeta(service, $staropt$star, $staropt$star$1, param) {
-  var ip = $staropt$star !== undefined ? $staropt$star : "";
-  var user = $staropt$star$1 !== undefined ? $staropt$star$1 : "unknown";
-  var msgId = Uuid.v4(/* () */0);
-  return /* record */[
-          /* service */service,
-          /* time */new Date().toISOString(),
-          /* ip */ip,
-          /* user */user,
-          /* msgId */msgId,
-          /* correlationId */msgId
-        ];
+function generateMeta(service, ipOpt, userOpt, param) {
+  var ip = ipOpt !== undefined ? ipOpt : "";
+  var user = userOpt !== undefined ? userOpt : "unknown";
+  var msgId = Uuid.v4(undefined);
+  return {
+          service: service,
+          time: new Date().toISOString(),
+          ip: ip,
+          user: user,
+          msgId: msgId,
+          correlationId: msgId
+        };
 }
 
 function decomposeMeta(meta) {
   return Js_dict.entries(Js_option.getExn(Js_json.decodeObject(Message$ReventlessSpec.meta_encode(meta))));
 }
 
-function string(param) {
-  if (param !== undefined) {
-    var ip = Caml_option.valFromOption(param);
-    if (Caml_obj.caml_equal(ip, null)) {
-      return "";
-    } else {
-      return ip;
-    }
-  } else {
+function string(ip) {
+  if (ip === undefined) {
     return "";
+  }
+  var ip$1 = Caml_option.valFromOption(ip);
+  if (Caml_obj.caml_equal(ip$1, null)) {
+    return "";
+  } else {
+    return ip$1;
   }
 }
 
 function composeMeta(dict) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "service",
                 Belt_Option.getExn(Js_dict.get(dict, "service"))

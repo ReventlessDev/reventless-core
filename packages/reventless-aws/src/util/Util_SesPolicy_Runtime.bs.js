@@ -11,48 +11,47 @@ function emailIdentity(name, email, opts, _unit) {
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
 }
 
-function fromCustomResourceOptions(param) {
-  if (param !== undefined) {
-    var opts = Caml_option.valFromOption(param);
-    var tmp = { };
-    if (opts.parent !== undefined) {
-      tmp.parent = Caml_option.valFromOption(opts.parent);
-    }
-    if (opts.provider !== undefined) {
-      tmp.provider = Caml_option.valFromOption(opts.provider);
-    }
-    return tmp;
-  } else {
+function fromCustomResourceOptions(opts) {
+  if (opts === undefined) {
     return { };
   }
+  var opts$1 = Caml_option.valFromOption(opts);
+  var tmp = { };
+  if (opts$1.parent !== undefined) {
+    tmp.parent = Caml_option.valFromOption(opts$1.parent);
+  }
+  if (opts$1.provider !== undefined) {
+    tmp.provider = Caml_option.valFromOption(opts$1.provider);
+  }
+  return tmp;
 }
 
 function sesPolicyDocument(identity, opts, _unit) {
   return Output$Pulumi.flatMap(identity.arn, (function (identityArn) {
                 var principal = {
-                  identifiers: /* array */["*"],
+                  identifiers: ["*"],
                   type: "AWS"
                 };
-                var actions = /* array */[
+                var actions = [
                   "SES:SendEmail",
                   "SES:SendRawEmail"
                 ];
                 var statement = {
                   actions: actions,
-                  principals: /* array */[principal],
-                  resources: /* array */[identityArn]
+                  principals: [principal],
+                  resources: [identityArn]
                 };
                 return Aws.iam.getPolicyDocument({
-                            statements: /* array */[statement]
+                            statements: [statement]
                           }, fromCustomResourceOptions(opts));
               }));
 }
 
 function identityWithPolicy(name, email, opts, _unit) {
-  var identity = emailIdentity(name, email, opts, /* () */0);
+  var identity = emailIdentity(name, email, opts, undefined);
   return new (Aws.ses.IdentityPolicy)("identityPolicy" + name, {
               identity: identity.arn,
-              policy: sesPolicyDocument(identity, opts, /* () */0).apply((function (policyDocument) {
+              policy: sesPolicyDocument(identity, opts, undefined).apply((function (policyDocument) {
                       return policyDocument.json;
                     }))
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);

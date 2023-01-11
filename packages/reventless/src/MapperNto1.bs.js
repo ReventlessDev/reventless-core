@@ -21,35 +21,31 @@ function makeGenericMap(msgDecode, map, json) {
   }
 }
 
-function Mapper(Spec) {
-  return (function (Target) {
-      return (function (Mappings) {
-          var findMappings = function (sourceNameOpt, mappings) {
-            return Belt_Option.mapWithDefault(sourceNameOpt, /* array */[], (function (sourceName) {
-                          return Belt_Array.keep(mappings, (function (Mapping) {
-                                        return Mapping.sourceName === sourceName;
-                                      }));
-                        }));
-          };
-          var map = function (sourceName, json) {
-            return Belt_Array.keepMap(findMappings(sourceName, Mappings.mappings), (function (Mapping) {
-                          try {
-                            return Caml_option.some(Curry._1(Mapping.map, json));
-                          }
-                          catch (raw_exn){
-                            var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-                            console.log("Mapping failed:", Belt_Option.map(Caml_js_exceptions.caml_as_js_exn(exn), (function (prim) {
-                                        return prim.message;
-                                      })));
-                            return ;
-                          }
-                        }));
-          };
-          return {
-                  map: map
-                };
-        });
-    });
+function Mapper(Spec, Target, Mappings) {
+  var findMappings = function (sourceNameOpt, mappings) {
+    return Belt_Option.mapWithDefault(sourceNameOpt, [], (function (sourceName) {
+                  return Belt_Array.keep(mappings, (function (Mapping) {
+                                return Mapping.sourceName === sourceName;
+                              }));
+                }));
+  };
+  var map = function (sourceName, json) {
+    return Belt_Array.keepMap(findMappings(sourceName, Mappings.mappings), (function (Mapping) {
+                  try {
+                    return Caml_option.some(Curry._1(Mapping.map, json));
+                  }
+                  catch (raw_exn){
+                    var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+                    console.log("Mapping failed:", Belt_Option.map(Caml_js_exceptions.caml_as_js_exn(exn), (function (prim) {
+                                return prim.message;
+                              })));
+                    return ;
+                  }
+                }));
+  };
+  return {
+          map: map
+        };
 }
 
 exports.makeGenericMap = makeGenericMap;

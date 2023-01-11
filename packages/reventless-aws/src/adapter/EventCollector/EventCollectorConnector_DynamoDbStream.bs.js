@@ -31,30 +31,29 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                           undefined,
                           undefined,
                           undefined,
-                          /* () */0
+                          undefined
                         ]), opts);
         }));
-  Util_Adapter$Reventless.partitionSupportedResources(eventTopics, /* array */[
+  Util_Adapter$Reventless.partitionSupportedResources(eventTopics, [
           Util_DynamoDbStream_Runtime$ReventlessAws.service,
           Util_SNS_FIFO$ReventlessAws.service
         ]).apply((function (param) {
           var errorResources = param[1];
           Belt_Array.map(param[0], (function (param) {
-                  return Util_EventSourceMapping$ReventlessAws.subscribe(25, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Caml_array.caml_array_get(param[1], 0)), opts, /* () */0);
+                  return Util_EventSourceMapping$ReventlessAws.subscribe(25, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Caml_array.caml_array_get(param[1], 0)), opts, undefined);
                 }));
-          if (errorResources.length !== 0) {
-            var eventTopicNames = errorResources.join(",");
-            return Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + (String(eventTopicNames) + "")));
-          } else {
-            return 0;
+          if (errorResources.length === 0) {
+            return ;
           }
+          var eventTopicNames = errorResources.join(",");
+          return Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + (String(eventTopicNames) + "")));
         }));
-  return /* record */[
-          /* resources : array */[],
-          /* enqueueEvent */(function (delay, id, messageBody) {
-              return Promise.resolve((console.log("EventCollectorConnector_DynamoDbStream-ReventlessAws supports no enqueueEvent:", delay, id, messageBody), /* () */0));
+  return {
+          resources: [],
+          enqueueEvent: (function (delay, id, messageBody) {
+              return Promise.resolve((console.log("EventCollectorConnector_DynamoDbStream-ReventlessAws supports no enqueueEvent:", delay, id, messageBody), undefined));
             })
-        ];
+        };
 }
 
 exports.make = make;

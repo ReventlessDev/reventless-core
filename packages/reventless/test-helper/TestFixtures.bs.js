@@ -2,22 +2,22 @@
 'use strict';
 
 
-var statusChange = /* record */[
-  /* at : time */"time",
-  /* by : user */"ViewTest"
-];
+var statusChange = {
+  at: "time",
+  by: "ViewTest"
+};
 
-var context = /* record */[
-  /* id */"id@subId",
-  /* meta : record */[
-    /* service */"service",
-    /* time */"time",
-    /* ip */"ip",
-    /* user */"ViewTest",
-    /* msgId */"msgId",
-    /* correlationId */"correlationId"
-  ]
-];
+var context = {
+  id: "id@subId",
+  meta: {
+    service: "service",
+    time: "time",
+    ip: "ip",
+    user: "ViewTest",
+    msgId: "msgId",
+    correlationId: "correlationId"
+  }
+};
 
 exports.context = context;
 exports.statusChange = statusChange;

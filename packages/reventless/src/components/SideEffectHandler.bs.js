@@ -21,75 +21,62 @@ function Make(EventCollector) {
     return Belt_Option.flatMapU(Js_json.decodeObject(event$primeJson), (function (eventObj$prime) {
                   var meta = Belt_Option.map(Js_dict.get(eventObj$prime, "meta"), Message$Reventless.meta_decode);
                   if (meta !== undefined) {
-                    var match = meta;
-                    if (match.tag) {
-                      console.log("SideEffects.map: Couldn't decode meta:", match[0]);
+                    if (meta.tag) {
+                      console.log("SideEffects.map: Couldn't decode meta:", meta[0]);
                       return ;
-                    } else {
-                      var eventMeta = match[0];
-                      var sideEffect = Belt_Array.getBy(sideEffects, (function (SideEffect) {
-                              return SideEffect.Source.name === eventMeta[/* service */0];
-                            }));
-                      if (sideEffect !== undefined) {
-                        return /* tuple */[
-                                eventObj$prime,
-                                eventMeta,
-                                sideEffect
-                              ];
-                      } else {
-                        return ;
-                      }
                     }
-                  } else {
-                    console.log("SideEffects.map: Invalid JSON object");
-                    return ;
+                    var eventMeta = meta[0];
+                    var sideEffect = Belt_Array.getBy(sideEffects, (function (SideEffect) {
+                            return SideEffect.Source.name === eventMeta.service;
+                          }));
+                    if (sideEffect !== undefined) {
+                      return /* tuple */[
+                              eventObj$prime,
+                              eventMeta,
+                              sideEffect
+                            ];
+                    } else {
+                      return ;
+                    }
                   }
+                  console.log("SideEffects.map: Invalid JSON object");
+                  
                 }));
   };
   var eventsHandler = function (sideEffects, queryEngine) {
     return (function (events$primeJson) {
         var __x = Promise.all(Belt_Array.map(events$primeJson, (function (event$primeJson) {
                     var match = findSideEffect(sideEffects, event$primeJson);
-                    if (match !== undefined) {
-                      var match$1 = match;
-                      var sideEffect = match$1[2];
-                      var eventObj = match$1[0];
-                      var sourceName = sideEffect.Source.name;
-                      Message$Reventless.logEvent$primeJson(event$primeJson, "SideEffectHandler.eventsHandler: handling event from source " + (String(sourceName) + ":"));
-                      var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
-                      var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
-                      if (idDecoded !== undefined) {
-                        var match$2 = idDecoded;
-                        if (!match$2.tag && eventDecoded !== undefined) {
-                          var match$3 = eventDecoded;
-                          if (!match$3.tag) {
-                            var __x = sideEffect.execute(match$2[0], match$1[1], match$3[0], queryEngine);
-                            return __x.catch((function (err) {
-                                          return Promise.resolve((console.log("SideEffect: Error while processing:", err), /* () */0));
-                                        }));
-                          }
-                          
-                        }
-                        
+                    if (match === undefined) {
+                      return Promise.resolve(undefined);
+                    }
+                    var sideEffect = match[2];
+                    var eventObj = match[0];
+                    var sourceName = sideEffect.Source.name;
+                    Message$Reventless.logEvent$primeJson(event$primeJson, "SideEffectHandler.eventsHandler: handling event from source " + (String(sourceName) + ":"));
+                    var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
+                    var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
+                    if (idDecoded === undefined) {
+                      return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), undefined));
+                    }
+                    if (!idDecoded.tag && eventDecoded !== undefined && !eventDecoded.tag) {
+                      var __x = sideEffect.execute(idDecoded[0], match[1], eventDecoded[0], queryEngine);
+                      return __x.catch((function (err) {
+                                    return Promise.resolve((console.log("SideEffect: Error while processing:", err), undefined));
+                                  }));
+                    }
+                    if (eventDecoded !== undefined) {
+                      if (eventDecoded.tag) {
+                        return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", eventDecoded[0]), undefined));
                       } else {
-                        return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), /* () */0));
-                      }
-                      if (eventDecoded !== undefined) {
-                        var match$4 = eventDecoded;
-                        if (match$4.tag) {
-                          return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", match$4[0]), /* () */0));
-                        } else {
-                          return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", idDecoded[0]), /* () */0));
-                        }
-                      } else {
-                        return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), /* () */0));
+                        return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", idDecoded[0]), undefined));
                       }
                     } else {
-                      return Promise.resolve(/* () */0);
+                      return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), undefined));
                     }
                   })));
         return __x.then((function (param) {
-                      return Promise.resolve(/* () */0);
+                      return Promise.resolve(undefined);
                     }));
       });
   };
@@ -125,30 +112,28 @@ function Make(EventCollector) {
           policy1,
           policy2,
           Caml_option.some(opts),
-          /* () */0
+          undefined
         ]);
     var eventCollectorResources = Component$Reventless.extractOutputs(eventCollector).resources;
     self.enqueueEvent = enqueueEventFn(eventCollector);
     self.createSchedule = createScheduleFn(scheduler, eventCollectorResources);
     self.deleteSchedule = deleteScheduleFn(scheduler, eventCollectorResources);
-    var self$1 = self;
     var outputs = {
       name: name,
       eventCollector: Component$Reventless.extractOutputs(eventCollector)
     };
-    self$1.setOutputs(outputs);
-    return self$1.registerOutputs(outputs);
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
   };
-  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, $staropt$star, $staropt$star$1, policy1, policy2, opts, param) {
-    var memorySize = $staropt$star !== undefined ? $staropt$star : 2048;
-    var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 180;
+  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, policy1, policy2, opts, param) {
+    var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
+    var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
     var prim = ComponentType$Reventless.toString(/* SideEffectHandler */15);
-    var prim$1 = name;
-    var prim$2 = function (param, param$1) {
+    var prim$1 = function (param, param$1) {
       return construct(sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, param, param$1);
     };
-    var prim$3 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions);
-    return new Component.default(prim, prim$1, prim$2, prim$3);
+    var prim$2 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions);
+    return new Component.default(prim, name, prim$1, prim$2);
   };
   return {
           make: make,
@@ -164,7 +149,7 @@ function Make(EventCollector) {
         };
 }
 
-var ReventlessEventCollector = 0;
+var ReventlessEventCollector;
 
 var componentType = /* SideEffectHandler */15;
 

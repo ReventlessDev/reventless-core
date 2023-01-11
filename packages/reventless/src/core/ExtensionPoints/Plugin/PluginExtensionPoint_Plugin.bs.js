@@ -3,7 +3,7 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var Decco = require("@ryb73/decco/src/Decco.js");
+var Decco = require("decco/src/Decco.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Id$Reventless = require("../../../Id.bs.js");
@@ -15,7 +15,7 @@ var ExtensionPointMapping$Reventless = require("../../../ExtensionPointMapping.b
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 
 function forwardCommand(_id, command, extensionPointName, queryEngine) {
-  var __x = Curry._3(queryEngine[/* scan */0], PluginSpec$Reventless.name, /* :: */[
+  var __x = Curry._3(queryEngine.scan, PluginSpec$Reventless.name, /* :: */[
         /* tuple */[
           "extensionPointNames",
           /* Contains */8,
@@ -31,32 +31,28 @@ function forwardCommand(_id, command, extensionPointName, queryEngine) {
         ]
       ], 1000);
   return __x.then((function (plugins) {
-                if (plugins.length !== 0) {
-                  var plugin = Belt_Array.getExn(plugins, 0);
-                  var param = PluginReadModelSpec$Reventless.state_decode(plugin);
-                  if (param.tag) {
-                    return Promise.resolve((console.log("ForwardCommand: Couldn't decode Plugin", plugin, param[0]), /* () */0));
-                  } else {
-                    var plugin$1 = param[0];
-                    var param$1 = Belt_Array.getBy(plugin$1[/* extensionPoints */3], (function (extensionPoint) {
-                            return extensionPoint[/* name */0] === extensionPointName;
-                          }));
-                    if (param$1 !== undefined) {
-                      var extensionPoint = param$1;
-                      var __x = SQS$AwsSdk.sendMessage(extensionPoint[/* commandTopic */1], command, undefined, undefined, undefined, /* () */0);
-                      var __x$1 = __x.then((function (param) {
-                              return Promise.resolve((console.log("ForwardCommand: published command to", plugin$1[/* name */0], extensionPoint[/* commandTopic */1]), /* () */0));
-                            }));
-                      return __x$1.catch((function (err) {
-                                    return Promise.resolve((console.log("PluginExtensionPoint_PluginMapping: Error on publish command:", err), /* () */0));
-                                  }));
-                    } else {
-                      return Promise.resolve((console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$1), /* () */0));
-                    }
-                  }
-                } else {
-                  return Promise.resolve((console.log("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName), /* () */0));
+                if (plugins.length === 0) {
+                  return Promise.resolve((console.log("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName), undefined));
                 }
+                var plugin = Belt_Array.getExn(plugins, 0);
+                var plugin$1 = PluginReadModelSpec$Reventless.state_decode(plugin);
+                if (plugin$1.tag) {
+                  return Promise.resolve((console.log("ForwardCommand: Couldn't decode Plugin", plugin, plugin$1[0]), undefined));
+                }
+                var plugin$2 = plugin$1[0];
+                var extensionPoint = Belt_Array.getBy(plugin$2.extensionPoints, (function (extensionPoint) {
+                        return extensionPoint.name === extensionPointName;
+                      }));
+                if (extensionPoint === undefined) {
+                  return Promise.resolve((console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$2), undefined));
+                }
+                var __x = SQS$AwsSdk.sendMessage(extensionPoint.commandTopic, command, undefined, undefined, undefined, undefined);
+                var __x$1 = __x.then((function (param) {
+                        return Promise.resolve((console.log("ForwardCommand: published command to", plugin$2.name, extensionPoint.commandTopic), undefined));
+                      }));
+                return __x$1.catch((function (err) {
+                              return Promise.resolve((console.log("PluginExtensionPoint_PluginMapping: Error on publish command:", err), undefined));
+                            }));
               }));
 }
 
@@ -64,30 +60,30 @@ function callHandler(createSchedule, deleteSchedule, queryEngine, callCommand) {
   switch (callCommand.tag | 0) {
     case /* CreateDisconnectSchedule */0 :
         var id = callCommand[0];
-        return createSchedule(/* record */[
-                    /* name */id,
-                    /* rate */Schedule$Reventless.minutesFromNow(callCommand[1]),
-                    /* payload */JSON.stringify(Message$Reventless.command$prime_encode(Decco.stringToJson, PluginExtensionPointSpec$ReventlessSpec.command_encode, /* record */[
-                              /* id */id,
-                              /* meta */Message$Reventless.generateMeta("Core.Plugin", undefined, "Scheduler", /* () */0),
-                              /* command : DisconnectPlugin */0
-                            ]))
-                  ]);
+        return createSchedule({
+                    name: id,
+                    rate: Schedule$Reventless.minutesFromNow(callCommand[1]),
+                    payload: JSON.stringify(Message$Reventless.command$prime_encode(Decco.stringToJson, PluginExtensionPointSpec$ReventlessSpec.command_encode, {
+                              id: id,
+                              meta: Message$Reventless.generateMeta("Core.Plugin", undefined, "Scheduler", undefined),
+                              command: /* DisconnectPlugin */0
+                            }))
+                  });
     case /* DeleteDisconnectSchedule */1 :
         return deleteSchedule(callCommand[0]);
     case /* DoConnectPlugin */2 :
     case /* DoDisconnectPlugin */3 :
-        return Promise.resolve(/* () */0);
+        return Promise.resolve(undefined);
     case /* ForwardCommand */4 :
         var match = callCommand[0];
-        return forwardCommand(match[/* id */1], match[/* command */2], match[/* extensionPointName */0], queryEngine);
+        return forwardCommand(match.id, match.command, match.extensionPointName, queryEngine);
     
   }
 }
 
 function mapIncomingCommand(id, cmd, _meta) {
   if (typeof cmd === "number") {
-    return /* array */[
+    return [
             /* PublishCommand */Block.__(0, [
                 id,
                 /* Disconnect */1
@@ -97,90 +93,94 @@ function mapIncomingCommand(id, cmd, _meta) {
                 /* DeleteDisconnectSchedule */Block.__(1, [id])
               ])
           ];
-  } else {
-    switch (cmd.tag | 0) {
-      case /* Heartbeat */0 :
-          return /* array */[
-                  /* PublishCommand */Block.__(0, [
-                      id,
-                      /* Heartbeat */0
-                    ]),
-                  /* Call */Block.__(1, [
-                      callHandler,
-                      /* CreateDisconnectSchedule */Block.__(0, [
-                          id,
-                          cmd[0] + 2 | 0
-                        ])
-                    ])
-                ];
-      case /* ConnectPlugin */1 :
-          return /* array */[/* PublishCommand */Block.__(0, [
-                      id,
-                      /* Connect */[cmd[0]]
-                    ])];
-      case /* ForwardCommand */2 :
-          return /* array */[/* Call */Block.__(1, [
-                      callHandler,
-                      /* ForwardCommand */Block.__(4, [cmd[0]])
-                    ])];
-      
-    }
+  }
+  switch (cmd.tag | 0) {
+    case /* Heartbeat */0 :
+        return [
+                /* PublishCommand */Block.__(0, [
+                    id,
+                    /* Heartbeat */0
+                  ]),
+                /* Call */Block.__(1, [
+                    callHandler,
+                    /* CreateDisconnectSchedule */Block.__(0, [
+                        id,
+                        cmd[0] + 2 | 0
+                      ])
+                  ])
+              ];
+    case /* ConnectPlugin */1 :
+        return [/* PublishCommand */Block.__(0, [
+                    id,
+                    /* Connect */[cmd[0]]
+                  ])];
+    case /* ForwardCommand */2 :
+        return [/* Call */Block.__(1, [
+                    callHandler,
+                    /* ForwardCommand */Block.__(4, [cmd[0]])
+                  ])];
+    
   }
 }
 
 function mapOutgoingEvent(id, $$event, _meta, _queryEngine) {
   if (typeof $$event === "number") {
-    return /* array */[/* PublishEvent */Block.__(0, [
+    return [/* PublishEvent */Block.__(0, [
                 id,
                 /* UnknownPluginDetected */0
               ])];
-  } else {
-    switch ($$event.tag | 0) {
-      case /* Connected */0 :
-          return /* array */[/* PublishEvent */Block.__(0, [
-                      id,
-                      /* PluginConnected */Block.__(0, [$$event[0]])
-                    ])];
-      case /* Reconnected */1 :
-          return /* array */[/* PublishEvent */Block.__(0, [
-                      id,
-                      /* PluginReconnected */Block.__(1, [$$event[0]])
-                    ])];
-      case /* Disconnected */2 :
-          return /* array */[/* PublishEvent */Block.__(0, [
-                      id,
-                      /* PluginDisconnected */Block.__(2, [$$event[0]])
-                    ])];
-      case /* Activated */3 :
-          return /* array */[/* PublishEvent */Block.__(0, [
-                      id,
-                      /* PluginActivated */Block.__(4, [$$event[0]])
-                    ])];
-      case /* Deactivated */4 :
-          return /* array */[/* PublishEvent */Block.__(0, [
-                      id,
-                      /* PluginDeactivated */Block.__(3, [$$event[0]])
-                    ])];
-      
-    }
+  }
+  switch ($$event.tag | 0) {
+    case /* Connected */0 :
+        return [/* PublishEvent */Block.__(0, [
+                    id,
+                    /* PluginConnected */Block.__(0, [$$event[0]])
+                  ])];
+    case /* Reconnected */1 :
+        return [/* PublishEvent */Block.__(0, [
+                    id,
+                    /* PluginReconnected */Block.__(1, [$$event[0]])
+                  ])];
+    case /* Disconnected */2 :
+        return [/* PublishEvent */Block.__(0, [
+                    id,
+                    /* PluginDisconnected */Block.__(2, [$$event[0]])
+                  ])];
+    case /* Activated */3 :
+        return [/* PublishEvent */Block.__(0, [
+                    id,
+                    /* PluginActivated */Block.__(4, [$$event[0]])
+                  ])];
+    case /* Deactivated */4 :
+        return [/* PublishEvent */Block.__(0, [
+                    id,
+                    /* PluginDeactivated */Block.__(3, [$$event[0]])
+                  ])];
+    
   }
 }
 
 var Impl = {
-  Aggregate: 0,
+  Aggregate: undefined,
   mapIncomingCommand: mapIncomingCommand,
   mapOutgoingEvent: mapOutgoingEvent
 };
 
-var Mapping = ExtensionPointMapping$Reventless.Make({
-        name: PluginExtensionPointSpec$ReventlessSpec.name,
-        command_encode: PluginExtensionPointSpec$ReventlessSpec.command_encode,
-        command_decode: PluginExtensionPointSpec$ReventlessSpec.command_decode,
-        event_encode: PluginExtensionPointSpec$ReventlessSpec.event_encode,
-        event_decode: PluginExtensionPointSpec$ReventlessSpec.event_decode,
-        callCommand_encode: PluginExtensionPointSpec$ReventlessSpec.callCommand_encode,
-        callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
-      })({
+var partial_arg = {
+  name: PluginExtensionPointSpec$ReventlessSpec.name,
+  command_encode: PluginExtensionPointSpec$ReventlessSpec.command_encode,
+  command_decode: PluginExtensionPointSpec$ReventlessSpec.command_decode,
+  event_encode: PluginExtensionPointSpec$ReventlessSpec.event_encode,
+  event_decode: PluginExtensionPointSpec$ReventlessSpec.event_decode,
+  callCommand_encode: PluginExtensionPointSpec$ReventlessSpec.callCommand_encode,
+  callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
+};
+
+var partial_arg$1 = ExtensionPointMapping$Reventless.Make;
+
+var Mapping = (function (param) {
+      return partial_arg$1(partial_arg, param);
+    })({
       Aggregate: {
         Id: Id$Reventless.$$String,
         name: PluginSpec$Reventless.name,

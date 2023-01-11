@@ -22,14 +22,13 @@ function toResource(topic) {
 }
 
 function findTopicInUnwrappedResources(resources) {
-  var resources$1 = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, /* array */[service]);
+  var resources$1 = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [service]);
   if (resources$1.length !== 0) {
     return Caml_array.caml_array_get(resources$1, 0);
-  } else {
-    var err = "Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn\'t find SNS_FIFO Topic in resources";
-    console.log(err);
-    return Js_exn.raiseError(err);
   }
+  var err = "Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn\'t find SNS_FIFO Topic in resources";
+  console.log(err);
+  return Js_exn.raiseError(err);
 }
 
 exports.service = service;

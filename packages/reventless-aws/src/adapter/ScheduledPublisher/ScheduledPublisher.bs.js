@@ -2,9 +2,9 @@
 'use strict';
 
 
-var CloudWatchEvents = 0;
+var CloudWatchEvents;
 
-var CloudWatchEvents_Runtime = 0;
+var CloudWatchEvents_Runtime;
 
 exports.CloudWatchEvents = CloudWatchEvents;
 exports.CloudWatchEvents_Runtime = CloudWatchEvents_Runtime;

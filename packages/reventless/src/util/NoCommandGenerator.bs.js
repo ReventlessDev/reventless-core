@@ -5,7 +5,7 @@
 function Make(Spec) {
   var make = function (param, param$1, param$2, _unit) {
     return {
-            resources: /* array */[]
+            resources: []
           };
   };
   return {

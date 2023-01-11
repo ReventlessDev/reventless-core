@@ -2,11 +2,11 @@
 'use strict';
 
 
-var SQS = 0;
+var SQS;
 
-var SQS_Runtime = 0;
+var SQS_Runtime;
 
-var SQS_FIFO = 0;
+var SQS_FIFO;
 
 exports.SQS = SQS;
 exports.SQS_Runtime = SQS_Runtime;

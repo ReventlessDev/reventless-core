@@ -3,10 +3,12 @@
 
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 
-var dependencies = /* record */[/* contents : array */[]];
+var dependencies = {
+  contents: []
+};
 
 function getDependencies(param) {
-  var currentLen = dependencies[0].length;
+  var currentLen = dependencies.contents.length;
   var idx = currentLen / 4 | 0;
   var match = idx !== 0 ? /* tuple */[
       ((idx - 1 | 0) << 2),
@@ -15,18 +17,20 @@ function getDependencies(param) {
       0,
       0
     ];
-  var deps = Promise.all(Belt_Array.slice(dependencies[0], match[0], match[1]));
-  var registerResource = /* record */[/* contents */(function (param) {
-        return /* () */0;
-      })];
+  var deps = Promise.all(Belt_Array.slice(dependencies.contents, match[0], match[1]));
+  var registerResource = {
+    contents: (function (param) {
+        
+      })
+  };
   var promise = new Promise((function (resolve, param) {
-          registerResource[0] = resolve;
-          return /* () */0;
+          registerResource.contents = resolve;
+          
         }));
-  dependencies[0] = Belt_Array.concat(dependencies[0], /* array */[promise]);
+  dependencies.contents = Belt_Array.concat(dependencies.contents, [promise]);
   return /* tuple */[
           deps,
-          registerResource[0]
+          registerResource.contents
         ];
 }
 

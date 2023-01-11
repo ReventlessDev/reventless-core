@@ -7,129 +7,122 @@ var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 
 function handleAction(action, param) {
-  var $$delete = param[/* delete */3];
-  var saveBatch = param[/* saveBatch */2];
-  var save = param[/* save */1];
-  var load = param[/* load */0];
+  var $$delete = param.delete;
+  var saveBatch = param.saveBatch;
+  var save = param.save;
+  var load = param.load;
   if (typeof action === "number") {
-    return /* array */[Promise.resolve(/* Ok */Block.__(0, [/* () */0]))];
-  } else {
-    switch (action.tag | 0) {
-      case /* Create */0 :
-          return /* array */[save(action[0], action[1], /* Init */0, undefined)];
-      case /* CreateMany */1 :
-          var batch = Belt_Array.map(action[0], (function (param) {
-                  return /* tuple */[
-                          param[0],
-                          param[1],
-                          undefined
-                        ];
-                }));
-          return /* array */[saveBatch(batch)];
-      case /* Update */2 :
-          var update = action[1];
-          var id = action[0];
-          var __x = load(id);
-          return /* array */[__x.then((function (param) {
-                          if (param.tag) {
-                            return Promise.resolve(/* Error */Block.__(1, [param[0]]));
-                          } else {
-                            var states = param[0];
-                            if (states && !states[1]) {
-                              var newState = Curry._1(update, states[0]);
-                              return save(id, newState, /* Overwrite */1, undefined);
-                            } else {
-                              return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
-                            }
-                          }
-                        }))];
-      case /* UpdateWithDefault */4 :
-          var update$1 = action[2];
-          var $$default = action[1];
-          var id$1 = action[0];
-          var __x$1 = load(id$1);
-          return /* array */[__x$1.then((function (param) {
-                          if (param.tag) {
-                            return Promise.resolve(/* Error */Block.__(1, [param[0]]));
-                          } else {
-                            var states = param[0];
-                            if (states) {
-                              if (states[1]) {
-                                return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
-                              } else {
-                                var newState = Curry._1(update$1, states[0]);
-                                return save(id$1, newState, /* Overwrite */1, undefined);
-                              }
-                            } else {
-                              return save(id$1, $$default, /* Init */0, undefined);
-                            }
-                          }
-                        }))];
-      case /* Set */6 :
-          return /* array */[save(action[0], action[1], /* Any */2, undefined)];
-      case /* SetMany */7 :
-          var set = action[1];
-          var batch$1 = Belt_Array.map(action[0], (function (id) {
-                  return /* tuple */[
-                          id,
-                          Curry._1(set, id),
-                          undefined
-                        ];
-                }));
-          return /* array */[saveBatch(batch$1)];
-      case /* Delete */8 :
-          return /* array */[$$delete(action[0], undefined)];
-      case /* DeleteMany */9 :
-          return Belt_Array.map(action[0], (function (id) {
-                        return $$delete(id, undefined);
-                      }));
-      case /* CreateMultiStates */12 :
-          var states = action[1];
-          var id$2 = action[0];
-          var len = states.length;
-          if (len !== 1) {
-            if (len !== 0) {
-              var batch$2 = Belt_Array.map(states, (function (state) {
-                      return /* tuple */[
-                              id$2,
-                              state,
-                              undefined
-                            ];
+    return [Promise.resolve(/* Ok */Block.__(0, [undefined]))];
+  }
+  switch (action.tag | 0) {
+    case /* Create */0 :
+        return [save(action[0], action[1], /* Init */0, undefined)];
+    case /* CreateMany */1 :
+        var batch = Belt_Array.map(action[0], (function (param) {
+                return /* tuple */[
+                        param[0],
+                        param[1],
+                        undefined
+                      ];
+              }));
+        return [saveBatch(batch)];
+    case /* Update */2 :
+        var update = action[1];
+        var id = action[0];
+        var __x = load(id);
+        return [__x.then((function (states) {
+                        if (states.tag) {
+                          return Promise.resolve(/* Error */Block.__(1, [states[0]]));
+                        }
+                        var states$1 = states[0];
+                        if (!states$1) {
+                          return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
+                        }
+                        if (states$1[1]) {
+                          return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
+                        }
+                        var newState = Curry._1(update, states$1[0]);
+                        return save(id, newState, /* Overwrite */1, undefined);
+                      }))];
+    case /* UpdateWithDefault */4 :
+        var update$1 = action[2];
+        var $$default = action[1];
+        var id$1 = action[0];
+        var __x$1 = load(id$1);
+        return [__x$1.then((function (states) {
+                        if (states.tag) {
+                          return Promise.resolve(/* Error */Block.__(1, [states[0]]));
+                        }
+                        var states$1 = states[0];
+                        if (!states$1) {
+                          return save(id$1, $$default, /* Init */0, undefined);
+                        }
+                        if (states$1[1]) {
+                          return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
+                        }
+                        var newState = Curry._1(update$1, states$1[0]);
+                        return save(id$1, newState, /* Overwrite */1, undefined);
+                      }))];
+    case /* Set */6 :
+        return [save(action[0], action[1], /* Any */2, undefined)];
+    case /* SetMany */7 :
+        var set = action[1];
+        var batch$1 = Belt_Array.map(action[0], (function (id) {
+                return /* tuple */[
+                        id,
+                        Curry._1(set, id),
+                        undefined
+                      ];
+              }));
+        return [saveBatch(batch$1)];
+    case /* Delete */8 :
+        return [$$delete(action[0], undefined)];
+    case /* DeleteMany */9 :
+        return Belt_Array.map(action[0], (function (id) {
+                      return $$delete(id, undefined);
                     }));
-              return /* array */[saveBatch(batch$2)];
-            } else {
-              return /* array */[Promise.resolve(/* Ok */Block.__(0, [/* () */0]))];
-            }
-          } else {
-            var state = states[0];
-            return /* array */[save(id$2, state, /* Init */0, undefined)];
+    case /* CreateMultiStates */12 :
+        var states = action[1];
+        var id$2 = action[0];
+        var len = states.length;
+        if (len !== 1) {
+          if (len === 0) {
+            return [Promise.resolve(/* Ok */Block.__(0, [undefined]))];
           }
-      case /* UpdateMultiState */13 :
-          var update$2 = action[1];
-          var id$3 = action[0];
-          var __x$2 = load(id$3);
-          return /* array */[__x$2.then((function (param) {
-                          if (param.tag) {
-                            return Promise.resolve(/* Error */Block.__(1, [param[0]]));
-                          } else {
-                            var states = param[0];
-                            if (states) {
-                              var newStates = Curry._1(update$2, Belt_List.toArray(states));
-                              return saveBatch(Belt_Array.map(newStates, (function (newState) {
-                                                return /* tuple */[
-                                                        id$3,
-                                                        newState,
-                                                        undefined
-                                                      ];
-                                              })));
-                            } else {
-                              return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
-                            }
-                          }
-                        }))];
-      default:
-        return /* array */[Promise.resolve(/* Ok */Block.__(0, [/* () */0]))];
-    }
+          var batch$2 = Belt_Array.map(states, (function (state) {
+                  return /* tuple */[
+                          id$2,
+                          state,
+                          undefined
+                        ];
+                }));
+          return [saveBatch(batch$2)];
+        }
+        var state = states[0];
+        return [save(id$2, state, /* Init */0, undefined)];
+    case /* UpdateMultiState */13 :
+        var update$2 = action[1];
+        var id$3 = action[0];
+        var __x$2 = load(id$3);
+        return [__x$2.then((function (states) {
+                        if (states.tag) {
+                          return Promise.resolve(/* Error */Block.__(1, [states[0]]));
+                        }
+                        var states$1 = states[0];
+                        if (!states$1) {
+                          return Promise.resolve(/* Ok */Block.__(0, [undefined]));
+                        }
+                        var newStates = Curry._1(update$2, Belt_List.toArray(states$1));
+                        return saveBatch(Belt_Array.map(newStates, (function (newState) {
+                                          return /* tuple */[
+                                                  id$3,
+                                                  newState,
+                                                  undefined
+                                                ];
+                                        })));
+                      }))];
+    default:
+      return [Promise.resolve(/* Ok */Block.__(0, [undefined]))];
   }
 }
 
