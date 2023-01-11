@@ -4,7 +4,7 @@ type resource = {
   "id": Pulumi.Output.t(string),
   "urn": Pulumi.Output.t(string),
   "info": Pulumi.Output.t(string),
-  "service": string,
+  "service": Pulumi.Output.t(string),
 };
 
 type resources = Js.Dict.t(resource);

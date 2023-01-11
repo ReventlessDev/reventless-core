@@ -1,5 +1,3 @@
-open ReventlessSpec.Adapter;
-
 let componentType = ComponentType.Extension;
 
 type outputs = {
@@ -12,34 +10,35 @@ type outputs = {
   "outgoingEventHandler":
     (. Js.Json.t, PluginSpec.pluginDefinition) => Js.Promise.t(unit),
 };
-type extension; // TODO: rename to t - after refactoring
+type t;
+type component = Component.t(t, outputs);
 
 type name = string;
-
-type maker =
-  (
-    ~pluginExtensionPointCommandTopicId: Pulumi.Output.t(string),
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources,
-    unit
-  ) =>
-  Component.t(extension, outputs);
 
 open ReventlessSpec.ExtensionMapping;
 
 module type T = {
-  module Spec: Spec;
-  module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec;
-  let make: (string, array(module Mapping)) => maker;
+  let make:
+    (
+      ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
+      ~publishToAggregates: Js.Dict.t(CommandTopic.publishJsons),
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      unit
+    ) =>
+    component;
 };
 
-module Make = (Spec: Spec) : (T with module Spec := Spec) => {
+module type Mappings = {
+  module Spec: ReventlessSpec.ExtensionMapping.Spec;
   module type Mapping = ExtensionMapping.T with module ExtensionPoint := Spec;
+  let name: string;
+  let mappings: array(module Mapping);
+};
 
+module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
   type constructed;
-  type construct =
-    (Component.t(extension, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -47,10 +46,9 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(extension, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -68,178 +66,117 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
     "";
 
   [@bs.send]
-  external registerOutputs:
-    (Component.t(extension, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(extension, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  module Mapper = {
-    let findOutgoingMapping = (aggregateNameOpt, mappings) =>
-      aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
-        mappings->Belt.Array.getBy((module Mapping: Mapping) =>
-          Mapping.aggregateName == aggregateName
-        )
-      ); // TODO: handle multiple mappings for same Aggregate name
+  let findOutgoingMapping = (aggregateNameOpt, mappings) =>
+    aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
+      mappings->Belt.Array.getBy((module Mapping: Mappings.Mapping) =>
+        Mapping.aggregateName == aggregateName
+      )
+    ); // TODO: handle multiple mappings for same Aggregate name
 
-    let mapIncomingEvent =
-        (
-          mappings,
-          event': Message.event'(Id.String.t, Spec.event),
-          pluginDef,
-          queryEngine,
-        ) =>
-      mappings
-      ->Belt.Array.map((module Mapping: Mapping) =>
-          Mapping.mapIncomingEvent(event', pluginDef, queryEngine)
-        )
-      ->Belt.Array.concatMany;
+  let mapIncomingEvent =
+      (event': Message.event'(string, Spec.event), pluginDef, queryEngine) =>
+    Mappings.mappings
+    ->Belt.Array.map((module Mapping: Mappings.Mapping) =>
+        Mapping.mapIncomingEvent(event', pluginDef, queryEngine)
+      )
+    ->Belt.Array.concatMany;
 
-    let mapOutgoingEvent = (mappings: array(module Mapping), event'Json) =>
-      switch (
-        event'Json->Message.serviceNameOfMsg->findOutgoingMapping(mappings)
-      ) {
-      | Some((module Mapping)) => Mapping.mapOutgoingEvent(event'Json)
-      | None =>
-        Js.Exn.raiseError(
-          "ExtensionPoint.Mapping: Missing mapping for "
-          ++ event'Json->Js.Json.stringify,
-        )
-      };
-  };
-
-  let publishAggregateCommand = (id, cmdJson, queueId) =>
-    cmdJson
-    |> Js.Json.stringify  // TODO: move to Adapter
-    |> AwsSdk.SQS.sendMessage(
-         ~queueId,
-         ~messageGroupId=id,
-         ~messageBody=_,
-         (),
-       )
-    |> Js.Promise.catch(err =>
-         err
-         |> Js.log2("Extension: Error on publish command:")
-         |> Js.Promise.resolve
-       );
-
-  let publishExtensionPointCommand = (id, cmdJson, queueId) =>
-    cmdJson
-    |> Js.Json.stringify  // TODO: move to Adapter
-    |> AwsSdk.SQS.sendMessage(
-         ~queueId,
-         // ~messageGroupId=id,
-         ~messageBody=_,
-         (),
-       )
-    |> Js.Promise.catch(err =>
-         err
-         |> Js.log2("Extension: Error on publish command:")
-         |> Js.Promise.resolve
-       );
+  let mapOutgoingEvent = event'Json =>
+    switch (
+      event'Json
+      ->Message.serviceNameOfMsg
+      ->findOutgoingMapping(Mappings.mappings)
+    ) {
+    | Some((module Mapping)) => Mapping.mapOutgoingEvent(event'Json)
+    | None =>
+      Js.Exn.raiseError(
+        "ExtensionPoint.Mapping: Missing mapping for "
+        ++ event'Json->Js.Json.stringify,
+      )
+    };
 
   let construct =
       (
-        ~mappings,
-        ~pluginExtensionPointCommandTopicId,
+        ~publishToCorePluginExtensionPoint,
+        ~publishToAggregates,
         ~queryEngine,
         self,
         name,
-        resources,
       ) => {
-    let mapIncomingEvent = Mapper.mapIncomingEvent(mappings);
-    let mapOutgoingEvent = Mapper.mapOutgoingEvent(mappings);
+    let publishAggregateCommand = (aggregateName, cmdJson) =>
+      publishToAggregates
+      ->Js.Dict.get(aggregateName)
+      ->Belt.Option.getExn(. [|cmdJson|])
+      |> Js.Promise.catch(err =>
+           Js.log(
+             {j|Extension: Error on publish command to aggregate $aggregateName: $err|j},
+           )
+           ->Js.Promise.resolve
+         );
 
-    let forwardCommand = (id, meta, extensionPointName, command'Json) =>
-      publishExtensionPointCommand(
-        id,
-        Message.command'_encode(
-          Id.String.t_encode,
-          ReventlessSpec.PluginExtensionPointSpec.command_encode,
-          {
-            id: id->Id.String.makeFromString,
-            meta: {
-              ...meta,
-              msgId: Message.uuid(),
-            },
-            command:
-              ForwardCommand({
-                extensionPointName,
-                id,
-                command: command'Json->Js.Json.stringify,
-              }),
-          },
-        ),
-        pluginExtensionPointCommandTopicId->Pulumi.Output.get,
-      );
+    let publishCorePluginExtensionPointCommand = cmdJson =>
+      publishToCorePluginExtensionPoint(. [|cmdJson|])
+      |> Js.Promise.catch(err =>
+           Js.log(
+             {j|Extension: Error on publish command to Core.Plugin ExtensionPoint: $err|j},
+           )
+           ->Js.Promise.resolve
+         );
+
+    let forwardCommand =
+        (extensionPointName, commandJson: Message.commandJson) =>
+      publishCorePluginExtensionPointCommand({
+        Message.id: "",
+        meta: {
+          ...commandJson.meta,
+          msgId: Message.uuid(),
+        },
+        commandJson:
+          ForwardCommand({
+            extensionPointName,
+            id: commandJson.id,
+            command: commandJson->Message.toMessageBody,
+          })
+          ->ReventlessSpec.PluginExtensionPointSpec.command_encode,
+        delay: None,
+      });
 
     let applyIncomingCommandAction =
       fun
       | ExtensionMapping.AbstractPublishAggregateCommand(
           aggregateName,
-          id,
-          command'Json,
+          commandJson,
         ) =>
-        publishAggregateCommand(
-          id,
-          command'Json,
-          resources->Util.Aggregate.commandTopicConnectorResource(
-            aggregateName,
-          )##id
-          ->Pulumi.Output.get,
-        )
+        publishAggregateCommand(aggregateName, commandJson)
       | ExtensionMapping.AbstractPublishAggregateCommandAsync(promise) =>
         promise->Js.Promise.then_(
-                   ((aggregateName, id, command'Json)) =>
-                     publishAggregateCommand(
-                       id,
-                       command'Json,
-                       resources->Util.Aggregate.commandTopicConnectorResource(
-                         aggregateName,
-                       )##id
-                       ->Pulumi.Output.get,
-                     ),
+                   ((aggregateName, commandJson)) =>
+                     publishAggregateCommand(aggregateName, commandJson),
                    _,
                  )
-      | ExtensionMapping.AbstractPublishAggregateCommandsAsync(promise) =>
+      | AbstractPublishAggregateCommandsAsync(promise) =>
         promise->Js.Promise.then_(
                    tupels =>
                      tupels
-                     ->Belt.Array.map(((aggregateName, id, command'Json)) =>
-                         publishAggregateCommand(
-                           id,
-                           command'Json,
-                           resources->Util.Aggregate.commandTopicConnectorResource(
-                             aggregateName,
-                           )##id
-                           ->Pulumi.Output.get,
-                         )
+                     ->Belt.Array.map(((aggregateName, commandJson)) =>
+                         publishAggregateCommand(aggregateName, commandJson)
                        )
                      ->Js.Promise.all
                      ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
                    _,
                  )
-      | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(
-          id,
-          command'Json,
-        ) =>
-        publishExtensionPointCommand(
-          id,
-          command'Json,
-          pluginExtensionPointCommandTopicId->Pulumi.Output.get,
-        )
-      | ExtensionMapping.AbstractPublishExtensionPointCommand(
-          extensionPointName,
-          id,
-          meta,
-          command'Json,
-        ) =>
-        forwardCommand(id, meta, extensionPointName, command'Json)
+      | AbstractPublishPluginExtensionPointCommand(commandJson) =>
+        publishCorePluginExtensionPointCommand(commandJson)
+      | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
+        forwardCommand(extensionPointName, commandJson)
       | AbstractCall(handler) =>
         handler()
         |> Js.Promise.catch(err =>
@@ -251,21 +188,11 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
     let applyOutgoingCommandAction =
       fun
       | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(
-          id,
-          command'Json,
+          commandJson,
         ) =>
-        publishExtensionPointCommand(
-          id,
-          command'Json,
-          pluginExtensionPointCommandTopicId->Pulumi.Output.get,
-        )
-      | ExtensionMapping.AbstractPublishExtensionPointCommand(
-          extensionPointName,
-          id,
-          meta,
-          command'Json,
-        ) =>
-        forwardCommand(id, meta, extensionPointName, command'Json)
+        publishCorePluginExtensionPointCommand(commandJson)
+      | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
+        forwardCommand(extensionPointName, commandJson)
       | AbstractCall(handler) =>
         handler()
         |> Js.Promise.catch(err =>
@@ -278,7 +205,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
       (. event'Json, pluginDef) => {
         let event' =
           Message.event'_decode(
-            Id.String.t_decode,
+            Id.StringPure.t_decode,
             Spec.event_decode,
             event'Json,
           );
@@ -308,7 +235,7 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
       ~name,
       ~extensionPointName=Spec.name,
       ~aggregateNames=
-        mappings->Belt.Array.keepMap(((module Mapping)) =>
+        Mappings.mappings->Belt.Array.keepMap(((module Mapping)) =>
           Mapping.aggregateName == NoAggregate.name
             ? None : Some(Mapping.aggregateName)
         ),
@@ -318,26 +245,23 @@ module Make = (Spec: Spec) : (T with module Spec := Spec) => {
     ->setOutputs(self, _);
   };
 
-  let make: (string, array(module Mapping)) => maker =
-    (
-      nameSuffix,
-      mappings,
-      ~pluginExtensionPointCommandTopicId,
-      ~queryEngine,
-      ~opts,
-      ~resources,
-      _,
-    ) =>
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name ++ "." ++ nameSuffix,
-        ~construct=
-          construct(
-            ~mappings,
-            ~pluginExtensionPointCommandTopicId,
-            ~queryEngine,
-          ),
+  let make =
+      (
+        ~publishToCorePluginExtensionPoint,
+        ~publishToAggregates,
+        ~queryEngine,
         ~opts,
-        ~resources,
-      );
+        _,
+      ) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=Spec.name ++ "." ++ Mappings.name,
+      ~construct=
+        construct(
+          ~publishToCorePluginExtensionPoint,
+          ~publishToAggregates,
+          ~queryEngine,
+        ),
+      ~opts,
+    );
 };

@@ -12,14 +12,15 @@ var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.bs.js");
 var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_Runtime.bs.js");
 
-function make(name, handleCommands, memorySize, timeout, opts, param) {
+function make(name, handleCommands, memorySize, timeout, opts) {
   var queue = new (Aws.sqs.Queue)(name, {
         contentBasedDeduplication: true,
         fifoQueue: true,
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply((function (dlqArn) {
                 return Curry._2(SQS_Queue$PulumiAws.Args.RedrivePolicy.make, dlqArn, 5);
               })),
-        visibilityTimeoutSeconds: Caml_int32.imul(6, timeout)
+        visibilityTimeoutSeconds: Caml_int32.imul(6, timeout),
+        sqsManagedSseEnabled: false
       }, opts);
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, /* array */[Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], Caml_option.some(opts), /* () */0);
   var handler = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
@@ -39,8 +40,8 @@ function make(name, handleCommands, memorySize, timeout, opts, param) {
           ]), opts);
   queue.onEvent(name, handler, undefined, opts);
   return /* record */[
-          /* resource */Util_SQS_FIFO$ReventlessAws.toResource(queue),
-          /* publish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publishFifo(queue)
+          /* resources : array */[Util_SQS_FIFO$ReventlessAws.toResource(queue)],
+          /* publish */CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(queue, Util_SQS_FIFO$ReventlessAws.service)
         ];
 }
 

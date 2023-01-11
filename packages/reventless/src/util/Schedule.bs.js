@@ -8,7 +8,6 @@ var MomentRe = require("bs-moment/src/MomentRe.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var AWS$Reventless = require("./AWS.bs.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
-var OutputFailsafeRuntime$Reventless = require("./OutputFailsafeRuntime.bs.js");
 
 function forQueue(name, queueId) {
   return AWS$Reventless.validateName(name) + ("-" + Caml_array.caml_array_get(queueId.split("-"), 1));
@@ -33,10 +32,9 @@ var ScheduleNotCreated = Caml_exceptions.create("Schedule-Reventless.ScheduleNot
 
 var ScheduleNotDeleted = Caml_exceptions.create("Schedule-Reventless.ScheduleNotDeleted");
 
-function create(scheduler, queue) {
+function create(scheduler, queueResources) {
   return (function (schedule) {
-      var queueId = OutputFailsafeRuntime$Reventless.get(queue.name);
-      var name = forQueue(schedule[/* name */0], queueId);
+      var name = AWS$Reventless.validateName(schedule[/* name */0]);
       var schedule_001 = /* rate */schedule[/* rate */1];
       var schedule_002 = /* payload */schedule[/* payload */2];
       var schedule$1 = /* record */[
@@ -44,46 +42,31 @@ function create(scheduler, queue) {
         schedule_001,
         schedule_002
       ];
-      var target_000 = /* id */queue.name.get();
-      var target_001 = /* urn */queue.urn.get();
-      var target = /* record */[
-        target_000,
-        target_001
-      ];
       var createSchedule = scheduler.createSchedule;
-      return createSchedule(target, schedule$1).then((function (param) {
-                      return Promise.resolve((console.log("Schedule.create: created", schedule$1, queueId, target), /* () */0));
+      return createSchedule(queueResources, schedule$1).then((function (param) {
+                      return Promise.resolve((console.log("Schedule.create: created", schedule$1), /* () */0));
                     })).catch((function (err) {
-                    console.log("Schedule.create: couldn't create", schedule$1, queueId, err);
+                    console.log("Schedule.create: couldn't create", schedule$1, err);
                     return Promise.reject([
                                 ScheduleNotCreated,
                                 schedule$1,
-                                queueId,
                                 err
                               ]);
                   }));
     });
 }
 
-function $$delete(scheduler, queue) {
+function $$delete(scheduler, queueResources) {
   return (function (name) {
-      var queueId = OutputFailsafeRuntime$Reventless.get(queue.name);
-      var name$1 = forQueue(name, queueId);
-      var target_000 = /* id */queue.name.get();
-      var target_001 = /* urn */queue.urn.get();
-      var target = /* record */[
-        target_000,
-        target_001
-      ];
+      var name$1 = AWS$Reventless.validateName(name);
       var deleteSchedule = scheduler.deleteSchedule;
-      return deleteSchedule(target, name$1).then((function (param) {
-                      return Promise.resolve((console.log("Schedule.delete: deleted", name$1, queueId), /* () */0));
+      return deleteSchedule(queueResources, name$1).then((function (param) {
+                      return Promise.resolve((console.log("Schedule.delete: deleted", name$1), /* () */0));
                     })).catch((function (err) {
-                    console.log("Schedule.delete: couldn't delete", name$1, queueId, err);
+                    console.log("Schedule.delete: couldn't delete", name$1, err);
                     return Promise.reject([
                                 ScheduleNotDeleted,
                                 name$1,
-                                queueId,
                                 err
                               ]);
                   }));

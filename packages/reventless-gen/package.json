@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-gen",
-  "version": "0.0.20",
+  "version": "0.1.1-alpha.1",
   "description": "Code generator for Reventless",
   "type": "module",
   "author": "Atos",
@@ -18,9 +18,17 @@
   "bin": {
     "gen": "./index.js"
   },
+  "files": [
+    "*",
+    "plop-templates",
+    "plop-templates/Plugin/.gitignore",
+    "plop-templates/Plugin/plugin/.npmignore",
+    "plop-templates/Plugin/ui/.npmignore",
+    "plop-templates/Platform/platform/.gitignore"
+  ],
   "preferGlobal": true,
   "dependencies": {
-    "plop": "^3.0.5",
+    "plop": "^3.1.0",
     "pluralize": "^8.0.0"
   }
 }

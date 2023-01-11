@@ -5,10 +5,10 @@ var Aws = require("@pulumi/aws");
 var Util_SNS$ReventlessAws = require("../../util/Util_SNS.bs.js");
 var EventTopicPublisher_SNS_Runtime$ReventlessAws = require("./EventTopicPublisher_SNS_Runtime.bs.js");
 
-function make(name, opts, param) {
+function make(name, param, opts) {
   var topic = new (Aws.sns.Topic)(name, { }, opts);
   return /* record */[
-          /* resource */Util_SNS$ReventlessAws.toResource(topic),
+          /* resources : array */[Util_SNS$ReventlessAws.toResource(topic)],
           /* publish */EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(topic)
         ];
 }

@@ -67,14 +67,12 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
      );
 };
 
-let publish = queue =>
-  (. _id, _meta: Reventless.Message.meta, json) =>
-    queue->Util_SQS_Runtime.sendMessage(json->Js.Json.stringify);
-
-let publishFifo = queue =>
-  (. id, _meta: Reventless.Message.meta, json) =>
-    queue->Util_SQS_Runtime.sendFifoMessage(
-      ~messageBody=json->Js.Json.stringify,
-      ~messageGroupId=id,
-      (),
-    );
+let publish = (queue, queueService) =>
+  (. jsons) =>
+    switch (jsons->Belt.Array.length) {
+    | 0 =>
+      Js.log(__MODULE__ ++ ".publish: No commands to send")
+      ->Js.Promise.resolve
+    | 1 => queue->Util_SQS_Runtime.send(queueService, jsons[0])
+    | _ => queue->Util_SQS_Runtime.sendBatch(queueService, jsons)
+    };

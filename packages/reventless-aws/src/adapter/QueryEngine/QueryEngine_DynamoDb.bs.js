@@ -8,9 +8,10 @@ var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
-var Util_QueryDb$Reventless = require("@reventless/reventless/src/util/Util_QueryDb.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
+var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.bs.js");
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
+var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.bs.js");
 
 function toJson(param) {
   switch (param.tag | 0) {
@@ -158,16 +159,19 @@ function scanByTableName(tableName, filterConfigs, limit) {
               }));
 }
 
-function make(resources) {
+function make(allQueryDbs) {
+  var tableName = function (viewName) {
+    return OutputFailsafeRuntime$Reventless.get(Util_DynamoDb_Runtime$ReventlessAws.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, viewName)).name);
+  };
   return /* record */[
           /* scan */(function (viewName) {
-              var partial_arg = OutputFailsafeRuntime$Reventless.get(Util_QueryDb$Reventless.getStorageResource(resources, viewName).name);
+              var partial_arg = tableName(viewName);
               return (function (param, param$1) {
                   return scanByTableName(partial_arg, param, param$1);
                 });
             }),
           /* query */(function (viewName) {
-              var partial_arg = OutputFailsafeRuntime$Reventless.get(Util_QueryDb$Reventless.getStorageResource(resources, viewName).name);
+              var partial_arg = tableName(viewName);
               return (function (param, param$1, param$2, param$3, param$4, param$5) {
                   return queryByTableName(partial_arg, param, param$1, param$2, param$3, param$4, param$5);
                 });

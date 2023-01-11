@@ -40,7 +40,8 @@ external registerOutputs:
 external setOutputs: (Component.t(heartbeat, outputs), outputs) => unit =
   "setOutputs";
 
-let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
+let construct =
+    (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) => {
   let opts =
     Pulumi.CustomResourceOptions.make(
       ~parent=self->Component.toPulumiResource,
@@ -52,37 +53,24 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
 
   let publishHeartbeatCommand = () => {
     let msgId = Message.uuid();
-    {
-      Message.id: id->Id.String.makeFromString,
-      meta: {
-        service: ReventlessSpec.PluginExtensionPointSpec.name,
-        time: Message.nowAsISOString(),
-        ip: "",
-        user: "Heartbeat",
-        msgId,
-        correlationId: msgId,
+    publishToCorePluginExtensionPoint(. [|
+      {
+        Message.id,
+        meta: {
+          service: ReventlessSpec.PluginExtensionPointSpec.name,
+          time: Message.nowAsISOString(),
+          ip: "",
+          user: "Heartbeat",
+          msgId,
+          correlationId: msgId,
+        },
+        commandJson:
+          ReventlessSpec.PluginExtensionPointSpec.(
+            Heartbeat(timeout)->command_encode
+          ),
+        delay: None,
       },
-      command: ReventlessSpec.PluginExtensionPointSpec.Heartbeat(timeout),
-    }
-    ->Message.command'_encode(
-        Id.String.t_encode,
-        ReventlessSpec.PluginExtensionPointSpec.command_encode,
-        _,
-      )
-    ->Js.Json.stringify
-    ->Message.log("Sending Heartbeat:")
-    ->AwsSdk.SQS.sendMessage(
-        ~queueId=commandTopicId->Pulumi.Output.get,
-        ~messageBody=_,
-        (),
-      )
-    ->Js.Promise.catch(
-        err =>
-          err
-          ->Js.log2("Extension: Error on publish command:", _)
-          ->Js.Promise.resolve,
-        _,
-      );
+    |]);
   };
 
   let childName = name->ComponentType.name(componentType);
@@ -171,10 +159,11 @@ let construct = (~id, ~timeout, ~commandTopicId, self, name) => {
   ->registerOutputs(self, _);
 };
 
-let make = (~id, ~name, ~timeout=10, ~commandTopicId, ~opts=?, _) =>
+let make =
+    (~id, ~name, ~timeout=10, ~publishToCorePluginExtensionPoint, ~opts=?, _) =>
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name,
-    ~construct=construct(~id, ~timeout, ~commandTopicId),
+    ~construct=construct(~id, ~timeout, ~publishToCorePluginExtensionPoint),
     ~opts,
   );

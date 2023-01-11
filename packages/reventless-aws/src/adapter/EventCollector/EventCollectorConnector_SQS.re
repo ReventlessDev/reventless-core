@@ -1,16 +1,16 @@
 open PulumiAws;
+open Reventless.Util.Adapter;
 
 let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
     ~name,
-    ~aggregateNames,
-    ~extensionPointNames,
-    ~policies,
+    ~eventTopics,
     ~handleEvents,
     ~memorySize,
     ~timeout,
+    ~policy1=?,
+    ~policy2=?,
     ~opts,
-    ~resources,
   ) => {
     let queue =
       SQS.Queue.make(
@@ -27,6 +27,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
                   )
                 )
               ->Pulumi.Output.asInput,
+            ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
             (),
           ),
         ~opts,
@@ -48,7 +49,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let eventHandlerLambda =
-      policies // Pulumi.Output cannot be pushed into policies parameter !
+      PulumiAws.Lambda.Policy.customPolicies(policy1, policy2) // TODO calculate real policies
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(policies =>
           Lambda.CallbackFunction.make(
@@ -81,35 +82,59 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         )
       );
 
-    let (snsTopics, otherTopics) =
-      resources
-      ->Reventless.Util.Aggregate.eventTopics(aggregateNames)
-      ->Belt.Array.concat(
-          resources->Reventless.Util.ExtensionPoint.eventTopics(
-            extensionPointNames,
-          ),
-        )
-      ->Belt.Array.partition(((service, _)) => service == Util_SNS.service);
+    let _ =
+      eventTopics
+      ->partitionSupportedResources([|
+          Util.DynamoDbStream_Runtime.service,
+          Util.SNS.service,
+        |])
+      ->Pulumi.Output.apply(((supportedResources, errorResources)) => {
+          let (snsResources, otherResources) =
+            supportedResources->partitionUnwrappedResourcesByService(
+              Util.SNS.service,
+            );
+          let _snsTopicSubscriptions =
+            snsResources->Belt.Array.map(((sourceName, resources)) =>
+              Util.SQS.subscribeToSnsTopic(
+                ~queue,
+                ~targetName=name,
+                ~sourceName,
+                ~topic=
+                  resources
+                  ->Util.SNS.findUnwrappedResource
+                  ->Reventless.AdapterDeploytime.unwrappedToResource,
+                ~opts,
+              )
+            );
 
-    let _snsTopicSubscriptions =
-      snsTopics->Belt.Array.map(
-        Util_SQS.subscribeToSnsTopic(queue, name, opts),
-      );
+          let _eventSourceMappings =
+            otherResources->Belt.Array.map(((sourceName, source)) =>
+              Util.EventSourceMapping.subscribe(
+                ~lambda=eventHandlerLambda,
+                ~targetName=name,
+                ~sourceName,
+                ~source=
+                  source
+                  ->Util.DynamoDbStream.findUnwrappedResource
+                  ->Reventless.AdapterDeploytime.unwrappedToResource,
+                ~opts,
+                (),
+              )
+            );
 
-    let _eventSourceMappings: array(EventSourceMapping.t) =
-      otherTopics->Belt.Array.map(((_, (sourceName, source))) =>
-        Util_EventSourceMapping.subscribe(
-          ~lambda=eventHandlerLambda,
-          ~targetName=name,
-          ~sourceName,
-          ~source,
-          ~opts,
-          (),
-        )
-      );
+          if (errorResources->Belt.Array.length > 0) {
+            let eventTopicNames = errorResources->Js.Array2.joinWith(",");
+            Js.Exn.raiseError(
+              __MODULE__
+              ++ {j| cannot connect to EventTopic(s) $eventTopicNames|j},
+            );
+          };
+        });
 
     {
-      resource: Some(queue->Util_SQS.toResource),
+      Reventless.EventCollector.Adapter.resources: [|
+        queue->Util_SQS.toResource,
+      |],
       enqueueEvent: queue->EventCollectorConnector_SQS_Runtime.enqueueEvent,
     };
   };

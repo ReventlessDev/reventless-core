@@ -14,24 +14,26 @@ let sortConfig = None;
 
 let indexes = [];
 
-let invalidEvent = event => raise(InvalidEvent(event_encode(event)));
+let invalidEvent = event => 
+  Js.Exn.raiseError(
+    "InvalidEvent: " ++ event_encode(event)->Js.Json.stringify,
+  );
 
 let init: init(state, event) =
-  (. event, {meta: {time, user}}) =>
+  (. event, {meta: {time, user}}) => {
+    let statusChange = {at: time, by: user};
     switch (event) {
-    | Added => [{
-                  statusChange: {
-                    at: time,
-                    by: user,
-                  },
-                }]
+    | Added => [{statusChange}]
     };
+  };
 
 let apply: apply(state, event) =
-  (. state, event, {meta: {time, user}}) =>
+  (. state, event, {meta: {time, user}}) => {
+    let statusChange = {at: time, by: user};
     switch (event) {
     | Added => invalidEvent(event)
     };
+  };
 
 let applyMulti: applyMulti(state, event) =
   (. states, event, context) =>

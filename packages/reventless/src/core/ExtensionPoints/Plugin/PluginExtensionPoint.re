@@ -1,8 +1,11 @@
-module type T = {
-  module Spec: ReventlessSpec.ExtensionPointMapping.Spec;
+module Mappings = {
   module type Mapping =
-    ExtensionPointMapping.T with module ExtensionPoint := Spec;
-  let make: ExtensionPoint.maker;
+    ExtensionPointMapping.T with
+      module ExtensionPoint := ReventlessSpec.PluginExtensionPointSpec;
+
+  let mappings: array(module Mapping) = [|
+    (module PluginExtensionPoint_Plugin.Mapping),
+  |];
 };
 
 module Make =
@@ -10,12 +13,11 @@ module Make =
          CommandTopicAdapter: CommandTopic.Adapter.Connector,
          EventTopicAdapter: EventTopic.Adapter.Publisher,
        )
-       : (T with module Spec := ReventlessSpec.PluginExtensionPointSpec) => {
+       : ExtensionPoint.T => {
   include ExtensionPoint.Make(
             ReventlessSpec.PluginExtensionPointSpec,
+            Mappings,
             CommandTopicAdapter,
             EventTopicAdapter,
           );
-
-  let make = make([|(module PluginExtensionPoint_Plugin.Mapping)|]);
 };

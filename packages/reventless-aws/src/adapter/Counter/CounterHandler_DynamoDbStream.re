@@ -1,12 +1,22 @@
 open PulumiAws;
-open Reventless.Util.ReadModel;
 
 let make: Reventless.Counter.Adapter.handlerMaker =
-  (~name, ~referencesName, ~countsName, ~counterHandler, ~opts, ~resources) => {
-    let referencesDb = resources->queryDbStorageResource(referencesName);
-    let referencesStream = referencesDb->Util_DynamoDbStream.toStreamResource;
-    let countsDb = resources->queryDbStorageResource(countsName);
-    let countsStream = countsDb->Util_DynamoDbStream.toStreamResource;
+  (
+    ~name,
+    ~referencesName,
+    ~referencesDb,
+    ~countsName,
+    ~countsDb,
+    ~counterHandler,
+    ~opts,
+  ) => {
+    let referencesDbResource =
+      referencesDb##resources->Util.DynamoDbStream.findResource;
+    let referencesStream =
+      referencesDbResource->Util.DynamoDbStream.toStreamResource;
+    let countsDbResource =
+      countsDb##resources->Util.DynamoDbStream.findResource;
+    let countsStream = countsDbResource->Util.DynamoDbStream.toStreamResource;
 
     let eventHandlerLambda =
       Lambda.CallbackFunction.make(
@@ -40,6 +50,6 @@ let make: Reventless.Counter.Adapter.handlerMaker =
 
     {
       addToCounterTarget:
-        countsDb->CounterHandler_DynamoDbStream_Runtime.addToCounterTarget,
+        countsDbResource->CounterHandler_DynamoDbStream_Runtime.addToCounterTarget,
     };
   };

@@ -19,8 +19,8 @@
   },
   "devDependencies": {
     "bs-platform": "^5.2.1",
-    "lerna": "^3.22.1",
-    "lerna-update-wizard": "^0.17.8",
+    "lerna": "^6.1.0",
+    "lerna-update-wizard": "^1.1.2",
     "lerna-wizard": "^1.1.1"
   }
 }

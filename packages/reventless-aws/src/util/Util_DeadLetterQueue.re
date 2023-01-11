@@ -9,6 +9,7 @@ let queue =
     ~args=
       SQS.Queue.Args.make(
         ~visibilityTimeoutSeconds=180->Pulumi.Input.wrap,
+        ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
         (),
       ),
     (),
@@ -22,15 +23,18 @@ let fifoQueue =
         ~fifoQueue=true->Pulumi.Input.wrap,
         ~contentBasedDeduplication=true->Pulumi.Input.wrap,
         ~visibilityTimeoutSeconds=180->Pulumi.Input.wrap,
+        ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
         (),
       ),
     (),
   );
 
+// let make: ((~resolve: (. 'a) => unit, ~reject: (. exn) => unit) => unit) => t<'a>
 let callback: Lambda.eventHandlerNoResult('a) =
   (evt, ctx) =>
-    Reventless.Promise.resolved(Js.log3("DEAD LETTER ITEM:", evt, ctx))
-    |> Reventless.Promise.toJs;
+    Js.Promise.make((~resolve, ~reject as _) =>
+      resolve(. Js.log3("DEAD LETTER ITEM:", evt, ctx))
+    );
 
 let handler =
   PulumiAws.Lambda.CallbackFunction.make(

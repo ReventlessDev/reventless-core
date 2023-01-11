@@ -41,13 +41,14 @@ let make: scheduledPublisherMaker =
     {
       resource:
         Reventless.Adapter.resource(
-          ~service="CloudWatchEvents",
+          ~service="CloudWatchEvents"->Pulumi.Output.make,
           ~name=""->Pulumi.Output.make,
           ~id=""->Pulumi.Output.make,
           ~urn=""->Pulumi.Output.make,
           ~info=""->Pulumi.Output.make,
         ),
-      create: role->ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule,
+      create:
+        ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(role),
       delete: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
     };
   };

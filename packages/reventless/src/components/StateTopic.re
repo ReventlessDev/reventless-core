@@ -4,6 +4,9 @@ let componentType = ComponentType.EventTopic;
 
 type outputs = Js.t({.});
 
+type t;
+type component = Component.t(t, outputs);
+
 module type Spec = {
   module Id: ReventlessSpec.Id.T;
 
@@ -16,16 +19,14 @@ module type Spec = {
 module type T = {
   module Spec: Spec;
 
-  type t;
-
   let make:
     (
       ~name: string,
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
+      ~allQueryDbs: QueryDb.allOutputs,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 };
 
 module Adapter = {
@@ -34,7 +35,7 @@ module Adapter = {
     (
       ~name: string,
       ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
+      ~allQueryDbs: QueryDb.allOutputs
     ) =>
     publisher;
 
@@ -45,11 +46,9 @@ module Make =
        (Spec: Spec, Publisher: Adapter.Publisher)
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type t;
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (component, string, QueryDb.allOutputs) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -58,25 +57,23 @@ module Make =
       ~name: string,
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~allQueryDbs: QueryDb.allOutputs
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj] external makeOutputs: (~publisher: resource) => outputs = "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  let construct = (self, name, resources) => {
+  let construct = (self, name, allQueryDbs) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -87,30 +84,21 @@ module Make =
       Publisher.make(
         ~name=name->ComponentType.name(componentType),
         ~opts,
-        ~resources,
+        ~allQueryDbs,
       );
-    resources->Util_EventTopic.setPublisherResource(publisher.resource, name);
 
     let publisherOutputs = publisher.resource;
 
     makeOutputs(~publisher=publisherOutputs) |> self->setOutputs;
   };
 
-  let make:
-    (
-      ~name: string,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~name, ~opts=?, ~resources, _) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name,
-        ~construct,
-        ~opts,
-        ~resources,
-      );
-    };
+  let make = (~name, ~opts=?, ~allQueryDbs, _) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct,
+      ~opts,
+      ~allQueryDbs,
+    );
+  };
 };

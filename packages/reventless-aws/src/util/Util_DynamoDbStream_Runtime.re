@@ -1,5 +1,7 @@
 open AwsSdk.DynamoDb.Stream;
 
+let service = "DynamoDbStream";
+
 type result =
   | NewImage(string, Js.Json.t)
   | OldImage(string, Js.Json.t)
@@ -54,3 +56,6 @@ let parseDynamoDbStreamRecordEvent: Record.t => result =
 
 let parseDynamoDbStreamRecordState: Record.t => result =
   parseDynamoDbStreamRecord(buildStateJson);
+
+let findResource = resources =>
+  resources->Reventless.Util.AdapterRuntime.findResource(service);

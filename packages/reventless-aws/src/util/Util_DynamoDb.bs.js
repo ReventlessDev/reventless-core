@@ -9,11 +9,10 @@ var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.bs.js");
+var Util_DynamoDb_Runtime$ReventlessAws = require("./Util_DynamoDb_Runtime.bs.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.bs.js");
-var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb_Runtime.bs.js");
-
-var service = "DynamoDb";
 
 function toInfo(table) {
   return Pulumi.all(/* tuple */[
@@ -26,7 +25,9 @@ function toInfo(table) {
 
 function toResource(table) {
   return {
-          service: service,
+          service: table.name.apply((function (param) {
+                  return Util_DynamoDb_Runtime$ReventlessAws.service;
+                })),
           name: table.name,
           id: table.id,
           urn: table.arn,
@@ -49,7 +50,7 @@ function enableTtl(tableName) {
         TableName: tableName,
         TimeToLiveSpecification: {
           Enabled: true,
-          AttributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+          AttributeName: Util_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
         }
       });
   return __x.then((function (res) {
@@ -125,7 +126,7 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
   var ttl$1 = Belt_Option.map(ttl, (function (param) {
           return {
                   enabled: true,
-                  attributeName: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+                  attributeName: Util_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
                 };
         }));
   var restoreDateTime = process.env.RESTORE_DATE_TIME;
@@ -252,7 +253,18 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name
   }
 }
 
-exports.service = service;
+function findResource(resources) {
+  return Util_Adapter$Reventless.findResource(resources, Util_DynamoDb_Runtime$ReventlessAws.service);
+}
+
+function findUnwrappedResource(resources) {
+  return Util_Adapter$Reventless.findUnwrappedResource(resources, Util_DynamoDb_Runtime$ReventlessAws.service);
+}
+
+function findResourceInOutput(resourcesOutput) {
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, Util_DynamoDb_Runtime$ReventlessAws.service);
+}
+
 exports.toInfo = toInfo;
 exports.toResource = toResource;
 exports.arn2tableName = arn2tableName;
@@ -264,4 +276,7 @@ exports.updateTable = updateTable;
 exports.makeTableArgs = makeTableArgs;
 exports.option2Str = option2Str;
 exports.makeTable = makeTable;
+exports.findResource = findResource;
+exports.findUnwrappedResource = findUnwrappedResource;
+exports.findResourceInOutput = findResourceInOutput;
 /* @pulumi/aws Not a pure module */

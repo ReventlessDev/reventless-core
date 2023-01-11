@@ -6,7 +6,9 @@ var service = "SQS_FIFO";
 
 function toResource(queue) {
   return {
-          service: service,
+          service: queue.name.apply((function (param) {
+                  return service;
+                })),
           name: queue.name,
           id: queue.id,
           urn: queue.arn,

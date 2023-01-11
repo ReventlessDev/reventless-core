@@ -1,0 +1,6 @@
+include ReventlessAws.Aggregate.Make(
+          Config,
+          {{properCase name}},
+          {{properCase name}}Behaviour,
+          (Reventless.NoEventMappings.Make({{properCase name}})),
+        );

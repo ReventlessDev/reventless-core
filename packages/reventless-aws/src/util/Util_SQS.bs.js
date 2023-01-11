@@ -3,12 +3,14 @@
 
 var Aws = require("@pulumi/aws");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
-
-var service = "SQS";
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
+var Util_SQS_Runtime$ReventlessAws = require("./Util_SQS_Runtime.bs.js");
 
 function toResource(queue) {
   return {
-          service: service,
+          service: queue.name.apply((function (param) {
+                  return Util_SQS_Runtime$ReventlessAws.service;
+                })),
           name: queue.name,
           id: queue.id,
           urn: queue.arn,
@@ -27,18 +29,21 @@ function arn2Account(arn) {
   }
 }
 
-function subscribeToSnsTopic(queue, targetName, opts, param) {
-  var match = param[1];
-  return new (Aws.sns.TopicSubscription)(match[0] + ("2" + targetName), {
+function subscribeToSnsTopic(queue, targetName, sourceName, topic, opts) {
+  return new (Aws.sns.TopicSubscription)(sourceName + ("2" + targetName), {
               endpoint: queue.arn,
-              topic: match[1].urn,
+              topic: topic.urn,
               protocol: "sqs",
               rawMessageDelivery: true
             }, Caml_option.some(opts));
 }
 
-exports.service = service;
+function findResourceInOutput(resourcesOutput) {
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, Util_SQS_Runtime$ReventlessAws.service);
+}
+
 exports.toResource = toResource;
 exports.arn2Account = arn2Account;
 exports.subscribeToSnsTopic = subscribeToSnsTopic;
+exports.findResourceInOutput = findResourceInOutput;
 /* @pulumi/aws Not a pure module */

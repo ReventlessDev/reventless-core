@@ -71,8 +71,7 @@ let enqueueFifoEvent = queue =>
     Js.log4(__MODULE__ ++ ".enqueueMessage:", delay, messageBody, queueName);
     queue->Util_SQS_Runtime.sendFifoMessage(
       ~delay,
-      ~messageBody,
       ~messageGroupId=id,
-      (),
+      messageBody,
     );
   };

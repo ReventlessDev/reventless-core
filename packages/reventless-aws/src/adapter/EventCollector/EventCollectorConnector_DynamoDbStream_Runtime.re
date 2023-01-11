@@ -24,6 +24,6 @@ let handleStreamEvent = (handleEvents, streamEvent, _) => {
 
   handleEvents(. jsons)
   |> Js.Promise.catch(err =>
-       Js.Exn.raiseError(err->AwsSdk.Error.ofPromise##message)
+       Js.Exn.raiseError(err->Reventless.Util.Error.ofPromise##message)
      );
 };

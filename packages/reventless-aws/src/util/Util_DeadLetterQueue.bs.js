@@ -4,24 +4,27 @@
 var Curry = require("bs-platform/lib/js/curry.js");
 var Aws = require("@pulumi/aws");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
-var Promise$Reventless = require("@reventless/reventless/src/util/Promise.bs.js");
 
 var name = "DeadLetterQueue";
 
 var nameFifo = "FIFODeadLetterQueue";
 
 var queue = new (Aws.sqs.Queue)(name, {
-      visibilityTimeoutSeconds: 180
+      visibilityTimeoutSeconds: 180,
+      sqsManagedSseEnabled: false
     }, undefined);
 
 var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
       contentBasedDeduplication: true,
       fifoQueue: true,
-      visibilityTimeoutSeconds: 180
+      visibilityTimeoutSeconds: 180,
+      sqsManagedSseEnabled: false
     }, undefined);
 
 function callback(evt, ctx) {
-  return Promise$Reventless.toJs(Promise$Reventless.resolved((console.log("DEAD LETTER ITEM:", evt, ctx), /* () */0)));
+  return new Promise((function (resolve, param) {
+                return resolve((console.log("DEAD LETTER ITEM:", evt, ctx), /* () */0));
+              }));
 }
 
 var handler = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [

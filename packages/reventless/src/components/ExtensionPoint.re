@@ -1,4 +1,5 @@
-open ReventlessSpec.Adapter;
+module ReventlessCommandTopic = CommandTopic;
+module ReventlessEventTopic = EventTopic;
 
 let componentType = ComponentType.ExtensionPoint;
 
@@ -11,19 +12,10 @@ type outputs = {
   "commandTopic": CommandTopic.outputs,
   "eventTopic": EventTopic.outputs,
 };
-type extensionPoint; // TODO: rename to t - after refactoring
+type t;
+type component = Component.t(t, outputs);
 
 type name = string;
-
-type maker =
-  (
-    ~scheduler: Scheduler.t,
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources,
-    unit
-  ) =>
-  Component.t(extensionPoint, outputs);
 
 module type Spec = {
   module Id = Id.String;
@@ -39,23 +31,33 @@ module type Spec = {
 };
 
 module type T = {
+  let make:
+    (
+      ~publishToAggregates: Js.Dict.t(CommandTopic.publishJsons),
+      ~scheduler: Scheduler.t,
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
+      ~opts: option(Pulumi.ComponentResource.Options.t),
+      unit
+    ) =>
+    component;
+};
+
+module type Mappings = {
   module Spec: ReventlessSpec.ExtensionPointMapping.Spec;
   module type Mapping =
     ExtensionPointMapping.T with module ExtensionPoint := Spec;
-  let make: array(module Mapping) => maker;
+  let mappings: array(module Mapping);
 };
 
 module Make =
        (
          Spec: ReventlessSpec.ExtensionPointMapping.Spec,
+         Mappings: Mappings with module Spec := Spec,
          CommandTopicAdapter: CommandTopic.Adapter.Connector,
          EventTopicAdapter: EventTopic.Adapter.Publisher,
        )
-       : (T with module Spec = Spec) => {
+       : T => {
   module Spec = Spec;
-
-  module type Mapping =
-    ExtensionPointMapping.T with module ExtensionPoint := Spec;
 
   module SpecWithId:
     Spec with
@@ -71,8 +73,7 @@ module Make =
   module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter);
 
   type constructed;
-  type construct =
-    (Component.t(extensionPoint, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -80,10 +81,9 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(extensionPoint, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -93,19 +93,16 @@ module Make =
       ~aggregateNames: array(string),
       ~outgoingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
                              Js.Promise.t(unit),
-      ~commandTopic: Reventless.CommandTopic.outputs,
-      ~eventTopic: Reventless.EventTopic.outputs
+      ~commandTopic: ReventlessCommandTopic.outputs,
+      ~eventTopic: ReventlessEventTopic.outputs
     ) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs:
-    (Component.t(extensionPoint, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(extensionPoint, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -114,7 +111,7 @@ module Make =
   module Mapper = {
     let findOutgoingMapping = (aggregateNameOpt, mappings) =>
       aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
-        mappings->Belt.Array.getBy((module Mapping: Mapping) =>
+        mappings->Belt.Array.getBy((module Mapping: Mappings.Mapping) =>
           Mapping.aggregateName == aggregateName
         )
       ); // TODO: handle multiple mappings for same Aggregate name
@@ -122,7 +119,7 @@ module Make =
     let mapIncomingCommands =
         (topicItems, mappings, scheduler, queryEngine, queue) =>
       mappings
-      ->Belt.Array.map((module Mapping: Mapping) =>
+      ->Belt.Array.map((module Mapping: Mappings.Mapping) =>
           Mapping.mapIncomingCommands(
             topicItems,
             Schedule.create(scheduler, queue),
@@ -150,7 +147,7 @@ module Make =
       };
   };
 
-  let construct = (~mappings, ~scheduler, ~queryEngine, self, name, resources) => {
+  let construct = (~publishToAggregates, ~scheduler, ~queryEngine, self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
@@ -162,7 +159,12 @@ module Make =
 
     let commandTopic:
       ref(
-        option(Component.t(CommandTopic.t, Reventless.CommandTopic.outputs)),
+        option(
+          Component.t(
+            ReventlessCommandTopic.t,
+            ReventlessCommandTopic.outputs,
+          ),
+        ),
       ) =
       ref(None);
 
@@ -170,33 +172,36 @@ module Make =
       fun
       | ExtensionPointMapping.AbstractPublishCommand(
           aggregateName,
-          id,
           reference,
           cmdJson,
-        ) =>
-        cmdJson
-        ->Js.Json.stringify // TODO: move to Adapter
-        ->AwsSdk.SQS.sendMessage(
-            ~queueId=
-              resources->Util_Aggregate.commandTopicConnectorResource(
-                aggregateName,
-              )##id
-              ->Pulumi.Output.get,
-            ~messageGroupId=id,
-            ~messageBody=_,
-            (),
-          )
-        ->Js.Promise.then_(
-            _ => Belt.Result.Ok(reference)->Js.Promise.resolve,
-            _,
-          )
-        ->Js.Promise.catch(
-            err => {
-              Js.log2("ExtensionPoint: Error on publish command:", err);
-              Belt.Result.Error(reference)->Js.Promise.resolve;
-            },
-            _,
-          )
+        ) => {
+          publishToAggregates
+          ->Js.Dict.get(aggregateName)
+          ->Belt.Option.map(
+              (publishJsons: ReventlessCommandTopic.publishJsons) =>
+              publishJsons(. [|cmdJson|])
+            )
+          ->(
+              Belt.Option.mapWithDefault(
+                () =>
+                  Js.Exn.raiseError(
+                    {j|ExtensionPoint.applyCommandAction: Aggregate $aggregateName doesn't exist|j},
+                  ),
+                (x, ()) => x,
+              )
+            )()
+          ->Js.Promise.then_(
+              _ => Belt.Result.Ok(reference)->Js.Promise.resolve,
+              _,
+            )
+          ->Js.Promise.catch(
+              err => {
+                Js.log2("ExtensionPoint: Error on publish command:", err);
+                Belt.Result.Error(reference)->Js.Promise.resolve;
+              },
+              _,
+            );
+        }
       | AbstractCall(reference, handler) =>
         handler()
         ->Js.Promise.then_(
@@ -211,7 +216,8 @@ module Make =
             _,
           );
 
-    let eventTopic = EventTopic.make(~name=childName, ~opts, ~resources, ());
+    let eventTopic =
+      EventTopic.make(~name=childName, ~storageResources=[||], ~opts, ());
 
     let applyEventAction =
       fun
@@ -256,12 +262,11 @@ module Make =
     let outgoingEventHandler =
       (. event'Json, pluginDef) => {
         let commandTopic = (commandTopic^)->Belt.Option.getExn;
-        let queue = commandTopic->Component.extractOutputs##connector;
         let eventActions =
           event'Json->Mapper.mapOutgoingEvent(
-            mappings,
+            Mappings.mappings,
             scheduler,
-            queue,
+            commandTopic->Component.extractOutputs##resources,
             pluginDef,
             queryEngine,
           );
@@ -274,13 +279,12 @@ module Make =
     let incomingCommandsHandler =
       (. topicItems) => {
         let commandTopic = (commandTopic^)->Belt.Option.getExn;
-        let queue = commandTopic->Component.extractOutputs##connector;
         let commandActions =
           topicItems->Mapper.mapIncomingCommands(
-            mappings,
+            Mappings.mappings,
             scheduler,
             queryEngine,
-            queue,
+            commandTopic->Component.extractOutputs##resources,
           );
 
         commandActions->Belt.Array.map(applyCommandAction)->Js.Promise.all;
@@ -292,7 +296,6 @@ module Make =
           ~name=childName,
           ~commandsHandler=incomingCommandsHandler,
           ~opts,
-          ~resources,
           (),
         ),
       );
@@ -300,7 +303,9 @@ module Make =
     makeOutputs(
       ~name,
       ~aggregateNames=
-        mappings->Belt.Array.map(((module Mapping)) => Mapping.aggregateName),
+        Mappings.mappings->Belt.Array.map(((module Mapping)) =>
+          Mapping.aggregateName
+        ),
       ~outgoingEventHandler,
       ~commandTopic=
         (commandTopic^)->Belt.Option.getExn->Component.extractOutputs,
@@ -309,13 +314,11 @@ module Make =
     ->setOutputs(self, _);
   };
 
-  let make: array(module Mapping) => maker =
-    (mappings, ~scheduler, ~queryEngine, ~opts, ~resources, _) =>
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name,
-        ~construct=construct(~mappings, ~scheduler, ~queryEngine),
-        ~opts,
-        ~resources,
-      );
+  let make = (~publishToAggregates, ~scheduler, ~queryEngine, ~opts, _) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=Spec.name,
+      ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine),
+      ~opts,
+    );
 };

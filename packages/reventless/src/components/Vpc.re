@@ -56,7 +56,8 @@ external makeOutputs:
   outputs =
   "";
 
-[@bs.send] external registerOutputs: (t, outputs) => constructed = "";
+[@bs.send]
+external registerOutputs: (t, outputs) => constructed = "registerOutputs";
 [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
 let setOutputs = (outputs, self) => {
   self->setOutputs(outputs);

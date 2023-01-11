@@ -3,14 +3,13 @@ open PulumiAws;
 let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
     ~name,
-    ~aggregateNames,
-    ~extensionPointNames,
-    ~policies,
+    ~eventTopics,
     ~handleEvents,
     ~memorySize,
     ~timeout,
+    ~policy1=?,
+    ~policy2=?,
     ~opts,
-    ~resources,
   ) => {
     let queue =
       SQS.Queue.make(
@@ -31,6 +30,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
                   )
                 )
               ->Pulumi.Output.asInput,
+            ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
             (),
           ),
         ~opts,
@@ -52,7 +52,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       );
 
     let eventHandlerLambda =
-      policies // Pulumi.Output cannot be pushed into policies parameter !
+      PulumiAws.Lambda.Policy.customPolicies(policy1, policy2) // TODO calculate real policies
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(policies =>
           Lambda.CallbackFunction.make(
@@ -75,7 +75,6 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         );
 
     let _queueSubscription =
-      // Pulumi.Output cannot be pushed into handler parameter !
       eventHandlerLambda->Pulumi.Output.apply(eventHandlerLambda =>
         queue->SQS.Queue.onEvent(
           ~name,
@@ -85,37 +84,60 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         )
       );
 
-    let (snsFifoTopics, otherTopics) =
-      resources
-      ->Reventless.Util.Aggregate.eventTopics(aggregateNames)
-      ->Belt.Array.concat(
-          resources->Reventless.Util.ExtensionPoint.eventTopics(
-            extensionPointNames,
-          ),
-        )
-      ->Belt.Array.partition(((service, _)) =>
-          service == Util_SNS_FIFO.service
-        );
+    let _ =
+      eventTopics
+      ->Reventless.Util.Adapter.partitionSupportedResources([|
+          Util_DynamoDbStream_Runtime.service,
+          Util_SNS_FIFO.service,
+        |])
+      ->Pulumi.Output.apply(((supportedResources, errorResources)) => {
+          let (snsFifoResources, otherResources) =
+            supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
+              Util_SNS_FIFO.service,
+            );
 
-    let _snsTopicSubscriptions =
-      snsFifoTopics->Belt.Array.map(
-        Util_SQS.subscribeToSnsTopic(queue, name, opts),
-      );
+          let _snsFifoTopicSubscriptions =
+            snsFifoResources->Belt.Array.map(((sourceName, topic)) =>
+              Util_SQS.subscribeToSnsTopic(
+                ~queue,
+                ~targetName=name,
+                ~sourceName,
+                ~topic=
+                  topic
+                  ->Util.SNS_FIFO.findTopicInUnwrappedResources
+                  ->Reventless.AdapterDeploytime.unwrappedToResource,
+                ~opts,
+              )
+            );
 
-    let _eventSourceMappings: array(EventSourceMapping.t) =
-      otherTopics->Belt.Array.map(((_, (sourceName, source))) =>
-        Util_EventSourceMapping.subscribe(
-          ~lambda=eventHandlerLambda,
-          ~targetName=name,
-          ~sourceName,
-          ~source,
-          ~opts,
-          (),
-        )
-      );
+          let _eventSourceMappings =
+            otherResources->Belt.Array.map(((sourceName, resources)) =>
+              Util_EventSourceMapping.subscribe(
+                ~lambda=eventHandlerLambda,
+                ~targetName=name,
+                ~sourceName,
+                ~source=
+                  resources
+                  ->Util.DynamoDbStream.findUnwrappedResource
+                  ->Reventless.AdapterDeploytime.unwrappedToResource,
+                ~opts,
+                (),
+              )
+            );
+
+          if (errorResources->Belt.Array.length > 0) {
+            let eventTopicNames = errorResources->Js.Array2.joinWith(",");
+            Js.Exn.raiseError(
+              __MODULE__
+              ++ {j| cannot connect to EventTopic(s) $eventTopicNames|j},
+            );
+          };
+        });
 
     {
-      resource: Some(queue->Util_SQS_FIFO.toResource),
+      Reventless.EventCollector.Adapter.resources: [|
+        queue->Util_SQS_FIFO.toResource,
+      |],
       enqueueEvent:
         queue->EventCollectorConnector_SQS_Runtime.enqueueFifoEvent,
     };

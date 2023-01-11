@@ -1,0 +1,7 @@
+//gitlab.com/api/v4/packages/npm/:_authToken=${CI_JOB_TOKEN}
+
+@reventless:registry=https://gitlab.com/api/v4/packages/npm/
+
+registry=https://registry.npmjs.org/
+
+shamefully-hoist=true

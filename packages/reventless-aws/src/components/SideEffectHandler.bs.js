@@ -5,23 +5,18 @@ var EventCollector$Reventless = require("@reventless/reventless/src/components/E
 var SideEffectHandler$Reventless = require("@reventless/reventless/src/components/SideEffectHandler.bs.js");
 var EventCollectorConnector_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_DynamoDbStream.bs.js");
 
-var SideEffectHandler = SideEffectHandler$Reventless.Make(EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorConnector_DynamoDbStream$ReventlessAws));
+var include = SideEffectHandler$Reventless.Make(EventCollector$Reventless.Make(EventCollectorConnector_DynamoDbStream$ReventlessAws));
 
-function MakeWithPolicies(Policies) {
-  return SideEffectHandler$Reventless.Make(EventCollector$Reventless.Make(Policies)(EventCollectorConnector_DynamoDbStream$ReventlessAws));
-}
+var make = include.make;
 
-var make = SideEffectHandler.make;
+var enqueueEvent = include.enqueueEvent;
 
-var enqueueEvent = SideEffectHandler.enqueueEvent;
+var createSchedule = include.createSchedule;
 
-var createSchedule = SideEffectHandler.createSchedule;
-
-var deleteSchedule = SideEffectHandler.deleteSchedule;
+var deleteSchedule = include.deleteSchedule;
 
 exports.make = make;
 exports.enqueueEvent = enqueueEvent;
 exports.createSchedule = createSchedule;
 exports.deleteSchedule = deleteSchedule;
-exports.MakeWithPolicies = MakeWithPolicies;
-/* SideEffectHandler Not a pure module */
+/* include Not a pure module */

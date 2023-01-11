@@ -1,10 +1,8 @@
 open PulumiAws;
 
-let service = "SQS";
-
 let toResource = (queue: PulumiAws.SQS.Queue.t) =>
   Reventless.Adapter.resource(
-    ~service,
+    ~service=queue##name->Pulumi.Output.apply(_ => Util_SQS_Runtime.service),
     ~name=queue##name,
     ~id=queue##id,
     ~urn=queue##arn,
@@ -18,8 +16,7 @@ let arn2Account = arn =>
   | _ => ""
   };
 
-let subscribeToSnsTopic =
-    (queue, targetName, opts, (_, (sourceName, topic))) =>
+let subscribeToSnsTopic = (~queue, ~targetName, ~sourceName, ~topic, ~opts) =>
   SNS.TopicSubscription.make(
     ~name=sourceName ++ "2" ++ targetName,
     ~args=
@@ -31,4 +28,9 @@ let subscribeToSnsTopic =
         (),
       ),
     ~opts=Some(opts),
+  );
+
+let findResourceInOutput = resourcesOutput =>
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(
+    Util_SQS_Runtime.service,
   );

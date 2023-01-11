@@ -2,19 +2,19 @@
 'use strict';
 
 var Curry = require("bs-platform/lib/js/curry.js");
-var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
-var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
 var Component$Reventless = require("./Component.bs.js");
+var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_EventCollector$Reventless = require("../util/Util_EventCollector.bs.js");
+var Util_EventTopic$Reventless = require("../util/Util_EventTopic.bs.js");
 
 function Make(EventCollector) {
   var findSideEffect = function (sideEffects, event$primeJson) {
@@ -93,36 +93,44 @@ function Make(EventCollector) {
                     }));
       });
   };
-  var construct = function (sideEffects, queryEngine, scheduler, memorySize, timeout, self, name, resources) {
+  var createScheduleFn = function (scheduler, queueResources) {
+    return (function (schedule) {
+        return Schedule$Reventless.create(scheduler, queueResources)(schedule);
+      });
+  };
+  var deleteScheduleFn = function (scheduler, queueResources) {
+    return (function (scheduleName) {
+        return Schedule$Reventless.$$delete(scheduler, queueResources)(scheduleName);
+      });
+  };
+  var enqueueEventFn = function (eventCollector) {
+    return (function (delay, id, message) {
+        return Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
+      });
+  };
+  var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name) {
     var opts = {
       parent: self
     };
-    var createScheduleFn = function (schedule) {
-      return Schedule$Reventless.create(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(schedule);
-    };
-    var deleteScheduleFn = function (scheduleName) {
-      return Schedule$Reventless.$$delete(scheduler, Util_EventCollector$Reventless.getConnectorResource(resources, name))(scheduleName);
-    };
+    var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(sideEffects, (function (SideEffect) {
+                return SideEffect.Source.name;
+              })));
     var eventsHandler$1 = eventsHandler(sideEffects, queryEngine);
     var eventCollector = Curry.app(EventCollector.make, [
           name,
-          Belt_Array.map(sideEffects, (function (SideEffect) {
-                  return SideEffect.Source.name;
-                })),
-          undefined,
+          Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames),
           eventsHandler$1,
           memorySize,
           timeout,
+          policy1,
+          policy2,
           Caml_option.some(opts),
-          resources,
           /* () */0
         ]);
-    var enqueueEventFn = function (delay, id, message) {
-      return Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
-    };
-    self.enqueueEvent = enqueueEventFn;
-    self.createSchedule = createScheduleFn;
-    self.deleteSchedule = deleteScheduleFn;
+    var eventCollectorResources = Component$Reventless.extractOutputs(eventCollector).resources;
+    self.enqueueEvent = enqueueEventFn(eventCollector);
+    self.createSchedule = createScheduleFn(scheduler, eventCollectorResources);
+    self.deleteSchedule = deleteScheduleFn(scheduler, eventCollectorResources);
     var self$1 = self;
     var outputs = {
       name: name,
@@ -131,30 +139,16 @@ function Make(EventCollector) {
     self$1.setOutputs(outputs);
     return self$1.registerOutputs(outputs);
   };
-  var convertOpts = function (customResourceOpts) {
-    var keys = Object.keys(customResourceOpts);
-    var firstKey = Belt_Array.get(keys, 0);
-    if (keys.length <= 1 && (Caml_obj.caml_equal(firstKey, "parent") || firstKey === undefined)) {
-      var tmp = { };
-      if (customResourceOpts.parent !== undefined) {
-        tmp.parent = Caml_option.valFromOption(customResourceOpts.parent);
-      }
-      return tmp;
-    } else {
-      return Js_exn.raiseError("SideEffectHandler-Reventless: currently only parent prop supported !");
-    }
-  };
-  var make = function (name, sideEffects, queryEngine, scheduler, $staropt$star, $staropt$star$1, opts, resources, param) {
+  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, $staropt$star, $staropt$star$1, policy1, policy2, opts, param) {
     var memorySize = $staropt$star !== undefined ? $staropt$star : 2048;
     var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 180;
     var prim = ComponentType$Reventless.toString(/* SideEffectHandler */15);
     var prim$1 = name;
-    var prim$2 = function (param, param$1, param$2) {
-      return construct(sideEffects, queryEngine, scheduler, memorySize, timeout, param, param$1, param$2);
+    var prim$2 = function (param, param$1) {
+      return construct(sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, param, param$1);
     };
-    var prim$3 = Belt_Option.map(opts, convertOpts);
-    var prim$4 = resources;
-    return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+    var prim$3 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions);
+    return new Component.default(prim, prim$1, prim$2, prim$3);
   };
   return {
           make: make,
@@ -170,8 +164,11 @@ function Make(EventCollector) {
         };
 }
 
+var ReventlessEventCollector = 0;
+
 var componentType = /* SideEffectHandler */15;
 
+exports.ReventlessEventCollector = ReventlessEventCollector;
 exports.componentType = componentType;
 exports.Make = Make;
 /* ./Component Not a pure module */

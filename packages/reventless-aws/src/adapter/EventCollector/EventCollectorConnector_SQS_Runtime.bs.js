@@ -71,7 +71,7 @@ function enqueueFifoEvent(queue) {
   return (function (delay, id, messageBody) {
       var queueName = OutputFailsafeRuntime$Reventless.get(queue.name);
       console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.enqueueMessage:", delay, messageBody, queueName);
-      return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, messageBody, id, /* () */0);
+      return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, id, messageBody);
     });
 }
 

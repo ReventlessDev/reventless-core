@@ -1,8 +1,13 @@
-open ReventlessSpec.Adapter;
+module ReventlessQueryDb = QueryDb;
+module ReventlessView = View;
 
 let componentType = ComponentType.ReadModel;
 
-type outputs = {. "queryDb": QueryDb.outputs};
+type outputs = {
+  .
+  "name": string,
+  "queryDb": QueryDb.outputs,
+};
 
 type update('id, 'event) = Message.eventsHandler('id, 'event);
 
@@ -12,10 +17,12 @@ type update('id, 'event) = Message.eventsHandler('id, 'event);
 
 // type t('id, 'event) = functions('id, 'event);
 
+type t;
+type component = Component.t(t, outputs);
+
 module type T = {
   module Spec: View.Spec;
   module View: View.T with module Spec := Spec;
-  type t;
 
   /* Is this necessary? For test?
      let update:
@@ -26,15 +33,9 @@ module type T = {
        ) =>
        update(Spec.Id.t, Spec.event);
        */
-  let update: Component.t(t, outputs) => update(Spec.Id.t, Spec.event);
+  let update: component => update(Spec.Id.t, Spec.event);
 
-  let make:
-    (
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs);
+  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component;
 };
 
 module Make =
@@ -52,13 +53,11 @@ module Make =
        : (T with module Spec = Spec and module View = View) => {
   module Spec = Spec;
   module View = View;
-  type t;
 
   type update = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -66,33 +65,31 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   module QueryDb =
     QueryDb.Make(Config, Spec, View, QueryDbStorage, QueryDbResolvers);
 
   [@bs.obj]
-  external makeOutputs: (~queryDb: Reventless.QueryDb.outputs) => outputs = "";
+  external makeOutputs:
+    (~name: string, ~queryDb: ReventlessQueryDb.outputs) => outputs =
+    "";
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
-  external setUpdate: (Component.t(t, outputs), update) => unit = "update";
-  [@bs.get] external update: Component.t(t, outputs) => update = "update";
+  [@bs.set] external setUpdate: (component, update) => unit = "update";
+  [@bs.get] external update: component => update = "update";
 
-  open Reventless.View;
+  open ReventlessView;
 
   let applyEvent = (states, event, context) =>
     switch (states) {
@@ -120,9 +117,9 @@ module Make =
           let handleAction =
             fun
             | Create(state) =>
-              save(. id, state, Reventless.QueryDb.Init, None)
+              save(. id, state, ReventlessQueryDb.Init, None)
             | Update(state) =>
-              save(. id, state, Reventless.QueryDb.Overwrite, None)
+              save(. id, state, ReventlessQueryDb.Overwrite, None)
             | Delete(state) =>
               delete(.
                 id,
@@ -139,7 +136,7 @@ module Make =
               action->handleAction
               |> then_(
                    fun
-                   | Error(Reventless.QueryDb.StaleState) => {
+                   | Error(ReventlessQueryDb.StaleState) => {
                        Js.log(
                          "ReadModel.handleActions: retrying due to StaleState",
                        );
@@ -201,14 +198,14 @@ module Make =
         }
       );
 
-  let construct = (self, _, resources) => {
+  let construct = (self, name) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
         (),
       );
 
-    let queryDb = QueryDb.make(~opts, ~resources, ());
+    let queryDb = QueryDb.make(~opts, ());
 
     updateFn(
       queryDb->QueryDb.load,
@@ -217,17 +214,16 @@ module Make =
     )
     |> self->setUpdate;
 
-    makeOutputs(~queryDb=queryDb->Component.extractOutputs)
+    makeOutputs(~name, ~queryDb=queryDb->Component.extractOutputs)
     |> self->setOutputs;
   };
 
-  let make = (~opts=?, ~resources, _) => {
+  let make = (~opts=?, _) => {
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=View.name |> Js.Option.getWithDefault(Spec.name),
       ~construct,
       ~opts,
-      ~resources,
     );
   };
 };

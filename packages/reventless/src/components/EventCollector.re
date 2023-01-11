@@ -6,65 +6,61 @@ type enqueueEvent =
   (. /*~delay:*/ int, /*~id:*/ string, /*~message:*/ string) =>
   Js.Promise.t(unit);
 
-type outputs = {. "connector": option(resource)};
+type outputs = {
+  .
+  "name": string,
+  "resources": array(resource),
+};
+
+type t;
+type component = Component.t(t, outputs);
 
 type eventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
-
-type arn = string;
-module type Policies = {let policies: array(Pulumi.Output.t(arn));};
-module DefaultPolicies: Policies = {
-  let policies =
-    PulumiAws.Lambda.Policy.defaultPolicies->Belt.Array.map(policy =>
-      Pulumi.Output.make(policy)
-    );
-};
 
 module type T = {
   type t;
   let make:
     (
       ~name: string,
-      ~aggregateNames: array(string),
-      ~extensionPointNames: array(string)=?,
+      ~eventTopics: EventTopic.allOutputs,
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
+      ~policy1: Pulumi.Output.t(string)=?,
+      ~policy2: Pulumi.Output.t(string)=?,
       ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 
-  let enqueueEvent: Component.t(t, outputs) => enqueueEvent;
+  let enqueueEvent: component => enqueueEvent;
 };
 
 module Adapter = {
   type connector = {
-    resource: option(resource),
+    resources: array(resource),
     enqueueEvent,
   };
   type connectorMaker =
     (
       ~name: string,
-      ~aggregateNames: array(string),
-      ~extensionPointNames: array(string),
-      ~policies: array(Pulumi.Output.t(arn)),
+      ~eventTopics: EventTopic.allOutputs,
       ~handleEvents: eventsHandler,
       ~memorySize: int,
       ~timeout: int,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
+      ~policy1: Pulumi.Output.t(string)=?,
+      ~policy2: Pulumi.Output.t(string)=?,
+      ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     connector;
 
   module type Connector = {let make: connectorMaker;};
 };
 
-module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
+module Make = (Connector: Adapter.Connector) : T => {
   type t;
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -72,31 +68,27 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
-  external makeOutputs: (~connector: option(resource)) => outputs = "";
+  external makeOutputs:
+    (~name: string, ~resources: array(resource)) => outputs =
+    "";
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
   [@bs.set]
-  external setEnqueueEvent: (Component.t(t, outputs), enqueueEvent) => unit =
-    "enqueueEvent";
-  [@bs.get]
-  external enqueueEvent: Component.t(t, outputs) => enqueueEvent =
-    "enqueueEvent";
+  external setEnqueueEvent: (component, enqueueEvent) => unit = "enqueueEvent";
+  [@bs.get] external enqueueEvent: component => enqueueEvent = "enqueueEvent";
 
   let enqueueEventFn = connector =>
     (. delay, id, message) =>
@@ -104,14 +96,14 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
 
   let construct =
       (
-        ~aggregateNames,
-        ~extensionPointNames,
+        ~eventTopics,
         ~eventsHandler,
         ~memorySize,
         ~timeout,
+        ~policy1=?,
+        ~policy2=?,
         self,
         name,
-        resources,
       ) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
@@ -122,62 +114,44 @@ module Make = (Policies: Policies, Connector: Adapter.Connector) : T => {
     let connector =
       Connector.make(
         ~name=name->ComponentType.name(componentType),
-        ~aggregateNames,
-        ~extensionPointNames,
-        ~policies=Policies.policies,
+        ~eventTopics,
+        ~policy1?,
+        ~policy2?,
         ~handleEvents=eventsHandler,
         ~memorySize,
         ~timeout,
         ~opts,
-        ~resources,
       );
-    switch (connector.resource) {
-    | Some(resource) =>
-      resources->Util_EventCollector.setConnectorResource(resource, name)
-    | None => ()
-    };
 
     self->setEnqueueEvent(connector->enqueueEventFn);
 
-    makeOutputs(~connector=connector.resource)->setOutputs(self, _);
+    makeOutputs(~name, ~resources=connector.resources)->setOutputs(self, _);
   };
 
-  let make:
-    (
-      ~name: string,
-      ~aggregateNames: array(string),
-      ~extensionPointNames: array(string)=?,
-      ~eventsHandler: eventsHandler,
-      ~memorySize: int=?,
-      ~timeout: int=?,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (
-      ~name,
-      ~aggregateNames,
-      ~extensionPointNames=[||],
-      ~eventsHandler,
-      ~memorySize=128,
-      ~timeout=30,
-      ~opts,
-      ~resources,
-      _,
-    ) =>
-      make(
-        ~componentType=componentType->ComponentType.toString,
+  let make =
+      (
         ~name,
-        ~construct=
-          construct(
-            ~aggregateNames,
-            ~extensionPointNames,
-            ~eventsHandler,
-            ~memorySize,
-            ~timeout,
-          ),
+        ~eventTopics,
+        ~eventsHandler,
+        ~memorySize=128,
+        ~timeout=30,
+        ~policy1=?,
+        ~policy2=?,
         ~opts,
-        ~resources,
-      );
+        _,
+      ) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct=
+        construct(
+          ~eventTopics,
+          ~eventsHandler,
+          ~memorySize,
+          ~timeout,
+          ~policy1?,
+          ~policy2?,
+        ),
+      ~opts,
+    );
 };

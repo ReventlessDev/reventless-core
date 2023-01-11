@@ -3,17 +3,16 @@ open PulumiAws;
 let make: Reventless.EventCollector.Adapter.connectorMaker =
   (
     ~name,
-    ~aggregateNames,
-    ~extensionPointNames,
-    ~policies,
+    ~eventTopics,
     ~handleEvents,
     ~memorySize,
     ~timeout,
+    ~policy1=?,
+    ~policy2=?,
     ~opts,
-    ~resources,
   ) => {
     let eventHandlerLambda =
-      policies // Pulumi.Output cannot be pushed into policies parameter !
+      PulumiAws.Lambda.Policy.customPolicies(policy1, policy2) // TODO calculate real policies
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(policies =>
           Lambda.CallbackFunction.make(
@@ -34,52 +33,47 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
           )
         );
 
-    let (dynamoDbStreamTopics, otherTopics) =
-      resources
-      ->Reventless.Util.Aggregate.eventTopics(aggregateNames)
-      ->Belt.Array.concat(
-          resources->Reventless.Util.ExtensionPoint.eventTopics(
-            extensionPointNames,
-          ),
-        )
-      ->Belt.Array.partition(((service, _)) =>
-          service == Util_DynamoDbStream.service
-        );
+    let _ =
+      eventTopics
+      ->Reventless.Util.Adapter.partitionSupportedResources([|
+          Util_DynamoDbStream_Runtime.service,
+          Util_SNS_FIFO.service,
+        |])
+      ->Pulumi.Output.apply(((dynamoDbStreamResources, errorResources)) => {
+          let _eventSourceMappings: array(EventSourceMapping.t) =
+            dynamoDbStreamResources->Belt.Array.map(((sourceName, sources)) =>
+              Util_EventSourceMapping.subscribe(
+                ~batchSize=25,
+                ~lambda=eventHandlerLambda,
+                ~targetName=name,
+                ~sourceName,
+                ~source=
+                  sources[0]->Reventless.AdapterDeploytime.unwrappedToResource,
+                ~opts,
+                (),
+              )
+            );
 
-    let _eventSourceMappings: array(EventSourceMapping.t) =
-      dynamoDbStreamTopics->Belt.Array.map(((_, (sourceName, source))) =>
-        Util_EventSourceMapping.subscribe(
-          ~batchSize=25,
-          ~lambda=eventHandlerLambda,
-          ~targetName=name,
-          ~sourceName,
-          ~source,
-          ~opts,
-          (),
-        )
-      );
+          if (errorResources->Belt.Array.length > 0) {
+            let eventTopicNames = errorResources->Js.Array2.joinWith(",");
+            Js.Exn.raiseError(
+              __MODULE__
+              ++ {j| cannot connect to EventTopic(s) $eventTopicNames|j},
+            );
+          };
+        });
 
-    if (otherTopics->Belt.Array.length > 0) {
-      let errorTopics =
-        otherTopics
-        ->Belt.Array.map(((service, (sourceName, _))) =>
-            {j|EventTopicPublisher_$service $sourceName|j}
+    {
+      Reventless.EventCollector.Adapter.resources: [||],
+      enqueueEvent:
+        (. delay, id, messageBody) =>
+          // TODO: can we check this at deploy time ?
+          Js.log4(
+            __MODULE__ ++ " supports no enqueueEvent:",
+            delay,
+            id,
+            messageBody,
           )
-        ->Js.Array2.joinWith(",");
-      Js.Exn.raiseError(__MODULE__ ++ {j| cannot connect to $errorTopics|j});
-    } else {
-      {
-        resource: None,
-        enqueueEvent:
-          (. delay, id, messageBody) =>
-            // TODO: can we check this at deploy time ?
-            Js.log4(
-              __MODULE__ ++ " supports no enqueueEvent:",
-              delay,
-              id,
-              messageBody,
-            )
-            ->Js.Promise.resolve,
-      };
+          ->Js.Promise.resolve,
     };
   };

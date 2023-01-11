@@ -1,0 +1,3 @@
+config:
+  aws:region: {{awsRegion}}
+  userPool:id: {{awsRegion}}_xxxxxx

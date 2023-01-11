@@ -1,27 +1,22 @@
-open Reventless;
-open ComponentType;
-
-let make: EventTopic.Adapter.publisherMaker =
-  (~name, ~opts as _, ~resources) => {
-    let eventLogResource =
-      resources->Reventless.Util.Aggregate.eventLogStorageResource(
-        name->Js.String2.substring(
-          ~from=0,
-          ~to_=name->Js.String2.indexOf(Aggregate->toName),
-        ),
-      );
+let make: Reventless.EventTopic.Adapter.publisherMaker =
+  (~name as _, ~storageResources, ~opts as _) => {
+    let storageResource = storageResources->Util.DynamoDbStream.findResource;
 
     {
-      resource:
-        if (eventLogResource##service == Util_DynamoDbStream.service) {
-          eventLogResource->Util_DynamoDbStream.toStreamResource;
-        } else {
-          Js.Exn.raiseError(
-            "EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_"
-            ++
-            eventLogResource##service,
-          );
-        },
+      resources: [|
+        storageResource##service
+        ->Pulumi.Output.apply(service =>
+            if (service == Util_DynamoDbStream_Runtime.service) {
+              storageResource->Util_DynamoDbStream.toStreamResource;
+            } else {
+              Js.Exn.raiseError(
+                "EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_"
+                ++ service,
+              );
+            }
+          )
+        ->Reventless.Adapter.outputToResource,
+      |],
       publish: (. _, _, _) => Js.Promise.resolve() // ignore publish
     };
   };

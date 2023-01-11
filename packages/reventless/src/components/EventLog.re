@@ -2,7 +2,14 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.EventLog;
 
-type outputs = {. "storage": resource};
+type outputs = {
+  .
+  "resources": array(resource),
+  "eventTopic": EventTopic.outputs,
+};
+
+type t;
+type component = Component.t(t, outputs);
 
 exception ReplayError(string);
 
@@ -21,49 +28,39 @@ module type Spec = {
 
 module type T = {
   module Spec: Spec;
-  type t;
 
   let make:
-    (
-      ~name: string,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs);
+    (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
+    component;
 
   let append:
-    Component.t(t, outputs) =>
-    append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
-  let replay: Component.t(t, outputs) => replay(Spec.Id.t, Spec.event);
+    component => append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
+  let replay: component => replay(Spec.Id.t, Spec.event);
 };
 
 module Adapter = {
   type storage = {
-    resource,
+    resources: array(resource),
     append: append(string, Js.Json.t),
     replay: replay(string, Js.Json.t),
   };
   type storageMaker =
-    (
-      ~name: string,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
-    ) =>
-    storage;
+    (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage;
 
   module type Storage = {let make: storageMaker;};
 };
 
 module Make =
-       (Spec: Spec, Storage: Adapter.Storage)
+       (
+         Spec: Spec,
+         Storage: Adapter.Storage,
+         EventTopicPublisher: EventTopic.Adapter.Publisher,
+       )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type t;
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   type nonrec append =
     append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
@@ -75,33 +72,33 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
-  [@bs.obj] external makeOutputs: (~storage: resource) => outputs = "";
+  [@bs.obj]
+  external makeOutputs:
+    (~resources: array(resource), ~eventTopic: EventTopic.outputs) => outputs =
+    "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
-  external setAppend: (Component.t(t, outputs), append) => unit = "append";
-  [@bs.set]
-  external setReplay: (Component.t(t, outputs), replay) => unit = "replay";
-  [@bs.get] external append: Component.t(t, outputs) => append = "append";
-  [@bs.get] external replay: Component.t(t, outputs) => replay = "replay";
+  [@bs.set] external setAppend: (component, append) => unit = "append";
+  [@bs.set] external setReplay: (component, replay) => unit = "replay";
+  [@bs.get] external append: component => append = "append";
+  [@bs.get] external replay: component => replay = "replay";
 
-  let appendFn = storage =>
+  module EventTopic = EventTopic.Make(Spec, EventTopicPublisher);
+
+  let appendFn = (storage, eventTopic) =>
     (. sequenceNr, id, events') =>
       try (
         events'->Belt.Array.map(
@@ -125,13 +122,27 @@ module Make =
         )
         |> (
           data =>
-            storage.Adapter.append(. sequenceNr, id |> Spec.Id.toString, data)
+            storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, data)
             |> Js.Promise.catch(err => {
-                 let serviceName = Spec.name;
-                 let resourceName = storage.resource##name->Pulumi.Output.get;
-                 let err = {j|EventLog: Error: Couldn't append for $serviceName($id) on $resourceName: $err|j};
+                 let aggregateName = Spec.name;
+                 let err = {j|EventLog: Error: Couldn't append for $aggregateName($id): $err|j};
                  Js.log(err);
                  err->Belt.Result.Error->Js.Promise.resolve;
+               })
+            |> Js.Promise.then_(result => {
+                 let _ =
+                   eventTopic->EventTopic.publish(. events')
+                   |> Js.Promise.catch(err => {
+                        let msg =
+                          {j|EventLog.appendFn($id): EventTopic.publish Error: |j}
+                          ++
+                          err->Util.Error.ofPromise##message;
+
+                        Js.log(msg);
+                        Js.Exn.raiseError(msg);
+                      });
+
+                 result->Js.Promise.resolve;
                })
         )
       ) {
@@ -174,7 +185,7 @@ module Make =
          );
     };
 
-  let construct = (self, name, resources) => {
+  let construct = (self, name) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -182,35 +193,33 @@ module Make =
       );
 
     let storage =
-      Storage.make(
-        ~name=name->ComponentType.name(componentType),
-        ~opts,
-        ~resources,
-      );
-    resources->Util_EventLog.setStorageResource(storage.resource, name);
-    let storageOutputs = storage.resource;
+      Storage.make(~name=name->ComponentType.name(componentType), ~opts);
 
-    self->setAppend(storage->appendFn);
+    let eventTopic =
+      EventTopic.make(
+        ~name,
+        ~storageResources=storage.resources,
+        ~opts=
+          opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
+        (),
+      );
+
+    self->setAppend(storage->appendFn(eventTopic));
     self->setReplay(storage->replayFn);
 
-    makeOutputs(~storage=storageOutputs) |> self->setOutputs;
+    makeOutputs(
+      ~resources=storage.resources,
+      ~eventTopic=eventTopic->Component.extractOutputs,
+    )
+    |> self->setOutputs;
   };
 
-  let make:
-    (
-      ~name: string,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~name, ~opts=?, ~resources, _) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name,
-        ~construct,
-        ~opts,
-        ~resources,
-      );
-    };
+  let make = (~name, ~opts=?, _) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct,
+      ~opts,
+    );
+  };
 };

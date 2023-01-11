@@ -2,7 +2,10 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.CommandGenerator;
 
-type outputs = {. "resolvers": array(resource)};
+type outputs = {. "resources": array(resource)};
+
+type t;
+type component = Component.t(t, outputs);
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T;
@@ -22,18 +25,16 @@ module type Spec = {
 module type T = {
   module Spec: Spec;
 
-  type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
-
-  type t;
+  type publish = Message.commandHandler(Spec.Id.t, Spec.command);
 
   let make:
     (
       ~name: string,
-      ~commandHandler: commandHandler,
+      ~publish: publish,
       ~opts: Pulumi.ComponentResource.Options.t=?,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 };
 
 type payload = {
@@ -76,15 +77,13 @@ module Make =
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type t;
 
   type api = Config.api;
 
-  type commandHandler = Message.commandHandler(Spec.Id.t, Spec.command);
+  type publish = Message.commandHandler(Spec.Id.t, Spec.command);
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, api, commandHandler) => constructed;
+  type construct = (component, string, api, publish) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -94,21 +93,21 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t),
       ~api: api,
-      ~commandHandler: commandHandler
+      ~publish: publish
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
-  external makeOutputs: (~resolvers: array(resource)) => outputs = "";
+  external makeOutputs: (~resources: array(resource)) => outputs = "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
   //[@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
 
-  let generateCommand: commandHandler => commandGenerator =
-    commandHandler => {
+  let generateCommand: publish => commandGenerator =
+    publish => {
       let fn = payload => {
         let msgId = Message.uuid();
         let id = payload##arguments##id |> Spec.Id.makeFromString;
@@ -151,7 +150,7 @@ module Make =
               )
           );
         let command' = Message.{id, meta, command};
-        commandHandler(. command')
+        publish(. command')
         |> Js.Promise.then_(_ => Js.Promise.resolve(meta.msgId));
       };
       fn;
@@ -173,27 +172,19 @@ module Make =
         ~opts,
       );
 
-    let outputs = makeOutputs(~resolvers=resolvers.resources);
+    let outputs = makeOutputs(~resources=resolvers.resources);
     //self->setOutputs(outputs); // NOTE: creates circular reference (promise leaks)
     self->registerOutputs(outputs);
   };
 
-  let make:
-    (
-      ~name: string,
-      ~commandHandler: commandHandler,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~name, ~commandHandler, ~opts=?, _) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name,
-        ~construct,
-        ~opts,
-        ~api=Config.api,
-        ~commandHandler,
-      );
-    };
+  let make = (~name, ~publish, ~opts=?, _) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct,
+      ~opts,
+      ~api=Config.api,
+      ~publish,
+    );
+  };
 };

@@ -14,3 +14,8 @@ module Output: {
     let make: unit => t('a);
   };
 };
+
+module ComponentResourceOptions: {
+  let ofCustomResourceOptions:
+    Pulumi.CustomResourceOptions.t => Pulumi.ComponentResource.Options.t;
+};

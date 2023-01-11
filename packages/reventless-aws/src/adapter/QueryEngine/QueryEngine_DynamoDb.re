@@ -1,5 +1,3 @@
-open Reventless;
-
 let toJson =
   fun
   | ReventlessSpec.QueryEngine.String(str) => Js.Json.string(str)
@@ -132,18 +130,16 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
      });
 };
 
-let make: QueryDb.Adapter.queryEngineMaker =
-  resources => {
-    scan: (~viewName) =>
-      scanByTableName(
-        ~tableName=
-          resources->Util_QueryDb.getStorageResource(viewName)##name
-          ->OutputFailsafeRuntime.get,
-      ),
-    query: (~viewName) =>
-      queryByTableName(
-        ~tableName=
-          resources->Util_QueryDb.getStorageResource(viewName)##name
-          ->OutputFailsafeRuntime.get,
-      ),
+let make: Reventless.QueryDb.Adapter.queryEngineMaker =
+  allQueryDbs => {
+    let tableName = viewName =>
+      allQueryDbs
+      ->Reventless.Util_QueryDbRuntime.getLocalStorageResources(viewName)
+      ->Util_DynamoDb_Runtime.findResource##name
+      ->Reventless.OutputFailsafeRuntime.get;
+    {
+      scan: (~viewName) => scanByTableName(~tableName=tableName(viewName)),
+      query: (~viewName) =>
+        queryByTableName(~tableName=tableName(viewName)),
+    };
   };

@@ -1,5 +1,3 @@
-let service = "DynamoDb";
-
 let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
   (table##hashKey, table##rangeKey)
   ->Pulumi.Output.all2
@@ -9,7 +7,8 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
 
 let toResource = (table: PulumiAws.DynamoDb.Table.t) =>
   Reventless.Adapter.resource(
-    ~service,
+    ~service=
+      table##name->Pulumi.Output.apply(_ => Util_DynamoDb_Runtime.service),
     ~name=table##name,
     ~id=table##id,
     ~urn=table##arn,
@@ -35,7 +34,7 @@ let enableTtl: string => Js.Promise.t(PulumiAws.DynamoDb.Table.TableTtl.t) =
           ~_TimeToLiveSpecification=
             TimeToLiveSpecification.make(
               ~_Enabled=true,
-              ~_AttributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
+              ~_AttributeName=Util_DynamoDb_Runtime.purgeTimeAttributeName,
             ),
         ),
       )
@@ -129,7 +128,7 @@ let makeTableArgs =
     ttl->Belt.Option.map(_ =>
       PulumiAws.DynamoDb.Table.Args.TableTtl.make(
         ~enabled=true,
-        ~attributeName=QueryDbStorage_DynamoDb_Runtime.purgeTimeAttributeName,
+        ~attributeName=Util_DynamoDb_Runtime.purgeTimeAttributeName,
       )
       ->Pulumi.Input.wrap
     );
@@ -205,3 +204,18 @@ let makeTable =
     // Workaround when restore enabled
     ? updateTable(~ttl?, table) : table;
 };
+
+let findResource = resources =>
+  resources->Reventless.Util.Adapter.findResource(
+    Util_DynamoDb_Runtime.service,
+  );
+
+let findUnwrappedResource = resources =>
+  resources->Reventless.Util.Adapter.findUnwrappedResource(
+    Util_DynamoDb_Runtime.service,
+  );
+
+let findResourceInOutput = resourcesOutput =>
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(
+    Util_DynamoDb_Runtime.service,
+  );

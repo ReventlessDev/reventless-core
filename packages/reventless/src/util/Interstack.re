@@ -1,6 +1,7 @@
 type plugin = {
   .
-  "services": option(Js.Dict.t(Service.outputs)),
+  "aggregates": option(Js.Dict.t(Aggregate.outputs)),
+  "readModels": option(Js.Dict.t(ReadModel.outputs)),
   "tasks": option(Js.Dict.t(Task.outputs)),
   "eventMappers": option(Js.Dict.t(EventMapper.outputs)),
   "extensionPoints": option(Js.Dict.t(ExtensionPoint.outputs)),
@@ -43,9 +44,6 @@ let getOutputs:
       ->Belt.Array.concatMany
     );
 
-let stackDependenciesServices: Pulumi.Output.t(array(Service.outputs)) =
-  getOutputs(plugin => plugin##services);
-
 let stackDependenciesTasks: Pulumi.Output.t(array(Task.outputs)) =
   getOutputs(plugin => plugin##tasks);
 
@@ -68,6 +66,5 @@ let mergeManyRef:
       (locals^)->Belt.Array.concat(dependencies)
     );
 
-let mergeServices = mergeMany(stackDependenciesServices);
 let mergeTasks = mergeManyRef(stackDependenciesTasks);
 let mergeEventMappers = mergeManyRef(stackDependenciesEventMappers);

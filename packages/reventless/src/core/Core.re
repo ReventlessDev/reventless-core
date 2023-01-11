@@ -1,20 +1,29 @@
-open ReventlessSpec.Adapter;
-
 let componentType = ComponentType.Core;
-
-type extensionPointMakers = array(ExtensionPoint.maker);
-type serviceMakers = array(Service.maker);
 
 type outputs = {
   .
   "version": string,
   "eventCollector": EventCollector.outputs,
   "extensionPoints": Js.Dict.t(ExtensionPoint.outputs),
-  "services": Js.Dict.t(Service.outputs),
+  "aggregates": Pulumi.Output.t(Js.Dict.t(Aggregate.outputs)),
+  "readModels": Pulumi.Output.t(Js.Dict.t(ReadModel.outputs)),
   "cloner": Cloner.outputs,
-  "resources": resources,
 };
-type core;
+
+type t;
+type component = Component.t(t, outputs);
+
+type maker =
+  (
+    ~version: string,
+    ~extensionPoints: array(module ExtensionPoint.T),
+    ~aggregates: array(module Aggregate.T),
+    ~readModels: array(module ReadModel.T),
+    ~scheduler: Scheduler.t
+  ) =>
+  component;
+
+module type T = {let make: maker;};
 
 let toDict = els =>
   els->Belt.Array.map(el => (el##name, el))->Js.Dict.fromArray;
@@ -27,7 +36,7 @@ module Make =
          ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
        ) => {
   type constructed;
-  type construct = (Component.t(core, outputs), string) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "../components/Component"] [@bs.new]
   external make:
@@ -37,7 +46,7 @@ module Make =
       ~construct: construct,
       ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(core, outputs) =
+    component =
     "default";
 
   [@bs.obj]
@@ -46,30 +55,33 @@ module Make =
       ~version: string,
       ~eventCollector: EventCollector.outputs,
       ~extensionPoints: Js.Dict.t(ExtensionPoint.outputs),
-      ~services: Js.Dict.t(Service.outputs),
-      ~cloner: Cloner.outputs,
-      ~resources: resources
+      ~aggregates: Js.Dict.t(Aggregate.outputs),
+      ~readModels: Js.Dict.t(ReadModel.outputs),
+      ~cloner: Cloner.outputs
     ) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs:
-    (Component.t(core, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(core, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
+  type readModel = {
+    module_: (module ReadModel.T),
+    readModel: ReadModel.component,
+  };
+
   let construct =
       (
         ~version,
-        ~extensionPointMakers: extensionPointMakers,
-        ~serviceMakers: serviceMakers,
+        ~extensionPoints: array(module ExtensionPoint.T),
+        ~aggregates: array(module Aggregate.T),
+        ~readModels: array(module ReadModel.T),
         ~scheduler: Scheduler.t,
         self,
         _,
@@ -80,36 +92,76 @@ module Make =
         (),
       );
 
-    let resources: resources = Js.Dict.empty();
+    let readModels =
+      readModels
+      ->Belt.Array.map((module ReadModel: ReadModel.T) =>
+          (
+            ReadModel.Spec.name,
+            {
+              module_: (module ReadModel),
+              readModel: ReadModel.make(~opts, ()),
+            },
+          )
+        )
+      ->Js.Dict.fromArray;
+    let readModelsOutputs =
+      readModels
+      ->Js.Dict.entries
+      ->Belt.Array.map(((name, {readModel})) =>
+          (name, readModel->Component.extractOutputs)
+        )
+      ->Js.Dict.fromArray;
+    let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs;
 
-    let services =
-      serviceMakers->Belt.Array.map(serviceMaker =>
-        serviceMaker(~opts, ~resources, ())
-      );
-    let servicesOutputs = services->Component.extractMultipleOutputs;
+    let queryEngine = QueryEngineAdapter.make(allQueryDbs);
+
+    let publishToAggregates = Js.Dict.empty();
+    let aggregatesOutputs =
+      aggregates
+      ->Belt.Array.map((module Aggregate: Aggregate.T) => {
+          let {module_, readModel} =
+            readModels->Js.Dict.unsafeGet(Aggregate.Spec.name);
+          module ReadModel = (val module_);
+          let aggregate =
+            Aggregate.make(
+              ~queryEngine,
+              ~eventsHandler=
+                (. id, events) =>
+                  readModel->ReadModel.update(.
+                    id->Obj.magic,
+                    events->Obj.magic,
+                  ), // TODO : remove
+              ~opts,
+              (),
+            );
+          publishToAggregates->Js.Dict.set(
+            Aggregate.Spec.name,
+            aggregate->Aggregate.publishJsons,
+          );
+          aggregate->Component.extractOutputs;
+        })
+      ->toDict;
 
     let extensionPoints =
-      extensionPointMakers->Belt.Array.map(extensionPointMaker =>
-        extensionPointMaker(
+      extensionPoints->Belt.Array.map(
+        (module ExtensionPoint: ExtensionPoint.T) =>
+        ExtensionPoint.make(
+          ~publishToAggregates,
           ~scheduler,
-          ~queryEngine=QueryEngineAdapter.make(resources),
+          ~queryEngine,
           ~opts=Some(opts),
-          ~resources,
           (),
         )
       );
     let extensionPointsOutputs =
       extensionPoints->Component.extractMultipleOutputs;
 
-    module Set = Belt.Set.String;
-
-    let aggregateNames: array(string) =
+    let aggregateNames =
       extensionPointsOutputs
       ->Belt.Array.map(extensionPoint =>
-          extensionPoint##aggregateNames->Set.fromArray
+          extensionPoint##aggregateNames->Belt.Set.String.fromArray
         )
-      ->Belt.Array.reduce(Set.empty, Set.union)
-      ->Belt.Set.String.toArray;
+      ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union);
 
     let fakePluginDefinition: PluginSpec.pluginDefinition = {
       id: "Core@FAKE",
@@ -141,19 +193,15 @@ module Make =
         ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
       };
 
-    module EventCollector =
-      EventCollector.Make(
-        EventCollector.DefaultPolicies,
-        EventCollectorConnector,
-      );
+    module EventCollector = EventCollector.Make(EventCollectorConnector);
 
     let eventCollector =
       EventCollector.make(
         ~name=componentType->ComponentType.toName,
-        ~aggregateNames,
+        ~eventTopics=
+          aggregatesOutputs->Util.Aggregate.filterEventTopics(aggregateNames),
         ~eventsHandler,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
 
@@ -164,30 +212,24 @@ module Make =
       ~version,
       ~eventCollector=eventCollector->Component.extractOutputs,
       ~extensionPoints=extensionPointsOutputs->toDict,
-      ~services=servicesOutputs->toDict,
+      ~aggregates=aggregatesOutputs,
+      ~readModels=readModelsOutputs,
       ~cloner=cloner->Component.extractOutputs,
-      ~resources,
     )
     ->setOutputs(self, _);
   };
 
-  let make:
-    (
-      ~version: string,
-      ~extensionPointMakers: extensionPointMakers,
-      ~serviceMakers: serviceMakers,
-      ~scheduler: Scheduler.t
-    ) =>
-    Component.t(core, outputs) =
-    (~version, ~extensionPointMakers, ~serviceMakers, ~scheduler) =>
+  let make: maker =
+    (~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler) =>
       make(
         ~componentType=componentType->ComponentType.toString,
         ~name="Core",
         ~construct=
           construct(
             ~version,
-            ~extensionPointMakers,
-            ~serviceMakers,
+            ~extensionPoints,
+            ~aggregates,
+            ~readModels,
             ~scheduler,
           ),
         ~opts=None,

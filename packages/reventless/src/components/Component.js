@@ -2,7 +2,7 @@ var pulumi = require("@pulumi/pulumi");
 
 class Component extends pulumi.ComponentResource {
   constructor(componentType, name, construct, opts, param1, param2, param3) {
-    super("reventless::" + componentType, name, {}, opts);
+    super("reventless:" + componentType, name, {}, opts);
     this["outputKeys"] = [];
     construct(this, name, param1, param2, param3);
   };

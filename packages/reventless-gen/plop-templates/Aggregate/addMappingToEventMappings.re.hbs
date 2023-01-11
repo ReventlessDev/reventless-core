@@ -1,16 +1,16 @@
-$1
-module {{properCase source}}To{{properCase target}}Mapping:
-  EventMapping.T with module Target := {{properCase target}} = {
+module {{properCase source}}To{{properCase target}}Mapping = {
   module Source = {{properCase source}};
 
   let map =
     (. id, event, _queryEngine) =>
       switch (event) {
       | {{properCase source}}.Added => [|
-          EventMapping.Publish(
+          Publish(
             id->{{properCase target}}.Id.makeFromString,
             {{properCase target}}.Add,
           ),
         |]
       };
 };
+
+$1(module {{properCase source}}To{{properCase target}}Mapping),

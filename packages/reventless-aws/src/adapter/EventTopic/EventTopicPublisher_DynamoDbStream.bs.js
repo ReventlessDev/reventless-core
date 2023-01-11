@@ -2,14 +2,20 @@
 'use strict';
 
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
-var ComponentType$Reventless = require("@reventless/reventless/src/ComponentType.bs.js");
-var Util_Aggregate$Reventless = require("@reventless/reventless/src/util/Util_Aggregate.bs.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
+var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
-function make(name, param, resources) {
-  var eventLogResource = Util_Aggregate$Reventless.eventLogStorageResource(resources, name.substring(0, name.indexOf(ComponentType$Reventless.toName(/* Aggregate */0))));
+function make(param, storageResources, param$1) {
+  var storageResource = Util_DynamoDbStream$ReventlessAws.findResource(storageResources);
   return /* record */[
-          /* resource */eventLogResource.service === Util_DynamoDbStream$ReventlessAws.service ? Util_DynamoDbStream$ReventlessAws.toStreamResource(eventLogResource) : Js_exn.raiseError("EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_" + eventLogResource.service),
+          /* resources : array */[Adapter$Reventless.outputToResource(storageResource.service.apply((function (service) {
+                        if (service === Util_DynamoDbStream_Runtime$ReventlessAws.service) {
+                          return Util_DynamoDbStream$ReventlessAws.toStreamResource(storageResource);
+                        } else {
+                          return Js_exn.raiseError("EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_" + service);
+                        }
+                      })))],
           /* publish */(function (param, param$1, param$2) {
               return Promise.resolve(/* () */0);
             })
@@ -17,4 +23,4 @@ function make(name, param, resources) {
 }
 
 exports.make = make;
-/* Util_DynamoDbStream-ReventlessAws Not a pure module */
+/* Adapter-Reventless Not a pure module */

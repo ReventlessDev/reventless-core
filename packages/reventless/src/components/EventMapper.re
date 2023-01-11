@@ -1,4 +1,4 @@
-open ReventlessSpec.Adapter;
+module ReventlessEventCollector = EventCollector;
 
 let componentType = ComponentType.EventMapper;
 
@@ -9,37 +9,40 @@ type outputs = {
   "counter": option(Counter.outputs),
 };
 
-type eventMapper;
-type maker =
-  (
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~memorySize: int,
-    ~timeout: int=?,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources,
-    unit
-  ) =>
-  Component.t(eventMapper, outputs);
+type t;
+type component = Component.t(t, outputs);
 
 module type T = {
+  let make:
+    (
+      ~allEventTopics: EventTopic.allOutputs,
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
+      ~publishJsons: CommandTopic.publishJsons,
+      ~memorySize: int=?,
+      ~timeout: int=?,
+      ~opts: Pulumi.ComponentResource.Options.t=?,
+      unit
+    ) =>
+    component;
+};
+
+module type Mappings = {
   module Target: ReventlessSpec.EventMapping.Target;
   module type Mapping =
     ReventlessSpec.EventMapping.T with module Target := Target;
-  let make: (~counter: (module Counter.T)=?, array(module Mapping)) => maker;
+  let mappings: array(module Mapping);
+  let counter: option(module Counter.T);
 };
 
 module Make =
        (
          Target: ReventlessSpec.EventMapping.Target,
          EventCollector: EventCollector.T,
+         Mappings: Mappings with module Target := Target,
        )
-       : (T with module Target := Target) => {
+       : T => {
   type constructed;
-  type construct =
-    (Component.t(eventMapper, outputs), string, resources) => constructed;
-
-  module type Mapping =
-    ReventlessSpec.EventMapping.T with module Target := Target;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -47,36 +50,31 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(eventMapper, outputs) =
+    component =
     "default";
 
   [@bs.obj]
   external makeOutputs:
     (
       ~name: string,
-      ~eventCollector: Reventless.EventCollector.outputs,
+      ~eventCollector: ReventlessEventCollector.outputs,
       ~counter: option(Counter.outputs)
     ) =>
     outputs =
     "";
   [@bs.send]
-  external registerOutputs:
-    (Component.t(eventMapper, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(eventMapper, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
   module Target = Target;
-
-  let service = Target.name;
+  let target = Target.name;
 
   let findMapping = (mappings, eventObj) => {
     eventObj->Belt.Option.flatMapU((. eventObj') => {
@@ -85,18 +83,20 @@ module Make =
 
       switch (meta) {
       | Some(Belt.Result.Ok(eventMeta)) =>
+        let source = eventMeta.service;
         let mapping =
-          mappings->Belt.Array.getBy((module Mapping: Mapping) =>
-            Mapping.Source.name == eventMeta.service
+          mappings->Belt.Array.getBy((module Mapping: Mappings.Mapping) =>
+            Mapping.Source.name == source
           );
         switch (mapping) {
         | None =>
-          Js.log2(
-            "EventMapper.map: No mapping available for service:",
-            eventMeta.service,
-          );
+          Js.log({j|EventMapper.map: No mapping $source -> $target found|j});
           None;
-        | Some(mapping) => Some((eventObj', eventMeta, mapping))
+        | Some(mapping) =>
+          module Mapping = (val mapping);
+          let source = Mapping.Source.name;
+          Js.log({j|EventMapper.map: found mapping $source -> $target|j});
+          Some((eventObj', eventMeta, mapping));
         };
       | Some(Error(err)) =>
         Js.log2("EventMapper.map: Couldn't decode meta:", err);
@@ -108,62 +108,31 @@ module Make =
     });
   };
 
-  let makeEntry = (queue, idx, commandId, meta: Message.meta, command, delay) => {
-    let commandMeta: Message.meta = {
-      ...meta,
-      service,
-      correlationId:
-        // original correlationId only for first action to avoid counting problems
-        // TODO: think about different solution, e.g. Counter with explicit
-        // count parameter (instead of always counting by 1)
-        idx == 0 ? meta.correlationId : Message.uuid(),
-      msgId: Message.uuid(),
-      time: Message.nowAsISOString(),
-    };
-    let commandStr = command->Target.command_encode->Js.Json.stringify;
-    let source = meta.service;
-    Js.log(
-      {j|EventMapping from Aggregate $source to Aggregate $service: Publishing command: $commandStr id: $commandId|j},
-    );
-    let messageBody =
-      Message.command'_encode(
-        Target.Id.t_encode,
-        Target.command_encode,
-        {Message.id: commandId, meta: commandMeta, command},
-      )
-      ->Js.Json.stringify;
-    switch (queue##service) {
-    | "SQS_FIFO" =>
-      AwsSdk.SQS.makeBatchEntryFifo(
-        // TODO: move to Adapter
-        ~groupId=commandId->Target.Id.toString,
-        ~messageId=commandMeta.msgId,
-        ~messageBody,
-        ~delay,
-      )
-    | _ =>
-      AwsSdk.SQS.makeBatchEntry(
-        // TODO: move to Adapter
-        ~messageId=commandMeta.msgId,
-        ~messageBody,
-        ~delay,
-      )
-    };
-  };
-
   type action =
     | Counter(Counter.action)
-    | Publisher(Js.Promise.t(array(AwsSdk.SQS.SendMessageBatchEntry.t)));
+    | Publisher(Js.Promise.t(array(Message.commandJson)));
 
-  let processMappingActions = (actions, queue, meta) =>
-    actions->Belt.Array.mapWithIndex((idx, action) =>
-      switch (action) {
-      | ReventlessSpec.EventMapping.Publish(commandId, command) =>
-        [|makeEntry(queue, idx, commandId, meta, command, None)|]
+  let createCommandJson = (~delay=?, id, meta, command) => {
+    Message.id: id->Target.Id.toString,
+    meta: {
+      ...meta,
+      service: Target.name,
+      msgId: Message.uuid(),
+      time: Message.nowAsISOString(),
+    },
+    commandJson: command->Target.command_encode,
+    delay,
+  };
+
+  let processMappingActions = (actions, eventMeta) =>
+    actions->Belt.Array.map(
+      fun
+      | ReventlessSpec.EventMapping.Publish(id, command) =>
+        [|createCommandJson(id, eventMeta, command)|]
         ->Js.Promise.resolve
         ->Publisher
-      | PublishDelayed(commandId, command, delay) =>
-        [|makeEntry(queue, idx, commandId, meta, command, Some(delay))|]
+      | PublishDelayed(id, command, delay) =>
+        [|createCommandJson(~delay, id, eventMeta, command)|]
         ->Js.Promise.resolve
         ->Publisher
       | PublishAsync(promise) =>
@@ -171,50 +140,28 @@ module Make =
         ->Js.Promise.then_(
             cmds =>
               cmds
-              ->Belt.Array.map(((commandId, command)) =>
-                  makeEntry(queue, 0, commandId, meta, command, None)
+              ->Belt.Array.map(((id, command)) =>
+                  createCommandJson(id, eventMeta, command)
                 )
               ->Js.Promise.resolve,
             _,
           )
         ->Publisher
       | AddToCounterTarget({counterId, target}) =>
-        AddToCounterTarget({counterId, target, targetRef: meta.correlationId})
+        AddToCounterTarget({
+          counterId,
+          target,
+          targetRef: eventMeta.correlationId,
+        })
         ->Counter
       | Count(counterId) =>
-        Count({counterId, reference: meta.correlationId, inc: 1})->Counter
+        Count({counterId, reference: eventMeta.correlationId, inc: 1})
+        ->Counter
       | CountMulti(counterId, inc) =>
-        Count({counterId, reference: meta.correlationId, inc})->Counter
-      }
+        Count({counterId, reference: eventMeta.correlationId, inc})->Counter,
     );
 
-  let sendEntries = (queue, publisherEntries, loc) =>
-    publisherEntries
-    ->Js.Promise.then_(
-        publisherEntries => {
-          Js.log2(
-            loc ++ ": publisherEntries:",
-            publisherEntries->Belt.Array.size,
-          );
-          switch (publisherEntries->Belt.Array.size) {
-          | 0 => Js.Promise.resolve()
-          | _ =>
-            publisherEntries->AwsSdk.SQS.sendMessageBatch(
-              ~queueId=queue##id->Pulumi.Output.get,
-            )
-          };
-        },
-        _,
-      )
-    ->Js.Promise.catch(
-        err => {
-          Js.log2(loc ++ ": sendEntries error", err);
-          Js.Exn.raiseError(loc ++ ": sendEntries error");
-        },
-        _,
-      );
-
-  let commonEventsHandler = (queue, mappings, queryEngine, events'Json) => {
+  let commonEventsHandler = (mappings, queryEngine, events'Json) => {
     let eventsCount = events'Json->Belt.Array.size;
     let (publisherActions, counterActions) =
       events'Json
@@ -240,7 +187,7 @@ module Make =
             switch (idDecoded, eventDecoded) {
             | (Some(Ok(eventId)), Some(Ok(event))) =>
               Mapping.map(. eventId, event, queryEngine)
-              ->processMappingActions(queue, eventMeta)
+              ->processMappingActions(eventMeta)
               ->Some
             | (None, _)
             | (_, None) =>
@@ -285,7 +232,7 @@ module Make =
 
   let eventCollectorEventsHandler =
       (
-        queue,
+        publishJsons,
         mappings,
         queryEngine,
         count: Counter.count,
@@ -293,7 +240,7 @@ module Make =
       ) =>
     (. events'Json) => {
       let (publisherEntries, counterActions) =
-        commonEventsHandler(queue, mappings, queryEngine, events'Json);
+        commonEventsHandler(mappings, queryEngine, events'Json);
       let (countActions, addToCounterTargetActions) =
         counterActions->Belt.Array.partition(
           fun
@@ -342,41 +289,36 @@ module Make =
         ->Js.Promise.all;
 
       let sendEntriesP =
-        queue->sendEntries(
-          publisherEntries,
-          __MODULE__ ++ ".eventCollectorEventsHandler",
-        );
+        publisherEntries
+        |> Js.Promise.then_(commandJsons => publishJsons(. commandJsons));
 
       (countP, addToCounterTargetsP, sendEntriesP)
       ->Js.Promise.all3
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
-  let counterEventsHandler = (queue, mappings, queryEngine) =>
+  let counterEventsHandler = (publishJsons, mappings, queryEngine) =>
     (. events'Json) => {
       let (publisherEntries, countActions) =
-        commonEventsHandler(queue, mappings, queryEngine, events'Json);
+        commonEventsHandler(mappings, queryEngine, events'Json);
       if (countActions->Belt.Array.size > 0) {
         Js.log(
           "EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!",
         );
       };
-      queue->sendEntries(
-        publisherEntries,
-        __MODULE__ ++ ".counterEventsHandler",
-      );
+      publisherEntries
+      |> Js.Promise.then_(commandJsons => publishJsons(. commandJsons));
     };
 
   let construct =
       (
-        ~counter: option(module Counter.T),
-        ~mappings: array(module Mapping),
+        ~allEventTopics,
         ~queryEngine,
+        ~publishJsons,
         ~memorySize,
         ~timeout,
         self,
         name,
-        resources,
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
@@ -384,11 +326,8 @@ module Make =
         (),
       );
 
-    let queue =
-      resources->Util.Aggregate.commandTopicConnectorResource(service);
-
     let (count, setCounterTarget, counterOutputs) =
-      counter->Belt.Option.mapWithDefault(
+      Mappings.counter->Belt.Option.mapWithDefault(
         (
           _items => {
             Js.log("No counter deployed, but trying to use counter.")
@@ -405,9 +344,12 @@ module Make =
             Counter.make(
               ~name,
               ~counterEventsHandler=
-                counterEventsHandler(queue, mappings, queryEngine),
+                counterEventsHandler(
+                  publishJsons,
+                  Mappings.mappings,
+                  queryEngine,
+                ),
               ~opts,
-              ~resources,
               (),
             );
           (
@@ -418,21 +360,27 @@ module Make =
         },
       );
 
+    module Set = Belt.Set.String;
+    let aggregateNames =
+      Mappings.mappings
+      ->Belt.Array.keepMap((module Mapping: Mappings.Mapping) =>
+          if (Mapping.Source.name != Counter.Source.name) {
+            Some(Mapping.Source.name);
+          } else {
+            None;
+          }
+        )
+      ->Set.fromArray;
+
     let eventCollector =
       EventCollector.make(
         ~name=Target.name->ComponentType.name(componentType),
-        ~aggregateNames=
-          mappings->Belt.Array.keepMap((module Mapping: Mapping) =>
-            if (Mapping.Source.name != Counter.Source.name) {
-              Some(Mapping.Source.name);
-            } else {
-              None;
-            }
-          ),
+        ~eventTopics=
+          allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
         ~eventsHandler=
           eventCollectorEventsHandler(
-            queue,
-            mappings,
+            publishJsons,
+            Mappings.mappings,
             queryEngine,
             count,
             setCounterTarget,
@@ -440,7 +388,6 @@ module Make =
         ~memorySize,
         ~timeout,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
 
@@ -452,35 +399,28 @@ module Make =
     ->setOutputs(self, _);
   };
 
-  let make:
-    (
-      ~counter: (module Counter.T)=?,
-      array(module Mapping),
-      ~queryEngine: ReventlessSpec.QueryEngine.t,
-      ~memorySize: int,
-      ~timeout: int=?,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(eventMapper, outputs) =
-    (
-      ~counter=?,
-      mappings,
-      ~queryEngine,
-      ~memorySize,
-      ~timeout=180,
+  let make =
+      (
+        ~allEventTopics,
+        ~queryEngine,
+        ~publishJsons,
+        ~memorySize=128,
+        ~timeout=180,
+        ~opts=?,
+        _,
+      ) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=Target.name,
+      ~construct=
+        construct(
+          ~allEventTopics,
+          ~queryEngine,
+          ~publishJsons,
+          ~memorySize,
+          ~timeout,
+        ),
       ~opts,
-      ~resources,
-      _,
-    ) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=Target.name,
-        ~construct=
-          construct(~mappings, ~counter, ~queryEngine, ~memorySize, ~timeout),
-        ~opts,
-        ~resources,
-      );
-    };
+    );
+  };
 };

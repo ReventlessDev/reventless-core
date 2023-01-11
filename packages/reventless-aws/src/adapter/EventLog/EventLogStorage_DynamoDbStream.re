@@ -1,5 +1,5 @@
 let make: Reventless.EventLog.Adapter.storageMaker =
-  (~name, ~opts, ~resources as _) => {
+  (~name, ~opts) => {
     let table =
       Util.DynamoDbStream.makeTable(
         name,
@@ -13,7 +13,7 @@ let make: Reventless.EventLog.Adapter.storageMaker =
       );
 
     {
-      resource: table->Util_DynamoDbStream.toResource,
+      resources: [|table->Util_DynamoDbStream.toResource|],
       append: table->EventLogStorage_DynamoDb_Runtime.append,
       replay: table->EventLogStorage_DynamoDb_Runtime.replay,
     };

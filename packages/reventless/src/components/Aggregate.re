@@ -1,30 +1,40 @@
-open ReventlessSpec.Adapter;
 open Belt.Result;
+
+module ReventlessCommandTopic = CommandTopic;
 
 let componentType = ComponentType.Aggregate;
 
 type outputs = {
   .
+  "name": string,
   "commandGenerator": CommandGenerator.outputs,
   "commandTopic": CommandTopic.outputs,
   "eventLog": EventLog.outputs,
-  "eventTopic": EventTopic.outputs,
+  "eventMapper": option(EventMapper.outputs),
 };
+type allOutputs = Js.Dict.t(outputs);
 
 type name = string;
 
+type t;
+type component = Component.t(t, outputs);
+
+type addEventMapper = allOutputs => outputs;
+
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T;
-  type t;
 
   let make:
     (
+      ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~eventsHandler: Message.eventsHandler(Spec.Id.t, Spec.event),
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
+
+  let publishJsons: component => CommandTopic.publishJsons;
+  let addEventMapper: component => addEventMapper;
 };
 
 module Make =
@@ -32,21 +42,19 @@ module Make =
          Config: Config.T,
          Spec: ReventlessSpec.AggregateSpec.T,
          Behaviour: Behaviour.T with module Spec := Spec,
+         EventMappings: EventMapper.Mappings with module Target := Spec,
          CommandGeneratorResolvers:
            CommandGenerator.Adapter.Resolvers with type api := Config.api,
          CommandTopicConnector: CommandTopic.Adapter.Connector,
          EventLogStorage: EventLog.Adapter.Storage,
          EventTopicPublisher: EventTopic.Adapter.Publisher,
+         EventCollectorConnector: EventCollector.Adapter.Connector,
        )
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type t;
-
-  type eventsHandler = Message.eventsHandler(Spec.Id.t, Spec.event);
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, eventsHandler, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -54,40 +62,49 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~eventsHandler: eventsHandler,
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
-
-  module CommandGenerator =
-    CommandGenerator.Make(Config, Spec, Behaviour, CommandGeneratorResolvers);
-  module CommandTopic = CommandTopic.Make(Spec, CommandTopicConnector);
-  module EventLog = EventLog.Make(Spec, EventLogStorage);
-  module EventTopic = EventTopic.Make(Spec, EventTopicPublisher);
 
   [@bs.obj]
   external makeOutputs:
     (
-      ~commandGenerator: Reventless.CommandGenerator.outputs,
-      ~commandTopic: Reventless.CommandTopic.outputs,
-      ~eventLog: Reventless.EventLog.outputs,
-      ~eventTopic: Reventless.EventTopic.outputs
+      ~name: string,
+      ~commandGenerator: CommandGenerator.outputs,
+      ~commandTopic: CommandTopic.outputs,
+      ~eventLog: EventLog.outputs,
+      ~eventMapper: option(EventMapper.outputs)
     ) =>
     outputs =
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
+
+  [@bs.set]
+  external setPublishJsons: (component, CommandTopic.publishJsons) => unit =
+    "publishJsons";
+  [@bs.get]
+  external publishJsons: component => CommandTopic.publishJsons =
+    "publishJsons";
+
+  [@bs.set]
+  external setAddEventMapper: (component, addEventMapper) => unit =
+    "addEventMapper";
+  [@bs.get]
+  external addEventMapper: component => addEventMapper = "addEventMapper";
+
+  module CommandGenerator =
+    CommandGenerator.Make(Config, Spec, Behaviour, CommandGeneratorResolvers);
+  module CommandTopic = CommandTopic.Make(Spec, CommandTopicConnector);
+  module EventLog = EventLog.Make(Spec, EventLogStorage, EventTopicPublisher);
 
   let errorHandler = (error, command, context: Message.context) => {
     let errorJson = error |> Spec.error_encode |> Js.Json.stringify;
@@ -106,7 +123,7 @@ module Make =
   let errorMessage = (id, kind, err) =>
     {j|Aggregate.execCommand($id): $kind Error: |j}
     ++
-    err->AwsSdk.Error.ofPromise##message;
+    err->Util.Error.ofPromise##message;
 
   let logCommand' =
       (
@@ -133,7 +150,7 @@ module Make =
       (
         topicItems:
           array(
-            Reventless.CommandTopic.topicItem(
+            ReventlessCommandTopic.topicItem(
               Message.command'(Spec.Id.t, Spec.command),
             ),
           ),
@@ -147,8 +164,7 @@ module Make =
       );
   };
 
-  let handleCommands =
-      ((eventLogAppend, eventLogReplay, eventTopicPublish, eventsHandler)) =>
+  let handleCommands = ((eventLogAppend, eventLogReplay, eventsHandler)) =>
     (. allTopicItems) => {
       let apply' = (stateOpt, event) =>
         switch (stateOpt) {
@@ -316,19 +332,6 @@ module Make =
                            })
                         |> Js.Promise.then_(results => {
                              Js.log({j|finished eventLogAppend for id $id|j});
-                             let _ =
-                               // FIXME: include in error handling with Belt.Result
-                               eventTopicPublish(. generatedEvents')
-                               |> Js.Promise.catch(err => {
-                                    let msg =
-                                      errorMessage(
-                                        id,
-                                        "eventTopicPublish",
-                                        err,
-                                      );
-                                    Js.log(msg);
-                                    Js.Exn.raiseError(msg);
-                                  });
                              results->Js.Promise.resolve;
                            });
                       },
@@ -341,69 +344,85 @@ module Make =
          );
     };
 
-  let construct: construct =
-    (self, name, eventsHandler, resources) => {
-      let opts =
-        Pulumi.ComponentResource.Options.make(
-          ~parent=self->Component.toPulumiResource,
-          (),
-        );
+  let addEventMapperFn = (component, allAggregates, ~queryEngine, ~opts) => {
+    module EventCollector = EventCollector.Make(EventCollectorConnector);
+    module EventMapper =
+      EventMapper.Make(Spec, EventCollector, EventMappings);
 
-      let childName = name->ComponentType.name(componentType);
+    let eventMapper =
+      EventMappings.mappings->Belt.Array.length > 0
+        ? Some(
+            EventMapper.make(
+              ~allEventTopics=Util.Aggregate.allEventTopics(allAggregates),
+              ~queryEngine,
+              ~publishJsons=component->publishJsons,
+              ~opts,
+              (),
+            ),
+          )
+        : None;
+    let outputs = component->Component.extractOutputs;
+    makeOutputs(
+      ~name=outputs##name,
+      ~commandGenerator=outputs##commandGenerator,
+      ~commandTopic=outputs##commandTopic,
+      ~eventLog=outputs##eventLog,
+      ~eventMapper=eventMapper->Belt.Option.map(Component.extractOutputs),
+    );
+  };
 
-      let eventLog = EventLog.make(~name=childName, ~opts, ~resources, ());
-      let eventTopic =
-        EventTopic.make(~name=childName, ~opts, ~resources, ());
-
-      let handleCommands =
-        handleCommands((
-          EventLog.append(eventLog),
-          EventLog.replay(eventLog),
-          EventTopic.publish(eventTopic),
-          eventsHandler,
-        ));
-
-      let commandTopic =
-        CommandTopic.make(
-          ~name=childName,
-          ~commandsHandler=handleCommands,
-          ~opts,
-          ~resources,
-          (),
-        );
-
-      let commandGenerator =
-        CommandGenerator.make(
-          ~name=childName,
-          ~commandHandler=CommandTopic.publish(commandTopic),
-          ~opts,
-          (),
-        );
-
-      makeOutputs(
-        ~commandGenerator=commandGenerator->Component.extractOutputs,
-        ~commandTopic=commandTopic->Component.extractOutputs,
-        ~eventLog=eventLog->Component.extractOutputs,
-        ~eventTopic=eventTopic->Component.extractOutputs,
-      )
-      |> self->setOutputs;
-    };
-
-  let make:
-    (
-      ~eventsHandler: eventsHandler,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~eventsHandler, ~opts=?, ~resources, _) =>
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=Spec.name,
-        ~construct,
-        ~opts,
-        ~eventsHandler,
-        ~resources,
+  let construct = (~queryEngine, ~eventsHandler, self, name) => {
+    let opts =
+      Pulumi.ComponentResource.Options.make(
+        ~parent=self->Component.toPulumiResource,
+        (),
       );
+
+    let childName = name->ComponentType.name(componentType);
+
+    let eventLog = EventLog.make(~name=childName, ~opts, ());
+
+    let handleCommands =
+      handleCommands((
+        eventLog->EventLog.append,
+        eventLog->EventLog.replay,
+        eventsHandler,
+      ));
+
+    let commandTopic =
+      CommandTopic.make(
+        ~name=childName,
+        ~commandsHandler=handleCommands,
+        ~opts,
+        (),
+      );
+
+    let commandGenerator =
+      CommandGenerator.make(
+        ~name=childName,
+        ~publish=commandTopic->CommandTopic.publish,
+        ~opts,
+        (),
+      );
+
+    self->setPublishJsons(commandTopic->CommandTopic.publishJsons);
+    self->setAddEventMapper(self->addEventMapperFn(~queryEngine, ~opts));
+
+    makeOutputs(
+      ~name,
+      ~commandGenerator=commandGenerator->Component.extractOutputs,
+      ~commandTopic=commandTopic->Component.extractOutputs,
+      ~eventLog=eventLog->Component.extractOutputs,
+      ~eventMapper=None,
+    )
+    |> self->setOutputs;
+  };
+
+  let make = (~queryEngine, ~eventsHandler, ~opts=?, _) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=Spec.name,
+      ~construct=construct(~queryEngine, ~eventsHandler),
+      ~opts,
+    );
 };

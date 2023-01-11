@@ -15,3 +15,16 @@ module Output = {
     };
   };
 };
+
+module ComponentResourceOptions = {
+  let ofCustomResourceOptions = customResourceOpts => {
+    Pulumi.ComponentResource.Options.make(
+      ~id=?customResourceOpts##id,
+      ~dependsOn=?customResourceOpts##dependsOn,
+      ~parent=?customResourceOpts##parent,
+      ~protect=?customResourceOpts##protect,
+      ~provider=?customResourceOpts##provider,
+      (),
+    );
+  };
+};

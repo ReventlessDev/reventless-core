@@ -3,6 +3,7 @@
 
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
@@ -59,19 +60,21 @@ function handleQueueEvent(handleCommands, queue, $$event, param) {
               }));
 }
 
-function publish(queue) {
-  return (function (_id, _meta, json) {
-      return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, undefined, JSON.stringify(json));
-    });
-}
-
-function publishFifo(queue) {
-  return (function (id, _meta, json) {
-      return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, undefined, JSON.stringify(json), id, /* () */0);
+function publish(queue, queueService) {
+  return (function (jsons) {
+      var match = jsons.length;
+      if (match !== 0) {
+        if (match !== 1) {
+          return Util_SQS_Runtime$ReventlessAws.sendBatch(queue, queueService, jsons);
+        } else {
+          return Util_SQS_Runtime$ReventlessAws.send(queue, queueService, Caml_array.caml_array_get(jsons, 0));
+        }
+      } else {
+        return Promise.resolve((console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.publish: No commands to send"), /* () */0));
+      }
     });
 }
 
 exports.handleQueueEvent = handleQueueEvent;
 exports.publish = publish;
-exports.publishFifo = publishFifo;
 /* SQS-AwsSdk Not a pure module */

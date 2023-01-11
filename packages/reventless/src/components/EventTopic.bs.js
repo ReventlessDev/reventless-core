@@ -8,7 +8,6 @@ var Component = require("./Component");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_EventTopic$Reventless = require("../util/Util_EventTopic.bs.js");
 
 var NotPublishedToPublisher = Caml_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
 
@@ -16,7 +15,7 @@ var Adapter = { };
 
 function Make(Spec) {
   return (function (Publisher) {
-      var publishFn = function (publisher) {
+      var publishFn = function (publisher, name) {
         return (function (events$prime) {
             var eventCount = events$prime.length;
             return Promise.all(Belt_Array.mapWithIndex(events$prime, (function (idx, event$prime) {
@@ -25,43 +24,41 @@ function Make(Spec) {
                                 var $$event = JSON.stringify(json);
                                 var eventName = Caml_array.caml_array_get(Curry._1(Spec.event_encode, event$prime[/* event */2]), 0);
                                 var idx$1 = idx + 1 | 0;
-                                var resourceName = publisher[/* resource */0].name.get();
                                 return publisher[/* publish */1](Curry._1(Spec.Id.toString, id), event$prime[/* meta */1], json).catch((function (e) {
-                                                console.log("EventTopic: Couldn\'t publish event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(resourceName) + ""))))))))));
+                                                console.log("EventTopic: Couldn\'t publish event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + ""))))))))));
                                                 return Promise.reject([
                                                             NotPublishedToPublisher,
                                                             e
                                                           ]);
                                               })).then((function (param) {
-                                              return Promise.resolve((console.log("EventTopic: Published event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(resourceName) + (": " + (String($$event) + "")))))))))))), /* () */0));
+                                              return Promise.resolve((console.log("EventTopic: Published event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + (": " + (String($$event) + "")))))))))))), /* () */0));
                                             }));
                               }))).then((function (param) {
                           return Promise.resolve(/* () */0);
                         }));
           });
       };
-      var construct = function (self, name, resources) {
+      var construct = function (storageResources, self, name) {
         var opts = {
           parent: self
         };
-        var publisher = Curry._3(Publisher.make, ComponentType$Reventless.name(name, /* EventTopic */8), opts, resources);
-        Util_EventTopic$Reventless.setPublisherResource(resources, publisher[/* resource */0], name);
-        var publisherOutputs = publisher[/* resource */0];
-        self.publish = publishFn(publisher);
+        var publisher = Curry._3(Publisher.make, ComponentType$Reventless.name(name, /* EventTopic */8), storageResources, opts);
+        self.publish = publishFn(publisher, name);
         var self$1 = self;
         var outputs = {
-          publisher: publisherOutputs
+          resources: publisher[/* resources */0]
         };
         self$1.setOutputs(outputs);
         return self$1.registerOutputs(outputs);
       };
-      var make = function (name, opts, resources, param) {
+      var make = function (name, storageResources, opts, param) {
         var prim = ComponentType$Reventless.toString(/* EventTopic */8);
         var prim$1 = name;
-        var prim$2 = construct;
+        var prim$2 = function (param, param$1) {
+          return construct(storageResources, param, param$1);
+        };
         var prim$3 = opts;
-        var prim$4 = resources;
-        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+        return new Component.default(prim, prim$1, prim$2, prim$3);
       };
       return {
               Spec: Spec,

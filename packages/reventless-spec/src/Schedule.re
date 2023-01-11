@@ -28,8 +28,3 @@ type schedule = {
 
 type create = (. schedule) => Js.Promise.t(unit);
 type delete = (. /*~name:*/ string) => Js.Promise.t(unit);
-
-type target = {
-  id: string,
-  urn: string,
-};

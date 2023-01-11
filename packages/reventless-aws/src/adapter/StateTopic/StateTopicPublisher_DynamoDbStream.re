@@ -1,26 +1,31 @@
-open Reventless;
-open ComponentType;
-
-let make: StateTopic.Adapter.publisherMaker =
-  (~name, ~opts as _, ~resources) => {
+let make: Reventless.StateTopic.Adapter.publisherMaker =
+  (~name, ~opts as _, ~allQueryDbs) => {
     let queryDbResource =
-      resources->Reventless.Util.ReadModel.queryDbStorageResource(
-        name->Js.String2.substring(
-          ~from=0,
-          ~to_=name->Js.String2.indexOf(ReadModel->toName),
-        ),
-      );
+      allQueryDbs
+      ->Reventless.Util.ReadModel.queryDbStorageResources(
+          name->Js.String2.substring(
+            ~from=0,
+            ~to_=
+              name->Js.String2.indexOf(
+                ReadModel->Reventless.ComponentType.toName,
+              ),
+          ),
+        )
+      ->Util.DynamoDbStream.findResource;
 
     {
       resource:
-        if (queryDbResource##service == Util_DynamoDbStream.service) {
-          queryDbResource->Util_DynamoDbStream.toStreamResource;
-        } else {
-          Js.Exn.raiseError(
-            "StateTopicPublisher_DynamoDbStream cannot connect to QueryDbStorage_"
-            ++
-            queryDbResource##service,
-          );
-        },
+        queryDbResource##service
+        ->Pulumi.Output.apply(service =>
+            if (service == Util_DynamoDbStream_Runtime.service) {
+              queryDbResource->Util_DynamoDbStream.toStreamResource;
+            } else {
+              Js.Exn.raiseError(
+                "StateTopicPublisher_DynamoDbStream cannot connect to QueryDbStorage_"
+                ++ service,
+              );
+            }
+          )
+        ->Reventless.Adapter.outputToResource,
     };
   };

@@ -3,9 +3,13 @@
 
 var Pulumi = require("@pulumi/pulumi");
 
+var service = "AppSync";
+
 function toResource(resolver) {
   return {
-          service: "AppSync",
+          service: resolver.id.apply((function (param) {
+                  return service;
+                })),
           name: resolver.id,
           id: resolver.id,
           urn: resolver.arn,
@@ -18,5 +22,6 @@ function toResource(resolver) {
         };
 }
 
+exports.service = service;
 exports.toResource = toResource;
 /* @pulumi/pulumi Not a pure module */

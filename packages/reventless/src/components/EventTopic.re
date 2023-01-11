@@ -2,7 +2,11 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.EventTopic;
 
-type outputs = {. "publisher": resource};
+type outputs = {. "resources": array(resource)};
+type allOutputs = Js.Dict.t(outputs);
+
+type t;
+type component = Component.t(t, outputs);
 
 type publish('id, 'event) =
   (. array(Message.event'('id, 'event))) => Js.Promise.t(unit);
@@ -21,30 +25,28 @@ module type Spec = {
 module type T = {
   module Spec: Spec;
 
-  type t;
-
   let make:
     (
       ~name: string,
+      ~storageResources: array(resource),
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 
-  let publish: Component.t(t, outputs) => publish(Spec.Id.t, Spec.event);
+  let publish: component => publish(Spec.Id.t, Spec.event);
 };
 
 module Adapter = {
   type publisher = {
-    resource,
+    resources: array(resource),
     publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t(unit),
   };
   type publisherMaker =
     (
       ~name: string,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
+      ~storageResources: array(resource),
+      ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     publisher;
 
@@ -55,11 +57,9 @@ module Make =
        (Spec: Spec, Publisher: Adapter.Publisher)
        : (T with module Spec = Spec) => {
   module Spec = Spec;
-  type t;
 
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   type nonrec publish = publish(Spec.Id.t, Spec.event);
 
@@ -69,30 +69,27 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
-  [@bs.obj] external makeOutputs: (~publisher: resource) => outputs = "";
+  [@bs.obj]
+  external makeOutputs: (~resources: array(resource)) => outputs = "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
-  external setPublish: (Component.t(t, outputs), publish) => unit = "publish";
-  [@bs.get] external publish: Component.t(t, outputs) => publish = "publish";
+  [@bs.set] external setPublish: (component, publish) => unit = "publish";
+  [@bs.get] external publish: component => publish = "publish";
 
-  let publishFn = publisher =>
+  let publishFn = (publisher: Adapter.publisher, name) =>
     (. events') => {
       let eventCount = events'->Belt.Array.length;
       events'->Belt.Array.mapWithIndex((idx, event') => {
@@ -103,18 +100,17 @@ module Make =
         let event = json->Js.Json.stringify;
         let eventName: string = event'.event->Spec.event_encode->Obj.magic[0];
         let idx = idx + 1;
-        let resourceName = publisher.Adapter.resource##name->Pulumi.Output.get;
 
         publisher.publish(. id->Spec.Id.toString, event'.meta, json)
         |> Js.Promise.catch(e => {
              Js.log(
-               {j|EventTopic: Couldn't publish event $idx/$eventCount: $eventName($id) to $resourceName|j},
+               {j|EventTopic: Couldn't publish event $idx/$eventCount: $eventName($id) to $name|j},
              );
              NotPublishedToPublisher(e)->Js.Promise.reject;
            })
         |> Js.Promise.then_(_ =>
              Js.log(
-               {j|EventTopic: Published event $idx/$eventCount: $eventName($id) to $resourceName: $event|j},
+               {j|EventTopic: Published event $idx/$eventCount: $eventName($id) to $name: $event|j},
              )
              ->Js.Promise.resolve
            );
@@ -123,7 +119,7 @@ module Make =
       |> Js.Promise.then_(_ => Js.Promise.resolve());
     };
 
-  let construct = (self, name, resources) => {
+  let construct = (~storageResources, self, name) => {
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -133,33 +129,20 @@ module Make =
     let publisher =
       Publisher.make(
         ~name=name->ComponentType.name(componentType),
+        ~storageResources,
         ~opts,
-        ~resources,
       );
-    resources->Util_EventTopic.setPublisherResource(publisher.resource, name);
 
-    let publisherOutputs = publisher.resource;
+    self->setPublish(publisher->publishFn(name));
 
-    self->setPublish(publisher->publishFn);
-
-    makeOutputs(~publisher=publisherOutputs) |> self->setOutputs;
+    makeOutputs(~resources=publisher.resources) |> self->setOutputs;
   };
 
-  let make:
-    (
-      ~name: string,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~name, ~opts=?, ~resources, _) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name,
-        ~construct,
-        ~opts,
-        ~resources,
-      );
-    };
+  let make = (~name, ~storageResources, ~opts=?, _) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct=construct(~storageResources),
+      ~opts,
+    );
 };

@@ -2,9 +2,23 @@ let service = "SNS_FIFO";
 
 let toResource = (topic: PulumiAws.SNS.Topic.t) =>
   Reventless.Adapter.resource(
-    ~service,
+    ~service=topic##name->Pulumi.Output.apply(_ => service),
     ~name=topic##name,
     ~id=topic##id,
     ~urn=topic##arn,
     ~info=topic##name->Pulumi.Output.apply(_ => ""),
   );
+
+let findTopicInUnwrappedResources = resources =>
+  switch (
+    resources->Reventless.Util_Adapter.filterSupportedUnwrappedResources([|
+      service,
+    |])
+  ) {
+  | [||] =>
+    let err = {j|Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn't find SNS_FIFO Topic in resources|j};
+    Js.log(err);
+    Js.Exn.raiseError(err);
+
+  | resources => resources[0]
+  };

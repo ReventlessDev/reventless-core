@@ -12,6 +12,8 @@ var Component$Reventless = require("../components/Component.bs.js");
 var Component = require("../components/Component");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("../components/EventCollector.bs.js");
+var Util_Aggregate$Reventless = require("../util/Util_Aggregate.bs.js");
+var Util_ReadModel$Reventless = require("../util/Util_ReadModel.bs.js");
 
 function toDict(els) {
   return Js_dict.fromArray(Belt_Array.map(els, (function (el) {
@@ -30,22 +32,45 @@ function Make(Config) {
                 self.setOutputs(outputs);
                 return self.registerOutputs(outputs);
               };
-              var construct = function (version, extensionPointMakers, serviceMakers, scheduler, self, param) {
+              var construct = function (version, extensionPoints, aggregates, readModels, scheduler, self, param) {
                 var opts = {
                   parent: self
                 };
-                var resources = { };
-                var services = Belt_Array.map(serviceMakers, (function (serviceMaker) {
-                        return Curry._3(serviceMaker, Caml_option.some(opts), resources, /* () */0);
+                var readModels$1 = Js_dict.fromArray(Belt_Array.map(readModels, (function (ReadModel) {
+                            return /* tuple */[
+                                    ReadModel.Spec.name,
+                                    /* record */[
+                                      /* module_ */ReadModel,
+                                      /* readModel */Curry._2(ReadModel.make, Caml_option.some(opts), /* () */0)
+                                    ]
+                                  ];
+                          })));
+                var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(readModels$1), (function (param) {
+                            return /* tuple */[
+                                    param[0],
+                                    Component$Reventless.extractOutputs(param[1][/* readModel */1])
+                                  ];
+                          })));
+                var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
+                var queryEngine = Curry._1(QueryEngineAdapter.make, allQueryDbs);
+                var publishToAggregates = { };
+                var aggregatesOutputs = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
+                            var match = readModels$1[Aggregate.Spec.name];
+                            var readModel = match[/* readModel */1];
+                            var module_ = match[/* module_ */0];
+                            var aggregate = Curry._4(Aggregate.make, queryEngine, (function (id, events) {
+                                    return Curry._1(module_.update, readModel)(id, events);
+                                  }), Caml_option.some(opts), /* () */0);
+                            publishToAggregates[Aggregate.Spec.name] = Curry._1(Aggregate.publishJsons, aggregate);
+                            return Component$Reventless.extractOutputs(aggregate);
+                          })));
+                var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
+                        return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), /* () */0);
                       }));
-                var servicesOutputs = Component$Reventless.extractMultipleOutputs(services);
-                var extensionPoints = Belt_Array.map(extensionPointMakers, (function (extensionPointMaker) {
-                        return Curry._5(extensionPointMaker, scheduler, Curry._1(QueryEngineAdapter.make, resources), Caml_option.some(opts), resources, /* () */0);
-                      }));
-                var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints);
-                var aggregateNames = Belt_SetString.toArray(Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
-                                return Belt_SetString.fromArray(extensionPoint.aggregateNames);
-                              })), Belt_SetString.empty, Belt_SetString.union));
+                var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
+                var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
+                            return Belt_SetString.fromArray(extensionPoint.aggregateNames);
+                          })), Belt_SetString.empty, Belt_SetString.union);
                 var fakePluginDefinition_003 = /* extensionPoints : array */[];
                 var fakePluginDefinition_004 = /* extensions : array */[];
                 var fakePluginDefinition = /* record */[
@@ -73,16 +98,16 @@ function Make(Config) {
                                 return Promise.resolve(/* () */0);
                               }));
                 };
-                var EventCollector = EventCollector$Reventless.Make(EventCollector$Reventless.DefaultPolicies)(EventCollectorConnector);
+                var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
                 var eventCollector = Curry.app(EventCollector.make, [
                       ComponentType$Reventless.toName(/* Core */18),
-                      aggregateNames,
-                      undefined,
+                      Util_Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames),
                       eventsHandler,
                       undefined,
                       undefined,
+                      undefined,
+                      undefined,
                       Caml_option.some(opts),
-                      resources,
                       /* () */0
                     ]);
                 var Cloner = Cloner$Reventless.Make(Config)(ClonerRunner);
@@ -91,16 +116,16 @@ function Make(Config) {
                             version: version,
                             eventCollector: Component$Reventless.extractOutputs(eventCollector),
                             extensionPoints: toDict(extensionPointsOutputs),
-                            services: toDict(servicesOutputs),
-                            cloner: Component$Reventless.extractOutputs(cloner),
-                            resources: resources
+                            aggregates: aggregatesOutputs,
+                            readModels: readModelsOutputs,
+                            cloner: Component$Reventless.extractOutputs(cloner)
                           });
               };
-              var make = function (version, extensionPointMakers, serviceMakers, scheduler) {
+              var make = function (version, extensionPoints, aggregates, readModels, scheduler) {
                 var prim = ComponentType$Reventless.toString(/* Core */18);
                 var prim$1 = "Core";
                 var prim$2 = function (param, param$1) {
-                  return construct(version, extensionPointMakers, serviceMakers, scheduler, param, param$1);
+                  return construct(version, extensionPoints, aggregates, readModels, scheduler, param, param$1);
                 };
                 var prim$3 = undefined;
                 return new Component.default(prim, prim$1, prim$2, prim$3);

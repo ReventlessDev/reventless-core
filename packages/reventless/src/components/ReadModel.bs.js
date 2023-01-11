@@ -138,26 +138,26 @@ function Make(Config) {
                         return $$process(Belt_List.fromArray(event$primes), /* [] */0);
                       });
                   };
-                  var construct = function (self, param, resources) {
+                  var construct = function (self, name) {
                     var opts = {
                       parent: self
                     };
-                    var queryDb = Curry._4(QueryDb.make, undefined, Caml_option.some(opts), resources, /* () */0);
+                    var queryDb = Curry._3(QueryDb.make, undefined, Caml_option.some(opts), /* () */0);
                     self.update = updateFn(Curry._1(QueryDb.load, queryDb), Curry._1(QueryDb.save, queryDb), Curry._1(QueryDb.$$delete, queryDb));
                     var self$1 = self;
                     var outputs = {
+                      name: name,
                       queryDb: Component$Reventless.extractOutputs(queryDb)
                     };
                     self$1.setOutputs(outputs);
                     return self$1.registerOutputs(outputs);
                   };
-                  var make = function (opts, resources, param) {
+                  var make = function (opts, param) {
                     var prim = ComponentType$Reventless.toString(/* ReadModel */12);
                     var prim$1 = Js_option.getWithDefault(Spec.name, View.name);
                     var prim$2 = construct;
                     var prim$3 = opts;
-                    var prim$4 = resources;
-                    return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
+                    return new Component.default(prim, prim$1, prim$2, prim$3);
                   };
                   return {
                           Spec: Spec,
@@ -173,8 +173,14 @@ function Make(Config) {
     });
 }
 
+var ReventlessQueryDb = 0;
+
+var ReventlessView = 0;
+
 var componentType = /* ReadModel */12;
 
+exports.ReventlessQueryDb = ReventlessQueryDb;
+exports.ReventlessView = ReventlessView;
 exports.componentType = componentType;
 exports.Make = Make;
 /* ./Component Not a pure module */

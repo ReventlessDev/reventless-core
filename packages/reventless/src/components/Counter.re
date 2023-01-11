@@ -7,9 +7,12 @@ let countFieldName = "count";
 
 type outputs = {
   .
-  "referencesDb": resource,
-  "countsDb": resource,
+  "referencesDb": array(resource),
+  "countsDb": array(resource),
 };
+
+type t;
+type component = Component.t(t, outputs);
 
 type counterHandler =
   (~references: array((string, int)), ~counts: array(Js.Json.t)) =>
@@ -47,21 +50,18 @@ module Source = {
 type counterEventsHandler = (. array(Js.Json.t)) => Js.Promise.t(unit);
 
 module type T = {
-  type t;
-
   let make:
     (
       ~name: string,
       ~counterEventsHandler: counterEventsHandler,
       ~ttl: int=?,
       ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 
-  let count: Component.t(t, outputs) => count;
-  let addToCounterTarget: Component.t(t, outputs) => addToCounterTarget;
+  let count: component => count;
+  let addToCounterTarget: component => addToCounterTarget;
 };
 
 module Adapter = {
@@ -70,10 +70,11 @@ module Adapter = {
     (
       ~name: string,
       ~referencesName: string,
+      ~referencesDb: QueryDb.outputs,
       ~countsName: string,
+      ~countsDb: QueryDb.outputs,
       ~counterHandler: counterHandler,
-      ~opts: Pulumi.CustomResourceOptions.t,
-      ~resources: resources
+      ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     handler;
 
@@ -89,11 +90,8 @@ module Make =
          Handler: Adapter.Handler,
        )
        : T => {
-  type t;
-
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -101,38 +99,33 @@ module Make =
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
   external makeOutputs:
-    (~referencesDb: resource, ~countsDb: resource) => outputs =
+    (~referencesDb: array(resource), ~countsDb: array(resource)) => outputs =
     "";
 
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
-  external setCount: (Component.t(t, outputs), count) => unit = "count";
-  [@bs.get] external count: Component.t(t, outputs) => count = "count";
+  [@bs.set] external setCount: (component, count) => unit = "count";
+  [@bs.get] external count: component => count = "count";
 
   [@bs.set]
-  external setAddToCounterTarget:
-    (Component.t(t, outputs), addToCounterTarget) => unit =
+  external setAddToCounterTarget: (component, addToCounterTarget) => unit =
     "addToCounterTarget";
   [@bs.get]
-  external addToCounterTarget: Component.t(t, outputs) => addToCounterTarget =
+  external addToCounterTarget: component => addToCounterTarget =
     "addToCounterTarget";
 
   let construct =
@@ -141,7 +134,6 @@ module Make =
         ~ttl: option(int),
         self,
         name,
-        resources,
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
@@ -262,7 +254,7 @@ module Make =
               countItems->logCountItems;
               Js.Promise.resolve();
             }
-          | Error(Reventless.QueryDb.NotSavedToStorage(err)) => {
+          | Error(QueryDb.NotSavedToStorage(err)) => {
               let batchSize = countItems->Belt.Array.size;
               Js.log(
                 {j|Counter error: couldn't save batch of $batchSize reference(s):|j},
@@ -281,8 +273,8 @@ module Make =
           _,
         );
 
-    let referencesDb = ReferencesDb.make(~ttl?, ~opts, ~resources, ());
-    let countsDb = CountsDb.make(~ttl?, ~opts, ~resources, ());
+    let referencesDb = ReferencesDb.make(~ttl?, ~opts, ());
+    let countsDb = CountsDb.make(~ttl?, ~opts, ());
 
     let referencesName =
       ReferencesViewSpec.name->Belt.Option.getWithDefault(AggregateSpec.name);
@@ -327,7 +319,12 @@ module Make =
                   __MODULE__
                   ++ {j|.counterHandler: counted down $name($id) to $count|j},
                 );
-                let meta = Message.generateMeta(~service=Source.name, ~user="Counter", ());
+                let meta =
+                  Message.generateMeta(
+                    ~service=Source.name,
+                    ~user="Counter",
+                    (),
+                  );
                 Some(
                   [|
                     ("id", counterId->Js.Json.string),
@@ -363,41 +360,31 @@ module Make =
       Handler.make(
         ~name,
         ~referencesName,
+        ~referencesDb=referencesDb->Component.extractOutputs,
         ~countsName,
+        ~countsDb=countsDb->Component.extractOutputs,
         ~counterHandler,
         ~opts=opts2,
-        ~resources,
       );
 
     self->setCount(count(referencesDb->ReferencesDb.saveBatch));
     self->setAddToCounterTarget(handler.addToCounterTarget);
 
     makeOutputs(
-      ~referencesDb=referencesDb->ReferencesDb.outputs##storage,
-      ~countsDb=countsDb->CountsDb.outputs##storage,
+      ~referencesDb=referencesDb->ReferencesDb.outputs##resources,
+      ~countsDb=countsDb->CountsDb.outputs##resources,
     )
     |> self->setOutputs;
   };
 
   let oneWeek = 60 * 60 * 24 * 7; //604800 sec
 
-  let make:
-    (
-      ~name: string,
-      ~counterEventsHandler: counterEventsHandler,
-      ~ttl: int=?,
-      ~opts: Pulumi.ComponentResource.Options.t=?,
-      ~resources: resources,
-      unit
-    ) =>
-    Component.t(t, outputs) =
-    (~name, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?, ~resources, _) => {
-      make(
-        ~componentType=componentType->ComponentType.toString,
-        ~name=name->ComponentType.name(componentType),
-        ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl)),
-        ~opts,
-        ~resources,
-      );
-    };
+  let make = (~name, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?, _) => {
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name=name->ComponentType.name(componentType),
+      ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl)),
+      ~opts,
+    );
+  };
 };

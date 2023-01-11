@@ -1,13 +1,8 @@
 // TODO: refactor to abstractions
-open ReventlessSpec.Adapter;
-
 let componentType = ComponentType.Task;
 
 type publishCommands =
-  (
-    . /*~queueName:*/ string,
-    array((/*~id:*/ string, /*~meta*/ Message.meta, /*~message:*/ string))
-  ) =>
+  (. /*~aggregateName:*/ string, array(Message.commandJson)) =>
   Js.Promise.t(unit);
 
 type outputs = {
@@ -26,9 +21,10 @@ type maker =
   (
     ~queryBucketName: queryBucketName,
     ~scheduler: Scheduler.t,
+    ~publishToAggregates: Js.Dict.t(CommandTopic.publishJsons),
     ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources
+    ~allAggregates: Js.Dict.t(Aggregate.outputs),
+    ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   component;
 
@@ -38,13 +34,13 @@ type setup =
     Scheduler.t,
     publishCommands,
     queryBucketName,
-    Pulumi.CustomResourceOptions.t,
-    resources
+    EventTopic.allOutputs,
+    Pulumi.CustomResourceOptions.t
   ) =>
   outputs;
 
 type constructed;
-type construct = (component, string, resources) => constructed;
+type construct = (component, string) => constructed;
 
 [@bs.module "./Component"] [@bs.new]
 external make:
@@ -52,8 +48,7 @@ external make:
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option(Pulumi.ComponentResource.Options.t),
-    ~resources: resources
+    ~opts: option(Pulumi.ComponentResource.Options.t)
   ) =>
   component =
   "default";
@@ -72,10 +67,11 @@ let construct =
       ~setup: setup,
       ~queryBucketName,
       ~scheduler: Scheduler.t,
+      ~publishToAggregates,
       ~queryEngine,
+      ~allAggregates,
       self,
       _name,
-      resources,
     ) => {
   let opts =
     Pulumi.CustomResourceOptions.make(
@@ -83,38 +79,17 @@ let construct =
       (),
     );
 
-  let publishCommands =
-    (. queueName, entries) => {
-      // TODO: move to Adapter
-      let count = entries->Belt.Array.size;
-      let connector =
-        resources->Util.Aggregate.commandTopicConnectorResource(queueName);
-      entries
-      ->Belt.Array.mapWithIndex((idx, (id, meta: Message.meta, messageBody)) => {
-          let idx = idx + 1;
-          Js.log({j|Task.publishCommands $idx/$count: $messageBody|j});
-          switch (connector##service) {
-          | "SQS_FIFO" =>
-            AwsSdk.SQS.makeBatchEntryFifo(
-              ~groupId=id,
-              ~messageBody,
-              ~messageId=meta.msgId,
-              ~delay=None,
-            )
-          | _ =>
-            AwsSdk.SQS.makeBatchEntry(
-              ~messageBody,
-              ~messageId=meta.msgId,
-              ~delay=None,
-            )
-          };
-        })
-      ->AwsSdk.SQS.sendMessageBatch(
-          ~queueId=connector##id->OutputFailsafeRuntime.get,
-        )
-      |> Js.Promise.catch(err =>
-           Js.Promise.resolve(Js.log2("Task.publishCommands Error:", err))
-         );
+  let publishCommands: publishCommands =
+    (. aggregateName, cmdJsons) => {
+      let count = cmdJsons->Belt.Array.size;
+      cmdJsons->Belt.Array.forEachWithIndex((idx, {Message.id, commandJson}) => {
+        let idx = idx + 1;
+        let messageBody = commandJson->Js.Json.stringify;
+        Js.log({j|Task.publishCommands $idx/$count: id=$id, $messageBody|j});
+      });
+      publishToAggregates
+      ->Js.Dict.get(aggregateName)
+      ->Belt.Option.getExn(. cmdJsons);
     };
 
   setup(.
@@ -122,8 +97,8 @@ let construct =
     scheduler,
     publishCommands,
     queryBucketName,
+    Util.Aggregate.allEventTopics(allAggregates),
     opts,
-    resources,
   )
   ->setOutputs(self, _);
 };
@@ -134,15 +109,23 @@ let make =
       ~setup,
       ~queryBucketName,
       ~scheduler,
+      ~publishToAggregates,
       ~queryEngine,
+      ~allAggregates,
       ~opts,
-      ~resources,
     ) => {
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name=name->ComponentType.name(componentType),
-    ~construct=construct(~setup, ~queryBucketName, ~scheduler, ~queryEngine),
+    ~construct=
+      construct(
+        ~setup,
+        ~queryBucketName,
+        ~scheduler,
+        ~publishToAggregates,
+        ~queryEngine,
+        ~allAggregates,
+      ),
     ~opts,
-    ~resources,
   );
 };

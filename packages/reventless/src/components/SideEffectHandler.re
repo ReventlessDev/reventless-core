@@ -1,4 +1,4 @@
-open ReventlessSpec.Adapter;
+module ReventlessEventCollector = EventCollector;
 
 let componentType = ComponentType.SideEffectHandler;
 
@@ -8,36 +8,36 @@ type outputs = {
   "eventCollector": EventCollector.outputs,
 };
 
+type t;
+type component = Component.t(t, outputs);
+
 type sideEffects = array(module ReventlessSpec.SideEffect.T);
 
 module type T = {
-  type t;
   let make:
     (
       ~name: string,
       ~sideEffects: sideEffects,
+      ~allEventTopics: EventTopic.allOutputs,
       ~queryEngine: ReventlessSpec.QueryEngine.t,
       ~scheduler: Scheduler.t,
       ~memorySize: int=?,
       ~timeout: int=?,
+      ~policy1: Pulumi.Output.t(string)=?,
+      ~policy2: Pulumi.Output.t(string)=?,
       ~opts: Pulumi.CustomResourceOptions.t=?,
-      ~resources: resources,
       unit
     ) =>
-    Component.t(t, outputs);
+    component;
 
-  let enqueueEvent: Component.t(t, outputs) => EventCollector.enqueueEvent;
-  let createSchedule:
-    Component.t(t, outputs) => ReventlessSpec.Schedule.create;
-  let deleteSchedule:
-    Component.t(t, outputs) => ReventlessSpec.Schedule.delete;
+  let enqueueEvent: component => EventCollector.enqueueEvent;
+  let createSchedule: component => ReventlessSpec.Schedule.create;
+  let deleteSchedule: component => ReventlessSpec.Schedule.delete;
 };
 
 module Make = (EventCollector: EventCollector.T) : T => {
-  type t;
   type constructed;
-  type construct =
-    (Component.t(t, outputs), string, resources) => constructed;
+  type construct = (component, string) => constructed;
 
   [@bs.module "./Component"] [@bs.new]
   external make:
@@ -45,23 +45,20 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ~componentType: string,
       ~name: string,
       ~construct: construct,
-      ~opts: option(Pulumi.ComponentResource.Options.t),
-      ~resources: resources
+      ~opts: option(Pulumi.ComponentResource.Options.t)
     ) =>
-    Component.t(t, outputs) =
+    component =
     "default";
 
   [@bs.obj]
   external makeOutputs:
-    (~name: string, ~eventCollector: Reventless.EventCollector.outputs) =>
+    (~name: string, ~eventCollector: ReventlessEventCollector.outputs) =>
     outputs =
     "";
   [@bs.send]
-  external registerOutputs: (Component.t(t, outputs), outputs) => constructed =
+  external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send]
-  external setOutputs: (Component.t(t, outputs), outputs) => unit =
-    "setOutputs";
+  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
@@ -69,29 +66,26 @@ module Make = (EventCollector: EventCollector.T) : T => {
 
   [@bs.set]
   external setEnqueueEvent:
-    (Component.t(t, outputs), Reventless.EventCollector.enqueueEvent) => unit =
+    (component, ReventlessEventCollector.enqueueEvent) => unit =
     "enqueueEvent";
   [@bs.get]
-  external enqueueEvent:
-    Component.t(t, outputs) => Reventless.EventCollector.enqueueEvent =
+  external enqueueEvent: component => ReventlessEventCollector.enqueueEvent =
     "enqueueEvent";
 
   [@bs.set]
   external setCreateSchedule:
-    (Component.t(t, outputs), ReventlessSpec.Schedule.create) => unit =
+    (component, ReventlessSpec.Schedule.create) => unit =
     "createSchedule";
   [@bs.get]
-  external createSchedule:
-    Component.t(t, outputs) => ReventlessSpec.Schedule.create =
+  external createSchedule: component => ReventlessSpec.Schedule.create =
     "createSchedule";
 
   [@bs.set]
   external setDeleteSchedule:
-    (Component.t(t, outputs), ReventlessSpec.Schedule.delete) => unit =
+    (component, ReventlessSpec.Schedule.delete) => unit =
     "deleteSchedule";
   [@bs.get]
-  external deleteSchedule:
-    Component.t(t, outputs) => ReventlessSpec.Schedule.delete =
+  external deleteSchedule: component => ReventlessSpec.Schedule.delete =
     "deleteSchedule";
 
   let findSideEffect = (sideEffects, event'Json) => {
@@ -174,16 +168,30 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
+  let createScheduleFn = (scheduler, queueResources) =>
+    (. schedule) =>
+      (Schedule.create(scheduler, queueResources))(. schedule);
+
+  let deleteScheduleFn = (scheduler, queueResources) =>
+    (. scheduleName) =>
+      (Schedule.delete(scheduler, queueResources))(. scheduleName);
+
+  let enqueueEventFn = eventCollector =>
+    (. delay, id, message) =>
+      eventCollector->EventCollector.enqueueEvent(. delay, id, message);
+
   let construct =
       (
         ~sideEffects,
+        ~allEventTopics,
         ~queryEngine,
         ~scheduler: Scheduler.t,
         ~memorySize,
         ~timeout,
+        ~policy1=?,
+        ~policy2=?,
         self,
         name,
-        resources,
       ) => {
     let opts =
       Pulumi.ComponentResource.Options.make(
@@ -191,52 +199,37 @@ module Make = (EventCollector: EventCollector.T) : T => {
         (),
       );
 
-    let createScheduleFn =
-      (. schedule: ReventlessSpec.Schedule.schedule) =>
-        (
-          Schedule.create(
-            scheduler,
-            resources->Util.EventCollector.getConnectorResource(name),
-          )
-        )(.
-          schedule,
-        );
-
-    let deleteScheduleFn =
-      (. scheduleName) =>
-        (
-          Schedule.delete(
-            scheduler,
-            resources->Util.EventCollector.getConnectorResource(name),
-          )
-        )(.
-          scheduleName,
-        );
+    let aggregateNames =
+      sideEffects
+      ->Belt.Array.map((module SideEffect: ReventlessSpec.SideEffect.T) =>
+          SideEffect.Source.name
+        )
+      ->Belt.Set.String.fromArray;
 
     let eventsHandler = eventsHandler(sideEffects, queryEngine);
     let eventCollector =
       EventCollector.make(
         ~name,
-        ~aggregateNames=
-          sideEffects->Belt.Array.map(
-            (module SideEffect: ReventlessSpec.SideEffect.T) =>
-            SideEffect.Source.name
-          ),
+        ~eventTopics=
+          allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
         ~eventsHandler,
         ~memorySize,
         ~timeout,
+        ~policy1?,
+        ~policy2?,
         ~opts=Some(opts),
-        ~resources,
         (),
       );
+    let eventCollectorResources =
+      eventCollector->Component.extractOutputs##resources;
 
-    let enqueueEventFn =
-      (. delay, id, message) =>
-        eventCollector->EventCollector.enqueueEvent(. delay, id, message);
-
-    self->setEnqueueEvent(enqueueEventFn);
-    self->setCreateSchedule(createScheduleFn);
-    self->setDeleteSchedule(deleteScheduleFn);
+    self->setEnqueueEvent(enqueueEventFn(eventCollector));
+    self->setCreateSchedule(
+      createScheduleFn(scheduler, eventCollectorResources),
+    );
+    self->setDeleteSchedule(
+      deleteScheduleFn(scheduler, eventCollectorResources),
+    );
 
     makeOutputs(
       ~name,
@@ -245,34 +238,18 @@ module Make = (EventCollector: EventCollector.T) : T => {
     ->setOutputs(self, _);
   };
 
-  let convertOpts:
-    Pulumi.CustomResourceOptions.t => Pulumi.ComponentResource.Options.t =
-    customResourceOpts => {
-      let keys = customResourceOpts->Js.Obj.keys;
-      let firstKey = keys->Belt.Array.get(0);
-      if (keys->Belt.Array.size <= 1
-          && (firstKey == Some("parent") || firstKey == None)) {
-        Pulumi.ComponentResource.Options.make(
-          ~parent=?customResourceOpts##parent,
-          (),
-        );
-      } else {
-        Js.Exn.raiseError(
-          __MODULE__ ++ ": currently only parent prop supported !",
-        );
-      };
-    };
-
   let make =
       (
         ~name,
         ~sideEffects,
+        ~allEventTopics,
         ~queryEngine,
         ~scheduler,
         ~memorySize=2048,
         ~timeout=180,
+        ~policy1=?,
+        ~policy2=?,
         ~opts=?,
-        ~resources,
         _,
       ) => {
     make(
@@ -281,13 +258,18 @@ module Make = (EventCollector: EventCollector.T) : T => {
       ~construct=
         construct(
           ~sideEffects,
+          ~allEventTopics,
           ~queryEngine,
           ~scheduler,
           ~memorySize,
           ~timeout,
+          ~policy1?,
+          ~policy2?,
         ),
-      ~opts=opts->Belt.Option.map(convertOpts),
-      ~resources,
+      ~opts=
+        opts->Belt.Option.map(
+          Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
+        ),
     );
   };
 };

@@ -16,7 +16,7 @@ function make(param, opts) {
       }, opts);
   return /* record */[
           /* resource */{
-            service: "CloudWatchEvents",
+            service: Pulumi.output("CloudWatchEvents"),
             name: Pulumi.output(""),
             id: Pulumi.output(""),
             urn: Pulumi.output(""),

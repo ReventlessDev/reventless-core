@@ -2,84 +2,53 @@
 'use strict';
 
 var Curry = require("bs-platform/lib/js/curry.js");
-var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Component = require("./Component");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
-var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
-var Util_EventCollector$Reventless = require("../util/Util_EventCollector.bs.js");
-
-var policies = Belt_Array.map(Lambda$PulumiAws.Policy.defaultPolicies, (function (policy) {
-        return Pulumi.output(policy);
-      }));
-
-var DefaultPolicies = {
-  policies: policies
-};
 
 var Adapter = { };
 
-function Make(Policies) {
-  return (function (Connector) {
-      var enqueueEventFn = function (connector) {
-        return (function (delay, id, message) {
-            return connector[/* enqueueEvent */1](delay, id, message);
-          });
-      };
-      var construct = function (aggregateNames, extensionPointNames, eventsHandler, memorySize, timeout, self, name, resources) {
-        var opts = {
-          parent: self
+function Make(Connector) {
+  var enqueueEventFn = function (connector) {
+    return (function (delay, id, message) {
+        return connector[/* enqueueEvent */1](delay, id, message);
+      });
+  };
+  var construct = function (eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, self, name) {
+    var opts = {
+      parent: self
+    };
+    var connector = Curry._8(Connector.make, ComponentType$Reventless.name(name, /* EventCollector */5), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
+    self.enqueueEvent = enqueueEventFn(connector);
+    var self$1 = self;
+    var outputs = {
+      name: name,
+      resources: connector[/* resources */0]
+    };
+    self$1.setOutputs(outputs);
+    return self$1.registerOutputs(outputs);
+  };
+  var make = function (name, eventTopics, eventsHandler, $staropt$star, $staropt$star$1, policy1, policy2, opts, param) {
+    var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
+    var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 30;
+    var prim = ComponentType$Reventless.toString(/* EventCollector */5);
+    var prim$1 = name;
+    var prim$2 = function (param, param$1) {
+      return construct(eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, param, param$1);
+    };
+    var prim$3 = opts;
+    return new Component.default(prim, prim$1, prim$2, prim$3);
+  };
+  return {
+          make: make,
+          enqueueEvent: (function (prim) {
+              return prim.enqueueEvent;
+            })
         };
-        var connector = Curry.app(Connector.make, [
-              ComponentType$Reventless.name(name, /* EventCollector */5),
-              aggregateNames,
-              extensionPointNames,
-              Policies.policies,
-              eventsHandler,
-              memorySize,
-              timeout,
-              opts,
-              resources
-            ]);
-        var match = connector[/* resource */0];
-        if (match !== undefined) {
-          Util_EventCollector$Reventless.setConnectorResource(resources, Caml_option.valFromOption(match), name);
-        }
-        self.enqueueEvent = enqueueEventFn(connector);
-        var self$1 = self;
-        var outputs = {
-          connector: connector[/* resource */0]
-        };
-        self$1.setOutputs(outputs);
-        return self$1.registerOutputs(outputs);
-      };
-      var make = function (name, aggregateNames, $staropt$star, eventsHandler, $staropt$star$1, $staropt$star$2, opts, resources, param) {
-        var extensionPointNames = $staropt$star !== undefined ? $staropt$star : /* array */[];
-        var memorySize = $staropt$star$1 !== undefined ? $staropt$star$1 : 128;
-        var timeout = $staropt$star$2 !== undefined ? $staropt$star$2 : 30;
-        var prim = ComponentType$Reventless.toString(/* EventCollector */5);
-        var prim$1 = name;
-        var prim$2 = function (param, param$1, param$2) {
-          return construct(aggregateNames, extensionPointNames, eventsHandler, memorySize, timeout, param, param$1, param$2);
-        };
-        var prim$3 = opts;
-        var prim$4 = resources;
-        return new Component.default(prim, prim$1, prim$2, prim$3, prim$4);
-      };
-      return {
-              make: make,
-              enqueueEvent: (function (prim) {
-                  return prim.enqueueEvent;
-                })
-            };
-    });
 }
 
 var componentType = /* EventCollector */5;
 
 exports.componentType = componentType;
-exports.DefaultPolicies = DefaultPolicies;
 exports.Adapter = Adapter;
 exports.Make = Make;
-/* policies Not a pure module */
+/* ./Component Not a pure module */

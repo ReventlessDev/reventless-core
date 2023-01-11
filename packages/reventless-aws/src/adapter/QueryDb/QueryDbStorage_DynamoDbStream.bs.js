@@ -12,7 +12,7 @@ var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSyn
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_DynamoDb_Runtime.bs.js");
 
-function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
+function make(name, indexes, sortField, ttl, api, apiRole, opts) {
   var globalSecondaryIndexes = Belt_Array.map(Belt_List.toArray(indexes), (function (param) {
           var projectionType = param[/* projectionType */4];
           var sortField = param[/* sortField */2];
@@ -101,7 +101,7 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts, param) {
       }, opts);
   var dataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), /* () */0);
   return /* record */[
-          /* resource */Util_DynamoDbStream$ReventlessAws.toResource(table),
+          /* resources : array */[Util_DynamoDbStream$ReventlessAws.toResource(table)],
           /* dataSourceName */dataSource.name,
           /* load */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(table),
           /* save */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table),

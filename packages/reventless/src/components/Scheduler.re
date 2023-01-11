@@ -3,8 +3,8 @@ open ReventlessSpec.Adapter;
 
 let componentType = ComponentType.Scheduler;
 
-type createSchedule = (. target, schedule) => Js.Promise.t(unit);
-type deleteSchedule = (. target, string) => Js.Promise.t(unit);
+type createSchedule = (. array(resource), schedule) => Js.Promise.t(unit);
+type deleteSchedule = (. array(resource), string) => Js.Promise.t(unit);
 
 type functions = {
   .
