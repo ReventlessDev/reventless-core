@@ -3,6 +3,7 @@
 
 var Aws = require("@pulumi/aws");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 
 function emailIdentity(name, email, opts, _unit) {
   return new (Aws.ses.EmailIdentity)("emailIdentity" + name, {
@@ -27,7 +28,7 @@ function fromCustomResourceOptions(param) {
 }
 
 function sesPolicyDocument(identity, opts, _unit) {
-  return identity.arn.apply((function (identityArn) {
+  return Output$Pulumi.flatMap(identity.arn, (function (identityArn) {
                 var principal = {
                   identifiers: /* array */["*"],
                   type: "AWS"
