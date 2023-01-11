@@ -119,9 +119,13 @@ let logEvent'Json = (event'Json, description) => {
     {
       let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn;
       let id = event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString;
-      let event: array(string) =
-        event'->Js.Dict.unsafeGet("event")->Obj.magic;
-      let eventName = event[0];
+      let eventName =
+        event'
+        ->Js.Dict.unsafeGet("event")
+        ->Js.Json.decodeArray
+        ->Belt.Option.flatMap(evtArr => evtArr->Belt.Array.get(0))
+        ->Belt.Option.flatMap(evt => evt->Js.Json.decodeString)
+        ->Belt.Option.getExn;
       Js.log({j|$description $eventName($id) complete event: $eventStr|j});
     }
   ) {
