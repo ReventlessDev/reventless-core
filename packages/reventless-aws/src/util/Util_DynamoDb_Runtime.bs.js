@@ -61,7 +61,7 @@ function keysFromResource(resource) {
 var purgeTimeAttributeName = "reventlessPurgeTime";
 
 function calcPurgeTime(ttl) {
-  var now_ms = Message$Reventless.now(/* () */0);
+  var now_ms = Message$Reventless.now(undefined);
   var now_s = now_ms / 1000.0;
   var now_s_rounded = now_s | 0;
   return now_s_rounded + ttl | 0;
@@ -71,11 +71,11 @@ function insertTtl(json, ttl) {
   return Belt_Option.getWithDefault(Belt_Option.flatMap(ttl, (function (ttl) {
                     return Curry._1(Belt_Option.mapWithDefault(Js_json.decodeObject(json), (function (param) {
                                       console.log("Util_DynamoDb_Runtime-ReventlessAws.insertTtl: Error: Couldn't decode JSON", JSON.stringify(json));
-                                      return ;
+                                      
                                     }), (function (obj, param) {
                                       obj[purgeTimeAttributeName] = calcPurgeTime(ttl);
                                       return Caml_option.some(obj);
-                                    })), /* () */0);
+                                    })), undefined);
                   })), json);
 }
 
@@ -136,7 +136,7 @@ function toDeleteRequest(keys) {
 }
 
 function toTable(writeRequests, tableName) {
-  return Js_dict.fromArray(/* array */[/* tuple */[
+  return Js_dict.fromArray([/* tuple */[
                 tableName,
                 writeRequests
               ]]);

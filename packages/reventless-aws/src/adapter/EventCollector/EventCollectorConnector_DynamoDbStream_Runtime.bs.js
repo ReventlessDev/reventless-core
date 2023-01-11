@@ -7,7 +7,7 @@ var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
 function handleStreamEvent(handleEvents, streamEvent, param) {
-  var records = Belt_Option.getWithDefault(streamEvent.Records, /* array */[]);
+  var records = Belt_Option.getWithDefault(streamEvent.Records, []);
   var jsons = Belt_Array.keepMap(records, (function (record) {
           var eventSource = record.eventSource;
           if (eventSource === "aws:dynamodb") {
@@ -15,16 +15,15 @@ function handleStreamEvent(handleEvents, streamEvent, param) {
             if (typeof match === "number") {
               console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws: no NewImage included in Stream event !");
               return ;
-            } else {
-              switch (match.tag | 0) {
-                case /* OldImage */1 :
-                    console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws: no NewImage included in Stream event !");
-                    return ;
-                case /* NewImage */0 :
-                case /* NewAndOldImage */2 :
-                    return Caml_option.some(match[1]);
-                
-              }
+            }
+            switch (match.tag | 0) {
+              case /* OldImage */1 :
+                  console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws: no NewImage included in Stream event !");
+                  return ;
+              case /* NewImage */0 :
+              case /* NewAndOldImage */2 :
+                  return Caml_option.some(match[1]);
+              
             }
           } else {
             console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws: ignoring record from eventSource:", eventSource);

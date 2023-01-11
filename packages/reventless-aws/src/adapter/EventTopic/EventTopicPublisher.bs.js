@@ -4,13 +4,13 @@
 
 var name = "EventTopicPublisher";
 
-var SNS = 0;
+var SNS;
 
-var SNS_Runtime = 0;
+var SNS_Runtime;
 
-var SNS_FIFO = 0;
+var SNS_FIFO;
 
-var DynamoDbStream = 0;
+var DynamoDbStream;
 
 exports.name = name;
 exports.SNS = SNS;

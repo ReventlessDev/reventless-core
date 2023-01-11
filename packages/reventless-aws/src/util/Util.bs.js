@@ -2,49 +2,49 @@
 'use strict';
 
 
-var AppSync = 0;
+var AppSync;
 
-var Cognito_Runtime = 0;
+var Cognito_Runtime;
 
-var CognitoGroupUser = 0;
+var CognitoGroupUser;
 
-var CognitoGroupUser_Runtime = 0;
+var CognitoGroupUser_Runtime;
 
-var DeadLetterQueue = 0;
+var DeadLetterQueue;
 
-var DynamoDb = 0;
+var DynamoDb;
 
-var DynamoDb_Runtime = 0;
+var DynamoDb_Runtime;
 
-var DynamoDb_TableManager = 0;
+var DynamoDb_TableManager;
 
-var DynamoDbStream_Runtime = 0;
+var DynamoDbStream_Runtime;
 
-var DynamoDbStream = 0;
+var DynamoDbStream;
 
-var EventSourceMapping = 0;
+var EventSourceMapping;
 
-var Kinesis_Runtime = 0;
+var Kinesis_Runtime;
 
-var S3_Runtime = 0;
+var S3_Runtime;
 
-var SES_Runtime = 0;
+var SES_Runtime;
 
-var SesPolicy_Runtime = 0;
+var SesPolicy_Runtime;
 
-var SNS = 0;
+var SNS;
 
-var SNS_FIFO = 0;
+var SNS_FIFO;
 
-var SNS_Runtime = 0;
+var SNS_Runtime;
 
-var SQS = 0;
+var SQS;
 
-var SQS_FIFO = 0;
+var SQS_FIFO;
 
-var SQS_Runtime = 0;
+var SQS_Runtime;
 
-var SqsQueuePolicy = 0;
+var SqsQueuePolicy;
 
 exports.AppSync = AppSync;
 exports.Cognito_Runtime = Cognito_Runtime;

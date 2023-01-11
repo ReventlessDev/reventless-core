@@ -9,8 +9,10 @@ var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js"
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
+var Record = { };
+
 function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
-  var records = Belt_Option.getWithDefault(callbackEvent.Records, /* array */[]);
+  var records = Belt_Option.getWithDefault(callbackEvent.Records, []);
   var jsons = Belt_Array.keepMap(records, (function (record) {
           var eventSource = record.eventSource;
           switch (eventSource) {
@@ -19,16 +21,15 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
                 if (typeof match === "number") {
                   console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.handleCallbackEvent: no NewImage included in Stream event !");
                   return ;
-                } else {
-                  switch (match.tag | 0) {
-                    case /* OldImage */1 :
-                        console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.handleCallbackEvent: no NewImage included in Stream event !");
-                        return ;
-                    case /* NewImage */0 :
-                    case /* NewAndOldImage */2 :
-                        return Caml_option.some(match[1]);
-                    
-                  }
+                }
+                switch (match.tag | 0) {
+                  case /* OldImage */1 :
+                      console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.handleCallbackEvent: no NewImage included in Stream event !");
+                      return ;
+                  case /* NewImage */0 :
+                  case /* NewAndOldImage */2 :
+                      return Caml_option.some(match[1]);
+                  
                 }
             case "aws:sqs" :
                 return Util_SQS_Runtime$ReventlessAws.parseSqsRecord(record);
@@ -52,9 +53,9 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
                               };
                       }));
                 return (
-                          entries.length !== 0 ? SQS$AwsSdk.deleteMessageBatch(queue.id.get(), entries) : Promise.resolve(/* () */0)
+                          entries.length !== 0 ? SQS$AwsSdk.deleteMessageBatch(queue.id.get(), entries) : Promise.resolve(undefined)
                         ).then((function (param) {
-                              return Promise.resolve(/* () */0);
+                              return Promise.resolve(undefined);
                             }));
               }));
 }
@@ -75,6 +76,7 @@ function enqueueFifoEvent(queue) {
     });
 }
 
+exports.Record = Record;
 exports.handleCallbackEvent = handleCallbackEvent;
 exports.enqueueEvent = enqueueEvent;
 exports.enqueueFifoEvent = enqueueFifoEvent;

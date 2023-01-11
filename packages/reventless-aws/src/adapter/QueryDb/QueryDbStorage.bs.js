@@ -4,11 +4,11 @@
 
 var name = "QueryDbStorage";
 
-var DynamoDb = 0;
+var DynamoDb;
 
-var DynamoDbStream = 0;
+var DynamoDbStream;
 
-var DynamoDb_Runtime = 0;
+var DynamoDb_Runtime;
 
 exports.name = name;
 exports.DynamoDb = DynamoDb;

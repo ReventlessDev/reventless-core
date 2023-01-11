@@ -6,7 +6,10 @@ var CounterHandler_DynamoDbStream$ReventlessAws = require("../adapter/Counter/Co
 var QueryDbStorage_DynamoDbStream$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDbStream.bs.js");
 
 function Make(Config) {
-  return Counter$Reventless.Make(Config)(QueryDbStorage_DynamoDbStream$ReventlessAws)(CounterHandler_DynamoDbStream$ReventlessAws);
+  var partial_arg = QueryDbStorage_DynamoDbStream$ReventlessAws;
+  var partial_arg$1 = Counter$Reventless.Make;
+  var param = CounterHandler_DynamoDbStream$ReventlessAws;
+  return partial_arg$1(Config, partial_arg, param);
 }
 
 exports.Make = Make;

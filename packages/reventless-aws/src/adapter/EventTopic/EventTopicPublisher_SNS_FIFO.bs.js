@@ -10,10 +10,10 @@ function make(name, param, opts) {
         contentBasedDeduplication: true,
         fifoTopic: true
       }, opts);
-  return /* record */[
-          /* resources : array */[Util_SNS_FIFO$ReventlessAws.toResource(topic)],
-          /* publish */EventTopicPublisher_SNS_Runtime$ReventlessAws.publishFifo(topic)
-        ];
+  return {
+          resources: [Util_SNS_FIFO$ReventlessAws.toResource(topic)],
+          publish: EventTopicPublisher_SNS_Runtime$ReventlessAws.publishFifo(topic)
+        };
 }
 
 exports.make = make;

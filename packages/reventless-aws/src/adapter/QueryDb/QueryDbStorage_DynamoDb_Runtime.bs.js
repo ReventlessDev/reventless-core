@@ -2,6 +2,7 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
+var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_math = require("bs-platform/lib/js/js_math.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");

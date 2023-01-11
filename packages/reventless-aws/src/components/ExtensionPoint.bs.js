@@ -5,10 +5,11 @@ var ExtensionPoint$Reventless = require("@reventless/reventless/src/components/E
 var EventTopicPublisher_SNS$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_SNS.bs.js");
 var CommandTopicConnector_SQS$ReventlessAws = require("../adapter/CommandTopic/CommandTopicConnector_SQS.bs.js");
 
-function Make(Spec) {
-  return (function (Mappings) {
-      return ExtensionPoint$Reventless.Make(Spec)(Mappings)(CommandTopicConnector_SQS$ReventlessAws)(EventTopicPublisher_SNS$ReventlessAws);
-    });
+function Make(Spec, Mappings) {
+  var partial_arg = CommandTopicConnector_SQS$ReventlessAws;
+  var partial_arg$1 = ExtensionPoint$Reventless.Make;
+  var param = EventTopicPublisher_SNS$ReventlessAws;
+  return partial_arg$1(Spec, Mappings, partial_arg, param);
 }
 
 exports.Make = Make;

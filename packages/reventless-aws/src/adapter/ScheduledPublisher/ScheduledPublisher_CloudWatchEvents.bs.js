@@ -8,23 +8,23 @@ var Pulumi = require("@pulumi/pulumi");
 var ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws = require("./ScheduledPublisher_CloudWatchEvents_Runtime.bs.js");
 
 function make(param, opts) {
-  var role = IAM$PulumiAws.Role.makeWithDefaultPolicy("CloudWatchEventsRole", Pulumi.output("events.amazonaws.com"), Caml_option.some(opts), /* () */0);
+  var role = IAM$PulumiAws.Role.makeWithDefaultPolicy("CloudWatchEventsRole", Pulumi.output("events.amazonaws.com"), Caml_option.some(opts), undefined);
   new (Aws.iam.Policy)("CloudWatchEventsPolicy", {
         policy: role.arn.apply((function (roleArn) {
                 return "{\n                    \"Version\": \"2012-10-17\",\n                    \"Statement\": [{\n                      \"Effect\": \"Allow\",\n                      \"Action\": \"events:*\",\n                      \"Resource\": \"*\"\n                    },{\n                      \"Effect\": \"Allow\",\n                      \"Action\": \"iam:PassRole\",\n                      \"Resource\": \"" + (String(roleArn) + "\"\n                  }]\n                  }");
               }))
       }, opts);
-  return /* record */[
-          /* resource */{
+  return {
+          resource: {
             service: Pulumi.output("CloudWatchEvents"),
             name: Pulumi.output(""),
             id: Pulumi.output(""),
             urn: Pulumi.output(""),
             info: Pulumi.output("")
           },
-          /* create */ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(role),
-          /* delete */ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule
-        ];
+          create: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(role),
+          delete: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule
+        };
 }
 
 exports.make = make;

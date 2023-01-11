@@ -115,11 +115,12 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
       fields->Belt.Array.map(field => {
         let commandName =
           switch (field->Js.String2.split("_")) {
-          | [|_aggregate, commandName|] => commandName->String.capitalize
-          | _ => field->String.capitalize
+          | [|_aggregate, commandName|] =>
+            commandName->String.capitalize_ascii
+          | _ => field->String.capitalize_ascii
           };
         AppSync.Resolver.make(
-          ~name=field->String.capitalize,
+          ~name=field->String.capitalize_ascii,
           ~api,
           ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
           ~_type="Mutation"->Pulumi.Input.wrap,
