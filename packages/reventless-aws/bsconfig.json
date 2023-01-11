@@ -5,7 +5,7 @@
   "suffix": ".bs.js",
   "refmt": 3,
   "ppx-flags": [
-    "@ryb73/decco/ppx/ppx_decco.sh"
+    "decco/ppx"
   ],
   "warnings": {
     "error": "-44+101"
@@ -25,7 +25,7 @@
     }
   ],
   "bs-dependencies": [
-    "@ryb73/decco",
+    "decco",
     "@glennsl/bs-jest",
     "@reventless/bs-aws-sdk",
     "@reventless/bs-pulumi-aws",

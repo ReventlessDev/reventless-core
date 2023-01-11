@@ -103,11 +103,7 @@ function Make(Target, Projection) {
                 }));
   };
   var update = function (store, $$event) {
-    var __x = handleAction(Curry._1(Projection.map, {
-              id: TestFixtures$Reventless.id,
-              meta: TestFixtures$Reventless.meta,
-              event: $$event
-            }), {
+    var __x = handleAction(Curry._2(Projection.map, $$event, TestFixtures$Reventless.context), {
           load: load(store),
           save: save(store),
           saveBatch: saveBatch(store),

@@ -27,16 +27,18 @@ function make(name, referencesName, referencesDb, countsName, countsDb, counterH
             undefined,
             undefined,
             undefined,
-            /* () */0
+            undefined
           ]), opts);
   var subscribe = function (sourceName, source) {
-    return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(eventHandlerLambda), name, sourceName, source, opts, /* () */0);
+    return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(eventHandlerLambda), name, sourceName, source, opts, undefined);
   };
   subscribe(referencesName, referencesStream);
   subscribe(countsName, countsStream);
-  return /* record */[/* addToCounterTarget */(function (param) {
+  return {
+          addToCounterTarget: (function (param) {
               return CounterHandler_DynamoDbStream_Runtime$ReventlessAws.addToCounterTarget(countsDbResource, param);
-            })];
+            })
+        };
 }
 
 exports.make = make;

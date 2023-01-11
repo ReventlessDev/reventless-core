@@ -21,9 +21,9 @@ function construct(setup, queryBucketName, scheduler, publishToAggregates, query
     var count = cmdJsons.length;
     Belt_Array.forEachWithIndex(cmdJsons, (function (idx, param) {
             var idx$1 = idx + 1 | 0;
-            var messageBody = JSON.stringify(param[/* commandJson */2]);
-            console.log("Task.publishCommands " + (String(idx$1) + ("/" + (String(count) + (": id=" + (String(param[/* id */0]) + (", " + (String(messageBody) + ""))))))));
-            return /* () */0;
+            var messageBody = JSON.stringify(param.commandJson);
+            console.log("Task.publishCommands " + (String(idx$1) + ("/" + (String(count) + (": id=" + (String(param.id) + (", " + (String(messageBody) + ""))))))));
+            
           }));
     return Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName))(cmdJsons);
   };
@@ -36,8 +36,7 @@ function make(name, setup, queryBucketName, scheduler, publishToAggregates, quer
   var prim$2 = function (param, param$1) {
     return construct(setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, param, param$1);
   };
-  var prim$3 = opts;
-  return new Component.default(prim, prim$1, prim$2, prim$3);
+  return new Component.default(prim, prim$1, prim$2, opts);
 }
 
 var componentType = /* Task */16;

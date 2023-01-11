@@ -11,20 +11,20 @@ var Util_StackRefs$Reventless = require("./Util_StackRefs.bs.js");
 var Util_QueryDbRuntime$Reventless = require("./Util_QueryDbRuntime.bs.js");
 
 function getRemoteStorageResources(pluginName, queryDbName) {
-  var match = Belt_Option.map(Util_StackRefs$Reventless.get(pluginName), (function (stackRef) {
+  var resources = Belt_Option.map(Util_StackRefs$Reventless.get(pluginName), (function (stackRef) {
           return stackRef.requireOutput("plugin").apply((function (plugin) {
                         return Belt_Option.getWithDefault(Belt_Option.map(Belt_Option.flatMap(plugin.readModels, (function (readModels) {
                                               return Js_dict.get(readModels, queryDbName);
                                             })), (function (readModel) {
                                           return Belt_Array.map(readModel.queryDb.resources, Adapter$Reventless.unwrappedOutputToResource);
-                                        })), /* array */[]);
+                                        })), []);
                       }));
         }));
-  if (match !== undefined) {
-    return Caml_option.valFromOption(match);
+  if (resources !== undefined) {
+    return Caml_option.valFromOption(resources);
   } else {
     console.log("Util_QueryDbRuntime.getLocalStorageResources: Couldn't find Plugin $pluginName");
-    return Pulumi.output(/* array */[]);
+    return Pulumi.output([]);
   }
 }
 

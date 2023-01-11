@@ -16,110 +16,107 @@ var EventCollector$Reventless = require("./EventCollector.bs.js");
 var Util_EventTopic$Reventless = require("../util/Util_EventTopic.bs.js");
 var ProjectionMapper$Reventless = require("../ProjectionMapper.bs.js");
 
-function Make(Config) {
-  return (function (Spec) {
-      return (function (Mappings) {
-          return (function (QueryDbStorage) {
-              return (function (QueryDbResolvers) {
-                  return (function (EventCollectorConnector) {
-                      var QueryDb = QueryDb$Reventless.Make(Config)(Spec)(QueryDbStorage)(QueryDbResolvers);
-                      var construct = function (allEventTopics, self, name) {
-                        var opts = {
-                          parent: self
-                        };
-                        var queryDb = Curry._3(QueryDb.make, undefined, Caml_option.some(opts), /* () */0);
-                        var load = function (id) {
-                          return Curry._1(QueryDb.load, queryDb)(Curry._1(Spec.Id.makeFromString, id));
-                        };
-                        var save = function (id, state, saveMode, opt) {
-                          return Curry._1(QueryDb.save, queryDb)(Curry._1(Spec.Id.makeFromString, id), state, saveMode, opt);
-                        };
-                        var saveBatch = function (states) {
-                          return Curry._1(QueryDb.saveBatch, queryDb)(Belt_Array.map(states, (function (param) {
-                                            return /* tuple */[
-                                                    Curry._1(Spec.Id.makeFromString, param[0]),
-                                                    param[1],
-                                                    param[2]
-                                                  ];
-                                          })));
-                        };
-                        var $$delete = function (id, sort) {
-                          return Curry._1(QueryDb.$$delete, queryDb)(Curry._1(Spec.Id.makeFromString, id), sort);
-                        };
-                        var primitives = /* record */[
-                          /* load */load,
-                          /* save */save,
-                          /* saveBatch */saveBatch,
-                          /* delete */$$delete
-                        ];
-                        var EventProjector = ProjectionMapper$Reventless.Make({
-                                Id: Spec.Id,
-                                name: Spec.name,
-                                state_encode: Spec.state_encode,
-                                state_decode: Spec.state_decode,
-                                subIdConfig: Spec.subIdConfig
-                              })(Mappings);
-                        var eventsHandler = function (jsons) {
-                          var actions = Belt_Array.concatMany(Belt_Array.map(jsons, (function (json) {
-                                      var sourceName = Belt_Result.getWithDefault(Belt_Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
-                                                  return context[/* meta */1][/* service */0];
-                                                })), "");
-                                      var func = EventProjector.map;
-                                      return (function (param) {
-                                                  return Curry._2(func, param, json);
-                                                })(sourceName);
-                                    })));
-                          var primitives$1 = primitives;
-                          var __x = Promise.all(Projection$Reventless.handleActions(actions, primitives$1));
-                          return __x.then((function (param) {
-                                        return Promise.resolve(/* () */0);
-                                      }));
-                        };
-                        var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(Mappings.mappings, (function (Mapping) {
-                                    return Mapping.Source.name;
-                                  })));
-                        var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-                        var eventCollector = Curry.app(EventCollector.make, [
-                              ComponentType$Reventless.name(name, /* ReadModel */12),
-                              Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames),
-                              eventsHandler,
-                              undefined,
-                              undefined,
-                              undefined,
-                              undefined,
-                              Caml_option.some(opts),
-                              /* () */0
-                            ]);
-                        var self$1 = self;
-                        var outputs = {
-                          name: name,
-                          queryDb: Component$Reventless.extractOutputs(queryDb),
-                          eventCollector: Component$Reventless.extractOutputs(eventCollector)
-                        };
-                        self$1.setOutputs(outputs);
-                        return self$1.registerOutputs(outputs);
-                      };
-                      var make = function (allEventTopics, opts, param) {
-                        var prim = ComponentType$Reventless.toString(/* ReadModel */12);
-                        var prim$1 = Spec.name;
-                        var prim$2 = function (param, param$1) {
-                          return construct(allEventTopics, param, param$1);
-                        };
-                        var prim$3 = opts;
-                        return new Component.default(prim, prim$1, prim$2, prim$3);
-                      };
-                      return {
-                              Spec: Spec,
-                              make: make
-                            };
-                    });
-                });
-            });
-        });
-    });
+function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCollectorConnector) {
+  var partial_arg = QueryDb$Reventless.Make;
+  var partial_arg$1 = function (param, param$1) {
+    return partial_arg(Config, Spec, param, param$1);
+  };
+  var QueryDb = partial_arg$1(QueryDbStorage, QueryDbResolvers);
+  var construct = function (allEventTopics, self, name) {
+    var opts = {
+      parent: self
+    };
+    var queryDb = Curry._3(QueryDb.make, undefined, Caml_option.some(opts), undefined);
+    var load = function (id) {
+      return Curry._1(QueryDb.load, queryDb)(Curry._1(Spec.Id.makeFromString, id));
+    };
+    var save = function (id, state, saveMode, opt) {
+      return Curry._1(QueryDb.save, queryDb)(Curry._1(Spec.Id.makeFromString, id), state, saveMode, opt);
+    };
+    var saveBatch = function (states) {
+      return Curry._1(QueryDb.saveBatch, queryDb)(Belt_Array.map(states, (function (param) {
+                        return /* tuple */[
+                                Curry._1(Spec.Id.makeFromString, param[0]),
+                                param[1],
+                                param[2]
+                              ];
+                      })));
+    };
+    var $$delete = function (id, sort) {
+      return Curry._1(QueryDb.$$delete, queryDb)(Curry._1(Spec.Id.makeFromString, id), sort);
+    };
+    var primitives = {
+      load: load,
+      save: save,
+      saveBatch: saveBatch,
+      delete: $$delete
+    };
+    var partial_arg_Id = Spec.Id;
+    var partial_arg_name = Spec.name;
+    var partial_arg_state_encode = Spec.state_encode;
+    var partial_arg_state_decode = Spec.state_decode;
+    var partial_arg_subIdConfig = Spec.subIdConfig;
+    var partial_arg = {
+      Id: partial_arg_Id,
+      name: partial_arg_name,
+      state_encode: partial_arg_state_encode,
+      state_decode: partial_arg_state_decode,
+      subIdConfig: partial_arg_subIdConfig
+    };
+    var partial_arg$1 = ProjectionMapper$Reventless.Make;
+    var EventProjector = (function (param) {
+          return partial_arg$1(partial_arg, param);
+        })(Mappings);
+    var eventsHandler = function (jsons) {
+      var actions = Belt_Array.concatMany(Belt_Array.map(jsons, (function (json) {
+                  var sourceName = Belt_Result.getWithDefault(Belt_Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
+                              return context.meta.service;
+                            })), "");
+                  return Curry._2(EventProjector.map, sourceName, json);
+                })));
+      var __x = Promise.all(Projection$Reventless.handleActions(actions, primitives));
+      return __x.then((function (param) {
+                    return Promise.resolve(undefined);
+                  }));
+    };
+    var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(Mappings.mappings, (function (Mapping) {
+                return Mapping.Source.name;
+              })));
+    var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+    var eventCollector = Curry.app(EventCollector.make, [
+          ComponentType$Reventless.name(name, /* ReadModel */12),
+          Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames),
+          eventsHandler,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          Caml_option.some(opts),
+          undefined
+        ]);
+    var outputs = {
+      name: name,
+      queryDb: Component$Reventless.extractOutputs(queryDb),
+      eventCollector: Component$Reventless.extractOutputs(eventCollector)
+    };
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
+  };
+  var make = function (allEventTopics, opts, param) {
+    var prim = ComponentType$Reventless.toString(/* ReadModel */12);
+    var prim$1 = Spec.name;
+    var prim$2 = function (param, param$1) {
+      return construct(allEventTopics, param, param$1);
+    };
+    return new Component.default(prim, prim$1, prim$2, opts);
+  };
+  return {
+          Spec: Spec,
+          make: make
+        };
 }
 
-var ReventlessQueryDb = 0;
+var ReventlessQueryDb;
 
 var componentType = /* ReadModel */12;
 

@@ -15,12 +15,12 @@ var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 function NoResolvers(Config) {
   var make = function (param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8) {
-    return /* record */[
-            /* resources : array */[],
-            /* resourcesMaker */(function (param) {
-                return /* array */[];
+    return {
+            resources: [],
+            resourcesMaker: (function (param) {
+                return [];
               })
-          ];
+          };
   };
   return {
           make: make
@@ -31,145 +31,132 @@ var Adapter = {
   NoResolvers: NoResolvers
 };
 
-function Make(Config) {
-  return (function (Spec) {
-      return (function ($$Storage) {
-          return (function (Resolvers) {
-              var loadFn = function (storage) {
-                return (function (id) {
-                    return storage[/* load */2](Curry._1(Spec.Id.toString, id)).then((function (result) {
-                                  return Promise.resolve(Belt_Result.map(result, (function (states) {
-                                                    return Belt_List.flatten(Belt_List.map(states, (function (param) {
-                                                                      var id$1 = id;
-                                                                      var item = param;
-                                                                      var match = Curry._1(Spec.state_decode, item);
-                                                                      if (match.tag) {
-                                                                        console.log("QueryDb: Error: Couldn\'t decode state for " + (String(id$1) + (": " + (String(match[0]) + ""))));
-                                                                        return /* [] */0;
-                                                                      } else {
-                                                                        return /* :: */[
-                                                                                match[0],
-                                                                                /* [] */0
-                                                                              ];
-                                                                      }
-                                                                    })));
-                                                  })));
-                                }));
-                  });
-              };
-              var saveFn = function (storage) {
-                return (function (id, state, saveMode, ttl) {
-                    var match = Js_json.decodeObject(Curry._1(Spec.state_encode, state));
-                    if (match !== undefined) {
-                      var dict = Caml_option.valFromOption(match);
-                      dict["id"] = Curry._1(Spec.Id.t_encode, id);
-                      return storage[/* save */3](Curry._1(Spec.Id.toString, id), dict, saveMode, ttl);
-                    } else {
-                      console.log("QueryDB.save: Error: Couldn't decodeObject:", Caml_option.undefined_to_opt(JSON.stringify(state)));
-                      return Promise.resolve(/* Error */Block.__(1, [/* NotSavedToStorage */Block.__(0, ["Couldn't decodeObject"])]));
-                    }
-                  });
-              };
-              var saveBatchFn = function (storage) {
-                return (function (items) {
-                    var batch = Belt_Array.keepMap(items, (function (param) {
-                            var state = param[1];
-                            var id = param[0];
-                            var match = Js_json.decodeObject(Curry._1(Spec.state_encode, state));
-                            if (match !== undefined) {
-                              var dict = Caml_option.valFromOption(match);
-                              dict["id"] = Curry._1(Spec.Id.t_encode, id);
-                              return /* tuple */[
-                                      Curry._1(Spec.Id.toString, id),
-                                      dict,
-                                      param[2]
-                                    ];
-                            } else {
-                              console.log("QueryDB.saveBatch: Error: Couldn't decodeObject:", Caml_option.undefined_to_opt(JSON.stringify(state)));
-                              return ;
-                            }
-                          }));
-                    return storage[/* saveBatch */4](batch);
-                  });
-              };
-              var countFn = function (storage) {
-                return (function (id, fieldName, inc) {
-                    return storage[/* count */5](Curry._1(Spec.Id.toString, id), fieldName, inc);
-                  });
-              };
-              var deleteFn = function (storage) {
-                return (function (id, sort) {
-                    return storage[/* delete */6](Curry._1(Spec.Id.toString, id), sort);
-                  });
-              };
-              var outputs = Component$Reventless.extractOutputs;
-              var construct = function (ttl, self, name, api, apiRole) {
-                var opts = {
-                  parent: self
-                };
-                var sortField = Belt_Option.map(Spec.subIdConfig, (function (config) {
-                        return config[/* subIdField */0];
-                      }));
-                var storageName = ComponentType$Reventless.name(name, /* QueryDb */11);
-                var storage = Curry._7($$Storage.make, storageName, Spec.indexes, sortField, ttl, api, apiRole, opts);
-                self.load = loadFn(storage);
-                self.save = saveFn(storage);
-                self.saveBatch = saveBatchFn(storage);
-                self.count = countFn(storage);
-                self.delete = deleteFn(storage);
-                var resolvers = Curry.app(Resolvers.make, [
-                      name,
-                      api,
-                      apiRole,
-                      storage[/* dataSourceName */1],
-                      Spec.indexes,
-                      sortField,
-                      Spec.resolveIdConfigs,
-                      Spec.resolveIdsConfigs,
-                      opts
-                    ]);
-                var self$1 = self;
-                var outputs = {
-                  resources: Belt_Array.concat(storage[/* resources */0], resolvers[/* resources */0]),
-                  resolversMaker: resolvers[/* resourcesMaker */1]
-                };
-                self$1.setOutputs(outputs);
-                return self$1.registerOutputs(outputs);
-              };
-              var make = function (ttl, opts, param) {
-                var prim = ComponentType$Reventless.toString(/* QueryDb */11);
-                var prim$1 = Spec.name;
-                var prim$2 = function (param, param$1, param$2, param$3) {
-                  return construct(ttl, param, param$1, param$2, param$3);
-                };
-                var prim$3 = opts;
-                var prim$4 = Config.api;
-                var prim$5 = Config.apiRole;
-                return new Component.default(prim, prim$1, prim$2, prim$3, prim$4, prim$5);
-              };
-              return {
-                      Spec: Spec,
-                      make: make,
-                      load: (function (prim) {
-                          return prim.load;
-                        }),
-                      save: (function (prim) {
-                          return prim.save;
-                        }),
-                      saveBatch: (function (prim) {
-                          return prim.saveBatch;
-                        }),
-                      count: (function (prim) {
-                          return prim.count;
-                        }),
-                      $$delete: (function (prim) {
-                          return prim.delete;
-                        }),
-                      outputs: outputs
-                    };
-            });
-        });
-    });
+function Make(Config, Spec, $$Storage, Resolvers) {
+  var loadFn = function (storage) {
+    return (function (id) {
+        return storage.load(Curry._1(Spec.Id.toString, id)).then((function (result) {
+                      return Promise.resolve(Belt_Result.map(result, (function (states) {
+                                        return Belt_List.flatten(Belt_List.map(states, (function (param) {
+                                                          var state = Curry._1(Spec.state_decode, param);
+                                                          if (!state.tag) {
+                                                            return /* :: */[
+                                                                    state[0],
+                                                                    /* [] */0
+                                                                  ];
+                                                          }
+                                                          console.log("QueryDb: Error: Couldn\'t decode state for " + (String(id) + (": " + (String(state[0]) + ""))));
+                                                          return /* [] */0;
+                                                        })));
+                                      })));
+                    }));
+      });
+  };
+  var saveFn = function (storage) {
+    return (function (id, state, saveMode, ttl) {
+        var dict = Js_json.decodeObject(Curry._1(Spec.state_encode, state));
+        if (dict !== undefined) {
+          var dict$1 = Caml_option.valFromOption(dict);
+          dict$1["id"] = Curry._1(Spec.Id.t_encode, id);
+          return storage.save(Curry._1(Spec.Id.toString, id), dict$1, saveMode, ttl);
+        }
+        console.log("QueryDB.save: Error: Couldn't decodeObject:", JSON.stringify(state));
+        return Promise.resolve(/* Error */Block.__(1, [/* NotSavedToStorage */Block.__(0, ["Couldn't decodeObject"])]));
+      });
+  };
+  var saveBatchFn = function (storage) {
+    return (function (items) {
+        var batch = Belt_Array.keepMap(items, (function (param) {
+                var state = param[1];
+                var id = param[0];
+                var dict = Js_json.decodeObject(Curry._1(Spec.state_encode, state));
+                if (dict !== undefined) {
+                  var dict$1 = Caml_option.valFromOption(dict);
+                  dict$1["id"] = Curry._1(Spec.Id.t_encode, id);
+                  return /* tuple */[
+                          Curry._1(Spec.Id.toString, id),
+                          dict$1,
+                          param[2]
+                        ];
+                }
+                console.log("QueryDB.saveBatch: Error: Couldn't decodeObject:", JSON.stringify(state));
+                
+              }));
+        return storage.saveBatch(batch);
+      });
+  };
+  var countFn = function (storage) {
+    return (function (id, fieldName, inc) {
+        return storage.count(Curry._1(Spec.Id.toString, id), fieldName, inc);
+      });
+  };
+  var deleteFn = function (storage) {
+    return (function (id, sort) {
+        return storage.delete(Curry._1(Spec.Id.toString, id), sort);
+      });
+  };
+  var outputs = Component$Reventless.extractOutputs;
+  var construct = function (ttl, self, name, api, apiRole) {
+    var opts = {
+      parent: self
+    };
+    var sortField = Belt_Option.map(Spec.subIdConfig, (function (config) {
+            return config.subIdField;
+          }));
+    var storageName = ComponentType$Reventless.name(name, /* QueryDb */11);
+    var storage = Curry._7($$Storage.make, storageName, Spec.indexes, sortField, ttl, api, apiRole, opts);
+    self.load = loadFn(storage);
+    self.save = saveFn(storage);
+    self.saveBatch = saveBatchFn(storage);
+    self.count = countFn(storage);
+    self.delete = deleteFn(storage);
+    var resolvers = Curry.app(Resolvers.make, [
+          name,
+          api,
+          apiRole,
+          storage.dataSourceName,
+          Spec.indexes,
+          sortField,
+          Spec.resolveIdConfigs,
+          Spec.resolveIdsConfigs,
+          opts
+        ]);
+    var outputs = {
+      resources: Belt_Array.concat(storage.resources, resolvers.resources),
+      resolversMaker: resolvers.resourcesMaker
+    };
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
+  };
+  var make = function (ttl, opts, param) {
+    var prim = ComponentType$Reventless.toString(/* QueryDb */11);
+    var prim$1 = Spec.name;
+    var prim$2 = function (param, param$1, param$2, param$3) {
+      return construct(ttl, param, param$1, param$2, param$3);
+    };
+    var prim$3 = Config.api;
+    var prim$4 = Config.apiRole;
+    return new Component.default(prim, prim$1, prim$2, opts, prim$3, prim$4);
+  };
+  return {
+          Spec: Spec,
+          make: make,
+          load: (function (prim) {
+              return prim.load;
+            }),
+          save: (function (prim) {
+              return prim.save;
+            }),
+          saveBatch: (function (prim) {
+              return prim.saveBatch;
+            }),
+          count: (function (prim) {
+              return prim.count;
+            }),
+          $$delete: (function (prim) {
+              return prim.delete;
+            }),
+          outputs: outputs
+        };
 }
 
 var componentType = /* QueryDb */11;

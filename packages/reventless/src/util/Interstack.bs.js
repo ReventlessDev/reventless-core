@@ -15,16 +15,16 @@ var coreStackOutput = Belt_Option.map(coreStackReference, (function (coreStack) 
         return coreStack.requireOutput("core");
       }));
 
-var stackDependencies = Pulumi.all(Belt_Array.concat(Belt_Array.map(Belt_Option.getWithDefault(new Pulumi.Config("interstack").getObject("dependencies"), /* array */[]), (function (stackName) {
+var stackDependencies = Pulumi.all(Belt_Array.concat(Belt_Array.map(Belt_Option.getWithDefault(new Pulumi.Config("interstack").getObject("dependencies"), []), (function (stackName) {
                 return new Pulumi.StackReference(stackName).requireOutput("plugin");
-              })), Belt_Option.mapWithDefault(coreStackOutput, /* array */[], (function (coreStack) {
-                return /* array */[coreStack];
+              })), Belt_Option.mapWithDefault(coreStackOutput, [], (function (coreStack) {
+                return [coreStack];
               }))));
 
 function getOutputs(getOutput) {
   return stackDependencies.apply((function (plugins) {
                 return Belt_Array.concatMany(Belt_Array.map(plugins, (function (plugin) {
-                                  return Belt_Option.mapWithDefault(Curry._1(getOutput, plugin), /* array */[], Js_dict.values);
+                                  return Belt_Option.mapWithDefault(Curry._1(getOutput, plugin), [], Js_dict.values);
                                 })));
               }));
 }
@@ -39,7 +39,7 @@ var stackDependenciesEventMappers = getOutputs((function (plugin) {
 
 function mergeManyRef(dependencies, locals) {
   return dependencies.apply((function (dependencies) {
-                return Belt_Array.concat(locals[0], dependencies);
+                return Belt_Array.concat(locals.contents, dependencies);
               }));
 }
 

@@ -5,7 +5,7 @@ var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.bs.js");
 var EventLogStorage_DynamoDb_Runtime$ReventlessAws = require("./EventLogStorage_DynamoDb_Runtime.bs.js");
 
 function make(name, opts) {
-  var table = Util_DynamoDb$ReventlessAws.makeTable(/* array */[
+  var table = Util_DynamoDb$ReventlessAws.makeTable([
         {
           name: "id",
           type: "S"
@@ -15,11 +15,11 @@ function make(name, opts) {
           type: "S"
         }
       ], undefined, undefined, "sequenceNr", opts, name);
-  return /* record */[
-          /* resources : array */[Util_DynamoDb$ReventlessAws.toResource(table)],
-          /* append */EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table),
-          /* replay */EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(table)
-        ];
+  return {
+          resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
+          append: EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table),
+          replay: EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(table)
+        };
 }
 
 exports.make = make;

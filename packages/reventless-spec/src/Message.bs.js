@@ -3,221 +3,221 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var Decco = require("@ryb73/decco/src/Decco.js");
+var Decco = require("decco/src/Decco.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 
 var service_encode = Decco.stringToJson;
 
 var service_decode = Decco.stringFromJson;
 
 function meta_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "service",
-                Decco.stringToJson(v[/* service */0])
+                Decco.stringToJson(v.service)
               ],
               /* tuple */[
                 "time",
-                Decco.stringToJson(v[/* time */1])
+                Decco.stringToJson(v.time)
               ],
               /* tuple */[
                 "ip",
-                Decco.stringToJson(v[/* ip */2])
+                Decco.stringToJson(v.ip)
               ],
               /* tuple */[
                 "user",
-                Decco.stringToJson(v[/* user */3])
+                Decco.stringToJson(v.user)
               ],
               /* tuple */[
                 "msgId",
-                Decco.stringToJson(v[/* msgId */4])
+                Decco.stringToJson(v.msgId)
               ],
               /* tuple */[
                 "correlationId",
-                Decco.stringToJson(v[/* correlationId */5])
+                Decco.stringToJson(v.correlationId)
               ]
             ]);
 }
 
 function meta_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "service");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "time");
-    var match$4 = Decco.stringFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "ip");
-    var match$6 = Decco.stringFromJson(match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    var match$7 = Js_dict.get(dict, "user");
-    var match$8 = Decco.stringFromJson(match$7 !== undefined ? Caml_option.valFromOption(match$7) : null);
-    var match$9 = Js_dict.get(dict, "msgId");
-    var match$10 = Decco.stringFromJson(match$9 !== undefined ? Caml_option.valFromOption(match$9) : null);
-    var match$11 = Js_dict.get(dict, "correlationId");
-    var match$12 = Decco.stringFromJson(match$11 !== undefined ? Caml_option.valFromOption(match$11) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".service" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".time" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".ip" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else if (match$8.tag) {
-      var e$3 = match$8[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".user" + e$3[/* path */0],
-                  /* message */e$3[/* message */1],
-                  /* value */e$3[/* value */2]
-                ]]);
-    } else if (match$10.tag) {
-      var e$4 = match$10[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".msgId" + e$4[/* path */0],
-                  /* message */e$4[/* message */1],
-                  /* value */e$4[/* value */2]
-                ]]);
-    } else if (match$12.tag) {
-      var e$5 = match$12[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".correlationId" + e$5[/* path */0],
-                  /* message */e$5[/* message */1],
-                  /* value */e$5[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* service */match$2[0],
-                  /* time */match$4[0],
-                  /* ip */match$6[0],
-                  /* user */match$8[0],
-                  /* msgId */match$10[0],
-                  /* correlationId */match$12[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var service = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "service"), null));
+  if (service.tag) {
+    var e = service[0];
+    return /* Error */Block.__(1, [{
+                path: ".service" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var time = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "time"), null));
+  if (time.tag) {
+    var e$1 = time[0];
+    return /* Error */Block.__(1, [{
+                path: ".time" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var ip = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "ip"), null));
+  if (ip.tag) {
+    var e$2 = ip[0];
+    return /* Error */Block.__(1, [{
+                path: ".ip" + e$2.path,
+                message: e$2.message,
+                value: e$2.value
+              }]);
+  }
+  var user = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "user"), null));
+  if (user.tag) {
+    var e$3 = user[0];
+    return /* Error */Block.__(1, [{
+                path: ".user" + e$3.path,
+                message: e$3.message,
+                value: e$3.value
+              }]);
+  }
+  var msgId = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "msgId"), null));
+  if (msgId.tag) {
+    var e$4 = msgId[0];
+    return /* Error */Block.__(1, [{
+                path: ".msgId" + e$4.path,
+                message: e$4.message,
+                value: e$4.value
+              }]);
+  }
+  var correlationId = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "correlationId"), null));
+  if (!correlationId.tag) {
+    return /* Ok */Block.__(0, [{
+                service: service[0],
+                time: time[0],
+                ip: ip[0],
+                user: user[0],
+                msgId: msgId[0],
+                correlationId: correlationId[0]
+              }]);
+  }
+  var e$5 = correlationId[0];
+  return /* Error */Block.__(1, [{
+              path: ".correlationId" + e$5.path,
+              message: e$5.message,
+              value: e$5.value
+            }]);
 }
 
 function context_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "id",
-                Decco.stringToJson(v[/* id */0])
+                Decco.stringToJson(v.id)
               ],
               /* tuple */[
                 "meta",
-                meta_encode(v[/* meta */1])
+                meta_encode(v.meta)
               ]
             ]);
 }
 
 function context_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "meta");
-    var match$4 = meta_decode(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".meta" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* meta */match$4[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var id = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
+  if (id.tag) {
+    var e = id[0];
+    return /* Error */Block.__(1, [{
+                path: ".id" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var meta = meta_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "meta"), null));
+  if (!meta.tag) {
+    return /* Ok */Block.__(0, [{
+                id: id[0],
+                meta: meta[0]
+              }]);
+  }
+  var e$1 = meta[0];
+  return /* Error */Block.__(1, [{
+              path: ".meta" + e$1.path,
+              message: e$1.message,
+              value: e$1.value
+            }]);
 }
 
 function event$prime_encode(encoder_id, encoder_event, v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "id",
-                Curry._1(encoder_id, v[/* id */0])
+                Curry._1(encoder_id, v.id)
               ],
               /* tuple */[
                 "meta",
-                meta_encode(v[/* meta */1])
+                meta_encode(v.meta)
               ],
               /* tuple */[
                 "event",
-                Curry._1(encoder_event, v[/* event */2])
+                Curry._1(encoder_event, v.event)
               ]
             ]);
 }
 
 function event$prime_decode(decoder_id, decoder_event, v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Curry._1(decoder_id, match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "meta");
-    var match$4 = meta_decode(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "event");
-    var match$6 = Curry._1(decoder_event, match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".meta" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".event" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* meta */match$4[0],
-                  /* event */match$6[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var id = Curry._1(decoder_id, Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
+  if (id.tag) {
+    var e = id[0];
+    return /* Error */Block.__(1, [{
+                path: ".id" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var meta = meta_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "meta"), null));
+  if (meta.tag) {
+    var e$1 = meta[0];
+    return /* Error */Block.__(1, [{
+                path: ".meta" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var $$event = Curry._1(decoder_event, Belt_Option.getWithDefault(Js_dict.get(dict$1, "event"), null));
+  if (!$$event.tag) {
+    return /* Ok */Block.__(0, [{
+                id: id[0],
+                meta: meta[0],
+                event: $$event[0]
+              }]);
+  }
+  var e$2 = $$event[0];
+  return /* Error */Block.__(1, [{
+              path: ".event" + e$2.path,
+              message: e$2.message,
+              value: e$2.value
+            }]);
 }
 
 exports.service_encode = service_encode;

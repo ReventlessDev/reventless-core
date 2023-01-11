@@ -11,12 +11,12 @@ function merge(v1, v2) {
         var a1 = v1[0];
         switch (v2.tag | 0) {
           case /* Success */0 :
-              return /* Successes */Block.__(1, [/* array */[
+              return /* Successes */Block.__(1, [[
                           a1,
                           v2[0]
                         ]]);
           case /* Successes */1 :
-              return /* Successes */Block.__(1, [Belt_Array.concat(/* array */[a1], v2[0])]);
+              return /* Successes */Block.__(1, [Belt_Array.concat([a1], v2[0])]);
           case /* Failure */2 :
               return /* Failure */Block.__(2, [v2[0]]);
           case /* Failures */3 :
@@ -27,7 +27,7 @@ function merge(v1, v2) {
         var as1 = v1[0];
         switch (v2.tag | 0) {
           case /* Success */0 :
-              return /* Successes */Block.__(1, [Belt_Array.concat(as1, /* array */[v2[0]])]);
+              return /* Successes */Block.__(1, [Belt_Array.concat(as1, [v2[0]])]);
           case /* Successes */1 :
               return /* Successes */Block.__(1, [Belt_Array.concat(as1, v2[0])]);
           case /* Failure */2 :
@@ -43,12 +43,12 @@ function merge(v1, v2) {
           case /* Successes */1 :
               return /* Failure */Block.__(2, [b1]);
           case /* Failure */2 :
-              return /* Failures */Block.__(3, [/* array */[
+              return /* Failures */Block.__(3, [[
                           b1,
                           v2[0]
                         ]]);
           case /* Failures */3 :
-              return /* Failures */Block.__(3, [Belt_Array.concat(/* array */[b1], v2[0])]);
+              return /* Failures */Block.__(3, [Belt_Array.concat([b1], v2[0])]);
           
         }
     case /* Failures */3 :
@@ -58,7 +58,7 @@ function merge(v1, v2) {
           case /* Successes */1 :
               return /* Failures */Block.__(3, [bs1]);
           case /* Failure */2 :
-              return /* Failures */Block.__(3, [Belt_Array.concat(bs1, /* array */[v2[0]])]);
+              return /* Failures */Block.__(3, [Belt_Array.concat(bs1, [v2[0]])]);
           case /* Failures */3 :
               return /* Failures */Block.__(3, [Belt_Array.concat(bs1, v2[0])]);
           
@@ -103,16 +103,16 @@ function $less$plus$question$great(v1, a2) {
   return mergeAsyncRight(v1, a2, defaultErrorHandler);
 }
 
-function toResult(param) {
-  switch (param.tag | 0) {
+function toResult(s) {
+  switch (s.tag | 0) {
     case /* Success */0 :
-        return /* Ok */Block.__(0, [/* array */[param[0]]]);
+        return /* Ok */Block.__(0, [[s[0]]]);
     case /* Successes */1 :
-        return /* Ok */Block.__(0, [param[0]]);
+        return /* Ok */Block.__(0, [s[0]]);
     case /* Failure */2 :
-        return /* Error */Block.__(1, [/* array */[param[0]]]);
+        return /* Error */Block.__(1, [[s[0]]]);
     case /* Failures */3 :
-        return /* Error */Block.__(1, [param[0]]);
+        return /* Error */Block.__(1, [s[0]]);
     
   }
 }

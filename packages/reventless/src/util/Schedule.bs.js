@@ -34,17 +34,17 @@ var ScheduleNotDeleted = Caml_exceptions.create("Schedule-Reventless.ScheduleNot
 
 function create(scheduler, queueResources) {
   return (function (schedule) {
-      var name = AWS$Reventless.validateName(schedule[/* name */0]);
-      var schedule_001 = /* rate */schedule[/* rate */1];
-      var schedule_002 = /* payload */schedule[/* payload */2];
-      var schedule$1 = /* record */[
-        /* name */name,
-        schedule_001,
-        schedule_002
-      ];
+      var name = AWS$Reventless.validateName(schedule.name);
+      var schedule_rate = schedule.rate;
+      var schedule_payload = schedule.payload;
+      var schedule$1 = {
+        name: name,
+        rate: schedule_rate,
+        payload: schedule_payload
+      };
       var createSchedule = scheduler.createSchedule;
       return createSchedule(queueResources, schedule$1).then((function (param) {
-                      return Promise.resolve((console.log("Schedule.create: created", schedule$1), /* () */0));
+                      return Promise.resolve((console.log("Schedule.create: created", schedule$1), undefined));
                     })).catch((function (err) {
                     console.log("Schedule.create: couldn't create", schedule$1, err);
                     return Promise.reject([
@@ -61,7 +61,7 @@ function $$delete(scheduler, queueResources) {
       var name$1 = AWS$Reventless.validateName(name);
       var deleteSchedule = scheduler.deleteSchedule;
       return deleteSchedule(queueResources, name$1).then((function (param) {
-                      return Promise.resolve((console.log("Schedule.delete: deleted", name$1), /* () */0));
+                      return Promise.resolve((console.log("Schedule.delete: deleted", name$1), undefined));
                     })).catch((function (err) {
                     console.log("Schedule.delete: couldn't delete", name$1, err);
                     return Promise.reject([

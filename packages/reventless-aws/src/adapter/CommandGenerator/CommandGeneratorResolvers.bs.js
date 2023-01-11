@@ -2,9 +2,9 @@
 'use strict';
 
 
-var AppSync = 0;
+var AppSync;
 
-var AppSync_Runtime = 0;
+var AppSync_Runtime;
 
 exports.AppSync = AppSync;
 exports.AppSync_Runtime = AppSync_Runtime;

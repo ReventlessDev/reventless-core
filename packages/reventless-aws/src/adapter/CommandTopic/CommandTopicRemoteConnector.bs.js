@@ -2,7 +2,7 @@
 'use strict';
 
 
-var SQS = 0;
+var SQS;
 
 exports.SQS = SQS;
 /* No side effect */
