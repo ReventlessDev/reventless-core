@@ -1,16 +1,27 @@
+module Record = {
+  type t = {
+    .
+    "body": string,
+    "eventSource": string,
+  };
+
+  external toSqsRecord: t => PulumiAws.SQS.Queue.Record.t = "%identity";
+  external toDynamoDbRecord: t => AwsSdk.DynamoDb.Stream.Record.t =
+    "%identity";
+};
+
 let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
   let records = callbackEvent##_Records->Belt.Option.getWithDefault([||]);
   let jsons =
     records->Belt.Array.keepMap(record =>
       switch (record##eventSource) {
       | "aws:sqs" =>
-        let sqsRecord = record->Obj.magic; // TODO: specify type
-        sqsRecord->Util.SQS_Runtime.parseSqsRecord;
+        record->Record.toSqsRecord->Util.SQS_Runtime.parseSqsRecord
       | "aws:dynamodb" =>
-        let dynamoDbStreamRecord: AwsSdk.DynamoDb.Stream.Record.t =
-          record->Obj.magic;
         switch (
-          dynamoDbStreamRecord->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecordEvent
+          record
+          ->Record.toDynamoDbRecord
+          ->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecordEvent
         ) {
         | NewImage(_, newImage)
         | NewAndOldImage(_, newImage, _) => Some(newImage)
@@ -20,7 +31,7 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
             ++ ".handleCallbackEvent: no NewImage included in Stream event !",
           );
           None;
-        };
+        }
       | eventSource =>
         Js.log2(
           "EventCollectorConnector_SQS_Runtime: ignoring record from eventSource:",
