@@ -111,14 +111,21 @@ module Make =
     [];
   };
 
+  [@bs.inline]
   let eventName: Message.event'(Spec.Id.t, Spec.event) => string =
-    event' => event'.event->Spec.event_encode->Obj.magic[0];
+    event' =>
+      event'.event
+      ->Spec.event_encode
+      ->Util.Decco.Json.variantName
+      ->Belt.Option.getWithDefault("Could not get event-name!");
 
+  [@bs.inline]
   let errorMessage = (id, kind, err) =>
     {j|Aggregate.execCommand($id): $kind Error: |j}
     ++
     err->Util.Error.ofPromise##message;
 
+  [@bs.inline]
   let logCommand' =
       (
         idx,
@@ -127,9 +134,11 @@ module Make =
         command': Message.command'(Spec.Id.t, Spec.command),
       ) => {
     let id = command'.id;
-    let command: array(string) =
-      command'.command->Spec.command_encode->Obj.magic;
-    let commandName = command[0];
+    let commandName =
+      command'.command
+      ->Spec.command_encode
+      ->Util.Decco.Json.variantName
+      ->Belt.Option.getWithDefault("Could not get command-name");
     let commandStr =
       command'
       |> Message.command'_encode(Spec.Id.t_encode, Spec.command_encode)

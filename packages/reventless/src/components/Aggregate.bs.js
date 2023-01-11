@@ -9,7 +9,6 @@ var Belt_Set = require("bs-platform/lib/js/belt_Set.js");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
@@ -18,6 +17,7 @@ var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var EventLog$Reventless = require("./EventLog.bs.js");
 var Component$Reventless = require("./Component.bs.js");
+var Util_Decco$Reventless = require("../util/Util_Decco.bs.js");
 var EventMapper$Reventless = require("./EventMapper.bs.js");
 var CommandTopic$Reventless = require("./CommandTopic.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
@@ -157,8 +157,7 @@ function Make(Config) {
                                                                                   var reference = param[/* reference */1];
                                                                                   var command$prime = param[/* command */0];
                                                                                   var id = command$prime[/* id */0];
-                                                                                  var command = Curry._1(Spec.command_encode, command$prime[/* command */2]);
-                                                                                  var commandName = Caml_array.caml_array_get(command, 0);
+                                                                                  var commandName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.command_encode, command$prime[/* command */2])), "Could not get command-name");
                                                                                   var commandStr = JSON.stringify(Message$Reventless.command$prime_encode(Spec.Id.t_encode, Spec.command_encode, command$prime));
                                                                                   var idx$2 = idx$1 + 1 | 0;
                                                                                   console.log("CommandTopic: handling command " + (String(idx$2) + ("/" + (String(count) + (": " + (String(commandName) + ("(" + (String(id) + (") ref: " + (String(reference) + (", complete command: " + (String(commandStr) + ""))))))))))));
@@ -195,7 +194,7 @@ function Make(Config) {
                                                                                           var eventCount = generatedEvents$prime.length;
                                                                                           console.log("Aggregate.handleCommands(" + (String(id) + ("): " + (String(eventCount) + " Event(s) generated:"))), Belt_Array.map(generatedEvents$prime, (function (event$prime) {
                                                                                                       var event$prime$1 = event$prime;
-                                                                                                      return Caml_array.caml_array_get(Curry._1(Spec.event_encode, event$prime$1[/* event */2]), 0);
+                                                                                                      return Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$prime$1[/* event */2])), "Could not get event-name!");
                                                                                                     })));
                                                                                           return eventLogAppend(history.length, id, generatedEvents$prime).then((function (result) {
                                                                                                           var tmp;
