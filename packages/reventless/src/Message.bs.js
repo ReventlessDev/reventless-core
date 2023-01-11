@@ -10,7 +10,7 @@ var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Js_option = require("bs-platform/lib/js/js_option.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
@@ -226,8 +226,9 @@ function logEvent$primeJson(event$primeJson, description) {
   try {
     var event$prime = Belt_Option.getExn(Js_json.decodeObject(event$primeJson));
     var id = Js_json.decodeString(event$prime["id"]);
-    var $$event = event$prime["event"];
-    var eventName = Caml_array.caml_array_get($$event, 0);
+    var eventName = Belt_Option.getExn(Belt_Option.flatMap(Belt_Option.flatMap(Js_json.decodeArray(event$prime["event"]), (function (evtArr) {
+                    return Belt_Array.get(evtArr, 0);
+                  })), Js_json.decodeString));
     console.log("" + (String(description) + (" " + (String(eventName) + ("(" + (String(id) + (") complete event: " + (String(eventStr) + ""))))))));
     return /* () */0;
   }
