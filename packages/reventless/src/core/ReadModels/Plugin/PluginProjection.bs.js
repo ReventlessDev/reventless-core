@@ -23,7 +23,8 @@ var Util = {
   extractExtensionNames: extractExtensionNames
 };
 
-function map($$event, param) {
+function map(param) {
+  var $$event = param[/* event */2];
   var match = param[/* meta */1];
   var user = match[/* user */3];
   var time = match[/* time */1];

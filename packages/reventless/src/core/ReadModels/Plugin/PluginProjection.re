@@ -1,3 +1,5 @@
+open ReventlessSpec.Message;
+
 module Target = PluginReadModelSpec;
 
 module Util = {
@@ -14,7 +16,7 @@ module Util = {
 module PluginMapping = {
   module Source = PluginSpec;
 
-  let map = (event, {ReventlessSpec.Message.id, meta: {time, user}}) =>
+  let map = ({event, id, meta: {time, user}}) =>
     switch (event) {
     | PluginSpec.UnknownPluginDetected => ReventlessSpec.Projection.Spec.Ignore
     | Connected({name, version, eventCollector, extensionPoints, extensions}) =>

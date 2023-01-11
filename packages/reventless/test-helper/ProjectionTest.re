@@ -137,8 +137,8 @@ module Make =
       );
 
   let update = (store, event) =>
-    event
-    ->Projection.map(TestFixtures.context)
+    {id: TestFixtures.id, meta: TestFixtures.meta, event}
+    ->Projection.map
     ->handleAction({
         ReventlessSpec.ReadModel.load: load(store),
         save: save(store),

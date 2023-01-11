@@ -236,66 +236,6 @@ function toMessageBody(param) {
                 ]));
 }
 
-function event$prime_encode(encoder_id, encoder_event, v) {
-  return Js_dict.fromArray(/* array */[
-              /* tuple */[
-                "id",
-                Curry._1(encoder_id, v[/* id */0])
-              ],
-              /* tuple */[
-                "meta",
-                Message$ReventlessSpec.meta_encode(v[/* meta */1])
-              ],
-              /* tuple */[
-                "event",
-                Curry._1(encoder_event, v[/* event */2])
-              ]
-            ]);
-}
-
-function event$prime_decode(decoder_id, decoder_event, v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
-    return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Curry._1(decoder_id, match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "meta");
-    var match$4 = Message$ReventlessSpec.meta_decode(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "event");
-    var match$6 = Curry._1(decoder_event, match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".meta" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".event" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* meta */match$4[0],
-                  /* event */match$6[0]
-                ]]);
-    }
-  }
-}
-
 function serviceNameOfMsg(msgJson) {
   var match = Js_json.decodeObject(msgJson);
   if (match !== undefined) {
@@ -421,6 +361,10 @@ var context_encode = Message$ReventlessSpec.context_encode;
 
 var context_decode = Message$ReventlessSpec.context_decode;
 
+var event$prime_encode = Message$ReventlessSpec.event$prime_encode;
+
+var event$prime_decode = Message$ReventlessSpec.event$prime_decode;
+
 var uuid = Uuid.v4;
 
 exports.service_encode = service_encode;
@@ -429,6 +373,8 @@ exports.meta_encode = meta_encode;
 exports.meta_decode = meta_decode;
 exports.context_encode = context_encode;
 exports.context_decode = context_decode;
+exports.event$prime_encode = event$prime_encode;
+exports.event$prime_decode = event$prime_decode;
 exports.uuid = uuid;
 exports.now = now;
 exports.nowAsISOString = nowAsISOString;
@@ -439,8 +385,6 @@ exports.command$prime_decode = command$prime_decode;
 exports.commandJson_encode = commandJson_encode;
 exports.commandJson_decode = commandJson_decode;
 exports.toMessageBody = toMessageBody;
-exports.event$prime_encode = event$prime_encode;
-exports.event$prime_decode = event$prime_decode;
 exports.serviceNameOfMsg = serviceNameOfMsg;
 exports.InvalidEvent = InvalidEvent;
 exports.InvalidCommand = InvalidCommand;

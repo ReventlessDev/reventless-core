@@ -110,7 +110,11 @@ function Make(Target) {
                     }));
       };
       var update = function (store, $$event) {
-        var __x = handleAction(Curry._2(Projection.map, $$event, TestFixtures$Reventless.context), /* record */[
+        var __x = handleAction(Curry._1(Projection.map, /* record */[
+                  /* id */TestFixtures$Reventless.id,
+                  /* meta */TestFixtures$Reventless.meta,
+                  /* event */$$event
+                ]), /* record */[
               /* load */load(store),
               /* save */save(store),
               /* saveBatch */saveBatch(store),

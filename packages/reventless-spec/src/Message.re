@@ -16,3 +16,10 @@ type context = {
   id: string,
   meta,
 };
+
+[@decco]
+type event'('id, 'event) = {
+  id: 'id,
+  meta,
+  event: 'event,
+};
