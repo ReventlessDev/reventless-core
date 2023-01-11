@@ -33,10 +33,10 @@ let sesPolicyDocument:
     ~opts: Pulumi.CustomResourceOptions.t=?,
     unit
   ) =>
-  Pulumi.Output.t(Js.Promise.t(PulumiAws.IAM.GetPolicyDocument.t)) =
+  Pulumi.Output.t(PulumiAws.IAM.GetPolicyDocument.t) =
   (~identity, ~opts=?, _unit) =>
     identity##arn
-    ->Pulumi.Output.apply(identityArn => {
+    ->Pulumi.Output.flatMap(identityArn => {
         open PulumiAws.IAM.GetPolicyDocument;
         let principal =
           Args.Statement.Principal.make(~identifiers=[|"*"|], ~_type="AWS");
@@ -52,7 +52,8 @@ let sesPolicyDocument:
           ~args=Args.make(~statements=[|statement|], ()),
           ~opts=opts |> fromCustomResourceOptions,
           (),
-        );
+        )
+        ->Pulumi.Output.fromPromise;
       });
 
 let identityWithPolicy:
@@ -73,9 +74,7 @@ let identityWithPolicy:
           ~identity=identity##arn->Pulumi.Output.asInput,
           ~policy=
             sesPolicyDocument(~identity, ~opts?, ())
-            ->Pulumi.Output.apply(policyDocument =>
-                (policyDocument |> Obj.magic)##json
-              )
+            ->Pulumi.Output.apply(policyDocument => policyDocument##json)
             ->Pulumi.Output.asInput,
         ),
       ~opts?,
