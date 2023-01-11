@@ -5,10 +5,17 @@ type mapImpl('msg, 'action) =
 let makeGenericMap:
   (Mapper.decode('msg), mapImpl('msg, 'action)) => mapGeneric('action) =
   (msgDecode, map, json) => {
+    let jsonStr = json->Js.Json.stringify;
     switch (json->ReventlessSpec.Message.context_decode, json->msgDecode) {
     | (Ok(context), Ok(source)) => source->map(context)
-    | _ =>
-      Js.Exn.raiseError("Couldn't decode source:" ++ json->Js.Json.stringify)
+    | (Error(err), Ok(_)) =>
+      Js.Exn.raiseError({j|Couldn't decode context: $err, $jsonStr|j})
+    | (Ok(_), Error(err)) =>
+      Js.Exn.raiseError({j|Couldn't decode message: $err, $jsonStr|j})
+    | (Error(errContext), Error(errMsg)) =>
+      Js.Exn.raiseError(
+        {j|Couldn't decode context & message: $errContext, $errMsg, $jsonStr|j},
+      )
     };
   };
 
