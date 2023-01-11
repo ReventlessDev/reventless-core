@@ -92,31 +92,46 @@ module Make =
   let publishFn = (publisher: Adapter.publisher, name) =>
     (. events') => {
       let eventCount = events'->Belt.Array.length;
-      events'->Belt.Array.mapWithIndex((idx, event') => {
-        let json =
-          Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event');
+      events'
+      ->Belt.Array.mapWithIndex((idx, event') => {
+          let json =
+            Message.event'_encode(
+              Spec.Id.t_encode,
+              Spec.event_encode,
+              event',
+            );
 
-        let id = event'.id;
-        let event = json->Js.Json.stringify;
-        let eventName: string = event'.event->Spec.event_encode->Obj.magic[0];
-        let idx = idx + 1;
+          let id = event'.id;
+          let eventName: string =
+            event'.event
+            ->Spec.event_encode
+            ->Util.Decco.Json.variantName
+            ->Belt.Option.getWithDefault("Could not get event-name!");
+          let idx = idx + 1;
 
-        publisher.publish(. id->Spec.Id.toString, event'.meta, json)
-        |> Js.Promise.catch(e => {
-             Js.log(
-               {j|EventTopic: Couldn't publish event $idx/$eventCount: $eventName($id) to $name|j},
-             );
-             NotPublishedToPublisher(e)->Js.Promise.reject;
-           })
-        |> Js.Promise.then_(_ =>
-             Js.log(
-               {j|EventTopic: Published event $idx/$eventCount: $eventName($id) to $name: $event|j},
-             )
-             ->Js.Promise.resolve
-           );
-      })
-      |> Js.Promise.all
-      |> Js.Promise.then_(_ => Js.Promise.resolve());
+          publisher.publish(. id->Spec.Id.toString, event'.meta, json)
+          ->Js.Promise.catch(
+              e => {
+                Js.log(
+                  {j|EventTopic: Couldn't publish event $idx/$eventCount: $eventName($id) to $name|j},
+                );
+                NotPublishedToPublisher(e)->Js.Promise.reject;
+              },
+              _,
+            )
+          ->Js.Promise.then_(
+              _ => {
+                let event = json->Js.Json.stringify;
+                Js.log(
+                  {j|EventTopic: Published event $idx/$eventCount: $eventName($id) to $name: $event|j},
+                )
+                ->Js.Promise.resolve;
+              },
+              _,
+            );
+        })
+      ->Js.Promise.all
+      ->Js.Promise.then_(_ => Js.Promise.resolve(), _);
     };
 
   let construct = (~storageResources, self, name) => {
