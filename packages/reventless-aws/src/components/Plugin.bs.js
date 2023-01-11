@@ -6,9 +6,17 @@ var QueryEngine_DynamoDb$ReventlessAws = require("../adapter/QueryEngine/QueryEn
 var EventCollectorConnector_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_SQS.bs.js");
 var CommandTopicRemoteConnector_SQS$ReventlessAws = require("../adapter/CommandTopic/CommandTopicRemoteConnector_SQS.bs.js");
 
-var include = Plugin$Reventless.Make(EventCollectorConnector_SQS$ReventlessAws)({
-        make: QueryEngine_DynamoDb$ReventlessAws.make
-      })(CommandTopicRemoteConnector_SQS$ReventlessAws);
+var partial_arg = {
+  make: QueryEngine_DynamoDb$ReventlessAws.make
+};
+
+var partial_arg$1 = EventCollectorConnector_SQS$ReventlessAws;
+
+var partial_arg$2 = Plugin$Reventless.Make;
+
+var include = (function (param) {
+      return partial_arg$2(partial_arg$1, partial_arg, param);
+    })(CommandTopicRemoteConnector_SQS$ReventlessAws);
 
 var make = include.make;
 

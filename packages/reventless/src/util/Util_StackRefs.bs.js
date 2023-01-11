@@ -23,18 +23,16 @@ function get(pluginName) {
   var stackRef = Js_dict.get(stackRefs, pluginName);
   if (stackRef !== undefined) {
     return stackRef;
-  } else {
-    var stackRef$1 = Belt_Option.map(stackName(pluginName), (function (stack) {
-            return new Pulumi.StackReference(stack);
-          }));
-    if (stackRef$1 !== undefined) {
-      var stackRef$2 = Caml_option.valFromOption(stackRef$1);
-      stackRefs[pluginName] = stackRef$2;
-      return Caml_option.some(stackRef$2);
-    } else {
-      return ;
-    }
   }
+  var stackRef$1 = Belt_Option.map(stackName(pluginName), (function (stack) {
+          return new Pulumi.StackReference(stack);
+        }));
+  if (stackRef$1 === undefined) {
+    return ;
+  }
+  var stackRef$2 = Caml_option.valFromOption(stackRef$1);
+  stackRefs[pluginName] = stackRef$2;
+  return Caml_option.some(stackRef$2);
 }
 
 exports.stackRefs = stackRefs;

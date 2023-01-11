@@ -2,7 +2,7 @@
 'use strict';
 
 
-var Fargate = 0;
+var Fargate;
 
 exports.Fargate = Fargate;
 /* No side effect */

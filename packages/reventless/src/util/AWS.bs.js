@@ -4,7 +4,7 @@
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 
-var invalidNameChars = (/[^.\-_a-zA-Z0-9]/g);
+var invalidNameChars = /[^.\-_a-zA-Z0-9]/g;
 
 function validateName(__x) {
   return __x.replace(invalidNameChars, "_");
@@ -17,4 +17,4 @@ function arn2Name(arn) {
 exports.invalidNameChars = invalidNameChars;
 exports.validateName = validateName;
 exports.arn2Name = arn2Name;
-/* invalidNameChars Not a pure module */
+/* No side effect */

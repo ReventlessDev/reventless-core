@@ -12,240 +12,244 @@ var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.bs.js");
 var TestFixtures$Reventless = require("./TestFixtures.bs.js");
 
-function MakeAggregate(Spec) {
-  return (function (Behaviour) {
-      var apply$prime = function (state, $$event) {
-        return Behaviour.apply(state, $$event);
-      };
-      var currentState = function (events) {
-        return Belt_List.reduce(Belt_List.tailExn(events), Behaviour.init(Belt_List.headExn(events)), apply$prime);
-      };
-      var errors = /* record */[/* contents : [] */0];
-      var errorHandler = function (error, param, param$1) {
-        errors[0] = Pervasives.$at(errors[0], /* :: */[
-              error,
-              /* [] */0
-            ]);
+function MakeAggregate(Spec, Behaviour) {
+  var apply$prime = function (state, $$event) {
+    return Behaviour.apply(state, $$event);
+  };
+  var currentState = function (events) {
+    return Belt_List.reduce(Belt_List.tailExn(events), Behaviour.init(Belt_List.headExn(events)), apply$prime);
+  };
+  var errors = {
+    contents: /* [] */0
+  };
+  var errorHandler = function (error, param, param$1) {
+    errors.contents = Pervasives.$at(errors.contents, /* :: */[
+          error,
+          /* [] */0
+        ]);
+    return /* [] */0;
+  };
+  var exec = function (context, command, history) {
+    errors.contents = /* [] */0;
+    if (!history) {
+      return Behaviour.create(command, context, errorHandler);
+    }
+    try {
+      return Behaviour.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
+    }
+    catch (raw_exn){
+      var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+      if (exn[0] === Message$Reventless.InvalidEvent) {
         return /* [] */0;
-      };
-      var exec = function (context, command, history) {
-        errors[0] = /* [] */0;
-        if (history) {
-          try {
-            return Behaviour.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
-          }
-          catch (raw_exn){
-            var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-            if (exn[0] === Message$Reventless.InvalidEvent) {
-              return /* [] */0;
-            } else {
-              throw exn;
-            }
-          }
-        } else {
-          return Behaviour.create(command, context, errorHandler);
-        }
-      };
-      return {
-              Spec: Spec,
-              Behaviour: Behaviour,
-              apply$prime: apply$prime,
-              currentState: currentState,
-              errors: errors,
-              errorHandler: errorHandler,
-              exec: exec
-            };
-    });
+      }
+      throw exn;
+    }
+  };
+  return {
+          Spec: Spec,
+          Behaviour: Behaviour,
+          apply$prime: apply$prime,
+          currentState: currentState,
+          errors: errors,
+          errorHandler: errorHandler,
+          exec: exec
+        };
 }
 
-function Make(Source) {
-  return (function (SourceBehaviour) {
-      return (function (Target) {
-          return (function (TargetBehaviour) {
-              return (function (EventMapping) {
-                  var Behaviour_resolverConfig = SourceBehaviour.resolverConfig;
-                  var Behaviour_init = SourceBehaviour.init;
-                  var Behaviour_apply = SourceBehaviour.apply;
-                  var Behaviour_create = SourceBehaviour.create;
-                  var Behaviour_execute = SourceBehaviour.execute;
-                  var apply$prime = function (state, $$event) {
-                    return Behaviour_apply(state, $$event);
-                  };
-                  var currentState = function (events) {
-                    return Belt_List.reduce(Belt_List.tailExn(events), Behaviour_init(Belt_List.headExn(events)), apply$prime);
-                  };
-                  var errors = /* record */[/* contents : [] */0];
-                  var errorHandler = function (error, param, param$1) {
-                    errors[0] = Pervasives.$at(errors[0], /* :: */[
-                          error,
-                          /* [] */0
-                        ]);
-                    return /* [] */0;
-                  };
-                  var exec = function (context, command, history) {
-                    errors[0] = /* [] */0;
-                    if (history) {
-                      try {
-                        return Behaviour_execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
-                      }
-                      catch (raw_exn){
-                        var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-                        if (exn[0] === Message$Reventless.InvalidEvent) {
-                          return /* [] */0;
-                        } else {
-                          throw exn;
+function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
+  var Behaviour_resolverConfig = SourceBehaviour.resolverConfig;
+  var Behaviour_init = SourceBehaviour.init;
+  var Behaviour_apply = SourceBehaviour.apply;
+  var Behaviour_create = SourceBehaviour.create;
+  var Behaviour_execute = SourceBehaviour.execute;
+  var Behaviour = {
+    resolverConfig: Behaviour_resolverConfig,
+    init: Behaviour_init,
+    apply: Behaviour_apply,
+    create: Behaviour_create,
+    execute: Behaviour_execute
+  };
+  var apply$prime = function (state, $$event) {
+    return SourceBehaviour.apply(state, $$event);
+  };
+  var currentState = function (events) {
+    return Belt_List.reduce(Belt_List.tailExn(events), SourceBehaviour.init(Belt_List.headExn(events)), apply$prime);
+  };
+  var errors = {
+    contents: /* [] */0
+  };
+  var errorHandler = function (error, param, param$1) {
+    errors.contents = Pervasives.$at(errors.contents, /* :: */[
+          error,
+          /* [] */0
+        ]);
+    return /* [] */0;
+  };
+  var exec = function (context, command, history) {
+    errors.contents = /* [] */0;
+    if (!history) {
+      return SourceBehaviour.create(command, context, errorHandler);
+    }
+    try {
+      return SourceBehaviour.execute(currentState(history), command, TestFixtures$Reventless.context, errorHandler);
+    }
+    catch (raw_exn){
+      var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+      if (exn[0] === Message$Reventless.InvalidEvent) {
+        return /* [] */0;
+      }
+      throw exn;
+    }
+  };
+  var Behaviour_resolverConfig$1 = TargetBehaviour.resolverConfig;
+  var Behaviour_init$1 = TargetBehaviour.init;
+  var Behaviour_apply$1 = TargetBehaviour.apply;
+  var Behaviour_create$1 = TargetBehaviour.create;
+  var Behaviour_execute$1 = TargetBehaviour.execute;
+  var Behaviour$1 = {
+    resolverConfig: Behaviour_resolverConfig$1,
+    init: Behaviour_init$1,
+    apply: Behaviour_apply$1,
+    create: Behaviour_create$1,
+    execute: Behaviour_execute$1
+  };
+  var apply$prime$1 = function (state, $$event) {
+    return TargetBehaviour.apply(state, $$event);
+  };
+  var currentState$1 = function (events) {
+    return Belt_List.reduce(Belt_List.tailExn(events), TargetBehaviour.init(Belt_List.headExn(events)), apply$prime$1);
+  };
+  var errors$1 = {
+    contents: /* [] */0
+  };
+  var errorHandler$1 = function (error, param, param$1) {
+    errors$1.contents = Pervasives.$at(errors$1.contents, /* :: */[
+          error,
+          /* [] */0
+        ]);
+    return /* [] */0;
+  };
+  var exec$1 = function (context, command, history) {
+    errors$1.contents = /* [] */0;
+    if (!history) {
+      return TargetBehaviour.create(command, context, errorHandler$1);
+    }
+    try {
+      return TargetBehaviour.execute(currentState$1(history), command, TestFixtures$Reventless.context, errorHandler$1);
+    }
+    catch (raw_exn){
+      var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
+      if (exn[0] === Message$Reventless.InvalidEvent) {
+        return /* [] */0;
+      }
+      throw exn;
+    }
+  };
+  var queryEngine_scan = function (param, param$1, param$2) {
+    return Promise.resolve([]);
+  };
+  var queryEngine_query = function (param, param$1, param$2, param$3, param$4, param$5, param$6) {
+    return Promise.resolve([]);
+  };
+  var queryEngine = {
+    scan: queryEngine_scan,
+    query: queryEngine_query
+  };
+  var givenSourceEvents = function (sourceHistory) {
+    return sourceHistory;
+  };
+  var givenTargetEvents = function (targetHistory, sourceHistory) {
+    return /* tuple */[
+            targetHistory,
+            sourceHistory
+          ];
+  };
+  var whenSourceCmd = function (sourceId, cmd, param) {
+    var sourceEvents = Curry._3(exec, {
+          id: sourceId,
+          meta: TestFixtures$Reventless.context.meta
+        }, cmd, param[1]);
+    var targetActions = Belt_List.toArray(Belt_List.flatten(Belt_List.map(sourceEvents, (function (sourceEvent) {
+                    return Belt_List.fromArray(EventMapping.map(Curry._1(Source.Id.makeFromString, sourceId), sourceEvent, queryEngine));
+                  }))));
+    var targetHistories = Js_dict.fromList(param[0]);
+    return Promise.all(Belt_Array.map(targetActions, (function (p) {
+                        switch (p.tag | 0) {
+                          case /* Publish */0 :
+                          case /* PublishDelayed */1 :
+                              break;
+                          case /* PublishAsync */2 :
+                              return p[0];
+                          default:
+                            return Promise.resolve([]);
                         }
-                      }
-                    } else {
-                      return Behaviour_create(command, context, errorHandler);
-                    }
-                  };
-                  var Behaviour_resolverConfig$1 = TargetBehaviour.resolverConfig;
-                  var Behaviour_init$1 = TargetBehaviour.init;
-                  var Behaviour_apply$1 = TargetBehaviour.apply;
-                  var Behaviour_create$1 = TargetBehaviour.create;
-                  var Behaviour_execute$1 = TargetBehaviour.execute;
-                  var apply$prime$1 = function (state, $$event) {
-                    return Behaviour_apply$1(state, $$event);
-                  };
-                  var currentState$1 = function (events) {
-                    return Belt_List.reduce(Belt_List.tailExn(events), Behaviour_init$1(Belt_List.headExn(events)), apply$prime$1);
-                  };
-                  var errors$1 = /* record */[/* contents : [] */0];
-                  var errorHandler$1 = function (error, param, param$1) {
-                    errors$1[0] = Pervasives.$at(errors$1[0], /* :: */[
-                          error,
-                          /* [] */0
-                        ]);
-                    return /* [] */0;
-                  };
-                  var exec$1 = function (context, command, history) {
-                    errors$1[0] = /* [] */0;
-                    if (history) {
-                      try {
-                        return Behaviour_execute$1(currentState$1(history), command, TestFixtures$Reventless.context, errorHandler$1);
-                      }
-                      catch (raw_exn){
-                        var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-                        if (exn[0] === Message$Reventless.InvalidEvent) {
-                          return /* [] */0;
-                        } else {
-                          throw exn;
-                        }
-                      }
-                    } else {
-                      return Behaviour_create$1(command, context, errorHandler$1);
-                    }
-                  };
-                  var queryEngine_000 = function (param, param$1, param$2) {
-                    return Promise.resolve(/* array */[]);
-                  };
-                  var queryEngine_001 = function (param, param$1, param$2, param$3, param$4, param$5, param$6) {
-                    return Promise.resolve(/* array */[]);
-                  };
-                  var queryEngine = /* record */[
-                    queryEngine_000,
-                    queryEngine_001
-                  ];
-                  var givenSourceEvents = function (sourceHistory) {
-                    return sourceHistory;
-                  };
-                  var givenTargetEvents = function (targetHistory, sourceHistory) {
-                    return /* tuple */[
-                            targetHistory,
-                            sourceHistory
-                          ];
-                  };
-                  var whenSourceCmd = function (sourceId, cmd, param) {
-                    var sourceEvents = exec(/* record */[
-                          /* id */sourceId,
-                          /* meta */TestFixtures$Reventless.context[/* meta */1]
-                        ], cmd, param[1]);
-                    var targetActions = Belt_List.toArray(Belt_List.flatten(Belt_List.map(sourceEvents, (function (sourceEvent) {
-                                    return Belt_List.fromArray(EventMapping.map(Curry._1(Source.Id.makeFromString, sourceId), sourceEvent, queryEngine));
-                                  }))));
-                    var targetHistories = Js_dict.fromList(param[0]);
-                    return Promise.all(Belt_Array.map(targetActions, (function (param) {
-                                        switch (param.tag | 0) {
-                                          case /* Publish */0 :
-                                          case /* PublishDelayed */1 :
-                                              break;
-                                          case /* PublishAsync */2 :
-                                              return param[0];
-                                          default:
-                                            return Promise.resolve(/* array */[]);
-                                        }
-                                        return Promise.resolve(/* array */[/* tuple */[
-                                                      param[0],
-                                                      param[1]
-                                                    ]]);
-                                      }))).then((function (commands) {
-                                  return Promise.resolve(Belt_Array.reduce(Belt_Array.concatMany(commands), { }, (function (targetEvents, param) {
-                                                    var id = Curry._1(Target.Id.toString, param[0]);
-                                                    var targetHistory = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), /* [] */0), Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0));
-                                                    var newEvents = exec$1(/* record */[
-                                                          /* id */id,
-                                                          /* meta */TestFixtures$Reventless.context[/* meta */1]
-                                                        ], param[1], targetHistory);
-                                                    targetEvents[id] = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0), newEvents);
-                                                    return targetEvents;
-                                                  })));
-                                }));
-                  };
-                  var thenTargetEvents = function (expectedTargetEvents, targetEvents) {
-                    return targetEvents.then((function (events) {
-                                  return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
-                                                  0,
-                                                  0,
-                                                  Js_dict.fromList(expectedTargetEvents)
-                                                ], Jest.Expect.expect(/* tuple */[
-                                                      Belt_List.length(errors[0]),
-                                                      Belt_List.length(errors$1[0]),
-                                                      events
-                                                    ])));
-                                }));
-                  };
-                  var thenTargetEvent = function (id, expectedTargetEvent, targetEvents) {
-                    return targetEvents.then((function (eventsDict) {
-                                  var events = Js_dict.entries(eventsDict);
-                                  return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
-                                                  0,
-                                                  0,
-                                                  1,
-                                                  /* tuple */[
-                                                    id,
-                                                    /* :: */[
-                                                      expectedTargetEvent,
-                                                      /* [] */0
-                                                    ]
-                                                  ]
-                                                ], Jest.Expect.expect(/* tuple */[
-                                                      Belt_List.length(errors[0]),
-                                                      Belt_List.length(errors$1[0]),
-                                                      events.length,
-                                                      Belt_Array.get(events, 0)
-                                                    ])));
-                                }));
-                  };
-                  var thenNoTargetEvent = function (param) {
-                    return thenTargetEvents(/* [] */0, param);
-                  };
-                  return {
-                          Source: Source,
-                          Target: Target,
-                          describe: Jest.describe,
-                          test: Jest.testPromise,
-                          givenSourceEvents: givenSourceEvents,
-                          givenTargetEvents: givenTargetEvents,
-                          whenSourceCmd: whenSourceCmd,
-                          thenTargetEvents: thenTargetEvents,
-                          thenTargetEvent: thenTargetEvent,
-                          thenNoTargetEvent: thenNoTargetEvent
-                        };
-                });
-            });
-        });
-    });
+                        return Promise.resolve([/* tuple */[
+                                      p[0],
+                                      p[1]
+                                    ]]);
+                      }))).then((function (commands) {
+                  return Promise.resolve(Belt_Array.reduce(Belt_Array.concatMany(commands), { }, (function (targetEvents, param) {
+                                    var id = Curry._1(Target.Id.toString, param[0]);
+                                    var targetHistory = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), /* [] */0), Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0));
+                                    var newEvents = Curry._3(exec$1, {
+                                          id: id,
+                                          meta: TestFixtures$Reventless.context.meta
+                                        }, param[1], targetHistory);
+                                    targetEvents[id] = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0), newEvents);
+                                    return targetEvents;
+                                  })));
+                }));
+  };
+  var thenTargetEvents = function (expectedTargetEvents, targetEvents) {
+    return targetEvents.then((function (events) {
+                  return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
+                                  0,
+                                  0,
+                                  Js_dict.fromList(expectedTargetEvents)
+                                ], Jest.Expect.expect(/* tuple */[
+                                      Belt_List.length(errors.contents),
+                                      Belt_List.length(errors$1.contents),
+                                      events
+                                    ])));
+                }));
+  };
+  var thenTargetEvent = function (id, expectedTargetEvent, targetEvents) {
+    return targetEvents.then((function (eventsDict) {
+                  var events = Js_dict.entries(eventsDict);
+                  return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
+                                  0,
+                                  0,
+                                  1,
+                                  /* tuple */[
+                                    id,
+                                    /* :: */[
+                                      expectedTargetEvent,
+                                      /* [] */0
+                                    ]
+                                  ]
+                                ], Jest.Expect.expect(/* tuple */[
+                                      Belt_List.length(errors.contents),
+                                      Belt_List.length(errors$1.contents),
+                                      events.length,
+                                      Belt_Array.get(events, 0)
+                                    ])));
+                }));
+  };
+  var thenNoTargetEvent = function (param) {
+    return thenTargetEvents(/* [] */0, param);
+  };
+  return {
+          Source: Source,
+          Target: Target,
+          describe: Jest.describe,
+          test: Jest.testPromise,
+          givenSourceEvents: givenSourceEvents,
+          givenTargetEvents: givenTargetEvents,
+          whenSourceCmd: whenSourceCmd,
+          thenTargetEvents: thenTargetEvents,
+          thenTargetEvent: thenTargetEvent,
+          thenNoTargetEvent: thenNoTargetEvent
+        };
 }
 
 exports.MakeAggregate = MakeAggregate;

@@ -19,20 +19,20 @@ function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
   };
   var childName = ComponentType$Reventless.name(name, /* Heartbeat */19);
   var heartBeatCallback = function (param, param$1) {
-    var msgId = Message$Reventless.uuid(/* () */0);
-    return publishToCorePluginExtensionPoint(/* array */[/* record */[
-                  /* id */id,
-                  /* meta : record */[
-                    /* service */PluginExtensionPointSpec$ReventlessSpec.name,
-                    /* time */Message$Reventless.nowAsISOString(/* () */0),
-                    /* ip */"",
-                    /* user */"Heartbeat",
-                    /* msgId */msgId,
-                    /* correlationId */msgId
-                  ],
-                  /* commandJson */PluginExtensionPointSpec$ReventlessSpec.command_encode(/* Heartbeat */Block.__(0, [timeout])),
-                  /* delay */undefined
-                ]]);
+    var msgId = Message$Reventless.uuid(undefined);
+    return publishToCorePluginExtensionPoint([{
+                  id: id,
+                  meta: {
+                    service: PluginExtensionPointSpec$ReventlessSpec.name,
+                    time: Message$Reventless.nowAsISOString(undefined),
+                    ip: "",
+                    user: "Heartbeat",
+                    msgId: msgId,
+                    correlationId: msgId
+                  },
+                  commandJson: PluginExtensionPointSpec$ReventlessSpec.command_encode(/* Heartbeat */Block.__(0, [timeout])),
+                  delay: undefined
+                }]);
   };
   var cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + childName), {
         description: "Send a heartbeat to the Core Plugin ExtensionPoint",
@@ -49,7 +49,7 @@ function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
             undefined,
             undefined,
             undefined,
-            /* () */0
+            undefined
           ]), opts);
   var cloudwatchEventTarget = new (Aws.cloudwatch.EventTarget)(childName, {
         rule: Curry._1(Cloudwatch_EventTarget$PulumiAws.Args.Rule.ofEventRule, cloudwatchEventRule),
@@ -73,15 +73,13 @@ function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
             });
 }
 
-function make(id, name, $staropt$star, publishToCorePluginExtensionPoint, opts, param) {
-  var timeout = $staropt$star !== undefined ? $staropt$star : 10;
+function make(id, name, timeoutOpt, publishToCorePluginExtensionPoint, opts, param) {
+  var timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
   var prim = ComponentType$Reventless.toString(/* Heartbeat */19);
-  var prim$1 = name;
-  var prim$2 = function (param, param$1) {
+  var prim$1 = function (param, param$1) {
     return construct(id, timeout, publishToCorePluginExtensionPoint, param, param$1);
   };
-  var prim$3 = opts;
-  return new Component.default(prim, prim$1, prim$2, prim$3);
+  return new Component.default(prim, name, prim$1, opts);
 }
 
 var componentType = /* Heartbeat */19;

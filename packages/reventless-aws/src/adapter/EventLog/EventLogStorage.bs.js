@@ -2,11 +2,11 @@
 'use strict';
 
 
-var DynamoDb = 0;
+var DynamoDb;
 
-var DynamoDbStream = 0;
+var DynamoDbStream;
 
-var DynamoDb_Runtime = 0;
+var DynamoDb_Runtime;
 
 exports.DynamoDb = DynamoDb;
 exports.DynamoDbStream = DynamoDbStream;

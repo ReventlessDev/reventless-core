@@ -9,8 +9,7 @@ var ResourceQuery$Reventless = require("./ResourceQuery.bs.js");
 
 function find(resources, name) {
   return Belt_Array.reduce(resources, undefined, (function (result, resource) {
-                var match = resource.name === name;
-                if (match) {
+                if (resource.name === name) {
                   return Caml_option.some(resource);
                 } else {
                   return result;
@@ -21,8 +20,7 @@ function find(resources, name) {
 function eventCollectorConnectorOfAllEventMappers(eventMappers, eventMapperName) {
   return Belt_Option.flatMap(find(eventMappers, eventMapperName), (function (eventMapper) {
                 var resources = eventMapper.eventCollector.resources;
-                var match = resources.length !== 0;
-                if (match) {
+                if (resources.length !== 0) {
                   return Caml_option.some(Caml_array.caml_array_get(resources, 0));
                 }
                 
@@ -38,7 +36,7 @@ function bucketNameOfAllTasks(tasks, taskName) {
 }
 
 function eventCollectorConnectorOfAllEventMappersExn(eventMappersRef, eventMapperName) {
-  return ResourceQuery$Reventless.unwrapResource(eventCollectorConnectorOfAllEventMappers(eventMappersRef[0], eventMapperName), "EventCollector", eventMapperName);
+  return ResourceQuery$Reventless.unwrapResource(eventCollectorConnectorOfAllEventMappers(eventMappersRef.contents, eventMapperName), "EventCollector", eventMapperName);
 }
 
 function bucketNameOfTaskExn(tasks, taskName) {

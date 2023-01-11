@@ -6,14 +6,12 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
-var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
-var QueryDb$Reventless = require("../src/components/QueryDb.bs.js");
 var Projection$Reventless = require("../src/Projection.bs.js");
 var TestFixtures$Reventless = require("./TestFixtures.bs.js");
 
@@ -21,18 +19,7 @@ function unpack(p) {
   return p[1];
 }
 
-function Make(Projection) {
-  var Target = Projection.Target;
-  var testId = {
-    contents: TestFixtures$Reventless.id
-  };
-  var meta = {
-    contents: TestFixtures$Reventless.meta
-  };
-  var describeWithId = function (description, id, fn) {
-    testId.contents = id;
-    return Jest.describe(description, fn);
-  };
+function Make(Target, Projection) {
   var getSubId = function (state) {
     return Belt_Option.map(Target.subIdConfig, (function (param) {
                   return Curry._1(param.getSubId, state);
@@ -47,14 +34,6 @@ function Make(Projection) {
   };
   var deleteStates = function (store, id) {
     store[id] = /* [] */0;
-    
-  };
-  var deleteSubStates = function (store, id, subId, getSubId) {
-    store[id] = Belt_Option.getWithDefault(Belt_Option.map(Js_dict.get(store, id), (function (states) {
-                return Belt_List.keep(states, (function (state) {
-                              return Caml_obj.caml_notequal(Curry._1(getSubId, state), subId);
-                            }));
-              })), /* [] */0);
     
   };
   var load = function (store) {
@@ -106,39 +85,25 @@ function Make(Projection) {
       });
   };
   var $$delete = function (store) {
-    return (function (id, subId) {
-        var match = Target.subIdConfig;
-        if (subId !== undefined) {
-          if (match !== undefined) {
-            deleteSubStates(store, id, subId[1], match.getSubId);
-            return Promise.resolve(/* Ok */Block.__(0, [undefined]));
-          } else {
-            return Promise.resolve(/* Ok */Block.__(0, [undefined]));
-          }
-        } else {
-          deleteStates(store, id);
-          return Promise.resolve(/* Ok */Block.__(0, [undefined]));
-        }
+    return (function (id, _sort) {
+        deleteStates(store, id);
+        return Promise.resolve(/* Ok */Block.__(0, [undefined]));
       });
   };
   var handleAction = function (action, primitives) {
-    var __x = Promise.all(Projection$Reventless.handleAction(action, primitives, Target.subIdConfig));
+    var __x = Promise.all(Projection$Reventless.handleAction(action, primitives));
     return __x.then((function (results) {
                   Belt_Array.forEach(results, (function (result) {
                           if (result.tag) {
-                            return Js_exn.raiseError(JSON.stringify(QueryDb$Reventless.storageError_encode(result[0])));
+                            return Js_exn.raiseError("");
                           }
                           
                         }));
                   return Promise.resolve(undefined);
                 }));
   };
-  var update = function (store, id, meta, $$event) {
-    var __x = handleAction(Curry._1(Projection.map, {
-              id: id,
-              meta: meta,
-              event: $$event
-            }), {
+  var update = function (store, $$event) {
+    var __x = handleAction(Curry._2(Projection.map, $$event, TestFixtures$Reventless.context), {
           load: load(store),
           save: save(store),
           saveBatch: saveBatch(store),
@@ -151,27 +116,7 @@ function Make(Projection) {
   var givenEvents = function (events) {
     var __x = Belt_List.reduce(events, Promise.resolve({ }), (function (p, $$event) {
             return p.then((function (store) {
-                          return update(store, testId.contents, meta.contents, $$event);
-                        }));
-          }));
-    return __x.then((function (store) {
-                  return Promise.resolve(store);
-                }));
-  };
-  var givenEventsWithTime = function (events) {
-    var __x = Belt_List.reduce(events, Promise.resolve({ }), (function (p, param) {
-            var $$event = param[1];
-            var time = param[0];
-            return p.then((function (store) {
-                          var init = meta.contents;
-                          return update(store, testId.contents, {
-                                      service: init.service,
-                                      time: time,
-                                      ip: init.ip,
-                                      user: init.user,
-                                      msgId: init.msgId,
-                                      correlationId: init.correlationId
-                                    }, $$event);
+                          return update(store, $$event);
                         }));
           }));
     return __x.then((function (store) {
@@ -181,22 +126,7 @@ function Make(Projection) {
   var whenEvent = function (p, $$event) {
     return Jest.Expect.expect((function (param) {
                   return p.then((function (store) {
-                                return update(store, testId.contents, meta.contents, $$event);
-                              }));
-                }));
-  };
-  var whenEventWithTime = function (p, time, $$event) {
-    return Jest.Expect.expect((function (param) {
-                  return p.then((function (store) {
-                                var init = meta.contents;
-                                return update(store, testId.contents, {
-                                            service: init.service,
-                                            time: time,
-                                            ip: init.ip,
-                                            user: init.user,
-                                            msgId: init.msgId,
-                                            correlationId: init.correlationId
-                                          }, $$event);
+                                return update(store, $$event);
                               }));
                 }));
   };
@@ -205,7 +135,7 @@ function Make(Projection) {
     return __x.then((function (store) {
                   return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
                                   1,
-                                  testId.contents,
+                                  TestFixtures$Reventless.context.id,
                                   expectedStates
                                 ], Jest.Expect.expect(/* tuple */[
                                       Object.keys(store).length,
@@ -225,7 +155,7 @@ function Make(Projection) {
     return __x.then((function (store) {
                   return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
                                   1,
-                                  testId.contents,
+                                  TestFixtures$Reventless.context.id,
                                   1,
                                   Caml_option.some(expectedState)
                                 ], Jest.Expect.expect(/* tuple */[
@@ -277,12 +207,9 @@ function Make(Projection) {
           Source: Projection.Source,
           Target: Target,
           describe: Jest.describe,
-          describeWithId: describeWithId,
           test: Jest.testPromise,
           givenEvents: givenEvents,
-          givenEventsWithTime: givenEventsWithTime,
           whenEvent: whenEvent,
-          whenEventWithTime: whenEventWithTime,
           thenStates: thenStates,
           thenAllStates: thenAllStates,
           thenState: thenState,

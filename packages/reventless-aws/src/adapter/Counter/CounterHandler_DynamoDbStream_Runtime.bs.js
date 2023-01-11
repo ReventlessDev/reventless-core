@@ -3,7 +3,7 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var Decco = require("@ryb73/decco/src/Decco.js");
+var Decco = require("decco/src/Decco.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
@@ -14,8 +14,8 @@ var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoD
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
 function addToCounterTarget(table, param) {
-  var target = param[/* target */1];
-  var counterId = param[/* counterId */0];
+  var target = param.target;
+  var counterId = param.counterId;
   console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws.addToCounterTarget:", counterId, target);
   var tableName = table.name.get();
   return DynamoDb_DocumentClient$AwsSdk.update({
@@ -51,69 +51,69 @@ function addToCounterTarget(table, param) {
                       ]),
                   ExpressionAttributeValues: {
                     ":inc": target,
-                    ":target": /* array */[target],
-                    ":targetRef": /* array */[param[/* targetRef */2]],
-                    ":empty": /* array */[]
+                    ":target": [target],
+                    ":targetRef": [param.targetRef],
+                    ":empty": []
                   },
                   ConditionExpression: "NOT contains(#targetRefs, :targetRef)",
                   ReturnValues: "UPDATED_NEW"
                 }).then((function (updateOutput) {
-                  return Promise.resolve((console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget: current count for " + (String(counterId) + ":")), updateOutput.Attributes.count), /* () */0));
+                  return Promise.resolve((console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget: current count for " + (String(counterId) + ":")), updateOutput.Attributes.count), undefined));
                 })).catch((function (err) {
                 return Js_exn.raiseError("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget Error: Couldn\'t count on " + (String(tableName) + (": " + (String(err) + "")))));
               }));
 }
 
 function referencesView_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "id",
-                Decco.stringToJson(v[/* id */0])
+                Decco.stringToJson(v.id)
               ],
               /* tuple */[
                 "inc",
-                Decco.intToJson(v[/* inc */1])
+                Decco.intToJson(v.inc)
               ]
             ]);
 }
 
 function referencesView_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "id");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "inc");
-    var match$4 = Decco.intFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".id" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".inc" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* id */match$2[0],
-                  /* inc */match$4[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var id = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
+  if (id.tag) {
+    var e = id[0];
+    return /* Error */Block.__(1, [{
+                path: ".id" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var inc = Decco.intFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "inc"), null));
+  if (!inc.tag) {
+    return /* Ok */Block.__(0, [{
+                id: id[0],
+                inc: inc[0]
+              }]);
+  }
+  var e$1 = inc[0];
+  return /* Error */Block.__(1, [{
+              path: ".inc" + e$1.path,
+              message: e$1.message,
+              value: e$1.value
+            }]);
 }
 
 function handleStreamEvent(referencesStream, countsStream, counterHandler, streamEvent, param) {
   var referencesARN = referencesStream.urn.get();
   var countsARN = countsStream.urn.get();
-  var records = Belt_Option.getWithDefault(streamEvent.Records, /* array */[]);
+  var records = Belt_Option.getWithDefault(streamEvent.Records, []);
   var match = Belt_Array.partition(records, (function (record) {
           if (record.eventSource === "aws:dynamodb") {
             if (record.eventSourceARN === referencesARN) {
@@ -126,8 +126,8 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
           }
         }));
   Belt_Array.forEach(match[1], (function (record) {
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws: ignoring record from eventSource:", record.eventSource, record.eventSourceARN, Caml_option.undefined_to_opt(JSON.stringify(record)));
-          return /* () */0;
+          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws: ignoring record from eventSource:", record.eventSource, record.eventSourceARN, JSON.stringify(record));
+          
         }));
   var match$1 = Belt_Array.partition(match[0], (function (record) {
           return record.eventSourceARN === referencesARN;
@@ -137,14 +137,14 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
           if (typeof match !== "number" && !match.tag) {
             var match$1 = referencesView_decode(match[1]);
             var inc;
-            inc = match$1.tag ? 1 : match$1[0][/* inc */1];
+            inc = match$1.tag ? 1 : match$1[0].inc;
             return /* tuple */[
                     match[0],
                     inc
                   ];
           }
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (references): ignoring record:", Caml_option.undefined_to_opt(JSON.stringify(record)));
-          return ;
+          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (references): ignoring record:", JSON.stringify(record));
+          
         }));
   var counts = Belt_Array.keepMap(match$1[1], (function (record) {
           var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
@@ -158,8 +158,8 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
               
             }
           }
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (counts): ignoring record:", Caml_option.undefined_to_opt(JSON.stringify(record)));
-          return ;
+          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (counts): ignoring record:", JSON.stringify(record));
+          
         }));
   return Curry._2(counterHandler, references, counts);
 }

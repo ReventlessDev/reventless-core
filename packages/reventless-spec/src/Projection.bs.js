@@ -2,7 +2,7 @@
 'use strict';
 
 
-var Spec = 0;
+var Spec;
 
 exports.Spec = Spec;
 /* No side effect */

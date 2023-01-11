@@ -3,7 +3,7 @@
 
 
 function Make(Target) {
-  var mappings = /* array */[];
+  var mappings = [];
   return {
           mappings: mappings,
           counter: undefined

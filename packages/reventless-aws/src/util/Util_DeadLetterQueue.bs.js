@@ -23,7 +23,7 @@ var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
 
 function callback(evt, ctx) {
   return new Promise((function (resolve, param) {
-                return resolve((console.log("DEAD LETTER ITEM:", evt, ctx), /* () */0));
+                return resolve((console.log("DEAD LETTER ITEM:", evt, ctx), undefined));
               }));
 }
 
@@ -38,7 +38,7 @@ var handler = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws
           undefined,
           undefined,
           undefined,
-          /* () */0
+          undefined
         ]), {
       parent: queue
     });

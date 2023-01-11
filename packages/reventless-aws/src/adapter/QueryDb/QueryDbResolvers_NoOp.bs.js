@@ -3,12 +3,12 @@
 
 
 function make(param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8) {
-  return /* record */[
-          /* resources : array */[],
-          /* resourcesMaker */(function (param) {
-              return /* array */[];
+  return {
+          resources: [],
+          resourcesMaker: (function (param) {
+              return [];
             })
-        ];
+        };
 }
 
 exports.make = make;

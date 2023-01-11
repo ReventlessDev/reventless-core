@@ -10,7 +10,7 @@ var Adapter = { };
 function Make(Connector) {
   var enqueueEventFn = function (connector) {
     return (function (delay, id, message) {
-        return connector[/* enqueueEvent */1](delay, id, message);
+        return connector.enqueueEvent(delay, id, message);
       });
   };
   var construct = function (eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, self, name) {
@@ -19,24 +19,21 @@ function Make(Connector) {
     };
     var connector = Curry._8(Connector.make, ComponentType$Reventless.name(name, /* EventCollector */5), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
     self.enqueueEvent = enqueueEventFn(connector);
-    var self$1 = self;
     var outputs = {
       name: name,
-      resources: connector[/* resources */0]
+      resources: connector.resources
     };
-    self$1.setOutputs(outputs);
-    return self$1.registerOutputs(outputs);
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
   };
-  var make = function (name, eventTopics, eventsHandler, $staropt$star, $staropt$star$1, policy1, policy2, opts, param) {
-    var memorySize = $staropt$star !== undefined ? $staropt$star : 128;
-    var timeout = $staropt$star$1 !== undefined ? $staropt$star$1 : 30;
+  var make = function (name, eventTopics, eventsHandler, memorySizeOpt, timeoutOpt, policy1, policy2, opts, param) {
+    var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 128;
+    var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var prim = ComponentType$Reventless.toString(/* EventCollector */5);
-    var prim$1 = name;
-    var prim$2 = function (param, param$1) {
+    var prim$1 = function (param, param$1) {
       return construct(eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, param, param$1);
     };
-    var prim$3 = opts;
-    return new Component.default(prim, prim$1, prim$2, prim$3);
+    return new Component.default(prim, name, prim$1, opts);
   };
   return {
           make: make,

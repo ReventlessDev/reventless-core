@@ -6,12 +6,12 @@ var QueryDbStorage_DynamoDb$ReventlessAws = require("../adapter/QueryDb/QueryDbS
 var QueryDbResolvers_AppSync$ReventlessAws = require("../adapter/QueryDb/QueryDbResolvers_AppSync.bs.js");
 var EventCollectorConnector_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_DynamoDbStream.bs.js");
 
-function Make(Config) {
-  return (function (Spec) {
-      return (function (Mappings) {
-          return ReadModel$Reventless.Make(Config)(Spec)(Mappings)(QueryDbStorage_DynamoDb$ReventlessAws)(QueryDbResolvers_AppSync$ReventlessAws)(EventCollectorConnector_DynamoDbStream$ReventlessAws);
-        });
-    });
+function Make(Config, Spec, Mappings) {
+  var partial_arg = QueryDbResolvers_AppSync$ReventlessAws;
+  var partial_arg$1 = QueryDbStorage_DynamoDb$ReventlessAws;
+  var partial_arg$2 = ReadModel$Reventless.Make;
+  var param = EventCollectorConnector_DynamoDbStream$ReventlessAws;
+  return partial_arg$2(Config, Spec, Mappings, partial_arg$1, partial_arg, param);
 }
 
 exports.Make = Make;

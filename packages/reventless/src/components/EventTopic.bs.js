@@ -14,64 +14,59 @@ var NotPublishedToPublisher = Caml_exceptions.create("EventTopic-Reventless.NotP
 
 var Adapter = { };
 
-function Make(Spec) {
-  return (function (Publisher) {
-      var publishFn = function (publisher, name) {
-        return (function (events$prime) {
-            var eventCount = events$prime.length;
-            var __x = Promise.all(Belt_Array.mapWithIndex(events$prime, (function (idx, event$prime) {
-                        var json = Message$Reventless.event$prime_encode(Spec.Id.t_encode, Spec.event_encode, event$prime);
-                        var id = event$prime[/* id */0];
-                        var eventName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$prime[/* event */2])), "Could not get event-name!");
-                        var idx$1 = idx + 1 | 0;
-                        var __x = publisher[/* publish */1](Curry._1(Spec.Id.toString, id), event$prime[/* meta */1], json);
-                        var __x$1 = __x.catch((function (e) {
-                                console.log("EventTopic: Couldn\'t publish event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + ""))))))))));
-                                return Promise.reject([
-                                            NotPublishedToPublisher,
-                                            e
-                                          ]);
-                              }));
-                        return __x$1.then((function (param) {
-                                      var $$event = JSON.stringify(json);
-                                      return Promise.resolve((console.log("EventTopic: Published event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + (": " + (String($$event) + "")))))))))))), /* () */0));
-                                    }));
-                      })));
-            return __x.then((function (param) {
-                          return Promise.resolve(/* () */0);
-                        }));
-          });
-      };
-      var construct = function (storageResources, self, name) {
-        var opts = {
-          parent: self
+function Make(Spec, Publisher) {
+  var publishFn = function (publisher, name) {
+    return (function (events$prime) {
+        var eventCount = events$prime.length;
+        var __x = Promise.all(Belt_Array.mapWithIndex(events$prime, (function (idx, event$prime) {
+                    var json = Message$Reventless.event$prime_encode(Spec.Id.t_encode, Spec.event_encode, event$prime);
+                    var id = event$prime.id;
+                    var eventName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$prime.event)), "Could not get event-name!");
+                    var idx$1 = idx + 1 | 0;
+                    var __x = publisher.publish(Curry._1(Spec.Id.toString, id), event$prime.meta, json);
+                    var __x$1 = __x.catch((function (e) {
+                            console.log("EventTopic: Couldn\'t publish event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + ""))))))))));
+                            return Promise.reject([
+                                        NotPublishedToPublisher,
+                                        e
+                                      ]);
+                          }));
+                    return __x$1.then((function (param) {
+                                  var $$event = JSON.stringify(json);
+                                  return Promise.resolve((console.log("EventTopic: Published event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + (": " + (String($$event) + "")))))))))))), undefined));
+                                }));
+                  })));
+        return __x.then((function (param) {
+                      return Promise.resolve(undefined);
+                    }));
+      });
+  };
+  var construct = function (storageResources, self, name) {
+    var opts = {
+      parent: self
+    };
+    var publisher = Curry._3(Publisher.make, ComponentType$Reventless.name(name, /* EventTopic */8), storageResources, opts);
+    self.publish = publishFn(publisher, name);
+    var outputs = {
+      resources: publisher.resources
+    };
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
+  };
+  var make = function (name, storageResources, opts, param) {
+    var prim = ComponentType$Reventless.toString(/* EventTopic */8);
+    var prim$1 = function (param, param$1) {
+      return construct(storageResources, param, param$1);
+    };
+    return new Component.default(prim, name, prim$1, opts);
+  };
+  return {
+          Spec: Spec,
+          make: make,
+          publish: (function (prim) {
+              return prim.publish;
+            })
         };
-        var publisher = Curry._3(Publisher.make, ComponentType$Reventless.name(name, /* EventTopic */8), storageResources, opts);
-        self.publish = publishFn(publisher, name);
-        var self$1 = self;
-        var outputs = {
-          resources: publisher[/* resources */0]
-        };
-        self$1.setOutputs(outputs);
-        return self$1.registerOutputs(outputs);
-      };
-      var make = function (name, storageResources, opts, param) {
-        var prim = ComponentType$Reventless.toString(/* EventTopic */8);
-        var prim$1 = name;
-        var prim$2 = function (param, param$1) {
-          return construct(storageResources, param, param$1);
-        };
-        var prim$3 = opts;
-        return new Component.default(prim, prim$1, prim$2, prim$3);
-      };
-      return {
-              Spec: Spec,
-              make: make,
-              publish: (function (prim) {
-                  return prim.publish;
-                })
-            };
-    });
 }
 
 var componentType = /* EventTopic */8;
