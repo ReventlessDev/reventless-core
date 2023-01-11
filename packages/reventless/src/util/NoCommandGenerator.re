@@ -4,7 +4,17 @@ module Make =
   module Spec = Spec;
   type publish = Message.commandHandler(Spec.Id.t, Spec.command);
 
+  [@bs.obj]
+  external makeOutputs:
+    (~resources: array(ReventlessSpec.Adapter.resource)) =>
+    CommandGenerator.outputs =
+    "";
+
+  external outputsToComponent:
+    CommandGenerator.outputs => CommandGenerator.component =
+    "%identity";
+
   let make = (~name as _, ~publish as _, ~opts as _=?, _unit) => {
-    ()->Obj.magic;
+    makeOutputs(~resources=[||])->outputsToComponent;
   };
 };
