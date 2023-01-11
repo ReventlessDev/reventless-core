@@ -90,7 +90,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
               |> onError(err => {
                    client
                    |> Client.error(
-                        err->Message.log("SFTP.onError")->Obj.magic,
+                        err->Message.log("SFTP.onError")->FTP.toJsError,
                       )
                    |> ignore;
                    endFtp();
