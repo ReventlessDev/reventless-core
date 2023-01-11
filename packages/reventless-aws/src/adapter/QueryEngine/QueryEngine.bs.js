@@ -4,7 +4,7 @@
 
 var name = "QueryEngine";
 
-var DynamoDb = 0;
+var DynamoDb;
 
 exports.name = name;
 exports.DynamoDb = DynamoDb;

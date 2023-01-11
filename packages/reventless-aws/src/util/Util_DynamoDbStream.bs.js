@@ -128,13 +128,12 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, streamView
   var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
           return Js_dict.get(tables, name);
         }));
-  var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies(/* () */0);
-  var table = new (Aws.dynamodb.Table)(name, Curry._1(Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, true, streamViewType), /* () */0), Object.assign(opts, {
+  var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies(undefined);
+  var table = new (Aws.dynamodb.Table)(name, Curry._1(Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, true, streamViewType), undefined), Object.assign(opts, {
             dependsOn: match[0]
           }));
   match[1](table);
-  var match$1 = Belt_Option.isSome(restoreSourceName);
-  if (match$1) {
+  if (Belt_Option.isSome(restoreSourceName)) {
     return updateTable(ttl, table);
   } else {
     return table;

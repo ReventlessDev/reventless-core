@@ -104,8 +104,7 @@ function verifyPointInTimeRecovery(table) {
                   table.pointInTimeRecovery
                 ]), (function (param) {
                 var pointInTimeRecovery = param[1];
-                var match = pointInTimeRecovery.enabled;
-                if (match) {
+                if (pointInTimeRecovery.enabled) {
                   return Promise.resolve(pointInTimeRecovery);
                 } else {
                   return enablePointInTimeRecovery(param[0]);
@@ -240,13 +239,12 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, opts, name
   var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
           return Js_dict.get(tables, name);
         }));
-  var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies(/* () */0);
-  var table = new (Aws.dynamodb.Table)(name, Curry._1(makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, undefined, undefined), /* () */0), Object.assign(opts, {
+  var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies(undefined);
+  var table = new (Aws.dynamodb.Table)(name, Curry._1(makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName)(undefined, undefined, undefined, undefined, undefined, undefined, undefined), undefined), Object.assign(opts, {
             dependsOn: match[0]
           }));
   match[1](table);
-  var match$1 = Belt_Option.isSome(restoreSourceName);
-  if (match$1) {
+  if (Belt_Option.isSome(restoreSourceName)) {
     return updateTable(ttl, table);
   } else {
     return table;

@@ -53,7 +53,7 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
        ->Belt.Array.mapWithIndex((idx, record) =>
            AwsSdk.SQS.DeleteMessageBatchEntry.make(
              ~_Id=idx->string_of_int,
-             ~_ReceiptHandle=record##receiptHandle,
+             ~_ReceiptHandle=record->Record.toSqsRecord##receiptHandle,
            )
          )
        ->(

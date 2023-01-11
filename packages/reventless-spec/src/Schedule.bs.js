@@ -2,11 +2,11 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
-var Decco = require("@ryb73/decco/src/Decco.js");
+var Decco = require("decco/src/Decco.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 
 var year_encode = Decco.intToJson;
 
@@ -31,7 +31,7 @@ var minute_decode = Decco.intFromJson;
 function rate_encode(v) {
   switch (v.tag | 0) {
     case /* Single */0 :
-        return /* array */[
+        return [
                 "Single",
                 Decco.intToJson(v[0]),
                 Decco.intToJson(v[1]),
@@ -40,34 +40,34 @@ function rate_encode(v) {
                 Decco.intToJson(v[4])
               ];
     case /* Minutes */1 :
-        return /* array */[
+        return [
                 "Minutes",
                 Decco.intToJson(v[0])
               ];
     case /* Hours */2 :
-        return /* array */[
+        return [
                 "Hours",
                 Decco.intToJson(v[0])
               ];
     case /* Days */3 :
-        return /* array */[
+        return [
                 "Days",
                 Decco.intToJson(v[0])
               ];
     case /* Daily */4 :
-        return /* array */[
+        return [
                 "Daily",
                 Decco.intToJson(v[0]),
                 Decco.intToJson(v[1])
               ];
     case /* Weekdays */5 :
-        return /* array */[
+        return [
                 "Weekdays",
                 Decco.intToJson(v[0]),
                 Decco.intToJson(v[1])
               ];
     case /* WeekdaysAndSaturday */6 :
-        return /* array */[
+        return [
                 "WeekdaysAndSaturday",
                 Decco.intToJson(v[0]),
                 Decco.intToJson(v[1])
@@ -77,271 +77,262 @@ function rate_encode(v) {
 }
 
 function rate_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONArray */3) {
+  var jsonArr = Js_json.classify(v);
+  if (typeof jsonArr === "number") {
     return Decco.error(undefined, "Not a variant", v);
-  } else {
-    var jsonArr = match[0];
-    var tagged = jsonArr.map(Js_json.classify);
-    var match$1 = Caml_array.caml_array_get(tagged, 0);
-    if (typeof match$1 !== "number" && !match$1.tag) {
-      switch (match$1[0]) {
-        case "Daily" :
-            var match$2 = tagged.length !== 3;
-            if (match$2) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$3 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              var match$4 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 2));
-              if (match$3.tag) {
-                var e = match$3[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e[/* path */0],
-                            /* message */e[/* message */1],
-                            /* value */e[/* value */2]
-                          ]]);
-              } else if (match$4.tag) {
-                var e$1 = match$4[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[1]" + e$1[/* path */0],
-                            /* message */e$1[/* message */1],
-                            /* value */e$1[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* Daily */Block.__(4, [
-                              match$3[0],
-                              match$4[0]
-                            ])]);
-              }
-            }
-        case "Days" :
-            var match$5 = tagged.length !== 2;
-            if (match$5) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$6 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$6.tag) {
-                var e$2 = match$6[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$2[/* path */0],
-                            /* message */e$2[/* message */1],
-                            /* value */e$2[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* Days */Block.__(3, [match$6[0]])]);
-              }
-            }
-        case "Hours" :
-            var match$7 = tagged.length !== 2;
-            if (match$7) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$8 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$8.tag) {
-                var e$3 = match$8[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$3[/* path */0],
-                            /* message */e$3[/* message */1],
-                            /* value */e$3[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* Hours */Block.__(2, [match$8[0]])]);
-              }
-            }
-        case "Minutes" :
-            var match$9 = tagged.length !== 2;
-            if (match$9) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$10 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              if (match$10.tag) {
-                var e$4 = match$10[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$4[/* path */0],
-                            /* message */e$4[/* message */1],
-                            /* value */e$4[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* Minutes */Block.__(1, [match$10[0]])]);
-              }
-            }
-        case "Single" :
-            var match$11 = tagged.length !== 6;
-            if (match$11) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$12 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              var match$13 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 2));
-              var match$14 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 3));
-              var match$15 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 4));
-              var match$16 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 5));
-              if (match$12.tag) {
-                var e$5 = match$12[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$5[/* path */0],
-                            /* message */e$5[/* message */1],
-                            /* value */e$5[/* value */2]
-                          ]]);
-              } else if (match$13.tag) {
-                var e$6 = match$13[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[1]" + e$6[/* path */0],
-                            /* message */e$6[/* message */1],
-                            /* value */e$6[/* value */2]
-                          ]]);
-              } else if (match$14.tag) {
-                var e$7 = match$14[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[2]" + e$7[/* path */0],
-                            /* message */e$7[/* message */1],
-                            /* value */e$7[/* value */2]
-                          ]]);
-              } else if (match$15.tag) {
-                var e$8 = match$15[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[3]" + e$8[/* path */0],
-                            /* message */e$8[/* message */1],
-                            /* value */e$8[/* value */2]
-                          ]]);
-              } else if (match$16.tag) {
-                var e$9 = match$16[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[4]" + e$9[/* path */0],
-                            /* message */e$9[/* message */1],
-                            /* value */e$9[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* Single */Block.__(0, [
-                              match$12[0],
-                              match$13[0],
-                              match$14[0],
-                              match$15[0],
-                              match$16[0]
-                            ])]);
-              }
-            }
-        case "Weekdays" :
-            var match$17 = tagged.length !== 3;
-            if (match$17) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$18 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              var match$19 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 2));
-              if (match$18.tag) {
-                var e$10 = match$18[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$10[/* path */0],
-                            /* message */e$10[/* message */1],
-                            /* value */e$10[/* value */2]
-                          ]]);
-              } else if (match$19.tag) {
-                var e$11 = match$19[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[1]" + e$11[/* path */0],
-                            /* message */e$11[/* message */1],
-                            /* value */e$11[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* Weekdays */Block.__(5, [
-                              match$18[0],
-                              match$19[0]
-                            ])]);
-              }
-            }
-        case "WeekdaysAndSaturday" :
-            var match$20 = tagged.length !== 3;
-            if (match$20) {
-              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
-            } else {
-              var match$21 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 1));
-              var match$22 = Decco.intFromJson(Caml_array.caml_array_get(jsonArr, 2));
-              if (match$21.tag) {
-                var e$12 = match$21[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[0]" + e$12[/* path */0],
-                            /* message */e$12[/* message */1],
-                            /* value */e$12[/* value */2]
-                          ]]);
-              } else if (match$22.tag) {
-                var e$13 = match$22[0];
-                return /* Error */Block.__(1, [/* record */[
-                            /* path */"[1]" + e$13[/* path */0],
-                            /* message */e$13[/* message */1],
-                            /* value */e$13[/* value */2]
-                          ]]);
-              } else {
-                return /* Ok */Block.__(0, [/* WeekdaysAndSaturday */Block.__(6, [
-                              match$21[0],
-                              match$22[0]
-                            ])]);
-              }
-            }
-        default:
-          
-      }
-    }
-    return Decco.error(undefined, "Invalid variant constructor", Caml_array.caml_array_get(jsonArr, 0));
   }
+  if (jsonArr.tag !== /* JSONArray */3) {
+    return Decco.error(undefined, "Not a variant", v);
+  }
+  var jsonArr$1 = jsonArr[0];
+  if (jsonArr$1.length === 0) {
+    return Decco.error(undefined, "Expected variant, found empty array", v);
+  }
+  var tagged = jsonArr$1.map(Js_json.classify);
+  var match = Belt_Array.getExn(tagged, 0);
+  if (typeof match !== "number" && !match.tag) {
+    switch (match[0]) {
+      case "Daily" :
+          if (tagged.length !== 3) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var match$1 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          var match$2 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 2));
+          if (match$1.tag) {
+            var e = match$1[0];
+            return /* Error */Block.__(1, [{
+                        path: "[0]" + e.path,
+                        message: e.message,
+                        value: e.value
+                      }]);
+          }
+          if (!match$2.tag) {
+            return /* Ok */Block.__(0, [/* Daily */Block.__(4, [
+                          match$1[0],
+                          match$2[0]
+                        ])]);
+          }
+          var e$1 = match$2[0];
+          return /* Error */Block.__(1, [{
+                      path: "[1]" + e$1.path,
+                      message: e$1.message,
+                      value: e$1.value
+                    }]);
+      case "Days" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0.tag) {
+            return /* Ok */Block.__(0, [/* Days */Block.__(3, [v0[0]])]);
+          }
+          var e$2 = v0[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$2.path,
+                      message: e$2.message,
+                      value: e$2.value
+                    }]);
+      case "Hours" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$1 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$1.tag) {
+            return /* Ok */Block.__(0, [/* Hours */Block.__(2, [v0$1[0]])]);
+          }
+          var e$3 = v0$1[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$3.path,
+                      message: e$3.message,
+                      value: e$3.value
+                    }]);
+      case "Minutes" :
+          if (tagged.length !== 2) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$2 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          if (!v0$2.tag) {
+            return /* Ok */Block.__(0, [/* Minutes */Block.__(1, [v0$2[0]])]);
+          }
+          var e$4 = v0$2[0];
+          return /* Error */Block.__(1, [{
+                      path: "[0]" + e$4.path,
+                      message: e$4.message,
+                      value: e$4.value
+                    }]);
+      case "Single" :
+          if (tagged.length !== 6) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var match$3 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          var match$4 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 2));
+          var match$5 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 3));
+          var match$6 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 4));
+          var match$7 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 5));
+          if (match$3.tag) {
+            var e$5 = match$3[0];
+            return /* Error */Block.__(1, [{
+                        path: "[0]" + e$5.path,
+                        message: e$5.message,
+                        value: e$5.value
+                      }]);
+          }
+          if (match$4.tag) {
+            var e$6 = match$4[0];
+            return /* Error */Block.__(1, [{
+                        path: "[1]" + e$6.path,
+                        message: e$6.message,
+                        value: e$6.value
+                      }]);
+          }
+          if (match$5.tag) {
+            var e$7 = match$5[0];
+            return /* Error */Block.__(1, [{
+                        path: "[2]" + e$7.path,
+                        message: e$7.message,
+                        value: e$7.value
+                      }]);
+          }
+          if (match$6.tag) {
+            var e$8 = match$6[0];
+            return /* Error */Block.__(1, [{
+                        path: "[3]" + e$8.path,
+                        message: e$8.message,
+                        value: e$8.value
+                      }]);
+          }
+          if (!match$7.tag) {
+            return /* Ok */Block.__(0, [/* Single */Block.__(0, [
+                          match$3[0],
+                          match$4[0],
+                          match$5[0],
+                          match$6[0],
+                          match$7[0]
+                        ])]);
+          }
+          var e$9 = match$7[0];
+          return /* Error */Block.__(1, [{
+                      path: "[4]" + e$9.path,
+                      message: e$9.message,
+                      value: e$9.value
+                    }]);
+      case "Weekdays" :
+          if (tagged.length !== 3) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var match$8 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          var match$9 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 2));
+          if (match$8.tag) {
+            var e$10 = match$8[0];
+            return /* Error */Block.__(1, [{
+                        path: "[0]" + e$10.path,
+                        message: e$10.message,
+                        value: e$10.value
+                      }]);
+          }
+          if (!match$9.tag) {
+            return /* Ok */Block.__(0, [/* Weekdays */Block.__(5, [
+                          match$8[0],
+                          match$9[0]
+                        ])]);
+          }
+          var e$11 = match$9[0];
+          return /* Error */Block.__(1, [{
+                      path: "[1]" + e$11.path,
+                      message: e$11.message,
+                      value: e$11.value
+                    }]);
+      case "WeekdaysAndSaturday" :
+          if (tagged.length !== 3) {
+            return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var match$10 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 1));
+          var match$11 = Decco.intFromJson(Belt_Array.getExn(jsonArr$1, 2));
+          if (match$10.tag) {
+            var e$12 = match$10[0];
+            return /* Error */Block.__(1, [{
+                        path: "[0]" + e$12.path,
+                        message: e$12.message,
+                        value: e$12.value
+                      }]);
+          }
+          if (!match$11.tag) {
+            return /* Ok */Block.__(0, [/* WeekdaysAndSaturday */Block.__(6, [
+                          match$10[0],
+                          match$11[0]
+                        ])]);
+          }
+          var e$13 = match$11[0];
+          return /* Error */Block.__(1, [{
+                      path: "[1]" + e$13.path,
+                      message: e$13.message,
+                      value: e$13.value
+                    }]);
+      default:
+        
+    }
+  }
+  return Decco.error(undefined, "Invalid variant constructor", Belt_Array.getExn(jsonArr$1, 0));
 }
 
 function schedule_encode(v) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "name",
-                Decco.stringToJson(v[/* name */0])
+                Decco.stringToJson(v.name)
               ],
               /* tuple */[
                 "rate",
-                rate_encode(v[/* rate */1])
+                rate_encode(v.rate)
               ],
               /* tuple */[
                 "payload",
-                Decco.stringToJson(v[/* payload */2])
+                Decco.stringToJson(v.payload)
               ]
             ]);
 }
 
 function schedule_decode(v) {
-  var match = Js_json.classify(v);
-  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+  var dict = Js_json.classify(v);
+  if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
-  } else {
-    var dict = match[0];
-    var match$1 = Js_dict.get(dict, "name");
-    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
-    var match$3 = Js_dict.get(dict, "rate");
-    var match$4 = rate_decode(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
-    var match$5 = Js_dict.get(dict, "payload");
-    var match$6 = Decco.stringFromJson(match$5 !== undefined ? Caml_option.valFromOption(match$5) : null);
-    if (match$2.tag) {
-      var e = match$2[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".name" + e[/* path */0],
-                  /* message */e[/* message */1],
-                  /* value */e[/* value */2]
-                ]]);
-    } else if (match$4.tag) {
-      var e$1 = match$4[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".rate" + e$1[/* path */0],
-                  /* message */e$1[/* message */1],
-                  /* value */e$1[/* value */2]
-                ]]);
-    } else if (match$6.tag) {
-      var e$2 = match$6[0];
-      return /* Error */Block.__(1, [/* record */[
-                  /* path */".payload" + e$2[/* path */0],
-                  /* message */e$2[/* message */1],
-                  /* value */e$2[/* value */2]
-                ]]);
-    } else {
-      return /* Ok */Block.__(0, [/* record */[
-                  /* name */match$2[0],
-                  /* rate */match$4[0],
-                  /* payload */match$6[0]
-                ]]);
-    }
   }
+  if (dict.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  }
+  var dict$1 = dict[0];
+  var name = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "name"), null));
+  if (name.tag) {
+    var e = name[0];
+    return /* Error */Block.__(1, [{
+                path: ".name" + e.path,
+                message: e.message,
+                value: e.value
+              }]);
+  }
+  var rate = rate_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "rate"), null));
+  if (rate.tag) {
+    var e$1 = rate[0];
+    return /* Error */Block.__(1, [{
+                path: ".rate" + e$1.path,
+                message: e$1.message,
+                value: e$1.value
+              }]);
+  }
+  var payload = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "payload"), null));
+  if (!payload.tag) {
+    return /* Ok */Block.__(0, [{
+                name: name[0],
+                rate: rate[0],
+                payload: payload[0]
+              }]);
+  }
+  var e$2 = payload[0];
+  return /* Error */Block.__(1, [{
+              path: ".payload" + e$2.path,
+              message: e$2.message,
+              value: e$2.value
+            }]);
 }
 
 exports.year_encode = year_encode;

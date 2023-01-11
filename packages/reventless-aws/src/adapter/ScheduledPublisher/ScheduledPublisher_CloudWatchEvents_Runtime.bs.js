@@ -6,36 +6,35 @@ var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var CloudWatchEvents$AwsSdk = require("@reventless/bs-aws-sdk/src/CloudWatchEvents.bs.js");
 
 function plural(count) {
-  var match = count === 1;
-  if (match) {
+  if (count === 1) {
     return "";
   } else {
     return "s";
   }
 }
 
-function toScheduleExpression(param) {
-  switch (param.tag | 0) {
+function toScheduleExpression(minutes) {
+  switch (minutes.tag | 0) {
     case /* Single */0 :
-        return "cron(" + (String(param[4]) + (" " + (String(param[3]) + (" " + (String(param[2]) + (" " + (String(param[1]) + (" ? " + (String(param[0]) + ")")))))))));
+        return "cron(" + (String(minutes[4]) + (" " + (String(minutes[3]) + (" " + (String(minutes[2]) + (" " + (String(minutes[1]) + (" ? " + (String(minutes[0]) + ")")))))))));
     case /* Minutes */1 :
-        var minutes = param[0];
-        var plural$1 = plural(minutes);
-        return "rate(" + (String(minutes) + (" minute" + (String(plural$1) + ")")));
+        var minutes$1 = minutes[0];
+        var plural$1 = plural(minutes$1);
+        return "rate(" + (String(minutes$1) + (" minute" + (String(plural$1) + ")")));
     case /* Hours */2 :
-        var hours = param[0];
+        var hours = minutes[0];
         var plural$2 = plural(hours);
         return "rate(" + (String(hours) + (" hour" + (String(plural$2) + ")")));
     case /* Days */3 :
-        var days = param[0];
+        var days = minutes[0];
         var plural$3 = plural(days);
         return "rate(" + (String(days) + (" day" + (String(plural$3) + ")")));
     case /* Daily */4 :
-        return "cron(" + (String(param[1]) + (" " + (String(param[0]) + " * * * *)")));
+        return "cron(" + (String(minutes[1]) + (" " + (String(minutes[0]) + " * * * *)")));
     case /* Weekdays */5 :
-        return "cron(" + (String(param[1]) + (" " + (String(param[0]) + " ? * MON-FRI *)")));
+        return "cron(" + (String(minutes[1]) + (" " + (String(minutes[0]) + " ? * MON-FRI *)")));
     case /* WeekdaysAndSaturday */6 :
-        return "cron(" + (String(param[1]) + (" " + (String(param[0]) + " ? * MON-SAT *)")));
+        return "cron(" + (String(minutes[1]) + (" " + (String(minutes[0]) + " ? * MON-SAT *)")));
     
   }
 }
@@ -44,16 +43,15 @@ function createSchedule(role) {
   return (function (queueResources, schedule) {
       if (queueResources.length !== 0) {
         var resource = Caml_array.caml_array_get(queueResources, 0);
-        return CloudWatchEvents$AwsSdk.putRule(schedule[/* name */0], toScheduleExpression(schedule[/* rate */1]), role.arn.get(), "ENABLED", /* () */0).then((function (param) {
-                        return CloudWatchEvents$AwsSdk.putTarget(schedule[/* name */0], resource.name.get(), resource.urn.get(), schedule[/* payload */2]);
+        return CloudWatchEvents$AwsSdk.putRule(schedule.name, toScheduleExpression(schedule.rate), role.arn.get(), "ENABLED", undefined).then((function (param) {
+                        return CloudWatchEvents$AwsSdk.putTarget(schedule.name, resource.name.get(), resource.urn.get(), schedule.payload);
                       })).then((function (param) {
-                      return Promise.resolve(/* () */0);
+                      return Promise.resolve(undefined);
                     }));
-      } else {
-        var err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !";
-        console.log(err);
-        return Js_exn.raiseError(err);
       }
+      var err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !";
+      console.log(err);
+      return Js_exn.raiseError(err);
     });
 }
 
@@ -62,16 +60,15 @@ function deleteSchedule(queueResources, name) {
     var resource = Caml_array.caml_array_get(queueResources, 0);
     return CloudWatchEvents$AwsSdk.removeTarget(name, resource.name.get()).then((function (param) {
                     return CloudWatchEvents$AwsSdk.deleteRule(name).then((function (param) {
-                                  return Promise.resolve(/* () */0);
+                                  return Promise.resolve(undefined);
                                 }));
                   })).then((function (param) {
-                  return Promise.resolve(/* () */0);
+                  return Promise.resolve(undefined);
                 }));
-  } else {
-    var err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !";
-    console.log(err);
-    return Js_exn.raiseError(err);
   }
+  var err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !";
+  console.log(err);
+  return Js_exn.raiseError(err);
 }
 
 exports.plural = plural;

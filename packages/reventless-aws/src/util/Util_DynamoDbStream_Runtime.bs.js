@@ -12,7 +12,7 @@ var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 var service = "DynamoDbStream";
 
 function buildEvent$primeJson(dict) {
-  return Js_dict.fromArray(/* array */[
+  return Js_dict.fromArray([
               /* tuple */[
                 "id",
                 Belt_Option.getExn(Js_dict.get(dict, "id"))
@@ -47,23 +47,12 @@ function parseDynamoDbStreamRecord(buildJson, record) {
                 })), (function (oldImage) {
               return AwsSdk.DynamoDB.Converter.unmarshall(oldImage, undefined);
             })), buildJson);
-  if (id !== undefined) {
-    var id$1 = Caml_option.valFromOption(id);
-    if (newImageJson !== undefined) {
-      var newImage = Caml_option.valFromOption(newImageJson);
-      if (oldImageJson !== undefined) {
-        return /* NewAndOldImage */Block.__(2, [
-                  id$1,
-                  newImage,
-                  Caml_option.valFromOption(oldImageJson)
-                ]);
-      } else {
-        return /* NewImage */Block.__(0, [
-                  id$1,
-                  newImage
-                ]);
-      }
-    } else if (oldImageJson !== undefined) {
+  if (id === undefined) {
+    return /* Invalid */0;
+  }
+  var id$1 = Caml_option.valFromOption(id);
+  if (newImageJson === undefined) {
+    if (oldImageJson !== undefined) {
       return /* OldImage */Block.__(1, [
                 id$1,
                 Caml_option.valFromOption(oldImageJson)
@@ -71,8 +60,19 @@ function parseDynamoDbStreamRecord(buildJson, record) {
     } else {
       return /* Invalid */0;
     }
+  }
+  var newImage = Caml_option.valFromOption(newImageJson);
+  if (oldImageJson !== undefined) {
+    return /* NewAndOldImage */Block.__(2, [
+              id$1,
+              newImage,
+              Caml_option.valFromOption(oldImageJson)
+            ]);
   } else {
-    return /* Invalid */0;
+    return /* NewImage */Block.__(0, [
+              id$1,
+              newImage
+            ]);
   }
 }
 

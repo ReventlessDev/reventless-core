@@ -13,13 +13,13 @@ var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.bs.js");
 
-function toJson(param) {
-  switch (param.tag | 0) {
+function toJson(str) {
+  switch (str.tag | 0) {
     case /* Int */1 :
-        return param[0];
+        return str[0];
     case /* String */0 :
     case /* Bool */2 :
-        return param[0];
+        return str[0];
     
   }
 }
@@ -81,11 +81,11 @@ function createFilters(filters) {
                   })));
 }
 
-function queryByTableName(tableName, $staropt$star, id, $staropt$star$1, $staropt$star$2, $staropt$star$3, param) {
-  var key = $staropt$star !== undefined ? $staropt$star : "id";
-  var filterConfigs = $staropt$star$1 !== undefined ? $staropt$star$1 : /* [] */0;
-  var ascending = $staropt$star$2 !== undefined ? $staropt$star$2 : true;
-  var limit = $staropt$star$3 !== undefined ? $staropt$star$3 : 1;
+function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendingOpt, limitOpt, param) {
+  var key = keyOpt !== undefined ? keyOpt : "id";
+  var filterConfigs = filterConfigsOpt !== undefined ? filterConfigsOpt : /* [] */0;
+  var ascending = ascendingOpt !== undefined ? ascendingOpt : true;
+  var limit = limitOpt !== undefined ? limitOpt : 1;
   var match = createFilters(filterConfigs);
   var filterExpressions = match[0];
   var filterExpression = filterExpressions ? $$String.concat(" AND ", filterExpressions) : undefined;
@@ -120,7 +120,7 @@ function queryByTableName(tableName, $staropt$star, id, $staropt$star$1, $starop
     tmp.FilterExpression = Caml_option.valFromOption(filterExpression);
   }
   var params = tmp;
-  var __x = Curry._1(DynamoDb_DocumentClient$AwsSdk.queryRecursive(params)(undefined), /* () */0);
+  var __x = Curry._1(DynamoDb_DocumentClient$AwsSdk.queryRecursive(params)(undefined), undefined);
   var __x$1 = __x.then((function (result) {
           return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
                             return JSON.parse(JSON.stringify(js));
@@ -128,7 +128,7 @@ function queryByTableName(tableName, $staropt$star, id, $staropt$star$1, $starop
         }));
   return __x$1.catch((function (err) {
                 console.log("Task.query error:", err);
-                return Promise.resolve(/* array */[]);
+                return Promise.resolve([]);
               }));
 }
 
@@ -149,13 +149,13 @@ function scanByTableName(tableName, filterConfigs, limit) {
     tmp.FilterExpression = Caml_option.valFromOption(filterExpression);
   }
   var params = tmp;
-  return Curry._1(DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined), /* () */0).then((function (result) {
+  return Curry._1(DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined), undefined).then((function (result) {
                   return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
                                     return JSON.parse(JSON.stringify(js));
                                   })));
                 })).catch((function (err) {
                 console.log("Task.query error:", err);
-                return Promise.resolve(/* array */[]);
+                return Promise.resolve([]);
               }));
 }
 
@@ -163,20 +163,20 @@ function make(allQueryDbs) {
   var tableName = function (viewName) {
     return OutputFailsafeRuntime$Reventless.get(Util_DynamoDb_Runtime$ReventlessAws.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, viewName)).name);
   };
-  return /* record */[
-          /* scan */(function (viewName) {
+  return {
+          scan: (function (viewName) {
               var partial_arg = tableName(viewName);
               return (function (param, param$1) {
                   return scanByTableName(partial_arg, param, param$1);
                 });
             }),
-          /* query */(function (viewName) {
+          query: (function (viewName) {
               var partial_arg = tableName(viewName);
               return (function (param, param$1, param$2, param$3, param$4, param$5) {
                   return queryByTableName(partial_arg, param, param$1, param$2, param$3, param$4, param$5);
                 });
             })
-        ];
+        };
 }
 
 exports.toJson = toJson;

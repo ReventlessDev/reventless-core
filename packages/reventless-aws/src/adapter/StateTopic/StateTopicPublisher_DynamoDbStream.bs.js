@@ -10,13 +10,15 @@ var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoD
 
 function make(name, param, allQueryDbs) {
   var queryDbResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$Reventless.queryDbStorageResources(allQueryDbs, name.substring(0, name.indexOf(ComponentType$Reventless.toName(/* ReadModel */12)))));
-  return /* record */[/* resource */Adapter$Reventless.outputToResource(queryDbResource.service.apply((function (service) {
+  return {
+          resource: Adapter$Reventless.outputToResource(queryDbResource.service.apply((function (service) {
                       if (service === Util_DynamoDbStream_Runtime$ReventlessAws.service) {
                         return Util_DynamoDbStream$ReventlessAws.toStreamResource(queryDbResource);
                       } else {
                         return Js_exn.raiseError("StateTopicPublisher_DynamoDbStream cannot connect to QueryDbStorage_" + service);
                       }
-                    })))];
+                    })))
+        };
 }
 
 exports.make = make;

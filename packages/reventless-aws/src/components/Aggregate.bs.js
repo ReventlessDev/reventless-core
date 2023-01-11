@@ -8,14 +8,14 @@ var CommandGeneratorResolvers_AppSync$ReventlessAws = require("../adapter/Comman
 var EventTopicPublisher_DynamoDbStream$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.bs.js");
 var EventCollectorConnector_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_DynamoDbStream.bs.js");
 
-function Make(Config) {
-  return (function (Spec) {
-      return (function (Behaviour) {
-          return (function (EventMappings) {
-              return Aggregate$Reventless.Make(Config)(Spec)(Behaviour)(EventMappings)(CommandGeneratorResolvers_AppSync$ReventlessAws)(CommandTopicConnector_SQS_FIFO$ReventlessAws)(EventLogStorage_DynamoDbStream$ReventlessAws)(EventTopicPublisher_DynamoDbStream$ReventlessAws)(EventCollectorConnector_DynamoDbStream$ReventlessAws);
-            });
-        });
-    });
+function Make(Config, Spec, Behaviour, EventMappings) {
+  var partial_arg = EventTopicPublisher_DynamoDbStream$ReventlessAws;
+  var partial_arg$1 = EventLogStorage_DynamoDbStream$ReventlessAws;
+  var partial_arg$2 = CommandTopicConnector_SQS_FIFO$ReventlessAws;
+  var partial_arg$3 = CommandGeneratorResolvers_AppSync$ReventlessAws;
+  var partial_arg$4 = Aggregate$Reventless.Make;
+  var param = EventCollectorConnector_DynamoDbStream$ReventlessAws;
+  return partial_arg$4(Config, Spec, Behaviour, EventMappings, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
 }
 
 exports.Make = Make;
