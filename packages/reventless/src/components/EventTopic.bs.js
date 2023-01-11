@@ -3,10 +3,11 @@
 
 var Curry = require("bs-platform/lib/js/curry.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
+var Util_Decco$Reventless = require("../util/Util_Decco.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 var NotPublishedToPublisher = Caml_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
@@ -18,22 +19,25 @@ function Make(Spec) {
       var publishFn = function (publisher, name) {
         return (function (events$prime) {
             var eventCount = events$prime.length;
-            return Promise.all(Belt_Array.mapWithIndex(events$prime, (function (idx, event$prime) {
-                                var json = Message$Reventless.event$prime_encode(Spec.Id.t_encode, Spec.event_encode, event$prime);
-                                var id = event$prime[/* id */0];
-                                var $$event = JSON.stringify(json);
-                                var eventName = Caml_array.caml_array_get(Curry._1(Spec.event_encode, event$prime[/* event */2]), 0);
-                                var idx$1 = idx + 1 | 0;
-                                return publisher[/* publish */1](Curry._1(Spec.Id.toString, id), event$prime[/* meta */1], json).catch((function (e) {
-                                                console.log("EventTopic: Couldn\'t publish event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + ""))))))))));
-                                                return Promise.reject([
-                                                            NotPublishedToPublisher,
-                                                            e
-                                                          ]);
-                                              })).then((function (param) {
-                                              return Promise.resolve((console.log("EventTopic: Published event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + (": " + (String($$event) + "")))))))))))), /* () */0));
-                                            }));
-                              }))).then((function (param) {
+            var __x = Promise.all(Belt_Array.mapWithIndex(events$prime, (function (idx, event$prime) {
+                        var json = Message$Reventless.event$prime_encode(Spec.Id.t_encode, Spec.event_encode, event$prime);
+                        var id = event$prime[/* id */0];
+                        var eventName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$prime[/* event */2])), "Could not get event-name!");
+                        var idx$1 = idx + 1 | 0;
+                        var __x = publisher[/* publish */1](Curry._1(Spec.Id.toString, id), event$prime[/* meta */1], json);
+                        var __x$1 = __x.catch((function (e) {
+                                console.log("EventTopic: Couldn\'t publish event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + ""))))))))));
+                                return Promise.reject([
+                                            NotPublishedToPublisher,
+                                            e
+                                          ]);
+                              }));
+                        return __x$1.then((function (param) {
+                                      var $$event = JSON.stringify(json);
+                                      return Promise.resolve((console.log("EventTopic: Published event " + (String(idx$1) + ("/" + (String(eventCount) + (": " + (String(eventName) + ("(" + (String(id) + (") to " + (String(name) + (": " + (String($$event) + "")))))))))))), /* () */0));
+                                    }));
+                      })));
+            return __x.then((function (param) {
                           return Promise.resolve(/* () */0);
                         }));
           });
