@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter;
 open ReventlessSpec.Counter;
 
 let componentType = ComponentType.Counter;
-[@bs.inline]
+[@inline]
 let countFieldName = "count";
 
 type outputs = {
@@ -93,7 +93,7 @@ module Make =
   type constructed;
   type construct = (component, string) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -104,27 +104,26 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
-    (~referencesDb: array(resource), ~countsDb: array(resource)) => outputs =
-    "";
+    (~referencesDb: array(resource), ~countsDb: array(resource)) => outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setCount: (component, count) => unit = "count";
-  [@bs.get] external count: component => count = "count";
+  [@set] external setCount: (component, count) => unit = "count";
+  [@get] external count: component => count = "count";
 
-  [@bs.set]
+  [@set]
   external setAddToCounterTarget: (component, addToCounterTarget) => unit =
     "addToCounterTarget";
-  [@bs.get]
+  [@get]
   external addToCounterTarget: component => addToCounterTarget =
     "addToCounterTarget";
 

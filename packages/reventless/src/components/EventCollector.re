@@ -62,7 +62,7 @@ module Make = (Connector: Adapter.Connector) : T => {
   type constructed;
   type construct = (component, string) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -73,22 +73,21 @@ module Make = (Connector: Adapter.Connector) : T => {
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
-    (~name: string, ~resources: array(resource)) => outputs =
-    "";
-  [@bs.send]
+    (~name: string, ~resources: array(resource)) => outputs;
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
+  [@set]
   external setEnqueueEvent: (component, enqueueEvent) => unit = "enqueueEvent";
-  [@bs.get] external enqueueEvent: component => enqueueEvent = "enqueueEvent";
+  [@get] external enqueueEvent: component => enqueueEvent = "enqueueEvent";
 
   let enqueueEventFn = connector =>
     (. delay, id, message) =>

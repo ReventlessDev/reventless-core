@@ -40,7 +40,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
   type constructed;
   type construct = (component, string) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -51,7 +51,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
     (
       ~name: string,
@@ -62,13 +62,12 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec) : T => {
       ~outgoingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) =>
                              Js.Promise.t(unit)
     ) =>
-    outputs =
-    "";
+    outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);

@@ -85,7 +85,7 @@ module Make =
   type constructed;
   type construct = (component, string, api, publish) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -98,13 +98,12 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
-  external makeOutputs: (~resources: array(resource)) => outputs = "";
+  [@obj] external makeOutputs: (~resources: array(resource)) => outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  //[@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  //[@send] external setOutputs: (t, outputs) => unit = "setOutputs";
 
   let generateCommand: publish => commandGenerator =
     publish => {

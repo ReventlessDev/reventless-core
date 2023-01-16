@@ -50,7 +50,7 @@ module Make =
   type constructed;
   type construct = (component, string) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -61,7 +61,7 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
     (
       ~name: string,
@@ -70,29 +70,28 @@ module Make =
       ~eventLog: EventLog.outputs,
       ~eventMapper: option(EventMapper.outputs)
     ) =>
-    outputs =
-    "";
+    outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
+  [@set]
   external setPublishJsons: (component, CommandTopic.publishJsons) => unit =
     "publishJsons";
-  [@bs.get]
+  [@get]
   external publishJsons: component => CommandTopic.publishJsons =
     "publishJsons";
 
-  [@bs.set]
+  [@set]
   external setAddEventMapper: (component, addEventMapper) => unit =
     "addEventMapper";
-  [@bs.get]
+  [@get]
   external addEventMapper: component => addEventMapper = "addEventMapper";
 
   module CommandGenerator =
@@ -111,7 +110,7 @@ module Make =
     [];
   };
 
-  [@bs.inline]
+  [@inline]
   let eventName: Message.event'(Spec.Id.t, Spec.event) => string =
     event' =>
       event'.event
@@ -119,13 +118,13 @@ module Make =
       ->Util.Decco.Json.variantName
       ->Belt.Option.getWithDefault("Could not get event-name!");
 
-  [@bs.inline]
+  [@inline]
   let errorMessage = (id, kind, err) =>
     {j|Aggregate.execCommand($id): $kind Error: |j}
     ++
     err->Util.Error.ofPromise##message;
 
-  [@bs.inline]
+  [@inline]
   let logCommand' =
       (
         idx,
@@ -199,7 +198,7 @@ module Make =
                    switch (stateO) {
                    | Some(state) =>
                      let generatedEvents =
-                       try (
+                       try(
                          Behaviour.execute(.
                            state,
                            command'.command,

@@ -96,8 +96,8 @@ module type Events = {
 exception InvalidEvent(Js.Json.t);
 exception InvalidCommand(Js.Json.t);
 
-[@bs.val]
-[@bs.scope "JSON"]
+[@val]
+[@scope "JSON"]
 [@deprecated "use Js.Json.stringify() or Js.Json.stringifyAny()"]
 external stringify: Js.t(_) => string = "stringify";
 
@@ -109,24 +109,22 @@ let log: ('a, string) => 'a =
 
 let logEvent'Json = (event'Json, description) => {
   let eventStr = event'Json->Js.Json.stringify;
-  try (
-    {
-      let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn;
-      let id = event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString;
-      let eventName =
-        event'
-        ->Js.Dict.unsafeGet("event")
-        ->Util.Decco.Json.variantName
-        ->Belt.Option.getExn;
-      Js.log({j|$description $eventName($id) complete event: $eventStr|j});
-    }
-  ) {
+  try({
+    let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn;
+    let id = event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString;
+    let eventName =
+      event'
+      ->Js.Dict.unsafeGet("event")
+      ->Util.Decco.Json.variantName
+      ->Belt.Option.getExn;
+    Js.log({j|$description $eventName($id) complete event: $eventStr|j});
+  }) {
   | _ => Js.log2("Couldn't log event:", eventStr)
   };
 };
 
 type hrtime = (int, int);
-[@bs.val] [@bs.scope "process"] external hrtime: unit => hrtime = "hrtime";
+[@val] [@scope "process"] external hrtime: unit => hrtime = "hrtime";
 
 let hrtimeToString: (~hrtime: hrtime, ~now: float) => string =
   (~hrtime, ~now) => {

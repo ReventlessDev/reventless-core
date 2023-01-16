@@ -60,7 +60,7 @@ module Make =
   type constructed;
   type construct = (component, string) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -71,7 +71,7 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
     (
       ~id: Pulumi.Output.t(string),
@@ -101,8 +101,7 @@ module Make =
                                                  ),
                                                )
     ) =>
-    outputs =
-    "";
+    outputs;
 
   // TODO: find better naming
   type pureOutputs = {
@@ -125,10 +124,10 @@ module Make =
       Js.Dict.t(array(Extension.outputs)),
   };
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
