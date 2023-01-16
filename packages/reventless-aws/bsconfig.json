@@ -3,7 +3,6 @@
   "version": "0.1.1",
   "namespace": "ReventlessAws",
   "suffix": ".bs.js",
-  "refmt": 3,
   "ppx-flags": [
     "decco/ppx"
   ],
@@ -27,6 +26,13 @@
   "bs-dependencies": [
     "decco",
     "@glennsl/bs-jest",
+    "@reventless/bs-aws-sdk",
+    "@reventless/bs-pulumi-aws",
+    "@reventless/bs-pulumi-pulumi",
+    "@reventless/reventless-spec",
+    "@reventless/reventless"
+  ],
+  "pinned-dependencies": [
     "@reventless/bs-aws-sdk",
     "@reventless/bs-pulumi-aws",
     "@reventless/bs-pulumi-pulumi",

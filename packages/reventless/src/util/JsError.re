@@ -4,7 +4,7 @@
 type t;
 
 /** constructor of Error => `new Error(string)` **/
-[@deprecated "Create separate binding locally when needed."] [@bs.new]
+[@deprecated "Create separate binding locally when needed."] [@new]
 external make: string => t = "Error";
 
 /** convert Js.Exn.t to JsError.t **/
@@ -16,5 +16,5 @@ external ofJsExn: Js.Exn.t => t = "%identity";
 external toJsExn: t => Js.Exn.t = "%identity";
 
 /** get the error's message => `(new Error(string)).getMessage()` */
-[@deprecated "Use Js.Exn.message instead"] [@bs.get]
+[@deprecated "Use Js.Exn.message instead"] [@get]
 external getMessage: t => string = "message";

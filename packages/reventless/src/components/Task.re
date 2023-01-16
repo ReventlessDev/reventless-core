@@ -42,7 +42,7 @@ type setup =
 type constructed;
 type construct = (component, string) => constructed;
 
-[@bs.module "./Component"] [@bs.new]
+[@module "./Component"] [@new]
 external make:
   (
     ~componentType: string,
@@ -53,10 +53,10 @@ external make:
   component =
   "default";
 
-[@bs.send]
+[@send]
 external registerOutputs: (component, outputs) => constructed =
   "registerOutputs";
-[@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+[@send] external setOutputs: (component, outputs) => unit = "setOutputs";
 let setOutputs = (self, outputs) => {
   self->setOutputs(outputs);
   self->registerOutputs(outputs);

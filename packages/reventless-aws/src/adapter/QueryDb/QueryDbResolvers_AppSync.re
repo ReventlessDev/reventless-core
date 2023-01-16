@@ -48,7 +48,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           ~api,
           ~dataSourceName,
           ~_type="Query"->Pulumi.Input.wrap,
-          ~field=(name->String.uncapitalize ++ "ById")->Pulumi.Input.wrap,
+          ~field=
+            (name->String.uncapitalize_ascii ++ "ById")->Pulumi.Input.wrap,
           ~requestTemplate=queryById,
           ~responseTemplate=result,
           ~kind=Unit,
@@ -65,8 +66,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
         ~dataSourceName,
         ~_type="Query"->Pulumi.Input.wrap,
         ~field=fieldNameForAll->Pulumi.Input.wrap,
-        ~requestTemplate=listAllItems->Pulumi.Input.wrap,
-        ~responseTemplate=result->Pulumi.Input.wrap,
+        ~requestTemplate=listAllItems,
+        ~responseTemplate=result,
         ~kind=Unit,
         ~opts,
         (),
@@ -140,7 +141,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 ~_type="Query"->Pulumi.Input.wrap,
                 ~field=name->String.uncapitalize_ascii->Pulumi.Input.wrap,
                 ~requestTemplate="{}"->Pulumi.Input.wrap,
-                ~responseTemplate=result->Pulumi.Input.wrap,
+                ~responseTemplate=result,
                 ~kind=Pipeline([|authFunction, queryFunction|]),
                 ~opts,
                 (),
@@ -166,7 +167,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               storageResource##name
               ->Pulumi.Output.apply(realTableName => template(realTableName))
               ->Pulumi.Output.asInput
-            | None => null->Pulumi.Input.wrap
+            | None => null
             };
 
         let idResolvers =
@@ -195,7 +196,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
             | (Some(storageResource), Multi(field)) =>
               let dataSourceName =
                 DataSource.makeDynamoDBDataSourceWithTableName(
-                  ~name=name ++ field->String.capitalize ++ "Resolver",
+                  ~name=name ++ field->String.capitalize_ascii ++ "Resolver",
                   ~api,
                   ~tableName=storageResource##name,
                   ~serviceRole=apiRole,
@@ -204,8 +205,6 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 )##name
                 ->Pulumi.Output.asInput;
 
-            switch (index) {
-            | None =>
               Resolver.make(
                 ~name=name ++ field->String.capitalize_ascii,
                 ~api,
@@ -263,7 +262,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
             | (None, Single(field))
             | (None, Multi(field)) =>
               Resolver.make(
-                ~name=name ++ field->String.capitalize,
+                ~name=name ++ field->String.capitalize_ascii,
                 ~api,
                 ~dataSourceName,
                 ~_type=name->Pulumi.Input.wrap,

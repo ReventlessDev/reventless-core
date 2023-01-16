@@ -39,7 +39,7 @@ module Make = (ScheduledPublisher: Adapter.ScheduledPublisher) : T => {
   type constructed;
   type construct = (t, string) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -50,20 +50,19 @@ module Make = (ScheduledPublisher: Adapter.ScheduledPublisher) : T => {
     t =
     "default";
 
-  [@bs.obj]
-  external makeOutputs: (~scheduledPublisher: resource) => outputs = "";
+  [@obj] external makeOutputs: (~scheduledPublisher: resource) => outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-  [@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (t, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
+  [@set]
   external setCreateSchedule: (t, createSchedule) => unit = "createSchedule";
-  [@bs.set]
+  [@set]
   external setDeleteSchedule: (t, deleteSchedule) => unit = "deleteSchedule";
 
   let construct = (self, name) => {

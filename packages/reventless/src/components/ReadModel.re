@@ -42,7 +42,7 @@ module Make =
   type constructed;
   type construct = (component, string) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -53,19 +53,18 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
     (
       ~name: string,
       ~queryDb: QueryDb.outputs,
       ~eventCollector: EventCollector.outputs
     ) =>
-    outputs =
-    "";
-  [@bs.send]
+    outputs;
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
