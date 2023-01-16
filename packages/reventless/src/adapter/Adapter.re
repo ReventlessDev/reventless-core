@@ -1,7 +1,7 @@
 open ReventlessSpec.Adapter;
 open Pulumi.Output;
 
-[@bs.obj]
+[@obj]
 external resource:
   (
     ~service: t(string),
@@ -10,8 +10,7 @@ external resource:
     ~urn: t(string),
     ~info: t(string)
   ) =>
-  resource =
-  "";
+  resource;
 
 let outputToResource: t(resource) => resource =
   resourceOutput =>
@@ -25,7 +24,7 @@ let outputToResource: t(resource) => resource =
 
 let resourcesOutputToResource: t(array(resource)) => option(resource) =
   resourcesOutput =>
-    try (
+    try(
       resource(
         ~id=resourcesOutput->flatMap(r => r[0]##id),
         ~name=resourcesOutput->flatMap(r => r[0]##name),

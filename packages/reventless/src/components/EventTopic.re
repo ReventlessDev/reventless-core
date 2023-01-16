@@ -63,7 +63,7 @@ module Make =
 
   type nonrec publish = publish(Spec.Id.t, Spec.event);
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -74,20 +74,19 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
-  external makeOutputs: (~resources: array(resource)) => outputs = "";
+  [@obj] external makeOutputs: (~resources: array(resource)) => outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setPublish: (component, publish) => unit = "publish";
-  [@bs.get] external publish: component => publish = "publish";
+  [@set] external setPublish: (component, publish) => unit = "publish";
+  [@get] external publish: component => publish = "publish";
 
   let publishFn = (publisher: Adapter.publisher, name) =>
     (. events') => {

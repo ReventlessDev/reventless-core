@@ -38,7 +38,7 @@ module Make =
   type constructed;
   type construct = (component, string) => constructed;
 
-  [@bs.module "../components/Component"] [@bs.new]
+  [@module "../components/Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -49,7 +49,7 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
     (
       ~version: string,
@@ -59,13 +59,12 @@ module Make =
       ~readModels: Js.Dict.t(ReadModel.outputs),
       ~cloner: Cloner.outputs
     ) =>
-    outputs =
-    "";
+    outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);

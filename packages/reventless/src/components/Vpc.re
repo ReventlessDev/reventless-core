@@ -24,7 +24,7 @@ type constructed;
 type construct =
   (t, name, option(PulumiAws.Aws.AvailabilityZone.t)) => constructed;
 
-[@bs.module "./Component"] [@bs.new]
+[@module "./Component"] [@new]
 external make:
   (
     ~componentType: string,
@@ -36,7 +36,7 @@ external make:
   t =
   "default";
 
-[@bs.obj]
+[@obj]
 external makeOutputs:
   (
     ~dynamoDbEndpoint: VpcEndpoint.t,
@@ -53,12 +53,11 @@ external makeOutputs:
     ~securityGroup: SecurityGroup.t,
     ~vpc: PulumiAws.EC2.Vpc.t
   ) =>
-  outputs =
-  "";
+  outputs;
 
-[@bs.send]
+[@send]
 external registerOutputs: (t, outputs) => constructed = "registerOutputs";
-[@bs.send] external setOutputs: (t, outputs) => unit = "setOutputs";
+[@send] external setOutputs: (t, outputs) => unit = "setOutputs";
 let setOutputs = (outputs, self) => {
   self->setOutputs(outputs);
   self->registerOutputs(outputs);

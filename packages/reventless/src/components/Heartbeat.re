@@ -7,7 +7,7 @@ type heartbeat; // TODO: rename to t - after refactoring
 type constructed;
 type construct = (Component.t(heartbeat, outputs), string) => constructed;
 
-[@bs.module "./Component"] [@bs.new]
+[@module "./Component"] [@new]
 external make:
   (
     ~componentType: string,
@@ -18,10 +18,10 @@ external make:
   Component.t(heartbeat, outputs) =
   "default";
 
-[@bs.obj] external makeOutputs: (~name: string) => outputs = "";
+[@obj] external makeOutputs: (~name: string) => outputs;
 
 type outputsToRegister;
-[@bs.obj]
+[@obj]
 external makeOutputsToRegister:
   (
     ~name: string,
@@ -29,14 +29,13 @@ external makeOutputsToRegister:
     ~cloudwatchEventTarget: PulumiAws.Cloudwatch_EventTarget.t,
     ~heartbeatLambdaPermission: PulumiAws.Lambda.Permission.t
   ) =>
-  outputsToRegister =
-  "";
+  outputsToRegister;
 
-[@bs.send]
+[@send]
 external registerOutputs:
   (Component.t(heartbeat, outputs), outputsToRegister) => constructed =
   "registerOutputs";
-[@bs.send]
+[@send]
 external setOutputs: (Component.t(heartbeat, outputs), outputs) => unit =
   "setOutputs";
 
