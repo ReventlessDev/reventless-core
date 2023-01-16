@@ -4,11 +4,10 @@ module Make =
   module Spec = Spec;
   type publish = Message.commandHandler(Spec.Id.t, Spec.command);
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
     (~resources: array(ReventlessSpec.Adapter.resource)) =>
-    CommandGenerator.outputs =
-    "";
+    CommandGenerator.outputs;
 
   external outputsToComponent:
     CommandGenerator.outputs => CommandGenerator.component =

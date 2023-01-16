@@ -18,7 +18,7 @@ let filterRejected = results =>
       )
     );
 
-[@bs.val] [@bs.scope "Promise"]
+[@val] [@scope "Promise"]
 external allSettled:
   array(Js.Promise.t('a)) => Js.Promise.t(array(result('a))) =
   "allSettled";

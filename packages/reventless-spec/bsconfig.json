@@ -2,7 +2,6 @@
   "name": "@reventless/reventless-spec",
   "namespace": "ReventlessSpec",
   "suffix": ".bs.js",
-  "refmt": 3,
   "ppx-flags": [
     "decco/ppx"
   ],
@@ -22,5 +21,8 @@
   "bs-dependencies": [
     "@reventless/bs-pulumi-pulumi",
     "decco"
+  ],
+  "pinned-dependencies": [
+    "@reventless/bs-pulumi-pulumi"
   ]
 }

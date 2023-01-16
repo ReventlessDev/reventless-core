@@ -39,7 +39,7 @@ module Make = (EventCollector: EventCollector.T) : T => {
   type constructed;
   type construct = (component, string) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -50,41 +50,40 @@ module Make = (EventCollector: EventCollector.T) : T => {
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
     (~name: string, ~eventCollector: ReventlessEventCollector.outputs) =>
-    outputs =
-    "";
-  [@bs.send]
+    outputs;
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set]
+  [@set]
   external setEnqueueEvent:
     (component, ReventlessEventCollector.enqueueEvent) => unit =
     "enqueueEvent";
-  [@bs.get]
+  [@get]
   external enqueueEvent: component => ReventlessEventCollector.enqueueEvent =
     "enqueueEvent";
 
-  [@bs.set]
+  [@set]
   external setCreateSchedule:
     (component, ReventlessSpec.Schedule.create) => unit =
     "createSchedule";
-  [@bs.get]
+  [@get]
   external createSchedule: component => ReventlessSpec.Schedule.create =
     "createSchedule";
 
-  [@bs.set]
+  [@set]
   external setDeleteSchedule:
     (component, ReventlessSpec.Schedule.delete) => unit =
     "deleteSchedule";
-  [@bs.get]
+  [@get]
   external deleteSchedule: component => ReventlessSpec.Schedule.delete =
     "deleteSchedule";
 

@@ -31,14 +31,14 @@
     "@reventless/bs-pulumi-pulumi": "^1.2.0-rescript.1",
     "@reventless/reventless": "^1.3.0-rescript.1",
     "@reventless/reventless-spec": "^1.3.0-rescript.1",
-    "decco": "1.3.0"
+    "decco": "1.6.0"
   },
   "devDependencies": {
     "@glennsl/bs-jest": "^0.5.1",
-    "bs-platform": "^7.3.2"
+    "bs-platform": "^8.4.2"
   },
   "peerDependencies": {
-    "bs-platform": "^7.3.2"
+    "bs-platform": "^8.4.2"
   },
   "gitHead": "1016edd2eceed939132c050a8ec292dc898a405f"
 }

@@ -175,7 +175,7 @@ module Make =
   type constructed;
   type construct = (component, string, api, role) => constructed;
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -188,33 +188,31 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
     (~resources: array(resource), ~resolversMaker: resolversResourcesMaker) =>
-    outputs =
-    "";
+    outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setLoad: (component, load) => unit = "load";
-  [@bs.set] external setSave: (component, save) => unit = "save";
-  [@bs.set]
-  external setSaveBatch: (component, saveBatch) => unit = "saveBatch";
-  [@bs.set] external setCount: (component, count) => unit = "count";
-  [@bs.set] external setDelete: (component, delete) => unit = "delete";
+  [@set] external setLoad: (component, load) => unit = "load";
+  [@set] external setSave: (component, save) => unit = "save";
+  [@set] external setSaveBatch: (component, saveBatch) => unit = "saveBatch";
+  [@set] external setCount: (component, count) => unit = "count";
+  [@set] external setDelete: (component, delete) => unit = "delete";
 
-  [@bs.get] external load: component => load = "load";
-  [@bs.get] external save: component => save = "save";
-  [@bs.get] external saveBatch: component => saveBatch = "saveBatch";
-  [@bs.get] external count: component => count = "count";
-  [@bs.get] external delete: component => delete = "delete";
+  [@get] external load: component => load = "load";
+  [@get] external save: component => save = "save";
+  [@get] external saveBatch: component => saveBatch = "saveBatch";
+  [@get] external count: component => count = "count";
+  [@get] external delete: component => delete = "delete";
 
   let decode = (id, item) =>
     switch (Spec.state_decode(item)) {
