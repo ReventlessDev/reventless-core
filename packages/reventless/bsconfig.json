@@ -2,9 +2,8 @@
     "name": "@reventless/reventless",
     "namespace": "Reventless",
     "suffix": ".bs.js",
-    "refmt": 3,
     "ppx-flags": [
-        "ppx_decco"
+        "decco/ppx"
     ],
     "warnings": {
         "error": "-44+101"
@@ -28,9 +27,20 @@
         }
     ],
     "bs-dependencies": [
-        "@ryb73/decco",
+        "decco",
         "bs-moment",
         "@glennsl/bs-jest",
+        "@reventless/reventless-spec",
+        "@reventless/bs-aws-sdk",
+        "@reventless/bs-fast-csv",
+        "@reventless/bs-hash-obj",
+        "@reventless/bs-node-streams",
+        "@reventless/bs-pulumi-aws",
+        "@reventless/bs-pulumi-pulumi",
+        "@reventless/bs-ssh2",
+        "@reventless/bs-uuid"
+    ],
+    "pinned-dependencies": [
         "@reventless/reventless-spec",
         "@reventless/bs-aws-sdk",
         "@reventless/bs-fast-csv",

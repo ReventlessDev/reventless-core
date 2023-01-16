@@ -19,7 +19,7 @@ let filterRejected = results =>
     );
 
 /** https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled */
-[@bs.val] [@bs.scope "Promise"]
+[@val] [@scope "Promise"]
 external allSettled:
   array(Js.Promise.t('a)) => Js.Promise.t(array(result('a))) =
   "allSettled";

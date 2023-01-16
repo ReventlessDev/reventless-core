@@ -2,11 +2,12 @@ type t('component, 'outputs) = 'outputs constraint 'outputs = Js.t('a);
 type unknown;
 
 // in Component.js setOutputs(_), which is called in the constructor sets the output keys
-[@bs.get]
-external getOutputKeys: t('component, 'outputs) => array(string) = "outputKeys";
+[@get]
+external getOutputKeys: t('component, 'outputs) => array(string) =
+  "outputKeys";
 
 type propValue;
-[@bs.val] [@bs.scope "Object"]
+[@val] [@scope "Object"]
 external objFromEntries: array((string, propValue)) => Js.t('b) =
   "fromEntries";
 
@@ -29,10 +30,14 @@ let extractOutputs: t('component, 'outputs) => 'outputs =
     ->Belt.Array.map(key => (key, unsafeGetProp(. component->toObj, key)))
     ->objFromEntries;
 
-let extractMultipleOutputs: array(t('component, 'outputs)) => array('outputs) = components => components->Belt.Array.map(extractOutputs);
+let extractMultipleOutputs:
+  array(t('component, 'outputs)) => array('outputs) =
+  components => components->Belt.Array.map(extractOutputs);
 
-external toPulumiResource: t('component, 'outputs) => Pulumi.Resource.t = "%identity";
-external toUnknown: t('component, 'outputs) => t(unknown, 'outputs) = "%identity";
+external toPulumiResource: t('component, 'outputs) => Pulumi.Resource.t =
+  "%identity";
+external toUnknown: t('component, 'outputs) => t(unknown, 'outputs) =
+  "%identity";
 
 // TODO:
 //  - adapt components make function to return this t('outputs)

@@ -86,7 +86,7 @@ module Make =
 
   type nonrec publish = publish(Spec.Id.t, Spec.command);
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -98,23 +98,22 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
-  external makeOutputs: (~resources: array(resource)) => outputs = "";
+  [@obj] external makeOutputs: (~resources: array(resource)) => outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setPublish: (component, publish) => unit = "publish";
-  [@bs.get] external publish: component => publish = "publish";
-  [@bs.set]
+  [@set] external setPublish: (component, publish) => unit = "publish";
+  [@get] external publish: component => publish = "publish";
+  [@set]
   external setPublishJsons: (component, publishJsons) => unit = "publishJsons";
-  [@bs.get] external publishJsons: component => publishJsons = "publishJsons";
+  [@get] external publishJsons: component => publishJsons = "publishJsons";
 
   let publishJsonsFn = connector =>
     (. jsons) => {

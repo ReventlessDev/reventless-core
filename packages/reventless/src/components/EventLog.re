@@ -66,7 +66,7 @@ module Make =
     append(Spec.Id.t, Message.event'(Spec.Id.t, Spec.event));
   type nonrec replay = replay(Spec.Id.t, Spec.event);
 
-  [@bs.module "./Component"] [@bs.new]
+  [@module "./Component"] [@new]
   external make:
     (
       ~componentType: string,
@@ -77,30 +77,29 @@ module Make =
     component =
     "default";
 
-  [@bs.obj]
+  [@obj]
   external makeOutputs:
-    (~resources: array(resource), ~eventTopic: EventTopic.outputs) => outputs =
-    "";
+    (~resources: array(resource), ~eventTopic: EventTopic.outputs) => outputs;
 
-  [@bs.send]
+  [@send]
   external registerOutputs: (component, outputs) => constructed =
     "registerOutputs";
-  [@bs.send] external setOutputs: (component, outputs) => unit = "setOutputs";
+  [@send] external setOutputs: (component, outputs) => unit = "setOutputs";
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs);
     self->registerOutputs(outputs);
   };
 
-  [@bs.set] external setAppend: (component, append) => unit = "append";
-  [@bs.set] external setReplay: (component, replay) => unit = "replay";
-  [@bs.get] external append: component => append = "append";
-  [@bs.get] external replay: component => replay = "replay";
+  [@set] external setAppend: (component, append) => unit = "append";
+  [@set] external setReplay: (component, replay) => unit = "replay";
+  [@get] external append: component => append = "append";
+  [@get] external replay: component => replay = "replay";
 
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher);
 
   let appendFn = (storage, eventTopic) =>
     (. sequenceNr, id, events') =>
-      try (
+      try(
         events'->Belt.Array.map(
           (event': Message.event'(Spec.Id.t, Spec.event)) =>
           [|
