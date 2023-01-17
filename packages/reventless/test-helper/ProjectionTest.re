@@ -52,14 +52,15 @@ let unpack: Jest.Expect.plainPartial('a) => 'a =
 let handleAction = Projection.handleAction; // create alias to avoid shadowing of same named modules
 
 module Make =
-       (
-         Target: ReventlessSpec.Projection.Spec.Target,
-         Projection:
-           ReventlessSpec.Projection.Mapping with module Target := Target,
-       )
-       : (T with module Source = Projection.Source and module Target = Target) => {
+       (Projection: ReventlessSpec.Projection.Mapping)
+
+         : (
+           T with
+             module Source = Projection.Source and
+             module Target = Projection.Target
+       ) => {
   module Source = Projection.Source;
-  module Target = Target;
+  module Target = Projection.Target;
 
   let describe = Jest.describe;
   let test = Jest.testPromise;

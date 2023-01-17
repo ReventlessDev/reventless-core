@@ -1,9 +1,6 @@
 open PluginSpec;
 open PluginFixture;
-include ProjectionTest.Make(
-          PluginReadModelSpec,
-          PluginProjection.PluginMapping,
-        );
+include ProjectionTest.Make(PluginProjection.PluginMapping);
 
 describe("PluginProjection:", () => {
   test("UnknownPluginDetected", () =>

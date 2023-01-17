@@ -11,17 +11,18 @@ var PluginProjection$Reventless = require("../../src/core/ReadModels/Plugin/Plug
 var PluginReadModelSpec$Reventless = require("../../src/core/ReadModels/Plugin/PluginReadModelSpec.bs.js");
 
 var include = ProjectionTest$Reventless.Make({
-        Id: Id$Reventless.$$String,
-        name: PluginReadModelSpec$Reventless.name,
-        state_encode: PluginReadModelSpec$Reventless.state_encode,
-        state_decode: PluginReadModelSpec$Reventless.state_decode,
-        subIdConfig: PluginReadModelSpec$Reventless.subIdConfig
-      })({
       Source: {
         Id: Id$Reventless.$$String,
         name: PluginSpec$Reventless.name,
         event_encode: PluginSpec$Reventless.event_encode,
         event_decode: PluginSpec$Reventless.event_decode
+      },
+      Target: {
+        Id: Id$Reventless.$$String,
+        name: PluginReadModelSpec$Reventless.name,
+        state_encode: PluginReadModelSpec$Reventless.state_encode,
+        state_decode: PluginReadModelSpec$Reventless.state_decode,
+        subIdConfig: PluginReadModelSpec$Reventless.subIdConfig
       },
       map: PluginProjection$Reventless.PluginMapping.map
     });

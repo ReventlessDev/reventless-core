@@ -365,6 +365,8 @@ var event$prime_encode = Message$ReventlessSpec.event$prime_encode;
 
 var event$prime_decode = Message$ReventlessSpec.event$prime_decode;
 
+var invalidEvent = Message$ReventlessSpec.invalidEvent;
+
 var uuid = Uuid.v4;
 
 exports.service_encode = service_encode;
@@ -375,6 +377,7 @@ exports.context_encode = context_encode;
 exports.context_decode = context_decode;
 exports.event$prime_encode = event$prime_encode;
 exports.event$prime_decode = event$prime_decode;
+exports.invalidEvent = invalidEvent;
 exports.uuid = uuid;
 exports.now = now;
 exports.nowAsISOString = nowAsISOString;

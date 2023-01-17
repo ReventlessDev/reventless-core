@@ -1,7 +1,5 @@
 open ReventlessSpec.Message;
 
-module Target = PluginReadModelSpec;
-
 module Util = {
   let extractExtensionPointNames =
     Belt.Array.map(_, (extensionPoint: PluginSpec.extensionPointDefinition) =>
@@ -15,6 +13,7 @@ module Util = {
 
 module PluginMapping = {
   module Source = PluginSpec;
+  module Target = PluginReadModelSpec;
 
   let map = ({event, id, meta: {time, user}}) =>
     switch (event) {
@@ -81,7 +80,6 @@ module PluginMapping = {
     };
 };
 
-module type Mapping =
-  ReventlessSpec.Projection.Mapping with module Target := Target;
-
-let mappings: array(module Mapping) = [|(module PluginMapping)|];
+let mappings: array(module ReventlessSpec.Projection.Mapping) = [|
+  (module PluginMapping),
+|];
