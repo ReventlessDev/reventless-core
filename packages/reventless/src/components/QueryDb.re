@@ -1,5 +1,4 @@
 open ReventlessSpec.Adapter;
-open ReventlessSpec.QueryDb;
 
 let componentType = ComponentType.QueryDb;
 
@@ -18,6 +17,34 @@ module type AggregateSpec = {
   module Id: ReventlessSpec.Id.T;
   let name: string;
 };
+
+type saveMode =
+  | Init
+  | Overwrite
+  | Any;
+
+[@decco]
+type storageError =
+  | NotSavedToStorage(string)
+  | NotLoadedFromStorage(string)
+  | NotCountedOnStorage(string)
+  | NotDeletedFromStorage(string)
+  | StaleState
+  | MissingSubIdConfig;
+
+type load('id, 'state) =
+  (. 'id) => Js.Promise.t(Belt.Result.t(list('state), storageError));
+type save('id, 'state) =
+  (. 'id, 'state, saveMode, option(int)) =>
+  Js.Promise.t(Belt.Result.t(unit, storageError));
+type saveBatch('id, 'state) =
+  (. array(('id, 'state, option(int)))) =>
+  Js.Promise.t(Belt.Result.t(unit, storageError));
+type count('id) =
+  (. 'id, string, int) => Js.Promise.t(Belt.Result.t(int, storageError));
+type delete('id) =
+  (. 'id, option((string, string))) =>
+  Js.Promise.t(Belt.Result.t(unit, storageError));
 
 module type T = {
   module Spec: ReventlessSpec.ReadModelSpec.T;
@@ -253,8 +280,8 @@ module Make =
     };
 
   let deleteFn = storage =>
-    (. id, sort) => {
-      storage.Adapter.delete(. id->Spec.Id.toString, sort);
+    (. id, subId) => {
+      storage.Adapter.delete(. id->Spec.Id.toString, subId);
     };
 
   let outputs: component => outputs =

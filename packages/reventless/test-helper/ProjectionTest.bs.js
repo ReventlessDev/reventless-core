@@ -6,12 +6,14 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
+var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var QueryDb$Reventless = require("../src/components/QueryDb.bs.js");
 var Projection$Reventless = require("../src/Projection.bs.js");
 var TestFixtures$Reventless = require("./TestFixtures.bs.js");
 
@@ -35,6 +37,14 @@ function Make(Target) {
       };
       var deleteStates = function (store, id) {
         store[id] = /* [] */0;
+        return /* () */0;
+      };
+      var deleteSubStates = function (store, id, subId, getSubId) {
+        store[id] = Belt_Option.getWithDefault(Belt_Option.map(Js_dict.get(store, id), (function (states) {
+                    return Belt_List.keep(states, (function (state) {
+                                  return Caml_obj.caml_notequal(Curry._1(getSubId, state), subId);
+                                }));
+                  })), /* [] */0);
         return /* () */0;
       };
       var load = function (store) {
@@ -91,17 +101,27 @@ function Make(Target) {
           });
       };
       var $$delete = function (store) {
-        return (function (id, _sort) {
-            deleteStates(store, id);
-            return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+        return (function (id, subId) {
+            var match = Target.subIdConfig;
+            if (subId !== undefined) {
+              if (match !== undefined) {
+                deleteSubStates(store, id, subId[1], match[/* getSubId */1]);
+                return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+              } else {
+                return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+              }
+            } else {
+              deleteStates(store, id);
+              return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+            }
           });
       };
       var handleAction = function (action, primitives) {
-        var __x = Promise.all(Projection$Reventless.handleAction(action, primitives));
+        var __x = Promise.all(Projection$Reventless.handleAction(action, primitives, Target.subIdConfig));
         return __x.then((function (results) {
                       Belt_Array.forEach(results, (function (result) {
                               if (result.tag) {
-                                return Js_exn.raiseError("");
+                                return Js_exn.raiseError(JSON.stringify(QueryDb$Reventless.storageError_encode(result[0])));
                               } else {
                                 return /* () */0;
                               }

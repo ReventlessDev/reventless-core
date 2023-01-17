@@ -87,47 +87,61 @@ module Make =
     store->Js.Dict.set(id, newStates);
   };
   let deleteStates = (store, id) => store->Js.Dict.set(id, []);
+  let deleteSubStates = (store, id, subId, getSubId) =>
+    store->Js.Dict.set(
+      id,
+      store
+      ->Js.Dict.get(id)
+      ->Belt.Option.map(states =>
+          states->Belt.List.keep(state => state->getSubId != subId)
+        )
+      ->Belt.Option.getWithDefault([]),
+    );
 
   open Belt.Result;
-  open ReventlessSpec.QueryDb;
-  let load: store => ReventlessSpec.QueryDb.load(string, Target.state) =
-    store => (. id) => store->states(id)->Ok->Js.Promise.resolve;
-  let save: store => ReventlessSpec.QueryDb.save(string, Target.state) =
-    store =>
-      (. id, state, saveMode, _ttl) =>
-        switch (store->states(id), saveMode) {
-        | (_, Any)
-        | ([], Init)
-        | ([_], Overwrite) =>
-          store->setStates(id, [state]);
-          Ok()->Js.Promise.resolve;
-        | _ => Error(StaleState)->Js.Promise.resolve
-        };
-  let saveBatch:
-    store => ReventlessSpec.QueryDb.saveBatch(string, Target.state) =
-    store =>
-      (. batch) => {
-        batch->Belt.Array.forEach(((id, state, _ttl)) =>
-          store->addState(id, state)
-        );
+  open QueryDb;
+  let load = store => (. id) => store->states(id)->Ok->Js.Promise.resolve;
+  let save = store =>
+    (. id, state, saveMode, _ttl) =>
+      switch (store->states(id), saveMode) {
+      | (_, Any)
+      | ([], Init)
+      | ([_], Overwrite) =>
+        store->setStates(id, [state]);
         Ok()->Js.Promise.resolve;
+      | _ => Error(StaleState)->Js.Promise.resolve
       };
-  let delete: store => ReventlessSpec.QueryDb.delete(string) =
-    store =>
-      (. id, _sort) => {
+  let saveBatch = store =>
+    (. batch) => {
+      batch->Belt.Array.forEach(((id, state, _ttl)) =>
+        store->addState(id, state)
+      );
+      Ok()->Js.Promise.resolve;
+    };
+  let delete = store =>
+    (. id, subId) =>
+      switch (subId, Target.subIdConfig) {
+      | (None, _) =>
         store->deleteStates(id);
         Ok()->Js.Promise.resolve;
+      | (Some((_, subId)), Some({ReventlessSpec.ReadModelSpec.getSubId})) =>
+        store->deleteSubStates(id, subId, getSubId);
+        Ok()->Js.Promise.resolve;
+      | _ => Ok()->Js.Promise.resolve
       };
 
   let handleAction = (action, primitives) =>
     action
-    ->handleAction(primitives)
+    ->handleAction(primitives, Target.subIdConfig)
     ->Js.Promise.all
     ->Js.Promise.then_(
         results => {
           results->Belt.Array.forEach(result =>
             switch (result) {
-            | Error(_) => Js.Exn.raiseError("")
+            | Error(err) =>
+              Js.Exn.raiseError(
+                err->QueryDb.storageError_encode->Js.Json.stringify,
+              )
             | _ => ()
             }
           );
@@ -140,7 +154,7 @@ module Make =
     {id: TestFixtures.id, meta: TestFixtures.meta, event}
     ->Projection.map
     ->handleAction({
-        ReventlessSpec.ReadModel.load: load(store),
+        load: load(store),
         save: save(store),
         saveBatch: saveBatch(store),
         delete: delete(store),

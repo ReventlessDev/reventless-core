@@ -5,7 +5,7 @@ module Make =
          Mappings:
            ReventlessSpec.Projection.Mappings with module Target := Spec,
        )
-       : Reventless.ReadModel.T =>
+       : (Reventless.ReadModel.T with module Spec = Spec) =>
   Reventless.ReadModel.Make(
     Config,
     Spec,

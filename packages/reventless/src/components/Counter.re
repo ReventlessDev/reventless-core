@@ -247,7 +247,7 @@ module Make =
               countItems->logCountItems;
               Js.Promise.resolve();
             }
-          | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) => {
+          | Error(QueryDb.NotSavedToStorage(err)) => {
               let batchSize = countItems->Belt.Array.size;
               Js.log(
                 {j|Counter error: couldn't save batch of $batchSize reference(s):|j},

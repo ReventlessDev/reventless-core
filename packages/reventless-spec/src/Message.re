@@ -23,3 +23,5 @@ type event'('id, 'event) = {
   meta,
   event: 'event,
 };
+
+let invalidEvent = () => Js.Exn.raiseError("Invalid Event");

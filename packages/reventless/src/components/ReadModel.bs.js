@@ -22,11 +22,11 @@ function Make(Config) {
           return (function (QueryDbStorage) {
               return (function (QueryDbResolvers) {
                   return (function (EventCollectorConnector) {
-                      var QueryDb = QueryDb$Reventless.Make(Config)(Spec)(QueryDbStorage)(QueryDbResolvers);
                       var construct = function (allEventTopics, self, name) {
                         var opts = {
                           parent: self
                         };
+                        var QueryDb = QueryDb$Reventless.Make(Config)(Spec)(QueryDbStorage)(QueryDbResolvers);
                         var queryDb = Curry._3(QueryDb.make, undefined, Caml_option.some(opts), /* () */0);
                         var load = function (id) {
                           return Curry._1(QueryDb.load, queryDb)(Curry._1(Spec.Id.makeFromString, id));
@@ -70,7 +70,8 @@ function Make(Config) {
                                                 })(sourceName);
                                     })));
                           var primitives$1 = primitives;
-                          var __x = Promise.all(Projection$Reventless.handleActions(actions, primitives$1));
+                          var subIdConfig = Spec.subIdConfig;
+                          var __x = Promise.all(Projection$Reventless.handleActions(actions, primitives$1, subIdConfig));
                           return __x.then((function (param) {
                                         return Promise.resolve(/* () */0);
                                       }));
@@ -119,11 +120,8 @@ function Make(Config) {
     });
 }
 
-var ReventlessQueryDb = 0;
-
 var componentType = /* ReadModel */12;
 
-exports.ReventlessQueryDb = ReventlessQueryDb;
 exports.componentType = componentType;
 exports.Make = Make;
 /* ./Component Not a pure module */

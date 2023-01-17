@@ -31,7 +31,7 @@
         "rebuild": "npm run clean && npm run build",
         "deploy": "./scripts/deploy.sh",
         "test": "jest",
-        "test:watch": "jest --coverage --watchAll",
+        "test:watch": "jest --watchAll",
         "coverage": "nyc report --temp-directory=coverage --reporter=text-lcov | coveralls",
         "dev": "jest --watchAll",
         "watch:screen": "screen -c .screenrc",

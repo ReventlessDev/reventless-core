@@ -4,6 +4,7 @@
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Decco = require("@ryb73/decco/src/Decco.js");
+var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
@@ -220,6 +221,10 @@ function event$prime_decode(decoder_id, decoder_event, v) {
   }
 }
 
+function invalidEvent(param) {
+  return Js_exn.raiseError("Invalid Event");
+}
+
 exports.service_encode = service_encode;
 exports.service_decode = service_decode;
 exports.meta_encode = meta_encode;
@@ -228,4 +233,5 @@ exports.context_encode = context_encode;
 exports.context_decode = context_decode;
 exports.event$prime_encode = event$prime_encode;
 exports.event$prime_decode = event$prime_decode;
+exports.invalidEvent = invalidEvent;
 /* No side effect */

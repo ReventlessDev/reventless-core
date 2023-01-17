@@ -3,15 +3,151 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Decco = require("@ryb73/decco/src/Decco.js");
 var Js_json = require("bs-platform/lib/js/js_json.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Component = require("./Component");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Component$Reventless = require("./Component.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
+
+function storageError_encode(v) {
+  if (typeof v === "number") {
+    if (v === /* StaleState */0) {
+      return /* array */["StaleState"];
+    } else {
+      return /* array */["MissingSubIdConfig"];
+    }
+  } else {
+    switch (v.tag | 0) {
+      case /* NotSavedToStorage */0 :
+          return /* array */[
+                  "NotSavedToStorage",
+                  Decco.stringToJson(v[0])
+                ];
+      case /* NotLoadedFromStorage */1 :
+          return /* array */[
+                  "NotLoadedFromStorage",
+                  Decco.stringToJson(v[0])
+                ];
+      case /* NotCountedOnStorage */2 :
+          return /* array */[
+                  "NotCountedOnStorage",
+                  Decco.stringToJson(v[0])
+                ];
+      case /* NotDeletedFromStorage */3 :
+          return /* array */[
+                  "NotDeletedFromStorage",
+                  Decco.stringToJson(v[0])
+                ];
+      
+    }
+  }
+}
+
+function storageError_decode(v) {
+  var match = Js_json.classify(v);
+  if (typeof match === "number" || match.tag !== /* JSONArray */3) {
+    return Decco.error(undefined, "Not a variant", v);
+  } else {
+    var jsonArr = match[0];
+    var tagged = jsonArr.map(Js_json.classify);
+    var match$1 = Caml_array.caml_array_get(tagged, 0);
+    if (typeof match$1 !== "number" && !match$1.tag) {
+      switch (match$1[0]) {
+        case "MissingSubIdConfig" :
+            var match$2 = tagged.length !== 1;
+            if (match$2) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              return /* Ok */Block.__(0, [/* MissingSubIdConfig */1]);
+            }
+        case "NotCountedOnStorage" :
+            var match$3 = tagged.length !== 2;
+            if (match$3) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              var match$4 = Decco.stringFromJson(Caml_array.caml_array_get(jsonArr, 1));
+              if (match$4.tag) {
+                var e = match$4[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[0]" + e[/* path */0],
+                            /* message */e[/* message */1],
+                            /* value */e[/* value */2]
+                          ]]);
+              } else {
+                return /* Ok */Block.__(0, [/* NotCountedOnStorage */Block.__(2, [match$4[0]])]);
+              }
+            }
+        case "NotDeletedFromStorage" :
+            var match$5 = tagged.length !== 2;
+            if (match$5) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              var match$6 = Decco.stringFromJson(Caml_array.caml_array_get(jsonArr, 1));
+              if (match$6.tag) {
+                var e$1 = match$6[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[0]" + e$1[/* path */0],
+                            /* message */e$1[/* message */1],
+                            /* value */e$1[/* value */2]
+                          ]]);
+              } else {
+                return /* Ok */Block.__(0, [/* NotDeletedFromStorage */Block.__(3, [match$6[0]])]);
+              }
+            }
+        case "NotLoadedFromStorage" :
+            var match$7 = tagged.length !== 2;
+            if (match$7) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              var match$8 = Decco.stringFromJson(Caml_array.caml_array_get(jsonArr, 1));
+              if (match$8.tag) {
+                var e$2 = match$8[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[0]" + e$2[/* path */0],
+                            /* message */e$2[/* message */1],
+                            /* value */e$2[/* value */2]
+                          ]]);
+              } else {
+                return /* Ok */Block.__(0, [/* NotLoadedFromStorage */Block.__(1, [match$8[0]])]);
+              }
+            }
+        case "NotSavedToStorage" :
+            var match$9 = tagged.length !== 2;
+            if (match$9) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              var match$10 = Decco.stringFromJson(Caml_array.caml_array_get(jsonArr, 1));
+              if (match$10.tag) {
+                var e$3 = match$10[0];
+                return /* Error */Block.__(1, [/* record */[
+                            /* path */"[0]" + e$3[/* path */0],
+                            /* message */e$3[/* message */1],
+                            /* value */e$3[/* value */2]
+                          ]]);
+              } else {
+                return /* Ok */Block.__(0, [/* NotSavedToStorage */Block.__(0, [match$10[0]])]);
+              }
+            }
+        case "StaleState" :
+            var match$11 = tagged.length !== 1;
+            if (match$11) {
+              return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
+            } else {
+              return /* Ok */Block.__(0, [/* StaleState */0]);
+            }
+        default:
+          
+      }
+    }
+    return Decco.error(undefined, "Invalid variant constructor", Caml_array.caml_array_get(jsonArr, 0));
+  }
+}
 
 function NoResolvers(Config) {
   var make = function (param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8) {
@@ -98,8 +234,8 @@ function Make(Config) {
                   });
               };
               var deleteFn = function (storage) {
-                return (function (id, sort) {
-                    return storage[/* delete */6](Curry._1(Spec.Id.toString, id), sort);
+                return (function (id, subId) {
+                    return storage[/* delete */6](Curry._1(Spec.Id.toString, id), subId);
                   });
               };
               var outputs = Component$Reventless.extractOutputs;
@@ -175,6 +311,8 @@ function Make(Config) {
 var componentType = /* QueryDb */11;
 
 exports.componentType = componentType;
+exports.storageError_encode = storageError_encode;
+exports.storageError_decode = storageError_decode;
 exports.Adapter = Adapter;
 exports.Make = Make;
 /* ./Component Not a pure module */
