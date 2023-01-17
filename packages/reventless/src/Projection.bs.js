@@ -13,7 +13,6 @@ function handleAction(action, param, subIdConfig) {
   var save = param[/* save */1];
   var load = param[/* load */0];
   if (typeof action === "number") {
-    console.log("Action not yet supported !");
     return /* array */[Promise.resolve(/* Ok */Block.__(0, [/* () */0]))];
   } else {
     switch (action.tag | 0) {
@@ -126,16 +125,12 @@ function handleAction(action, param, subIdConfig) {
                             var newStates = Curry._1(update$2, oldStates);
                             var newSubIds = Belt_SetString.fromArray(Belt_Array.map(newStates, Curry.__1(getSubId)));
                             var subIdsToDelete = Belt_SetString.diff(oldSubIds, newSubIds);
-                            var subIdsToAdd = Belt_SetString.diff(newSubIds, oldSubIds);
-                            var statesToAdd = Belt_Array.keep(newStates, (function (state) {
-                                    return Belt_SetString.has(subIdsToAdd, Curry._1(getSubId, state));
-                                  }));
                             var __x = Promise.all(Belt_Array.concat(Belt_Array.map(Belt_SetString.toArray(subIdsToDelete), (function (subId) {
                                             return $$delete(id$3, /* tuple */[
                                                         subIdField,
                                                         subId
                                                       ]);
-                                          })), /* array */[saveBatch(Belt_Array.map(statesToAdd, (function (state) {
+                                          })), /* array */[saveBatch(Belt_Array.map(newStates, (function (state) {
                                                   return /* tuple */[
                                                           id$3,
                                                           state,

@@ -14,6 +14,7 @@ type primitives('id, 'state) = {
 
 let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
   switch (action) {
+  | Ignore => [|Ok()->Js.Promise.resolve|]
   | Create(id, state) => [|save(. id, state, Init, None)|]
   | CreateMultiState(id, states) =>
     switch (states) {
@@ -82,11 +83,6 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
                 ->Belt.Array.map(state => state->getSubId)
                 ->Set.fromArray;
               let subIdsToDelete = oldSubIds->Set.diff(newSubIds);
-              let subIdsToAdd = newSubIds->Set.diff(oldSubIds);
-              let statesToAdd =
-                newStates->Belt.Array.keep(state =>
-                  subIdsToAdd->Set.has(state->getSubId)
-                );
 
               subIdsToDelete
               ->Set.toArray
@@ -95,7 +91,7 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
                 )
               ->Belt.Array.concat([|
                   saveBatch(.
-                    statesToAdd->Belt.Array.map(state => (id, state, None)),
+                    newStates->Belt.Array.map(state => (id, state, None)),
                   ),
                 |])
               ->Js.Promise.all

@@ -160,6 +160,15 @@ module Make =
         saveBatch: saveBatch(store),
         delete: delete(store),
       })
+    // Js.log4(
+    //   "update after event:",
+    //   event->Source.event_encode,
+    //   "\nstore:",
+    //   store
+    //   ->Js.Dict.get(TestFixtures.id)
+    //   ->Belt.Option.getExn
+    //   ->Belt.List.map(Target.state_encode),
+    // );
     ->Js.Promise.then_(_ => store->Js.Promise.resolve, _);
 
   let givenEvents = events => {
