@@ -3,6 +3,7 @@ module type T = {
   module Target: ReventlessSpec.Projection.Spec.Target;
 
   let describe: (string, unit => unit) => unit;
+  let describeWithId: (string, string, unit => unit) => unit;
   let test:
     (string, ~timeout: int=?, unit => Js.Promise.t(Jest.assertion)) => unit;
 
@@ -62,7 +63,13 @@ module Make =
   module Source = Projection.Source;
   module Target = Projection.Target;
 
+  let testId = ref(TestFixtures.id);
+
   let describe = Jest.describe;
+  let describeWithId = (description, id, fn) => {
+    testId := id;
+    Jest.describe(description, fn);
+  };
   let test = Jest.testPromise;
 
   type store = Js.Dict.t(list(Target.state));
@@ -152,7 +159,7 @@ module Make =
       );
 
   let update = (store, event) =>
-    {id: TestFixtures.id, meta: TestFixtures.meta, event}
+    {id: testId^, meta: TestFixtures.meta, event}
     ->Projection.map
     ->handleAction({
         load: load(store),
@@ -165,7 +172,7 @@ module Make =
     //   event->Source.event_encode,
     //   "\nstore:",
     //   store
-    //   ->Js.Dict.get(TestFixtures.id)
+    //   ->Js.Dict.get(testId^)
     //   ->Belt.Option.getExn
     //   ->Belt.List.map(Target.state_encode),
     // );
@@ -199,7 +206,7 @@ module Make =
               ->Belt.Array.get(0)
               ->Belt.Option.getWithDefault([]),
             ))
-            |> toEqual((1, Some(TestFixtures.context.id), expectedStates))
+            |> toEqual((1, Some(testId^), expectedStates))
           )
           ->Js.Promise.resolve,
         _,
@@ -230,12 +237,7 @@ module Make =
               ->Belt.List.length,
               store->Js.Dict.values[0]->Belt.List.head,
             ))
-            |> toEqual((
-                 1,
-                 Some(TestFixtures.context.id),
-                 1,
-                 Some(expectedState),
-               ))
+            |> toEqual((1, Some(testId^), 1, Some(expectedState)))
           )
           ->Js.Promise.resolve,
         _,

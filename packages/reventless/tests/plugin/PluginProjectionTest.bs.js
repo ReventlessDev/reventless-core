@@ -156,6 +156,8 @@ var Source = include.Source;
 
 var Target = include.Target;
 
+var describeWithId = include.describeWithId;
+
 var thenStates = include.thenStates;
 
 var thenAllStates = include.thenAllStates;
@@ -169,6 +171,7 @@ var thenFail = include.thenFail;
 exports.Source = Source;
 exports.Target = Target;
 exports.describe = describe;
+exports.describeWithId = describeWithId;
 exports.test = test;
 exports.givenEvents = givenEvents;
 exports.whenEvent = whenEvent;

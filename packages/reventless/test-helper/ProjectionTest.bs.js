@@ -23,6 +23,11 @@ function unpack(p) {
 
 function Make(Projection) {
   var Target = Projection.Target;
+  var testId = /* record */[/* contents */TestFixtures$Reventless.id];
+  var describeWithId = function (description, id, fn) {
+    testId[0] = id;
+    return Jest.describe(description, fn);
+  };
   var getSubId = function (state) {
     return Belt_Option.map(Target.subIdConfig, (function (param) {
                   return Curry._1(param[/* getSubId */1], state);
@@ -131,7 +136,7 @@ function Make(Projection) {
   };
   var update = function (store, $$event) {
     var __x = handleAction(Curry._1(Projection.map, /* record */[
-              /* id */TestFixtures$Reventless.id,
+              /* id */testId[0],
               /* meta */TestFixtures$Reventless.meta,
               /* event */$$event
             ]), /* record */[
@@ -166,7 +171,7 @@ function Make(Projection) {
     return __x.then((function (store) {
                   return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
                                   1,
-                                  TestFixtures$Reventless.context[/* id */0],
+                                  testId[0],
                                   expectedStates
                                 ], Jest.Expect.expect(/* tuple */[
                                       Object.keys(store).length,
@@ -186,7 +191,7 @@ function Make(Projection) {
     return __x.then((function (store) {
                   return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
                                   1,
-                                  TestFixtures$Reventless.context[/* id */0],
+                                  testId[0],
                                   1,
                                   Caml_option.some(expectedState)
                                 ], Jest.Expect.expect(/* tuple */[
@@ -238,6 +243,7 @@ function Make(Projection) {
           Source: Projection.Source,
           Target: Target,
           describe: Jest.describe,
+          describeWithId: describeWithId,
           test: Jest.testPromise,
           givenEvents: givenEvents,
           whenEvent: whenEvent,

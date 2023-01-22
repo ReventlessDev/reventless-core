@@ -2,7 +2,7 @@
 'use strict';
 
 
-var id = "id@subId";
+var id = "id";
 
 var meta = /* record */[
   /* service */"service",

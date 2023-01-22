@@ -1,4 +1,4 @@
-let id = "id@subId";
+let id = "id";
 let meta = {
   Message.service: "service",
   user: "ViewTest",
