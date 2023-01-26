@@ -5,8 +5,9 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
 
-function handleAction(action, param) {
+function handleAction(action, param, subIdConfig) {
   var $$delete = param[/* delete */3];
   var saveBatch = param[/* saveBatch */2];
   var save = param[/* save */1];
@@ -83,7 +84,7 @@ function handleAction(action, param) {
           return Belt_Array.map(action[0], (function (id) {
                         return $$delete(id, undefined);
                       }));
-      case /* CreateMultiStates */12 :
+      case /* CreateMultiState */12 :
           var states = action[1];
           var id$2 = action[0];
           var len = states.length;
@@ -108,37 +109,57 @@ function handleAction(action, param) {
           var update$2 = action[1];
           var id$3 = action[0];
           var __x$2 = load(id$3);
-          return /* array */[__x$2.then((function (param) {
-                          if (param.tag) {
-                            return Promise.resolve(/* Error */Block.__(1, [param[0]]));
-                          } else {
-                            var states = param[0];
-                            if (states) {
-                              var newStates = Curry._1(update$2, Belt_List.toArray(states));
-                              return saveBatch(Belt_Array.map(newStates, (function (newState) {
-                                                return /* tuple */[
-                                                        id$3,
-                                                        newState,
-                                                        undefined
-                                                      ];
-                                              })));
+          return /* array */[__x$2.then((function (states) {
+                          if (states.tag) {
+                            if (subIdConfig !== undefined) {
+                              return Promise.resolve(/* Error */Block.__(1, [states[0]]));
                             } else {
-                              return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                              return Promise.resolve(/* Error */Block.__(1, [/* MissingSubIdConfig */1]));
                             }
+                          } else if (subIdConfig !== undefined) {
+                            var match = subIdConfig;
+                            var getSubId = match[/* getSubId */1];
+                            var subIdField = match[/* subIdField */0];
+                            var oldStates = Belt_List.toArray(states[0]);
+                            var oldSubIds = Belt_SetString.fromArray(Belt_Array.map(oldStates, Curry.__1(getSubId)));
+                            var newStates = Curry._1(update$2, oldStates);
+                            var newSubIds = Belt_SetString.fromArray(Belt_Array.map(newStates, Curry.__1(getSubId)));
+                            var subIdsToDelete = Belt_SetString.diff(oldSubIds, newSubIds);
+                            var __x = Promise.all(Belt_Array.concat(Belt_Array.map(Belt_SetString.toArray(subIdsToDelete), (function (subId) {
+                                            return $$delete(id$3, /* tuple */[
+                                                        subIdField,
+                                                        subId
+                                                      ]);
+                                          })), /* array */[saveBatch(Belt_Array.map(newStates, (function (state) {
+                                                  return /* tuple */[
+                                                          id$3,
+                                                          state,
+                                                          undefined
+                                                        ];
+                                                })))]));
+                            return __x.then((function (param) {
+                                          return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                                        }));
+                          } else {
+                            return Promise.resolve(/* Error */Block.__(1, [/* MissingSubIdConfig */1]));
                           }
                         }))];
       default:
+        console.log("Action not yet supported !");
         return /* array */[Promise.resolve(/* Ok */Block.__(0, [/* () */0]))];
     }
   }
 }
 
-function handleActions(actions, primitives) {
+function handleActions(actions, primitives, subIdConfig) {
   return Belt_Array.concatMany(Belt_Array.map(actions, (function (action) {
-                    return handleAction(action, primitives);
+                    return handleAction(action, primitives, subIdConfig);
                   })));
 }
 
+var $$Set = 0;
+
+exports.$$Set = $$Set;
 exports.handleAction = handleAction;
 exports.handleActions = handleActions;
 /* No side effect */

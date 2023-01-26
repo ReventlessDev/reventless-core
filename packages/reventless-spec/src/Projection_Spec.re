@@ -55,12 +55,12 @@ type action('id, 'state) =
       array('id),
       ('id, 'state) => bool,
     )
-  | /** Create multiStates (multiple states with same id)*/
-    CreateMultiStates(
+  | /** Create multiStates (multiple sub states with same id)*/
+    CreateMultiState(
       'id,
       array('state),
     )
-  | /** Update multiState (Create/Update/Delete multiple states with same id)*/
+  | /** Update multiState (Create/Update/Delete multiple sub states with same id)*/
     UpdateMultiState(
       'id,
       array('state) => array('state),

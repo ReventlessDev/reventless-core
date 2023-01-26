@@ -4,7 +4,7 @@ module type Mapping = {
   module Source: Projection_Spec.Source;
   module Target: Projection_Spec.Target; // NOTE: to be destructive substituted
   let map:
-    (Source.event, Message.context) => Spec.action(string, Target.state);
+    Message.event'(string, Source.event) => Spec.action(string, Target.state);
 };
 
 module type Mappings = {

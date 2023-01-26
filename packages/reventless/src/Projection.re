@@ -1,12 +1,22 @@
 open ReventlessSpec.Projection.Spec;
-open ReventlessSpec.QueryDb;
+open ReventlessSpec.ReadModelSpec;
 open Belt.Result;
+open QueryDb;
 
-let handleAction =
-    (action, {ReventlessSpec.ReadModel.load, save, saveBatch, delete}) =>
+module Set = Belt.Set.String;
+
+type primitives('id, 'state) = {
+  load: load('id, 'state),
+  save: save('id, 'state),
+  saveBatch: saveBatch('id, 'state),
+  delete: delete('id),
+};
+
+let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
   switch (action) {
+  | Ignore => [|Ok()->Js.Promise.resolve|]
   | Create(id, state) => [|save(. id, state, Init, None)|]
-  | CreateMultiStates(id, states) =>
+  | CreateMultiState(id, states) =>
     switch (states) {
     | [||] => [|Ok()->Js.Promise.resolve|]
     | [|state|] => [|save(. id, state, Init, None)|]
@@ -57,29 +67,52 @@ let handleAction =
     |]
   | UpdateMultiState(id, update) => [|
       load(. id)
+      // TODO: error handling
       ->Js.Promise.then_(
-          fun
-          | Ok([]) => Ok()->Js.Promise.resolve
-          | Ok(states) => {
-              let newStates = states->Belt.List.toArray->update;
-              saveBatch(.
-                newStates->Belt.Array.map(newState => (id, newState, None)),
-              );
-            }
-          | Error(err) => Error(err)->Js.Promise.resolve,
+          states =>
+            switch (states, subIdConfig) {
+            | (Ok(states), Some({subIdField, getSubId})) =>
+              let oldStates = states->Belt.List.toArray;
+              let oldSubIds =
+                oldStates
+                ->Belt.Array.map(state => state->getSubId)
+                ->Set.fromArray;
+              let newStates = oldStates->update;
+              let newSubIds =
+                newStates
+                ->Belt.Array.map(state => state->getSubId)
+                ->Set.fromArray;
+              let subIdsToDelete = oldSubIds->Set.diff(newSubIds);
+
+              subIdsToDelete
+              ->Set.toArray
+              ->Belt.Array.map(subId =>
+                  delete(. id, Some((subIdField, subId)))
+                )
+              ->Belt.Array.concat([|
+                  saveBatch(.
+                    newStates->Belt.Array.map(state => (id, state, None)),
+                  ),
+                |])
+              ->Js.Promise.all
+              ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _);
+            | (Error(err), Some(_)) => Error(err)->Js.Promise.resolve
+            | (_, None) => Error(MissingSubIdConfig)->Js.Promise.resolve
+            },
           _,
         ),
     |]
-
   | Delete(id) => [|delete(. id, None)|]
   | DeleteMany(ids) => ids->Belt.Array.map(id => delete(. id, None))
 
   // TODO: add missing actions
-  | _ => [|Ok()->Js.Promise.resolve|]
+  | _ =>
+    Js.log("Action not yet supported !");
+    [|Ok()->Js.Promise.resolve|];
   };
 
-let handleActions = (actions, primitives) => {
+let handleActions = (actions, primitives, subIdConfig) => {
   actions
-  ->Belt.Array.map(action => action->handleAction(primitives))
+  ->Belt.Array.map(action => action->handleAction(primitives, subIdConfig))
   ->Belt.Array.concatMany;
 };

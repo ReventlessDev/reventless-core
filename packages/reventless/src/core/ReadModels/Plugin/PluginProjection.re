@@ -1,4 +1,4 @@
-module Target = PluginReadModelSpec;
+open ReventlessSpec.Message;
 
 module Util = {
   let extractExtensionPointNames =
@@ -13,8 +13,9 @@ module Util = {
 
 module PluginMapping = {
   module Source = PluginSpec;
+  module Target = PluginReadModelSpec;
 
-  let map = (event, {ReventlessSpec.Message.id, meta: {time, user}}) =>
+  let map = ({event, id, meta: {time, user}}) =>
     switch (event) {
     | PluginSpec.UnknownPluginDetected => ReventlessSpec.Projection.Spec.Ignore
     | Connected({name, version, eventCollector, extensionPoints, extensions}) =>
@@ -79,7 +80,6 @@ module PluginMapping = {
     };
 };
 
-module type Mapping =
-  ReventlessSpec.Projection.Mapping with module Target := Target;
-
-let mappings: array(module Mapping) = [|(module PluginMapping)|];
+let mappings: array(module ReventlessSpec.Projection.Mapping) = [|
+  (module PluginMapping),
+|];

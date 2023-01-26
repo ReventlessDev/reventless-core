@@ -34,6 +34,7 @@ function Make(DiscreteTarget) {
               var sourceName = M.Source.name;
               var $$let = M.Source;
               var Source = Mapper$Reventless.MakeGenericSourceFromEventSource({
+                    Id: $$let.Id,
                     name: $$let.name,
                     event_decode: $$let.event_decode
                   });
@@ -61,4 +62,4 @@ var Spec = 0;
 exports.Spec = Spec;
 exports.MakeGenericTargetFromStateTarget = MakeGenericTargetFromStateTarget;
 exports.Make = Make;
-/* No side effect */
+/* Mapper-Reventless Not a pure module */

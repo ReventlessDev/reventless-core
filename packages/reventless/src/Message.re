@@ -63,13 +63,6 @@ type commandHandler('id, 'command) =
 type commandsHandler('id, 'command) =
   (. 'id, array(command'('id, 'command))) => Js.Promise.t(unit);
 
-[@decco]
-type event'('id, 'event) = {
-  id: 'id,
-  meta,
-  event: 'event,
-};
-
 let serviceNameOfMsg = msgJson =>
   switch (msgJson->Js.Json.decodeObject) {
   | Some(msgObj) =>
@@ -92,7 +85,8 @@ let serviceNameOfMsg = msgJson =>
   };
 
 type eventsHandler('id, 'event) =
-  (. 'id, array(event'('id, 'event))) => Js.Promise.t(unit);
+  (. 'id, array(ReventlessSpec.Message.event'('id, 'event))) =>
+  Js.Promise.t(unit);
 
 module type Events = {
   type id;

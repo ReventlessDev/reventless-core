@@ -7,17 +7,14 @@ var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
-var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.bs.js");
 
-function makeGenericMap(msgDecode, map, json) {
-  var match = Message$ReventlessSpec.context_decode(json);
-  var match$1 = Curry._1(msgDecode, json);
+function makeGenericMap(decode, map, json) {
+  var match = Curry._1(decode, json);
   if (match.tag) {
-    return Js_exn.raiseError("Couldn't decode source:" + JSON.stringify(json));
-  } else if (match$1.tag) {
-    return Js_exn.raiseError("Couldn't decode source:" + JSON.stringify(json));
+    var jsonStr = JSON.stringify(json);
+    return Js_exn.raiseError("Couldn\'t decode source message: " + (String(match[0]) + (", " + (String(jsonStr) + ""))));
   } else {
-    return Curry._2(map, match$1[0], match[0]);
+    return Curry._1(map, match[0]);
   }
 }
 

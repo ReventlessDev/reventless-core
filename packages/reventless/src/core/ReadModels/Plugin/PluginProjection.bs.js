@@ -5,6 +5,7 @@ var Block = require("bs-platform/lib/js/block.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Id$Reventless = require("../../../Id.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
+var PluginReadModelSpec$Reventless = require("./PluginReadModelSpec.bs.js");
 
 function extractExtensionPointNames(__x) {
   return Belt_Array.map(__x, (function (extensionPoint) {
@@ -23,7 +24,8 @@ var Util = {
   extractExtensionNames: extractExtensionNames
 };
 
-function map($$event, param) {
+function map(param) {
+  var $$event = param[/* event */2];
   var match = param[/* meta */1];
   var user = match[/* user */3];
   var time = match[/* time */1];
@@ -126,6 +128,7 @@ function map($$event, param) {
 
 var PluginMapping = {
   Source: 0,
+  Target: 0,
   map: map
 };
 
@@ -136,13 +139,17 @@ var mappings = /* array */[{
       event_encode: PluginSpec$Reventless.event_encode,
       event_decode: PluginSpec$Reventless.event_decode
     },
+    Target: {
+      Id: Id$Reventless.$$String,
+      name: PluginReadModelSpec$Reventless.name,
+      state_encode: PluginReadModelSpec$Reventless.state_encode,
+      state_decode: PluginReadModelSpec$Reventless.state_decode,
+      subIdConfig: PluginReadModelSpec$Reventless.subIdConfig
+    },
     map: map
   }];
 
-var Target = 0;
-
-exports.Target = Target;
 exports.Util = Util;
 exports.PluginMapping = PluginMapping;
 exports.mappings = mappings;
-/* No side effect */
+/* PluginReadModelSpec-Reventless Not a pure module */

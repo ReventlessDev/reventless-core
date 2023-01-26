@@ -1,5 +1,3 @@
-module ReventlessQueryDb = QueryDb;
-
 let componentType = ComponentType.ReadModel;
 
 type outputs = {
@@ -55,14 +53,11 @@ module Make =
     component =
     "default";
 
-  module QueryDb =
-    QueryDb.Make(Config, Spec, QueryDbStorage, QueryDbResolvers);
-
   [@bs.obj]
   external makeOutputs:
     (
       ~name: string,
-      ~queryDb: ReventlessQueryDb.outputs,
+      ~queryDb: QueryDb.outputs,
       ~eventCollector: EventCollector.outputs
     ) =>
     outputs =
@@ -83,11 +78,13 @@ module Make =
         (),
       );
 
+    module QueryDb =
+      QueryDb.Make(Config, Spec, QueryDbStorage, QueryDbResolvers);
+
     let queryDb = QueryDb.make(~opts, ());
 
-    let load: ReventlessSpec.QueryDb.load(string, Spec.state) =
-      (. id) => queryDb->QueryDb.load(. id->Spec.Id.makeFromString);
-    let save: ReventlessSpec.QueryDb.save(string, Spec.state) =
+    let load = (. id) => queryDb->QueryDb.load(. id->Spec.Id.makeFromString);
+    let save =
       (. id, state, saveMode, opt) =>
         queryDb->QueryDb.save(.
           id->Spec.Id.makeFromString,
@@ -95,28 +92,28 @@ module Make =
           saveMode,
           opt,
         );
-    let saveBatch: ReventlessSpec.QueryDb.saveBatch(string, Spec.state) =
+    let saveBatch =
       (. states) =>
         queryDb->QueryDb.saveBatch(.
           states->Belt.Array.map(((id, state, ttl)) =>
             (id->Spec.Id.makeFromString, state, ttl)
           ),
         );
-    let delete: ReventlessSpec.QueryDb.delete(string) =
+    let delete =
       (. id, sort) =>
         queryDb->QueryDb.delete(. id->Spec.Id.makeFromString, sort);
 
-    let primitives = {ReventlessSpec.ReadModel.load, save, saveBatch, delete};
+    let primitives = {Projection.load, save, saveBatch, delete};
 
     module EventProjector = ProjectionMapper.Make(Spec, Mappings);
 
-    let handleActions = (actions, primitives) =>
+    let handleActions = (actions, primitives, subIdConfig) =>
       actions
-      ->Projection.handleActions(primitives)
+      ->Projection.handleActions(primitives, subIdConfig)
       ->Js.Promise.all
       ->Js.Promise.then_(_ => Js.Promise.resolve(), _); // TODO: error handling
 
-    let eventsHandler =
+    let eventsHandler: (. array(Js.Json.t)) => Js.Promise.t(unit) =
       (. jsons) => {
         jsons
         ->Belt.Array.map(json => {
@@ -128,7 +125,7 @@ module Make =
             json->EventProjector.map(~sourceName=Some(sourceName));
           })
         ->Belt.Array.concatMany
-        ->handleActions(primitives);
+        ->handleActions(primitives, Spec.subIdConfig);
       };
 
     module Set = Belt.Set.String;
@@ -149,14 +146,6 @@ module Make =
         ~opts=Some(opts),
         (),
       );
-
-    // updateFn(
-    //   projections,
-    //   queryDb->QueryDb.load,
-    //   queryDb->QueryDb.save,
-    //   queryDb->QueryDb.delete,
-    // )
-    // |> self->setUpdate;
 
     makeOutputs(
       ~name,
