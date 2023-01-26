@@ -1,55 +1,31 @@
-type plugin = {
-  .
-  "aggregates": option(Js.Dict.t(Aggregate.outputs)),
-  "readModels": option(Js.Dict.t(ReadModel.outputs)),
-  "tasks": option(Js.Dict.t(Task.outputs)),
-  "eventMappers": option(Js.Dict.t(EventMapper.outputs)),
-  "extensionPoints": option(Js.Dict.t(ExtensionPoint.outputs)),
-  "apiUrl": option(string) // this is only present in core & api stack
-}; // TODO: add type core and use it for coreStackReference
-
 let coreStackReference =
   Pulumi.Config.make(Some("core"))
   ->Pulumi.Config.get("stack")
   ->Belt.Option.map(stack => stack->Pulumi.StackReference.make);
 
-let coreStackOutput =
-  coreStackReference->Belt.Option.map(coreStack =>
-    coreStack->Pulumi.StackReference.requireOutput("core"->Pulumi.Input.wrap)
-  );
-
-let stackDependencies: Pulumi.Output.t(array(plugin)) =
+let stackDependencies =
   Pulumi.Config.(make(Some("interstack"))->getObject("dependencies"))
   ->Belt.Option.getWithDefault([||])
-  ->Belt.Array.map(stackName =>
-      Pulumi.StackReference.(
-        make(stackName)->requireOutput("plugin"->Pulumi.Input.wrap)
-      )
-    )
+  ->Belt.Array.map(stackName => Pulumi.StackReference.(make(stackName)))
   ->Belt.Array.concat(
-      coreStackOutput->Belt.Option.mapWithDefault([||], coreStack =>
+      coreStackReference->Belt.Option.mapWithDefault([||], coreStack =>
         [|coreStack|]
       ),
+    );
+
+let getOutputs = name =>
+  stackDependencies
+  ->Belt.Array.keepMap(stackRef =>
+      stackRef->Pulumi.StackReference.getOutput(name)
     )
   ->Pulumi.Output.all;
 
-let getOutputs:
-  (plugin => option(Js.Dict.t('a))) => Pulumi.Output.t(array('a)) =
-  getOutput =>
-    stackDependencies->Pulumi.Output.apply(plugins =>
-      plugins
-      ->Belt.Array.map(plugin =>
-          plugin->getOutput->Belt.Option.mapWithDefault([||], Js.Dict.values)
-        )
-      ->Belt.Array.concatMany
-    );
-
 let stackDependenciesTasks: Pulumi.Output.t(array(Task.outputs)) =
-  getOutputs(plugin => plugin##tasks);
+  getOutputs("tasks");
 
 let stackDependenciesEventMappers:
   Pulumi.Output.t(array(EventMapper.outputs)) =
-  getOutputs(plugin => plugin##eventMappers);
+  getOutputs("eventMappers");
 
 let mergeMany:
   (Pulumi.Output.t(array('a)), array('a)) => Pulumi.Output.t(array('a)) =

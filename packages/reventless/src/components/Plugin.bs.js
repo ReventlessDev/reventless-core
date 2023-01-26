@@ -88,10 +88,13 @@ function Make(EventCollectorConnector) {
                     return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), /* () */0);
                   }));
             var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
+            var match = Belt_Option.flatMap(Interstack$Reventless.coreStackReference, (function (coreStack) {
+                    return coreStack.getOutput("extensionPoints");
+                  }));
             var pureOutputs = (
-                Interstack$Reventless.coreStackOutput !== undefined ? Caml_option.valFromOption(Interstack$Reventless.coreStackOutput) : Js_exn.raiseError("No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!")
-              ).apply((function (coreStackOutput) {
-                    var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(Belt_Option.getExn(coreStackOutput.extensionPoints), PluginExtensionPointSpec$ReventlessSpec.name);
+                match !== undefined ? Caml_option.valFromOption(match) : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!")
+              ).apply((function (coreExtensionPoints) {
+                    var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(coreExtensionPoints, PluginExtensionPointSpec$ReventlessSpec.name);
                     var corePluginExtensionPointCommandTopicRemoteConnector = Curry._1(CorePluginExtensionPointRemoteConnector.make, corePluginExtensionPoint.commandTopic);
                     var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector[/* remotePublish */0];
                     var extensions$1 = Belt_Array.map(extensions, (function (Extension) {

@@ -1,15 +1,4 @@
-type plugin = {
-  .
-  "aggregates": option(Js.Dict.t(Aggregate.outputs)),
-  "readModels": option(Js.Dict.t(ReadModel.outputs)),
-  "tasks": option(Js.Dict.t(Task.outputs)),
-  "eventMappers": option(Js.Dict.t(EventMapper.outputs)),
-  "extensionPoints": option(Js.Dict.t(ExtensionPoint.outputs)),
-  "apiUrl": option(string) // this is only present in core & api stack
-};
-
 let coreStackReference: option(Pulumi.StackReference.t);
-let coreStackOutput: option(Pulumi.Output.t(plugin));
 
 let mergeTasks:
   ref(array(Task.outputs)) => Pulumi.Output.t(array(Task.outputs));

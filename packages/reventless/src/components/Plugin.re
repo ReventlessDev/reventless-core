@@ -222,19 +222,22 @@ module Make =
 
     let pureOutputs =
       (
-        switch (Interstack.coreStackOutput) {
-        | Some(coreStackOutput) => coreStackOutput
+        switch (
+          Interstack.coreStackReference->Belt.Option.flatMap(coreStack =>
+            coreStack->Pulumi.StackReference.getOutput("extensionPoints")
+          )
+        ) {
+        | Some(coreExtensionPoints) => coreExtensionPoints
         | None =>
           Js.Exn.raiseError(
-            "No Core Stack configured! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
+            "No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
           )
         }
       )
-      ->Pulumi.Output.apply(coreStackOutput => {
+      ->Pulumi.Output.apply(coreExtensionPoints => {
           open Pulumi.StackReference.Infix;
           let corePluginExtensionPoint =
-            coreStackOutput##extensionPoints->Belt.Option.getExn
-            -# ReventlessSpec.PluginExtensionPointSpec.name;
+            coreExtensionPoints -# ReventlessSpec.PluginExtensionPointSpec.name;
 
           let corePluginExtensionPointCommandTopicRemoteConnector =
             CorePluginExtensionPointRemoteConnector.make(
