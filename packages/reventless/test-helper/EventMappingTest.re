@@ -1,9 +1,10 @@
-//open ReventlessSpec;
-//open Reventless;
-
 module type T = {
   module Source: ReventlessSpec.AggregateSpec.T;
   module Target: ReventlessSpec.AggregateSpec.T;
+
+  let describe: (string, unit => unit) => unit;
+  let test:
+    (string, ~timeout: int=?, unit => Js.Promise.t(Jest.assertion)) => unit;
 
   let givenSourceEvents: list(Source.event) => list(Source.event);
   let givenTargetEvents:
@@ -124,6 +125,9 @@ module Make =
 
   module SourceAggregate = MakeAggregate(Source, SourceBehaviour);
   module TargetAggregate = MakeAggregate(Target, TargetBehaviour);
+
+  let describe = Jest.describe;
+  let test = Jest.testPromise;
 
   let queryEngine: ReventlessSpec.QueryEngine.t = {
     scan: (~viewName as _, ~filterConfigs as _, ~limit as _) =>

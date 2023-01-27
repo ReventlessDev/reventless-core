@@ -233,6 +233,8 @@ function Make(Source) {
                   return {
                           Source: Source,
                           Target: Target,
+                          describe: Jest.describe,
+                          test: Jest.testPromise,
                           givenSourceEvents: givenSourceEvents,
                           givenTargetEvents: givenTargetEvents,
                           whenSourceCmd: whenSourceCmd,
