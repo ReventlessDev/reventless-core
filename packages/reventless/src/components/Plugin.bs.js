@@ -330,18 +330,15 @@ function Make(EventCollectorConnector) {
                           mappings: mappings
                         });
                     var connectPluginExtension = Curry._5(ConnectPluginExtension.make, publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, Caml_option.some(opts), /* () */0);
-                    var tasksOutputs = /* array */[];
-                    var tasks = Interstack$Reventless.mergeTasks(tasksOutputs);
-                    console.log("Plugin: tasksOutputs:", tasksOutputs);
-                    tasks.apply((function (tasks) {
-                            console.log("Plugin: tasks:", tasks);
-                            return /* () */0;
-                          }));
-                    var partial_arg = tasks;
-                    var queryBucketName = function (param) {
-                      return InterstackResourceQueryRuntime$Reventless.bucketNameOfTaskExn(partial_arg, param);
+                    var tasksOutputs = /* record */[/* contents : array */[]];
+                    var queryBucketName = function (taskName) {
+                      var tasks = Interstack$Reventless.mergeTasks(tasksOutputs[0]);
+                      return InterstackResourceQueryRuntime$Reventless.bucketNameOfTaskExn((console.log("Plugin: tasksOutputs:", tasksOutputs[0]), tasks.apply((function (tasks) {
+                                          console.log("Plugin: tasks:", tasks);
+                                          return /* () */0;
+                                        })), tasks), taskName);
                     };
-                    tasksOutputs = Belt_Array.map(taskMakers, (function (taskMaker) {
+                    tasksOutputs[0] = Belt_Array.map(taskMakers, (function (taskMaker) {
                             return Component$Reventless.extractOutputs(Curry._6(taskMaker, queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, Caml_option.some(opts)));
                           }));
                     var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
@@ -470,7 +467,7 @@ function Make(EventCollectorConnector) {
                             /* extensions */toDict(extensionsOutputs),
                             /* aggregates */aggregatesOutputs,
                             /* readModels */readModelsOutputs,
-                            /* tasks */toDict(tasksOutputs),
+                            /* tasks */toDict(tasksOutputs[0]),
                             /* resolvers */resolvers,
                             /* heartbeat */Component$Reventless.extractOutputs(heartbeat),
                             /* serviceNameToExtensionPointsMapping */serviceNameToExtensionPointsMapping,

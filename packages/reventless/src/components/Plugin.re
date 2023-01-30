@@ -628,7 +628,7 @@ module Make =
             );
 
           let tasksOutputs = ref([||]);
-          let queryBucketName =
+          let queryBucketName = taskName =>
             InterstackResourceQueryRuntime.bucketNameOfTaskExn(
               {
                 let tasks = (tasksOutputs^)->Interstack.mergeTasks;
@@ -640,6 +640,7 @@ module Make =
                 ->ignore;
                 tasks;
               },
+              taskName,
             );
 
           tasksOutputs :=
