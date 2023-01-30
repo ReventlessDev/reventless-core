@@ -630,7 +630,15 @@ module Make =
           let tasksOutputs = ref([||]);
           let queryBucketName =
             InterstackResourceQueryRuntime.bucketNameOfTaskExn(
-              tasksOutputs->Interstack.mergeTasks,
+              {
+                let tasks = (tasksOutputs^)->Interstack.mergeTasks;
+                tasks
+                ->Pulumi.Output.apply(tasks =>
+                    Js.log2("Plugin: tasks:", tasks)
+                  )
+                ->ignore;
+                tasks;
+              },
             );
 
           tasksOutputs :=

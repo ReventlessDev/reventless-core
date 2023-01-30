@@ -35,11 +35,10 @@ let mergeMany:
     );
 
 let mergeManyRef:
-  (Pulumi.Output.t(array('a)), ref(array('a))) =>
-  Pulumi.Output.t(array('a)) =
+  (Pulumi.Output.t(array('a)), array('a)) => Pulumi.Output.t(array('a)) =
   (dependencies, locals) =>
     dependencies->Pulumi.Output.apply(dependencies =>
-      (locals^)->Belt.Array.concat(dependencies)
+      locals->Belt.Array.concat(dependencies)
     );
 
 let mergeTasks = mergeManyRef(stackDependenciesTasks);

@@ -27,7 +27,7 @@ var stackDependenciesEventMappers = getOutputs("eventMappers");
 
 function mergeManyRef(dependencies, locals) {
   return dependencies.apply((function (dependencies) {
-                return Belt_Array.concat(locals[0], dependencies);
+                return Belt_Array.concat(locals, dependencies);
               }));
 }
 
