@@ -18,8 +18,8 @@ function bucketNameOfAllTasks(tasks, taskName) {
               }));
 }
 
-function bucketNameOfTaskExn(tasksRef, taskName) {
-  return InterstackResourceQuery$Reventless.unwrapResource(bucketNameOfAllTasks(tasksRef.get(), taskName), "Bucket", taskName);
+function bucketNameOfTaskExn(tasks, taskName) {
+  return InterstackResourceQuery$Reventless.unwrapResource(bucketNameOfAllTasks(tasks.get(), taskName), "Bucket", taskName);
 }
 
 var find = ResourceQueryRuntime$Reventless.find;

@@ -629,19 +629,7 @@ module Make =
 
           let tasksOutputs = ref([||]);
           let queryBucketName = taskName =>
-            InterstackResourceQueryRuntime.bucketNameOfTaskExn(
-              {
-                let tasks = (tasksOutputs^)->Interstack.mergeTasks;
-                Js.log2("Plugin: tasksOutputs:", tasksOutputs^);
-                tasks
-                ->Pulumi.Output.apply(tasks =>
-                    Js.log2("Plugin: tasks:", tasks)
-                  )
-                ->ignore;
-                tasks;
-              },
-              taskName,
-            );
+            ResourceQueryRuntime.bucketNameOfTaskExn(tasksOutputs^, taskName);
 
           tasksOutputs :=
             taskMakers->Belt.Array.map(taskMaker =>

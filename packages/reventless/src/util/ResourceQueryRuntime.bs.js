@@ -41,8 +41,8 @@ function eventCollectorConnectorOfAllEventMappersExn(eventMappersRef, eventMappe
   return ResourceQuery$Reventless.unwrapResource(eventCollectorConnectorOfAllEventMappers(eventMappersRef[0], eventMapperName), "EventCollector", eventMapperName);
 }
 
-function bucketNameOfTaskExn(tasksRef, taskName) {
-  return ResourceQuery$Reventless.unwrapResource(bucketNameOfAllTasks(tasksRef[0], taskName), "Bucket", taskName);
+function bucketNameOfTaskExn(tasks, taskName) {
+  return ResourceQuery$Reventless.unwrapResource(bucketNameOfAllTasks(tasks, taskName), "Bucket", taskName);
 }
 
 exports.find = find;

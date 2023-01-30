@@ -16,8 +16,8 @@ let bucketNameOfAllTasks: (array(Task.outputs), string) => option(string) =
     ->Belt.Option.map(bucket => bucket##bucket->OutputFailsafeRuntime.get);
   };
 
-let bucketNameOfTaskExn = (tasksRef, taskName) =>
-  tasksRef
+let bucketNameOfTaskExn = (tasks, taskName) =>
+  tasks
   ->Pulumi.Output.get
   ->bucketNameOfAllTasks(taskName)
   ->unwrapResource("Bucket", taskName);

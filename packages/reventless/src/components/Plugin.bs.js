@@ -30,8 +30,8 @@ var Util_ReadModel$Reventless = require("../util/Util_ReadModel.bs.js");
 var ExtensionMapping$Reventless = require("../ExtensionMapping.bs.js");
 var AdapterDeploytime$Reventless = require("../adapter/AdapterDeploytime.bs.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.bs.js");
+var ResourceQueryRuntime$Reventless = require("../util/ResourceQueryRuntime.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
-var InterstackResourceQueryRuntime$Reventless = require("../util/InterstackResourceQueryRuntime.bs.js");
 
 function toDict(els) {
   return Js_dict.fromArray(Belt_Array.map(els, (function (el) {
@@ -332,11 +332,7 @@ function Make(EventCollectorConnector) {
                     var connectPluginExtension = Curry._5(ConnectPluginExtension.make, publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, Caml_option.some(opts), /* () */0);
                     var tasksOutputs = /* record */[/* contents : array */[]];
                     var queryBucketName = function (taskName) {
-                      var tasks = Interstack$Reventless.mergeTasks(tasksOutputs[0]);
-                      return InterstackResourceQueryRuntime$Reventless.bucketNameOfTaskExn((console.log("Plugin: tasksOutputs:", tasksOutputs[0]), tasks.apply((function (tasks) {
-                                          console.log("Plugin: tasks:", tasks);
-                                          return /* () */0;
-                                        })), tasks), taskName);
+                      return ResourceQueryRuntime$Reventless.bucketNameOfTaskExn(tasksOutputs[0], taskName);
                     };
                     tasksOutputs[0] = Belt_Array.map(taskMakers, (function (taskMaker) {
                             return Component$Reventless.extractOutputs(Curry._6(taskMaker, queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, Caml_option.some(opts)));

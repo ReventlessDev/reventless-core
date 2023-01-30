@@ -29,6 +29,6 @@ let eventCollectorConnectorOfAllEventMappersExn =
   eventCollectorConnectorOfAllEventMappers(eventMappersRef^, eventMapperName)
   ->ResourceQuery.unwrapResource("EventCollector", eventMapperName);
 
-let bucketNameOfTaskExn = (tasksRef, taskName) =>
-  bucketNameOfAllTasks(tasksRef^, taskName)
+let bucketNameOfTaskExn = (tasks, taskName) =>
+  bucketNameOfAllTasks(tasks, taskName)
   ->ResourceQuery.unwrapResource("Bucket", taskName);
