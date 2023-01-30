@@ -25,18 +25,18 @@ var stackDependenciesTasks = getOutputs("tasks");
 
 var stackDependenciesEventMappers = getOutputs("eventMappers");
 
-function mergeManyRef(dependencies, locals) {
+function mergeMany(dependencies, locals) {
   return dependencies.apply((function (dependencies) {
                 return Belt_Array.concat(locals, dependencies);
               }));
 }
 
 function mergeTasks(param) {
-  return mergeManyRef(stackDependenciesTasks, param);
+  return mergeMany(stackDependenciesTasks, param);
 }
 
 function mergeEventMappers(param) {
-  return mergeManyRef(stackDependenciesEventMappers, param);
+  return mergeMany(stackDependenciesEventMappers, param);
 }
 
 exports.coreStackReference = coreStackReference;

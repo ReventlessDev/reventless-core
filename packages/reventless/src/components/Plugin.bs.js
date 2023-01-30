@@ -332,6 +332,7 @@ function Make(EventCollectorConnector) {
                     var connectPluginExtension = Curry._5(ConnectPluginExtension.make, publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, Caml_option.some(opts), /* () */0);
                     var tasksOutputs = /* array */[];
                     var tasks = Interstack$Reventless.mergeTasks(tasksOutputs);
+                    console.log("Plugin: tasksOutputs:", tasksOutputs);
                     tasks.apply((function (tasks) {
                             console.log("Plugin: tasks:", tasks);
                             return /* () */0;
