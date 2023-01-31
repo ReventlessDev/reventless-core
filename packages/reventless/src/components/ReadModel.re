@@ -115,13 +115,19 @@ module Make =
 
     let eventsHandler: (. array(Js.Json.t)) => Js.Promise.t(unit) =
       (. jsons) => {
+        let eventCount = jsons->Belt.Array.length;
         jsons
-        ->Belt.Array.map(json => {
+        ->Belt.Array.mapWithIndex((idx, json) => {
+            let idx = idx + 1;
             let sourceName =
               json
               ->ReventlessSpec.Message.context_decode
               ->Belt.Result.map(context => context.meta.service)
               ->Belt.Result.getWithDefault("");
+            Js.log2(
+              {j|ReadModel: handling event $idx/$eventCount from $sourceName:|j},
+              json,
+            );
             json->EventProjector.map(~sourceName=Some(sourceName));
           })
         ->Belt.Array.concatMany

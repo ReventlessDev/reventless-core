@@ -12,25 +12,41 @@ type primitives('id, 'state) = {
   delete: delete('id),
 };
 
+let logAction = str => Js.log2("Projection.handleAction:", str);
+
 let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
   switch (action) {
-  | Ignore => [|Ok()->Js.Promise.resolve|]
-  | Create(id, state) => [|save(. id, state, Init, None)|]
+  | Ignore =>
+    logAction("Ignore");
+    [|Ok()->Js.Promise.resolve|];
+
+  | Create(id, state) =>
+    logAction({j|Create($id, $state)|j});
+    [|save(. id, state, Init, None)|];
   | CreateMultiState(id, states) =>
+    logAction({j|CreateMultiState($id, $states)|j});
     switch (states) {
     | [||] => [|Ok()->Js.Promise.resolve|]
     | [|state|] => [|save(. id, state, Init, None)|]
     | states =>
       let batch = states->Belt.Array.map(state => (id, state, None));
       [|saveBatch(. batch)|];
-    }
+    };
   | CreateMany(states) =>
     let batch = states->Belt.Array.map(((id, state)) => (id, state, None));
+    let statesStr =
+      batch->Belt.Array.map(((id, state, _)) => {j|($id,$state)|j});
+    logAction({j|CreateMany($statesStr)|j});
     [|saveBatch(. batch)|]; // TODO: think about using single saves with saveMode Init
 
-  | Set(id, state) => [|save(. id, state, Any, None)|]
+  | Set(id, state) =>
+    logAction({j|Set($id, $state)|j});
+    [|save(. id, state, Any, None)|];
   | SetMany(ids, set) =>
     let batch = ids->Belt.Array.map(id => (id, set(id), None));
+    let statesStr =
+      batch->Belt.Array.map(((id, state, _)) => {j|($id,$state)|j});
+    logAction({j|SetMany($statesStr)|j});
     [|saveBatch(. batch)|];
 
   | Update(id, update) => [|
@@ -39,11 +55,16 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
           fun
           | Ok(states) =>
             switch (states) {
-            | [] => Error(StaleState)->Js.Promise.resolve
-            | [state] =>
-              let newState = state->update;
+            | [] =>
+              logAction({j|Update Error: No oldState for $id)|j});
+              Error(StaleState)->Js.Promise.resolve;
+            | [oldState] =>
+              let newState = oldState->update;
+              logAction({j|Update($id, $oldState => $newState)|j});
               save(. id, newState, Overwrite, None);
-            | _ => Error(StaleState)->Js.Promise.resolve
+            | _ =>
+              logAction({j|Update Error: Multiple oldStates for $id)|j});
+              Error(StaleState)->Js.Promise.resolve;
             }
           | Error(err) => Error(err)->Js.Promise.resolve,
           _,
@@ -55,13 +76,25 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
           fun
           | Ok(states) =>
             switch (states) {
-            | [] => save(. id, default, Init, None)
-            | [state] =>
-              let newState = state->update;
+            | [] =>
+              logAction({j|UpdateWithDefault($id, default: $default)|j});
+              save(. id, default, Init, None);
+            | [oldState] =>
+              let newState = oldState->update;
+              logAction({j|UpdateWithDefault($id, $oldState => $newState)|j});
               save(. id, newState, Overwrite, None);
-            | _ => Error(StaleState)->Js.Promise.resolve
+            | _ =>
+              logAction(
+                {j|UpdateWithDefault Error: Multiple oldStates for $id)|j},
+              );
+              Error(StaleState)->Js.Promise.resolve;
             }
-          | Error(err) => Error(err)->Js.Promise.resolve,
+          | Error(err) => {
+              logAction(
+                {j|UpdateWithDefault Error: Couldn't load oldState(s) for $id: $err)|j},
+              );
+              Error(err)->Js.Promise.resolve;
+            },
           _,
         ),
     |]
@@ -78,36 +111,51 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
                 ->Belt.Array.map(state => state->getSubId)
                 ->Set.fromArray;
               let newStates = oldStates->update;
+              let batch =
+                newStates->Belt.Array.map(state => (id, state, None));
               let newSubIds =
                 newStates
                 ->Belt.Array.map(state => state->getSubId)
                 ->Set.fromArray;
               let subIdsToDelete = oldSubIds->Set.diff(newSubIds);
 
+              let statesStr =
+                batch->Belt.Array.map(((id, state, _)) =>
+                  {j|($id,$state)|j}
+                );
+              logAction({j|UpdateMultiState($statesStr)|j});
+
               subIdsToDelete
               ->Set.toArray
-              ->Belt.Array.map(subId =>
-                  delete(. id, Some((subIdField, subId)))
-                )
-              ->Belt.Array.concat([|
-                  saveBatch(.
-                    newStates->Belt.Array.map(state => (id, state, None)),
-                  ),
-                |])
+              ->Belt.Array.map(subId => {
+                  logAction({j|UpdateMultiState: Delete($id, $subId)|j});
+                  delete(. id, Some((subIdField, subId)));
+                })
+              ->Belt.Array.concat([|saveBatch(. batch)|])
               ->Js.Promise.all
               ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _);
-            | (Error(err), Some(_)) => Error(err)->Js.Promise.resolve
-            | (_, None) => Error(MissingSubIdConfig)->Js.Promise.resolve
+            | (Error(err), Some(_)) =>
+              logAction(
+                {j|UpdateMultiState Error: Couldn't load oldStates for $id: $err)|j},
+              );
+              Error(err)->Js.Promise.resolve;
+            | (_, None) =>
+              logAction("UpdateMultiState Error: Missing SubIdConfig !");
+              Error(MissingSubIdConfig)->Js.Promise.resolve;
             },
           _,
         ),
     |]
-  | Delete(id) => [|delete(. id, None)|]
-  | DeleteMany(ids) => ids->Belt.Array.map(id => delete(. id, None))
+  | Delete(id) =>
+    logAction({j|Delete($id)|j});
+    [|delete(. id, None)|];
+  | DeleteMany(ids) =>
+    logAction({j|Create($ids)|j});
+    ids->Belt.Array.map(id => delete(. id, None));
 
   // TODO: add missing actions
   | _ =>
-    Js.log("Action not yet supported !");
+    logAction("Error: Action not yet supported !");
     [|Ok()->Js.Promise.resolve|];
   };
 

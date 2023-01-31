@@ -60,10 +60,13 @@ function Make(Config) {
                                 subIdConfig: Spec.subIdConfig
                               })(Mappings);
                         var eventsHandler = function (jsons) {
-                          var actions = Belt_Array.concatMany(Belt_Array.map(jsons, (function (json) {
+                          var eventCount = jsons.length;
+                          var actions = Belt_Array.concatMany(Belt_Array.mapWithIndex(jsons, (function (idx, json) {
+                                      var idx$1 = idx + 1 | 0;
                                       var sourceName = Belt_Result.getWithDefault(Belt_Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
                                                   return context[/* meta */1][/* service */0];
                                                 })), "");
+                                      console.log("ReadModel: handling event " + (String(idx$1) + ("/" + (String(eventCount) + (" from " + (String(sourceName) + ":"))))), json);
                                       var func = EventProjector.map;
                                       return (function (param) {
                                                   return Curry._2(func, param, json);
