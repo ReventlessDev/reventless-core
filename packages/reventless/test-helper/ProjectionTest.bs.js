@@ -24,6 +24,7 @@ function unpack(p) {
 function Make(Projection) {
   var Target = Projection.Target;
   var testId = /* record */[/* contents */TestFixtures$Reventless.id];
+  var meta = /* record */[/* contents */TestFixtures$Reventless.meta];
   var describeWithId = function (description, id, fn) {
     testId[0] = id;
     return Jest.describe(description, fn);
@@ -134,10 +135,10 @@ function Make(Projection) {
                   return Promise.resolve(/* () */0);
                 }));
   };
-  var update = function (store, $$event) {
+  var update = function (store, id, meta, $$event) {
     var __x = handleAction(Curry._1(Projection.map, /* record */[
-              /* id */testId[0],
-              /* meta */TestFixtures$Reventless.meta,
+              /* id */id,
+              /* meta */meta,
               /* event */$$event
             ]), /* record */[
           /* load */load(store),
@@ -152,7 +153,7 @@ function Make(Projection) {
   var givenEvents = function (events) {
     var __x = Belt_List.reduce(events, Promise.resolve({ }), (function (p, $$event) {
             return p.then((function (store) {
-                          return update(store, $$event);
+                          return update(store, testId[0], meta[0], $$event);
                         }));
           }));
     return __x.then((function (store) {
@@ -162,7 +163,22 @@ function Make(Projection) {
   var whenEvent = function (p, $$event) {
     return Jest.Expect.expect((function (param) {
                   return p.then((function (store) {
-                                return update(store, $$event);
+                                return update(store, testId[0], meta[0], $$event);
+                              }));
+                }));
+  };
+  var whenEventWithTime = function (p, time, $$event) {
+    return Jest.Expect.expect((function (param) {
+                  return p.then((function (store) {
+                                var init = meta[0];
+                                return update(store, testId[0], /* record */[
+                                            /* service */init[/* service */0],
+                                            /* time */time,
+                                            /* ip */init[/* ip */2],
+                                            /* user */init[/* user */3],
+                                            /* msgId */init[/* msgId */4],
+                                            /* correlationId */init[/* correlationId */5]
+                                          ], $$event);
                               }));
                 }));
   };
@@ -247,6 +263,7 @@ function Make(Projection) {
           test: Jest.testPromise,
           givenEvents: givenEvents,
           whenEvent: whenEvent,
+          whenEventWithTime: whenEventWithTime,
           thenStates: thenStates,
           thenAllStates: thenAllStates,
           thenState: thenState,

@@ -13,6 +13,9 @@ module type T = {
   let whenEvent:
     (Js.Promise.t(store), Source.event) =>
     Jest.Expect.plainPartial(unit => Js.Promise.t(store));
+  let whenEventWithTime:
+    (Js.Promise.t(store), string, Source.event) =>
+    Jest.Expect.plainPartial(unit => Js.Promise.t(store));
   let thenStates:
     (
       Jest.Expect.plainPartial(unit => Js.Promise.t(store)),
@@ -64,6 +67,7 @@ module Make =
   module Target = Projection.Target;
 
   let testId = ref(TestFixtures.id);
+  let meta = ref(TestFixtures.meta);
 
   let describe = Jest.describe;
   let describeWithId = (description, id, fn) => {
@@ -158,8 +162,8 @@ module Make =
         _,
       );
 
-  let update = (store, event) =>
-    {id: testId^, meta: TestFixtures.meta, event}
+  let update = (store, id, meta, event) =>
+    {id, meta, event}
     ->Projection.map
     ->handleAction({
         load: load(store),
@@ -181,7 +185,7 @@ module Make =
   let givenEvents = events => {
     events
     ->Belt.List.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, event) =>
-        p->Js.Promise.then_(store => store->update(event), _)
+        p->Js.Promise.then_(store => store->update(testId^, meta^, event), _)
       )
     ->Js.Promise.then_(store => store->Js.Promise.resolve, _);
   };
@@ -189,7 +193,14 @@ module Make =
   open Jest.Expect;
   let whenEvent = (p, event) =>
     expect(() =>
-      p->Js.Promise.then_(store => store->update(event), _)
+      p->Js.Promise.then_(store => store->update(testId^, meta^, event), _)
+    );
+  let whenEventWithTime = (p, time, event) =>
+    expect(() =>
+      p->Js.Promise.then_(
+           store => store->update(testId^, {...meta^, time}, event),
+           _,
+         )
     );
 
   let thenStates = (p, expectedStates) => {
