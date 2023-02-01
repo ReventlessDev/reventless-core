@@ -158,6 +158,8 @@ var Target = include.Target;
 
 var describeWithId = include.describeWithId;
 
+var givenEventsWithTime = include.givenEventsWithTime;
+
 var whenEventWithTime = include.whenEventWithTime;
 
 var thenStates = include.thenStates;
@@ -176,6 +178,7 @@ exports.describe = describe;
 exports.describeWithId = describeWithId;
 exports.test = test;
 exports.givenEvents = givenEvents;
+exports.givenEventsWithTime = givenEventsWithTime;
 exports.whenEvent = whenEvent;
 exports.whenEventWithTime = whenEventWithTime;
 exports.thenStates = thenStates;

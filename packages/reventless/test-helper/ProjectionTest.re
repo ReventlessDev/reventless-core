@@ -10,6 +10,8 @@ module type T = {
   type store = Js.Dict.t(list(Target.state));
 
   let givenEvents: list(Source.event) => Js.Promise.t(store);
+  let givenEventsWithTime:
+    list((string, Source.event)) => Js.Promise.t(store);
   let whenEvent:
     (Js.Promise.t(store), Source.event) =>
     Jest.Expect.plainPartial(unit => Js.Promise.t(store));
@@ -186,6 +188,17 @@ module Make =
     events
     ->Belt.List.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, event) =>
         p->Js.Promise.then_(store => store->update(testId^, meta^, event), _)
+      )
+    ->Js.Promise.then_(store => store->Js.Promise.resolve, _);
+  };
+  let givenEventsWithTime = events => {
+    events
+    ->Belt.List.reduce(
+        Js.Dict.empty()->Js.Promise.resolve, (p, (time, event)) =>
+        p->Js.Promise.then_(
+             store => store->update(testId^, {...meta^, time}, event),
+             _,
+           )
       )
     ->Js.Promise.then_(store => store->Js.Promise.resolve, _);
   };

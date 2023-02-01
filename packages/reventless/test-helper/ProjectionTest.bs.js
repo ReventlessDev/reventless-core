@@ -160,6 +160,26 @@ function Make(Projection) {
                   return Promise.resolve(store);
                 }));
   };
+  var givenEventsWithTime = function (events) {
+    var __x = Belt_List.reduce(events, Promise.resolve({ }), (function (p, param) {
+            var $$event = param[1];
+            var time = param[0];
+            return p.then((function (store) {
+                          var init = meta[0];
+                          return update(store, testId[0], /* record */[
+                                      /* service */init[/* service */0],
+                                      /* time */time,
+                                      /* ip */init[/* ip */2],
+                                      /* user */init[/* user */3],
+                                      /* msgId */init[/* msgId */4],
+                                      /* correlationId */init[/* correlationId */5]
+                                    ], $$event);
+                        }));
+          }));
+    return __x.then((function (store) {
+                  return Promise.resolve(store);
+                }));
+  };
   var whenEvent = function (p, $$event) {
     return Jest.Expect.expect((function (param) {
                   return p.then((function (store) {
@@ -262,6 +282,7 @@ function Make(Projection) {
           describeWithId: describeWithId,
           test: Jest.testPromise,
           givenEvents: givenEvents,
+          givenEventsWithTime: givenEventsWithTime,
           whenEvent: whenEvent,
           whenEventWithTime: whenEventWithTime,
           thenStates: thenStates,
