@@ -2,8 +2,7 @@
 'use strict';
 
 var SSH2 = require("@reventless/bs-ssh2/src/SSH2.bs.js");
-var Caml_format = require("bs-platform/lib/js/caml_format.js");
-var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
+var Belt_Int = require("rescript/lib/js/belt_Int.js");
 
 function parseUrl(url) {
   var colonI = url.indexOf(":");
@@ -25,64 +24,20 @@ function parseUrl(url) {
             ];
     }
   }
-  if (match$1) {
-    var fst = colonI < slashI ? colonI : slashI;
-    var port = colonI < slashI ? url.slice(colonI + 1 | 0, slashI) : url.slice(colonI + 1 | 0);
-    var path = colonI < slashI ? url.slice(slashI + 1 | 0) : url.slice(slashI + 1 | 0, colonI);
-    var tmp;
-    var exit = 0;
-    var portNum;
-    try {
-      portNum = Caml_format.caml_int_of_string(port);
-      exit = 1;
-    }
-    catch (raw_exn){
-      var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-      if (exn.RE_EXN_ID === "Failure") {
-        if (exn._1 === "int_of_string") {
-          tmp = undefined;
-        } else {
-          throw exn;
-        }
-      } else {
-        throw exn;
-      }
-    }
-    if (exit === 1) {
-      tmp = portNum;
-    }
+  if (!match$1) {
     return [
-            url.slice(0, fst),
-            tmp,
-            path
+            url.slice(0, colonI),
+            Belt_Int.fromString(url.slice(colonI + 1 | 0)),
+            ""
           ];
   }
-  var tmp$1;
-  var exit$1 = 0;
-  var portNum$1;
-  try {
-    portNum$1 = Caml_format.caml_int_of_string(url.slice(colonI + 1 | 0));
-    exit$1 = 1;
-  }
-  catch (raw_exn$1){
-    var exn$1 = Caml_js_exceptions.internalToOCamlException(raw_exn$1);
-    if (exn$1.RE_EXN_ID === "Failure") {
-      if (exn$1._1 === "int_of_string") {
-        tmp$1 = undefined;
-      } else {
-        throw exn$1;
-      }
-    } else {
-      throw exn$1;
-    }
-  }
-  if (exit$1 === 1) {
-    tmp$1 = portNum$1;
-  }
+  var fst = colonI < slashI ? colonI : slashI;
+  var port = colonI < slashI ? url.slice(colonI + 1 | 0, slashI) : url.slice(colonI + 1 | 0);
+  var path = colonI < slashI ? url.slice(slashI + 1 | 0) : url.slice(slashI + 1 | 0, colonI);
   return [
-          url.slice(0, colonI),
-          tmp$1,
-          ""
+          url.slice(0, fst),
+          Belt_Int.fromString(port),
+          path
         ];
 }
 

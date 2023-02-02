@@ -12,20 +12,20 @@
     "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
   },
   "scripts": {
-    "build": "bsb -make-world",
-    "start": "bsb -make-world -w",
-    "clean": "bsb -clean-world",
-    "rebuild": "npm run clean && npm run build"
+    "build": "rescript build",
+    "start": "rescript build -w",
+    "clean": "rescript clean",
+    "rebuild": "npm run clean && npm run build -- -with-deps"
   },
   "dependencies": {
     "@reventless/bs-pulumi-pulumi": "^1.2.0-rescript.2",
     "decco": "1.6.0"
   },
   "devDependencies": {
-    "bs-platform": "^8.4.2"
+    "rescript": "^9.1.2"
   },
   "peerDependencies": {
-    "bs-platform": "^8.4.2"
+    "rescript": "^9.1.2"
   },
   "gitHead": "1016edd2eceed939132c050a8ec292dc898a405f"
 }

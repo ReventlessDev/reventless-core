@@ -3,7 +3,7 @@
 
 var Component = require("./Component").default;
 var Aws = require("@pulumi/aws");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Caml_option = require("rescript/lib/js/caml_option.js");
 var EC2_Eip$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Eip.bs.js");
 var EC2_Vpc$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Vpc.bs.js");
 var EC2_Subnet$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Subnet.bs.js");
@@ -122,9 +122,9 @@ function construct(self, name, availabilityZone) {
 }
 
 function make(name, availabilityZone, opts, param) {
-  var prim = ComponentType$Reventless.toString(/* Vpc */17);
-  var prim$1 = ComponentType$Reventless.name(name, /* Vpc */17);
-  return new Component(prim, prim$1, construct, opts, availabilityZone);
+  var prim0 = ComponentType$Reventless.toString(/* Vpc */17);
+  var prim1 = ComponentType$Reventless.name(name, /* Vpc */17);
+  return new Component(prim0, prim1, construct, opts, availabilityZone);
 }
 
 exports.make = make;
