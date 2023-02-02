@@ -6,7 +6,7 @@ describe("Message should", () =>
       let now = 123456789.;
       let hrtime = (1, 1);
       expect(Message.hrtimeToString(~hrtime, ~now))
-      |> toBe("123456789-000000001");
+      ->toBe("123456789-000000001");
     })
   )
 );

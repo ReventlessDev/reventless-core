@@ -58,8 +58,16 @@ function Make(Spec, Behaviour) {
                 meta: TestFixtures$Reventless.context.meta
               }, cmd);
   };
+<<<<<<< HEAD
   var thenEvents = function (events, expectedEvents) {
+    return Jest.Expect.toEqual([
+                0,
+                expectedEvents
+              ], Jest.Expect.expect([
+=======
+  var thenEvents = function (expectedEvents, events) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
+>>>>>>> 001d98df (update to @glennsl/rescript-jest@0.9.2)
                     Belt_List.length(errors.contents),
                     events
                   ]), [
@@ -92,8 +100,18 @@ function Make(Spec, Behaviour) {
   var thenNoEvent = function (param) {
     return thenEvents(/* [] */0, param);
   };
+<<<<<<< HEAD
   var thenEventWithError = function (events, expectedEvent, expectedError) {
+    return Jest.Expect.toEqual([
+                1,
+                Caml_option.some(expectedEvent),
+                1,
+                Caml_option.some(expectedError)
+              ], Jest.Expect.expect([
+=======
+  var thenEventWithError = function (expectedEvent, expectedError, events) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
+>>>>>>> 001d98df (update to @glennsl/rescript-jest@0.9.2)
                     Belt_List.length(events),
                     Belt_List.head(events),
                     Belt_List.length(errors.contents),
@@ -105,23 +123,35 @@ function Make(Spec, Behaviour) {
                 Caml_option.some(expectedError)
               ]);
   };
+<<<<<<< HEAD
   var thenEventsWithError = function (events, expectedEvents, expectedError) {
+    return Jest.Expect.toEqual([
+=======
+  var thenEventsWithError = function (expectedEvents, expectedError, events) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     events,
                     Belt_List.length(errors.contents),
                     Belt_List.head(errors.contents)
                   ]), [
+>>>>>>> 001d98df (update to @glennsl/rescript-jest@0.9.2)
                 expectedEvents,
                 1,
                 Caml_option.some(expectedError)
               ]);
   };
-  var thenError = function (events, expectedError) {
+  var thenError = function (expectedError, events) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     events,
                     Belt_List.length(errors.contents),
                     Belt_List.head(errors.contents)
+<<<<<<< HEAD
+                  ]));
+  };
+  var thenError = function (events, expectedError) {
+    return Jest.Expect.toEqual([
+=======
                   ]), [
+>>>>>>> 001d98df (update to @glennsl/rescript-jest@0.9.2)
                 /* [] */0,
                 1,
                 Caml_option.some(expectedError)
