@@ -76,7 +76,7 @@ module Make =
 
   let thenEvents = (events, expectedEvents) =>
     expect(((errors^)->Belt.List.length, events))
-    |> toEqual((0, expectedEvents));
+    -> toEqual((0, expectedEvents));
 
   let compare = (cmp, e1, e2) => {
     let cmpResult = cmp(e1, e2);
@@ -96,7 +96,7 @@ module Make =
         )
       ->Belt.List.every(result => result),
     ))
-    |> toEqual((0, expectedEvents->Belt.List.length, true));
+    -> toEqual((0, expectedEvents->Belt.List.length, true));
 
   let listErrors = () =>
     "Errors occured: "
@@ -119,7 +119,7 @@ module Make =
         events->Belt.List.length,
         events->Belt.List.head,
       ))
-      |> toEqual((0, 1, Some(expectedEvent)));
+      ->toEqual((0, 1, Some(expectedEvent)));
     } else if ((errors^)->Belt.List.length > 0) {
       listErrors()->Jest.fail;
     } else {
@@ -134,7 +134,7 @@ module Make =
         events->Belt.List.length,
         cmp->compare(firstEvent, expectedEvent),
       ))
-      |> toEqual((0, 1, true));
+      -> toEqual((0, 1, true));
     } else if ((errors^)->Belt.List.length > 0) {
       listErrors()->Jest.fail;
     } else {
@@ -150,14 +150,14 @@ module Make =
       (errors^)->Belt.List.length,
       (errors^)->Belt.List.head,
     ))
-    |> toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
+    ->toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
 
   let thenEventsWithError = (events, expectedEvents, expectedError) =>
     expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
-    |> toEqual((expectedEvents, 1, Some(expectedError)));
+    ->toEqual((expectedEvents, 1, Some(expectedError)));
 
   let thenError = (events, expectedError) => {
     expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
-    |> toEqual(([], 1, Some(expectedError)));
+    ->toEqual(([], 1, Some(expectedError)));
   };
 };

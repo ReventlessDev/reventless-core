@@ -213,73 +213,96 @@ module Make =
         | _ => [||]->Js.Promise.resolve,
       )
     ->Js.Promise.all
-    |> Js.Promise.then_(commands =>
-         commands
-         ->Belt.Array.concatMany
-         //  ->logTargetCommands
-         ->Belt.Array.reduce(
-             Js.Dict.empty(),
-             (targetEvents, (id, command)) => {
-               let id = id->Target.Id.toString;
-               let targetHistory =
-                 targetHistories
-                 ->Js.Dict.get(id)
-                 ->Belt.Option.getWithDefault([])
-                 ->Belt.List.concat(
-                     targetEvents
-                     ->Js.Dict.get(id)
-                     ->Belt.Option.getWithDefault([]),
-                   );
-               let newEvents =
-                 TargetAggregate.exec(
-                   {...TestFixtures.context, id},
-                   command,
-                   targetHistory,
-                 );
-               //  newEvents->logTargetEvents;
-               targetEvents->Js.Dict.set(
-                 id,
-                 targetEvents
-                 ->Js.Dict.get(id)
-                 ->Belt.Option.getWithDefault([])
-                 ->Belt.List.concat(newEvents),
-               );
-               targetEvents;
-             },
-           )
-         ->Js.Promise.resolve
-       );
+    //  ->logTargetCommands
+    //  newEvents->logTargetEvents;
+    ->Js.Promise.then_(
+        commands =>
+          commands
+          ->Belt.Array.concatMany
+          ->Belt.Array.reduce(
+              Js.Dict.empty(),
+              (targetEvents, (id, command)) => {
+                let id = id->Target.Id.toString;
+                let targetHistory =
+                  targetHistories
+                  ->Js.Dict.get(id)
+                  ->Belt.Option.getWithDefault([])
+                  ->Belt.List.concat(
+                      targetEvents
+                      ->Js.Dict.get(id)
+                      ->Belt.Option.getWithDefault([]),
+                    );
+                let newEvents =
+                  TargetAggregate.exec(
+                    {...TestFixtures.context, id},
+                    command,
+                    targetHistory,
+                  );
+                targetEvents->Js.Dict.set(
+                  id,
+                  targetEvents
+                  ->Js.Dict.get(id)
+                  ->Belt.Option.getWithDefault([])
+                  ->Belt.List.concat(newEvents),
+                );
+                targetEvents;
+              },
+            )
+          ->Js.Promise.resolve,
+        _,
+      );
   };
 
   open Jest.Expect;
 
   let thenTargetEvents = (expectedTargetEvents, targetEvents) =>
-    targetEvents
-    |> Js.Promise.then_(events => {
-         //  events->logTargetEventsDict("");
-         let assertion =
-           expect((
-             (SourceAggregate.errors^)->Belt.List.length,
-             (TargetAggregate.errors^)->Belt.List.length,
-             events,
-           ))
-           |> toEqual((0, 0, expectedTargetEvents->Js.Dict.fromList));
-         assertion->Js.Promise.resolve;
-       });
+    targetEvents-> //  events->logTargetEventsDict("");
+Js.Promise.then_(
+                                                          events => {
+                                                            let assertion =
+                                                              expect((
+                                                                (
+                                                                  SourceAggregate.errors
+                                                                    ^
+                                                                )
+                                                                ->Belt.List.length,
+                                                                (
+                                                                  TargetAggregate.errors
+                                                                    ^
+                                                                )
+                                                                ->Belt.List.length,
+                                                                events,
+                                                              ))
+                                                              ->toEqual((
+                                                                  0,
+                                                                  0,
+                                                                  expectedTargetEvents->Js.Dict.fromList,
+                                                                ));
+                                                            assertion->Js.Promise.resolve;
+                                                          },
+                                                          _,
+                                                        );
 
   let thenTargetEvent = (id, expectedTargetEvent, targetEvents) =>
-    targetEvents
-    |> Js.Promise.then_(eventsDict => {
-         let events = eventsDict->Js.Dict.entries;
-         expect((
-           (SourceAggregate.errors^)->Belt.List.length,
-           (TargetAggregate.errors^)->Belt.List.length,
-           events->Belt.Array.length,
-           events->Belt.Array.get(0),
-         ))
-         |> toEqual((0, 0, 1, Some((id, [expectedTargetEvent]))))
-         |> Js.Promise.resolve;
-       });
+    targetEvents->Js.Promise.then_(
+                    eventsDict => {
+                      let events = eventsDict->Js.Dict.entries;
+                      expect((
+                        (SourceAggregate.errors^)->Belt.List.length,
+                        (TargetAggregate.errors^)->Belt.List.length,
+                        events->Belt.Array.length,
+                        events->Belt.Array.get(0),
+                      ))
+                      ->toEqual((
+                          0,
+                          0,
+                          1,
+                          Some((id, [expectedTargetEvent])),
+                        ))
+                      ->Js.Promise.resolve;
+                    },
+                    _,
+                  );
 
   let thenNoTargetEvent = thenTargetEvents([]);
   // let thenEventWithError = (expectedEvent, expectedError, events) =>

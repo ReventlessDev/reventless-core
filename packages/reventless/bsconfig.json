@@ -27,10 +27,7 @@
         }
     ],
     "bs-dependencies": [
-        "decco",
-        "bs-moment",
-        "@glennsl/bs-jest",
-        "@reventless/reventless-spec",
+        "@glennsl/rescript-jest",
         "@reventless/bs-aws-sdk",
         "@reventless/bs-fast-csv",
         "@reventless/bs-hash-obj",
@@ -38,7 +35,11 @@
         "@reventless/bs-pulumi-aws",
         "@reventless/bs-pulumi-pulumi",
         "@reventless/bs-ssh2",
-        "@reventless/bs-uuid"
+        "@reventless/bs-uuid",
+        "@reventless/reventless-spec",
+        "@ryyppy/rescript-promise",
+        "bs-moment",
+        "decco"
     ],
     "pinned-dependencies": [
         "@reventless/reventless-spec",
