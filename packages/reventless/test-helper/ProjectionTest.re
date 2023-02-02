@@ -223,17 +223,15 @@ module Make =
     ->unpack()
     ->Js.Promise.then_(
         store =>
-          (
-            expect((
-              store->Js.Dict.keys->Belt.Array.length,
-              store->Js.Dict.keys->Belt.Array.get(0),
-              store
-              ->Js.Dict.values
-              ->Belt.Array.get(0)
-              ->Belt.Option.getWithDefault([]),
-            ))
-            |> toEqual((1, Some(testId^), expectedStates))
-          )
+          expect((
+            store->Js.Dict.keys->Belt.Array.length,
+            store->Js.Dict.keys->Belt.Array.get(0),
+            store
+            ->Js.Dict.values
+            ->Belt.Array.get(0)
+            ->Belt.Option.getWithDefault([]),
+          ))
+          ->toEqual((1, Some(testId^), expectedStates))
           ->Js.Promise.resolve,
         _,
       );
@@ -242,8 +240,7 @@ module Make =
     p
     ->unpack()
     ->Js.Promise.then_(
-        store =>
-          (expect(store) |> toEqual(expectedStore))->Js.Promise.resolve,
+        store => expect(store)->toEqual(expectedStore)->Js.Promise.resolve,
         _,
       );
   };
@@ -252,19 +249,17 @@ module Make =
     ->unpack()
     ->Js.Promise.then_(
         store =>
-          (
-            expect((
-              store->Js.Dict.keys->Belt.Array.length,
-              store->Js.Dict.keys->Belt.Array.get(0),
-              store
-              ->Js.Dict.values
-              ->Belt.Array.get(0)
-              ->Belt.Option.getWithDefault([])
-              ->Belt.List.length,
-              store->Js.Dict.values[0]->Belt.List.head,
-            ))
-            |> toEqual((1, Some(testId^), 1, Some(expectedState)))
-          )
+          expect((
+            store->Js.Dict.keys->Belt.Array.length,
+            store->Js.Dict.keys->Belt.Array.get(0),
+            store
+            ->Js.Dict.values
+            ->Belt.Array.get(0)
+            ->Belt.Option.getWithDefault([])
+            ->Belt.List.length,
+            store->Js.Dict.values[0]->Belt.List.head,
+          ))
+          ->toEqual((1, Some(testId^), 1, Some(expectedState)))
           ->Js.Promise.resolve,
         _,
       );
@@ -274,19 +269,17 @@ module Make =
     ->unpack()
     ->Js.Promise.then_(
         store =>
-          (
-            expect((
-              store->Js.Dict.keys->Belt.Array.length,
-              store->Js.Dict.keys->Belt.Array.get(0),
-              store
-              ->Js.Dict.values
-              ->Belt.Array.get(0)
-              ->Belt.Option.getWithDefault([])
-              ->Belt.List.length,
-              store->Js.Dict.values[0]->Belt.List.head,
-            ))
-            |> toEqual((1, Some(id), 1, Some(expectedState)))
-          )
+          expect((
+            store->Js.Dict.keys->Belt.Array.length,
+            store->Js.Dict.keys->Belt.Array.get(0),
+            store
+            ->Js.Dict.values
+            ->Belt.Array.get(0)
+            ->Belt.Option.getWithDefault([])
+            ->Belt.List.length,
+            store->Js.Dict.values[0]->Belt.List.head,
+          ))
+          ->toEqual((1, Some(id), 1, Some(expectedState)))
           ->Js.Promise.resolve,
         _,
       );
@@ -295,8 +288,7 @@ module Make =
     p
     ->unpack()
     ->Js.Promise.then_(
-        store =>
-          (expect(store) |> toEqual(Js.Dict.empty()))->Js.Promise.resolve,
+        store => expect(store)->toEqual(Js.Dict.empty())->Js.Promise.resolve,
         _,
       );
   };

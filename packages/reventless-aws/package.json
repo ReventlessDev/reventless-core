@@ -34,11 +34,11 @@
     "decco": "1.6.0"
   },
   "devDependencies": {
-    "@glennsl/bs-jest": "^0.5.1",
-    "rescript": "^9.1.2"
+    "@glennsl/rescript-jest": "^0.9.2",
+    "rescript": "^9.1.4"
   },
   "peerDependencies": {
-    "rescript": "^9.1.2"
+    "rescript": "^9.1.4"
   },
   "gitHead": "1016edd2eceed939132c050a8ec292dc898a405f"
 }

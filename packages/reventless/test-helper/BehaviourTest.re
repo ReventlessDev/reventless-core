@@ -42,7 +42,7 @@ module Make =
     switch (history) {
     | [] => Behaviour.create(. command, context, errorHandler)
     | history =>
-      try (
+      try(
         Behaviour.execute(.
           currentState(history),
           command,
@@ -63,7 +63,7 @@ module Make =
 
   let thenEvents = (expectedEvents, events) =>
     expect(((errors^)->Belt.List.length, events))
-    |> toEqual((0, expectedEvents));
+    ->toEqual((0, expectedEvents));
 
   let thenEvent = (expectedEvent, events) =>
     if (events->Belt.List.length > 0) {
@@ -72,21 +72,21 @@ module Make =
         events->Belt.List.length,
         events->Belt.List.head,
       ))
-      |> toEqual((0, 1, Some(expectedEvent)));
+      ->toEqual((0, 1, Some(expectedEvent)));
     } else if ((errors^)->Belt.List.length > 0) {
-      "Errors occured: "
-      ++ (errors^)
-         ->Belt.List.map(err
-             /* NOTE: this process is very fragile!!
-                it relies on decco decoding the error-varints to arrays of string
-                */
-             =>
-               err->Spec.error_encode->Js.Json.decodeArray->Belt.Option.getExn[0]
-               ->Js.Json.decodeString
-               ->Belt.Option.getExn
-             )
-         ->Belt.List.reduce("", (a, b) => a ++ b ++ " ")
-      |> Jest.fail;
+      let errorMessages =
+        (errors^)
+        ->Belt.List.map(err
+            /* NOTE: this process is very fragile!!
+               it relies on decco decoding the error-varints to arrays of string
+               */
+            =>
+              err->Spec.error_encode->Js.Json.decodeArray->Belt.Option.getExn[0]
+              ->Js.Json.decodeString
+              ->Belt.Option.getExn
+            )
+        ->Belt.List.reduce("", (a, b) => a ++ b ++ " ");
+      Jest.fail("Errors occured: " ++ errorMessages);
     } else {
       Jest.fail("thenEvent: No event present to validate");
     };
@@ -100,14 +100,14 @@ module Make =
       (errors^)->Belt.List.length,
       (errors^)->Belt.List.head,
     ))
-    |> toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
+    ->toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
 
   let thenEventsWithError = (expectedEvents, expectedError, events) =>
     expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
-    |> toEqual((expectedEvents, 1, Some(expectedError)));
+    ->toEqual((expectedEvents, 1, Some(expectedError)));
 
   let thenError = (expectedError, events) => {
     expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
-    |> toEqual(([], 1, Some(expectedError)));
+    ->toEqual(([], 1, Some(expectedError)));
   };
 };
