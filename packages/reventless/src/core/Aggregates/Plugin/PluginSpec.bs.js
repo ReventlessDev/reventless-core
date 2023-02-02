@@ -2,8 +2,8 @@
 'use strict';
 
 var Decco = require("decco/src/Decco.bs.js");
-var Js_json = require("bs-platform/lib/js/js_json.js");
-var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Js_json = require("rescript/lib/js/js_json.js");
+var Belt_Array = require("rescript/lib/js/belt_Array.js");
 var Plugin$ReventlessSpec = require("@reventless/reventless-spec/src/components/Plugin.bs.js");
 
 function command_encode(v) {

@@ -51,12 +51,14 @@ let stackDependenciesEventMappers:
   Pulumi.Output.t(array(EventMapper.outputs)) =
   getOutputs(plugin => plugin##eventMappers);
 
-let mergeMany:
-  (Pulumi.Output.t(array('a)), array('a)) => Pulumi.Output.t(array('a)) =
-  (dependencies, locals) =>
-    dependencies->Pulumi.Output.apply(dependencies =>
-      locals->Belt.Array.concat(dependencies)
-    );
+/* TODO: delete me
+   let mergeMany:
+     (Pulumi.Output.t(array('a)), array('a)) => Pulumi.Output.t(array('a)) =
+     (dependencies, locals) =>
+       dependencies->Pulumi.Output.apply(dependencies =>
+         locals->Belt.Array.concat(dependencies)
+       );
+   */
 
 let mergeManyRef:
   (Pulumi.Output.t(array('a)), ref(array('a))) =>

@@ -2,10 +2,10 @@
 'use strict';
 
 var Decco = require("decco/src/Decco.bs.js");
-var Js_dict = require("bs-platform/lib/js/js_dict.js");
-var Js_json = require("bs-platform/lib/js/js_json.js");
-var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+var Js_dict = require("rescript/lib/js/js_dict.js");
+var Js_json = require("rescript/lib/js/js_json.js");
+var Belt_Array = require("rescript/lib/js/belt_Array.js");
+var Belt_Option = require("rescript/lib/js/belt_Option.js");
 
 var year_encode = Decco.intToJson;
 

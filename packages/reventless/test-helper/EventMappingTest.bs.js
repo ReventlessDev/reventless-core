@@ -2,22 +2,22 @@
 'use strict';
 
 var Jest = require("@glennsl/bs-jest/src/jest.bs.js");
-var Curry = require("bs-platform/lib/js/curry.js");
-var Js_dict = require("bs-platform/lib/js/js_dict.js");
-var Belt_List = require("bs-platform/lib/js/belt_List.js");
-var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
-var Pervasives = require("bs-platform/lib/js/pervasives.js");
-var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
-var Caml_js_exceptions = require("bs-platform/lib/js/caml_js_exceptions.js");
+var Curry = require("rescript/lib/js/curry.js");
+var Js_dict = require("rescript/lib/js/js_dict.js");
+var Belt_List = require("rescript/lib/js/belt_List.js");
+var Belt_Array = require("rescript/lib/js/belt_Array.js");
+var Pervasives = require("rescript/lib/js/pervasives.js");
+var Belt_Option = require("rescript/lib/js/belt_Option.js");
+var Caml_js_exceptions = require("rescript/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.bs.js");
 var TestFixtures$Reventless = require("./TestFixtures.bs.js");
 
 function MakeAggregate(Spec, Behaviour) {
-  var apply$prime = function (state, $$event) {
+  var apply$p = function (state, $$event) {
     return Behaviour.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Belt_List.reduce(Belt_List.tailExn(events), Behaviour.init(Belt_List.headExn(events)), apply$prime);
+    return Belt_List.reduce(Belt_List.tailExn(events), Behaviour.init(Belt_List.headExn(events)), apply$p);
   };
   var errors = {
     contents: /* [] */0
@@ -48,7 +48,7 @@ function MakeAggregate(Spec, Behaviour) {
   return {
           Spec: Spec,
           Behaviour: Behaviour,
-          apply$prime: apply$prime,
+          apply$p: apply$p,
           currentState: currentState,
           errors: errors,
           errorHandler: errorHandler,
@@ -69,11 +69,11 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     create: Behaviour_create,
     execute: Behaviour_execute
   };
-  var apply$prime = function (state, $$event) {
+  var apply$p = function (state, $$event) {
     return SourceBehaviour.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Belt_List.reduce(Belt_List.tailExn(events), SourceBehaviour.init(Belt_List.headExn(events)), apply$prime);
+    return Belt_List.reduce(Belt_List.tailExn(events), SourceBehaviour.init(Belt_List.headExn(events)), apply$p);
   };
   var errors = {
     contents: /* [] */0
@@ -113,11 +113,11 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     create: Behaviour_create$1,
     execute: Behaviour_execute$1
   };
-  var apply$prime$1 = function (state, $$event) {
+  var apply$p$1 = function (state, $$event) {
     return TargetBehaviour.apply(state, $$event);
   };
   var currentState$1 = function (events) {
-    return Belt_List.reduce(Belt_List.tailExn(events), TargetBehaviour.init(Belt_List.headExn(events)), apply$prime$1);
+    return Belt_List.reduce(Belt_List.tailExn(events), TargetBehaviour.init(Belt_List.headExn(events)), apply$p$1);
   };
   var errors$1 = {
     contents: /* [] */0

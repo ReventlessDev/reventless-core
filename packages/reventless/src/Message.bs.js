@@ -2,16 +2,16 @@
 'use strict';
 
 var Uuid = require("@reventless/bs-uuid/src/Uuid.bs.js");
-var Curry = require("bs-platform/lib/js/curry.js");
+var Curry = require("rescript/lib/js/curry.js");
 var Decco = require("decco/src/Decco.bs.js");
-var $$String = require("bs-platform/lib/js/string.js");
-var Js_dict = require("bs-platform/lib/js/js_dict.js");
-var Js_json = require("bs-platform/lib/js/js_json.js");
-var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
-var Js_option = require("bs-platform/lib/js/js_option.js");
-var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
-var Caml_exceptions = require("bs-platform/lib/js/caml_exceptions.js");
+var $$String = require("rescript/lib/js/string.js");
+var Js_dict = require("rescript/lib/js/js_dict.js");
+var Js_json = require("rescript/lib/js/js_json.js");
+var Caml_obj = require("rescript/lib/js/caml_obj.js");
+var Js_option = require("rescript/lib/js/js_option.js");
+var Belt_Option = require("rescript/lib/js/belt_Option.js");
+var Caml_option = require("rescript/lib/js/caml_option.js");
+var Caml_exceptions = require("rescript/lib/js/caml_exceptions.js");
 var Util_Decco$Reventless = require("./util/Util_Decco.bs.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.bs.js");
 
@@ -78,7 +78,7 @@ function statusChange_decode(v) {
         };
 }
 
-function command$prime_encode(encoder_id, encoder_command, v) {
+function command$p_encode(encoder_id, encoder_command, v) {
   return Js_dict.fromArray([
               [
                 "id",
@@ -95,7 +95,7 @@ function command$prime_encode(encoder_id, encoder_command, v) {
             ]);
 }
 
-function command$prime_decode(decoder_id, decoder_command, v) {
+function command$p_decode(decoder_id, decoder_command, v) {
   var dict = Js_json.classify(v);
   if (typeof dict === "number") {
     return Decco.error(undefined, "Not an object", v);
@@ -292,21 +292,21 @@ function serviceNameOfMsg(msgJson) {
   
 }
 
-var InvalidEvent = Caml_exceptions.create("Message-Reventless.InvalidEvent");
+var InvalidEvent = /* @__PURE__ */Caml_exceptions.create("Message-Reventless.InvalidEvent");
 
-var InvalidCommand = Caml_exceptions.create("Message-Reventless.InvalidCommand");
+var InvalidCommand = /* @__PURE__ */Caml_exceptions.create("Message-Reventless.InvalidCommand");
 
 function log(value, str) {
   console.log(str, value);
   return value;
 }
 
-function logEvent$primeJson(event$primeJson, description) {
-  var eventStr = JSON.stringify(event$primeJson);
+function logEvent$pJson(event$pJson, description) {
+  var eventStr = JSON.stringify(event$pJson);
   try {
-    var event$prime = Belt_Option.getExn(Js_json.decodeObject(event$primeJson));
-    var id = Js_json.decodeString(event$prime["id"]);
-    var eventName = Belt_Option.getExn(Util_Decco$Reventless.Json.variantName(event$prime["event"]));
+    var event$p = Belt_Option.getExn(Js_json.decodeObject(event$pJson));
+    var id = Js_json.decodeString(event$p["id"]);
+    var eventName = Belt_Option.getExn(Util_Decco$Reventless.Json.variantName(event$p["event"]));
     console.log("" + description + " " + eventName + "(" + id + ") complete event: " + eventStr);
     return ;
   }
@@ -319,7 +319,7 @@ function logEvent$primeJson(event$primeJson, description) {
 function hrtimeToString(hrtime, now) {
   var milString = String(hrtime[1]);
   var milLength = milString.length;
-  return now.toString() + ("-" + ($$String.make(9 - milLength | 0, /* "0" */48) + milString));
+  return now.toString() + ("-" + ($$String.make(9 - milLength | 0, /* '0' */48) + milString));
 }
 
 function generateMeta(service, ipOpt, userOpt, param) {
@@ -393,9 +393,9 @@ var context_encode = Message$ReventlessSpec.context_encode;
 
 var context_decode = Message$ReventlessSpec.context_decode;
 
-var event$prime_encode = Message$ReventlessSpec.event$prime_encode;
+var event$p_encode = Message$ReventlessSpec.event$p_encode;
 
-var event$prime_decode = Message$ReventlessSpec.event$prime_decode;
+var event$p_decode = Message$ReventlessSpec.event$p_decode;
 
 var uuid = Uuid.v4;
 
@@ -405,15 +405,15 @@ exports.meta_encode = meta_encode;
 exports.meta_decode = meta_decode;
 exports.context_encode = context_encode;
 exports.context_decode = context_decode;
-exports.event$prime_encode = event$prime_encode;
-exports.event$prime_decode = event$prime_decode;
+exports.event$p_encode = event$p_encode;
+exports.event$p_decode = event$p_decode;
 exports.uuid = uuid;
 exports.now = now;
 exports.nowAsISOString = nowAsISOString;
 exports.statusChange_encode = statusChange_encode;
 exports.statusChange_decode = statusChange_decode;
-exports.command$prime_encode = command$prime_encode;
-exports.command$prime_decode = command$prime_decode;
+exports.command$p_encode = command$p_encode;
+exports.command$p_decode = command$p_decode;
 exports.commandJson_encode = commandJson_encode;
 exports.commandJson_decode = commandJson_decode;
 exports.toMessageBody = toMessageBody;
@@ -421,7 +421,7 @@ exports.serviceNameOfMsg = serviceNameOfMsg;
 exports.InvalidEvent = InvalidEvent;
 exports.InvalidCommand = InvalidCommand;
 exports.log = log;
-exports.logEvent$primeJson = logEvent$primeJson;
+exports.logEvent$pJson = logEvent$pJson;
 exports.hrtimeToString = hrtimeToString;
 exports.generateMeta = generateMeta;
 exports.decomposeMeta = decomposeMeta;
