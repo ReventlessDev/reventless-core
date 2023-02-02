@@ -4,14 +4,13 @@ include FastCSV;
 /** Add correct callback for validation to Validation.t - to be used in validation function
  *  TODO: hide behind an interface definition
  */
-let fromValidation: (callback, Validation.t(unit, string)) => calledBack =
-  (cb, validation) =>
+let fromValidation: (Validation.t(unit, string), callback) => calledBack =
+  (validation, cb) =>
     switch (validation) {
-    | Failure(msg) => cb |> toInvalid(msg)
-    | Failures(msgs) =>
-      cb |> toInvalid(msgs->Belt.List.fromArray |> String.concat(", "))
+    | Failure(msg) => cb->toInvalid(msg)
+    | Failures(msgs) => cb->toInvalid(msgs->Js.Array2.joinWith(", "))
     | Success(_)
-    | Successes(_) => cb |> toValid
+    | Successes(_) => cb->toValid
     };
 
 /** Register a single validation function based on Validation.t
@@ -23,5 +22,5 @@ let fromValidation: (callback, Validation.t(unit, string)) => calledBack =
  */
 let validateValidation: (row => Validation.t(unit, string), t) => t =
   (validation, parser) => {
-    parser |> validate((row, cb) => row |> validation |> fromValidation(cb));
+    parser->validate((row, cb) => row->validation->fromValidation(cb));
   };

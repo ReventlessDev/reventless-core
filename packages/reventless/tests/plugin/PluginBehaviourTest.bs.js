@@ -2,7 +2,7 @@
 'use strict';
 
 var Jest = require("@glennsl/bs-jest/src/jest.bs.js");
-var Curry = require("bs-platform/lib/js/curry.js");
+var Curry = require("rescript/lib/js/curry.js");
 var PluginSpec$Reventless = require("../../src/core/Aggregates/Plugin/PluginSpec.bs.js");
 var BehaviourTest$Reventless = require("../../test-helper/BehaviourTest.bs.js");
 var PluginFixture$Reventless = require("./PluginFixture.bs.js");

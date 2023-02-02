@@ -95,7 +95,7 @@ module MakeAggregate =
     switch (history) {
     | [] => Behaviour.create(. command, context, errorHandler)
     | history =>
-      try (
+      try(
         Behaviour.execute(.
           history->currentState,
           command,
@@ -152,32 +152,35 @@ module Make =
     sourceHistory,
   );
 
-  let logSourceEvents = events =>
-    events->Belt.List.forEachWithIndex((idx, event) => {
-      let eventStr = event->Source.event_encode;
-      Js.log({j|Source event[$idx]: $eventStr|j});
-    });
-  let logTargetCommands = commands => {
-    commands->Belt.Array.forEachWithIndex((idx, (id, command)) => {
-      let commandStr = command->Target.command_encode;
-      Js.log({j|Target command[$idx]: $commandStr id:$id|j});
-    });
-    commands;
-  };
-  let logTargetEvents = events =>
-    events->Belt.List.forEachWithIndex((idx, event) => {
-      let eventStr = event->Target.event_encode;
-      Js.log({j|  new Target event[$idx]: $eventStr|j});
-    });
-  let logTargetEventsDict = (events, prefix) =>
-    events
-    ->Js.Dict.entries
-    ->Belt.Array.forEachWithIndex((idx1, (id, events)) =>
-        events->Belt.List.forEachWithIndex((idx2, event) => {
-          let eventStr = event->Target.event_encode;
-          Js.log({j|$prefix Target event[$idx1,$idx2]: $eventStr id:$id|j});
-        })
-      );
+  /*
+   TODO: The following functions were unused and are due to be deleted:
+     let logSourceEvents = events =>
+       events->Belt.List.forEachWithIndex((idx, event) => {
+         let eventStr = event->Source.event_encode;
+         Js.log({j|Source event[$idx]: $eventStr|j});
+       });
+     let logTargetCommands = commands => {
+       commands->Belt.Array.forEachWithIndex((idx, (id, command)) => {
+         let commandStr = command->Target.command_encode;
+         Js.log({j|Target command[$idx]: $commandStr id:$id|j});
+       });
+       commands;
+     };
+     let logTargetEvents = events =>
+       events->Belt.List.forEachWithIndex((idx, event) => {
+         let eventStr = event->Target.event_encode;
+         Js.log({j|  new Target event[$idx]: $eventStr|j});
+       });
+     let logTargetEventsDict = (events, prefix) =>
+       events
+       ->Js.Dict.entries
+       ->Belt.Array.forEachWithIndex((idx1, (id, events)) =>
+           events->Belt.List.forEachWithIndex((idx2, event) => {
+             let eventStr = event->Target.event_encode;
+             Js.log({j|$prefix Target event[$idx1,$idx2]: $eventStr id:$id|j});
+           })
+         );
+   */
 
   let whenSourceCmd = (sourceId, cmd, (targetHistory, sourceHistory)) => {
     let sourceEvents =

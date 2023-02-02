@@ -18,7 +18,7 @@
     "test": "lerna run test"
   },
   "devDependencies": {
-    "bs-platform": "^5.2.1",
+    "rescript": "^9.1.2",
     "lerna": "^6.1.0",
     "lerna-update-wizard": "^1.1.2",
     "lerna-wizard": "^1.1.1"

@@ -118,11 +118,13 @@ module Make =
       ->Util.Decco.Json.variantName
       ->Belt.Option.getWithDefault("Could not get event-name!");
 
-  [@inline]
-  let errorMessage = (id, kind, err) =>
-    {j|Aggregate.execCommand($id): $kind Error: |j}
-    ++
-    err->Util.Error.ofPromise##message;
+  /* TODO: delete me
+     [@inline]
+     let errorMessage = (id, kind, err) =>
+       {j|Aggregate.execCommand($id): $kind Error: |j}
+       ++
+       err->Util.Error.ofPromise##message;
+       */
 
   [@inline]
   let logCommand' =
