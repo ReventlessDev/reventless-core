@@ -22,10 +22,10 @@
     "decco": "1.6.0"
   },
   "devDependencies": {
-    "rescript": "^9.1.2"
+    "rescript": "^9.1.4"
   },
   "peerDependencies": {
-    "rescript": "^9.1.2"
+    "rescript": "^9.1.4"
   },
   "gitHead": "1016edd2eceed939132c050a8ec292dc898a405f"
 }

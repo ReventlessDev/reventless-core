@@ -1,7 +1,6 @@
 open Jest;
 
-module PluginTest =
-  Reventless.BehaviourTest.Make(PluginSpec, PluginBehaviour);
+module PluginTest = BehaviourTest.Make(PluginSpec, PluginBehaviour);
 open PluginTest;
 open PluginSpec;
 open PluginFixture;
