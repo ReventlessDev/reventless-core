@@ -109,14 +109,14 @@ module Make =
     publish => {
       let fn = payload => {
         let msgId = Message.uuid();
-        let id = payload##arguments##id |> Spec.Id.makeFromString;
+        let id = payload##arguments##id->Spec.Id.makeFromString;
         let meta =
           Message.{
             service: Spec.name,
             ip:
               payload##meta##ip
-              |> Js.Array.shift
-              |> Js.Option.getWithDefault(""),
+              ->Js.Array.shift
+              ->Belt.Option.getWithDefault(""),
             user: payload##meta##user,
             time: Message.nowAsISOString(),
             msgId,
@@ -124,33 +124,37 @@ module Make =
           };
         let params =
           payload##arguments
-          |> Message.stringify  // FIXME: find another way to transform a Js.t into Js.Json.t
-          |> Js.Json.parseExn
-          |> Js.Json.decodeObject
-          |> (
-            fun
-            | Some(obj) => obj |> Js.Dict.values
-            | None =>
-              Js.Exn.raiseError(
-                "Couldn't decode:" ++ (payload##arguments |> Message.stringify),
-              )
-          );
+          ->Js.Json.stringifyAny // FIXME: find another way to transform a Js.t into Js.Json.t
+          ->Belt.Option.flatMap(jsonString =>
+              jsonString->Js.Json.parseExn->Js.Json.decodeObject
+            )
+          ->(
+              fun
+              | Some(obj) => obj->Js.Dict.values
+              | None =>
+                Js.Exn.raiseError(
+                  "Couldn't decode:"
+                  ++ payload##arguments
+                     ->Js.Json.stringifyAny
+                     ->Belt.Option.getWithDefault("<payload.arguments>"),
+                )
+            );
         params[0] = Js.Json.string(payload##command);
         let command =
           params
-          |> Js.Json.array
-          |> Behaviour.resolverConfig.commandDecoder
-          |> (
-            fun
-            | Belt.Result.Ok(command) => command
-            | Error(err) =>
-              Js.Exn.raiseError(
-                {j|Couldn't decode $params|>Message.stringify: $err|j},
-              )
-          );
+          ->Js.Json.array
+          ->(Behaviour.resolverConfig.commandDecoder)
+          ->(
+              fun
+              | Belt.Result.Ok(command) => command
+              | Error(err) =>
+                Js.Exn.raiseError(
+                  {j|Couldn't decode $params->Message.stringify: $err|j},
+                )
+            );
         let command' = Message.{id, meta, command};
         publish(. command')
-        |> Js.Promise.then_(_ => Js.Promise.resolve(meta.msgId));
+        ->Js.Promise.then_(_ => Js.Promise.resolve(meta.msgId), _);
       };
       fn;
     };

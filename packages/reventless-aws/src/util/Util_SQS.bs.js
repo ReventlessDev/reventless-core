@@ -2,7 +2,7 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Caml_option = require("bs-platform/lib/js/caml_option.js");
+var Caml_option = require("rescript/lib/js/caml_option.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var Util_SQS_Runtime$ReventlessAws = require("./Util_SQS_Runtime.bs.js");
 

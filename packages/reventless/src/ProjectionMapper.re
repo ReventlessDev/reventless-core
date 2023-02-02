@@ -32,7 +32,10 @@ module Make =
        ) => {
   module GenericTarget = MakeGenericTargetFromStateTarget(DiscreteTarget);
   module GenericMappings = {
+    /* TODO: delete me if really unused
     module Target = GenericTarget;
+    */
+
     module type Mapping =
       MapperNto1.Mapping with
         module Spec := Spec and type target := DiscreteTarget.state;
