@@ -178,8 +178,10 @@ function handleAction(action, param, subIdConfig) {
                             var getSubId = match[/* getSubId */1];
                             var subIdField = match[/* subIdField */0];
                             var oldStates = Belt_List.toArray(states[0]);
+                            var oldCount = oldStates.length;
                             var oldSubIds = Belt_SetString.fromArray(Belt_Array.map(oldStates, Curry.__1(getSubId)));
                             var newStates = Curry._1(update$2, oldStates);
+                            var newCount = newStates.length;
                             var batch = Belt_Array.map(newStates, (function (state) {
                                     return /* tuple */[
                                             id$6,
@@ -189,10 +191,8 @@ function handleAction(action, param, subIdConfig) {
                                   }));
                             var newSubIds = Belt_SetString.fromArray(Belt_Array.map(newStates, Curry.__1(getSubId)));
                             var subIdsToDelete = Belt_SetString.diff(oldSubIds, newSubIds);
-                            var statesStr = Belt_Array.map(batch, (function (param) {
-                                    return "(" + (String(param[0]) + ("," + (String(param[1]) + ")")));
-                                  }));
-                            var str$1 = "UpdateMultiState(" + (String(statesStr) + ")");
+                            var deleteCount = Belt_SetString.size(subIdsToDelete);
+                            var str$1 = "UpdateMultiState(" + (String(id$6) + ("): oldStates:" + (String(oldCount) + (" newStates:" + (String(newCount) + (" delete:" + (String(deleteCount) + "")))))));
                             console.log("Projection.handleAction:", str$1);
                             var __x = Promise.all(Belt_Array.concat(Belt_Array.map(Belt_SetString.toArray(subIdsToDelete), (function (subId) {
                                             var str = "UpdateMultiState: Delete(" + (String(id$6) + (", " + (String(subId) + ")")));

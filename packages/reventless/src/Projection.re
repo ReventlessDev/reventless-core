@@ -106,11 +106,13 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
             switch (states, subIdConfig) {
             | (Ok(states), Some({subIdField, getSubId})) =>
               let oldStates = states->Belt.List.toArray;
+              let oldCount = oldStates->Belt.Array.length;
               let oldSubIds =
                 oldStates
                 ->Belt.Array.map(state => state->getSubId)
                 ->Set.fromArray;
               let newStates = oldStates->update;
+              let newCount = newStates->Belt.Array.length;
               let batch =
                 newStates->Belt.Array.map(state => (id, state, None));
               let newSubIds =
@@ -118,12 +120,11 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
                 ->Belt.Array.map(state => state->getSubId)
                 ->Set.fromArray;
               let subIdsToDelete = oldSubIds->Set.diff(newSubIds);
+              let deleteCount = subIdsToDelete->Set.size;
 
-              let statesStr =
-                batch->Belt.Array.map(((id, state, _)) =>
-                  {j|($id,$state)|j}
-                );
-              logAction({j|UpdateMultiState($statesStr)|j});
+              logAction(
+                {j|UpdateMultiState($id): oldStates:$oldCount newStates:$newCount delete:$deleteCount|j},
+              );
 
               subIdsToDelete
               ->Set.toArray
