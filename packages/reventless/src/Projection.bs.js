@@ -3,6 +3,7 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Belt_SetString = require("bs-platform/lib/js/belt_SetString.js");
@@ -183,23 +184,34 @@ function handleAction(action, param, subIdConfig) {
                             var afterStates = Curry._1(update$2, beforeStates);
                             var afterCount = afterStates.length;
                             var afterSubIds = Belt_SetString.fromArray(Belt_Array.map(afterStates, Curry.__1(getSubId)));
-                            var subIdsToAdd = Belt_SetString.diff(afterSubIds, beforeSubIds);
-                            var addCount = Belt_SetString.size(subIdsToAdd);
-                            var statesToAdd = Belt_Array.keep(afterStates, (function (state) {
-                                    return Belt_SetString.has(subIdsToAdd, Curry._1(getSubId, state));
+                            var addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
+                            var addedCount = Belt_SetString.size(addedSubIds);
+                            var changedStates = Belt_Array.keepMap(beforeStates, (function (before) {
+                                    var beforeSubId = Curry._1(getSubId, before);
+                                    return Belt_Array.getBy(afterStates, (function (after) {
+                                                  if (Curry._1(getSubId, after) === beforeSubId) {
+                                                    return Caml_obj.caml_notequal(after, before);
+                                                  } else {
+                                                    return false;
+                                                  }
+                                                }));
                                   }));
-                            var batch = Belt_Array.map(statesToAdd, (function (state) {
+                            var changedCount = changedStates.length;
+                            var addedStates = Belt_Array.keep(afterStates, (function (state) {
+                                    return Belt_SetString.has(addedSubIds, Curry._1(getSubId, state));
+                                  }));
+                            var batch = Belt_Array.map(Belt_Array.concat(addedStates, changedStates), (function (state) {
                                     return /* tuple */[
                                             id$6,
                                             state,
                                             undefined
                                           ];
                                   }));
-                            var subIdsToDelete = Belt_SetString.diff(beforeSubIds, afterSubIds);
-                            var deleteCount = Belt_SetString.size(subIdsToDelete);
-                            var str$1 = "UpdateMultiState(" + (String(id$6) + ("): beforeStates:" + (String(beforeCount) + (" afterStates:" + (String(afterCount) + (" add:" + (String(addCount) + (" delete:" + (String(deleteCount) + "")))))))));
+                            var deletedSubIds = Belt_SetString.diff(beforeSubIds, afterSubIds);
+                            var deletedCount = Belt_SetString.size(deletedSubIds);
+                            var str$1 = "UpdateMultiState(" + (String(id$6) + ("): beforeStates:" + (String(beforeCount) + (" afterStates:" + (String(afterCount) + (" added:" + (String(addedCount) + (" changed:" + (String(changedCount) + (" deleted:" + (String(deletedCount) + "")))))))))));
                             console.log("Projection.handleAction:", str$1);
-                            var __x = Promise.all(Belt_Array.concat(Belt_Array.map(Belt_SetString.toArray(subIdsToDelete), (function (subId) {
+                            var __x = Promise.all(Belt_Array.concat(Belt_Array.map(Belt_SetString.toArray(deletedSubIds), (function (subId) {
                                             var str = "UpdateMultiState: Delete(" + (String(id$6) + (", " + (String(subId) + ")")));
                                             console.log("Projection.handleAction:", str);
                                             return $$delete(id$6, /* tuple */[

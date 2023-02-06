@@ -119,24 +119,35 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
                 ->Belt.Array.map(state => state->getSubId)
                 ->Set.fromArray;
 
-              let subIdsToAdd = afterSubIds->Set.diff(beforeSubIds);
-              let addCount = subIdsToAdd->Set.size;
+              let addedSubIds = afterSubIds->Set.diff(beforeSubIds);
+              let addedCount = addedSubIds->Set.size;
 
-              let statesToAdd =
+              let changedStates =
+                beforeStates->Belt.Array.keepMap(before => {
+                  let beforeSubId = before->getSubId;
+                  afterStates->Belt.Array.getBy(after =>
+                    after->getSubId == beforeSubId && after != before
+                  );
+                });
+              let changedCount = changedStates->Belt.Array.size;
+
+              let addedStates =
                 afterStates->Belt.Array.keep(state =>
-                  subIdsToAdd->Set.has(state->getSubId)
+                  addedSubIds->Set.has(state->getSubId)
                 );
               let batch =
-                statesToAdd->Belt.Array.map(state => (id, state, None));
+                addedStates
+                ->Belt.Array.concat(changedStates)
+                ->Belt.Array.map(state => (id, state, None));
 
-              let subIdsToDelete = beforeSubIds->Set.diff(afterSubIds);
-              let deleteCount = subIdsToDelete->Set.size;
+              let deletedSubIds = beforeSubIds->Set.diff(afterSubIds);
+              let deletedCount = deletedSubIds->Set.size;
 
               logAction(
-                {j|UpdateMultiState($id): beforeStates:$beforeCount afterStates:$afterCount add:$addCount delete:$deleteCount|j},
+                {j|UpdateMultiState($id): beforeStates:$beforeCount afterStates:$afterCount added:$addedCount changed:$changedCount deleted:$deletedCount|j},
               );
 
-              subIdsToDelete
+              deletedSubIds
               ->Set.toArray
               ->Belt.Array.map(subId => {
                   logAction({j|UpdateMultiState: Delete($id, $subId)|j});
