@@ -6,149 +6,142 @@ var Id$Reventless = require("../../../Id.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
 
 function extractExtensionPointNames(__x) {
-    return Belt_Array.map(__x, (function (extensionPoint) {
-        return extensionPoint.name;
-    }));
+  return Belt_Array.map(__x, (function (extensionPoint) {
+                return extensionPoint.name;
+              }));
 }
 
 function extractExtensionNames(__x) {
-    return Belt_Array.map(__x, (function (extension) {
-        return extension.extensionPointName;
-    }));
+  return Belt_Array.map(__x, (function (extension) {
+                return extension.extensionPointName;
+              }));
 }
 
 var Util = {
-    extractExtensionPointNames: extractExtensionPointNames,
-    extractExtensionNames: extractExtensionNames
+  extractExtensionPointNames: extractExtensionPointNames,
+  extractExtensionNames: extractExtensionNames
 };
 
 function map(param) {
-    var $$event = param.event;
-    var match = param.meta;
-    var user = match.user;
-    var time = match.time;
-    var id = param.id;
-    if (typeof $$event === "number") {
-        return /* Ignore */0;
-    }
-    switch ($$event.TAG | 0) {
-        case /* Connected */0:
-            var match$1 = $$event._0;
-            var extensions = match$1.extensions;
-            var extensionPoints = match$1.extensionPoints;
-            return {
+  var $$event = param.event;
+  var match = param.meta;
+  var user = match.user;
+  var time = match.time;
+  var id = param.id;
+  if (typeof $$event === "number") {
+    return /* Ignore */0;
+  }
+  switch ($$event.TAG | 0) {
+    case /* Connected */0 :
+        var match$1 = $$event._0;
+        var extensions = match$1.extensions;
+        var extensionPoints = match$1.extensionPoints;
+        return {
                 TAG: /* Set */6,
                 _0: id,
                 _1: {
-                    name: match$1.name,
-                    version: match$1.version,
-                    eventCollector: match$1.eventCollector,
-                    extensionPoints: extensionPoints,
-                    extensionPointNames: Belt_Array.map(extensionPoints, (function (extensionPoint) {
-                        return extensionPoint.name;
-                    })),
-                    extensionNames: Belt_Array.map(extensions, (function (extension) {
-                        return extension.extensionPointName;
-                    })),
-                    extensions: extensions,
-                    status: /* Connected */0,
-                    statusChange: {
-                        at: time,
-                        by: user
-                    }
-                }
-            };
-        case /* Reconnected */1:
-            return {
-                TAG: /* Update */2,
-                _0: id,
-                _1: (function (state) {
-                    return {
-                        name: state.name,
-                        version: state.version,
-                        eventCollector: state.eventCollector,
-                        extensionPoints: state.extensionPoints,
-                        extensionPointNames: state.extensionPointNames,
-                        extensionNames: state.extensionNames,
-                        extensions: state.extensions,
-                        status: /* Connected */0,
-                        statusChange: {
-                            at: time,
-                            by: user
-                        }
-                    };
-                })
-            };
-        case /* Disconnected */2:
-        case /* Activated */3:
-            break;
-        case /* Deactivated */4:
-            return {
-                TAG: /* Update */2,
-                _0: id,
-                _1: (function (state) {
-                    return {
-                        name: state.name,
-                        version: state.version,
-                        eventCollector: state.eventCollector,
-                        extensionPoints: state.extensionPoints,
-                        extensionPointNames: state.extensionPointNames,
-                        extensionNames: state.extensionNames,
-                        extensions: state.extensions,
-                        status: /* Inactive */2,
-                        statusChange: {
-                            at: time,
-                            by: user
-                        }
-                    };
-                })
-            };
-
-    }
-    return {
-        TAG: /* Update */2,
-        _0: id,
-        _1: (function (state) {
-            return {
-                name: state.name,
-                version: state.version,
-                eventCollector: state.eventCollector,
-                extensionPoints: state.extensionPoints,
-                extensionPointNames: state.extensionPointNames,
-                extensionNames: state.extensionNames,
-                extensions: state.extensions,
-                status: /* Disconnected */1,
-                statusChange: {
+                  name: match$1.name,
+                  version: match$1.version,
+                  eventCollector: match$1.eventCollector,
+                  extensionPoints: extensionPoints,
+                  extensionPointNames: Belt_Array.map(extensionPoints, (function (extensionPoint) {
+                          return extensionPoint.name;
+                        })),
+                  extensionNames: Belt_Array.map(extensions, (function (extension) {
+                          return extension.extensionPointName;
+                        })),
+                  extensions: extensions,
+                  status: /* Connected */0,
+                  statusChange: {
                     at: time,
                     by: user
+                  }
                 }
-            };
-        })
-    };
+              };
+    case /* Reconnected */1 :
+        return {
+                TAG: /* Update */2,
+                _0: id,
+                _1: (function (state) {
+                    return {
+                            name: state.name,
+                            version: state.version,
+                            eventCollector: state.eventCollector,
+                            extensionPoints: state.extensionPoints,
+                            extensionPointNames: state.extensionPointNames,
+                            extensionNames: state.extensionNames,
+                            extensions: state.extensions,
+                            status: /* Connected */0,
+                            statusChange: {
+                              at: time,
+                              by: user
+                            }
+                          };
+                  })
+              };
+    case /* Disconnected */2 :
+    case /* Activated */3 :
+        break;
+    case /* Deactivated */4 :
+        return {
+                TAG: /* Update */2,
+                _0: id,
+                _1: (function (state) {
+                    return {
+                            name: state.name,
+                            version: state.version,
+                            eventCollector: state.eventCollector,
+                            extensionPoints: state.extensionPoints,
+                            extensionPointNames: state.extensionPointNames,
+                            extensionNames: state.extensionNames,
+                            extensions: state.extensions,
+                            status: /* Inactive */2,
+                            statusChange: {
+                              at: time,
+                              by: user
+                            }
+                          };
+                  })
+              };
+    
+  }
+  return {
+          TAG: /* Update */2,
+          _0: id,
+          _1: (function (state) {
+              return {
+                      name: state.name,
+                      version: state.version,
+                      eventCollector: state.eventCollector,
+                      extensionPoints: state.extensionPoints,
+                      extensionPointNames: state.extensionPointNames,
+                      extensionNames: state.extensionNames,
+                      extensions: state.extensions,
+                      status: /* Disconnected */1,
+                      statusChange: {
+                        at: time,
+                        by: user
+                      }
+                    };
+            })
+        };
 }
 
 var PluginMapping = {
-    Source: undefined,
-    Target: undefined,
-    map: map
+  Source: undefined,
+  Target: undefined,
+  map: map
 };
 
 var mappings = [{
     Source: {
-        Id: Id$Reventless.$$String,
-        name: PluginSpec$Reventless.name,
-        event_encode: PluginSpec$Reventless.event_encode,
-        event_decode: PluginSpec$Reventless.event_decode
-    },
-    Target: {
-        Id: Id$Reventless.$$String,
-        name: PluginReadModelSpec$Reventless.name,
-        state_encode: PluginReadModelSpec$Reventless.state_encode,
-        state_decode: PluginReadModelSpec$Reventless.state_decode,
-        subIdConfig: undefined
+      Id: Id$Reventless.$$String,
+      name: PluginSpec$Reventless.name,
+      event_encode: PluginSpec$Reventless.event_encode,
+      event_decode: PluginSpec$Reventless.event_decode
     },
     map: map
-}];
+  }];
 
 exports.Util = Util;
 exports.PluginMapping = PluginMapping;
