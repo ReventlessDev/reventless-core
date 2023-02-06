@@ -177,22 +177,27 @@ function handleAction(action, param, subIdConfig) {
                             var match = subIdConfig;
                             var getSubId = match[/* getSubId */1];
                             var subIdField = match[/* subIdField */0];
-                            var oldStates = Belt_List.toArray(states[0]);
-                            var oldCount = oldStates.length;
-                            var oldSubIds = Belt_SetString.fromArray(Belt_Array.map(oldStates, Curry.__1(getSubId)));
-                            var newStates = Curry._1(update$2, oldStates);
-                            var newCount = newStates.length;
-                            var batch = Belt_Array.map(newStates, (function (state) {
+                            var beforeStates = Belt_List.toArray(states[0]);
+                            var beforeCount = beforeStates.length;
+                            var beforeSubIds = Belt_SetString.fromArray(Belt_Array.map(beforeStates, Curry.__1(getSubId)));
+                            var afterStates = Curry._1(update$2, beforeStates);
+                            var afterCount = afterStates.length;
+                            var afterSubIds = Belt_SetString.fromArray(Belt_Array.map(afterStates, Curry.__1(getSubId)));
+                            var subIdsToAdd = Belt_SetString.diff(afterSubIds, beforeSubIds);
+                            var addCount = Belt_SetString.size(subIdsToAdd);
+                            var statesToAdd = Belt_Array.keep(afterStates, (function (state) {
+                                    return Belt_SetString.has(subIdsToAdd, Curry._1(getSubId, state));
+                                  }));
+                            var batch = Belt_Array.map(statesToAdd, (function (state) {
                                     return /* tuple */[
                                             id$6,
                                             state,
                                             undefined
                                           ];
                                   }));
-                            var newSubIds = Belt_SetString.fromArray(Belt_Array.map(newStates, Curry.__1(getSubId)));
-                            var subIdsToDelete = Belt_SetString.diff(oldSubIds, newSubIds);
+                            var subIdsToDelete = Belt_SetString.diff(beforeSubIds, afterSubIds);
                             var deleteCount = Belt_SetString.size(subIdsToDelete);
-                            var str$1 = "UpdateMultiState(" + (String(id$6) + ("): oldStates:" + (String(oldCount) + (" newStates:" + (String(newCount) + (" delete:" + (String(deleteCount) + "")))))));
+                            var str$1 = "UpdateMultiState(" + (String(id$6) + ("): beforeStates:" + (String(beforeCount) + (" afterStates:" + (String(afterCount) + (" add:" + (String(addCount) + (" delete:" + (String(deleteCount) + "")))))))));
                             console.log("Projection.handleAction:", str$1);
                             var __x = Promise.all(Belt_Array.concat(Belt_Array.map(Belt_SetString.toArray(subIdsToDelete), (function (subId) {
                                             var str = "UpdateMultiState: Delete(" + (String(id$6) + (", " + (String(subId) + ")")));

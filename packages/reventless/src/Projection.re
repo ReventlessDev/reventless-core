@@ -105,25 +105,35 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
           states =>
             switch (states, subIdConfig) {
             | (Ok(states), Some({subIdField, getSubId})) =>
-              let oldStates = states->Belt.List.toArray;
-              let oldCount = oldStates->Belt.Array.length;
-              let oldSubIds =
-                oldStates
+              let beforeStates = states->Belt.List.toArray;
+              let beforeCount = beforeStates->Belt.Array.length;
+              let beforeSubIds =
+                beforeStates
                 ->Belt.Array.map(state => state->getSubId)
                 ->Set.fromArray;
-              let newStates = oldStates->update;
-              let newCount = newStates->Belt.Array.length;
+
+              let afterStates = beforeStates->update;
+              let afterCount = afterStates->Belt.Array.length;
+              let afterSubIds =
+                afterStates
+                ->Belt.Array.map(state => state->getSubId)
+                ->Set.fromArray;
+
+              let subIdsToAdd = afterSubIds->Set.diff(beforeSubIds);
+              let addCount = subIdsToAdd->Set.size;
+
+              let statesToAdd =
+                afterStates->Belt.Array.keep(state =>
+                  subIdsToAdd->Set.has(state->getSubId)
+                );
               let batch =
-                newStates->Belt.Array.map(state => (id, state, None));
-              let newSubIds =
-                newStates
-                ->Belt.Array.map(state => state->getSubId)
-                ->Set.fromArray;
-              let subIdsToDelete = oldSubIds->Set.diff(newSubIds);
+                statesToAdd->Belt.Array.map(state => (id, state, None));
+
+              let subIdsToDelete = beforeSubIds->Set.diff(afterSubIds);
               let deleteCount = subIdsToDelete->Set.size;
 
               logAction(
-                {j|UpdateMultiState($id): oldStates:$oldCount newStates:$newCount delete:$deleteCount|j},
+                {j|UpdateMultiState($id): beforeStates:$beforeCount afterStates:$afterCount add:$addCount delete:$deleteCount|j},
               );
 
               subIdsToDelete
