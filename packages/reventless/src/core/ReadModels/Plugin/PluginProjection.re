@@ -80,6 +80,7 @@ module PluginMapping = {
     };
 };
 
-let mappings: array(module ReventlessSpec.Projection.Mapping) = [|
-  (module PluginMapping),
-|];
+module type Mapping =
+  ReventlessSpec.Projection.Mapping with module Target := PluginReadModelSpec;
+
+let mappings: array(module Mapping) = [|(module PluginMapping)|];
