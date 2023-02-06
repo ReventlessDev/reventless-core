@@ -82,23 +82,25 @@ module Make =
 
   let getSubId = state =>
     Target.subIdConfig->Belt.Option.map(({getSubId}) => state->getSubId);
+  let hasSubId = (subId, state) =>
+    state->getSubId->Belt.Option.getExn == subId;
   let states = (store, id) =>
     store->Js.Dict.get(id)->Belt.Option.getWithDefault([]);
   let setStates = (store, id, states) => store->Js.Dict.set(id, states);
+  let updateState = (store, id, subId, newState) =>
+    store
+    ->states(id)
+    ->Belt.List.map(state => hasSubId(subId, state) ? newState : state);
   let addState = (store, id, state) => {
-    let states = store->Js.Dict.get(id)->Belt.Option.getWithDefault([]);
-    let newStates =
-      (
-        switch (state->getSubId) {
-        | Some(subId) =>
-          states->Belt.List.keep(state =>
-            state->getSubId->Belt.Option.getExn != subId
-          )
-        | None => states
-        }
-      )
-      @ [state];
-    store->Js.Dict.set(id, newStates);
+    let (updatedStates, newStates) =
+      switch (state->getSubId) {
+      | Some(subId) =>
+        store->states(id)->Belt.List.some(hasSubId(subId))
+          ? (store->updateState(id, subId, state), [])
+          : (store->states(id), [state])
+      | None => (store->states(id), [state])
+      };
+    store->Js.Dict.set(id, updatedStates @ newStates);
   };
   let deleteStates = (store, id) => store->Js.Dict.set(id, []);
   let deleteSubStates = (store, id, subId, getSubId) =>
@@ -165,25 +167,30 @@ module Make =
       );
 
   let update = (store, id, meta, event) => {
-    let p =
-      {id, meta, event}
-      ->Projection.map
-      ->handleAction({
-          load: load(store),
-          save: save(store),
-          saveBatch: saveBatch(store),
-          delete: delete(store),
-        });
-    // Js.log4(
-    //   "update after event:",
-    //   event->Source.event_encode,
-    //   "\nstore:",
-    //   store
-    //   ->Js.Dict.get(testId^)
-    //   ->Belt.Option.getWithDefault([])
-    //   ->Belt.List.map(Target.state_encode),
-    // );
-    p->Js.Promise.then_(_ => store->Js.Promise.resolve, _);
+    let logStore = text =>
+      Js.log4(
+        text,
+        event->Source.event_encode,
+        "\nstore:",
+        store
+        ->Js.Dict.get(id)
+        ->Belt.Option.getWithDefault([])
+        ->Belt.List.map(Target.state_encode),
+      );
+    let resolveStore = () => {
+      // logStore("update after event:");
+      store->Js.Promise.resolve;
+    };
+
+    {id, meta, event}
+    ->Projection.map
+    ->handleAction({
+        load: load(store),
+        save: save(store),
+        saveBatch: saveBatch(store),
+        delete: delete(store),
+      })
+    ->Js.Promise.then_(_ => resolveStore(), _);
   };
 
   let givenEvents = events => {

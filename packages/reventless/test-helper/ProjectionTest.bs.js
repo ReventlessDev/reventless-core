@@ -34,12 +34,25 @@ function Make(Projection) {
                   return Curry._1(param[/* getSubId */1], state);
                 }));
   };
+  var hasSubId = function (subId, state) {
+    return Belt_Option.getExn(getSubId(state)) === subId;
+  };
   var states = function (store, id) {
     return Belt_Option.getWithDefault(Js_dict.get(store, id), /* [] */0);
   };
   var setStates = function (store, id, states) {
     store[id] = states;
     return /* () */0;
+  };
+  var updateState = function (store, id, subId, newState) {
+    return Belt_List.map(states(store, id), (function (state) {
+                  var match = hasSubId(subId, state);
+                  if (match) {
+                    return newState;
+                  } else {
+                    return state;
+                  }
+                }));
   };
   var deleteStates = function (store, id) {
     store[id] = /* [] */0;
@@ -85,22 +98,33 @@ function Make(Projection) {
                 var store$1 = store;
                 var id = param[0];
                 var state = param[1];
-                var states = Belt_Option.getWithDefault(Js_dict.get(store$1, id), /* [] */0);
                 var match = getSubId(state);
-                var tmp;
+                var match$1;
                 if (match !== undefined) {
                   var subId = match;
-                  tmp = Belt_List.keep(states, (function (state) {
-                          return Belt_Option.getExn(getSubId(state)) !== subId;
+                  var match$2 = Belt_List.some(states(store$1, id), (function (param) {
+                          return hasSubId(subId, param);
                         }));
+                  match$1 = match$2 ? /* tuple */[
+                      updateState(store$1, id, subId, state),
+                      /* [] */0
+                    ] : /* tuple */[
+                      states(store$1, id),
+                      /* :: */[
+                        state,
+                        /* [] */0
+                      ]
+                    ];
                 } else {
-                  tmp = states;
-                }
-                var newStates = Pervasives.$at(tmp, /* :: */[
+                  match$1 = /* tuple */[
+                    states(store$1, id),
+                    /* :: */[
                       state,
                       /* [] */0
-                    ]);
-                store$1[id] = newStates;
+                    ]
+                  ];
+                }
+                store$1[id] = Pervasives.$at(match$1[0], match$1[1]);
                 return /* () */0;
               }));
         return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
