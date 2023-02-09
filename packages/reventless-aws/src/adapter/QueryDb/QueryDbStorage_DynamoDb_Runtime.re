@@ -83,6 +83,69 @@ let save = table =>
     };
   };
 
+/** writeChunk: max. batch size is 25 */
+let writeChunk = (writeRequests, maxRetries) =>
+  writeRequests
+  ->batchWriteWithRetries(maxRetries)
+  ->then_(
+      ((batchWriteItemOutput, _)) =>
+        batchWriteItemOutput##_UnprocessedItems
+        ->Js.Dict.values
+        ->Belt.Array.get(0)
+        ->(
+            fun
+            | Some(writeRequests) => {
+                let count = writeRequests->Belt.Array.length;
+                {j|$count request(s) failed after $maxRetries|j}->Error;
+              }
+            | _ => Ok()
+          )
+        ->resolve,
+      _,
+    );
+
+let writeBatch = (writeRequests, table, maxRetries) => {
+  let batches =
+    (
+      writeRequests->Belt.Array.size->float_of_int
+      /. maxBatchSize->Js.Int.toFloat
+    )
+    ->Js.Math.ceil_int;
+  Belt.Array.makeBy(batches, batchNr =>
+    writeRequests
+    ->Belt.Array.slice(~offset=batchNr * maxBatchSize, ~len=maxBatchSize)
+    ->toTable(table##name->Pulumi.Output.get)
+    ->writeChunk(maxRetries)
+  )
+  ->Reventless.Util.Promise.allSettled
+  ->then_(
+      results => {
+        let errors =
+          results
+          ->Belt.Array.mapWithIndex((batchNr, result) =>
+              switch (result##value, result##reason) {
+              | (Some(Error(error)), _) =>
+                {j|Batch $batchNr: $error|j}->Some
+              | (_, Some(reason)) =>
+                {j|Batch $batchNr: failed after $maxRetries: $reason|j}->Some
+              | _ => None
+              }
+            )
+          ->Belt.Array.keepMap(x => x);
+        switch (errors) {
+        | [||] => Ok()->resolve
+        | errors =>
+          errors
+          ->Js.Array2.joinWith(",")
+          ->BatchNotFullyWrittenToStorage
+          ->Error
+          ->resolve
+        };
+      },
+      _,
+    );
+};
+
 let saveBatch:
   (~maxRetries: int=?, PulumiAws.DynamoDb.Table.t) =>
   (. array((string, Js.Json.t, option(int)))) =>
@@ -93,20 +156,7 @@ let saveBatch:
       ->Belt.Array.map(((_id, json, ttl)) =>
           json->insertTtl(ttl)->toPutRequest
         )
-      ->toTable(table##name->Pulumi.Output.get)
-      ->batchWriteWithRetries(maxRetries)
-      // don't catch any rejections to force retry in stream
-      ->then_(
-          ((batchWriteItemOutput, _numberOfRetries)) => {
-            if (hasUnprocessedItems(batchWriteItemOutput)) {
-              Js.Exn.raiseError(
-                {j|Still unprocessed items present after maxRetries($maxRetries)!|j},
-              );
-            };
-            resolve(Ok());
-          },
-          _,
-        );
+      ->writeBatch(table, maxRetries);
     };
 
 let count = table =>

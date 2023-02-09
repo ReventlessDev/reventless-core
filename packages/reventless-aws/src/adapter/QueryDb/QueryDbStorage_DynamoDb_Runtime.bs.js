@@ -2,10 +2,12 @@
 'use strict';
 
 var Block = require("bs-platform/lib/js/block.js");
-var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
+var Js_math = require("bs-platform/lib/js/js_math.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
+var Caml_int32 = require("bs-platform/lib/js/caml_int32.js");
+var Caml_option = require("bs-platform/lib/js/caml_option.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.bs.js");
 
@@ -53,18 +55,58 @@ function save(table) {
     });
 }
 
+function writeChunk(writeRequests, maxRetries) {
+  var __x = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(writeRequests, maxRetries);
+  return __x.then((function (param) {
+                var param$1 = Belt_Array.get(Js_dict.values(param[0].UnprocessedItems), 0);
+                var tmp;
+                if (param$1 !== undefined) {
+                  var count = param$1.length;
+                  tmp = /* Error */Block.__(1, ["" + (String(count) + (" request(s) failed after " + (String(maxRetries) + "")))]);
+                } else {
+                  tmp = /* Ok */Block.__(0, [/* () */0]);
+                }
+                return Promise.resolve(tmp);
+              }));
+}
+
+function writeBatch(writeRequests, table, maxRetries) {
+  var batches = Js_math.ceil_int(writeRequests.length / DynamoDb_DocumentClient$AwsSdk.maxBatchSize);
+  var __x = Promise.allSettled(Belt_Array.makeBy(batches, (function (batchNr) {
+              return writeChunk(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.slice(writeRequests, Caml_int32.imul(batchNr, DynamoDb_DocumentClient$AwsSdk.maxBatchSize), DynamoDb_DocumentClient$AwsSdk.maxBatchSize), table.name.get()), maxRetries);
+            })));
+  return __x.then((function (results) {
+                var errors = Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (batchNr, result) {
+                            var match = result.value;
+                            var match$1 = result.reason;
+                            if (match !== undefined) {
+                              var match$2 = match;
+                              if (match$2.tag) {
+                                return "Batch " + (String(batchNr) + (": " + (String(match$2[0]) + "")));
+                              }
+                              
+                            }
+                            if (match$1 !== undefined) {
+                              return "Batch " + (String(batchNr) + (": failed after " + (String(maxRetries) + (": " + (String(Caml_option.valFromOption(match$1)) + "")))));
+                            }
+                            
+                          })), (function (x) {
+                        return x;
+                      }));
+                if (errors.length !== 0) {
+                  return Promise.resolve(/* Error */Block.__(1, [/* BatchNotFullyWrittenToStorage */Block.__(4, [errors.join(",")])]));
+                } else {
+                  return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                }
+              }));
+}
+
 function saveBatch($staropt$star, table) {
   var maxRetries = $staropt$star !== undefined ? $staropt$star : 3;
   return (function (items) {
-      var __x = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(items, (function (param) {
-                      return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
-                    })), table.name.get()), maxRetries);
-      return __x.then((function (param) {
-                    if (Util_DynamoDb_Runtime$ReventlessAws.hasUnprocessedItems(param[0])) {
-                      Js_exn.raiseError("Still unprocessed items present after maxRetries(" + (String(maxRetries) + ")!"));
-                    }
-                    return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
-                  }));
+      return writeBatch(Belt_Array.map(items, (function (param) {
+                        return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
+                      })), table, maxRetries);
     });
 }
 
@@ -114,6 +156,8 @@ function $$delete(table) {
 
 exports.load = load;
 exports.save = save;
+exports.writeChunk = writeChunk;
+exports.writeBatch = writeBatch;
 exports.saveBatch = saveBatch;
 exports.count = count;
 exports.$$delete = $$delete;

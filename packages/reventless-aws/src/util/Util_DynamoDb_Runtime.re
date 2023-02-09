@@ -58,6 +58,12 @@ let insertTtl = (json, ttl) =>
     )
   ->Belt.Option.getWithDefault(json);
 
+/** batchWrite: max. batch size is 25 */
+let batchWrite = params =>
+  make()
+  ->AwsSdk.DynamoDb.DocumentClient.batchWrite(~params)
+  ->AwsSdk.Request.promise;
+
 let batchWrite' = itemRequestMap =>
   batchWrite(
     BatchWriteInput.make(

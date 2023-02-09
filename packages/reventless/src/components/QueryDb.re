@@ -29,6 +29,7 @@ type storageError =
   | NotLoadedFromStorage(string)
   | NotCountedOnStorage(string)
   | NotDeletedFromStorage(string)
+  | BatchNotFullyWrittenToStorage(string)
   | StaleState
   | MissingSubIdConfig;
 

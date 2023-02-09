@@ -79,8 +79,12 @@ function insertTtl(json, ttl) {
                   })), json);
 }
 
+function batchWrite(params) {
+  return DynamoDb_DocumentClient$AwsSdk.make(/* () */0).batchWrite(params).promise();
+}
+
 function batchWrite$prime(itemRequestMap) {
-  return DynamoDb_DocumentClient$AwsSdk.batchWrite({
+  return batchWrite({
               RequestItems: itemRequestMap,
               ReturnConsumedCapacity: "NONE",
               ReturnItemCollectionMetris: "NONE"
@@ -147,6 +151,7 @@ exports.keysFromResource = keysFromResource;
 exports.purgeTimeAttributeName = purgeTimeAttributeName;
 exports.calcPurgeTime = calcPurgeTime;
 exports.insertTtl = insertTtl;
+exports.batchWrite = batchWrite;
 exports.batchWrite$prime = batchWrite$prime;
 exports.wrapWithCount = wrapWithCount;
 exports.hasUnprocessedItems = hasUnprocessedItems;
