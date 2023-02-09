@@ -111,7 +111,25 @@ module Make =
       actions
       ->Projection.handleActions(primitives, subIdConfig)
       ->Js.Promise.all
-      ->Js.Promise.then_(_ => Js.Promise.resolve(), _); // TODO: error handling
+      ->Js.Promise.then_(
+          results => {
+            let errors =
+              results->Belt.Array.keepMap(
+                fun
+                | Belt.Result.Error(err) => Some(err)
+                | _ => None,
+              );
+            switch (errors) {
+            | [||] => Js.Promise.resolve()
+            | errors =>
+              let count = errors->Belt.Array.size;
+              Js.Exn.raiseError(
+                {j|ReadModel.handleActions failed with $count errors: $errors|j},
+              );
+            };
+          },
+          _,
+        );
 
     let eventsHandler: (. array(Js.Json.t)) => Js.Promise.t(unit) =
       (. jsons) => {
