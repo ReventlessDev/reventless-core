@@ -22,12 +22,6 @@ let now = () => Js.Date.make()->Js.Date.getTime;
 
 let nowAsISOString = () => Js.Date.make()->Js.Date.toISOString;
 
-[@decco]
-type statusChange = {
-  at: string,
-  by: string,
-};
-
 type handler('msg) = 'msg => Js.Promise.t(unit);
 
 [@decco]

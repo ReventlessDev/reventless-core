@@ -25,3 +25,9 @@ type event'('id, 'event) = {
 };
 
 let invalidEvent = () => Js.Exn.raiseError("Invalid Event");
+
+[@decco]
+type statusChange = {
+  at: string,
+  by: string,
+};

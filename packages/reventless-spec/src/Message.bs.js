@@ -225,6 +225,52 @@ function invalidEvent(param) {
   return Js_exn.raiseError("Invalid Event");
 }
 
+function statusChange_encode(v) {
+  return Js_dict.fromArray(/* array */[
+              /* tuple */[
+                "at",
+                Decco.stringToJson(v[/* at */0])
+              ],
+              /* tuple */[
+                "by",
+                Decco.stringToJson(v[/* by */1])
+              ]
+            ]);
+}
+
+function statusChange_decode(v) {
+  var match = Js_json.classify(v);
+  if (typeof match === "number" || match.tag !== /* JSONObject */2) {
+    return Decco.error(undefined, "Not an object", v);
+  } else {
+    var dict = match[0];
+    var match$1 = Js_dict.get(dict, "at");
+    var match$2 = Decco.stringFromJson(match$1 !== undefined ? Caml_option.valFromOption(match$1) : null);
+    var match$3 = Js_dict.get(dict, "by");
+    var match$4 = Decco.stringFromJson(match$3 !== undefined ? Caml_option.valFromOption(match$3) : null);
+    if (match$2.tag) {
+      var e = match$2[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".at" + e[/* path */0],
+                  /* message */e[/* message */1],
+                  /* value */e[/* value */2]
+                ]]);
+    } else if (match$4.tag) {
+      var e$1 = match$4[0];
+      return /* Error */Block.__(1, [/* record */[
+                  /* path */".by" + e$1[/* path */0],
+                  /* message */e$1[/* message */1],
+                  /* value */e$1[/* value */2]
+                ]]);
+    } else {
+      return /* Ok */Block.__(0, [/* record */[
+                  /* at */match$2[0],
+                  /* by */match$4[0]
+                ]]);
+    }
+  }
+}
+
 exports.service_encode = service_encode;
 exports.service_decode = service_decode;
 exports.meta_encode = meta_encode;
@@ -234,4 +280,6 @@ exports.context_decode = context_decode;
 exports.event$prime_encode = event$prime_encode;
 exports.event$prime_decode = event$prime_decode;
 exports.invalidEvent = invalidEvent;
+exports.statusChange_encode = statusChange_encode;
+exports.statusChange_decode = statusChange_decode;
 /* No side effect */
