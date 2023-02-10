@@ -10,11 +10,13 @@ type primitives('id, 'state) = {
   save: save('id, 'state),
   saveBatch: saveBatch('id, 'state),
   delete: delete('id),
+  deleteBatch: deleteBatch('id),
 };
 
 let logAction = str => Js.log2("Projection.handleAction:", str);
 
-let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
+let handleAction =
+    (action, {load, save, saveBatch, delete, deleteBatch}, subIdConfig) =>
   switch (action) {
   | Ignore =>
     logAction("Ignore");
@@ -147,13 +149,17 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
                 {j|UpdateMultiState($id): beforeStates:$beforeCount afterStates:$afterCount added:$addedCount changed:$changedCount deleted:$deletedCount|j},
               );
 
-              deletedSubIds
-              ->Set.toArray
-              ->Belt.Array.map(subId => {
-                  logAction({j|UpdateMultiState: Delete($id, $subId)|j});
-                  delete(. id, Some((subIdField, subId)));
-                })
-              ->Belt.Array.concat([|saveBatch(. batch)|])
+              logAction(
+                {j|UpdateMultiState: DeleteBatch($id, $deletedSubIds)|j},
+              );
+              [|
+                deleteBatch(.
+                  deletedSubIds
+                  ->Set.toArray
+                  ->Belt.Array.map(subId => (id, Some((subIdField, subId)))),
+                ),
+                saveBatch(. batch),
+              |]
               ->Js.Promise.all
               ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _);
             | (Error(err), Some(_)) =>
@@ -172,8 +178,8 @@ let handleAction = (action, {load, save, saveBatch, delete}, subIdConfig) =>
     logAction({j|Delete($id)|j});
     [|delete(. id, None)|];
   | DeleteMany(ids) =>
-    logAction({j|Create($ids)|j});
-    ids->Belt.Array.map(id => delete(. id, None));
+    logAction({j|DeleteMany($ids)|j});
+    [|deleteBatch(. ids->Belt.Array.map(id => (id, None)))|];
 
   // TODO: add missing actions
   | _ =>

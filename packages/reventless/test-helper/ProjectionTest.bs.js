@@ -58,7 +58,7 @@ function Make(Projection) {
     store[id] = /* [] */0;
     return /* () */0;
   };
-  var deleteSubStates = function (store, id, subId, getSubId) {
+  var deleteSubState = function (store, id, subId, getSubId) {
     store[id] = Belt_Option.getWithDefault(Belt_Option.map(Js_dict.get(store, id), (function (states) {
                 return Belt_List.keep(states, (function (state) {
                               return Caml_obj.caml_notequal(Curry._1(getSubId, state), subId);
@@ -135,7 +135,7 @@ function Make(Projection) {
         var match = Target.subIdConfig;
         if (subId !== undefined) {
           if (match !== undefined) {
-            deleteSubStates(store, id, subId[1], match[/* getSubId */1]);
+            deleteSubState(store, id, subId[1], match[/* getSubId */1]);
             return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
           } else {
             return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
@@ -144,6 +144,25 @@ function Make(Projection) {
           deleteStates(store, id);
           return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
         }
+      });
+  };
+  var deleteBatch = function (store) {
+    return (function (ids) {
+        Belt_Array.forEach(ids, (function (param) {
+                var subId = param[1];
+                var id = param[0];
+                var match = Target.subIdConfig;
+                if (subId !== undefined) {
+                  if (match !== undefined) {
+                    return deleteSubState(store, id, subId[1], match[/* getSubId */1]);
+                  } else {
+                    return /* () */0;
+                  }
+                } else {
+                  return deleteStates(store, id);
+                }
+              }));
+        return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
       });
   };
   var handleAction = function (action, primitives) {
@@ -168,7 +187,8 @@ function Make(Projection) {
           /* load */load(store),
           /* save */save(store),
           /* saveBatch */saveBatch(store),
-          /* delete */$$delete(store)
+          /* delete */$$delete(store),
+          /* deleteBatch */deleteBatch(store)
         ]);
     return __x.then((function (param) {
                   return Promise.resolve(store);

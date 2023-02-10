@@ -102,8 +102,15 @@ module Make =
     let delete =
       (. id, sort) =>
         queryDb->QueryDb.delete(. id->Spec.Id.makeFromString, sort);
+    let deleteBatch =
+      (. ids) =>
+        queryDb->QueryDb.deleteBatch(.
+          ids->Belt.Array.map(((id, sort)) =>
+            (id->Spec.Id.makeFromString, sort)
+          ),
+        );
 
-    let primitives = {Projection.load, save, saveBatch, delete};
+    let primitives = {Projection.load, save, saveBatch, delete, deleteBatch};
 
     module EventProjector = ProjectionMapper.Make(Spec, Mappings);
 

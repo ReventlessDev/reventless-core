@@ -103,7 +103,7 @@ module Make =
     store->Js.Dict.set(id, updatedStates @ newStates);
   };
   let deleteStates = (store, id) => store->Js.Dict.set(id, []);
-  let deleteSubStates = (store, id, subId, getSubId) =>
+  let deleteSubState = (store, id, subId, getSubId) =>
     store->Js.Dict.set(
       id,
       store
@@ -141,10 +141,22 @@ module Make =
         store->deleteStates(id);
         Ok()->Js.Promise.resolve;
       | (Some((_, subId)), Some({ReventlessSpec.ReadModelSpec.getSubId})) =>
-        store->deleteSubStates(id, subId, getSubId);
+        store->deleteSubState(id, subId, getSubId);
         Ok()->Js.Promise.resolve;
       | _ => Ok()->Js.Promise.resolve
       };
+  let deleteBatch = store =>
+    (. ids) => {
+      ids->Belt.Array.forEach(((id, subId)) =>
+        switch (subId, Target.subIdConfig) {
+        | (None, _) => store->deleteStates(id)
+        | (Some((_, subId)), Some({ReventlessSpec.ReadModelSpec.getSubId})) =>
+          store->deleteSubState(id, subId, getSubId)
+        | _ => ()
+        }
+      );
+      Ok()->Js.Promise.resolve;
+    };
 
   let handleAction = (action, primitives) =>
     action
@@ -189,6 +201,7 @@ module Make =
         save: save(store),
         saveBatch: saveBatch(store),
         delete: delete(store),
+        deleteBatch: deleteBatch(store),
       })
     ->Js.Promise.then_(_ => resolveStore(), _);
   };

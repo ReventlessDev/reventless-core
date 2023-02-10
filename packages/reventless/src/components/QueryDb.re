@@ -46,6 +46,9 @@ type count('id) =
 type delete('id) =
   (. 'id, option((string, string))) =>
   Js.Promise.t(Belt.Result.t(unit, storageError));
+type deleteBatch('id) =
+  (. array(('id, option((string, string))))) =>
+  Js.Promise.t(Belt.Result.t(unit, storageError));
 
 module type T = {
   module Spec: ReventlessSpec.ReadModelSpec.T;
@@ -55,6 +58,7 @@ module type T = {
   type nonrec saveBatch = saveBatch(Spec.Id.t, Spec.state);
   type nonrec count = count(Spec.Id.t);
   type nonrec delete = delete(Spec.Id.t);
+  type nonrec deleteBatch = deleteBatch(Spec.Id.t);
 
   let make:
     (~ttl: int=?, ~opts: Pulumi.ComponentResource.Options.t=?, unit) =>
@@ -65,6 +69,7 @@ module type T = {
   let saveBatch: component => saveBatch;
   let count: component => count;
   let delete: component => delete;
+  let deleteBatch: component => deleteBatch;
 
   let outputs: component => outputs;
 };
@@ -78,6 +83,7 @@ module Adapter = {
     saveBatch: saveBatch(string, Js.Json.t),
     count: count(string),
     delete: delete(string),
+    deleteBatch: deleteBatch(string),
   };
   type storageMaker('api, 'role) =
     (
@@ -172,6 +178,7 @@ module Make =
   type nonrec saveBatch = saveBatch(Spec.Id.t, Spec.state);
   type nonrec count = count(Spec.Id.t);
   type nonrec delete = delete(Spec.Id.t);
+  type nonrec deleteBatch = deleteBatch(Spec.Id.t);
 
   type constructed;
   type construct = (component, string, api, role) => constructed;
@@ -216,6 +223,7 @@ module Make =
   [@bs.get] external saveBatch: component => saveBatch = "saveBatch";
   [@bs.get] external count: component => count = "count";
   [@bs.get] external delete: component => delete = "delete";
+  [@bs.get] external deleteBatch: component => deleteBatch = "deleteBatch";
 
   let decode = (id, item) =>
     switch (Spec.state_decode(item)) {

@@ -323,6 +323,9 @@ function Make(Config) {
                       $$delete: (function (prim) {
                           return prim.delete;
                         }),
+                      deleteBatch: (function (prim) {
+                          return prim.deleteBatch;
+                        }),
                       outputs: outputs
                     };
             });

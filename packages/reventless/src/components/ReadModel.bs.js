@@ -47,11 +47,20 @@ function Make(Config) {
                         var $$delete = function (id, sort) {
                           return Curry._1(QueryDb.$$delete, queryDb)(Curry._1(Spec.Id.makeFromString, id), sort);
                         };
+                        var deleteBatch = function (ids) {
+                          return Curry._1(QueryDb.deleteBatch, queryDb)(Belt_Array.map(ids, (function (param) {
+                                            return /* tuple */[
+                                                    Curry._1(Spec.Id.makeFromString, param[0]),
+                                                    param[1]
+                                                  ];
+                                          })));
+                        };
                         var primitives = /* record */[
                           /* load */load,
                           /* save */save,
                           /* saveBatch */saveBatch,
-                          /* delete */$$delete
+                          /* delete */$$delete,
+                          /* deleteBatch */deleteBatch
                         ];
                         var EventProjector = ProjectionMapper$Reventless.Make({
                                 Id: Spec.Id,

@@ -14,7 +14,7 @@ function logAction(str) {
 }
 
 function handleAction(action, param, subIdConfig) {
-  var $$delete = param[/* delete */3];
+  var deleteBatch = param[/* deleteBatch */4];
   var saveBatch = param[/* saveBatch */2];
   var save = param[/* save */1];
   var load = param[/* load */0];
@@ -128,14 +128,17 @@ function handleAction(action, param, subIdConfig) {
           var id$4 = action[0];
           var str$4 = "Delete(" + (String(id$4) + ")");
           console.log("Projection.handleAction:", str$4);
-          return /* array */[$$delete(id$4, undefined)];
+          return /* array */[param[/* delete */3](id$4, undefined)];
       case /* DeleteMany */9 :
           var ids = action[0];
-          var str$5 = "Create(" + (String(ids) + ")");
+          var str$5 = "DeleteMany(" + (String(ids) + ")");
           console.log("Projection.handleAction:", str$5);
-          return Belt_Array.map(ids, (function (id) {
-                        return $$delete(id, undefined);
-                      }));
+          return /* array */[deleteBatch(Belt_Array.map(ids, (function (id) {
+                              return /* tuple */[
+                                      id,
+                                      undefined
+                                    ];
+                            })))];
       case /* CreateMultiState */12 :
           var states = action[1];
           var id$5 = action[0];
@@ -211,14 +214,20 @@ function handleAction(action, param, subIdConfig) {
                             var deletedCount = Belt_SetString.size(deletedSubIds);
                             var str$1 = "UpdateMultiState(" + (String(id$6) + ("): beforeStates:" + (String(beforeCount) + (" afterStates:" + (String(afterCount) + (" added:" + (String(addedCount) + (" changed:" + (String(changedCount) + (" deleted:" + (String(deletedCount) + "")))))))))));
                             console.log("Projection.handleAction:", str$1);
-                            var __x = Promise.all(Belt_Array.concat(Belt_Array.map(Belt_SetString.toArray(deletedSubIds), (function (subId) {
-                                            var str = "UpdateMultiState: Delete(" + (String(id$6) + (", " + (String(subId) + ")")));
-                                            console.log("Projection.handleAction:", str);
-                                            return $$delete(id$6, /* tuple */[
+                            var str$2 = "UpdateMultiState: DeleteBatch(" + (String(id$6) + (", " + (String(deletedSubIds) + ")")));
+                            console.log("Projection.handleAction:", str$2);
+                            var __x = Promise.all(/* array */[
+                                  deleteBatch(Belt_Array.map(Belt_SetString.toArray(deletedSubIds), (function (subId) {
+                                              return /* tuple */[
+                                                      id$6,
+                                                      /* tuple */[
                                                         subIdField,
                                                         subId
-                                                      ]);
-                                          })), /* array */[saveBatch(batch)]));
+                                                      ]
+                                                    ];
+                                            }))),
+                                  saveBatch(batch)
+                                ]);
                             return __x.then((function (param) {
                                           return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
                                         }));
