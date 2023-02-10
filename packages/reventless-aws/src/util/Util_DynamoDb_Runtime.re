@@ -104,9 +104,16 @@ let rec retryIfNecessary:
   };
 
 let toPutRequest = json =>
-  json
-  ->WriteRequest.PutRequest.make(~_Item=_)
-  ->WriteRequest.make(~_PutRequest=_, ());
+  WriteRequest.make(
+    ~_PutRequest=WriteRequest.PutRequest.make(~_Item=json),
+    (),
+  );
+
+let toDeleteRequest = keys =>
+  WriteRequest.make(
+    ~_DeleteRequest=WriteRequest.DeleteRequest.make(~_Key=keys),
+    (),
+  );
 
 let toTable = (writeRequests, tableName) =>
   Js.Dict.fromArray([|(tableName, writeRequests)|]);

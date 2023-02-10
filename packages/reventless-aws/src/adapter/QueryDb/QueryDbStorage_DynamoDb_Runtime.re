@@ -105,12 +105,15 @@ let writeChunk = (writeRequests, maxRetries) =>
     );
 
 let writeBatch = (writeRequests, table, maxRetries) => {
+  let batchSize = writeRequests->Belt.Array.size;
   let batches =
-    (
-      writeRequests->Belt.Array.size->float_of_int
-      /. maxBatchSize->Js.Int.toFloat
-    )
+    (batchSize->float_of_int /. maxBatchSize->Js.Int.toFloat)
     ->Js.Math.ceil_int;
+  if (batches > 1) {
+    Js.log(
+      {j|writeBatch: splitting up batch of size $batchSize into $batches chunks|j},
+    );
+  };
   Belt.Array.makeBy(batches, batchNr =>
     writeRequests
     ->Belt.Array.slice(~offset=batchNr * maxBatchSize, ~len=maxBatchSize)
@@ -210,4 +213,19 @@ let delete = table =>
          );
          Error(NotDeletedFromStorage(err->ofPromise##message))->resolve;
        });
+  };
+
+let deleteBatch = (~maxRetries=3, table) =>
+  (. ids) => {
+    ids
+    ->Belt.Array.map(((id, sort)) =>
+        switch (sort) {
+        | Some((sortField, sortKey)) =>
+          [("id", id), (sortField, sortKey)]
+          ->Js.Dict.fromList
+          ->toDeleteRequest
+        | None => [("id", id)]->Js.Dict.fromList->toDeleteRequest
+        }
+      )
+    ->writeBatch(table, maxRetries);
   };

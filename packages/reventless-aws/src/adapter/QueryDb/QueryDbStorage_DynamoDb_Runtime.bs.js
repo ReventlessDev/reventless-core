@@ -71,7 +71,11 @@ function writeChunk(writeRequests, maxRetries) {
 }
 
 function writeBatch(writeRequests, table, maxRetries) {
-  var batches = Js_math.ceil_int(writeRequests.length / DynamoDb_DocumentClient$AwsSdk.maxBatchSize);
+  var batchSize = writeRequests.length;
+  var batches = Js_math.ceil_int(batchSize / DynamoDb_DocumentClient$AwsSdk.maxBatchSize);
+  if (batches > 1) {
+    console.log("writeBatch: splitting up batch of size " + (String(batchSize) + (" into " + (String(batches) + " chunks"))));
+  }
   var __x = Promise.allSettled(Belt_Array.makeBy(batches, (function (batchNr) {
               return writeChunk(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.slice(writeRequests, Caml_int32.imul(batchNr, DynamoDb_DocumentClient$AwsSdk.maxBatchSize), DynamoDb_DocumentClient$AwsSdk.maxBatchSize), table.name.get()), maxRetries);
             })));
@@ -154,6 +158,40 @@ function $$delete(table) {
     });
 }
 
+function deleteBatch($staropt$star, table) {
+  var maxRetries = $staropt$star !== undefined ? $staropt$star : 3;
+  return (function (ids) {
+      return writeBatch(Belt_Array.map(ids, (function (param) {
+                        var sort = param[1];
+                        var id = param[0];
+                        if (sort !== undefined) {
+                          var match = sort;
+                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromList(/* :: */[
+                                          /* tuple */[
+                                            "id",
+                                            id
+                                          ],
+                                          /* :: */[
+                                            /* tuple */[
+                                              match[0],
+                                              match[1]
+                                            ],
+                                            /* [] */0
+                                          ]
+                                        ]));
+                        } else {
+                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromList(/* :: */[
+                                          /* tuple */[
+                                            "id",
+                                            id
+                                          ],
+                                          /* [] */0
+                                        ]));
+                        }
+                      })), table, maxRetries);
+    });
+}
+
 exports.load = load;
 exports.save = save;
 exports.writeChunk = writeChunk;
@@ -161,4 +199,5 @@ exports.writeBatch = writeBatch;
 exports.saveBatch = saveBatch;
 exports.count = count;
 exports.$$delete = $$delete;
+exports.deleteBatch = deleteBatch;
 /* DynamoDb_DocumentClient-AwsSdk Not a pure module */

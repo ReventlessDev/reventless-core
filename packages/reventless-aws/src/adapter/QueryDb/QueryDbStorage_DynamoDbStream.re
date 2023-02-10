@@ -112,5 +112,6 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
       save: table->QueryDbStorage_DynamoDb_Runtime.save,
       saveBatch: table->QueryDbStorage_DynamoDb_Runtime.saveBatch,
       delete: table->QueryDbStorage_DynamoDb_Runtime.delete,
+      deleteBatch: table->QueryDbStorage_DynamoDb_Runtime.deleteBatch,
     };
   };

@@ -107,7 +107,8 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts) {
           /* save */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table),
           /* saveBatch */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(undefined, table),
           /* count */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(table),
-          /* delete */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table)
+          /* delete */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table),
+          /* deleteBatch */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.deleteBatch(undefined, table)
         ];
 }
 

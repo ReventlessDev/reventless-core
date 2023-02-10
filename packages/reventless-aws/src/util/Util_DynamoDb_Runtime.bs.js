@@ -120,11 +120,18 @@ function retryIfNecessary(p, maxRetries) {
 }
 
 function toPutRequest(json) {
-  var __x = {
-    Item: json
-  };
   return {
-          PutRequest: __x
+          PutRequest: {
+            Item: json
+          }
+        };
+}
+
+function toDeleteRequest(keys) {
+  return {
+          DeleteRequest: {
+            Key: keys
+          }
         };
 }
 
@@ -157,6 +164,7 @@ exports.wrapWithCount = wrapWithCount;
 exports.hasUnprocessedItems = hasUnprocessedItems;
 exports.retryIfNecessary = retryIfNecessary;
 exports.toPutRequest = toPutRequest;
+exports.toDeleteRequest = toDeleteRequest;
 exports.toTable = toTable;
 exports.batchWriteWithRetries = batchWriteWithRetries;
 exports.findResource = findResource;
