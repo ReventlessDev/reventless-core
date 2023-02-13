@@ -1,26 +1,32 @@
 module type T = {
   module Spec: Behaviour.Spec;
 
+  let describe: (string, unit => unit) => unit;
+  let test: (string, unit => Jest.assertion) => unit;
+
   let givenEvents: list(Spec.event) => list(Spec.event);
 
-  let whenCmd: (Spec.command, list(Spec.event)) => list(Spec.event);
+  let whenCmd: (list(Spec.event), Spec.command) => list(Spec.event);
   let whenCmdWithId:
-    (string, Spec.command, list(Spec.event)) => list(Spec.event);
+    (list(Spec.event), string, Spec.command) => list(Spec.event);
 
-  let thenEvent: (Spec.event, list(Spec.event)) => Jest.assertion;
+  let thenEvent: (list(Spec.event), Spec.event) => Jest.assertion;
   let thenNoEvent: list(Spec.event) => Jest.assertion;
   let thenEventWithError:
-    (Spec.event, Spec.error, list(Spec.event)) => Jest.assertion;
+    (list(Spec.event), Spec.event, Spec.error) => Jest.assertion;
   let thenEvents: (list(Spec.event), list(Spec.event)) => Jest.assertion;
   let thenEventsWithError:
-    (list(Spec.event), Spec.error, list(Spec.event)) => Jest.assertion;
-  let thenError: (Spec.error, list(Spec.event)) => Jest.assertion;
+    (list(Spec.event), list(Spec.event), Spec.error) => Jest.assertion;
+  let thenError: (list(Spec.event), Spec.error) => Jest.assertion;
 };
 
 module Make =
        (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := Spec)
        : (T with module Spec = Spec) => {
   module Spec = Spec;
+
+  let describe = Jest.describe;
+  let test = Jest.test;
 
   let apply' = (state, event) => Behaviour.apply(. state, event);
 
@@ -37,7 +43,7 @@ module Make =
       [];
     };
 
-  let exec = (context, command, history): list(Spec.event) => {
+  let exec = (history, context, command): list(Spec.event) => {
     errors := [];
     switch (history) {
     | [] => Behaviour.create(. command, context, errorHandler)
@@ -56,16 +62,17 @@ module Make =
   };
 
   let givenEvents = events => events;
-  let whenCmd = cmd => exec(TestFixtures.context, cmd);
-  let whenCmdWithId = (id, cmd) => exec({...TestFixtures.context, id}, cmd);
+  let whenCmd = (history, cmd) => history->exec(TestFixtures.context, cmd);
+  let whenCmdWithId = (history, id, cmd) =>
+    history->exec({...TestFixtures.context, id}, cmd);
 
   open Jest.Expect;
 
-  let thenEvents = (expectedEvents, events) =>
+  let thenEvents = (events, expectedEvents) =>
     expect(((errors^)->Belt.List.length, events))
     |> toEqual((0, expectedEvents));
 
-  let thenEvent = (expectedEvent, events) =>
+  let thenEvent = (events, expectedEvent) =>
     if (events->Belt.List.length > 0) {
       expect((
         (errors^)->Belt.List.length,
@@ -93,7 +100,7 @@ module Make =
 
   let thenNoEvent = thenEvents([]);
 
-  let thenEventWithError = (expectedEvent, expectedError, events) =>
+  let thenEventWithError = (events, expectedEvent, expectedError) =>
     expect((
       events->Belt.List.length,
       events->Belt.List.head,
@@ -102,11 +109,11 @@ module Make =
     ))
     |> toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
 
-  let thenEventsWithError = (expectedEvents, expectedError, events) =>
+  let thenEventsWithError = (events, expectedEvents, expectedError) =>
     expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
     |> toEqual((expectedEvents, 1, Some(expectedError)));
 
-  let thenError = (expectedError, events) => {
+  let thenError = (events, expectedError) => {
     expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
     |> toEqual(([], 1, Some(expectedError)));
   };

@@ -1,28 +1,26 @@
-open Jest;
-
+open PluginSpec;
+open PluginFixtures;
 module PluginTest =
   Reventless.BehaviourTest.Make(PluginSpec, PluginBehaviour);
 open PluginTest;
-open PluginSpec;
-open PluginFixture;
 
 describe("PluginBehaviour:", () => {
   test("Heartbeat (first)", () =>
-    givenEvents([])
-    |> whenCmd(Heartbeat)
-    |> thenEvents([UnknownPluginDetected])
+    givenEvents([]) //
+    ->whenCmd(Heartbeat)
+    ->thenEvents([UnknownPluginDetected])
   );
 
   test("Heartbeat (again)", () =>
     givenEvents([UnknownPluginDetected])
-    |> whenCmd(Heartbeat)
-    |> thenEvents([UnknownPluginDetected])
+    ->whenCmd(Heartbeat)
+    ->thenEvents([UnknownPluginDetected])
   );
 
   test("Heartbeat (connected)", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    |> whenCmd(Heartbeat)
-    |> thenEvents([])
+    ->whenCmd(Heartbeat)
+    ->thenEvents([])
   );
 
   test("Heartbeat (inactive)", () =>
@@ -31,32 +29,32 @@ describe("PluginBehaviour:", () => {
       Connected(pluginDefinition),
       Deactivated(pluginDefinition),
     ])
-    |> whenCmd(Heartbeat)
-    |> thenEvents([])
+    ->whenCmd(Heartbeat)
+    ->thenEvents([])
   );
 
   test("Connect", () =>
     givenEvents([UnknownPluginDetected])
-    |> whenCmd(Connect(pluginDefinition))
-    |> thenEvents([Connected(pluginDefinition)])
+    ->whenCmd(Connect(pluginDefinition))
+    ->thenEvents([Connected(pluginDefinition)])
   );
 
   test("Connect (after multiple Heartbeats)", () =>
     givenEvents([UnknownPluginDetected, UnknownPluginDetected])
-    |> whenCmd(Connect(pluginDefinition))
-    |> thenEvents([Connected(pluginDefinition)])
+    ->whenCmd(Connect(pluginDefinition))
+    ->thenEvents([Connected(pluginDefinition)])
   );
 
   test("Connect (again)", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    |> whenCmd(Connect(pluginDefinition))
-    |> thenError(AlreadyConnected)
+    ->whenCmd(Connect(pluginDefinition))
+    ->thenError(AlreadyConnected)
   );
 
   test("Disconnect", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    |> whenCmd(Disconnect)
-    |> thenEvents([Disconnected(pluginDefinition)])
+    ->whenCmd(Disconnect)
+    ->thenEvents([Disconnected(pluginDefinition)])
   );
 
   test("Heartbeat (re-connect)", () =>
@@ -65,8 +63,8 @@ describe("PluginBehaviour:", () => {
       Connected(pluginDefinition),
       Disconnected(pluginDefinition),
     ])
-    |> whenCmd(Heartbeat)
-    |> thenEvents([Reconnected(pluginDefinition)])
+    ->whenCmd(Heartbeat)
+    ->thenEvents([Reconnected(pluginDefinition)])
   );
 
   test("Connect (disconnected)", () =>
@@ -75,14 +73,14 @@ describe("PluginBehaviour:", () => {
       Connected(pluginDefinition),
       Disconnected(pluginDefinition),
     ])
-    |> whenCmd(Connect(pluginDefinition))
-    |> thenError(IsDisconnected)
+    ->whenCmd(Connect(pluginDefinition))
+    ->thenError(IsDisconnected)
   );
 
   test("Deactivate", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
-    |> whenCmd(Deactivate)
-    |> thenEvents([Deactivated(pluginDefinition)])
+    ->whenCmd(Deactivate)
+    ->thenEvents([Deactivated(pluginDefinition)])
   );
 
   test("Deactivate (disconnected)", () =>
@@ -91,8 +89,8 @@ describe("PluginBehaviour:", () => {
       Connected(pluginDefinition),
       Disconnected(pluginDefinition),
     ])
-    |> whenCmd(Deactivate)
-    |> thenEvents([Deactivated(pluginDefinition)])
+    ->whenCmd(Deactivate)
+    ->thenEvents([Deactivated(pluginDefinition)])
   );
 
   test("Activate (deactivated, disconnected)", () =>
@@ -102,8 +100,8 @@ describe("PluginBehaviour:", () => {
       Disconnected(pluginDefinition),
       Deactivated(pluginDefinition),
     ])
-    |> whenCmd(Activate)
-    |> thenEvents([Activated(pluginDefinition)])
+    ->whenCmd(Activate)
+    ->thenEvents([Activated(pluginDefinition)])
   );
 
   test("Connect (inactive)", () =>
@@ -112,8 +110,8 @@ describe("PluginBehaviour:", () => {
       Connected(pluginDefinition),
       Deactivated(pluginDefinition),
     ])
-    |> whenCmd(Connect(pluginDefinition))
-    |> thenError(IsInactive)
+    ->whenCmd(Connect(pluginDefinition))
+    ->thenError(IsInactive)
   );
 
   test("Activate again", () =>
@@ -122,8 +120,8 @@ describe("PluginBehaviour:", () => {
       Connected(pluginDefinition),
       Deactivated(pluginDefinition),
     ])
-    |> whenCmd(Activate)
-    |> thenEvents([Activated(pluginDefinition)])
+    ->whenCmd(Activate)
+    ->thenEvents([Activated(pluginDefinition)])
   );
 
   test("Heartbeat (re-connected after re-activated)", () =>
@@ -133,8 +131,8 @@ describe("PluginBehaviour:", () => {
       Deactivated(pluginDefinition),
       Activated(pluginDefinition),
     ])
-    |> whenCmd(Heartbeat)
-    |> thenEvents([Reconnected(pluginDefinition)])
+    ->whenCmd(Heartbeat)
+    ->thenEvents([Reconnected(pluginDefinition)])
   );
 
   test("Connect (re-activated)", () =>
@@ -144,7 +142,7 @@ describe("PluginBehaviour:", () => {
       Deactivated(pluginDefinition),
       Activated(pluginDefinition),
     ])
-    |> whenCmd(Connect(pluginDefinition))
-    |> thenError(IsDisconnected)
+    ->whenCmd(Connect(pluginDefinition))
+    ->thenError(IsDisconnected)
   );
 });

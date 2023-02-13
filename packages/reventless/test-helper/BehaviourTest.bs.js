@@ -29,7 +29,7 @@ function Make(Spec) {
             ]);
         return /* [] */0;
       };
-      var exec = function (context, command, history) {
+      var exec = function (history, context, command) {
         errors[0] = /* [] */0;
         if (history) {
           try {
@@ -50,22 +50,16 @@ function Make(Spec) {
       var givenEvents = function (events) {
         return events;
       };
-      var whenCmd = function (cmd) {
-        return (function (param) {
-            return exec(TestFixtures$Reventless.context, cmd, param);
-          });
+      var whenCmd = function (history, cmd) {
+        return exec(history, TestFixtures$Reventless.context, cmd);
       };
-      var whenCmdWithId = function (id, cmd) {
-        var partial_arg_001 = /* meta */TestFixtures$Reventless.context[/* meta */1];
-        var partial_arg = /* record */[
-          /* id */id,
-          partial_arg_001
-        ];
-        return (function (param) {
-            return exec(partial_arg, cmd, param);
-          });
+      var whenCmdWithId = function (history, id, cmd) {
+        return exec(history, /* record */[
+                    /* id */id,
+                    /* meta */TestFixtures$Reventless.context[/* meta */1]
+                  ], cmd);
       };
-      var thenEvents = function (expectedEvents, events) {
+      var thenEvents = function (events, expectedEvents) {
         return Jest.Expect.toEqual(/* tuple */[
                     0,
                     expectedEvents
@@ -74,7 +68,7 @@ function Make(Spec) {
                         events
                       ]));
       };
-      var thenEvent = function (expectedEvent, events) {
+      var thenEvent = function (events, expectedEvent) {
         if (Belt_List.length(events) > 0) {
           return Jest.Expect.toEqual(/* tuple */[
                       0,
@@ -98,7 +92,7 @@ function Make(Spec) {
       var thenNoEvent = function (param) {
         return thenEvents(/* [] */0, param);
       };
-      var thenEventWithError = function (expectedEvent, expectedError, events) {
+      var thenEventWithError = function (events, expectedEvent, expectedError) {
         return Jest.Expect.toEqual(/* tuple */[
                     1,
                     Caml_option.some(expectedEvent),
@@ -111,7 +105,7 @@ function Make(Spec) {
                         Belt_List.head(errors[0])
                       ]));
       };
-      var thenEventsWithError = function (expectedEvents, expectedError, events) {
+      var thenEventsWithError = function (events, expectedEvents, expectedError) {
         return Jest.Expect.toEqual(/* tuple */[
                     expectedEvents,
                     1,
@@ -122,7 +116,7 @@ function Make(Spec) {
                         Belt_List.head(errors[0])
                       ]));
       };
-      var thenError = function (expectedError, events) {
+      var thenError = function (events, expectedError) {
         return Jest.Expect.toEqual(/* tuple */[
                     /* [] */0,
                     1,
@@ -135,6 +129,8 @@ function Make(Spec) {
       };
       return {
               Spec: Spec,
+              describe: Jest.describe,
+              test: Jest.test,
               givenEvents: givenEvents,
               whenCmd: whenCmd,
               whenCmdWithId: whenCmdWithId,

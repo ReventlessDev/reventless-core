@@ -5,12 +5,12 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var Id$Reventless = require("../../src/Id.bs.js");
 var PluginSpec$Reventless = require("../../src/core/Aggregates/Plugin/PluginSpec.bs.js");
-var PluginFixture$Reventless = require("./PluginFixture.bs.js");
+var PluginFixtures$Reventless = require("./PluginFixtures.bs.js");
 var ProjectionTest$Reventless = require("../../test-helper/ProjectionTest.bs.js");
 var PluginProjection$Reventless = require("../../src/core/ReadModels/Plugin/PluginProjection.bs.js");
 var PluginReadModelSpec$Reventless = require("../../src/core/ReadModels/Plugin/PluginReadModelSpec.bs.js");
 
-var include = ProjectionTest$Reventless.Make({
+var PluginProjectionTest = ProjectionTest$Reventless.Make({
       Source: {
         Id: Id$Reventless.$$String,
         name: PluginSpec$Reventless.name,
@@ -27,165 +27,118 @@ var include = ProjectionTest$Reventless.Make({
       map: PluginProjection$Reventless.PluginMapping.map
     });
 
-var describe = include.describe;
-
-var test = include.test;
-
-var givenEvents = include.givenEvents;
-
-var whenEvent = include.whenEvent;
-
-var thenState = include.thenState;
-
-var thenNoState = include.thenNoState;
-
-Curry._2(describe, "PluginProjection:", (function (param) {
-        Curry._3(test, "UnknownPluginDetected", undefined, (function (param) {
-                return Curry._1(thenNoState, Curry._2(whenEvent, Curry._1(givenEvents, /* [] */0), /* UnknownPluginDetected */0));
+Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
+        Curry._3(PluginProjectionTest.test, "UnknownPluginDetected", undefined, (function (param) {
+                return Curry._1(PluginProjectionTest.thenNoState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, /* [] */0), /* UnknownPluginDetected */0));
               }));
-        Curry._3(test, "UnknownPluginDetected (already detected)", undefined, (function (param) {
-                return Curry._1(thenNoState, Curry._2(whenEvent, Curry._1(givenEvents, /* :: */[
+        Curry._3(PluginProjectionTest.test, "UnknownPluginDetected (already detected)", undefined, (function (param) {
+                return Curry._1(PluginProjectionTest.thenNoState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, /* :: */[
                                     /* UnknownPluginDetected */0,
                                     /* [] */0
                                   ]), /* UnknownPluginDetected */0));
               }));
-        Curry._3(test, "Connected", undefined, (function (param) {
-                return Curry._2(thenState, Curry._2(whenEvent, Curry._1(givenEvents, /* :: */[
+        Curry._3(PluginProjectionTest.test, "Connected", undefined, (function (param) {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, /* :: */[
                                     /* UnknownPluginDetected */0,
                                     /* [] */0
-                                  ]), /* Connected */Block.__(0, [PluginFixture$Reventless.pluginDefinition])), /* record */[
-                            /* name */PluginFixture$Reventless.state[/* name */0],
-                            /* version */PluginFixture$Reventless.state[/* version */1],
-                            /* eventCollector */PluginFixture$Reventless.state[/* eventCollector */2],
-                            /* extensionPoints */PluginFixture$Reventless.state[/* extensionPoints */3],
-                            /* extensionPointNames */PluginFixture$Reventless.state[/* extensionPointNames */4],
-                            /* extensionNames */PluginFixture$Reventless.state[/* extensionNames */5],
-                            /* extensions */PluginFixture$Reventless.state[/* extensions */6],
+                                  ]), /* Connected */Block.__(0, [PluginFixtures$Reventless.pluginDefinition])), /* record */[
+                            /* name */PluginFixtures$Reventless.state[/* name */0],
+                            /* version */PluginFixtures$Reventless.state[/* version */1],
+                            /* eventCollector */PluginFixtures$Reventless.state[/* eventCollector */2],
+                            /* extensionPoints */PluginFixtures$Reventless.state[/* extensionPoints */3],
+                            /* extensionPointNames */PluginFixtures$Reventless.state[/* extensionPointNames */4],
+                            /* extensionNames */PluginFixtures$Reventless.state[/* extensionNames */5],
+                            /* extensions */PluginFixtures$Reventless.state[/* extensions */6],
                             /* status : Connected */0,
-                            /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
+                            /* statusChange */PluginFixtures$Reventless.state[/* statusChange */8]
                           ]);
               }));
-        Curry._3(test, "Disconnected", undefined, (function (param) {
-                return Curry._2(thenState, Curry._2(whenEvent, Curry._1(givenEvents, /* :: */[
+        Curry._3(PluginProjectionTest.test, "Disconnected", undefined, (function (param) {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, /* :: */[
                                     /* UnknownPluginDetected */0,
                                     /* :: */[
-                                      /* Connected */Block.__(0, [PluginFixture$Reventless.pluginDefinition]),
+                                      /* Connected */Block.__(0, [PluginFixtures$Reventless.pluginDefinition]),
                                       /* [] */0
                                     ]
-                                  ]), /* Disconnected */Block.__(2, [PluginFixture$Reventless.pluginDefinition])), /* record */[
-                            /* name */PluginFixture$Reventless.state[/* name */0],
-                            /* version */PluginFixture$Reventless.state[/* version */1],
-                            /* eventCollector */PluginFixture$Reventless.state[/* eventCollector */2],
-                            /* extensionPoints */PluginFixture$Reventless.state[/* extensionPoints */3],
-                            /* extensionPointNames */PluginFixture$Reventless.state[/* extensionPointNames */4],
-                            /* extensionNames */PluginFixture$Reventless.state[/* extensionNames */5],
-                            /* extensions */PluginFixture$Reventless.state[/* extensions */6],
+                                  ]), /* Disconnected */Block.__(2, [PluginFixtures$Reventless.pluginDefinition])), /* record */[
+                            /* name */PluginFixtures$Reventless.state[/* name */0],
+                            /* version */PluginFixtures$Reventless.state[/* version */1],
+                            /* eventCollector */PluginFixtures$Reventless.state[/* eventCollector */2],
+                            /* extensionPoints */PluginFixtures$Reventless.state[/* extensionPoints */3],
+                            /* extensionPointNames */PluginFixtures$Reventless.state[/* extensionPointNames */4],
+                            /* extensionNames */PluginFixtures$Reventless.state[/* extensionNames */5],
+                            /* extensions */PluginFixtures$Reventless.state[/* extensions */6],
                             /* status : Disconnected */1,
-                            /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
+                            /* statusChange */PluginFixtures$Reventless.state[/* statusChange */8]
                           ]);
               }));
-        Curry._3(test, "Deactivated", undefined, (function (param) {
-                return Curry._2(thenState, Curry._2(whenEvent, Curry._1(givenEvents, /* :: */[
+        Curry._3(PluginProjectionTest.test, "Deactivated", undefined, (function (param) {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, /* :: */[
                                     /* UnknownPluginDetected */0,
                                     /* :: */[
-                                      /* Connected */Block.__(0, [PluginFixture$Reventless.pluginDefinition]),
+                                      /* Connected */Block.__(0, [PluginFixtures$Reventless.pluginDefinition]),
                                       /* [] */0
                                     ]
-                                  ]), /* Deactivated */Block.__(4, [PluginFixture$Reventless.pluginDefinition])), /* record */[
-                            /* name */PluginFixture$Reventless.state[/* name */0],
-                            /* version */PluginFixture$Reventless.state[/* version */1],
-                            /* eventCollector */PluginFixture$Reventless.state[/* eventCollector */2],
-                            /* extensionPoints */PluginFixture$Reventless.state[/* extensionPoints */3],
-                            /* extensionPointNames */PluginFixture$Reventless.state[/* extensionPointNames */4],
-                            /* extensionNames */PluginFixture$Reventless.state[/* extensionNames */5],
-                            /* extensions */PluginFixture$Reventless.state[/* extensions */6],
+                                  ]), /* Deactivated */Block.__(4, [PluginFixtures$Reventless.pluginDefinition])), /* record */[
+                            /* name */PluginFixtures$Reventless.state[/* name */0],
+                            /* version */PluginFixtures$Reventless.state[/* version */1],
+                            /* eventCollector */PluginFixtures$Reventless.state[/* eventCollector */2],
+                            /* extensionPoints */PluginFixtures$Reventless.state[/* extensionPoints */3],
+                            /* extensionPointNames */PluginFixtures$Reventless.state[/* extensionPointNames */4],
+                            /* extensionNames */PluginFixtures$Reventless.state[/* extensionNames */5],
+                            /* extensions */PluginFixtures$Reventless.state[/* extensions */6],
                             /* status : Inactive */2,
-                            /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
+                            /* statusChange */PluginFixtures$Reventless.state[/* statusChange */8]
                           ]);
               }));
-        Curry._3(test, "Activated", undefined, (function (param) {
-                return Curry._2(thenState, Curry._2(whenEvent, Curry._1(givenEvents, /* :: */[
+        Curry._3(PluginProjectionTest.test, "Activated", undefined, (function (param) {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, /* :: */[
                                     /* UnknownPluginDetected */0,
                                     /* :: */[
-                                      /* Connected */Block.__(0, [PluginFixture$Reventless.pluginDefinition]),
+                                      /* Connected */Block.__(0, [PluginFixtures$Reventless.pluginDefinition]),
                                       /* :: */[
-                                        /* Deactivated */Block.__(4, [PluginFixture$Reventless.pluginDefinition]),
+                                        /* Deactivated */Block.__(4, [PluginFixtures$Reventless.pluginDefinition]),
                                         /* [] */0
                                       ]
                                     ]
-                                  ]), /* Activated */Block.__(3, [PluginFixture$Reventless.pluginDefinition])), /* record */[
-                            /* name */PluginFixture$Reventless.state[/* name */0],
-                            /* version */PluginFixture$Reventless.state[/* version */1],
-                            /* eventCollector */PluginFixture$Reventless.state[/* eventCollector */2],
-                            /* extensionPoints */PluginFixture$Reventless.state[/* extensionPoints */3],
-                            /* extensionPointNames */PluginFixture$Reventless.state[/* extensionPointNames */4],
-                            /* extensionNames */PluginFixture$Reventless.state[/* extensionNames */5],
-                            /* extensions */PluginFixture$Reventless.state[/* extensions */6],
+                                  ]), /* Activated */Block.__(3, [PluginFixtures$Reventless.pluginDefinition])), /* record */[
+                            /* name */PluginFixtures$Reventless.state[/* name */0],
+                            /* version */PluginFixtures$Reventless.state[/* version */1],
+                            /* eventCollector */PluginFixtures$Reventless.state[/* eventCollector */2],
+                            /* extensionPoints */PluginFixtures$Reventless.state[/* extensionPoints */3],
+                            /* extensionPointNames */PluginFixtures$Reventless.state[/* extensionPointNames */4],
+                            /* extensionNames */PluginFixtures$Reventless.state[/* extensionNames */5],
+                            /* extensions */PluginFixtures$Reventless.state[/* extensions */6],
                             /* status : Disconnected */1,
-                            /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
+                            /* statusChange */PluginFixtures$Reventless.state[/* statusChange */8]
                           ]);
               }));
-        return Curry._3(test, "Reconnected (after activated)", undefined, (function (param) {
-                      return Curry._2(thenState, Curry._2(whenEvent, Curry._1(givenEvents, /* :: */[
+        return Curry._3(PluginProjectionTest.test, "Reconnected (after activated)", undefined, (function (param) {
+                      return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, /* :: */[
                                           /* UnknownPluginDetected */0,
                                           /* :: */[
-                                            /* Connected */Block.__(0, [PluginFixture$Reventless.pluginDefinition]),
+                                            /* Connected */Block.__(0, [PluginFixtures$Reventless.pluginDefinition]),
                                             /* :: */[
-                                              /* Deactivated */Block.__(4, [PluginFixture$Reventless.pluginDefinition]),
+                                              /* Deactivated */Block.__(4, [PluginFixtures$Reventless.pluginDefinition]),
                                               /* :: */[
-                                                /* Activated */Block.__(3, [PluginFixture$Reventless.pluginDefinition]),
+                                                /* Activated */Block.__(3, [PluginFixtures$Reventless.pluginDefinition]),
                                                 /* [] */0
                                               ]
                                             ]
                                           ]
-                                        ]), /* Reconnected */Block.__(1, [PluginFixture$Reventless.pluginDefinition])), /* record */[
-                                  /* name */PluginFixture$Reventless.state[/* name */0],
-                                  /* version */PluginFixture$Reventless.state[/* version */1],
-                                  /* eventCollector */PluginFixture$Reventless.state[/* eventCollector */2],
-                                  /* extensionPoints */PluginFixture$Reventless.state[/* extensionPoints */3],
-                                  /* extensionPointNames */PluginFixture$Reventless.state[/* extensionPointNames */4],
-                                  /* extensionNames */PluginFixture$Reventless.state[/* extensionNames */5],
-                                  /* extensions */PluginFixture$Reventless.state[/* extensions */6],
+                                        ]), /* Reconnected */Block.__(1, [PluginFixtures$Reventless.pluginDefinition])), /* record */[
+                                  /* name */PluginFixtures$Reventless.state[/* name */0],
+                                  /* version */PluginFixtures$Reventless.state[/* version */1],
+                                  /* eventCollector */PluginFixtures$Reventless.state[/* eventCollector */2],
+                                  /* extensionPoints */PluginFixtures$Reventless.state[/* extensionPoints */3],
+                                  /* extensionPointNames */PluginFixtures$Reventless.state[/* extensionPointNames */4],
+                                  /* extensionNames */PluginFixtures$Reventless.state[/* extensionNames */5],
+                                  /* extensions */PluginFixtures$Reventless.state[/* extensions */6],
                                   /* status : Connected */0,
-                                  /* statusChange */PluginFixture$Reventless.state[/* statusChange */8]
+                                  /* statusChange */PluginFixtures$Reventless.state[/* statusChange */8]
                                 ]);
                     }));
       }));
 
-var Source = include.Source;
-
-var Target = include.Target;
-
-var describeWithId = include.describeWithId;
-
-var givenEventsWithTime = include.givenEventsWithTime;
-
-var whenEventWithTime = include.whenEventWithTime;
-
-var thenStates = include.thenStates;
-
-var thenAllStates = include.thenAllStates;
-
-var thenStateWithId = include.thenStateWithId;
-
-var thenThrow = include.thenThrow;
-
-var thenFail = include.thenFail;
-
-exports.Source = Source;
-exports.Target = Target;
-exports.describe = describe;
-exports.describeWithId = describeWithId;
-exports.test = test;
-exports.givenEvents = givenEvents;
-exports.givenEventsWithTime = givenEventsWithTime;
-exports.whenEvent = whenEvent;
-exports.whenEventWithTime = whenEventWithTime;
-exports.thenStates = thenStates;
-exports.thenAllStates = thenAllStates;
-exports.thenState = thenState;
-exports.thenStateWithId = thenStateWithId;
-exports.thenNoState = thenNoState;
-exports.thenThrow = thenThrow;
-exports.thenFail = thenFail;
-/* include Not a pure module */
+exports.PluginProjectionTest = PluginProjectionTest;
+/* PluginProjectionTest Not a pure module */
