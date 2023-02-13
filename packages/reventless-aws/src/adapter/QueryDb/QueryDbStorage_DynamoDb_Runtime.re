@@ -154,13 +154,17 @@ let saveBatch:
   (. array((string, Js.Json.t, option(int)))) =>
   Js.Promise.t(Belt.Result.t(unit, storageError)) =
   (~maxRetries=3, table) =>
-    (. items) => {
-      items
-      ->Belt.Array.map(((_id, json, ttl)) =>
-          json->insertTtl(ttl)->toPutRequest
-        )
-      ->writeBatch(table, maxRetries);
-    };
+    (. items) =>
+      switch (items) {
+      | [||] => Ok()->resolve
+      | [|(id, json, ttl)|] => table->save(. id, json, Any, ttl)
+      | items =>
+        items
+        ->Belt.Array.map(((_id, json, ttl)) =>
+            json->insertTtl(ttl)->toPutRequest
+          )
+        ->writeBatch(table, maxRetries)
+      };
 
 let count = table =>
   (. id, fieldName, inc) => {
@@ -216,16 +220,20 @@ let delete = table =>
   };
 
 let deleteBatch = (~maxRetries=3, table) =>
-  (. ids) => {
-    ids
-    ->Belt.Array.map(((id, sort)) =>
-        switch (sort) {
-        | Some((sortField, sortKey)) =>
-          [("id", id), (sortField, sortKey)]
-          ->Js.Dict.fromList
-          ->toDeleteRequest
-        | None => [("id", id)]->Js.Dict.fromList->toDeleteRequest
-        }
-      )
-    ->writeBatch(table, maxRetries);
-  };
+  (. ids) =>
+    switch (ids) {
+    | [||] => Ok()->resolve
+    | [|(id, sort)|] => table->delete(. id, sort)
+    | ids =>
+      ids
+      ->Belt.Array.map(((id, sort)) =>
+          switch (sort) {
+          | Some((sortField, sortKey)) =>
+            [("id", id), (sortField, sortKey)]
+            ->Js.Dict.fromList
+            ->toDeleteRequest
+          | None => [("id", id)]->Js.Dict.fromList->toDeleteRequest
+          }
+        )
+      ->writeBatch(table, maxRetries)
+    };

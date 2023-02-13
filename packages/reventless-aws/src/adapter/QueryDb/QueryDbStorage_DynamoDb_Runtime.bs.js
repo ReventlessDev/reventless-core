@@ -108,9 +108,19 @@ function writeBatch(writeRequests, table, maxRetries) {
 function saveBatch($staropt$star, table) {
   var maxRetries = $staropt$star !== undefined ? $staropt$star : 3;
   return (function (items) {
-      return writeBatch(Belt_Array.map(items, (function (param) {
-                        return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
-                      })), table, maxRetries);
+      var len = items.length;
+      if (len !== 1) {
+        if (len !== 0) {
+          return writeBatch(Belt_Array.map(items, (function (param) {
+                            return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
+                          })), table, maxRetries);
+        } else {
+          return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+        }
+      } else {
+        var match = items[0];
+        return save(table)(match[0], match[1], /* Any */2, match[2]);
+      }
     });
 }
 
@@ -161,34 +171,44 @@ function $$delete(table) {
 function deleteBatch($staropt$star, table) {
   var maxRetries = $staropt$star !== undefined ? $staropt$star : 3;
   return (function (ids) {
-      return writeBatch(Belt_Array.map(ids, (function (param) {
-                        var sort = param[1];
-                        var id = param[0];
-                        if (sort !== undefined) {
-                          var match = sort;
-                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromList(/* :: */[
-                                          /* tuple */[
-                                            "id",
-                                            id
-                                          ],
-                                          /* :: */[
-                                            /* tuple */[
-                                              match[0],
-                                              match[1]
-                                            ],
-                                            /* [] */0
-                                          ]
-                                        ]));
-                        } else {
-                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromList(/* :: */[
-                                          /* tuple */[
-                                            "id",
-                                            id
-                                          ],
-                                          /* [] */0
-                                        ]));
-                        }
-                      })), table, maxRetries);
+      var len = ids.length;
+      if (len !== 1) {
+        if (len !== 0) {
+          return writeBatch(Belt_Array.map(ids, (function (param) {
+                            var sort = param[1];
+                            var id = param[0];
+                            if (sort !== undefined) {
+                              var match = sort;
+                              return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromList(/* :: */[
+                                              /* tuple */[
+                                                "id",
+                                                id
+                                              ],
+                                              /* :: */[
+                                                /* tuple */[
+                                                  match[0],
+                                                  match[1]
+                                                ],
+                                                /* [] */0
+                                              ]
+                                            ]));
+                            } else {
+                              return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromList(/* :: */[
+                                              /* tuple */[
+                                                "id",
+                                                id
+                                              ],
+                                              /* [] */0
+                                            ]));
+                            }
+                          })), table, maxRetries);
+        } else {
+          return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+        }
+      } else {
+        var match = ids[0];
+        return $$delete(table)(match[0], match[1]);
+      }
     });
 }
 
