@@ -122,7 +122,11 @@ let handleAction =
                 ->Set.fromArray;
 
               let addedSubIds = afterSubIds->Set.diff(beforeSubIds);
-              let addedCount = addedSubIds->Set.size;
+              let addedStates =
+                afterStates->Belt.Array.keep(state =>
+                  addedSubIds->Set.has(state->getSubId)
+                );
+              let addedCount = addedStates->Belt.Array.size;
 
               let changedStates =
                 beforeStates->Belt.Array.keepMap(before => {
@@ -133,32 +137,28 @@ let handleAction =
                 });
               let changedCount = changedStates->Belt.Array.size;
 
-              let addedStates =
-                afterStates->Belt.Array.keep(state =>
-                  addedSubIds->Set.has(state->getSubId)
-                );
-              let batch =
+              let batchToSave =
                 addedStates
                 ->Belt.Array.concat(changedStates)
                 ->Belt.Array.map(state => (id, state, None));
+              let batchCount = batchToSave->Belt.Array.size;
 
-              let deletedSubIds = beforeSubIds->Set.diff(afterSubIds);
-              let deletedCount = deletedSubIds->Set.size;
+              let deletedSubIds =
+                beforeSubIds->Set.diff(afterSubIds)->Set.toArray;
+              let batchToDelete =
+                deletedSubIds->Belt.Array.map(subId =>
+                  (id, Some((subIdField, subId)))
+                );
+              let deletedCount = batchToDelete->Belt.Array.size;
 
               logAction(
                 {j|UpdateMultiState($id): beforeStates:$beforeCount afterStates:$afterCount added:$addedCount changed:$changedCount deleted:$deletedCount|j},
               );
-
-              logAction(
-                {j|UpdateMultiState: DeleteBatch($id, $deletedSubIds)|j},
-              );
               [|
-                deleteBatch(.
-                  deletedSubIds
-                  ->Set.toArray
-                  ->Belt.Array.map(subId => (id, Some((subIdField, subId)))),
-                ),
-                saveBatch(. batch),
+                deletedCount > 0
+                  ? deleteBatch(. batchToDelete) : Ok()->Js.Promise.resolve,
+                batchCount > 0
+                  ? saveBatch(. batchToSave) : Ok()->Js.Promise.resolve,
               |]
               ->Js.Promise.all
               ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _);

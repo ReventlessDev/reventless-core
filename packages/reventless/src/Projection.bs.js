@@ -188,7 +188,10 @@ function handleAction(action, param, subIdConfig) {
                             var afterCount = afterStates.length;
                             var afterSubIds = Belt_SetString.fromArray(Belt_Array.map(afterStates, Curry.__1(getSubId)));
                             var addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
-                            var addedCount = Belt_SetString.size(addedSubIds);
+                            var addedStates = Belt_Array.keep(afterStates, (function (state) {
+                                    return Belt_SetString.has(addedSubIds, Curry._1(getSubId, state));
+                                  }));
+                            var addedCount = addedStates.length;
                             var changedStates = Belt_Array.keepMap(beforeStates, (function (before) {
                                     var beforeSubId = Curry._1(getSubId, before);
                                     return Belt_Array.getBy(afterStates, (function (after) {
@@ -200,33 +203,32 @@ function handleAction(action, param, subIdConfig) {
                                                 }));
                                   }));
                             var changedCount = changedStates.length;
-                            var addedStates = Belt_Array.keep(afterStates, (function (state) {
-                                    return Belt_SetString.has(addedSubIds, Curry._1(getSubId, state));
-                                  }));
-                            var batch = Belt_Array.map(Belt_Array.concat(addedStates, changedStates), (function (state) {
+                            var batchToSave = Belt_Array.map(Belt_Array.concat(addedStates, changedStates), (function (state) {
                                     return /* tuple */[
                                             id$6,
                                             state,
                                             undefined
                                           ];
                                   }));
-                            var deletedSubIds = Belt_SetString.diff(beforeSubIds, afterSubIds);
-                            var deletedCount = Belt_SetString.size(deletedSubIds);
+                            var batchCount = batchToSave.length;
+                            var deletedSubIds = Belt_SetString.toArray(Belt_SetString.diff(beforeSubIds, afterSubIds));
+                            var batchToDelete = Belt_Array.map(deletedSubIds, (function (subId) {
+                                    return /* tuple */[
+                                            id$6,
+                                            /* tuple */[
+                                              subIdField,
+                                              subId
+                                            ]
+                                          ];
+                                  }));
+                            var deletedCount = batchToDelete.length;
                             var str$1 = "UpdateMultiState(" + (String(id$6) + ("): beforeStates:" + (String(beforeCount) + (" afterStates:" + (String(afterCount) + (" added:" + (String(addedCount) + (" changed:" + (String(changedCount) + (" deleted:" + (String(deletedCount) + "")))))))))));
                             console.log("Projection.handleAction:", str$1);
-                            var str$2 = "UpdateMultiState: DeleteBatch(" + (String(id$6) + (", " + (String(deletedSubIds) + ")")));
-                            console.log("Projection.handleAction:", str$2);
+                            var match$1 = deletedCount > 0;
+                            var match$2 = batchCount > 0;
                             var __x = Promise.all(/* array */[
-                                  deleteBatch(Belt_Array.map(Belt_SetString.toArray(deletedSubIds), (function (subId) {
-                                              return /* tuple */[
-                                                      id$6,
-                                                      /* tuple */[
-                                                        subIdField,
-                                                        subId
-                                                      ]
-                                                    ];
-                                            }))),
-                                  saveBatch(batch)
+                                  match$1 ? deleteBatch(batchToDelete) : Promise.resolve(/* Ok */Block.__(0, [/* () */0])),
+                                  match$2 ? saveBatch(batchToSave) : Promise.resolve(/* Ok */Block.__(0, [/* () */0]))
                                 ]);
                             return __x.then((function (param) {
                                           return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
