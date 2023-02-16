@@ -43,7 +43,7 @@ let save = table =>
       |> then_(_ => {
            Js.log(
              __MODULE__
-             ++ {j|.save: saved Init state to $tableName: $stateStr|j},
+             ++ {j|.save: save Init state to $tableName: $stateStr|j},
            );
            Ok()->resolve;
          })
@@ -69,7 +69,7 @@ let save = table =>
       tableName->putWithTableName(json)
       |> then_(_ => {
            Js.log(
-             __MODULE__ ++ {j|.save: saved state to $tableName: $stateStr|j},
+             __MODULE__ ++ {j|.save: save state to $tableName: $stateStr|j},
            );
            Ok()->resolve;
          })
@@ -106,17 +106,17 @@ let writeChunk = (writeRequests, maxRetries) =>
 
 let writeBatch = (writeRequests, table, maxRetries) => {
   let batchSize = writeRequests->Belt.Array.size;
-  let batches =
+  let chunks =
     (batchSize->float_of_int /. maxBatchSize->Js.Int.toFloat)
     ->Js.Math.ceil_int;
-  if (batches > 1) {
+  if (chunks > 1) {
     Js.log(
-      {j|writeBatch: splitting up batch of size $batchSize into $batches chunks|j},
+      {j|writeBatch: splitting up batch of size $batchSize into $chunks chunks|j},
     );
   };
-  Belt.Array.makeBy(batches, batchNr =>
+  Belt.Array.makeBy(chunks, chunkNr =>
     writeRequests
-    ->Belt.Array.slice(~offset=batchNr * maxBatchSize, ~len=maxBatchSize)
+    ->Belt.Array.slice(~offset=chunkNr * maxBatchSize, ~len=maxBatchSize)
     ->toTable(table##name->Pulumi.Output.get)
     ->writeChunk(maxRetries)
   )
@@ -159,11 +159,17 @@ let saveBatch:
       | [||] => Ok()->resolve
       | [|(id, json, ttl)|] => table->save(. id, json, Any, ttl)
       | items =>
+        let tableName = table##name->Pulumi.Output.get;
         items
-        ->Belt.Array.map(((_id, json, ttl)) =>
-            json->insertTtl(ttl)->toPutRequest
-          )
-        ->writeBatch(table, maxRetries)
+        ->Belt.Array.map(((_id, json, ttl)) => {
+            let stateStr = json->Js.Json.stringify;
+            Js.log(
+              __MODULE__
+              ++ {j|.saveBatch: save state to $tableName: $stateStr|j},
+            );
+            json->insertTtl(ttl)->toPutRequest;
+          })
+        ->writeBatch(table, maxRetries);
       };
 
 let count = table =>
@@ -206,7 +212,7 @@ let delete = table =>
     tableName->AwsSdk.DynamoDb.DocumentClient.deleteWithTableName(id, sort)
     |> then_(_ => {
          Js.log(
-           __MODULE__ ++ {j|.delete: deleted state for $id from $tableName|j},
+           __MODULE__ ++ {j|.delete: delete state for $id from $tableName|j},
          );
          Ok()->resolve;
        })
@@ -225,15 +231,25 @@ let deleteBatch = (~maxRetries=3, table) =>
     | [||] => Ok()->resolve
     | [|(id, sort)|] => table->delete(. id, sort)
     | ids =>
+      let tableName = table##name->Pulumi.Output.get;
       ids
       ->Belt.Array.map(((id, sort)) =>
           switch (sort) {
           | Some((sortField, sortKey)) =>
+            Js.log(
+              __MODULE__
+              ++ {j|.deleteBatch: delete state for $id ($sortField=sortKey) from $tableName|j},
+            );
             [("id", id), (sortField, sortKey)]
             ->Js.Dict.fromList
-            ->toDeleteRequest
-          | None => [("id", id)]->Js.Dict.fromList->toDeleteRequest
+            ->toDeleteRequest;
+          | None =>
+            Js.log(
+              __MODULE__
+              ++ {j|.deleteBatch: delete state for $id from $tableName|j},
+            );
+            [("id", id)]->Js.Dict.fromList->toDeleteRequest;
           }
         )
-      ->writeBatch(table, maxRetries)
+      ->writeBatch(table, maxRetries);
     };
