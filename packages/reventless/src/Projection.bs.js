@@ -20,7 +20,7 @@ function handleAction(action, param, subIdConfig) {
   var load = param[/* load */0];
   if (typeof action === "number") {
     console.log("Projection.handleAction:", "Ignore");
-    return /* array */[Promise.resolve(/* Ok */Block.__(0, [/* () */0]))];
+    return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
   } else {
     switch (action.tag | 0) {
       case /* Create */0 :
@@ -28,7 +28,7 @@ function handleAction(action, param, subIdConfig) {
           var id = action[0];
           var str = "Create(" + (String(id) + (", " + (String(state) + ")")));
           console.log("Projection.handleAction:", str);
-          return /* array */[save(id, state, /* Init */0, undefined)];
+          return save(id, state, /* Init */0, undefined);
       case /* CreateMany */1 :
           var batch = Belt_Array.map(action[0], (function (param) {
                   return /* tuple */[
@@ -42,73 +42,73 @@ function handleAction(action, param, subIdConfig) {
                 }));
           var str$1 = "CreateMany(" + (String(statesStr) + ")");
           console.log("Projection.handleAction:", str$1);
-          return /* array */[saveBatch(batch)];
+          return saveBatch(batch);
       case /* Update */2 :
           var update = action[1];
           var id$1 = action[0];
           var __x = load(id$1);
-          return /* array */[__x.then((function (param) {
-                          if (param.tag) {
-                            return Promise.resolve(/* Error */Block.__(1, [param[0]]));
-                          } else {
-                            var states = param[0];
-                            if (states) {
-                              if (states[1]) {
-                                var str = "Update Error: Multiple oldStates for " + (String(id$1) + ")");
-                                console.log("Projection.handleAction:", str);
-                                return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
-                              } else {
-                                var oldState = states[0];
-                                var newState = Curry._1(update, oldState);
-                                var str$1 = "Update(" + (String(id$1) + (", " + (String(oldState) + (" => " + (String(newState) + ")")))));
-                                console.log("Projection.handleAction:", str$1);
-                                return save(id$1, newState, /* Overwrite */1, undefined);
-                              }
-                            } else {
-                              var str$2 = "Update Error: No oldState for " + (String(id$1) + ")");
-                              console.log("Projection.handleAction:", str$2);
+          return __x.then((function (param) {
+                        if (param.tag) {
+                          return Promise.resolve(/* Error */Block.__(1, [param[0]]));
+                        } else {
+                          var states = param[0];
+                          if (states) {
+                            if (states[1]) {
+                              var str = "Update Error: Multiple oldStates for " + (String(id$1) + ")");
+                              console.log("Projection.handleAction:", str);
                               return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
+                            } else {
+                              var oldState = states[0];
+                              var newState = Curry._1(update, oldState);
+                              var str$1 = "Update(" + (String(id$1) + (", " + (String(oldState) + (" => " + (String(newState) + ")")))));
+                              console.log("Projection.handleAction:", str$1);
+                              return save(id$1, newState, /* Overwrite */1, undefined);
                             }
+                          } else {
+                            var str$2 = "Update Error: No oldState for " + (String(id$1) + ")");
+                            console.log("Projection.handleAction:", str$2);
+                            return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
                           }
-                        }))];
+                        }
+                      }));
       case /* UpdateWithDefault */4 :
           var update$1 = action[2];
           var $$default = action[1];
           var id$2 = action[0];
           var __x$1 = load(id$2);
-          return /* array */[__x$1.then((function (param) {
-                          if (param.tag) {
-                            var err = param[0];
-                            var str = "UpdateWithDefault Error: Couldn\'t load oldState(s) for " + (String(id$2) + (": " + (String(err) + ")")));
-                            console.log("Projection.handleAction:", str);
-                            return Promise.resolve(/* Error */Block.__(1, [err]));
-                          } else {
-                            var states = param[0];
-                            if (states) {
-                              if (states[1]) {
-                                var str$1 = "UpdateWithDefault Error: Multiple oldStates for " + (String(id$2) + ")");
-                                console.log("Projection.handleAction:", str$1);
-                                return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
-                              } else {
-                                var oldState = states[0];
-                                var newState = Curry._1(update$1, oldState);
-                                var str$2 = "UpdateWithDefault(" + (String(id$2) + (", " + (String(oldState) + (" => " + (String(newState) + ")")))));
-                                console.log("Projection.handleAction:", str$2);
-                                return save(id$2, newState, /* Overwrite */1, undefined);
-                              }
+          return __x$1.then((function (param) {
+                        if (param.tag) {
+                          var err = param[0];
+                          var str = "UpdateWithDefault Error: Couldn\'t load oldState(s) for " + (String(id$2) + (": " + (String(err) + ")")));
+                          console.log("Projection.handleAction:", str);
+                          return Promise.resolve(/* Error */Block.__(1, [err]));
+                        } else {
+                          var states = param[0];
+                          if (states) {
+                            if (states[1]) {
+                              var str$1 = "UpdateWithDefault Error: Multiple oldStates for " + (String(id$2) + ")");
+                              console.log("Projection.handleAction:", str$1);
+                              return Promise.resolve(/* Error */Block.__(1, [/* StaleState */0]));
                             } else {
-                              var str$3 = "UpdateWithDefault(" + (String(id$2) + (", default: " + (String($$default) + ")")));
-                              console.log("Projection.handleAction:", str$3);
-                              return save(id$2, $$default, /* Init */0, undefined);
+                              var oldState = states[0];
+                              var newState = Curry._1(update$1, oldState);
+                              var str$2 = "UpdateWithDefault(" + (String(id$2) + (", " + (String(oldState) + (" => " + (String(newState) + ")")))));
+                              console.log("Projection.handleAction:", str$2);
+                              return save(id$2, newState, /* Overwrite */1, undefined);
                             }
+                          } else {
+                            var str$3 = "UpdateWithDefault(" + (String(id$2) + (", default: " + (String($$default) + ")")));
+                            console.log("Projection.handleAction:", str$3);
+                            return save(id$2, $$default, /* Init */0, undefined);
                           }
-                        }))];
+                        }
+                      }));
       case /* Set */6 :
           var state$1 = action[1];
           var id$3 = action[0];
           var str$2 = "Set(" + (String(id$3) + (", " + (String(state$1) + ")")));
           console.log("Projection.handleAction:", str$2);
-          return /* array */[save(id$3, state$1, /* Any */2, undefined)];
+          return save(id$3, state$1, /* Any */2, undefined);
       case /* SetMany */7 :
           var set = action[1];
           var batch$1 = Belt_Array.map(action[0], (function (id) {
@@ -123,22 +123,22 @@ function handleAction(action, param, subIdConfig) {
                 }));
           var str$3 = "SetMany(" + (String(statesStr$1) + ")");
           console.log("Projection.handleAction:", str$3);
-          return /* array */[saveBatch(batch$1)];
+          return saveBatch(batch$1);
       case /* Delete */8 :
           var id$4 = action[0];
           var str$4 = "Delete(" + (String(id$4) + ")");
           console.log("Projection.handleAction:", str$4);
-          return /* array */[param[/* delete */3](id$4, undefined)];
+          return param[/* delete */3](id$4, undefined);
       case /* DeleteMany */9 :
           var ids = action[0];
           var str$5 = "DeleteMany(" + (String(ids) + ")");
           console.log("Projection.handleAction:", str$5);
-          return /* array */[deleteBatch(Belt_Array.map(ids, (function (id) {
-                              return /* tuple */[
-                                      id,
-                                      undefined
-                                    ];
-                            })))];
+          return deleteBatch(Belt_Array.map(ids, (function (id) {
+                            return /* tuple */[
+                                    id,
+                                    undefined
+                                  ];
+                          })));
       case /* CreateMultiState */12 :
           var states = action[1];
           var id$5 = action[0];
@@ -154,101 +154,180 @@ function handleAction(action, param, subIdConfig) {
                               undefined
                             ];
                     }));
-              return /* array */[saveBatch(batch$2)];
+              return saveBatch(batch$2);
             } else {
-              return /* array */[Promise.resolve(/* Ok */Block.__(0, [/* () */0]))];
+              return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
             }
           } else {
             var state$2 = states[0];
-            return /* array */[save(id$5, state$2, /* Init */0, undefined)];
+            return save(id$5, state$2, /* Init */0, undefined);
           }
       case /* UpdateMultiState */13 :
           var update$2 = action[1];
           var id$6 = action[0];
           var __x$2 = load(id$6);
-          return /* array */[__x$2.then((function (states) {
-                          if (states.tag) {
-                            if (subIdConfig !== undefined) {
-                              var err = states[0];
-                              var str = "UpdateMultiState Error: Couldn\'t load oldStates for " + (String(id$6) + (": " + (String(err) + ")")));
-                              console.log("Projection.handleAction:", str);
-                              return Promise.resolve(/* Error */Block.__(1, [err]));
-                            } else {
-                              console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
-                              return Promise.resolve(/* Error */Block.__(1, [/* MissingSubIdConfig */1]));
-                            }
-                          } else if (subIdConfig !== undefined) {
-                            var match = subIdConfig;
-                            var getSubId = match[/* getSubId */1];
-                            var subIdField = match[/* subIdField */0];
-                            var beforeStates = Belt_List.toArray(states[0]);
-                            var beforeCount = beforeStates.length;
-                            var beforeSubIds = Belt_SetString.fromArray(Belt_Array.map(beforeStates, Curry.__1(getSubId)));
-                            var afterStates = Curry._1(update$2, beforeStates);
-                            var afterCount = afterStates.length;
-                            var afterSubIds = Belt_SetString.fromArray(Belt_Array.map(afterStates, Curry.__1(getSubId)));
-                            var addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
-                            var addedStates = Belt_Array.keep(afterStates, (function (state) {
-                                    return Belt_SetString.has(addedSubIds, Curry._1(getSubId, state));
-                                  }));
-                            var addedCount = addedStates.length;
-                            var changedStates = Belt_Array.keepMap(beforeStates, (function (before) {
-                                    var beforeSubId = Curry._1(getSubId, before);
-                                    return Belt_Array.getBy(afterStates, (function (after) {
-                                                  if (Curry._1(getSubId, after) === beforeSubId) {
-                                                    return Caml_obj.caml_notequal(after, before);
-                                                  } else {
-                                                    return false;
-                                                  }
-                                                }));
-                                  }));
-                            var changedCount = changedStates.length;
-                            var batchToSave = Belt_Array.map(Belt_Array.concat(addedStates, changedStates), (function (state) {
-                                    return /* tuple */[
-                                            id$6,
-                                            state,
-                                            undefined
-                                          ];
-                                  }));
-                            var batchCount = batchToSave.length;
-                            var deletedSubIds = Belt_SetString.toArray(Belt_SetString.diff(beforeSubIds, afterSubIds));
-                            var batchToDelete = Belt_Array.map(deletedSubIds, (function (subId) {
-                                    return /* tuple */[
-                                            id$6,
-                                            /* tuple */[
-                                              subIdField,
-                                              subId
-                                            ]
-                                          ];
-                                  }));
-                            var deletedCount = batchToDelete.length;
-                            var str$1 = "UpdateMultiState(" + (String(id$6) + ("): beforeStates:" + (String(beforeCount) + (" afterStates:" + (String(afterCount) + (" added:" + (String(addedCount) + (" changed:" + (String(changedCount) + (" deleted:" + (String(deletedCount) + "")))))))))));
-                            console.log("Projection.handleAction:", str$1);
-                            var match$1 = deletedCount > 0;
-                            var match$2 = batchCount > 0;
-                            var __x = Promise.all(/* array */[
-                                  match$1 ? deleteBatch(batchToDelete) : Promise.resolve(/* Ok */Block.__(0, [/* () */0])),
-                                  match$2 ? saveBatch(batchToSave) : Promise.resolve(/* Ok */Block.__(0, [/* () */0]))
-                                ]);
-                            return __x.then((function (param) {
-                                          return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
-                                        }));
+          return __x$2.then((function (states) {
+                        if (states.tag) {
+                          if (subIdConfig !== undefined) {
+                            var err = states[0];
+                            var str = "UpdateMultiState Error: Couldn\'t load oldStates for " + (String(id$6) + (": " + (String(err) + ")")));
+                            console.log("Projection.handleAction:", str);
+                            return Promise.resolve(/* Error */Block.__(1, [err]));
                           } else {
                             console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
                             return Promise.resolve(/* Error */Block.__(1, [/* MissingSubIdConfig */1]));
                           }
-                        }))];
+                        } else if (subIdConfig !== undefined) {
+                          var match = subIdConfig;
+                          var getSubId = match[/* getSubId */1];
+                          var subIdField = match[/* subIdField */0];
+                          var beforeStates = Belt_List.toArray(states[0]);
+                          var beforeCount = beforeStates.length;
+                          var beforeSubIds = Belt_SetString.fromArray(Belt_Array.map(beforeStates, Curry.__1(getSubId)));
+                          var afterStates = Curry._1(update$2, beforeStates);
+                          var afterCount = afterStates.length;
+                          var afterSubIds = Belt_SetString.fromArray(Belt_Array.map(afterStates, Curry.__1(getSubId)));
+                          var addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
+                          var addedStates = Belt_Array.keep(afterStates, (function (state) {
+                                  return Belt_SetString.has(addedSubIds, Curry._1(getSubId, state));
+                                }));
+                          var addedCount = addedStates.length;
+                          var changedStates = Belt_Array.keepMap(beforeStates, (function (before) {
+                                  var beforeSubId = Curry._1(getSubId, before);
+                                  return Belt_Array.getBy(afterStates, (function (after) {
+                                                if (Curry._1(getSubId, after) === beforeSubId) {
+                                                  return Caml_obj.caml_notequal(after, before);
+                                                } else {
+                                                  return false;
+                                                }
+                                              }));
+                                }));
+                          var changedCount = changedStates.length;
+                          var batchToSave = Belt_Array.map(Belt_Array.concat(addedStates, changedStates), (function (state) {
+                                  return /* tuple */[
+                                          id$6,
+                                          state,
+                                          undefined
+                                        ];
+                                }));
+                          var batchCount = batchToSave.length;
+                          var deletedSubIds = Belt_SetString.toArray(Belt_SetString.diff(beforeSubIds, afterSubIds));
+                          var batchToDelete = Belt_Array.map(deletedSubIds, (function (subId) {
+                                  return /* tuple */[
+                                          id$6,
+                                          /* tuple */[
+                                            subIdField,
+                                            subId
+                                          ]
+                                        ];
+                                }));
+                          var deletedCount = batchToDelete.length;
+                          var str$1 = "UpdateMultiState(" + (String(id$6) + ("): beforeStates:" + (String(beforeCount) + (" afterStates:" + (String(afterCount) + (" added:" + (String(addedCount) + (" changed:" + (String(changedCount) + (" deleted:" + (String(deletedCount) + "")))))))))));
+                          console.log("Projection.handleAction:", str$1);
+                          var match$1 = deletedCount > 0;
+                          var match$2 = batchCount > 0;
+                          var __x = Promise.all(/* array */[
+                                match$1 ? deleteBatch(batchToDelete) : Promise.resolve(/* Ok */Block.__(0, [/* () */0])),
+                                match$2 ? saveBatch(batchToSave) : Promise.resolve(/* Ok */Block.__(0, [/* () */0]))
+                              ]);
+                          return __x.then((function (param) {
+                                        return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+                                      }));
+                        } else {
+                          console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
+                          return Promise.resolve(/* Error */Block.__(1, [/* MissingSubIdConfig */1]));
+                        }
+                      }));
       default:
         console.log("Projection.handleAction:", "Error: Action not yet supported !");
-        return /* array */[Promise.resolve(/* Ok */Block.__(0, [/* () */0]))];
+        return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
     }
   }
 }
 
+function actionsWithId(action) {
+  if (typeof action === "number") {
+    return /* array */[];
+  } else {
+    switch (action.tag | 0) {
+      case /* CreateMany */1 :
+          return Belt_Array.map(action[0], (function (param) {
+                        var id = param[0];
+                        return /* tuple */[
+                                id,
+                                /* Create */Block.__(0, [
+                                    id,
+                                    param[1]
+                                  ])
+                              ];
+                      }));
+      case /* SetMany */7 :
+          var set = action[1];
+          return Belt_Array.map(action[0], (function (id) {
+                        return /* tuple */[
+                                id,
+                                /* Set */Block.__(6, [
+                                    id,
+                                    Curry._1(set, id)
+                                  ])
+                              ];
+                      }));
+      case /* DeleteMany */9 :
+          return Belt_Array.map(action[0], (function (id) {
+                        return /* tuple */[
+                                id,
+                                /* Delete */Block.__(8, [id])
+                              ];
+                      }));
+      case /* UpdateMany */3 :
+      case /* UpdateManyWithDefault */5 :
+      case /* DeleteIf */10 :
+      case /* DeleteManyIf */11 :
+      case /* UpdateManyMultiStates */14 :
+          console.log("Projection.handleAction:", "Error: Action not yet supported !");
+          return /* array */[];
+      default:
+        return /* array */[/* tuple */[
+                  action[0],
+                  action
+                ]];
+    }
+  }
+}
+
+function groupActionsById(actions) {
+  var allActionsWithId = Belt_Array.concatMany(Belt_Array.map(actions, actionsWithId));
+  var ids = Belt_Array.map(allActionsWithId, (function (param) {
+          return param[0];
+        }));
+  return Belt_Array.map(Belt_SetString.toArray(Belt_SetString.fromArray(ids)), (function (id) {
+                return /* tuple */[
+                        id,
+                        Belt_Array.keepMap(allActionsWithId, (function (param) {
+                                var match = param[0] === id;
+                                if (match) {
+                                  return param[1];
+                                }
+                                
+                              }))
+                      ];
+              }));
+}
+
 function handleActions(actions, primitives, subIdConfig) {
-  return Belt_Array.concatMany(Belt_Array.map(actions, (function (action) {
-                    return handleAction(action, primitives, subIdConfig);
-                  })));
+  return Belt_Array.map(groupActionsById(actions), (function (param) {
+                var actions = param[1];
+                var id = param[0];
+                var actionCount = actions.length;
+                if (actionCount > 1) {
+                  console.log("Projection.handleActions: handling " + (String(actionCount) + (" actions for id=" + (String(id) + ""))));
+                }
+                return Belt_Array.reduce(actions, Promise.resolve(/* Ok */Block.__(0, [/* () */0])), (function (p, action) {
+                              return p.then((function (param) {
+                                            return handleAction(action, primitives, subIdConfig);
+                                          }));
+                            }));
+              }));
 }
 
 var $$Set = 0;
@@ -256,5 +335,7 @@ var $$Set = 0;
 exports.$$Set = $$Set;
 exports.logAction = logAction;
 exports.handleAction = handleAction;
+exports.actionsWithId = actionsWithId;
+exports.groupActionsById = groupActionsById;
 exports.handleActions = handleActions;
 /* No side effect */

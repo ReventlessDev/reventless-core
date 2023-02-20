@@ -166,15 +166,11 @@ function Make(Projection) {
       });
   };
   var handleAction = function (action, primitives) {
-    var __x = Promise.all(Projection$Reventless.handleAction(action, primitives, Target.subIdConfig));
-    return __x.then((function (results) {
-                  Belt_Array.forEach(results, (function (result) {
-                          if (result.tag) {
-                            return Js_exn.raiseError(JSON.stringify(QueryDb$Reventless.storageError_encode(result[0])));
-                          } else {
-                            return /* () */0;
-                          }
-                        }));
+    var __x = Projection$Reventless.handleAction(action, primitives, Target.subIdConfig);
+    return __x.then((function (result) {
+                  if (result.tag) {
+                    Js_exn.raiseError(JSON.stringify(QueryDb$Reventless.storageError_encode(result[0])));
+                  }
                   return Promise.resolve(/* () */0);
                 }));
   };

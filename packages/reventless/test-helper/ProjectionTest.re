@@ -161,18 +161,15 @@ module Make =
   let handleAction = (action, primitives) =>
     action
     ->handleAction(primitives, Target.subIdConfig)
-    ->Js.Promise.all
     ->Js.Promise.then_(
-        results => {
-          results->Belt.Array.forEach(result =>
-            switch (result) {
-            | Error(err) =>
-              Js.Exn.raiseError(
-                err->QueryDb.storageError_encode->Js.Json.stringify,
-              )
-            | _ => ()
-            }
-          );
+        result => {
+          switch (result) {
+          | Error(err) =>
+            Js.Exn.raiseError(
+              err->QueryDb.storageError_encode->Js.Json.stringify,
+            )
+          | _ => ()
+          };
           Js.Promise.resolve();
         },
         _,
