@@ -2,29 +2,24 @@
 'use strict';
 
 var Js_exn = require("rescript/lib/js/js_exn.js");
-var Caml_option = require("rescript/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 
 function getVpcConfig(stackName, outputName) {
   var stackReference = new Pulumi.StackReference(stackName);
-  var vpcOutput = stackReference.getOutput(outputName);
-  if (vpcOutput !== undefined) {
-    return Caml_option.valFromOption(vpcOutput).apply(function (vpc) {
-                var match = vpc.securityGroup.id;
-                var match$1 = vpc.privateSubnet.id;
-                if (match !== undefined && match$1 !== undefined) {
-                  return {
-                          securityGroupIds: [match],
-                          subnetIds: [match$1],
-                          vpcId: undefined
-                        };
-                } else {
-                  return Js_exn.raiseError("Output is not a Reventless Vpc Component");
-                }
-              });
-  } else {
-    return Js_exn.raiseError("Vpc Output (" + outputName + ") not found in stack (" + stackName + ")");
-  }
+  var vpcOutput = stackReference.requireOutput(outputName);
+  return vpcOutput.apply(function (vpc) {
+              var match = vpc.securityGroup.id;
+              var match$1 = vpc.privateSubnet.id;
+              if (match !== undefined && match$1 !== undefined) {
+                return {
+                        securityGroupIds: [match],
+                        subnetIds: [match$1],
+                        vpcId: undefined
+                      };
+              } else {
+                return Js_exn.raiseError("Output is not a Reventless Vpc Component");
+              }
+            });
 }
 
 exports.getVpcConfig = getVpcConfig;

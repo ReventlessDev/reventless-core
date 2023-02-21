@@ -7,10 +7,7 @@ let getVpcConfig:
   (~stackName, ~outputName) => {
     let stackReference = Pulumi.StackReference.make(stackName);
     let vpcOutput =
-      stackReference->Pulumi.StackReference.getOutput(outputName);
-
-    switch (vpcOutput) {
-    | Some(vpcOutput) =>
+      stackReference->Pulumi.StackReference.requireOutput(outputName->Pulumi.Input.make);
       vpcOutput->Pulumi.Output.apply(vpc =>
         switch (vpc##securityGroup##id, vpc##privateSubnet##id) {
         | (Some(securityGroupId), Some(subnetId)) =>
@@ -22,9 +19,4 @@ let getVpcConfig:
         | _ => Js.Exn.raiseError("Output is not a Reventless Vpc Component")
         }
       )
-    | None =>
-      Js.Exn.raiseError(
-        {j|Vpc Output ($outputName) not found in stack ($stackName)|j},
-      )
-    };
   };
