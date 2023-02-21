@@ -87,7 +87,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
                 ~functionArn=commandGeneratorArn->Pulumi.Output.asInput,
                 (),
               )
-              ->Pulumi.Input.wrap,
+              ->Pulumi.Input.make,
             ~serviceRoleArn=dataSourceRole##arn->Pulumi.Output.asInput,
             (),
           ),
@@ -121,12 +121,12 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
           ~name=field->String.capitalize_ascii,
           ~api,
           ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
-          ~_type="Mutation"->Pulumi.Input.wrap,
-          ~field=field->Pulumi.Input.wrap,
+          ~_type="Mutation"->Pulumi.Input.make,
+          ~field=field->Pulumi.Input.make,
           ~requestTemplate=
-            invokeCommandGenerator(commandName)->Pulumi.Input.wrap,
+            invokeCommandGenerator(commandName)->Pulumi.Input.make,
           ~responseTemplate=
-            AppSync.Resolver.Templates.result->Pulumi.Input.wrap,
+            AppSync.Resolver.Templates.result->Pulumi.Input.make,
           ~kind=AppSync.Resolver.Unit,
           ~opts,
           (),

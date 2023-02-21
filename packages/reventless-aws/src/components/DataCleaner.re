@@ -229,7 +229,7 @@ let make = (~prefix: option(string), ~tablesToClean: array(resource)) => {
       ~args=
         Args.make(
           ~callback=cleanerFn(tablesToClean),
-          ~memorySize=1024->Pulumi.Input.wrap,
+          ~memorySize=1024->Pulumi.Input.make,
           (),
         ),
       (),

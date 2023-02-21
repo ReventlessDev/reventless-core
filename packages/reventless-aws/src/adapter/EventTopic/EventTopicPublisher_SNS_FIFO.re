@@ -7,8 +7,8 @@ let make: Reventless.EventTopic.Adapter.publisherMaker =
         ~name,
         ~args=
           SNS.Topic.Args.make(
-            ~fifoTopic=true->Pulumi.Input.wrap,
-            ~contentBasedDeduplication=true->Pulumi.Input.wrap,
+            ~fifoTopic=true->Pulumi.Input.make,
+            ~contentBasedDeduplication=true->Pulumi.Input.make,
             (),
           ),
         ~opts,

@@ -130,28 +130,28 @@ let makeTableArgs =
         ~enabled=true,
         ~attributeName=Util_DynamoDb_Runtime.purgeTimeAttributeName,
       )
-      ->Pulumi.Input.wrap
+      ->Pulumi.Input.make
     );
   let restoreDateTime = Reventless.Env.restoreDateTime;
 
   PulumiAws.DynamoDb.Table.Args.make(
-    ~attributes=attributes->Pulumi.Input.wrap,
-    ~hashKey="id"->Pulumi.Input.wrap,
-    ~rangeKey=?rangeKey->Belt.Option.map(Pulumi.Input.wrap),
+    ~attributes=attributes->Pulumi.Input.make,
+    ~hashKey="id"->Pulumi.Input.make,
+    ~rangeKey=?rangeKey->Belt.Option.map(Pulumi.Input.make),
     ~billingMode=`PAY_PER_REQUEST,
     ~globalSecondaryIndexes?,
     ~ttl?,
     ~pointInTimeRecovery=
       PulumiAws.DynamoDb.Table.Args.PointInTimeRecovery.make(~enabled=true)
-      ->Pulumi.Input.wrap,
-    ~restoreSourceName=?restoreSourceName->Belt.Option.map(Pulumi.Input.wrap),
+      ->Pulumi.Input.make,
+    ~restoreSourceName=?restoreSourceName->Belt.Option.map(Pulumi.Input.make),
     ~restoreDateTime=?
       restoreSourceName->Belt.Option.flatMap(_ =>
-        restoreDateTime->Belt.Option.map(Pulumi.Input.wrap)
+        restoreDateTime->Belt.Option.map(Pulumi.Input.make)
       ),
     ~restoreToLatestTime=?
       restoreSourceName->Belt.Option.map(_ =>
-        restoreDateTime->Belt.Option.isNone->Pulumi.Input.wrap
+        restoreDateTime->Belt.Option.isNone->Pulumi.Input.make
       ),
   );
 };

@@ -85,7 +85,7 @@ let construct =
           EventRule.Args.make(
             ~description=
               "Send a heartbeat to the Core Plugin ExtensionPoint"
-              ->Pulumi.Input.wrap,
+              ->Pulumi.Input.make,
             ~scheduleExpression=
               EventRule.Args.ScheduleExpression.every(timeout->Minutes),
             (),

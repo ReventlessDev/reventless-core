@@ -150,7 +150,7 @@ let construct: construct =
             ~parent=self->Pulumi.Resource.makeFromJs,
             ~dependsOn=
               [|internetGateway->Pulumi.Resource.makeFromJs|]
-              ->Pulumi.Input.wrap,
+              ->Pulumi.Input.make,
             (),
           ),
         (),
@@ -170,7 +170,7 @@ let construct: construct =
             ~parent=self->Pulumi.Resource.makeFromJs,
             ~dependsOn=
               [|internetGateway->Pulumi.Resource.makeFromJs|]
-              ->Pulumi.Input.wrap,
+              ->Pulumi.Input.make,
             (),
           ),
         (),

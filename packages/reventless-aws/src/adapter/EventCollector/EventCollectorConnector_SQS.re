@@ -17,7 +17,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
         ~name,
         ~args=
           SQS.Queue.Args.make(
-            ~visibilityTimeoutSeconds=timeout->Pulumi.Input.wrap,
+            ~visibilityTimeoutSeconds=timeout->Pulumi.Input.make,
             ~redrivePolicy=
               Util_DeadLetterQueue.queue##arn
               ->Pulumi.Output.apply(dlqArn =>
@@ -27,7 +27,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
                   )
                 )
               ->Pulumi.Output.asInput,
-            ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
+            ~sqsManagedSseEnabled=false->Pulumi.Input.make,
             (),
           ),
         ~opts,
@@ -62,8 +62,8 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
                     queue,
                   ),
                 ~policies,
-                ~memorySize=memorySize->Pulumi.Input.wrap,
-                ~timeout=timeout->Pulumi.Input.wrap,
+                ~memorySize=memorySize->Pulumi.Input.make,
+                ~timeout=timeout->Pulumi.Input.make,
                 (),
               ),
             ~opts,

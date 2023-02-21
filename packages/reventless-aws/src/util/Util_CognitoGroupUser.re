@@ -3,7 +3,7 @@ let addUserGroup = (~name: string, ~userPoolId: Pulumi.Output.t(string)) =>
     ~name="UserGroup-" ++ name,
     ~args=
       PulumiAws.Cognito.UserGroup.Args.make(
-        ~name=name->Pulumi.Input.wrap,
+        ~name=name->Pulumi.Input.make,
         ~userPoolId=userPoolId->Pulumi.Output.asInput,
         (),
       ),

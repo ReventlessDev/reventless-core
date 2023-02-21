@@ -24,7 +24,7 @@ let subscribeToSnsTopic = (~queue, ~targetName, ~sourceName, ~topic, ~opts) =>
         ~endpoint=queue##arn->Pulumi.Output.asInput,
         ~protocol=`sqs,
         ~topic=topic##urn->Pulumi.Output.asInput,
-        ~rawMessageDelivery=true->Pulumi.Input.wrap,
+        ~rawMessageDelivery=true->Pulumi.Input.make,
         (),
       ),
     ~opts=Some(opts),
