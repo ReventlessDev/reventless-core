@@ -1,19 +1,22 @@
 /** resolve single id field */
 type resolveIdConfig = {
-  idFieldName: string,
-  fieldName: string,
-  pluginName: option(string),
+  idField: string,
+  sortField: option(string), // TODO: make optional field
+  field: string,
+  pluginName: option(string), // TODO: make optional field
   tableName: string,
-  index: option(string),
+  index: option(string), // TODO: make optional field
+  targetIdField: option(string), // TODO: make optional field
+  targetSortField: option(string) // TODO: make optional field
 };
 
 /** resolve id list field */
 type resolveIdsConfig = {
-  idsFieldName: string,
-  fieldName: string,
-  pluginName: option(string),
+  idsField: string,
+  field: string,
+  pluginName: option(string), // TODO: make optional field
   tableName: string,
-  sortField: option(string),
+  sortField: option(string) // TODO: make optional field
 };
 
 type authorization = {
@@ -23,7 +26,8 @@ type authorization = {
 type index = {
   index: string,
   _type: string,
-  sortField: option(string),
+  idField: option(string), // TODO: make optional field
+  sortField: option(string), // TODO: make optional field
   projectionType: [ | `KEYS_ONLY | `ALL | `INCLUDE(array(string))],
   authorization: option(authorization),
 };

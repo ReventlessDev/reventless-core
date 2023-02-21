@@ -75,6 +75,8 @@ module type T = {
 };
 
 module Adapter = {
+  open ReventlessSpec.ReadModelSpec;
+
   type storage = {
     resources: array(resource),
     dataSourceName: Pulumi.Output.t(string), // TODO create in API
@@ -88,7 +90,7 @@ module Adapter = {
   type storageMaker('api, 'role) =
     (
       ~name: string,
-      ~indexes: list(ReventlessSpec.ReadModelSpec.index),
+      ~indexes: list(index),
       ~sortField: string=?,
       ~ttl: int=?,
       ~api: 'api,
@@ -118,10 +120,10 @@ module Adapter = {
       ~api: 'api,
       ~apiRole: 'role,
       ~dataSourceName: Pulumi.Output.t(string),
-      ~indexes: list(ReventlessSpec.ReadModelSpec.index),
+      ~indexes: list(index),
       ~sortField: option(string),
-      ~resolveIdConfigs: list(ReventlessSpec.ReadModelSpec.resolveIdConfig),
-      ~resolveIdsConfigs: list(ReventlessSpec.ReadModelSpec.resolveIdsConfig),
+      ~resolveIdConfigs: list(resolveIdConfig),
+      ~resolveIdsConfigs: list(resolveIdsConfig),
       ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     resolvers;
@@ -143,12 +145,10 @@ module Adapter = {
         ~api as _: api,
         ~apiRole as _: role,
         ~dataSourceName as _,
-        ~indexes as _: list(ReventlessSpec.ReadModelSpec.index),
+        ~indexes as _: list(index),
         ~sortField as _,
-        ~resolveIdConfigs as
-          _: list(ReventlessSpec.ReadModelSpec.resolveIdConfig),
-        ~resolveIdsConfigs as
-          _: list(ReventlessSpec.ReadModelSpec.resolveIdsConfig),
+        ~resolveIdConfigs as _: list(resolveIdConfig),
+        ~resolveIdsConfigs as _: list(resolveIdsConfig),
         ~opts as _,
       ) => {
         {resources: [||], resourcesMaker: _ => [||]};

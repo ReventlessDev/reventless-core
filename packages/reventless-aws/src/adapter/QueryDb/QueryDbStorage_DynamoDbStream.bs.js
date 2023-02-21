@@ -14,8 +14,8 @@ var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_Dy
 
 function make(name, indexes, sortField, ttl, api, apiRole, opts) {
   var globalSecondaryIndexes = Belt_Array.map(Belt_List.toArray(indexes), (function (param) {
-          var projectionType = param[/* projectionType */3];
-          var sortField = param[/* sortField */2];
+          var projectionType = param[/* projectionType */4];
+          var sortField = param[/* sortField */3];
           var index = param[/* index */0];
           if (typeof projectionType === "number") {
             var tmp = {
@@ -75,7 +75,7 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts) {
                                       name: param[/* index */0],
                                       type: param[/* _type */1]
                                     },
-                                    Belt_Option.mapWithDefault(param[/* sortField */2], /* [] */0, (function (sortField) {
+                                    Belt_Option.mapWithDefault(param[/* sortField */3], /* [] */0, (function (sortField) {
                                             return /* :: */[
                                                     {
                                                       name: sortField,
