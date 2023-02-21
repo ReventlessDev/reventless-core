@@ -8,8 +8,8 @@ let queue =
     ~name,
     ~args=
       SQS.Queue.Args.make(
-        ~visibilityTimeoutSeconds=180->Pulumi.Input.wrap,
-        ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
+        ~visibilityTimeoutSeconds=180->Pulumi.Input.make,
+        ~sqsManagedSseEnabled=false->Pulumi.Input.make,
         (),
       ),
     (),
@@ -20,10 +20,10 @@ let fifoQueue =
     ~name=nameFifo,
     ~args=
       SQS.Queue.Args.make(
-        ~fifoQueue=true->Pulumi.Input.wrap,
-        ~contentBasedDeduplication=true->Pulumi.Input.wrap,
-        ~visibilityTimeoutSeconds=180->Pulumi.Input.wrap,
-        ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
+        ~fifoQueue=true->Pulumi.Input.make,
+        ~contentBasedDeduplication=true->Pulumi.Input.make,
+        ~visibilityTimeoutSeconds=180->Pulumi.Input.make,
+        ~sqsManagedSseEnabled=false->Pulumi.Input.make,
         (),
       ),
     (),

@@ -33,9 +33,9 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
               )
             }
           )
-          ->Pulumi.Input.wrap
+          ->Pulumi.Input.make
         )
-      ->Pulumi.Input.wrap;
+      ->Pulumi.Input.make;
 
     let attributes =
       [

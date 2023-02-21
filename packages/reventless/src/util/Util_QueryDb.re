@@ -3,7 +3,7 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
     Util_StackRefs.get(pluginName)
     ->Belt.Option.map(stackRef =>
         stackRef
-        ->Pulumi.StackReference.requireOutput("plugin"->Pulumi.Input.wrap)
+        ->Pulumi.StackReference.requireOutput("plugin"->Pulumi.Input.make)
         ->Pulumi.Output.apply(plugin =>
             plugin##readModels
             ->Belt.Option.flatMap(readModels =>

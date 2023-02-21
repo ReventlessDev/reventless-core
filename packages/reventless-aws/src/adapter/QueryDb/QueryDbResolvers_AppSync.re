@@ -25,8 +25,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
         ~name,
         ~api,
         ~dataSourceName,
-        ~_type="Query"->Pulumi.Input.wrap,
-        ~field=name->String.uncapitalize_ascii->Pulumi.Input.wrap,
+        ~_type="Query"->Pulumi.Input.make,
+        ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
         ~requestTemplate=
           sortField
           ->(
@@ -34,7 +34,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               | Some(sortField) => queryByIdSort(sortField)
               | None => getItemById
             )
-          ->Pulumi.Input.wrap,
+          ->Pulumi.Input.make,
         ~responseTemplate=
           sortField
           ->(
@@ -42,7 +42,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               | Some(_) => firstResult
               | None => result
             )
-          ->Pulumi.Input.wrap,
+          ->Pulumi.Input.make,
         ~kind=Unit,
         ~opts,
         (),
@@ -53,10 +53,10 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           ~name=name ++ "ById",
           ~api,
           ~dataSourceName,
-          ~_type="Query"->Pulumi.Input.wrap,
-          ~field=name->String.uncapitalize->Pulumi.Input.wrap,
-          ~requestTemplate=getItemById->Pulumi.Input.wrap,
-          ~responseTemplate=result->Pulumi.Input.wrap,
+          ~_type="Query"->Pulumi.Input.make,
+          ~field=name->String.uncapitalize->Pulumi.Input.make,
+          ~requestTemplate=getItemById->Pulumi.Input.make,
+          ~responseTemplate=result->Pulumi.Input.make,
           ~kind=Unit,
           ~opts,
           (),
@@ -69,10 +69,10 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
         ~name=fieldNameForAll->String.capitalize_ascii,
         ~api,
         ~dataSourceName,
-        ~_type="Query"->Pulumi.Input.wrap,
-        ~field=fieldNameForAll->Pulumi.Input.wrap,
-        ~requestTemplate=listAllItems->Pulumi.Input.wrap,
-        ~responseTemplate=result->Pulumi.Input.wrap,
+        ~_type="Query"->Pulumi.Input.make,
+        ~field=fieldNameForAll->Pulumi.Input.make,
+        ~requestTemplate=listAllItems->Pulumi.Input.make,
+        ~responseTemplate=result->Pulumi.Input.make,
         ~kind=Unit,
         ~opts,
         (),
@@ -90,11 +90,11 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 ~name,
                 ~api,
                 ~dataSourceName,
-                ~_type="Query"->Pulumi.Input.wrap,
-                ~field=name->String.uncapitalize_ascii->Pulumi.Input.wrap,
+                ~_type="Query"->Pulumi.Input.make,
+                ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
                 ~requestTemplate=
-                  queryByIndexFiltered(~index, ~idField)->Pulumi.Input.wrap,
-                ~responseTemplate=result->Pulumi.Input.wrap,
+                  queryByIndexFiltered(~index, ~idField)->Pulumi.Input.make,
+                ~responseTemplate=result->Pulumi.Input.make,
                 ~kind=Unit,
                 ~opts,
                 (),
@@ -119,9 +119,9 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~dataSource=authDataSource##name->Pulumi.Output.asInput,
                   ~requestMappingTemplate=
                     authorizeIndexedAccessRequest(~index, ~group)
-                    ->Pulumi.Input.wrap,
+                    ->Pulumi.Input.make,
                   ~responseMappingTemplate=
-                    authorizeIndexedAccessResponse(~group)->Pulumi.Input.wrap,
+                    authorizeIndexedAccessResponse(~group)->Pulumi.Input.make,
                   ~opts,
                   (),
                 );
@@ -131,18 +131,18 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~api,
                   ~dataSource=dataSourceName,
                   ~requestMappingTemplate=
-                    queryByIndexFiltered(~index, ~idField)->Pulumi.Input.wrap,
-                  ~responseMappingTemplate=result->Pulumi.Input.wrap,
+                    queryByIndexFiltered(~index, ~idField)->Pulumi.Input.make,
+                  ~responseMappingTemplate=result->Pulumi.Input.make,
                   ~opts,
                   (),
                 );
               Resolver.make(
                 ~name,
                 ~api,
-                ~_type="Query"->Pulumi.Input.wrap,
-                ~field=name->String.uncapitalize_ascii->Pulumi.Input.wrap,
-                ~requestTemplate="{}"->Pulumi.Input.wrap,
-                ~responseTemplate=result->Pulumi.Input.wrap,
+                ~_type="Query"->Pulumi.Input.make,
+                ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
+                ~requestTemplate="{}"->Pulumi.Input.make,
+                ~responseTemplate=result->Pulumi.Input.make,
                 ~kind=Pipeline([|authFunction, queryFunction|]),
                 ~opts,
                 (),
@@ -168,7 +168,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               storageResource##name
               ->Pulumi.Output.apply(realTableName => template(realTableName))
               ->Pulumi.Output.asInput
-            | None => null->Pulumi.Input.wrap
+            | None => null->Pulumi.Input.make
             };
 
         let idResolvers =
@@ -191,8 +191,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 ~name=name ++ idField->String.capitalize_ascii,
                 ~api,
                 ~dataSourceName,
-                ~_type=name->Pulumi.Input.wrap,
-                ~field=field->Pulumi.Input.wrap,
+                ~_type=name->Pulumi.Input.make,
+                ~field=field->Pulumi.Input.make,
                 ~requestTemplate=
                   generateTemplate(
                     ~storageResource,
@@ -221,7 +221,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               | Some(storageResource) =>
                 let resolverDataSource =
                   DataSource.makeDynamoDBDataSourceWithTableName(
-                    ~name=name ++ idField->String.capitalize_ascii ++ "Resolver",
+                    ~name=
+                      name ++ idField->String.capitalize_ascii ++ "Resolver",
                     ~api,
                     ~tableName=storageResource##name,
                     ~serviceRole=apiRole,
@@ -235,8 +236,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~api,
                   ~dataSourceName=
                     resolverDataSource##name->Pulumi.Output.asInput,
-                  ~_type=name->Pulumi.Input.wrap,
-                  ~field=field->Pulumi.Input.wrap,
+                  ~_type=name->Pulumi.Input.make,
+                  ~field=field->Pulumi.Input.make,
                   ~requestTemplate=
                     switch (sortField, targetSortField) {
                     | (Some(sortField), Some(targetSortField)) =>
@@ -247,12 +248,12 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                         ~sortField,
                         ~targetSortField,
                       )
-                      ->Pulumi.Input.wrap
+                      ->Pulumi.Input.make
                     | _ =>
                       resolveIdByIndex(~index, ~idField, ~targetIdField)
-                      ->Pulumi.Input.wrap
+                      ->Pulumi.Input.make
                     },
-                  ~responseTemplate=result->Pulumi.Input.wrap,
+                  ~responseTemplate=result->Pulumi.Input.make,
                   ~kind=Unit,
                   ~opts,
                   (),
@@ -262,10 +263,10 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~name=name ++ idField->String.capitalize_ascii,
                   ~api,
                   ~dataSourceName,
-                  ~_type=name->Pulumi.Input.wrap,
-                  ~field=field->Pulumi.Input.wrap,
-                  ~requestTemplate=null->Pulumi.Input.wrap,
-                  ~responseTemplate=null->Pulumi.Input.wrap,
+                  ~_type=name->Pulumi.Input.make,
+                  ~field=field->Pulumi.Input.make,
+                  ~requestTemplate=null->Pulumi.Input.make,
+                  ~responseTemplate=null->Pulumi.Input.make,
                   ~kind=Unit,
                   ~opts,
                   (),
@@ -283,8 +284,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               ~name=name ++ idsField->String.capitalize_ascii,
               ~api,
               ~dataSourceName,
-              ~_type=name->Pulumi.Input.wrap,
-              ~field=field->Pulumi.Input.wrap,
+              ~_type=name->Pulumi.Input.make,
+              ~field=field->Pulumi.Input.make,
               ~requestTemplate=
                 generateTemplate(
                   ~storageResource,
