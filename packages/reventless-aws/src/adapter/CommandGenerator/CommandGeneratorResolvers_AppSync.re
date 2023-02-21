@@ -87,7 +87,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
                 ~functionArn=commandGeneratorArn->Pulumi.Output.asInput,
                 (),
               )
-              ->Pulumi.Input.wrap,
+              ->Pulumi.Input.make,
             ~serviceRoleArn=dataSourceRole##arn->Pulumi.Output.asInput,
             (),
           ),
@@ -109,7 +109,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
         }
       }
       |j}
-      ->Pulumi.Input.wrap;
+      ->Pulumi.Input.make;
 
     let resolvers =
       fields->Belt.Array.map(field => {
@@ -123,10 +123,12 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
           ~name=field->String.capitalize_ascii,
           ~api,
           ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
-          ~_type="Mutation"->Pulumi.Input.wrap,
-          ~field=field->Pulumi.Input.wrap,
-          ~requestTemplate=invokeCommandGenerator(commandName),
-          ~responseTemplate=AppSync.Resolver.Templates.result,
+          ~_type="Mutation"->Pulumi.Input.make,
+          ~field=field->Pulumi.Input.make,
+          ~requestTemplate=
+            invokeCommandGenerator(commandName),
+          ~responseTemplate=
+            AppSync.Resolver.Templates.result,
           ~kind=AppSync.Resolver.Unit,
           ~opts,
           (),

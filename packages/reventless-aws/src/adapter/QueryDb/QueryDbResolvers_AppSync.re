@@ -25,8 +25,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
         ~name,
         ~api,
         ~dataSourceName,
-        ~_type="Query"->Pulumi.Input.wrap,
-        ~field=name->String.uncapitalize_ascii->Pulumi.Input.wrap,
+        ~_type="Query"->Pulumi.Input.make,
+        ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
         ~requestTemplate=
           switch (subIdField) {
           | Some(sortField) => queryByIdSort(sortField)
@@ -47,9 +47,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           ~name=name ++ "ById",
           ~api,
           ~dataSourceName,
-          ~_type="Query"->Pulumi.Input.wrap,
-          ~field=
-            (name->String.uncapitalize_ascii ++ "ById")->Pulumi.Input.wrap,
+          ~_type="Query"->Pulumi.Input.make,
+          ~field=(name->String.uncapitalize_ascii ++ "ById")->Pulumi.Input.make,
           ~requestTemplate=queryById,
           ~responseTemplate=result,
           ~kind=Unit,
@@ -64,8 +63,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
         ~name=fieldNameForAll->String.capitalize_ascii,
         ~api,
         ~dataSourceName,
-        ~_type="Query"->Pulumi.Input.wrap,
-        ~field=fieldNameForAll->Pulumi.Input.wrap,
+        ~_type="Query"->Pulumi.Input.make,
+        ~field=fieldNameForAll->Pulumi.Input.make,
         ~requestTemplate=listAllItems,
         ~responseTemplate=result,
         ~kind=Unit,
@@ -86,8 +85,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 ~name,
                 ~api,
                 ~dataSourceName,
-                ~_type="Query"->Pulumi.Input.wrap,
-                ~field=name->String.uncapitalize_ascii->Pulumi.Input.wrap,
+                ~_type="Query"->Pulumi.Input.make,
+                ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
                 ~requestTemplate=
                   switch (subIdField) {
                   | Some(sortField) =>
@@ -138,9 +137,9 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               Resolver.make(
                 ~name,
                 ~api,
-                ~_type="Query"->Pulumi.Input.wrap,
-                ~field=name->String.uncapitalize_ascii->Pulumi.Input.wrap,
-                ~requestTemplate="{}"->Pulumi.Input.wrap,
+                ~_type="Query"->Pulumi.Input.make,
+                ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
+                ~requestTemplate="{}"->Pulumi.Input.make,
                 ~responseTemplate=result,
                 ~kind=Pipeline([|authFunction, queryFunction|]),
                 ~opts,
@@ -209,8 +208,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 ~name=name ++ field->String.capitalize_ascii,
                 ~api,
                 ~dataSourceName,
-                ~_type=name->Pulumi.Input.wrap,
-                ~field=field->Pulumi.Input.wrap,
+                ~_type=name->Pulumi.Input.make,
+                ~field=field->Pulumi.Input.make,
                 ~requestTemplate=
                   switch (targetId, sourceSubId, targetSortField) {
                   | (Id, Field(sourceSortField), Some(targetSortField)) =>
@@ -265,8 +264,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 ~name=name ++ field->String.capitalize_ascii,
                 ~api,
                 ~dataSourceName,
-                ~_type=name->Pulumi.Input.wrap,
-                ~field=field->Pulumi.Input.wrap,
+                ~_type=name->Pulumi.Input.make,
+                ~field=field->Pulumi.Input.make,
                 ~requestTemplate=null,
                 ~responseTemplate=null,
                 ~kind=Unit,
@@ -288,8 +287,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               ~name=name ++ idsField->String.capitalize_ascii,
               ~api,
               ~dataSourceName,
-              ~_type=name->Pulumi.Input.wrap,
-              ~field=resolvedField->Pulumi.Input.wrap,
+              ~_type=name->Pulumi.Input.make,
+              ~field=resolvedField->Pulumi.Input.make,
               ~requestTemplate=
                 generateTemplate(
                   ~storageResource,

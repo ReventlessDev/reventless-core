@@ -7,7 +7,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
         ~name,
         ~args=
           SQS.Queue.Args.make(
-            ~visibilityTimeoutSeconds=(6 * timeout)->Pulumi.Input.wrap,
+            ~visibilityTimeoutSeconds=(6 * timeout)->Pulumi.Input.make,
             ~redrivePolicy=
               Util_DeadLetterQueue.queue##arn
               ->Pulumi.Output.apply(dlqArn =>
@@ -17,7 +17,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
                   )
                 )
               ->Pulumi.Output.asInput,
-            ~sqsManagedSseEnabled=false->Pulumi.Input.wrap,
+            ~sqsManagedSseEnabled=false->Pulumi.Input.make,
             (),
           ),
         ~opts,
@@ -41,8 +41,8 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker =
                   queue,
                 ),
               ~policies=Lambda.Policy.defaultPolicies,
-              ~memorySize=memorySize->Pulumi.Input.wrap,
-              ~timeout=timeout->Pulumi.Input.wrap,
+              ~memorySize=memorySize->Pulumi.Input.make,
+              ~timeout=timeout->Pulumi.Input.make,
               (),
             ),
           ~opts,

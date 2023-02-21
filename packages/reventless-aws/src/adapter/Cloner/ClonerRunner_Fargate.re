@@ -21,7 +21,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
           IAM.Role.Args.make(
             ~assumeRolePolicy=
               IAM.Policy.assumeRolePolicy("ecs-tasks.amazonaws.com")
-              ->Pulumi.Input.wrap,
+              ->Pulumi.Input.make,
             ~inlinePolicies=
               [|
                 IAM.InlinePolicy.makeForActions(
@@ -33,7 +33,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                   |],
                 ),
               |]
-              ->Pulumi.Input.wrap,
+              ->Pulumi.Input.make,
             (),
           ),
         (),
@@ -159,16 +159,16 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                 ~name,
                 ~args=
                   Args.make(
-                    ~family=name->Pulumi.Input.wrap,
+                    ~family=name->Pulumi.Input.make,
                     ~containerDefinitions=
                       containerDefinitions
                       ->Js.Json.stringifyAny
                       ->Belt.Option.getExn
-                      ->Pulumi.Input.wrap,
+                      ->Pulumi.Input.make,
                     ~executionRoleArn=
                       taskExecutionRole##arn->Pulumi.Output.asInput,
-                    ~memory="4096"->Pulumi.Input.wrap,
-                    ~cpu="1024"->Pulumi.Input.wrap,
+                    ~memory="4096"->Pulumi.Input.make,
+                    ~cpu="1024"->Pulumi.Input.make,
                     ~requiresCompatibilities=[|"FARGATE"|],
                     ~networkMode=`awsvpc,
                     (),
@@ -261,7 +261,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
                       ~functionArn=lambda##arn->Pulumi.Output.asInput,
                       (),
                     )
-                    ->Pulumi.Input.wrap,
+                    ->Pulumi.Input.make,
                   ~serviceRoleArn=dataSourceRole##arn->Pulumi.Output.asInput,
                   (),
                 ),
@@ -287,10 +287,11 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
               ~name=field,
               ~api,
               ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
-              ~_type="Mutation"->Pulumi.Input.wrap,
-              ~field=field->Pulumi.Input.wrap,
-              ~requestTemplate=invokeClone->Pulumi.Input.wrap,
-              ~responseTemplate=AppSync.Resolver.Templates.result,
+              ~_type="Mutation"->Pulumi.Input.make,
+              ~field=field->Pulumi.Input.make,
+              ~requestTemplate=invokeClone->Pulumi.Input.make,
+              ~responseTemplate=
+                AppSync.Resolver.Templates.result,
               ~kind=AppSync.Resolver.Unit,
               ~opts?,
               (),

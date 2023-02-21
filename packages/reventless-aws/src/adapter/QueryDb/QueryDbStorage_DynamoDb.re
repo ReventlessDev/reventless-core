@@ -31,9 +31,9 @@ let globalSecondaryIndexes = indexes =>
           )
         }
       )
-      ->Pulumi.Input.wrap
+      ->Pulumi.Input.make
     )
-  ->Pulumi.Input.wrap;
+  ->Pulumi.Input.make;
 
 let attributes = (sortField, indexes) =>
   [
