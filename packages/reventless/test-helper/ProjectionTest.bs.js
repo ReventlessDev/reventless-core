@@ -256,6 +256,20 @@ function Make(Projection) {
                                     ])));
                 }));
   };
+  var thenStatesWithId = function (p, id, expectedStates) {
+    var __x = Curry._1(p[1], /* () */0);
+    return __x.then((function (store) {
+                  return Promise.resolve(Jest.Expect.toEqual(/* tuple */[
+                                  1,
+                                  id,
+                                  expectedStates
+                                ], Jest.Expect.expect(/* tuple */[
+                                      Object.keys(store).length,
+                                      Belt_Array.get(Object.keys(store), 0),
+                                      Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)
+                                    ])));
+                }));
+  };
   var thenAllStates = function (p, expectedStore) {
     var __x = Curry._1(p[1], /* () */0);
     return __x.then((function (store) {
@@ -326,6 +340,7 @@ function Make(Projection) {
           whenEvent: whenEvent,
           whenEventWithTime: whenEventWithTime,
           thenStates: thenStates,
+          thenStatesWithId: thenStatesWithId,
           thenAllStates: thenAllStates,
           thenState: thenState,
           thenStateWithId: thenStateWithId,

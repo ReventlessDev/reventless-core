@@ -24,6 +24,13 @@ module type T = {
       list(Target.state)
     ) =>
     Js.Promise.t(Jest.assertion);
+  let thenStatesWithId:
+    (
+      Jest.Expect.plainPartial(unit => Js.Promise.t(store)),
+      string,
+      list(Target.state)
+    ) =>
+    Js.Promise.t(Jest.assertion);
   let thenAllStates:
     (Jest.Expect.plainPartial(unit => Js.Promise.t(store)), store) =>
     Js.Promise.t(Jest.assertion);
@@ -255,6 +262,27 @@ module Make =
         _,
       );
   };
+  let thenStatesWithId = (p, id, expectedStates) => {
+    p
+    ->unpack()
+    ->Js.Promise.then_(
+        store =>
+          (
+            expect((
+              store->Js.Dict.keys->Belt.Array.length,
+              store->Js.Dict.keys->Belt.Array.get(0),
+              store
+              ->Js.Dict.values
+              ->Belt.Array.get(0)
+              ->Belt.Option.getWithDefault([]),
+            ))
+            |> toEqual((1, Some(id), expectedStates))
+          )
+          ->Js.Promise.resolve,
+        _,
+      );
+  };
+
   let thenAllStates = (p, expectedStore: store) => {
     p
     ->unpack()
