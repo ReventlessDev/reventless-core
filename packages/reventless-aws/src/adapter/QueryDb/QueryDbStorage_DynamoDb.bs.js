@@ -12,85 +12,91 @@ var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.bs.js");
 var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_DataSource.bs.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_DynamoDb_Runtime.bs.js");
 
-function make(name, indexes, sortField, ttl, api, apiRole, opts) {
-  var globalSecondaryIndexes = Belt_Array.map(Belt_List.toArray(indexes), (function (param) {
-          var projectionType = param[/* projectionType */4];
-          var sortField = param[/* sortField */3];
-          var index = param[/* index */0];
-          if (typeof projectionType === "number") {
-            var tmp = {
-              hashKey: index,
-              name: index,
-              projectionType: (function () {
-                    switch (projectionType) {
-                      case -1016321321 :
-                          return "KEYS_ONLY";
-                      case 3249409 :
-                          return "ALL";
-                      case -775237112 :
-                          return "INCLUDE";
-                      
-                    }
-                  })()
-            };
-            if (sortField !== undefined) {
-              tmp.rangeKey = Caml_option.valFromOption(sortField);
-            }
-            return tmp;
-          } else {
-            var tmp$1 = {
-              hashKey: index,
-              name: index,
-              projectionType: "INCLUDE",
-              nonKeyAttributes: projectionType[1]
-            };
-            if (sortField !== undefined) {
-              tmp$1.rangeKey = Caml_option.valFromOption(sortField);
-            }
-            return tmp$1;
-          }
-        }));
-  var attributes = Belt_List.toArray(Belt_List.flatten(/* :: */[
-            /* :: */[
-              {
-                name: "id",
-                type: "S"
-              },
-              /* [] */0
-            ],
-            /* :: */[
-              Belt_Option.mapWithDefault(sortField, /* [] */0, (function (sortField) {
-                      return /* :: */[
-                              {
-                                name: sortField,
-                                type: "S"
-                              },
-                              /* [] */0
-                            ];
-                    })),
-              /* :: */[
-                Belt_List.flatten(Belt_List.map(indexes, (function (param) {
+function globalSecondaryIndexes(indexes) {
+  return Belt_Array.map(Belt_List.toArray(indexes), (function (param) {
+                var projectionType = param[/* projectionType */4];
+                var sortField = param[/* sortField */3];
+                var idField = param[/* idField */2];
+                var index = param[/* index */0];
+                if (typeof projectionType === "number") {
+                  var tmp = {
+                    hashKey: Belt_Option.getWithDefault(idField, index),
+                    name: index,
+                    projectionType: (function () {
+                          switch (projectionType) {
+                            case -1016321321 :
+                                return "KEYS_ONLY";
+                            case 3249409 :
+                                return "ALL";
+                            case -775237112 :
+                                return "INCLUDE";
+                            
+                          }
+                        })()
+                  };
+                  if (sortField !== undefined) {
+                    tmp.rangeKey = Caml_option.valFromOption(sortField);
+                  }
+                  return tmp;
+                } else {
+                  var tmp$1 = {
+                    hashKey: Belt_Option.getWithDefault(idField, index),
+                    name: index,
+                    projectionType: "INCLUDE",
+                    nonKeyAttributes: projectionType[1]
+                  };
+                  if (sortField !== undefined) {
+                    tmp$1.rangeKey = Caml_option.valFromOption(sortField);
+                  }
+                  return tmp$1;
+                }
+              }));
+}
+
+function attributes(sortField, indexes) {
+  return Belt_List.toArray(Belt_List.flatten(/* :: */[
+                  /* :: */[
+                    {
+                      name: "id",
+                      type: "S"
+                    },
+                    /* [] */0
+                  ],
+                  /* :: */[
+                    Belt_Option.mapWithDefault(sortField, /* [] */0, (function (sortField) {
                             return /* :: */[
                                     {
-                                      name: param[/* index */0],
-                                      type: param[/* _type */1]
+                                      name: sortField,
+                                      type: "S"
                                     },
-                                    Belt_Option.mapWithDefault(param[/* sortField */3], /* [] */0, (function (sortField) {
-                                            return /* :: */[
-                                                    {
-                                                      name: sortField,
-                                                      type: "S"
-                                                    },
-                                                    /* [] */0
-                                                  ];
-                                          }))
+                                    /* [] */0
                                   ];
-                          }))),
-                /* [] */0
-              ]
-            ]
-          ]));
-  var table = Util_DynamoDb$ReventlessAws.makeTable(attributes, Caml_option.some(globalSecondaryIndexes), ttl, sortField, opts, name);
+                          })),
+                    /* :: */[
+                      Belt_List.flatten(Belt_List.map(indexes, (function (param) {
+                                  return /* :: */[
+                                          {
+                                            name: param[/* index */0],
+                                            type: param[/* _type */1]
+                                          },
+                                          Belt_Option.mapWithDefault(param[/* sortField */3], /* [] */0, (function (sortField) {
+                                                  return /* :: */[
+                                                          {
+                                                            name: sortField,
+                                                            type: "S"
+                                                          },
+                                                          /* [] */0
+                                                        ];
+                                                }))
+                                        ];
+                                }))),
+                      /* [] */0
+                    ]
+                  ]
+                ]));
+}
+
+function dataSource(name, table, api, apiRole, opts) {
   new (Aws.iam.RolePolicy)(name, {
         policy: table.arn.apply((function (tableArn) {
                 return IAM$PulumiAws.RolePolicy.generatePolicy(/* array */[tableArn + "*"], "dynamodb:*");
@@ -99,10 +105,14 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts) {
                 return role.id;
               }))
       }, opts);
-  var dataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), /* () */0);
+  return AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), /* () */0);
+}
+
+function make(name, indexes, sortField, ttl, api, apiRole, opts) {
+  var table = Util_DynamoDb$ReventlessAws.makeTable(attributes(sortField, indexes), Caml_option.some(globalSecondaryIndexes(indexes)), ttl, sortField, opts, name);
   return /* record */[
           /* resources : array */[Util_DynamoDb$ReventlessAws.toResource(table)],
-          /* dataSourceName */dataSource.name,
+          /* dataSourceName */dataSource(name, table, api, apiRole, opts).name,
           /* load */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(table),
           /* save */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table),
           /* saveBatch */QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(undefined, table),
@@ -112,5 +122,8 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts) {
         ];
 }
 
+exports.globalSecondaryIndexes = globalSecondaryIndexes;
+exports.attributes = attributes;
+exports.dataSource = dataSource;
 exports.make = make;
 /* @pulumi/aws Not a pure module */

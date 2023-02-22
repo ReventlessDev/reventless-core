@@ -9,7 +9,9 @@ var EventCollectorConnector_DynamoDbStream$ReventlessAws = require("../adapter/E
 function Make(Config) {
   return (function (Spec) {
       return (function (Mappings) {
-          return ReadModel$Reventless.Make(Config)(Spec)(Mappings)(QueryDbStorage_DynamoDb$ReventlessAws)(QueryDbResolvers_AppSync$ReventlessAws)(EventCollectorConnector_DynamoDbStream$ReventlessAws);
+          return ReadModel$Reventless.Make(Config)(Spec)(Mappings)({
+                          make: QueryDbStorage_DynamoDb$ReventlessAws.make
+                        })(QueryDbResolvers_AppSync$ReventlessAws)(EventCollectorConnector_DynamoDbStream$ReventlessAws);
         });
     });
 }
