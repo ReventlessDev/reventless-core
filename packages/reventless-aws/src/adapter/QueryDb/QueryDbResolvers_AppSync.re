@@ -18,6 +18,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     ~opts,
   ) => {
     open Resolver.Templates;
+    let _log = dataSourceName->Pulumi.Output.apply(dsn => Js.log2("QDB-RESOLVER " ++ name ++ "DATASOURCENAME:", dsn))
     let dataSourceName = dataSourceName->Pulumi.Output.asInput;
     let name = name->String.capitalize_ascii;
     let resolverByIdSingle =

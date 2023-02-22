@@ -60,6 +60,10 @@ function make(name, api, fields, commandGenerator, opts) {
   var resolvers = Belt_Array.map(fields, (function (field) {
           var match = field.split("_");
           var commandName = match.length !== 2 ? $$String.capitalize_ascii(field) : $$String.capitalize_ascii(match[1]);
+          dataSource.name.apply(function (dsn) {
+                console.log("COMMANDGEN-RESOLVER " + (name + "DATASOURCENAME:"), dsn);
+                
+              });
           return AppSync_Resolver$PulumiAws.make($$String.capitalize_ascii(field), api, Caml_option.some(dataSource.name), "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
         }));
   var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);
