@@ -111,6 +111,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
       |j}
       ->Pulumi.Input.make;
 
+    Js.log("**********| hello from " ++ __MODULE__ ++ " |*********")
     let resolvers =
       fields->Belt.Array.map(field => {
         let commandName =
@@ -119,6 +120,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
             commandName->String.capitalize_ascii
           | _ => field->String.capitalize_ascii
           };
+          Js.log("**********| hello from " ++ __MODULE__ ++ ".resolvers |*********")
         let _log = dataSource##name->Pulumi.Output.apply(dsn => Js.log2("COMMANDGEN-RESOLVER " ++ name ++ "DATASOURCENAME:", dsn))
         AppSync.Resolver.make(
           ~name=field->String.capitalize_ascii,
