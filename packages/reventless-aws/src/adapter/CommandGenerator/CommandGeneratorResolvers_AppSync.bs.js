@@ -61,7 +61,7 @@ function make(name, api, fields, commandGenerator, opts) {
   var resolvers = Belt_Array.map(fields, (function (field) {
           var match = field.split("_");
           var commandName = match.length !== 2 ? $$String.capitalize_ascii(field) : $$String.capitalize_ascii(match[1]);
-          console.log("**********| hello from CommandGeneratorResolvers_AppSync-ReventlessAws.resolvers |*********");
+          console.log("**********| hello from CommandGeneratorResolvers_AppSync-ReventlessAws.resolvers |*********", dataSource);
           dataSource.name.apply(function (dsn) {
                 console.log("COMMANDGEN-RESOLVER " + (name + "DATASOURCENAME:"), dsn);
                 

@@ -89,6 +89,7 @@ function make(name, indexes, sortField, ttl, api, apiRole, opts) {
               }))
       }, opts);
   var dataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), undefined);
+  console.log("**********| hello from QueryDbStorage_DynamoDbStream-ReventlessAws |*********", dataSource);
   return {
           resources: [Util_DynamoDbStream$ReventlessAws.toResource(table)],
           dataSourceName: dataSource.name,
