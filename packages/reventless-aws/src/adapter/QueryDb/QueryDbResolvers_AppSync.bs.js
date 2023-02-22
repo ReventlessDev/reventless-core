@@ -18,6 +18,10 @@ var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
 
 function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdConfigs, resolveIdsConfigs, opts) {
+  dataSourceName.apply(function (dsn) {
+        console.log("QDB-RESOLVER " + (name + "DATASOURCENAME:"), dsn);
+        
+      });
   var name$1 = $$String.capitalize_ascii(name);
   var resolverByIdSingle = AppSync_Resolver$PulumiAws.make(name$1, api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize_ascii(name$1), sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(sortField) : AppSync_Resolver_Templates$PulumiAws.getItemById, sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
   var resolverByIdMultiple = Belt_Option.map(sortField, (function (_sortField) {
