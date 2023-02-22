@@ -18,6 +18,7 @@ var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
 
 function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdConfigs, resolveIdsConfigs, opts) {
+  console.log("**********| hello from QueryDbResolvers_AppSync-ReventlessAws |*********");
   dataSourceName.apply(function (dsn) {
         console.log("QDB-RESOLVER " + (name + "DATASOURCENAME:"), dsn);
         
