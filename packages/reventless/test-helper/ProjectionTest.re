@@ -188,10 +188,11 @@ module Make =
         text,
         event->Source.event_encode,
         "\nstore:",
-        store
-        ->Js.Dict.get(id)
-        ->Belt.Option.getWithDefault([])
-        ->Belt.List.map(Target.state_encode),
+        Js.Dict.map(
+          (. states) =>
+            states->Belt.List.toArray->Belt.Array.map(Target.state_encode),
+          store,
+        ),
       );
     let resolveStore = () => {
       // logStore("update after event:");
