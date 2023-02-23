@@ -188,7 +188,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
             switch (index) {
             | None =>
               Resolver.make(
-                ~name=name ++ idField->String.capitalize,
+                ~name=name ++ field->String.capitalize,
                 ~api,
                 ~dataSourceName,
                 ~_type=name->Pulumi.Input.wrap,
@@ -231,7 +231,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 let targetIdField =
                   targetIdField->Belt.Option.getWithDefault(index);
                 Resolver.make(
-                  ~name=name ++ idField->String.capitalize,
+                  ~name=name ++ field->String.capitalize,
                   ~api,
                   ~dataSourceName=
                     resolverDataSource##name->Pulumi.Output.asInput,
@@ -259,7 +259,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 );
               | None =>
                 Resolver.make(
-                  ~name=name ++ idField->String.capitalize,
+                  ~name=name ++ field->String.capitalize,
                   ~api,
                   ~dataSourceName,
                   ~_type=name->Pulumi.Input.wrap,
