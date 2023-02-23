@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-spec",
-  "version": "1.3.0-rescript.9",
+  "version": "1.3.0-rescript.10",
   "description": "Specifications for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -18,7 +18,7 @@
     "rebuild": "npm run clean && npm run build -- -with-deps"
   },
   "dependencies": {
-    "@reventless/bs-pulumi-pulumi": "^1.2.0-rescript.7",
+    "@reventless/bs-pulumi-pulumi": "^1.2.0-rescript.8",
     "decco": "1.6.0"
   },
   "devDependencies": {
