@@ -290,8 +290,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
               ~_type="Mutation"->Pulumi.Input.wrap,
               ~field=field->Pulumi.Input.wrap,
               ~requestTemplate=invokeClone->Pulumi.Input.wrap,
-              ~responseTemplate=
-                AppSync.Resolver.Templates.result->Pulumi.Input.wrap,
+              ~responseTemplate=AppSync.Resolver.Templates.result,
               ~kind=AppSync.Resolver.Unit,
               ~opts?,
               (),

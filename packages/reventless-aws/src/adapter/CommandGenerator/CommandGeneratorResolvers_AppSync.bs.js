@@ -55,7 +55,7 @@ function make(name, api, fields, commandGenerator, opts) {
         serviceRoleArn: dataSourceRole.arn
       }, Caml_option.some(opts));
   var invokeCommandGenerator = function (command) {
-    return "\n    {\n      \"version\": \"2017-02-28\",\n      \"operation\": \"Invoke\",\n      \"payload\": {\n          \"command\": \"" + (String(command) + "\",\n          \"arguments\": \$utils.toJson(\$context.arguments),\n          \"meta\": {\n            \"ip\": \$util.toJson(\$context.identity.sourceIp),\n            \"user\": \$util.toJson(\$context.identity.username)\n          }\n      }\n    }\n  ");
+    return "\n      {\n        \"version\": \"2017-02-28\",\n        \"operation\": \"Invoke\",\n        \"payload\": {\n            \"command\": \"" + (String(command) + "\",\n            \"arguments\": \$utils.toJson(\$context.arguments),\n            \"meta\": {\n              \"ip\": \$util.toJson(\$context.identity.sourceIp),\n              \"user\": \$util.toJson(\$context.identity.username)\n            }\n        }\n      }\n      ");
   };
   var resolvers = Belt_Array.map(fields, (function (field) {
           var match = field.split("_");

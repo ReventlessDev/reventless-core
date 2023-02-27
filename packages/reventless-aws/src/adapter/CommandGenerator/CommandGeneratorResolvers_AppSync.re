@@ -94,20 +94,22 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
         ~opts=Some(opts),
       );
 
-    let invokeCommandGenerator = command => {j|
-    {
-      "version": "2017-02-28",
-      "operation": "Invoke",
-      "payload": {
-          "command": "$command",
-          "arguments": \$utils.toJson(\$context.arguments),
-          "meta": {
-            "ip": \$util.toJson(\$context.identity.sourceIp),
-            "user": \$util.toJson(\$context.identity.username)
-          }
+    let invokeCommandGenerator = command =>
+      {j|
+      {
+        "version": "2017-02-28",
+        "operation": "Invoke",
+        "payload": {
+            "command": "$command",
+            "arguments": \$utils.toJson(\$context.arguments),
+            "meta": {
+              "ip": \$util.toJson(\$context.identity.sourceIp),
+              "user": \$util.toJson(\$context.identity.username)
+            }
+        }
       }
-    }
-  |j};
+      |j}
+      ->Pulumi.Input.wrap;
 
     let resolvers =
       fields->Belt.Array.map(field => {
@@ -122,10 +124,8 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
           ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
           ~_type="Mutation"->Pulumi.Input.wrap,
           ~field=field->Pulumi.Input.wrap,
-          ~requestTemplate=
-            invokeCommandGenerator(commandName)->Pulumi.Input.wrap,
-          ~responseTemplate=
-            AppSync.Resolver.Templates.result->Pulumi.Input.wrap,
+          ~requestTemplate=invokeCommandGenerator(commandName),
+          ~responseTemplate=AppSync.Resolver.Templates.result,
           ~kind=AppSync.Resolver.Unit,
           ~opts,
           (),
