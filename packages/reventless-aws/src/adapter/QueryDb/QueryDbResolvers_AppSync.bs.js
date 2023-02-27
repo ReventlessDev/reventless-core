@@ -21,13 +21,14 @@ function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdC
   var name$1 = $$String.capitalize(name);
   var resolverByIdSingle = AppSync_Resolver$PulumiAws.make(name$1, api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize(name$1), sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(sortField) : AppSync_Resolver_Templates$PulumiAws.getItemById, sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
   var resolverByIdMultiple = Belt_Option.map(sortField, (function (_sortField) {
-          return AppSync_Resolver$PulumiAws.make(name$1 + "ById", api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize(name$1) + "ById", AppSync_Resolver_Templates$PulumiAws.getItemById, AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
+          return AppSync_Resolver$PulumiAws.make(name$1 + "ById", api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize(name$1) + "ById", AppSync_Resolver_Templates$PulumiAws.queryById, AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
         }));
   var fieldNameForAll = "every" + name$1;
   var resolverAll = AppSync_Resolver$PulumiAws.make($$String.capitalize(fieldNameForAll), api, Caml_option.some(dataSourceName), "Query", fieldNameForAll, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
   var resourcesMaker = function (allQueryDbs) {
     var resolversByIndex = Belt_List.map(indexes, (function (param) {
             var authorization = param[/* authorization */5];
+            var sortField = param[/* sortField */3];
             var index = param[/* index */0];
             var name$2 = name$1 + ("By" + $$String.capitalize(index));
             var idField = Belt_Option.getWithDefault(param[/* idField */2], index);
@@ -42,7 +43,7 @@ function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdC
                             queryFunction
                           ]], Caml_option.some(opts), /* () */0);
             } else {
-              return AppSync_Resolver$PulumiAws.make(name$2, api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize(name$2), AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
+              return AppSync_Resolver$PulumiAws.make(name$2, api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize(name$2), sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIndexSortFiltered(index, idField, sortField) : AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
             }
           }));
     var storageResource = function (pluginName, tableName) {

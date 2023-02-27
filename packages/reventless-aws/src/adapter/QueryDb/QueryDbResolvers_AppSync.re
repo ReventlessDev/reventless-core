@@ -51,7 +51,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           ~dataSourceName,
           ~_type="Query"->Pulumi.Input.wrap,
           ~field=(name->String.uncapitalize ++ "ById")->Pulumi.Input.wrap,
-          ~requestTemplate=getItemById,
+          ~requestTemplate=queryById,
           ~responseTemplate=result,
           ~kind=Unit,
           ~opts,
@@ -77,7 +77,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     let resourcesMaker: QueryDb.resolversResourcesMaker =
       allQueryDbs => {
         let resolversByIndex =
-          indexes->Belt.List.map(({index, idField, authorization}) => {
+          indexes->Belt.List.map(
+            ({index, idField, sortField, authorization}) => {
             let name = name ++ "By" ++ index->String.capitalize;
             let idField = idField->Belt.Option.getWithDefault(index);
             switch (authorization) {
@@ -88,7 +89,12 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 ~dataSourceName,
                 ~_type="Query"->Pulumi.Input.wrap,
                 ~field=name->String.uncapitalize->Pulumi.Input.wrap,
-                ~requestTemplate=queryByIndexFiltered(~index, ~idField),
+                ~requestTemplate=
+                  switch (sortField) {
+                  | Some(sortField) =>
+                    queryByIndexSortFiltered(~index, ~idField, ~sortField)
+                  | None => queryByIndexFiltered(~index, ~idField)
+                  },
                 ~responseTemplate=result,
                 ~kind=Unit,
                 ~opts,
