@@ -177,85 +177,83 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               targetIdField,
               targetSortField,
             }: resolveIdConfig = config;
-            storageResource(~pluginName, ~tableName)
-            ->Belt.Option.map(storageResource => {
-                let dataSourceName =
-                  DataSource.makeDynamoDBDataSourceWithTableName(
-                    ~name=name ++ field->String.capitalize ++ "Resolver",
-                    ~api,
-                    ~tableName=storageResource##name,
-                    ~serviceRole=apiRole,
-                    ~opts,
-                    (),
-                  )##name
-                  ->Pulumi.Output.asInput;
+            switch (storageResource(~pluginName, ~tableName)) {
+            | Some(storageResource) =>
+              let dataSourceName =
+                DataSource.makeDynamoDBDataSourceWithTableName(
+                  ~name=name ++ field->String.capitalize ++ "Resolver",
+                  ~api,
+                  ~tableName=storageResource##name,
+                  ~serviceRole=apiRole,
+                  ~opts,
+                  (),
+                )##name
+                ->Pulumi.Output.asInput;
 
-                switch (index) {
-                | None =>
-                  Resolver.make(
-                    ~name=name ++ field->String.capitalize,
-                    ~api,
-                    ~dataSourceName,
-                    ~_type=name->Pulumi.Input.wrap,
-                    ~field=field->Pulumi.Input.wrap,
-                    ~requestTemplate=
-                      switch (sortField, targetSortField) {
-                      | (Some(sortField), Some(targetSortField)) =>
-                        resolveIdSort(~idField, ~sortField, ~targetSortField)
-                      | _ => resolveId(~idField)
-                      },
-                    ~responseTemplate=
-                      switch (sortField, targetSortField) {
-                      | (None, Some(_)) => result
-                      | _ => result
-                      },
-                    ~kind=Unit,
-                    ~opts,
-                    (),
-                  )
-                | Some(index) =>
-                  let targetIdField =
-                    targetIdField->Belt.Option.getWithDefault(index);
-                  Resolver.make(
-                    ~name=name ++ field->String.capitalize,
-                    ~api,
-                    ~dataSourceName,
-                    ~_type=name->Pulumi.Input.wrap,
-                    ~field=field->Pulumi.Input.wrap,
-                    ~requestTemplate=
-                      switch (sortField, targetSortField) {
-                      | (Some(sortField), Some(targetSortField)) =>
-                        resolveIdByIndexSort(
-                          ~index,
-                          ~idField,
-                          ~targetIdField,
-                          ~sortField,
-                          ~targetSortField,
-                        )
-                      | _ =>
-                        resolveIdByIndex(~index, ~idField, ~targetIdField)
-                      },
-                    ~responseTemplate=result,
-                    ~kind=Unit,
-                    ~opts,
-                    (),
-                  );
-                };
-              })
-            ->Belt.Option.getWithDefault(
+              switch (index) {
+              | None =>
                 Resolver.make(
                   ~name=name ++ field->String.capitalize,
                   ~api,
                   ~dataSourceName,
                   ~_type=name->Pulumi.Input.wrap,
                   ~field=field->Pulumi.Input.wrap,
-                  ~requestTemplate=null,
-                  ~responseTemplate=null,
+                  ~requestTemplate=
+                    switch (sortField, targetSortField) {
+                    | (Some(sortField), Some(targetSortField)) =>
+                      resolveIdSort(~idField, ~sortField, ~targetSortField)
+                    | _ => resolveId(~idField)
+                    },
+                  ~responseTemplate=
+                    switch (sortField, targetSortField) {
+                    | (None, Some(_)) => result
+                    | _ => result
+                    },
                   ~kind=Unit,
                   ~opts,
                   (),
-                ),
-              );
+                )
+              | Some(index) =>
+                let targetIdField =
+                  targetIdField->Belt.Option.getWithDefault(index);
+                Resolver.make(
+                  ~name=name ++ field->String.capitalize,
+                  ~api,
+                  ~dataSourceName,
+                  ~_type=name->Pulumi.Input.wrap,
+                  ~field=field->Pulumi.Input.wrap,
+                  ~requestTemplate=
+                    switch (sortField, targetSortField) {
+                    | (Some(sortField), Some(targetSortField)) =>
+                      resolveIdByIndexSort(
+                        ~index,
+                        ~idField,
+                        ~targetIdField,
+                        ~sortField,
+                        ~targetSortField,
+                      )
+                    | _ => resolveIdByIndex(~index, ~idField, ~targetIdField)
+                    },
+                  ~responseTemplate=result,
+                  ~kind=Unit,
+                  ~opts,
+                  (),
+                );
+              };
+            | None =>
+              Resolver.make(
+                ~name=name ++ field->String.capitalize,
+                ~api,
+                ~dataSourceName,
+                ~_type=name->Pulumi.Input.wrap,
+                ~field=field->Pulumi.Input.wrap,
+                ~requestTemplate=null,
+                ~responseTemplate=null,
+                ~kind=Unit,
+                ~opts,
+                (),
+              )
+            };
           });
 
         let idsResolvers =
