@@ -56,7 +56,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           ~api,
           ~dataSourceName,
           ~_type="Query"->Pulumi.Input.make,
-          ~field=name->String.uncapitalize->Pulumi.Input.make,
+          ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
           ~requestTemplate=getItemById->Pulumi.Input.make,
           ~responseTemplate=result->Pulumi.Input.make,
           ~kind=Unit,
