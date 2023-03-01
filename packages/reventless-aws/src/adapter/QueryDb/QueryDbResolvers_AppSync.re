@@ -17,9 +17,15 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     ~resolveIdsConfigs: list(resolveIdsConfig),
     ~opts,
   ) => {
-    Js.log2("**********| hello from " ++ __MODULE__ ++ " |*********", dataSourceName)
+    Js.log2(
+      "**********| hello from " ++ __MODULE__ ++ " |*********",
+      dataSourceName,
+    );
     open Resolver.Templates;
-    let _log = dataSourceName->Pulumi.Output.apply(dsn => Js.log2("QDB-RESOLVER " ++ name ++ "DATASOURCENAME:", dsn))
+    let _log =
+      dataSourceName->Pulumi.Output.apply(dsn =>
+        Js.log2("QDB-RESOLVER " ++ name ++ "DATASOURCENAME:", dsn)
+      );
     let dataSourceName = dataSourceName->Pulumi.Output.asInput;
     let name = name->String.capitalize_ascii;
     let resolverByIdSingle =
@@ -50,7 +56,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           ~api,
           ~dataSourceName,
           ~_type="Query"->Pulumi.Input.make,
-          ~field=(name->String.uncapitalize_ascii ++ "ById")->Pulumi.Input.make,
+          ~field=
+            (name->String.uncapitalize_ascii ++ "ById")->Pulumi.Input.make,
           ~requestTemplate=queryById,
           ~responseTemplate=result,
           ~kind=Unit,
