@@ -23,7 +23,7 @@ let handleStreamEvent = (handleEvents, streamEvent, _) => {
     );
 
   handleEvents(. jsons)
-  |> Js.Promise.catch(err =>
-       Js.Exn.raiseError(err->Reventless.Util.Error.ofPromise##message)
-     );
+  |> Js.Promise.catch(err
+       //  Js.Exn.raiseError(err->Reventless.Util.Error.ofPromise##message)
+       => Js.log2("handleStreamEvent error:", err)->Js.Promise.resolve);
 };
