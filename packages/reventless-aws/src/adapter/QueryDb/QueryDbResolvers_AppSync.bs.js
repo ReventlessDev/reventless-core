@@ -18,7 +18,6 @@ var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
 
 function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdConfigs, resolveIdsConfigs, opts) {
-  console.log("**********| hello from QueryDbResolvers_AppSync-ReventlessAws |*********", dataSourceName);
   dataSourceName.apply(function (dsn) {
         console.log("QDB-RESOLVER " + (name + "DATASOURCENAME:"), dsn);
         
@@ -26,7 +25,7 @@ function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdC
   var name$1 = $$String.capitalize_ascii(name);
   var resolverByIdSingle = AppSync_Resolver$PulumiAws.make(name$1, api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize_ascii(name$1), sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(sortField) : AppSync_Resolver_Templates$PulumiAws.getItemById, sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
   var resolverByIdMultiple = Belt_Option.map(sortField, (function (_sortField) {
-          return AppSync_Resolver$PulumiAws.make(name$1 + "ById", api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize(name$1), AppSync_Resolver_Templates$PulumiAws.getItemById, AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
+          return AppSync_Resolver$PulumiAws.make(name$1 + "ById", api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize_ascii(name$1), AppSync_Resolver_Templates$PulumiAws.getItemById, AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
         }));
   var fieldNameForAll = "every" + name$1;
   var resolverAll = AppSync_Resolver$PulumiAws.make($$String.capitalize_ascii(fieldNameForAll), api, Caml_option.some(dataSourceName), "Query", fieldNameForAll, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);

@@ -104,8 +104,6 @@ let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
         (),
       );
 
-    let _log = Js.log2("**********| hello from " ++ __MODULE__ ++ " |*********", dataSource);
-
     {
       resources: [|table->Util_DynamoDbStream.toResource|],
       dataSourceName: dataSource##name,
