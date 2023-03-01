@@ -283,7 +283,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
 
           let field = "clone";
           let resolver =
-            AppSync.Resolver.make(
+            AppSync.Resolver.makeUnitResolver(
               ~name=field,
               ~api,
               ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
@@ -292,7 +292,6 @@ let make: Reventless.Cloner.Adapter.runnerMaker(api) =
               ~requestTemplate=invokeClone->Pulumi.Input.make,
               ~responseTemplate=
                 AppSync.Resolver.Templates.result->Pulumi.Input.make,
-              ~kind=AppSync.Resolver.Unit,
               ~opts?,
               (),
             );

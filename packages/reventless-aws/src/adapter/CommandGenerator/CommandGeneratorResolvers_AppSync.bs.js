@@ -64,7 +64,7 @@ function make(name, api, fields, commandGenerator, opts) {
                 console.log("COMMANDGEN-RESOLVER " + (name + "DATASOURCENAME:"), dsn);
                 
               });
-          return AppSync_Resolver$PulumiAws.make($$String.capitalize_ascii(field), api, Caml_option.some(dataSource.name), "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
+          return AppSync_Resolver$PulumiAws.makeUnitResolver($$String.capitalize_ascii(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
         }));
   var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);
   return {

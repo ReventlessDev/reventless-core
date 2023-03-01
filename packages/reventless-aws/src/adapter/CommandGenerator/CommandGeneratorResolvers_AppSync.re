@@ -118,7 +118,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
           | _ => field->String.capitalize_ascii
           };
         let _log = dataSource##name->Pulumi.Output.apply(dsn => Js.log2("COMMANDGEN-RESOLVER " ++ name ++ "DATASOURCENAME:", dsn))
-        AppSync.Resolver.make(
+        AppSync.Resolver.makeUnitResolver(
           ~name=field->String.capitalize_ascii,
           ~api,
           ~dataSourceName=dataSource##name->Pulumi.Output.asInput,
@@ -128,7 +128,6 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
             invokeCommandGenerator(commandName)->Pulumi.Input.make,
           ~responseTemplate=
             AppSync.Resolver.Templates.result->Pulumi.Input.make,
-          ~kind=AppSync.Resolver.Unit,
           ~opts,
           (),
         );

@@ -22,7 +22,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     let dataSourceName = dataSourceName->Pulumi.Output.asInput;
     let name = name->String.capitalize_ascii;
     let resolverByIdSingle =
-      Resolver.make(
+      Resolver.makeUnitResolver(
         ~name,
         ~api,
         ~dataSourceName,
@@ -44,13 +44,12 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
               | None => result
             )
           ->Pulumi.Input.make,
-        ~kind=Unit,
         ~opts,
         (),
       );
     let resolverByIdMultiple =
       sortField->Belt.Option.map(_sortField =>
-        Resolver.make(
+        Resolver.makeUnitResolver(
           ~name=name ++ "ById",
           ~api,
           ~dataSourceName,
@@ -58,7 +57,6 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
           ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
           ~requestTemplate=getItemById->Pulumi.Input.make,
           ~responseTemplate=result->Pulumi.Input.make,
-          ~kind=Unit,
           ~opts,
           (),
         )
@@ -66,7 +64,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
 
     let fieldNameForAll = "every" ++ name;
     let resolverAll =
-      Resolver.make(
+      Resolver.makeUnitResolver(
         ~name=fieldNameForAll->String.capitalize_ascii,
         ~api,
         ~dataSourceName,
@@ -74,7 +72,6 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
         ~field=fieldNameForAll->Pulumi.Input.make,
         ~requestTemplate=listAllItems->Pulumi.Input.make,
         ~responseTemplate=result->Pulumi.Input.make,
-        ~kind=Unit,
         ~opts,
         (),
       );
@@ -87,7 +84,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
             let idField = idField->Belt.Option.getWithDefault(index);
             switch (authorization) {
             | None =>
-              Resolver.make(
+              Resolver.makeUnitResolver(
                 ~name,
                 ~api,
                 ~dataSourceName,
@@ -96,7 +93,6 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                 ~requestTemplate=
                   queryByIndexFiltered(~index, ~idField)->Pulumi.Input.make,
                 ~responseTemplate=result->Pulumi.Input.make,
-                ~kind=Unit,
                 ~opts,
                 (),
               )
@@ -137,14 +133,14 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~opts,
                   (),
                 );
-              Resolver.make(
+              Resolver.makePipelineResolver(
                 ~name,
                 ~api,
                 ~_type="Query"->Pulumi.Input.make,
                 ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
                 ~requestTemplate="{}"->Pulumi.Input.make,
                 ~responseTemplate=result->Pulumi.Input.make,
-                ~kind=Pipeline([|authFunction, queryFunction|]),
+                ~functions=[|authFunction, queryFunction|],
                 ~opts,
                 (),
               );
@@ -188,7 +184,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
 
             switch (index) {
             | None =>
-              Resolver.make(
+              Resolver.makeUnitResolver(
                 ~name=name ++ idField->String.capitalize_ascii,
                 ~api,
                 ~dataSourceName,
@@ -213,7 +209,6 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                       | _ => resolveIdResult(~idField)
                       },
                   ),
-                ~kind=Unit,
                 ~opts,
                 (),
               )
@@ -232,7 +227,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   );
                 let targetIdField =
                   targetIdField->Belt.Option.getWithDefault(index);
-                Resolver.make(
+                Resolver.makeUnitResolver(
                   ~name=name ++ idField->String.capitalize_ascii,
                   ~api,
                   ~dataSourceName=
@@ -255,12 +250,11 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                       ->Pulumi.Input.make
                     },
                   ~responseTemplate=result->Pulumi.Input.make,
-                  ~kind=Unit,
                   ~opts,
                   (),
                 );
               | None =>
-                Resolver.make(
+                Resolver.makeUnitResolver(
                   ~name=name ++ idField->String.capitalize_ascii,
                   ~api,
                   ~dataSourceName,
@@ -268,7 +262,6 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~field=field->Pulumi.Input.make,
                   ~requestTemplate=null->Pulumi.Input.make,
                   ~responseTemplate=null->Pulumi.Input.make,
-                  ~kind=Unit,
                   ~opts,
                   (),
                 )
@@ -281,7 +274,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
             let {idsField, field, pluginName, tableName, sortField} = config;
             let storageResource = storageResource(~pluginName, ~tableName);
 
-            Resolver.make(
+            Resolver.makeUnitResolver(
               ~name=name ++ idsField->String.capitalize_ascii,
               ~api,
               ~dataSourceName,
@@ -297,7 +290,6 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~storageResource,
                   ~template=resolveIdsResult(~idsField),
                 ),
-              ~kind=Unit,
               ~opts,
               (),
             );
