@@ -24,12 +24,12 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
         
       });
   var name$1 = $$String.capitalize_ascii(name);
-  var resolverByIdSingle = AppSync_Resolver$PulumiAws.make(name$1, api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize_ascii(name$1), subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Templates$PulumiAws.getItemById, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
+  var resolverByIdSingle = AppSync_Resolver$PulumiAws.makeUnitResolver(name$1, api, dataSourceName, "Query", $$String.uncapitalize_ascii(name$1), subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Templates$PulumiAws.getItemById, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
   var resolverByIdMultiple = Belt_Option.map(subIdField, (function (_sortField) {
-          return AppSync_Resolver$PulumiAws.make(name$1 + "ById", api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize_ascii(name$1) + "ById", AppSync_Resolver_Templates$PulumiAws.queryById, AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
+          return AppSync_Resolver$PulumiAws.makeUnitResolver(name$1 + "ById", api, dataSourceName, "Query", $$String.uncapitalize_ascii(name$1) + "ById", AppSync_Resolver_Templates$PulumiAws.queryById, AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
         }));
   var fieldNameForAll = "every" + name$1;
-  var resolverAll = AppSync_Resolver$PulumiAws.make($$String.capitalize_ascii(fieldNameForAll), api, Caml_option.some(dataSourceName), "Query", fieldNameForAll, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
+  var resolverAll = AppSync_Resolver$PulumiAws.makeUnitResolver($$String.capitalize_ascii(fieldNameForAll), api, dataSourceName, "Query", fieldNameForAll, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
   var resourcesMaker = function (allQueryDbs) {
     var resolversByIndex = Belt_List.map(indexes, (function (param) {
             var authorization = param.authorization;
@@ -38,18 +38,16 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
             var name$2 = name$1 + ("By" + $$String.capitalize_ascii(index));
             var idField = Belt_Option.getWithDefault(param.idField, index);
             if (authorization === undefined) {
-              return AppSync_Resolver$PulumiAws.make(name$2, api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize_ascii(name$2), subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIndexSortFiltered(index, idField, subIdField) : AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), undefined);
+              return AppSync_Resolver$PulumiAws.makeUnitResolver(name$2, api, dataSourceName, "Query", $$String.uncapitalize_ascii(name$2), subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIndexSortFiltered(index, idField, subIdField) : AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
             }
             var group = authorization.group;
             var authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$2 + "Auth", api, Util_DynamoDb$ReventlessAws.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, authorization.tableName)).name, apiRole, Caml_option.some(opts), undefined);
             var authFunction = AppSync_Function$PulumiAws.make(name$2 + "Auth", api, authDataSource.name, AppSync_Resolver_Templates$PulumiAws.authorizeIndexedAccessRequest(index, group), AppSync_Resolver_Templates$PulumiAws.authorizeIndexedAccessResponse(group), Caml_option.some(opts), undefined);
             var queryFunction = AppSync_Function$PulumiAws.make(name$2, api, dataSourceName, AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
-            return AppSync_Resolver$PulumiAws.make(name$2, api, undefined, "Query", $$String.uncapitalize_ascii(name$2), "{}", AppSync_Resolver_Templates$PulumiAws.result, /* Pipeline */{
-                        _0: [
-                          authFunction,
-                          queryFunction
-                        ]
-                      }, Caml_option.some(opts), undefined);
+            return AppSync_Resolver$PulumiAws.makePipelineResolver(name$2, api, "Query", $$String.uncapitalize_ascii(name$2), "{}", AppSync_Resolver_Templates$PulumiAws.result, [
+                        authFunction,
+                        queryFunction
+                      ], Caml_option.some(opts), undefined);
           }));
     var storageResource = function (pluginName, tableName) {
       return Util_DynamoDb$ReventlessAws.findResourceInOutput(Util_QueryDb$Reventless.getStorageResources(allQueryDbs, pluginName, tableName));
@@ -113,10 +111,10 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
                 );
               var tmp$1;
               tmp$1 = resolvedField.TAG === /* Single */0 ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result;
-              return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize_ascii(field), api, Caml_option.some(dataSourceName$1), name$1, field, tmp, tmp$1, /* Unit */0, Caml_option.some(opts), undefined);
+              return AppSync_Resolver$PulumiAws.makeUnitResolver(name$1 + $$String.capitalize_ascii(field), api, dataSourceName$1, name$1, field, tmp, tmp$1, Caml_option.some(opts), undefined);
             }
             var field$1 = resolvedField._0;
-            return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize_ascii(field$1), api, Caml_option.some(dataSourceName), name$1, field$1, AppSync_Resolver_Templates$PulumiAws.$$null, AppSync_Resolver_Templates$PulumiAws.$$null, /* Unit */0, Caml_option.some(opts), undefined);
+            return AppSync_Resolver$PulumiAws.makeUnitResolver(name$1 + $$String.capitalize_ascii(field$1), api, dataSourceName, name$1, field$1, AppSync_Resolver_Templates$PulumiAws.$$null, AppSync_Resolver_Templates$PulumiAws.$$null, Caml_option.some(opts), undefined);
           }));
     var idsResolvers = Belt_List.map(resolveIdsConfigs, (function (config) {
             var match = config.target;
@@ -124,11 +122,11 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
             var match$1 = config.source;
             var idsField = match$1.idsField;
             var storageResource$1 = storageResource(match.pluginName, match.tableName);
-            return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize_ascii(idsField), api, Caml_option.some(dataSourceName), name$1, match$1.resolvedField, generateTemplate(storageResource$1, (function (param) {
+            return AppSync_Resolver$PulumiAws.makeUnitResolver(name$1 + $$String.capitalize_ascii(idsField), api, dataSourceName, name$1, match$1.resolvedField, generateTemplate(storageResource$1, (function (param) {
                               return AppSync_Resolver_Templates$PulumiAws.resolveIds(param, idsField, sortField);
                             })), generateTemplate(storageResource$1, (function (param) {
                               return AppSync_Resolver_Templates$PulumiAws.resolveIdsResult(param, idsField);
-                            })), /* Unit */0, Caml_option.some(opts), undefined);
+                            })), Caml_option.some(opts), undefined);
           }));
     return Belt_Array.map(Belt_List.toArray(Pervasives.$at(resolversByIndex, Pervasives.$at(idResolvers, idsResolvers))), Util_AppSync$ReventlessAws.toResource);
   };
