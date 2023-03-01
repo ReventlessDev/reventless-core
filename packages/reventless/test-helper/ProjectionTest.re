@@ -342,7 +342,17 @@ module Make =
     ->unpack()
     ->Js.Promise.then_(
         store =>
-          (expect(store) |> toEqual(Js.Dict.empty()))->Js.Promise.resolve,
+          (
+            expect(
+              store
+              ->Js.Dict.values
+              ->Belt.Array.reduce(0, (acc, states) =>
+                  acc + states->Belt.List.size
+                ),
+            )
+            |> toEqual(0)
+          )
+          ->Js.Promise.resolve,
         _,
       );
   };

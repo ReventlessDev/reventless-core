@@ -311,7 +311,9 @@ function Make(Projection) {
   var thenNoState = function (p) {
     var __x = Curry._1(p[1], /* () */0);
     return __x.then((function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual({ }, Jest.Expect.expect(store)));
+                  return Promise.resolve(Jest.Expect.toEqual(0, Jest.Expect.expect(Belt_Array.reduce(Js_dict.values(store), 0, (function (acc, states) {
+                                            return acc + Belt_List.size(states) | 0;
+                                          })))));
                 }));
   };
   var thenThrow = function (p) {
