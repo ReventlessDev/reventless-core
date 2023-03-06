@@ -70,7 +70,11 @@ function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdC
                 var targetIdField = Belt_Option.getWithDefault(config[/* targetIdField */6], index$1);
                 return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName$1), name$1, field, sortField !== undefined && targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdByIndexSort(index$1, idField, sortField, targetIdField, targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveIdByIndex(index$1, idField, targetIdField), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
               } else {
-                return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName$1), name$1, field, sortField !== undefined && targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdSort(idField, sortField, targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveId(idField), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
+                return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName$1), name$1, field, sortField !== undefined && targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdSort(idField, sortField, targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveId(idField), sortField !== undefined ? (
+                              targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.resultList
+                            ) : (
+                              targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resultList : AppSync_Resolver_Templates$PulumiAws.firstResult
+                            ), /* Unit */0, Caml_option.some(opts), /* () */0);
               }
             } else {
               return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName), name$1, field, AppSync_Resolver_Templates$PulumiAws.$$null, AppSync_Resolver_Templates$PulumiAws.$$null, /* Unit */0, Caml_option.some(opts), /* () */0);

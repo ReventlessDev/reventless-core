@@ -210,7 +210,12 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                       resolveIdSort(~idField, ~sortField, ~targetSortField)
                     | _ => resolveId(~idField)
                     },
-                  ~responseTemplate=result,
+                  ~responseTemplate=
+                    switch (sortField, targetSortField) {
+                    | (None, None)
+                    | (Some(_), Some(_)) => firstResult
+                    | _ => resultList
+                    },
                   ~kind=Unit,
                   ~opts,
                   (),
