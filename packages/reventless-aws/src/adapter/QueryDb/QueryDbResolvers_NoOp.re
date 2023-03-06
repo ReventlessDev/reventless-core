@@ -11,7 +11,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     ~apiRole as _: role,
     ~dataSourceName as _,
     ~indexes as _: list(index),
-    ~sortField as _,
+    ~subIdField as _,
     ~resolveIdConfigs as _: list(resolveIdConfig),
     ~resolveIdsConfigs as _: list(resolveIdsConfig),
     ~opts as _,

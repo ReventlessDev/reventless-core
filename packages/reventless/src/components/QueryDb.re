@@ -91,7 +91,7 @@ module Adapter = {
     (
       ~name: string,
       ~indexes: list(index),
-      ~sortField: string=?,
+      ~subIdField: string=?,
       ~ttl: int=?,
       ~api: 'api,
       ~apiRole: 'role,
@@ -121,7 +121,7 @@ module Adapter = {
       ~apiRole: 'role,
       ~dataSourceName: Pulumi.Output.t(string),
       ~indexes: list(index),
-      ~sortField: option(string),
+      ~subIdField: option(string),
       ~resolveIdConfigs: list(resolveIdConfig),
       ~resolveIdsConfigs: list(resolveIdsConfig),
       ~opts: Pulumi.CustomResourceOptions.t
@@ -146,7 +146,7 @@ module Adapter = {
         ~apiRole as _: role,
         ~dataSourceName as _,
         ~indexes as _: list(index),
-        ~sortField as _,
+        ~subIdField as _,
         ~resolveIdConfigs as _: list(resolveIdConfig),
         ~resolveIdsConfigs as _: list(resolveIdsConfig),
         ~opts as _,
@@ -303,14 +303,14 @@ module Make =
         (),
       );
 
-    let sortField =
+    let subIdField =
       Spec.subIdConfig->Belt.Option.map(config => config.subIdField);
     let storageName = name->ComponentType.name(componentType);
     let storage =
       Storage.make(
         ~name=storageName,
         ~indexes=Spec.indexes,
-        ~sortField?,
+        ~subIdField?,
         ~ttl?,
         ~api,
         ~apiRole,
@@ -330,7 +330,7 @@ module Make =
         ~apiRole,
         ~dataSourceName=storage.dataSourceName,
         ~indexes=Spec.indexes,
-        ~sortField,
+        ~subIdField,
         ~resolveIdConfigs=Spec.resolveIdConfigs,
         ~resolveIdsConfigs=Spec.resolveIdsConfigs,
         ~opts,

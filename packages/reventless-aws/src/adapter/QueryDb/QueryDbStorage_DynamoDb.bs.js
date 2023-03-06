@@ -108,8 +108,8 @@ function dataSource(name, table, api, apiRole, opts) {
   return AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), /* () */0);
 }
 
-function make(name, indexes, sortField, ttl, api, apiRole, opts) {
-  var table = Util_DynamoDb$ReventlessAws.makeTable(attributes(sortField, indexes), Caml_option.some(globalSecondaryIndexes(indexes)), ttl, sortField, opts, name);
+function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
+  var table = Util_DynamoDb$ReventlessAws.makeTable(attributes(subIdField, indexes), Caml_option.some(globalSecondaryIndexes(indexes)), ttl, subIdField, opts, name);
   return /* record */[
           /* resources : array */[Util_DynamoDb$ReventlessAws.toResource(table)],
           /* dataSourceName */dataSource(name, table, api, apiRole, opts).name,

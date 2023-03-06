@@ -6,8 +6,8 @@ var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.
 var QueryDbStorage_DynamoDb$ReventlessAws = require("./QueryDbStorage_DynamoDb.bs.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_DynamoDb_Runtime.bs.js");
 
-function make(name, indexes, sortField, ttl, api, apiRole, opts) {
-  var table = Util_DynamoDbStream$ReventlessAws.makeTable(QueryDbStorage_DynamoDb$ReventlessAws.attributes(sortField, indexes), Caml_option.some(QueryDbStorage_DynamoDb$ReventlessAws.globalSecondaryIndexes(indexes)), ttl, sortField, /* NEW_AND_OLD_IMAGES */546078935, opts, name);
+function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
+  var table = Util_DynamoDbStream$ReventlessAws.makeTable(QueryDbStorage_DynamoDb$ReventlessAws.attributes(subIdField, indexes), Caml_option.some(QueryDbStorage_DynamoDb$ReventlessAws.globalSecondaryIndexes(indexes)), ttl, subIdField, /* NEW_AND_OLD_IMAGES */546078935, opts, name);
   return /* record */[
           /* resources : array */[Util_DynamoDbStream$ReventlessAws.toResource(table)],
           /* dataSourceName */QueryDbStorage_DynamoDb$ReventlessAws.dataSource(name, table, api, apiRole, opts).name,

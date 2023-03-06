@@ -93,12 +93,12 @@ let dataSource = (name, table, api, apiRole, opts) => {
 };
 
 let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
-  (~name, ~indexes, ~sortField=?, ~ttl=?, ~api, ~apiRole, ~opts) => {
+  (~name, ~indexes, ~subIdField=?, ~ttl=?, ~api, ~apiRole, ~opts) => {
     let table =
       Util_DynamoDb.makeTable(
         name,
-        ~attributes=attributes(sortField, indexes),
-        ~rangeKey=?sortField,
+        ~attributes=attributes(subIdField, indexes),
+        ~rangeKey=?subIdField,
         ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
         ~ttl?,
         ~opts,

@@ -12,7 +12,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     ~apiRole: role,
     ~dataSourceName,
     ~indexes: list(index),
-    ~sortField,
+    ~subIdField,
     ~resolveIdConfigs: list(resolveIdConfig),
     ~resolveIdsConfigs: list(resolveIdsConfig),
     ~opts,
@@ -28,23 +28,21 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
         ~_type="Query"->Pulumi.Input.wrap,
         ~field=name->String.uncapitalize->Pulumi.Input.wrap,
         ~requestTemplate=
-          sortField->(
-                       fun
-                       | Some(sortField) => queryByIdSort(sortField)
-                       | None => getItemById
-                     ),
+          switch (subIdField) {
+          | Some(sortField) => queryByIdSort(sortField)
+          | None => getItemById
+          },
         ~responseTemplate=
-          sortField->(
-                       fun
-                       | Some(_) => firstResult
-                       | None => result
-                     ),
+          switch (subIdField) {
+          | Some(_) => firstResult
+          | None => result
+          },
         ~kind=Unit,
         ~opts,
         (),
       );
     let resolverByIdMultiple =
-      sortField->Belt.Option.map(_sortField =>
+      subIdField->Belt.Option.map(_sortField =>
         Resolver.make(
           ~name=name ++ "ById",
           ~api,
@@ -220,7 +218,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                     | _ => resolveId(~sourceIdField)
                     },
                   ~responseTemplate=
-                    switch (sortField, targetSortField) {
+                    switch (sourceSortField, targetSortField) {
                     | (None, None)
                     | (Some(_), Some(_)) => firstResult
                     | _ => resultList

@@ -265,11 +265,11 @@ function Make(Config) {
                 var opts = {
                   parent: self
                 };
-                var sortField = Belt_Option.map(Spec.subIdConfig, (function (config) {
+                var subIdField = Belt_Option.map(Spec.subIdConfig, (function (config) {
                         return config[/* subIdField */0];
                       }));
                 var storageName = ComponentType$Reventless.name(name, /* QueryDb */11);
-                var storage = Curry._7($$Storage.make, storageName, Spec.indexes, sortField, ttl, api, apiRole, opts);
+                var storage = Curry._7($$Storage.make, storageName, Spec.indexes, subIdField, ttl, api, apiRole, opts);
                 self.load = loadFn(storage);
                 self.save = saveFn(storage);
                 self.saveBatch = saveBatchFn(storage);
@@ -281,7 +281,7 @@ function Make(Config) {
                       apiRole,
                       storage[/* dataSourceName */1],
                       Spec.indexes,
-                      sortField,
+                      subIdField,
                       Spec.resolveIdConfigs,
                       Spec.resolveIdsConfigs,
                       opts

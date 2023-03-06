@@ -4,12 +4,12 @@ type api = Pulumi.Output.t(PulumiAws.AppSync.GraphQLApi.t);
 type role = Pulumi.Output.t(PulumiAws.IAM.Role.t);
 
 let make: Reventless.QueryDb.Adapter.storageMaker(api, role) =
-  (~name, ~indexes, ~sortField=?, ~ttl=?, ~api, ~apiRole, ~opts) => {
+  (~name, ~indexes, ~subIdField=?, ~ttl=?, ~api, ~apiRole, ~opts) => {
     let table =
       Util_DynamoDbStream.makeTable(
         name,
-        ~attributes=attributes(sortField, indexes),
-        ~rangeKey=?sortField,
+        ~attributes=attributes(subIdField, indexes),
+        ~rangeKey=?subIdField,
         ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
         ~ttl?,
         ~streamViewType=`NEW_AND_OLD_IMAGES,
