@@ -1,28 +1,46 @@
-/** resolve single id field */
-type resolveIdConfig = {
+type resolveIdSourceConfig = {
   idField: string,
   sortField: option(string), // TODO: make optional field
   field: string,
+};
+
+type resolveIdTargetConfig = {
   pluginName: option(string), // TODO: make optional field
   tableName: string,
   index: option(string), // TODO: make optional field
-  targetIdField: option(string), // TODO: make optional field
-  targetSortField: option(string) // TODO: make optional field
+  idField: option(string), // TODO: make optional field
+  sortField: option(string), // TODO: make optional field
+  unique: bool,
+};
+
+/** resolve single id field */
+type resolveIdConfig = {
+  source: resolveIdSourceConfig,
+  target: resolveIdTargetConfig,
+};
+
+type resolveIdsTargetConfig = {
+  pluginName: option(string), // TODO: make optional field
+  tableName: string,
+};
+
+type resolveIdsSourceConfig = {
+  idsField: string,
+  sortField: option(string), // TODO: make optional field
+  field: string,
 };
 
 /** resolve id list field */
 type resolveIdsConfig = {
-  idsField: string,
-  field: string,
-  pluginName: option(string), // TODO: make optional field
-  tableName: string,
-  sortField: option(string) // TODO: make optional field
+  source: resolveIdsSourceConfig,
+  target: resolveIdsTargetConfig,
 };
 
 type authorization = {
   tableName: string,
   group: string,
 };
+
 type index = {
   index: string,
   _type: string,

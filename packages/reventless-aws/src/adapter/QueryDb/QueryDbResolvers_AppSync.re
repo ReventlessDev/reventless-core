@@ -174,14 +174,19 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
         let idResolvers =
           resolveIdConfigs->Belt.List.map(config => {
             let {
-              idField,
-              sortField,
-              field,
-              pluginName,
-              tableName,
-              index,
-              targetIdField,
-              targetSortField,
+              source: {
+                idField: sourceIdField,
+                sortField: sourceSortField,
+                field,
+              },
+              target: {
+                pluginName,
+                tableName,
+                index,
+                idField: targetIdField,
+                sortField: targetSortField,
+                unique,
+              },
             }: resolveIdConfig = config;
             switch (storageResource(~pluginName, ~tableName)) {
             | Some(storageResource) =>
@@ -205,10 +210,14 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~_type=name->Pulumi.Input.wrap,
                   ~field=field->Pulumi.Input.wrap,
                   ~requestTemplate=
-                    switch (sortField, targetSortField) {
-                    | (Some(sortField), Some(targetSortField)) =>
-                      resolveIdSort(~idField, ~sortField, ~targetSortField)
-                    | _ => resolveId(~idField)
+                    switch (sourceSortField, targetSortField) {
+                    | (Some(sourceSortField), Some(targetSortField)) =>
+                      resolveIdSort(
+                        ~sourceIdField,
+                        ~sourceSortField,
+                        ~targetSortField,
+                      )
+                    | _ => resolveId(~sourceIdField)
                     },
                   ~responseTemplate=
                     switch (sortField, targetSortField) {
@@ -230,18 +239,19 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                   ~_type=name->Pulumi.Input.wrap,
                   ~field=field->Pulumi.Input.wrap,
                   ~requestTemplate=
-                    switch (sortField, targetSortField) {
-                    | (Some(sortField), Some(targetSortField)) =>
+                    switch (sourceSortField, targetSortField) {
+                    | (Some(sourceSortField), Some(targetSortField)) =>
                       resolveIdByIndexSort(
                         ~index,
-                        ~idField,
+                        ~sourceIdField,
                         ~targetIdField,
-                        ~sortField,
+                        ~sourceSortField,
                         ~targetSortField,
                       )
-                    | _ => resolveIdByIndex(~index, ~idField, ~targetIdField)
+                    | _ =>
+                      resolveIdByIndex(~index, ~sourceIdField, ~targetIdField)
                     },
-                  ~responseTemplate=result,
+                  ~responseTemplate=unique ? firstResult : result,
                   ~kind=Unit,
                   ~opts,
                   (),
@@ -265,7 +275,10 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
 
         let idsResolvers =
           resolveIdsConfigs->Belt.List.map(config => {
-            let {idsField, field, pluginName, tableName, sortField} = config;
+            let {
+              source: {idsField, sortField, field},
+              target: {pluginName, tableName},
+            } = config;
             let storageResource = storageResource(~pluginName, ~tableName);
 
             Resolver.make(
