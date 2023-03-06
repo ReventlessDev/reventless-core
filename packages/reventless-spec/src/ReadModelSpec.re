@@ -13,11 +13,14 @@ type resolveIdTargetConfig = {
   unique: bool,
 };
 
-/** resolve single id field */
-type resolveIdConfig = {
-  source: resolveIdSourceConfig,
-  target: resolveIdTargetConfig,
+type resolveConfig('source, 'target) = {
+  source: 'source,
+  target: 'target,
 };
+
+/** resolve single id field */
+type resolveIdConfig =
+  resolveConfig(resolveIdSourceConfig, resolveIdTargetConfig);
 
 type resolveIdsTargetConfig = {
   pluginName: option(string), // TODO: make optional field
@@ -31,10 +34,8 @@ type resolveIdsSourceConfig = {
 };
 
 /** resolve id list field */
-type resolveIdsConfig = {
-  source: resolveIdsSourceConfig,
-  target: resolveIdsTargetConfig,
-};
+type resolveIdsConfig =
+  resolveConfig(resolveIdsSourceConfig, resolveIdsTargetConfig);
 
 type authorization = {
   tableName: string,
