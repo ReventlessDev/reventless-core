@@ -22,15 +22,15 @@ type resolveConfig('source, 'target) = {
 type resolveIdConfig =
   resolveConfig(resolveIdSourceConfig, resolveIdTargetConfig);
 
+type resolveIdsSourceConfig = {
+  idsField: string,
+  field: string,
+};
+
 type resolveIdsTargetConfig = {
   pluginName: option(string), // TODO: make optional field
   tableName: string,
-};
-
-type resolveIdsSourceConfig = {
-  idsField: string,
-  sortField: option(string), // TODO: make optional field
-  field: string,
+  sortField: option(string) // TODO: make optional field
 };
 
 /** resolve id list field */

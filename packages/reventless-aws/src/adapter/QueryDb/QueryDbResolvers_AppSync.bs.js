@@ -84,11 +84,11 @@ function make(name, api, apiRole, dataSourceName, indexes, sortField, resolveIdC
           }));
     var idsResolvers = Belt_List.map(resolveIdsConfigs, (function (config) {
             var match = config[/* target */1];
+            var sortField = match[/* sortField */2];
             var match$1 = config[/* source */0];
-            var sortField = match$1[/* sortField */1];
             var idsField = match$1[/* idsField */0];
             var storageResource$1 = storageResource(match[/* pluginName */0], match[/* tableName */1]);
-            return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(idsField), api, Caml_option.some(dataSourceName), name$1, match$1[/* field */2], generateTemplate(storageResource$1, (function (param) {
+            return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(idsField), api, Caml_option.some(dataSourceName), name$1, match$1[/* field */1], generateTemplate(storageResource$1, (function (param) {
                               return AppSync_Resolver_Templates$PulumiAws.resolveIds(param, idsField, sortField);
                             })), generateTemplate(storageResource$1, (function (param) {
                               return AppSync_Resolver_Templates$PulumiAws.resolveIdsResult(param, idsField);

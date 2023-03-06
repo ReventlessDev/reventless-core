@@ -276,8 +276,8 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
         let idsResolvers =
           resolveIdsConfigs->Belt.List.map(config => {
             let {
-              source: {idsField, sortField, field},
-              target: {pluginName, tableName},
+              source: {idsField, field},
+              target: {pluginName, tableName, sortField},
             } = config;
             let storageResource = storageResource(~pluginName, ~tableName);
 
