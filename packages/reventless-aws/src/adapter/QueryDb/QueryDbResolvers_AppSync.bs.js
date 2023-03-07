@@ -73,9 +73,9 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
                 return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName$1), name$1, field, sourceSortField !== undefined && targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdByIndexSort(index$1, sourceIdField, sourceSortField, targetIdField, targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveIdByIndex(index$1, sourceIdField, targetIdField), match[/* unique */5] ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
               } else {
                 return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName$1), name$1, field, sourceSortField !== undefined && targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdSort(sourceIdField, sourceSortField, targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveId(sourceIdField), sourceSortField !== undefined ? (
-                              targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.resultList
+                              targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result
                             ) : (
-                              targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resultList : AppSync_Resolver_Templates$PulumiAws.firstResult
+                              targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.result : AppSync_Resolver_Templates$PulumiAws.firstResult
                             ), /* Unit */0, Caml_option.some(opts), /* () */0);
               }
             } else {

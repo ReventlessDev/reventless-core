@@ -221,7 +221,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
                     switch (sourceSortField, targetSortField) {
                     | (None, None)
                     | (Some(_), Some(_)) => firstResult
-                    | _ => resultList
+                    | _ => result
                     },
                   ~kind=Unit,
                   ~opts,
