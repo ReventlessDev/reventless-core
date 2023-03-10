@@ -16,9 +16,13 @@ var stackDependencies = Belt_Array.concat(Belt_Array.map(Belt_Option.getWithDefa
           })));
 
 function getOutputs(name) {
-  return Pulumi.all(Belt_Array.keepMap(stackDependencies, (function (stackRef) {
-                    return stackRef.getOutput(name);
-                  })));
+  return Pulumi.all(Belt_Array.map(stackDependencies, (function (stackRef) {
+                      return stackRef.getOutput(name);
+                    }))).apply(function (outputs) {
+              return Belt_Array.keepMap(outputs, (function (x) {
+                            return x;
+                          }));
+            });
 }
 
 var stackDependenciesTasks = getOutputs("tasks");

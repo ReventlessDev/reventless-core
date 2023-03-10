@@ -15,10 +15,11 @@ let stackDependencies =
 
 let getOutputs = name =>
   stackDependencies
-  ->Belt.Array.keepMap(stackRef =>
+  ->Belt.Array.map(stackRef =>
       stackRef->Pulumi.StackReference.getOutput(name)
     )
-  ->Pulumi.Output.all;
+  ->Pulumi.Output.all
+  ->Pulumi.Output.apply(outputs=>outputs->Belt.Array.keepMap(x=>x));
 
 let stackDependenciesTasks: Pulumi.Output.t(array(Task.outputs)) =
   getOutputs("tasks");
