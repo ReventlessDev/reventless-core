@@ -1,16 +1,28 @@
+type subId =
+  | Field(string)
+  | Argument(string)
+  | NoSubId;
+
+type resolvedField =
+  | Single(string)
+  | Multi(string);
+
 type resolveIdSourceConfig = {
   idField: string,
-  sortField: option(string), // TODO: make optional field
-  field: string,
+  subId,
+  resolvedField,
 };
+
+type targetIdField =
+  | Index(string)
+  | IndexWithId(string, string)
+  | Id;
 
 type resolveIdTargetConfig = {
   pluginName: option(string), // TODO: make optional field
   tableName: string,
-  index: option(string), // TODO: make optional field
-  idField: option(string), // TODO: make optional field
-  sortField: option(string), // TODO: make optional field
-  unique: bool,
+  idField: targetIdField,
+  subIdField: option(string) // TODO: make optional field
 };
 
 type resolveConfig('source, 'target) = {
@@ -24,13 +36,13 @@ type resolveIdConfig =
 
 type resolveIdsSourceConfig = {
   idsField: string,
-  field: string,
+  resolvedField: string,
 };
 
 type resolveIdsTargetConfig = {
   pluginName: option(string), // TODO: make optional field
   tableName: string,
-  sortField: option(string) // TODO: make optional field
+  subIdField: option(string) // TODO: make optional field
 };
 
 /** resolve id list field */
@@ -46,7 +58,7 @@ type index = {
   index: string,
   _type: string,
   idField: option(string), // TODO: make optional field
-  sortField: option(string), // TODO: make optional field
+  subIdField: option(string), // TODO: make optional field
   projectionType: [ | `KEYS_ONLY | `ALL | `INCLUDE(array(string))],
   authorization: option(authorization),
 };

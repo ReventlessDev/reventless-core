@@ -15,7 +15,7 @@ var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_Dy
 function globalSecondaryIndexes(indexes) {
   return Belt_Array.map(Belt_List.toArray(indexes), (function (param) {
                 var projectionType = param[/* projectionType */4];
-                var sortField = param[/* sortField */3];
+                var subIdField = param[/* subIdField */3];
                 var idField = param[/* idField */2];
                 var index = param[/* index */0];
                 if (typeof projectionType === "number") {
@@ -34,8 +34,8 @@ function globalSecondaryIndexes(indexes) {
                           }
                         })()
                   };
-                  if (sortField !== undefined) {
-                    tmp.rangeKey = Caml_option.valFromOption(sortField);
+                  if (subIdField !== undefined) {
+                    tmp.rangeKey = Caml_option.valFromOption(subIdField);
                   }
                   return tmp;
                 } else {
@@ -45,8 +45,8 @@ function globalSecondaryIndexes(indexes) {
                     projectionType: "INCLUDE",
                     nonKeyAttributes: projectionType[1]
                   };
-                  if (sortField !== undefined) {
-                    tmp$1.rangeKey = Caml_option.valFromOption(sortField);
+                  if (subIdField !== undefined) {
+                    tmp$1.rangeKey = Caml_option.valFromOption(subIdField);
                   }
                   return tmp$1;
                 }
@@ -79,7 +79,7 @@ function attributes(sortField, indexes) {
                                             name: param[/* index */0],
                                             type: param[/* _type */1]
                                           },
-                                          Belt_Option.mapWithDefault(param[/* sortField */3], /* [] */0, (function (sortField) {
+                                          Belt_Option.mapWithDefault(param[/* subIdField */3], /* [] */0, (function (sortField) {
                                                   return /* :: */[
                                                           {
                                                             name: sortField,

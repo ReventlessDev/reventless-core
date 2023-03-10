@@ -28,7 +28,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
   var resourcesMaker = function (allQueryDbs) {
     var resolversByIndex = Belt_List.map(indexes, (function (param) {
             var authorization = param[/* authorization */5];
-            var sortField = param[/* sortField */3];
+            var subIdField = param[/* subIdField */3];
             var index = param[/* index */0];
             var name$2 = name$1 + ("By" + $$String.capitalize(index));
             var idField = Belt_Option.getWithDefault(param[/* idField */2], index);
@@ -43,7 +43,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
                             queryFunction
                           ]], Caml_option.some(opts), /* () */0);
             } else {
-              return AppSync_Resolver$PulumiAws.make(name$2, api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize(name$2), sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIndexSortFiltered(index, idField, sortField) : AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
+              return AppSync_Resolver$PulumiAws.make(name$2, api, Caml_option.some(dataSourceName), "Query", $$String.uncapitalize(name$2), subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIndexSortFiltered(index, idField, subIdField) : AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
             }
           }));
     var storageResource = function (pluginName, tableName) {
@@ -58,37 +58,69 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
     };
     var idResolvers = Belt_List.map(resolveIdConfigs, (function (config) {
             var match = config[/* target */1];
-            var targetSortField = match[/* sortField */4];
-            var index = match[/* index */2];
+            var targetSortField = match[/* subIdField */3];
+            var targetId = match[/* idField */2];
             var match$1 = config[/* source */0];
-            var field = match$1[/* field */2];
-            var sourceSortField = match$1[/* sortField */1];
+            var resolvedField = match$1[/* resolvedField */2];
+            var sourceSubId = match$1[/* subId */1];
             var sourceIdField = match$1[/* idField */0];
-            var match$2 = storageResource(match[/* pluginName */0], match[/* tableName */1]);
-            if (match$2 !== undefined) {
-              var dataSourceName$1 = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$1 + ($$String.capitalize(field) + "Resolver"), api, Caml_option.valFromOption(match$2).name, apiRole, Caml_option.some(opts), /* () */0).name;
-              if (index !== undefined) {
-                var index$1 = index;
-                var targetIdField = Belt_Option.getWithDefault(match[/* idField */3], index$1);
-                return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName$1), name$1, field, sourceSortField !== undefined && targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdByIndexSort(index$1, sourceIdField, sourceSortField, targetIdField, targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveIdByIndex(index$1, sourceIdField, targetIdField), match[/* unique */5] ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, /* Unit */0, Caml_option.some(opts), /* () */0);
-              } else {
-                return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName$1), name$1, field, sourceSortField !== undefined && targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdSort(sourceIdField, sourceSortField, targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveId(sourceIdField), sourceSortField !== undefined ? (
-                              targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result
-                            ) : (
-                              targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.result : AppSync_Resolver_Templates$PulumiAws.firstResult
-                            ), /* Unit */0, Caml_option.some(opts), /* () */0);
-              }
+            var match$2;
+            if (typeof targetId === "number") {
+              match$2 = /* tuple */[
+                "",
+                ""
+              ];
+            } else if (targetId.tag) {
+              match$2 = /* tuple */[
+                targetId[0],
+                targetId[1]
+              ];
             } else {
-              return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName), name$1, field, AppSync_Resolver_Templates$PulumiAws.$$null, AppSync_Resolver_Templates$PulumiAws.$$null, /* Unit */0, Caml_option.some(opts), /* () */0);
+              var index = targetId[0];
+              match$2 = /* tuple */[
+                index,
+                index
+              ];
+            }
+            var targetIdField = match$2[1];
+            var index$1 = match$2[0];
+            var match$3 = storageResource(match[/* pluginName */0], match[/* tableName */1]);
+            if (match$3 !== undefined) {
+              var field = resolvedField[0];
+              var dataSourceName$1 = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$1 + ($$String.capitalize(field) + "Resolver"), api, Caml_option.valFromOption(match$3).name, apiRole, Caml_option.some(opts), /* () */0).name;
+              var tmp;
+              tmp = typeof targetId === "number" ? (
+                  typeof sourceSubId === "number" ? AppSync_Resolver_Templates$PulumiAws.resolveId(sourceIdField) : (
+                      sourceSubId.tag ? (
+                          targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdSortArgument(sourceIdField, sourceSubId[0], targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveId(sourceIdField)
+                        ) : (
+                          targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdSort(sourceIdField, sourceSubId[0], targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveId(sourceIdField)
+                        )
+                    )
+                ) : (
+                  typeof sourceSubId === "number" ? AppSync_Resolver_Templates$PulumiAws.resolveIdByIndex(index$1, sourceIdField, targetIdField) : (
+                      sourceSubId.tag ? (
+                          targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdByIndexSortArgument(index$1, sourceIdField, sourceSubId[0], targetIdField, targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveIdByIndex(index$1, sourceIdField, targetIdField)
+                        ) : (
+                          targetSortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.resolveIdByIndexSort(index$1, sourceIdField, sourceSubId[0], targetIdField, targetSortField) : AppSync_Resolver_Templates$PulumiAws.resolveIdByIndex(index$1, sourceIdField, targetIdField)
+                        )
+                    )
+                );
+              var tmp$1;
+              tmp$1 = resolvedField.tag ? AppSync_Resolver_Templates$PulumiAws.result : AppSync_Resolver_Templates$PulumiAws.firstResult;
+              return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field), api, Caml_option.some(dataSourceName$1), name$1, field, tmp, tmp$1, /* Unit */0, Caml_option.some(opts), /* () */0);
+            } else {
+              var field$1 = resolvedField[0];
+              return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(field$1), api, Caml_option.some(dataSourceName), name$1, field$1, AppSync_Resolver_Templates$PulumiAws.$$null, AppSync_Resolver_Templates$PulumiAws.$$null, /* Unit */0, Caml_option.some(opts), /* () */0);
             }
           }));
     var idsResolvers = Belt_List.map(resolveIdsConfigs, (function (config) {
             var match = config[/* target */1];
-            var sortField = match[/* sortField */2];
+            var sortField = match[/* subIdField */2];
             var match$1 = config[/* source */0];
             var idsField = match$1[/* idsField */0];
             var storageResource$1 = storageResource(match[/* pluginName */0], match[/* tableName */1]);
-            return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(idsField), api, Caml_option.some(dataSourceName), name$1, match$1[/* field */1], generateTemplate(storageResource$1, (function (param) {
+            return AppSync_Resolver$PulumiAws.make(name$1 + $$String.capitalize(idsField), api, Caml_option.some(dataSourceName), name$1, match$1[/* resolvedField */1], generateTemplate(storageResource$1, (function (param) {
                               return AppSync_Resolver_Templates$PulumiAws.resolveIds(param, idsField, sortField);
                             })), generateTemplate(storageResource$1, (function (param) {
                               return AppSync_Resolver_Templates$PulumiAws.resolveIdsResult(param, idsField);
