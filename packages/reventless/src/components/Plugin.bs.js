@@ -85,13 +85,12 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), undefined);
           }));
     var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
-    var coreExtensionPoints = Belt_Option.flatMap(Interstack$Reventless.coreStackReference, (function (coreStack) {
-            return coreStack.getOutput("extensionPoints");
-          }));
-    var pureOutputs = (
-        coreExtensionPoints !== undefined ? Caml_option.valFromOption(coreExtensionPoints) : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!")
-      ).apply(function (coreExtensionPoints) {
-          var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(coreExtensionPoints, PluginExtensionPointSpec$ReventlessSpec.name);
+    var coreExtensionPoints = Belt_Option.getWithDefault(Belt_Option.map(Interstack$Reventless.coreStackReference, (function (coreStack) {
+                return coreStack.getOutput("extensionPoints");
+              })), Pulumi.output(undefined));
+    var pureOutputs = coreExtensionPoints.apply(function (coreExtensionPoints) {
+          var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? Caml_option.valFromOption(coreExtensionPoints) : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
+          var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
           var corePluginExtensionPointCommandTopicRemoteConnector = Curry._1(CorePluginExtensionPointRemoteConnector.make, corePluginExtensionPoint.commandTopic);
           var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish;
           var extensions$1 = Belt_Array.map(extensions, (function (Extension) {
