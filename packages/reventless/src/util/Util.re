@@ -5,6 +5,7 @@ module Array = Util_Array;
 module Decco = Util_Decco;
 module Error = Util_Error;
 module EventTopic = Util_EventTopic;
+module Logger = Logger;
 module Promise = Util_Promise;
 module Pulumi = Util_Pulumi;
 module QueryDb = Util_QueryDb;

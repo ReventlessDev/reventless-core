@@ -16,6 +16,8 @@ var $$Error;
 
 var EventTopic;
 
+var Logger;
+
 var $$Promise;
 
 var Pulumi;
@@ -33,6 +35,7 @@ exports.$$Array = $$Array;
 exports.Decco = Decco;
 exports.$$Error = $$Error;
 exports.EventTopic = EventTopic;
+exports.Logger = Logger;
 exports.$$Promise = $$Promise;
 exports.Pulumi = Pulumi;
 exports.QueryDb = QueryDb;
