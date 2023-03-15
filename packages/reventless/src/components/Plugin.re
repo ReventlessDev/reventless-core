@@ -228,7 +228,7 @@ module Make =
       );
       let coreExtensionPoints =
         Interstack.coreStackReference
-        ->Belt.Option.map(coreStack => {
+        ->Belt.Option.map((coreStack, _: unit) => {
             let extPts =
               coreStack->Pulumi.StackReference.getOutput("extensionPoints");
             Js.log4(
@@ -237,9 +237,30 @@ module Make =
               "coreStack-outputs > extensionPoints",
               extPts,
             );
+            let _ =
+              extPts->Pulumi.Output.apply(xp =>
+                Js.log4(
+                  "DEBUG:",
+                  __MODULE__,
+                  "coreStack-outputs > extensionPoints > apply",
+                  xp,
+                )
+              );
+
             extPts;
           })
-        ->Belt.Option.getWithDefault(Pulumi.Output.make(None));
+        ->Belt.Option.getWithDefault(() => {
+            let outputOfNone = Pulumi.Output.make(None);
+            Js.log4(
+              "DEBUG:",
+              __MODULE__,
+              "corestack-outputs > default",
+              outputOfNone,
+            );
+            outputOfNone;
+          });
+
+      let coreExtensionPoints = coreExtensionPoints();
 
       Js.log4(
         "DEBUG:",
