@@ -19,7 +19,7 @@ var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./Ev
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
   var eventHandlerLambda = Pulumi.all(Lambda$PulumiAws.Policy.customPolicies(policy1, policy2)).apply(function (policies) {
-        Logger$Reventless.log("File \"EventCollectorConnector_DynamoDbStream.re\", line 18, characters 37-44", undefined, undefined, "hi", policies);
+        Logger$Reventless.log("File \"EventCollectorConnector_DynamoDbStream.re\", line 19, characters 17-24", undefined, undefined, "eventHandlerLambda-policies", policies);
         return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                         (function (param, param$1) {
                             return EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleEvents, param, param$1);
