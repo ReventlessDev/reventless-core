@@ -86,13 +86,22 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           }));
     var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
     console.log("DEBUG:", "Plugin-Reventless", "coreStackReference", Interstack$Reventless.coreStackReference);
-    var coreExtensionPoints = Belt_Option.getWithDefault(Belt_Option.map(Interstack$Reventless.coreStackReference, (function (coreStack) {
+    var coreExtensionPoints = Belt_Option.getWithDefault(Belt_Option.map(Interstack$Reventless.coreStackReference, (function (coreStack, param) {
                 var extPts = coreStack.getOutput("extensionPoints");
                 console.log("DEBUG:", "Plugin-Reventless", "coreStack-outputs > extensionPoints", extPts);
+                extPts.apply(function (xp) {
+                      console.log("DEBUG:", "Plugin-Reventless", "coreStack-outputs > extensionPoints > apply", xp);
+                      
+                    });
                 return extPts;
-              })), Pulumi.output(undefined));
-    console.log("DEBUG:", "Plugin-Reventless", "coreExtensionPoints", coreExtensionPoints);
-    var pureOutputs = coreExtensionPoints.apply(function (coreExtensionPoints) {
+              })), (function (param) {
+            var outputOfNone = Pulumi.output(undefined);
+            console.log("DEBUG:", "Plugin-Reventless", "corestack-outputs > default", outputOfNone);
+            return outputOfNone;
+          }));
+    var coreExtensionPoints$1 = Curry._1(coreExtensionPoints, undefined);
+    console.log("DEBUG:", "Plugin-Reventless", "coreExtensionPoints", coreExtensionPoints$1);
+    var pureOutputs = coreExtensionPoints$1.apply(function (coreExtensionPoints) {
           var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? Caml_option.valFromOption(coreExtensionPoints) : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
           var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
           var corePluginExtensionPointCommandTopicRemoteConnector = Curry._1(CorePluginExtensionPointRemoteConnector.make, corePluginExtensionPoint.commandTopic);
