@@ -10,6 +10,7 @@ var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.bs.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
+var Logger$Reventless = require("@reventless/reventless/src/util/Logger.bs.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.bs.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.bs.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
@@ -60,10 +61,7 @@ function make(name, api, fields, commandGenerator, opts) {
   var resolvers = Belt_Array.map(fields, (function (field) {
           var match = field.split("_");
           var commandName = match.length !== 2 ? $$String.capitalize_ascii(field) : $$String.capitalize_ascii(match[1]);
-          dataSource.name.apply(function (dsn) {
-                console.log("COMMANDGEN-RESOLVER " + (name + "DATASOURCENAME:"), dsn);
-                
-              });
+          Logger$Reventless.logOutput("File \"CommandGeneratorResolvers_AppSync.re\", line 121, characters 15-22", undefined, undefined, "datasource-name (" + name + ")", dataSource.name);
           return AppSync_Resolver$PulumiAws.makeUnitResolver($$String.capitalize_ascii(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
         }));
   var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);
