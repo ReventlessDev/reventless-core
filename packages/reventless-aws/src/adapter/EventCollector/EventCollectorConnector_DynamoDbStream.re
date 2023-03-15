@@ -14,7 +14,8 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     let eventHandlerLambda =
       PulumiAws.Lambda.Policy.customPolicies(policy1, policy2) // TODO calculate real policies
       ->Pulumi.Output.all
-      ->Pulumi.Output.apply(policies =>
+      ->Pulumi.Output.apply(policies => {
+          Reventless.Logger.log(~loc=__LOC__, "hi", policies);
           Lambda.CallbackFunction.make(
             ~name,
             ~args=
@@ -30,8 +31,8 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
               ),
             ~opts,
             (),
-          )
-        );
+          );
+        });
 
     let _ =
       eventTopics
