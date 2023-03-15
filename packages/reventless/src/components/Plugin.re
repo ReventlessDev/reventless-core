@@ -220,51 +220,15 @@ module Make =
       extensionPoints->Component.extractMultipleOutputs;
 
     let pureOutputs = {
-      Js.log4(
-        "DEBUG:",
-        __MODULE__,
-        "coreStackReference",
-        Interstack.coreStackReference,
-      );
       let coreExtensionPoints =
         Interstack.coreStackReference
-        ->Belt.Option.map((coreStack, _: unit) => {
-            let extPts =
-              coreStack->Pulumi.StackReference.getOutput("extensionPoints");
-            Js.log4(
-              "DEBUG:",
-              __MODULE__,
-              "coreStack-outputs > extensionPoints",
-              extPts,
-            );
-            let _ =
-              extPts->Pulumi.Output.apply(xp =>
-                Js.log4(
-                  "DEBUG:",
-                  __MODULE__,
-                  "coreStack-outputs > extensionPoints > apply",
-                  xp,
-                )
-              );
-
-            extPts;
+        ->Belt.Option.map(coreStack => {
+            coreStack->Pulumi.StackReference.getOutput("extensionPoints")
           })
-        ->Belt.Option.getWithDefault(() => {
-            let outputOfNone = Pulumi.Output.make(None);
-            Js.log4(
-              "DEBUG:",
-              __MODULE__,
-              "corestack-outputs > default",
-              outputOfNone,
-            );
-            outputOfNone;
-          });
+        ->Belt.Option.getWithDefault(Pulumi.Output.make(None));
 
-      let coreExtensionPoints = coreExtensionPoints();
-
-      Js.log4(
-        "DEBUG:",
-        __MODULE__,
+      Logger.logOutput(
+        ~loc=__LOC__,
         "coreExtensionPoints",
         coreExtensionPoints,
       );
