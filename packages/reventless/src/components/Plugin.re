@@ -233,10 +233,9 @@ module Make =
 
       Logger.log(
         ~loc=__LOC__,
-        "coreExtensionPoints - typeOf",
-        coreExtensionPoints->Js.typeof,
+        "coreExtensionPoints - isOutput?",
+        coreExtensionPoints->Pulumi.Output.isOutput,
       );
-      Logger.log(~loc=__LOC__, "coreExtensionPoints", coreExtensionPoints);
       Logger.logOutput(
         ~loc=__LOC__,
         "coreExtensionPoints - output",

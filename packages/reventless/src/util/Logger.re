@@ -2,7 +2,7 @@ module Level = {
   type nonrec t =
     | Debug
     | Info
-    | Warn
+    | Warning
     | Error
     | Custom(string);
 
@@ -10,26 +10,39 @@ module Level = {
     switch (level) {
     | Debug => "DEBUG"
     | Info => "INFO"
-    | Warn => "WARNING"
+    | Warning => "WARNING"
     | Error => "ERROR"
     | Custom(x) => x
     };
+
+  let default = Debug;
 };
 
 type logItem;
 external logItem: 'a => logItem = "%identity";
+external identity: 'a => 'a = "%identity";
 
 let log:
-  (~loc: string=?, ~serialize: bool=?, ~level: Level.t=?, string, 'a) => unit =
-  (~loc=?, ~serialize=false, ~level=Debug, desc, item) => {
+  (
+    ~loc: string=?,
+    ~map: 'a => 'b=?,
+    ~serialize: bool=?,
+    ~level: Level.t=?,
+    string,
+    'a
+  ) =>
+  unit =
+  (~loc=?, ~map=identity, ~serialize=false, ~level=Level.default, desc, item) => {
     let tag =
       level->Level.toString
       ++ loc->Belt.Option.mapWithDefault(":", loc => "(" ++ loc ++ "):");
 
-    let item = serialize ? item->Js.Json.stringifyAny->logItem : item->logItem;
+    let item =
+      serialize
+        ? item->map->Js.Json.stringifyAny->logItem : item->map->logItem;
 
     switch (level) {
-    | Warn => Js.Console.warn3(tag, desc, item)
+    | Warning => Js.Console.warn3(tag, desc, item)
     | Error => Js.Console.error3(tag, desc, item)
     | Info
     | Custom(_) => Js.Console.info3(tag, desc, item)
@@ -41,16 +54,17 @@ let log:
 let logOutput:
   (
     ~loc: string=?,
+    ~map: 'a => 'b=?,
     ~serialize: bool=?,
     ~level: Level.t=?,
     string,
     Pulumi.Output.t('a)
   ) =>
   unit =
-  (~loc=?, ~serialize=false, ~level=Debug, desc, item) => {
+  (~loc=?, ~map=?, ~serialize=?, ~level=?, desc, item) => {
     let _: Pulumi.Output.t(unit) =
       item->Pulumi.Output.apply(item =>
-        log(~loc?, ~serialize, ~level, desc, item)
+        log(~loc?, ~map?, ~serialize?, ~level?, desc, item)
       );
     ();
   };

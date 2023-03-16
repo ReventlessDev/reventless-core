@@ -6,6 +6,7 @@ var Js_exn = require("rescript/lib/js/js_exn.js");
 var Belt_Array = require("rescript/lib/js/belt_Array.js");
 var Caml_array = require("rescript/lib/js/caml_array.js");
 var Aws = require("@pulumi/aws");
+var Belt_Option = require("rescript/lib/js/belt_Option.js");
 var Caml_option = require("rescript/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
@@ -18,8 +19,16 @@ var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoD
 var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./EventCollectorConnector_DynamoDbStream_Runtime.bs.js");
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
-  var eventHandlerLambda = Pulumi.all(Lambda$PulumiAws.Policy.customPolicies(policy1, policy2)).apply(function (policies) {
-        Logger$Reventless.log("File \"EventCollectorConnector_DynamoDbStream.re\", line 19, characters 17-24", undefined, undefined, "eventHandlerLambda-policies", policies);
+  Belt_Option.map(policy1, (function (p1) {
+          return Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 16, characters 41-48", undefined, undefined, undefined, "policy1", p1);
+        }));
+  Belt_Option.map(policy2, (function (p2) {
+          return Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 20, characters 41-48", undefined, undefined, undefined, "policy2", p2);
+        }));
+  var policies = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2);
+  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 24, characters 11-18", undefined, undefined, undefined, "policies", Pulumi.all(policies));
+  var eventHandlerLambda = Pulumi.all(policies).apply(function (policies) {
+        Logger$Reventless.log("File \"EventCollectorConnector_DynamoDbStream.re\", line 34, characters 17-24", undefined, undefined, undefined, "eventHandlerLambda-policies", policies);
         return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                         (function (param, param$1) {
                             return EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleEvents, param, param$1);
