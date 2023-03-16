@@ -20,7 +20,7 @@ var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./Ev
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
   Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 15, characters 11-18", undefined, undefined, undefined, "policy1", Belt_Option.getWithDefault(policy1, Pulumi.output("None")));
-  Logger$Reventless.log("File \"EventCollectorConnector_DynamoDbStream.re\", line 20, characters 11-18", undefined, undefined, undefined, "policy2", Belt_Option.getWithDefault(policy2, Pulumi.output("None")));
+  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 20, characters 11-18", undefined, undefined, undefined, "policy2", Belt_Option.getWithDefault(policy2, Pulumi.output("None")));
   var policies = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2);
   Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 26, characters 11-18", undefined, undefined, undefined, "policies", Pulumi.all(policies));
   var eventHandlerLambda = Pulumi.all(policies).apply(function (policies) {
