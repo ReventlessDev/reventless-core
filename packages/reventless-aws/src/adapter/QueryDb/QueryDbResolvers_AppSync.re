@@ -17,15 +17,12 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     ~resolveIdsConfigs: list(resolveIdsConfig),
     ~opts,
   ) => {
-    Js.log2(
-      "**********| hello from " ++ __MODULE__ ++ " |*********",
+    open Resolver.Templates;
+    Reventless.Logger.logOutput(
+      ~loc=__LOC__,
+      "datasource name",
       dataSourceName,
     );
-    open Resolver.Templates;
-    let _log =
-      dataSourceName->Pulumi.Output.apply(dsn =>
-        Js.log2("QDB-RESOLVER " ++ name ++ "DATASOURCENAME:", dsn)
-      );
     let dataSourceName = dataSourceName->Pulumi.Output.asInput;
     let name = name->String.capitalize_ascii;
     let resolverByIdSingle =

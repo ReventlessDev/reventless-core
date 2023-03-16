@@ -8,6 +8,7 @@ var Belt_Array = require("rescript/lib/js/belt_Array.js");
 var Pervasives = require("rescript/lib/js/pervasives.js");
 var Belt_Option = require("rescript/lib/js/belt_Option.js");
 var Caml_option = require("rescript/lib/js/caml_option.js");
+var Logger$Reventless = require("@reventless/reventless/src/util/Logger.bs.js");
 var Util_QueryDb$Reventless = require("@reventless/reventless/src/util/Util_QueryDb.bs.js");
 var AppSync_Function$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Function.bs.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.bs.js");
@@ -18,11 +19,7 @@ var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
 
 function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveIdConfigs, resolveIdsConfigs, opts) {
-  console.log("**********| hello from QueryDbResolvers_AppSync-ReventlessAws |*********", dataSourceName);
-  dataSourceName.apply(function (dsn) {
-        console.log("QDB-RESOLVER " + (name + "DATASOURCENAME:"), dsn);
-        
-      });
+  Logger$Reventless.logOutput("File \"QueryDbResolvers_AppSync.re\", line 22, characters 11-18", undefined, undefined, undefined, "datasource name", dataSourceName);
   var name$1 = $$String.capitalize_ascii(name);
   var resolverByIdSingle = AppSync_Resolver$PulumiAws.makeUnitResolver(name$1, api, dataSourceName, "Query", $$String.uncapitalize_ascii(name$1), subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Templates$PulumiAws.getItemById, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
   var resolverByIdMultiple = Belt_Option.map(subIdField, (function (_sortField) {
@@ -146,4 +143,4 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
 }
 
 exports.make = make;
-/* Util_QueryDb-Reventless Not a pure module */
+/* Logger-Reventless Not a pure module */
