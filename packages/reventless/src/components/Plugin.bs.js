@@ -86,13 +86,12 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             return Curry._5(ExtensionPoint.make, publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), undefined);
           }));
     var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
-    Logger$Reventless.log("File \"Plugin.re\", line 224, characters 13-20", undefined, undefined, "coreStackReference", Interstack$Reventless.coreStackReference);
+    Logger$Reventless.log("File \"Plugin.re\", line 224, characters 13-20", undefined, undefined, undefined, "coreStackReference", Interstack$Reventless.coreStackReference);
     var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
             return coreStack.getOutput("extensionPoints");
           }));
-    Logger$Reventless.log("File \"Plugin.re\", line 235, characters 13-20", undefined, undefined, "coreExtensionPoints - typeOf", typeof coreExtensionPoints);
-    Logger$Reventless.log("File \"Plugin.re\", line 239, characters 22-29", undefined, undefined, "coreExtensionPoints", coreExtensionPoints);
-    Logger$Reventless.logOutput("File \"Plugin.re\", line 241, characters 13-20", undefined, undefined, "coreExtensionPoints - output", coreExtensionPoints);
+    Logger$Reventless.log("File \"Plugin.re\", line 235, characters 13-20", undefined, undefined, undefined, "coreExtensionPoints - isOutput?", Pulumi.Output.isInstance(coreExtensionPoints));
+    Logger$Reventless.logOutput("File \"Plugin.re\", line 240, characters 13-20", undefined, undefined, undefined, "coreExtensionPoints - output", coreExtensionPoints);
     var pureOutputs = coreExtensionPoints.apply(function (coreExtensionPoints) {
           var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? Caml_option.valFromOption(coreExtensionPoints) : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
           var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
