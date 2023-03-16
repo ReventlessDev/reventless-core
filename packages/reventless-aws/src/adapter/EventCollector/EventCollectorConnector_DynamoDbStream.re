@@ -16,7 +16,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       "policy1",
       policy1->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
     );
-    Reventless.Logger.log(
+    Reventless.Logger.logOutput(
       ~loc=__LOC__,
       "policy2",
       policy2->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
