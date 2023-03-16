@@ -54,17 +54,20 @@ let log:
 let logOutput:
   (
     ~loc: string=?,
-    ~map: 'a => 'b=?,
+    ~map: 'b => 'c=?,
     ~serialize: bool=?,
     ~level: Level.t=?,
     string,
-    Pulumi.Output.t('a)
+    'a
   ) =>
   unit =
-  (~loc=?, ~map=?, ~serialize=?, ~level=?, desc, item) => {
-    let _: Pulumi.Output.t(unit) =
-      item->Pulumi.Output.apply(item =>
-        log(~loc?, ~map?, ~serialize?, ~level?, desc, item)
-      );
-    ();
-  };
+  (~loc=?, ~map=?, ~serialize=?, ~level=?, desc, item) =>
+    if (item->Pulumi.Output.isOutput) {
+      item
+      ->Pulumi.Output.apply(item =>
+          log(~loc?, ~map?, ~serialize?, ~level?, desc, item)
+        )
+      ->ignore;
+    } else {
+      log(~loc?, ~level=Level.Error, desc, "> is not an output <");
+    };

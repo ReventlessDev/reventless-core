@@ -11,14 +11,16 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     ~policy2=?,
     ~opts,
   ) => {
-    let _: option(unit) =
-      policy1->Belt.Option.map(p1 =>
-        Reventless.Logger.logOutput(~loc=__LOC__, "policy1", p1)
-      );
-    let _: option(unit) =
-      policy2->Belt.Option.map(p2 =>
-        Reventless.Logger.logOutput(~loc=__LOC__, "policy2", p2)
-      );
+    Reventless.Logger.logOutput(
+      ~loc=__LOC__,
+      "policy1",
+      policy1->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
+    );
+    Reventless.Logger.log(
+      ~loc=__LOC__,
+      "policy2",
+      policy2->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
+    );
     let policies = PulumiAws.Lambda.Policy.customPolicies(policy1, policy2); // TODO calculate real policies
     Reventless.Logger.logOutput(
       ~loc=__LOC__,

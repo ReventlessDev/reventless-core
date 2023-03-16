@@ -231,11 +231,6 @@ module Make =
           coreStack->Pulumi.StackReference.getOutput("extensionPoints")
         });
 
-      Logger.log(
-        ~loc=__LOC__,
-        "coreExtensionPoints - isOutput?",
-        coreExtensionPoints->Pulumi.Output.isOutput,
-      );
       Logger.logOutput(
         ~loc=__LOC__,
         "coreExtensionPoints - output",

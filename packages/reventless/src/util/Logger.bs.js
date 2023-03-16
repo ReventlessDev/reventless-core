@@ -3,6 +3,7 @@
 
 var Curry = require("rescript/lib/js/curry.js");
 var Belt_Option = require("rescript/lib/js/belt_Option.js");
+var Pulumi = require("@pulumi/pulumi");
 
 function toString(level) {
   if (typeof level !== "number") {
@@ -59,13 +60,17 @@ function log(loc, mapOpt, serializeOpt, levelOpt, desc, item) {
 }
 
 function logOutput(loc, map, serialize, level, desc, item) {
-  item.apply(function (item) {
-        return log(loc, map, serialize, level, desc, item);
-      });
-  
+  if (Pulumi.Output.isInstance(item)) {
+    item.apply(function (item) {
+          return log(loc, map, serialize, level, desc, item);
+        });
+    return ;
+  } else {
+    return log(loc, undefined, undefined, /* Error */3, desc, "> is not an output <");
+  }
 }
 
 exports.Level = Level;
 exports.log = log;
 exports.logOutput = logOutput;
-/* No side effect */
+/* @pulumi/pulumi Not a pure module */
