@@ -192,15 +192,17 @@ module Make = (EventCollector: EventCollector.T) : T => {
         self,
         name,
       ) => {
-    Reventless.Logger.logOutput(
+    Reventless.Logger.logOptionalOutput(
       ~loc=__LOC__,
       name ++ ": policy1",
-      policy1->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
+      policy1,
+      ~default="None",
     );
-    Reventless.Logger.logOutput(
+    Reventless.Logger.logOptionalOutput(
       ~loc=__LOC__,
       name ++ ": policy2",
-      policy2->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
+      policy2,
+      ~default="None",
     );
 
     let opts =
@@ -257,11 +259,23 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~scheduler,
         ~memorySize=2048,
         ~timeout=180,
-        ~policy1=?,
-        ~policy2=?,
+        ~policy1: option(Pulumi.Output.t(string))=?,
+        ~policy2: option(Pulumi.Output.t(string))=?,
         ~opts=?,
         _,
       ) => {
+    Reventless.Logger.logOptionalOutput(
+      ~loc=__LOC__,
+      name ++ ": policy1",
+      policy1,
+      ~default="None",
+    );
+    Reventless.Logger.logOptionalOutput(
+      ~loc=__LOC__,
+      name ++ ": policy2",
+      policy2,
+      ~default="None",
+    );
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,

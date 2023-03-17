@@ -8,7 +8,6 @@ var Belt_Array = require("rescript/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("rescript/lib/js/belt_Option.js");
 var Caml_option = require("rescript/lib/js/caml_option.js");
-var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("rescript/lib/js/belt_SetString.js");
 var Logger$Reventless = require("../util/Logger.bs.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -98,8 +97,8 @@ function Make(EventCollector) {
     };
   };
   var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name) {
-    Logger$Reventless.logOutput("File \"SideEffectHandler.re\", line 196, characters 11-18", undefined, undefined, undefined, name + ": policy1", Belt_Option.getWithDefault(policy1, Pulumi.output("None")));
-    Logger$Reventless.logOutput("File \"SideEffectHandler.re\", line 201, characters 11-18", undefined, undefined, undefined, name + ": policy2", Belt_Option.getWithDefault(policy2, Pulumi.output("None")));
+    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 196, characters 11-18", undefined, undefined, undefined, name + ": policy1", policy1, "None");
+    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 202, characters 11-18", undefined, undefined, undefined, name + ": policy2", policy2, "None");
     var opts = {
       parent: self
     };
@@ -132,6 +131,8 @@ function Make(EventCollector) {
   var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, policy1, policy2, opts, param) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
+    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 268, characters 11-18", undefined, undefined, undefined, name + ": policy1", policy1, "None");
+    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 274, characters 11-18", undefined, undefined, undefined, name + ": policy2", policy2, "None");
     var prim0 = ComponentType$Reventless.toString(/* SideEffectHandler */15);
     var prim2 = function (param, param$1) {
       return construct(sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, param, param$1);

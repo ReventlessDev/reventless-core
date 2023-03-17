@@ -70,22 +70,22 @@ let log:
 let logOutput:
   (
     ~loc: string=?,
-    ~map: 'b => 'c=?,
+    ~map: 'a => 'b=?,
     ~stringify: bool=?,
     ~level: Level.t=?,
     string,
-    'a
+    Pulumi.Output.t('a)
   ) =>
   unit =
-  (~loc=?, ~map=?, ~stringify=?, ~level=?, desc, item) =>
-    if (item->Pulumi.Output.isOutput) {
-      item
+  (~loc=?, ~map=?, ~stringify=?, ~level=?, desc, output) =>
+    if (output->Pulumi.Output.isOutput) {
+      output
       ->Pulumi.Output.apply(item =>
           log(~loc?, ~map?, ~stringify?, ~level?, desc, item)
         )
       ->ignore;
     } else {
-      let itemType = item->Js.typeof;
+      let itemType = output->Js.typeof;
       log(
         ~loc?,
         ~map?,
@@ -95,6 +95,29 @@ let logOutput:
         ++ " ~}> was expected to be a Pulumi.Output.t, but is "
         ++ itemType
         ++ "!",
-        item->Pulumi.Output.unwrap,
+        output->Pulumi.Output.unwrap,
       );
     };
+
+let logOptionalOutput:
+  (
+    ~loc: string=?,
+    ~map: 'a => 'b=?,
+    ~stringify: bool=?,
+    ~level: Level.t=?,
+    string,
+    option(Pulumi.Output.t('a)),
+    ~default: 'a
+  ) =>
+  unit =
+  (~loc=?, ~map=?, ~stringify=?, ~level=?, desc, optionalOutput, ~default) =>
+    logOutput(
+      ~loc?,
+      ~map?,
+      ~stringify?,
+      ~level?,
+      desc,
+      optionalOutput->Belt.Option.getWithDefault(
+        Pulumi.Output.make(default),
+      ),
+    );

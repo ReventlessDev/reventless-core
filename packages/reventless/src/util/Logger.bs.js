@@ -80,18 +80,23 @@ function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
   }
 }
 
-function logOutput(loc, map, stringify, level, desc, item) {
-  if (Pulumi.Output.isInstance(item)) {
-    item.apply(function (item) {
+function logOutput(loc, map, stringify, level, desc, output) {
+  if (Pulumi.Output.isInstance(output)) {
+    output.apply(function (item) {
           return log(loc, map, stringify, level, desc, item);
         });
     return ;
   }
-  var itemType = typeof item;
-  return log(loc, map, stringify, /* Error */3, desc + (" ~}> was expected to be a Pulumi.Output.t, but is " + (itemType + "!")), item);
+  var itemType = typeof output;
+  return log(loc, map, stringify, /* Error */3, desc + (" ~}> was expected to be a Pulumi.Output.t, but is " + (itemType + "!")), output);
+}
+
+function logOptionalOutput(loc, map, stringify, level, desc, optionalOutput, $$default) {
+  return logOutput(loc, map, stringify, level, desc, Belt_Option.getWithDefault(optionalOutput, Pulumi.output($$default)));
 }
 
 exports.Level = Level;
 exports.log = log;
 exports.logOutput = logOutput;
+exports.logOptionalOutput = logOptionalOutput;
 /* @pulumi/pulumi Not a pure module */
