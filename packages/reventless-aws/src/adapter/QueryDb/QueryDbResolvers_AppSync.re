@@ -20,7 +20,7 @@ let make: QueryDb.Adapter.resolversMaker(api, role) =
     open Resolver.Templates;
     Reventless.Logger.logOutput(
       ~loc=__LOC__,
-      "datasource name",
+      name ++ ": datasource name",
       dataSourceName,
     );
     let dataSourceName = dataSourceName->Pulumi.Output.asInput;

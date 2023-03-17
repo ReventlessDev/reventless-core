@@ -61,7 +61,7 @@ function make(name, api, fields, commandGenerator, opts) {
   var resolvers = Belt_Array.map(fields, (function (field) {
           var match = field.split("_");
           var commandName = match.length !== 2 ? $$String.capitalize_ascii(field) : $$String.capitalize_ascii(match[1]);
-          Logger$Reventless.logOutput("File \"CommandGeneratorResolvers_AppSync.re\", line 121, characters 15-22", undefined, undefined, undefined, "datasource-name (" + name + ")", dataSource.name);
+          Logger$Reventless.logOutput("File \"CommandGeneratorResolvers_AppSync.re\", line 121, characters 15-22", undefined, undefined, undefined, "" + name + ": datasource-name", dataSource.name);
           return AppSync_Resolver$PulumiAws.makeUnitResolver($$String.capitalize_ascii(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
         }));
   var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);

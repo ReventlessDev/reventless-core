@@ -220,11 +220,6 @@ module Make =
       extensionPoints->Component.extractMultipleOutputs;
 
     let pureOutputs = {
-      Logger.log(
-        ~loc=__LOC__,
-        "coreStackReference",
-        Interstack.coreStackReference,
-      );
       let coreExtensionPoints =
         Interstack.coreStackReference->Belt.Option.mapWithDefault(
           Pulumi.Output.make(None), coreStack => {
@@ -233,7 +228,7 @@ module Make =
 
       Logger.logOutput(
         ~loc=__LOC__,
-        "coreExtensionPoints - output",
+        name ++ ": coreExtensionPoints - output",
         coreExtensionPoints,
       );
 
