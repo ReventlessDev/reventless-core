@@ -4,7 +4,6 @@
 var Jest = require("@glennsl/bs-jest/src/jest.js");
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
-var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Js_dict = require("bs-platform/lib/js/js_dict.js");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
@@ -13,7 +12,6 @@ var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var Pervasives = require("bs-platform/lib/js/pervasives.js");
 var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
 var Caml_option = require("bs-platform/lib/js/caml_option.js");
-var QueryDb$Reventless = require("../src/components/QueryDb.bs.js");
 var Projection$Reventless = require("../src/Projection.bs.js");
 var TestFixtures$Reventless = require("./TestFixtures.bs.js");
 
@@ -165,21 +163,15 @@ function Make(Projection) {
         return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
       });
   };
-  var handleAction = function (action, primitives) {
-    var __x = Projection$Reventless.handleAction(action, primitives, Target.subIdConfig);
-    return __x.then((function (result) {
-                  if (result.tag) {
-                    Js_exn.raiseError(JSON.stringify(QueryDb$Reventless.storageError_encode(result[0])));
-                  }
-                  return Promise.resolve(/* () */0);
-                }));
+  var handleActions = function (actions, primitives) {
+    return Projection$Reventless.handleActions(actions, primitives, Target.subIdConfig);
   };
   var update = function (store, id, meta, $$event) {
-    var __x = handleAction(Curry._1(Projection.map, /* record */[
-              /* id */id,
-              /* meta */meta,
-              /* event */$$event
-            ]), /* record */[
+    var __x = handleActions(/* array */[Curry._1(Projection.map, /* record */[
+                /* id */id,
+                /* meta */meta,
+                /* event */$$event
+              ])], /* record */[
           /* load */load(store),
           /* save */save(store),
           /* saveBatch */saveBatch(store),
@@ -352,9 +344,9 @@ function Make(Projection) {
         };
 }
 
-var handleAction = Projection$Reventless.handleAction;
+var handleActions = Projection$Reventless.handleActions;
 
 exports.unpack = unpack;
-exports.handleAction = handleAction;
+exports.handleActions = handleActions;
 exports.Make = Make;
 /* Jest Not a pure module */

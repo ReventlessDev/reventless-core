@@ -2,7 +2,6 @@
 'use strict';
 
 var Curry = require("bs-platform/lib/js/curry.js");
-var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
 var Component = require("./Component");
 var Belt_Result = require("bs-platform/lib/js/belt_Result.js");
@@ -71,34 +70,17 @@ function Make(Config) {
                               })(Mappings);
                         var eventsHandler = function (jsons) {
                           var eventCount = jsons.length;
-                          var actions = Belt_Array.concatMany(Belt_Array.mapWithIndex(jsons, (function (idx, json) {
-                                      var idx$1 = idx + 1 | 0;
-                                      var sourceName = Belt_Result.getWithDefault(Belt_Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
-                                                  return context[/* meta */1][/* service */0];
-                                                })), "");
-                                      console.log("ReadModel: handling event " + (String(idx$1) + ("/" + (String(eventCount) + (" from " + (String(sourceName) + ":"))))), json);
-                                      var func = EventProjector.map;
-                                      return (function (param) {
-                                                  return Curry._2(func, param, json);
-                                                })(sourceName);
-                                    })));
-                          var primitives$1 = primitives;
-                          var subIdConfig = Spec.subIdConfig;
-                          var __x = Promise.all(Projection$Reventless.handleActions(actions, primitives$1, subIdConfig));
-                          return __x.then((function (results) {
-                                        var errors = Belt_Array.keepMap(results, (function (param) {
-                                                if (param.tag) {
-                                                  return param[0];
-                                                }
-                                                
-                                              }));
-                                        if (errors.length !== 0) {
-                                          var count = errors.length;
-                                          return Js_exn.raiseError("ReadModel.handleActions failed with " + (String(count) + (" errors: " + (String(errors) + ""))));
-                                        } else {
-                                          return Promise.resolve(/* () */0);
-                                        }
-                                      }));
+                          return Projection$Reventless.handleActions(Belt_Array.concatMany(Belt_Array.mapWithIndex(jsons, (function (idx, json) {
+                                                var idx$1 = idx + 1 | 0;
+                                                var sourceName = Belt_Result.getWithDefault(Belt_Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
+                                                            return context[/* meta */1][/* service */0];
+                                                          })), "");
+                                                console.log("ReadModel: handling event " + (String(idx$1) + ("/" + (String(eventCount) + (" from " + (String(sourceName) + ":"))))), json);
+                                                var func = EventProjector.map;
+                                                return (function (param) {
+                                                            return Curry._2(func, param, json);
+                                                          })(sourceName);
+                                              }))), primitives, Spec.subIdConfig);
                         };
                         var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(Mappings.mappings, (function (Mapping) {
                                     return Mapping.Source.name;

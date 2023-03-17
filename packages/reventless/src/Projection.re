@@ -15,8 +15,63 @@ type primitives('id, 'state) = {
 
 let logAction = str => Js.log2("Projection.handleAction:", str);
 
+let applyChanges =
+    (
+      action,
+      id,
+      beforeStates,
+      afterStates,
+      {saveBatch, deleteBatch},
+      {subIdField, getSubId},
+    ) => {
+  let beforeCount = beforeStates->Belt.Array.length;
+  let beforeSubIds =
+    beforeStates->Belt.Array.map(state => state->getSubId)->Set.fromArray;
+
+  let afterCount = afterStates->Belt.Array.length;
+  let afterSubIds =
+    afterStates->Belt.Array.map(state => state->getSubId)->Set.fromArray;
+
+  let addedSubIds = afterSubIds->Set.diff(beforeSubIds);
+  let addedStates =
+    afterStates->Belt.Array.keep(state =>
+      addedSubIds->Set.has(state->getSubId)
+    );
+  let addedCount = addedStates->Belt.Array.size;
+
+  let changedStates =
+    beforeStates->Belt.Array.keepMap(before => {
+      let beforeSubId = before->getSubId;
+      afterStates->Belt.Array.getBy(after =>
+        after->getSubId == beforeSubId && after != before
+      );
+    });
+  let changedCount = changedStates->Belt.Array.size;
+
+  let batchToSave =
+    addedStates
+    ->Belt.Array.concat(changedStates)
+    ->Belt.Array.map(state => (id, state, None));
+
+  let deletedSubIds = beforeSubIds->Set.diff(afterSubIds)->Set.toArray;
+  let batchToDelete =
+    deletedSubIds->Belt.Array.map(subId => (id, Some((subIdField, subId))));
+  let deletedCount = batchToDelete->Belt.Array.size;
+
+  logAction(
+    {j|$action($id): beforeStates:$beforeCount afterStates:$afterCount added:$addedCount changed:$changedCount deleted:$deletedCount|j},
+  );
+  [|deleteBatch(. batchToDelete), saveBatch(. batchToSave)|]
+  ->Js.Promise.all
+  ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _);
+};
+
 let handleAction =
-    (action, {load, save, saveBatch, delete, deleteBatch}, subIdConfig) =>
+    (
+      action,
+      {load, save, saveBatch, delete, deleteBatch} as primitives,
+      subIdConfig,
+    ) =>
   switch (action) {
   | Ignore =>
     logAction("Ignore");
@@ -100,69 +155,24 @@ let handleAction =
       )
   | UpdateMultiState(id, update) =>
     load(. id)
-    // TODO: error handling
     ->Js.Promise.then_(
         states =>
           switch (states, subIdConfig) {
-          | (Ok(states), Some({subIdField, getSubId})) =>
+          | (Ok(states), Some(subIdConfig)) =>
             let beforeStates = states->Belt.List.toArray;
-            let beforeCount = beforeStates->Belt.Array.length;
-            let beforeSubIds =
-              beforeStates
-              ->Belt.Array.map(state => state->getSubId)
-              ->Set.fromArray;
-
             let afterStates = beforeStates->update;
-            let afterCount = afterStates->Belt.Array.length;
-            let afterSubIds =
-              afterStates
-              ->Belt.Array.map(state => state->getSubId)
-              ->Set.fromArray;
-
-            let addedSubIds = afterSubIds->Set.diff(beforeSubIds);
-            let addedStates =
-              afterStates->Belt.Array.keep(state =>
-                addedSubIds->Set.has(state->getSubId)
-              );
-            let addedCount = addedStates->Belt.Array.size;
-
-            let changedStates =
-              beforeStates->Belt.Array.keepMap(before => {
-                let beforeSubId = before->getSubId;
-                afterStates->Belt.Array.getBy(after =>
-                  after->getSubId == beforeSubId && after != before
-                );
-              });
-            let changedCount = changedStates->Belt.Array.size;
-
-            let batchToSave =
-              addedStates
-              ->Belt.Array.concat(changedStates)
-              ->Belt.Array.map(state => (id, state, None));
-            let batchCount = batchToSave->Belt.Array.size;
-
-            let deletedSubIds =
-              beforeSubIds->Set.diff(afterSubIds)->Set.toArray;
-            let batchToDelete =
-              deletedSubIds->Belt.Array.map(subId =>
-                (id, Some((subIdField, subId)))
-              );
-            let deletedCount = batchToDelete->Belt.Array.size;
-
-            logAction(
-              {j|UpdateMultiState($id): beforeStates:$beforeCount afterStates:$afterCount added:$addedCount changed:$changedCount deleted:$deletedCount|j},
+            applyChanges(
+              "UpdateMultiState",
+              id,
+              beforeStates,
+              afterStates,
+              primitives,
+              subIdConfig,
             );
-            [|
-              deletedCount > 0
-                ? deleteBatch(. batchToDelete) : Ok()->Js.Promise.resolve,
-              batchCount > 0
-                ? saveBatch(. batchToSave) : Ok()->Js.Promise.resolve,
-            |]
-            ->Js.Promise.all
-            ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _);
+
           | (Error(err), Some(_)) =>
             logAction(
-              {j|UpdateMultiState Error: Couldn't load oldStates for $id: $err)|j},
+              {j|UpdateMultiState Error: Couldn't load states for $id: $err)|j},
             );
             Error(err)->Js.Promise.resolve;
           | (_, None) =>
@@ -171,6 +181,48 @@ let handleAction =
           },
         _,
       )
+  // | UpdateManyMultiStates(ids, update) =>
+  //   switch (subIdConfig) {
+  //   | Some(subIdConfig) =>
+  //     ids
+  //     ->Belt.Array.map(id =>
+  //         load(. id)
+  //         ->Js.Promise.then_(
+  //             fun
+  //             | Ok(states) =>
+  //               Some((id, states->Belt.List.toArray))->Js.Promise.resolve
+  //             | Error(err) => {
+  //                 logAction(
+  //                   {j|UpdateMultiState Error: Couldn't load states for $id: $err)|j},
+  //                 );
+  //                 None->Js.Promise.resolve;
+  //               },
+  //             _,
+  //           )
+  //       )
+  //     ->Js.Promise.all
+  //     ->Js.Promise.then_(
+  //         results =>
+  //           results
+  //           ->Belt.Array.keepMap(y => y)
+  //           ->Belt.Array.map(((id, beforeStates)) =>
+  //               applyChanges(
+  //                 "UpdateManyMultiStates",
+  //                 id,
+  //                 beforeStates,
+  //                 update(id, beforeStates),
+  //                 primitives,
+  //                 subIdConfig,
+  //               )
+  //             )
+  //           ->Js.Promise.all
+  //           ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _),
+  //         _,
+  //       )
+  //   | None =>
+  //     logAction("UpdateManyMultiStates Error: Missing SubIdConfig !");
+  //     Error(MissingSubIdConfig)->Js.Promise.resolve;
+  //   }
   | Delete(id) =>
     logAction({j|Delete($id)|j});
     delete(. id, None);
@@ -196,6 +248,10 @@ let actionsWithId = action =>
   | Update(id, _) => [|(id, action)|]
   | UpdateWithDefault(id, _, _) => [|(id, action)|]
   | UpdateMultiState(id, _) => [|(id, action)|]
+  | UpdateManyMultiStates(ids, update) =>
+    ids->Belt.Array.map(id =>
+      (id, UpdateMultiState(id, states => update(id, states)))
+    )
   | Delete(id) => [|(id, action)|]
   | DeleteMany(ids) => ids->Belt.Array.map(id => (id, Delete(id)))
 
@@ -239,5 +295,25 @@ let handleActions = (actions, primitives, subIdConfig) => {
 
   actions
   ->groupActionsById
-  ->Belt.Array.map(((id, actions)) => actions->handleActionsForId(id));
+  ->Belt.Array.map(((id, actions)) => actions->handleActionsForId(id))
+  ->Js.Promise.all
+  ->Js.Promise.then_(
+      results => {
+        let errors =
+          results->Belt.Array.keepMap(
+            fun
+            | Belt.Result.Error(err) => Some(err)
+            | _ => None,
+          );
+        switch (errors) {
+        | [||] => Js.Promise.resolve()
+        | errors =>
+          let count = errors->Belt.Array.size;
+          Js.Exn.raiseError(
+            {j|Projection.handleActions failed with $count errors: $errors|j},
+          );
+        };
+      },
+      _,
+    );
 };

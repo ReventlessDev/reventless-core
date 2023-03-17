@@ -3,6 +3,7 @@
 
 var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
+var Js_exn = require("bs-platform/lib/js/js_exn.js");
 var Caml_obj = require("bs-platform/lib/js/caml_obj.js");
 var Belt_List = require("bs-platform/lib/js/belt_List.js");
 var Belt_Array = require("bs-platform/lib/js/belt_Array.js");
@@ -13,11 +14,62 @@ function logAction(str) {
   return /* () */0;
 }
 
-function handleAction(action, param, subIdConfig) {
-  var deleteBatch = param[/* deleteBatch */4];
-  var saveBatch = param[/* saveBatch */2];
-  var save = param[/* save */1];
-  var load = param[/* load */0];
+function applyChanges(action, id, beforeStates, afterStates, param, param$1) {
+  var getSubId = param$1[/* getSubId */1];
+  var subIdField = param$1[/* subIdField */0];
+  var beforeCount = beforeStates.length;
+  var beforeSubIds = Belt_SetString.fromArray(Belt_Array.map(beforeStates, Curry.__1(getSubId)));
+  var afterCount = afterStates.length;
+  var afterSubIds = Belt_SetString.fromArray(Belt_Array.map(afterStates, Curry.__1(getSubId)));
+  var addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
+  var addedStates = Belt_Array.keep(afterStates, (function (state) {
+          return Belt_SetString.has(addedSubIds, Curry._1(getSubId, state));
+        }));
+  var addedCount = addedStates.length;
+  var changedStates = Belt_Array.keepMap(beforeStates, (function (before) {
+          var beforeSubId = Curry._1(getSubId, before);
+          return Belt_Array.getBy(afterStates, (function (after) {
+                        if (Curry._1(getSubId, after) === beforeSubId) {
+                          return Caml_obj.caml_notequal(after, before);
+                        } else {
+                          return false;
+                        }
+                      }));
+        }));
+  var changedCount = changedStates.length;
+  var batchToSave = Belt_Array.map(Belt_Array.concat(addedStates, changedStates), (function (state) {
+          return /* tuple */[
+                  id,
+                  state,
+                  undefined
+                ];
+        }));
+  var deletedSubIds = Belt_SetString.toArray(Belt_SetString.diff(beforeSubIds, afterSubIds));
+  var batchToDelete = Belt_Array.map(deletedSubIds, (function (subId) {
+          return /* tuple */[
+                  id,
+                  /* tuple */[
+                    subIdField,
+                    subId
+                  ]
+                ];
+        }));
+  var deletedCount = batchToDelete.length;
+  var str = "" + (String(action) + ("(" + (String(id) + ("): beforeStates:" + (String(beforeCount) + (" afterStates:" + (String(afterCount) + (" added:" + (String(addedCount) + (" changed:" + (String(changedCount) + (" deleted:" + (String(deletedCount) + "")))))))))))));
+  console.log("Projection.handleAction:", str);
+  var __x = Promise.all(/* array */[
+        param[/* deleteBatch */4](batchToDelete),
+        param[/* saveBatch */2](batchToSave)
+      ]);
+  return __x.then((function (param) {
+                return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
+              }));
+}
+
+function handleAction(action, primitives, subIdConfig) {
+  var saveBatch = primitives[/* saveBatch */2];
+  var save = primitives[/* save */1];
+  var load = primitives[/* load */0];
   if (typeof action === "number") {
     console.log("Projection.handleAction:", "Ignore");
     return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
@@ -128,12 +180,12 @@ function handleAction(action, param, subIdConfig) {
           var id$4 = action[0];
           var str$4 = "Delete(" + (String(id$4) + ")");
           console.log("Projection.handleAction:", str$4);
-          return param[/* delete */3](id$4, undefined);
+          return primitives[/* delete */3](id$4, undefined);
       case /* DeleteMany */9 :
           var ids = action[0];
           var str$5 = "DeleteMany(" + (String(ids) + ")");
           console.log("Projection.handleAction:", str$5);
-          return deleteBatch(Belt_Array.map(ids, (function (id) {
+          return primitives[/* deleteBatch */4](Belt_Array.map(ids, (function (id) {
                             return /* tuple */[
                                     id,
                                     undefined
@@ -170,7 +222,7 @@ function handleAction(action, param, subIdConfig) {
                         if (states.tag) {
                           if (subIdConfig !== undefined) {
                             var err = states[0];
-                            var str = "UpdateMultiState Error: Couldn\'t load oldStates for " + (String(id$6) + (": " + (String(err) + ")")));
+                            var str = "UpdateMultiState Error: Couldn\'t load states for " + (String(id$6) + (": " + (String(err) + ")")));
                             console.log("Projection.handleAction:", str);
                             return Promise.resolve(/* Error */Block.__(1, [err]));
                           } else {
@@ -178,61 +230,9 @@ function handleAction(action, param, subIdConfig) {
                             return Promise.resolve(/* Error */Block.__(1, [/* MissingSubIdConfig */1]));
                           }
                         } else if (subIdConfig !== undefined) {
-                          var match = subIdConfig;
-                          var getSubId = match[/* getSubId */1];
-                          var subIdField = match[/* subIdField */0];
                           var beforeStates = Belt_List.toArray(states[0]);
-                          var beforeCount = beforeStates.length;
-                          var beforeSubIds = Belt_SetString.fromArray(Belt_Array.map(beforeStates, Curry.__1(getSubId)));
                           var afterStates = Curry._1(update$2, beforeStates);
-                          var afterCount = afterStates.length;
-                          var afterSubIds = Belt_SetString.fromArray(Belt_Array.map(afterStates, Curry.__1(getSubId)));
-                          var addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
-                          var addedStates = Belt_Array.keep(afterStates, (function (state) {
-                                  return Belt_SetString.has(addedSubIds, Curry._1(getSubId, state));
-                                }));
-                          var addedCount = addedStates.length;
-                          var changedStates = Belt_Array.keepMap(beforeStates, (function (before) {
-                                  var beforeSubId = Curry._1(getSubId, before);
-                                  return Belt_Array.getBy(afterStates, (function (after) {
-                                                if (Curry._1(getSubId, after) === beforeSubId) {
-                                                  return Caml_obj.caml_notequal(after, before);
-                                                } else {
-                                                  return false;
-                                                }
-                                              }));
-                                }));
-                          var changedCount = changedStates.length;
-                          var batchToSave = Belt_Array.map(Belt_Array.concat(addedStates, changedStates), (function (state) {
-                                  return /* tuple */[
-                                          id$6,
-                                          state,
-                                          undefined
-                                        ];
-                                }));
-                          var batchCount = batchToSave.length;
-                          var deletedSubIds = Belt_SetString.toArray(Belt_SetString.diff(beforeSubIds, afterSubIds));
-                          var batchToDelete = Belt_Array.map(deletedSubIds, (function (subId) {
-                                  return /* tuple */[
-                                          id$6,
-                                          /* tuple */[
-                                            subIdField,
-                                            subId
-                                          ]
-                                        ];
-                                }));
-                          var deletedCount = batchToDelete.length;
-                          var str$1 = "UpdateMultiState(" + (String(id$6) + ("): beforeStates:" + (String(beforeCount) + (" afterStates:" + (String(afterCount) + (" added:" + (String(addedCount) + (" changed:" + (String(changedCount) + (" deleted:" + (String(deletedCount) + "")))))))))));
-                          console.log("Projection.handleAction:", str$1);
-                          var match$1 = deletedCount > 0;
-                          var match$2 = batchCount > 0;
-                          var __x = Promise.all(/* array */[
-                                match$1 ? deleteBatch(batchToDelete) : Promise.resolve(/* Ok */Block.__(0, [/* () */0])),
-                                match$2 ? saveBatch(batchToSave) : Promise.resolve(/* Ok */Block.__(0, [/* () */0]))
-                              ]);
-                          return __x.then((function (param) {
-                                        return Promise.resolve(/* Ok */Block.__(0, [/* () */0]));
-                                      }));
+                          return applyChanges("UpdateMultiState", id$6, beforeStates, afterStates, primitives, subIdConfig);
                         } else {
                           console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
                           return Promise.resolve(/* Error */Block.__(1, [/* MissingSubIdConfig */1]));
@@ -283,9 +283,21 @@ function actionsWithId(action) {
       case /* UpdateManyWithDefault */5 :
       case /* DeleteIf */10 :
       case /* DeleteManyIf */11 :
-      case /* UpdateManyMultiStates */14 :
           console.log("Projection.handleAction:", "Error: Action not yet supported !");
           return /* array */[];
+      case /* UpdateManyMultiStates */14 :
+          var update = action[1];
+          return Belt_Array.map(action[0], (function (id) {
+                        return /* tuple */[
+                                id,
+                                /* UpdateMultiState */Block.__(13, [
+                                    id,
+                                    (function (states) {
+                                        return Curry._2(update, id, states);
+                                      })
+                                  ])
+                              ];
+                      }));
       default:
         return /* array */[/* tuple */[
                   action[0],
@@ -315,18 +327,32 @@ function groupActionsById(actions) {
 }
 
 function handleActions(actions, primitives, subIdConfig) {
-  return Belt_Array.map(groupActionsById(actions), (function (param) {
-                var actions = param[1];
-                var id = param[0];
-                var actionCount = actions.length;
-                if (actionCount > 1) {
-                  console.log("Projection.handleActions: handling " + (String(actionCount) + (" actions for id=" + (String(id) + ""))));
+  var __x = Promise.all(Belt_Array.map(groupActionsById(actions), (function (param) {
+              var actions = param[1];
+              var id = param[0];
+              var actionCount = actions.length;
+              if (actionCount > 1) {
+                console.log("Projection.handleActions: handling " + (String(actionCount) + (" actions for id=" + (String(id) + ""))));
+              }
+              return Belt_Array.reduce(actions, Promise.resolve(/* Ok */Block.__(0, [/* () */0])), (function (p, action) {
+                            return p.then((function (param) {
+                                          return handleAction(action, primitives, subIdConfig);
+                                        }));
+                          }));
+            })));
+  return __x.then((function (results) {
+                var errors = Belt_Array.keepMap(results, (function (param) {
+                        if (param.tag) {
+                          return param[0];
+                        }
+                        
+                      }));
+                if (errors.length !== 0) {
+                  var count = errors.length;
+                  return Js_exn.raiseError("Projection.handleActions failed with " + (String(count) + (" errors: " + (String(errors) + ""))));
+                } else {
+                  return Promise.resolve(/* () */0);
                 }
-                return Belt_Array.reduce(actions, Promise.resolve(/* Ok */Block.__(0, [/* () */0])), (function (p, action) {
-                              return p.then((function (param) {
-                                            return handleAction(action, primitives, subIdConfig);
-                                          }));
-                            }));
               }));
 }
 
@@ -334,6 +360,7 @@ var $$Set = 0;
 
 exports.$$Set = $$Set;
 exports.logAction = logAction;
+exports.applyChanges = applyChanges;
 exports.handleAction = handleAction;
 exports.actionsWithId = actionsWithId;
 exports.groupActionsById = groupActionsById;

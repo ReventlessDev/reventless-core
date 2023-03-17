@@ -114,30 +114,6 @@ module Make =
 
     module EventProjector = ProjectionMapper.Make(Spec, Mappings);
 
-    let handleActions = (actions, primitives, subIdConfig) =>
-      actions
-      ->Projection.handleActions(primitives, subIdConfig)
-      ->Js.Promise.all
-      ->Js.Promise.then_(
-          results => {
-            let errors =
-              results->Belt.Array.keepMap(
-                fun
-                | Belt.Result.Error(err) => Some(err)
-                | _ => None,
-              );
-            switch (errors) {
-            | [||] => Js.Promise.resolve()
-            | errors =>
-              let count = errors->Belt.Array.size;
-              Js.Exn.raiseError(
-                {j|ReadModel.handleActions failed with $count errors: $errors|j},
-              );
-            };
-          },
-          _,
-        );
-
     let eventsHandler: (. array(Js.Json.t)) => Js.Promise.t(unit) =
       (. jsons) => {
         let eventCount = jsons->Belt.Array.length;
@@ -156,7 +132,7 @@ module Make =
             json->EventProjector.map(~sourceName=Some(sourceName));
           })
         ->Belt.Array.concatMany
-        ->handleActions(primitives, Spec.subIdConfig);
+        ->Projection.handleActions(primitives, Spec.subIdConfig);
       };
 
     module Set = Belt.Set.String;

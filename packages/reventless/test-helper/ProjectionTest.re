@@ -62,7 +62,7 @@ let unpack: Jest.Expect.plainPartial('a) => 'a =
     };
   };
 
-let handleAction = Projection.handleAction; // create alias to avoid shadowing of same named modules
+let handleActions = Projection.handleActions; // create alias to avoid shadowing of same named modules
 
 module Make =
        (Projection: ReventlessSpec.Projection.Mapping)
@@ -165,22 +165,8 @@ module Make =
       Ok()->Js.Promise.resolve;
     };
 
-  let handleAction = (action, primitives) =>
-    action
-    ->handleAction(primitives, Target.subIdConfig)
-    ->Js.Promise.then_(
-        result => {
-          switch (result) {
-          | Error(err) =>
-            Js.Exn.raiseError(
-              err->QueryDb.storageError_encode->Js.Json.stringify,
-            )
-          | _ => ()
-          };
-          Js.Promise.resolve();
-        },
-        _,
-      );
+  let handleActions = (actions, primitives) =>
+    actions->handleActions(primitives, Target.subIdConfig);
 
   let update = (store, id, meta, event) => {
     let logStore = text =>
@@ -199,9 +185,8 @@ module Make =
       store->Js.Promise.resolve;
     };
 
-    {id, meta, event}
-    ->Projection.map
-    ->handleAction({
+    [|{id, meta, event}->Projection.map|]
+    ->handleActions({
         load: load(store),
         save: save(store),
         saveBatch: saveBatch(store),
