@@ -192,6 +192,17 @@ module Make = (EventCollector: EventCollector.T) : T => {
         self,
         name,
       ) => {
+    Reventless.Logger.logOutput(
+      ~loc=__LOC__,
+      name ++ ": policy1",
+      policy1->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
+    );
+    Reventless.Logger.logOutput(
+      ~loc=__LOC__,
+      name ++ ": policy2",
+      policy2->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
+    );
+
     let opts =
       Pulumi.ComponentResource.Options.make(
         ~parent=self->Component.toPulumiResource,
