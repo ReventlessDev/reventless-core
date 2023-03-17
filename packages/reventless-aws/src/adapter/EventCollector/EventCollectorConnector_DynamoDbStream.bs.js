@@ -19,12 +19,11 @@ var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoD
 var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./EventCollectorConnector_DynamoDbStream_Runtime.bs.js");
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
-  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 15, characters 11-18", undefined, undefined, undefined, "policy1", Belt_Option.getWithDefault(policy1, Pulumi.output("None")));
-  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 20, characters 11-18", undefined, undefined, undefined, "policy2", Belt_Option.getWithDefault(policy2, Pulumi.output("None")));
+  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 15, characters 11-18", undefined, undefined, undefined, name + ": policy1", Belt_Option.getWithDefault(policy1, Pulumi.output("None")));
+  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 20, characters 11-18", undefined, undefined, undefined, name + ": policy2", Belt_Option.getWithDefault(policy2, Pulumi.output("None")));
   var policies = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2);
-  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 26, characters 11-18", undefined, undefined, undefined, "policies", Pulumi.all(policies));
+  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 26, characters 11-18", undefined, undefined, undefined, name + ": policies", Pulumi.all(policies));
   var eventHandlerLambda = Pulumi.all(policies).apply(function (policies) {
-        Logger$Reventless.log("File \"EventCollectorConnector_DynamoDbStream.re\", line 36, characters 17-24", undefined, undefined, undefined, "eventHandlerLambda-policies", policies);
         return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                         (function (param, param$1) {
                             return EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleEvents, param, param$1);

@@ -13,18 +13,18 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
   ) => {
     Reventless.Logger.logOutput(
       ~loc=__LOC__,
-      "policy1",
+      name ++ ": policy1",
       policy1->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
     );
     Reventless.Logger.logOutput(
       ~loc=__LOC__,
-      "policy2",
+      name ++ ": policy2",
       policy2->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
     );
     let policies = PulumiAws.Lambda.Policy.customPolicies(policy1, policy2); // TODO calculate real policies
     Reventless.Logger.logOutput(
       ~loc=__LOC__,
-      "policies",
+      name ++ ": policies",
       policies->Pulumi.Output.all,
     );
 
@@ -32,11 +32,6 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
       policies
       ->Pulumi.Output.all
       ->Pulumi.Output.apply(policies => {
-          Reventless.Logger.log(
-            ~loc=__LOC__,
-            "eventHandlerLambda-policies",
-            policies,
-          );
           Lambda.CallbackFunction.make(
             ~name,
             ~args=
@@ -52,7 +47,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
               ),
             ~opts,
             (),
-          );
+          )
         });
 
     let _ =

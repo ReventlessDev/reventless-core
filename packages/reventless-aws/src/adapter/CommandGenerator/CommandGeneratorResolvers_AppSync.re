@@ -121,7 +121,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker(api) =
           };
         Reventless.Logger.logOutput(
           ~loc=__LOC__,
-          {j|datasource-name ($name)|j},
+          {j|$name: datasource-name|j},
           dataSource##name,
         );
         AppSync.Resolver.makeUnitResolver(
