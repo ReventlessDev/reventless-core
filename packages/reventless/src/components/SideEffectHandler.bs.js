@@ -8,7 +8,9 @@ var Belt_Array = require("rescript/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("rescript/lib/js/belt_Option.js");
 var Caml_option = require("rescript/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("rescript/lib/js/belt_SetString.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
 var Component$Reventless = require("./Component.bs.js");
@@ -96,6 +98,8 @@ function Make(EventCollector) {
     };
   };
   var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name) {
+    Logger$Reventless.logOutput("File \"SideEffectHandler.re\", line 196, characters 11-18", undefined, undefined, undefined, name + ": policy1", Belt_Option.getWithDefault(policy1, Pulumi.output("None")));
+    Logger$Reventless.logOutput("File \"SideEffectHandler.re\", line 201, characters 11-18", undefined, undefined, undefined, name + ": policy2", Belt_Option.getWithDefault(policy2, Pulumi.output("None")));
     var opts = {
       parent: self
     };
