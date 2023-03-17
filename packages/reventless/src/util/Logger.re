@@ -26,28 +26,44 @@ let log:
   (
     ~loc: string=?,
     ~map: 'a => 'b=?,
-    ~serialize: bool=?,
+    ~stringify: bool=?,
     ~level: Level.t=?,
     string,
     'a
   ) =>
   unit =
-  (~loc=?, ~map=identity, ~serialize=false, ~level=Level.default, desc, item) => {
+  (~loc=?, ~map=identity, ~stringify=false, ~level=Level.default, desc, item) => {
     let tag =
       level->Level.toString
       ++ loc->Belt.Option.mapWithDefault(":", loc => "(" ++ loc ++ "):");
 
-    let item =
-      serialize
-        ? item->map->Js.Json.stringifyAny->logItem : item->map->logItem;
+    let itemMapped = item->map;
+
+    // try to stringify, use raw value if unsuccessfull
+    let (descStringified, itemStringified) =
+      if (stringify) {
+        let itemStringified = itemMapped->Js.Json.stringifyAny;
+        let descStringified =
+          itemStringified->Belt.Option.mapWithDefault(
+            desc ++ " [ERROR: Couldn't stringify, displaying raw value!]", _ =>
+            desc
+          );
+        let itemStringifiedWithDefault =
+          itemStringified->Belt.Option.mapWithDefault(itemMapped->logItem, i =>
+            i->logItem
+          );
+        (descStringified, itemStringifiedWithDefault);
+      } else {
+        (desc, itemMapped->logItem);
+      };
 
     switch (level) {
-    | Warning => Js.Console.warn3(tag, desc, item)
-    | Error => Js.Console.error3(tag, desc, item)
+    | Warning => Js.Console.warn3(tag, descStringified, itemStringified)
+    | Error => Js.Console.error3(tag, descStringified, itemStringified)
     | Info
-    | Custom(_) => Js.Console.info3(tag, desc, item)
+    | Custom(_) => Js.Console.info3(tag, descStringified, itemStringified)
 
-    | Debug => Js.Console.log3(tag, desc, item)
+    | Debug => Js.Console.log3(tag, descStringified, itemStringified)
     };
   };
 
@@ -55,19 +71,30 @@ let logOutput:
   (
     ~loc: string=?,
     ~map: 'b => 'c=?,
-    ~serialize: bool=?,
+    ~stringify: bool=?,
     ~level: Level.t=?,
     string,
     'a
   ) =>
   unit =
-  (~loc=?, ~map=?, ~serialize=?, ~level=?, desc, item) =>
+  (~loc=?, ~map=?, ~stringify=?, ~level=?, desc, item) =>
     if (item->Pulumi.Output.isOutput) {
       item
       ->Pulumi.Output.apply(item =>
-          log(~loc?, ~map?, ~serialize?, ~level?, desc, item)
+          log(~loc?, ~map?, ~stringify?, ~level?, desc, item)
         )
       ->ignore;
     } else {
-      log(~loc?, ~level=Level.Error, desc, "> is not an output <");
+      let itemType = item->Js.typeof;
+      log(
+        ~loc?,
+        ~map?,
+        ~stringify?,
+        ~level=Level.Error,
+        desc
+        ++ " ~}> was expected to be a Pulumi.Output.t, but is "
+        ++ itemType
+        ++ "!",
+        item->Pulumi.Output.unwrap,
+      );
     };

@@ -104,6 +104,16 @@ module Make = (Connector: Adapter.Connector) : T => {
         self,
         name,
       ) => {
+    Reventless.Logger.logOutput(
+      ~loc=__LOC__,
+      name ++ ": policy1",
+      policy1->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
+    );
+    Reventless.Logger.logOutput(
+      ~loc=__LOC__,
+      name ++ ": policy2",
+      policy2->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
+    );
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
