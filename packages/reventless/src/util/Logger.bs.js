@@ -27,47 +27,68 @@ var Level = {
   $$default: /* Debug */0
 };
 
-function log(loc, mapOpt, serializeOpt, levelOpt, desc, item) {
+function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
   var map = mapOpt !== undefined ? mapOpt : (function (prim) {
         return prim;
       });
-  var serialize = serializeOpt !== undefined ? serializeOpt : false;
+  var stringify = stringifyOpt !== undefined ? stringifyOpt : false;
   var level = levelOpt !== undefined ? levelOpt : /* Debug */0;
   var tag = toString(level) + Belt_Option.mapWithDefault(loc, ":", (function (loc) {
           return "(" + (loc + "):");
         }));
-  var item$1 = serialize ? JSON.stringify(Curry._1(map, item)) : Curry._1(map, item);
+  var itemMapped = Curry._1(map, item);
+  var match;
+  if (stringify) {
+    var itemStringified = JSON.stringify(itemMapped);
+    var descStringified = Belt_Option.mapWithDefault(itemStringified, desc + " [ERROR: Couldn't stringify, displaying raw value!]", (function (param) {
+            return desc;
+          }));
+    var itemStringifiedWithDefault = Belt_Option.mapWithDefault(itemStringified, itemMapped, (function (i) {
+            return i;
+          }));
+    match = [
+      descStringified,
+      itemStringifiedWithDefault
+    ];
+  } else {
+    match = [
+      desc,
+      itemMapped
+    ];
+  }
+  var itemStringified$1 = match[1];
+  var descStringified$1 = match[0];
   if (typeof level === "number") {
     switch (level) {
       case /* Debug */0 :
-          console.log(tag, desc, item$1);
+          console.log(tag, descStringified$1, itemStringified$1);
           return ;
       case /* Info */1 :
-          console.info(tag, desc, item$1);
+          console.info(tag, descStringified$1, itemStringified$1);
           return ;
       case /* Warning */2 :
-          console.warn(tag, desc, item$1);
+          console.warn(tag, descStringified$1, itemStringified$1);
           return ;
       case /* Error */3 :
-          console.error(tag, desc, item$1);
+          console.error(tag, descStringified$1, itemStringified$1);
           return ;
       
     }
   } else {
-    console.info(tag, desc, item$1);
+    console.info(tag, descStringified$1, itemStringified$1);
     return ;
   }
 }
 
-function logOutput(loc, map, serialize, level, desc, item) {
+function logOutput(loc, map, stringify, level, desc, item) {
   if (Pulumi.Output.isInstance(item)) {
     item.apply(function (item) {
-          return log(loc, map, serialize, level, desc, item);
+          return log(loc, map, stringify, level, desc, item);
         });
     return ;
-  } else {
-    return log(loc, undefined, undefined, /* Error */3, desc, "> is not an output <");
   }
+  var itemType = typeof item;
+  return log(loc, map, stringify, /* Error */3, desc + (" ~}> was expected to be a Pulumi.Output.t, but is " + (itemType + "!")), item);
 }
 
 exports.Level = Level;
