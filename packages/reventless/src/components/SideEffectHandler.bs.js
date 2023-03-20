@@ -138,10 +138,12 @@ function Make(EventCollector) {
     Logger$Reventless.log("File \"SideEffectHandler.re\", line 273, characters 13-20", undefined, undefined, undefined, name + ": 5. scheduler", scheduler);
     Logger$Reventless.log("File \"SideEffectHandler.re\", line 274, characters 13-20", undefined, undefined, undefined, name + ": 6. memorySize", memorySize);
     Logger$Reventless.log("File \"SideEffectHandler.re\", line 275, characters 13-20", undefined, undefined, undefined, name + ": 7. timeout", timeout);
-    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 277, characters 11-18", undefined, undefined, undefined, name + ": 8. policy1", policy1, "None");
-    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 283, characters 11-18", undefined, undefined, undefined, name + ": 9. policy2", policy2, "None");
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 288, characters 13-20", undefined, undefined, undefined, name + ": 10. opts", opts);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 289, characters 13-20", undefined, undefined, undefined, name + ": 11. unit", unit);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 276, characters 13-20", undefined, undefined, undefined, name + ": 8a. policy1", policy1);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 277, characters 13-20", undefined, undefined, undefined, name + ": 9a. policy2", policy2);
+    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 279, characters 11-18", undefined, undefined, undefined, name + ": 8b. policy1", policy1, "None");
+    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 285, characters 11-18", undefined, undefined, undefined, name + ": 9b. policy2", policy2, "None");
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 290, characters 13-20", undefined, undefined, undefined, name + ": 10. opts", opts);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 291, characters 13-20", undefined, undefined, undefined, name + ": 11. unit", unit);
     var prim0 = ComponentType$Reventless.toString(/* SideEffectHandler */15);
     var prim2 = function (param, param$1) {
       return construct(sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, param, param$1);

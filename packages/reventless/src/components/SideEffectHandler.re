@@ -273,15 +273,17 @@ module Make = (EventCollector: EventCollector.T) : T => {
     log(~loc=__LOC__, name ++ ": 5. scheduler", scheduler);
     log(~loc=__LOC__, name ++ ": 6. memorySize", memorySize);
     log(~loc=__LOC__, name ++ ": 7. timeout", timeout);
+    log(~loc=__LOC__, name ++ ": 8a. policy1", policy1);
+    log(~loc=__LOC__, name ++ ": 9a. policy2", policy2);
     logOptionalOutput(
       ~loc=__LOC__,
-      name ++ ": 8. policy1",
+      name ++ ": 8b. policy1",
       policy1,
       ~default="None",
     );
     logOptionalOutput(
       ~loc=__LOC__,
-      name ++ ": 9. policy2",
+      name ++ ": 9b. policy2",
       policy2,
       ~default="None",
     );
