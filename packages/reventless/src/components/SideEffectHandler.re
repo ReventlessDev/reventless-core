@@ -262,20 +262,32 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~policy1: option(Pulumi.Output.t(string))=?,
         ~policy2: option(Pulumi.Output.t(string))=?,
         ~opts=?,
-        _,
+        unit: unit,
       ) => {
-    Reventless.Logger.logOptionalOutput(
+    open Reventless.Logger;
+    let log = Reventless.Logger.log;
+    log(~loc=__LOC__, name ++ ": 1. name", name);
+    log(~loc=__LOC__, name ++ ": 2. sideEffects", sideEffects);
+    log(~loc=__LOC__, name ++ ": 3. allEventTopics", allEventTopics);
+    log(~loc=__LOC__, name ++ ": 4. queryEngine", queryEngine);
+    log(~loc=__LOC__, name ++ ": 5. scheduler", scheduler);
+    log(~loc=__LOC__, name ++ ": 6. memorySize", memorySize);
+    log(~loc=__LOC__, name ++ ": 7. timeout", timeout);
+    logOptionalOutput(
       ~loc=__LOC__,
-      name ++ ": policy1",
+      name ++ ": 8. policy1",
       policy1,
       ~default="None",
     );
-    Reventless.Logger.logOptionalOutput(
+    logOptionalOutput(
       ~loc=__LOC__,
-      name ++ ": policy2",
+      name ++ ": 9. policy2",
       policy2,
       ~default="None",
     );
+    log(~loc=__LOC__, name ++ ": 10. opts", opts);
+    log(~loc=__LOC__, name ++ ": 11. unit", unit);
+
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
