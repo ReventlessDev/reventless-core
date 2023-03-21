@@ -260,6 +260,17 @@ function Make(Config) {
                     return storage[/* delete */6](Curry._1(Spec.Id.toString, id), subId);
                   });
               };
+              var deleteBatchFn = function (storage) {
+                return (function (ids) {
+                    var ids$1 = Belt_Array.map(ids, (function (param) {
+                            return /* tuple */[
+                                    Curry._1(Spec.Id.toString, param[0]),
+                                    param[1]
+                                  ];
+                          }));
+                    return storage[/* deleteBatch */7](ids$1);
+                  });
+              };
               var outputs = Component$Reventless.extractOutputs;
               var construct = function (ttl, self, name, api, apiRole) {
                 var opts = {
@@ -275,6 +286,7 @@ function Make(Config) {
                 self.saveBatch = saveBatchFn(storage);
                 self.count = countFn(storage);
                 self.delete = deleteFn(storage);
+                self.deleteBatch = deleteBatchFn(storage);
                 var resolvers = Curry.app(Resolvers.make, [
                       name,
                       api,

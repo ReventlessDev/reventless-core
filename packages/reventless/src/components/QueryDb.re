@@ -217,6 +217,8 @@ module Make =
   external setSaveBatch: (component, saveBatch) => unit = "saveBatch";
   [@bs.set] external setCount: (component, count) => unit = "count";
   [@bs.set] external setDelete: (component, delete) => unit = "delete";
+  [@bs.set]
+  external setDeleteBatch: (component, deleteBatch) => unit = "deleteBatch";
 
   [@bs.get] external load: component => load = "load";
   [@bs.get] external save: component => save = "save";
@@ -293,6 +295,13 @@ module Make =
       storage.Adapter.delete(. id->Spec.Id.toString, subId);
     };
 
+  let deleteBatchFn = storage =>
+    (. ids) => {
+      let ids =
+        ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.toString, sort));
+      storage.Adapter.deleteBatch(. ids);
+    };
+
   let outputs: component => outputs =
     component => Component.extractOutputs(component);
 
@@ -322,6 +331,7 @@ module Make =
     self->setSaveBatch(storage->saveBatchFn);
     self->setCount(storage->countFn);
     self->setDelete(storage->deleteFn);
+    self->setDeleteBatch(storage->deleteBatchFn);
 
     let resolvers =
       Resolvers.make(
