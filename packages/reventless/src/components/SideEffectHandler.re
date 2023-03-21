@@ -23,8 +23,8 @@ module type T = {
       ~scheduler: Scheduler.t,
       ~memorySize: int=?,
       ~timeout: int=?,
-      ~policy1: Pulumi.Output.t(string)=?,
-      ~policy2: Pulumi.Output.t(string)=?,
+      ~policy1: option(Pulumi.Output.t(string)),
+      ~policy2: option(Pulumi.Output.t(string)),
       ~opts: Pulumi.CustomResourceOptions.t=?,
       unit
     ) =>
@@ -259,8 +259,8 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~scheduler,
         ~memorySize=2048,
         ~timeout=180,
-        ~policy1: option(Pulumi.Output.t(string))=?,
-        ~policy2: option(Pulumi.Output.t(string))=?,
+        ~policy1: option(Pulumi.Output.t(string)),
+        ~policy2: option(Pulumi.Output.t(string)),
         ~opts=?,
         unit: unit,
       ) => {
