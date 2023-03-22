@@ -3,8 +3,6 @@
 
 var Curry = require("rescript/lib/js/curry.js");
 var Component = require("./Component").default;
-var Belt_Option = require("rescript/lib/js/belt_Option.js");
-var Pulumi = require("@pulumi/pulumi");
 var Logger$Reventless = require("../util/Logger.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
@@ -17,8 +15,8 @@ function Make(Connector) {
     };
   };
   var construct = function (eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, self, name) {
-    Logger$Reventless.logOutput("File \"EventCollector.re\", line 108, characters 11-18", undefined, undefined, undefined, name + ": policy1", Belt_Option.getWithDefault(policy1, Pulumi.output("None")));
-    Logger$Reventless.logOutput("File \"EventCollector.re\", line 113, characters 11-18", undefined, undefined, undefined, name + ": policy2", Belt_Option.getWithDefault(policy2, Pulumi.output("None")));
+    Logger$Reventless.logOutput("File \"EventCollector.re\", line 107, characters 37-44", undefined, undefined, undefined, name + ": policy1", policy1);
+    Logger$Reventless.logOutput("File \"EventCollector.re\", line 108, characters 37-44", undefined, undefined, undefined, name + ": policy2", policy2);
     var opts = {
       parent: self
     };

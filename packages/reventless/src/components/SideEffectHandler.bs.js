@@ -97,8 +97,8 @@ function Make(EventCollector) {
     };
   };
   var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name) {
-    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 196, characters 11-18", undefined, undefined, undefined, name + ": policy1", policy1, "None");
-    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 202, characters 11-18", undefined, undefined, undefined, name + ": policy2", policy2, "None");
+    Logger$Reventless.logOutput("File \"SideEffectHandler.re\", line 195, characters 37-44", undefined, undefined, undefined, name + ": policy1", policy1);
+    Logger$Reventless.logOutput("File \"SideEffectHandler.re\", line 196, characters 37-44", undefined, undefined, undefined, name + ": policy2", policy2);
     var opts = {
       parent: self
     };
@@ -131,19 +131,19 @@ function Make(EventCollector) {
   var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, policy1, policy2, opts, unit) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 269, characters 13-20", undefined, undefined, undefined, name + ": 1. name", name);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 270, characters 13-20", undefined, undefined, undefined, name + ": 2. sideEffects", sideEffects);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 271, characters 13-20", undefined, undefined, undefined, name + ": 3. allEventTopics", allEventTopics);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 272, characters 13-20", undefined, undefined, undefined, name + ": 4. queryEngine", queryEngine);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 273, characters 13-20", undefined, undefined, undefined, name + ": 5. scheduler", scheduler);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 274, characters 13-20", undefined, undefined, undefined, name + ": 6. memorySize", memorySize);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 275, characters 13-20", undefined, undefined, undefined, name + ": 7. timeout", timeout);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 276, characters 13-20", undefined, undefined, undefined, name + ": 8a. policy1", policy1);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 277, characters 13-20", undefined, undefined, undefined, name + ": 9a. policy2", policy2);
-    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 279, characters 11-18", undefined, undefined, undefined, name + ": 8b. policy1", policy1, "None");
-    Logger$Reventless.logOptionalOutput("File \"SideEffectHandler.re\", line 285, characters 11-18", undefined, undefined, undefined, name + ": 9b. policy2", policy2, "None");
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 290, characters 13-20", undefined, undefined, undefined, name + ": 10. opts", opts);
-    Logger$Reventless.log("File \"SideEffectHandler.re\", line 291, characters 13-20", undefined, undefined, undefined, name + ": 11. unit", unit);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 259, characters 13-20", undefined, undefined, undefined, name + ": 1. name", name);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 260, characters 13-20", undefined, undefined, undefined, name + ": 2. sideEffects", sideEffects);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 261, characters 13-20", undefined, undefined, undefined, name + ": 3. allEventTopics", allEventTopics);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 262, characters 13-20", undefined, undefined, undefined, name + ": 4. queryEngine", queryEngine);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 263, characters 13-20", undefined, undefined, undefined, name + ": 5. scheduler", scheduler);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 264, characters 13-20", undefined, undefined, undefined, name + ": 6. memorySize", memorySize);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 265, characters 13-20", undefined, undefined, undefined, name + ": 7. timeout", timeout);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 266, characters 13-20", undefined, undefined, undefined, name + ": 8a. policy1", policy1);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 267, characters 13-20", undefined, undefined, undefined, name + ": 9a. policy2", policy2);
+    Logger$Reventless.logOutput("File \"SideEffectHandler.re\", line 268, characters 19-26", undefined, undefined, undefined, name + ": 8b. policy1", policy1);
+    Logger$Reventless.logOutput("File \"SideEffectHandler.re\", line 269, characters 19-26", undefined, undefined, undefined, name + ": 9b. policy2", policy2);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 270, characters 13-20", undefined, undefined, undefined, name + ": 10. opts", opts);
+    Logger$Reventless.log("File \"SideEffectHandler.re\", line 271, characters 13-20", undefined, undefined, undefined, name + ": 11. unit", unit);
     var prim0 = ComponentType$Reventless.toString(/* SideEffectHandler */15);
     var prim2 = function (param, param$1) {
       return construct(sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, param, param$1);

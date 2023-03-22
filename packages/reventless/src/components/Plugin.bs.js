@@ -460,8 +460,8 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                 eventsHandler,
                 undefined,
                 undefined,
-                undefined,
-                undefined,
+                Pulumi.output(undefined),
+                Pulumi.output(undefined),
                 Caml_option.some(opts),
                 undefined
               ]);

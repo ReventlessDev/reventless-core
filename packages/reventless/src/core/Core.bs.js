@@ -5,6 +5,7 @@ var Curry = require("rescript/lib/js/curry.js");
 var Js_dict = require("rescript/lib/js/js_dict.js");
 var Belt_Array = require("rescript/lib/js/belt_Array.js");
 var Caml_option = require("rescript/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("rescript/lib/js/belt_SetString.js");
 var Cloner$Reventless = require("../components/Cloner.bs.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -104,8 +105,8 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
           eventsHandler,
           undefined,
           undefined,
-          undefined,
-          undefined,
+          Pulumi.output(undefined),
+          Pulumi.output(undefined),
           Caml_option.some(opts),
           undefined
         ]);
@@ -142,4 +143,4 @@ var componentType = /* Core */18;
 exports.componentType = componentType;
 exports.toDict = toDict;
 exports.Make = Make;
-/* Cloner-Reventless Not a pure module */
+/* @pulumi/pulumi Not a pure module */

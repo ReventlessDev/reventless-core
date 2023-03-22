@@ -91,12 +91,7 @@ function logOutput(loc, map, stringify, level, desc, output) {
   return log(loc, map, stringify, /* Error */3, desc + (" ~}> was expected to be a Pulumi.Output.t, but is " + (itemType + "!")), output);
 }
 
-function logOptionalOutput(loc, map, stringify, level, desc, optionalOutput, $$default) {
-  return logOutput(loc, map, stringify, level, desc, Belt_Option.getWithDefault(optionalOutput, Pulumi.output($$default)));
-}
-
 exports.Level = Level;
 exports.log = log;
 exports.logOutput = logOutput;
-exports.logOptionalOutput = logOptionalOutput;
 /* @pulumi/pulumi Not a pure module */

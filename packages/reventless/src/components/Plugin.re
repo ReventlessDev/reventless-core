@@ -807,6 +807,8 @@ module Make =
             ~name=name->ComponentType.name(componentType),
             ~eventTopics,
             ~eventsHandler,
+            ~policy1=Pulumi.Output.make(None),
+            ~policy2=Pulumi.Output.make(None),
             ~opts=Some(opts),
             (),
           );

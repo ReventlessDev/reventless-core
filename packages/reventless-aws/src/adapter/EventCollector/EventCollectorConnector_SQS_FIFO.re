@@ -7,8 +7,8 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
     ~handleEvents,
     ~memorySize,
     ~timeout,
-    ~policy1=?,
-    ~policy2=?,
+    ~policy1,
+    ~policy2,
     ~opts,
   ) => {
     let queue =
@@ -53,7 +53,6 @@ let make: Reventless.EventCollector.Adapter.connectorMaker =
 
     let eventHandlerLambda =
       PulumiAws.Lambda.Policy.customPolicies(policy1, policy2) // TODO calculate real policies
-      ->Pulumi.Output.all
       ->Pulumi.Output.apply(policies =>
           Lambda.CallbackFunction.make(
             ~name,

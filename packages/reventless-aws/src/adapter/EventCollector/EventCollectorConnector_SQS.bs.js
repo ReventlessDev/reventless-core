@@ -6,7 +6,6 @@ var Js_exn = require("rescript/lib/js/js_exn.js");
 var Belt_Array = require("rescript/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("rescript/lib/js/caml_option.js");
-var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.bs.js");
 var Util_SNS$ReventlessAws = require("../../util/Util_SNS.bs.js");
@@ -32,7 +31,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
         Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),
         Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents
       ], Caml_option.some(opts), undefined);
-  var eventHandlerLambda = Pulumi.all(Lambda$PulumiAws.Policy.customPolicies(policy1, policy2)).apply(function (policies) {
+  var eventHandlerLambda = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2).apply(function (policies) {
         return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                         (function (param, param$1) {
                             return EventCollectorConnector_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, queue, param, param$1);
