@@ -24,5 +24,6 @@
   ],
   "pinned-dependencies": [
     "@reventless/bs-pulumi-pulumi"
-  ]
+  ],
+  "external-stdlib": "@rescript/std"
 }
