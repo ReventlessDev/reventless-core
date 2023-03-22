@@ -23,8 +23,8 @@ module type T = {
       ~scheduler: Scheduler.t,
       ~memorySize: int=?,
       ~timeout: int=?,
-      ~policy1: option(Pulumi.Output.t(string)),
-      ~policy2: option(Pulumi.Output.t(string)),
+      ~policy1: Pulumi.Output.t(option(string)),
+      ~policy2: Pulumi.Output.t(option(string)),
       ~opts: Pulumi.CustomResourceOptions.t=?,
       unit
     ) =>
@@ -187,23 +187,13 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~scheduler: Scheduler.t,
         ~memorySize,
         ~timeout,
-        ~policy1=?,
-        ~policy2=?,
+        ~policy1,
+        ~policy2,
         self,
         name,
       ) => {
-    Reventless.Logger.logOptionalOutput(
-      ~loc=__LOC__,
-      name ++ ": policy1",
-      policy1,
-      ~default="None",
-    );
-    Reventless.Logger.logOptionalOutput(
-      ~loc=__LOC__,
-      name ++ ": policy2",
-      policy2,
-      ~default="None",
-    );
+    Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy1", policy1);
+    Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy2", policy2);
 
     let opts =
       Pulumi.ComponentResource.Options.make(
@@ -227,8 +217,8 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~eventsHandler,
         ~memorySize,
         ~timeout,
-        ~policy1?,
-        ~policy2?,
+        ~policy1,
+        ~policy2,
         ~opts=Some(opts),
         (),
       );
@@ -259,8 +249,8 @@ module Make = (EventCollector: EventCollector.T) : T => {
         ~scheduler,
         ~memorySize=2048,
         ~timeout=180,
-        ~policy1: option(Pulumi.Output.t(string)),
-        ~policy2: option(Pulumi.Output.t(string)),
+        ~policy1: Pulumi.Output.t(option(string)),
+        ~policy2: Pulumi.Output.t(option(string)),
         ~opts=?,
         unit: unit,
       ) => {
@@ -275,18 +265,8 @@ module Make = (EventCollector: EventCollector.T) : T => {
     log(~loc=__LOC__, name ++ ": 7. timeout", timeout);
     log(~loc=__LOC__, name ++ ": 8a. policy1", policy1);
     log(~loc=__LOC__, name ++ ": 9a. policy2", policy2);
-    logOptionalOutput(
-      ~loc=__LOC__,
-      name ++ ": 8b. policy1",
-      policy1,
-      ~default="None",
-    );
-    logOptionalOutput(
-      ~loc=__LOC__,
-      name ++ ": 9b. policy2",
-      policy2,
-      ~default="None",
-    );
+    logOutput(~loc=__LOC__, name ++ ": 8b. policy1", policy1);
+    logOutput(~loc=__LOC__, name ++ ": 9b. policy2", policy2);
     log(~loc=__LOC__, name ++ ": 10. opts", opts);
     log(~loc=__LOC__, name ++ ": 11. unit", unit);
 
@@ -301,8 +281,8 @@ module Make = (EventCollector: EventCollector.T) : T => {
           ~scheduler,
           ~memorySize,
           ~timeout,
-          ~policy1?,
-          ~policy2?,
+          ~policy1,
+          ~policy2,
         ),
       ~opts=
         opts->Belt.Option.map(

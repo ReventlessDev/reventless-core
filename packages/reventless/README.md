@@ -155,3 +155,4 @@ This command will run 3 Shell-Scripts:
 ## Pulumi
 * `...->Pulumi.Output.apply(_, ...)`
 * `...->Pulumi.Output.all->Pulumi.Output.apply(...)`
+* type `option(Pulumi.Output.t('a))`: Rescript's js option encoding and Pulumi's Output lifting mechanics interact badly! - Therefore, such a type is not possible to use!

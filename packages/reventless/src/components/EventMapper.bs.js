@@ -9,6 +9,7 @@ var Belt_Array = require("rescript/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("rescript/lib/js/belt_Option.js");
 var Caml_option = require("rescript/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("rescript/lib/js/belt_SetString.js");
 var Counter$Reventless = require("./Counter.bs.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -283,8 +284,8 @@ function Make(Target, EventCollector, Mappings) {
           eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]),
           memorySize,
           timeout,
-          undefined,
-          undefined,
+          Pulumi.output(undefined),
+          Pulumi.output(undefined),
           Caml_option.some(opts),
           undefined
         ]);

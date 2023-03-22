@@ -7,6 +7,7 @@ var Belt_Array = require("rescript/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Result = require("rescript/lib/js/belt_Result.js");
 var Caml_option = require("rescript/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("rescript/lib/js/belt_SetString.js");
 var QueryDb$Reventless = require("./QueryDb.bs.js");
 var Component$Reventless = require("./Component.bs.js");
@@ -114,8 +115,8 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
           eventsHandler,
           undefined,
           undefined,
-          undefined,
-          undefined,
+          Pulumi.output(undefined),
+          Pulumi.output(undefined),
           Caml_option.some(opts),
           undefined
         ]);

@@ -98,26 +98,3 @@ let logOutput:
         output->Pulumi.Output.unwrap,
       );
     };
-
-let logOptionalOutput:
-  (
-    ~loc: string=?,
-    ~map: 'a => 'b=?,
-    ~stringify: bool=?,
-    ~level: Level.t=?,
-    string,
-    option(Pulumi.Output.t('a)),
-    ~default: 'a
-  ) =>
-  unit =
-  (~loc=?, ~map=?, ~stringify=?, ~level=?, desc, optionalOutput, ~default) =>
-    logOutput(
-      ~loc?,
-      ~map?,
-      ~stringify?,
-      ~level?,
-      desc,
-      optionalOutput->Belt.Option.getWithDefault(
-        Pulumi.Output.make(default),
-      ),
-    );

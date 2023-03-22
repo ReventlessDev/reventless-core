@@ -26,8 +26,8 @@ module type T = {
       ~eventsHandler: eventsHandler,
       ~memorySize: int=?,
       ~timeout: int=?,
-      ~policy1: Pulumi.Output.t(string)=?,
-      ~policy2: Pulumi.Output.t(string)=?,
+      ~policy1: Pulumi.Output.t(option(string)),
+      ~policy2: Pulumi.Output.t(option(string)),
       ~opts: option(Pulumi.ComponentResource.Options.t),
       unit
     ) =>
@@ -48,8 +48,8 @@ module Adapter = {
       ~handleEvents: eventsHandler,
       ~memorySize: int,
       ~timeout: int,
-      ~policy1: Pulumi.Output.t(string)=?,
-      ~policy2: Pulumi.Output.t(string)=?,
+      ~policy1: Pulumi.Output.t(option(string)),
+      ~policy2: Pulumi.Output.t(option(string)),
       ~opts: Pulumi.CustomResourceOptions.t
     ) =>
     connector;
@@ -99,21 +99,13 @@ module Make = (Connector: Adapter.Connector) : T => {
         ~eventsHandler,
         ~memorySize,
         ~timeout,
-        ~policy1=?,
-        ~policy2=?,
+        ~policy1,
+        ~policy2,
         self,
         name,
       ) => {
-    Reventless.Logger.logOutput(
-      ~loc=__LOC__,
-      name ++ ": policy1",
-      policy1->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
-    );
-    Reventless.Logger.logOutput(
-      ~loc=__LOC__,
-      name ++ ": policy2",
-      policy2->Belt.Option.getWithDefault(Pulumi.Output.make("None")),
-    );
+    Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy1", policy1);
+    Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy2", policy2);
     let opts =
       Pulumi.CustomResourceOptions.make(
         ~parent=self->Component.toPulumiResource,
@@ -124,8 +116,8 @@ module Make = (Connector: Adapter.Connector) : T => {
       Connector.make(
         ~name=name->ComponentType.name(componentType),
         ~eventTopics,
-        ~policy1?,
-        ~policy2?,
+        ~policy1,
+        ~policy2,
         ~handleEvents=eventsHandler,
         ~memorySize,
         ~timeout,
@@ -144,8 +136,8 @@ module Make = (Connector: Adapter.Connector) : T => {
         ~eventsHandler,
         ~memorySize=128,
         ~timeout=30,
-        ~policy1=?,
-        ~policy2=?,
+        ~policy1,
+        ~policy2,
         ~opts,
         _,
       ) =>
@@ -158,8 +150,8 @@ module Make = (Connector: Adapter.Connector) : T => {
           ~eventsHandler,
           ~memorySize,
           ~timeout,
-          ~policy1?,
-          ~policy2?,
+          ~policy1,
+          ~policy2,
         ),
       ~opts,
     );

@@ -386,6 +386,8 @@ module Make =
           ),
         ~memorySize,
         ~timeout,
+        ~policy1=Pulumi.Output.make(None),
+        ~policy2=Pulumi.Output.make(None),
         ~opts=Some(opts),
         (),
       );

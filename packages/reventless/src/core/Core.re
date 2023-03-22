@@ -196,6 +196,8 @@ module Make =
         ~eventTopics=
           aggregatesOutputs->Util.Aggregate.filterEventTopics(aggregateNames),
         ~eventsHandler,
+        ~policy1=Pulumi.Output.make(None),
+        ~policy2=Pulumi.Output.make(None),
         ~opts=Some(opts),
         (),
       );
