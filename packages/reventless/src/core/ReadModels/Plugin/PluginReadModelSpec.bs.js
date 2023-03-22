@@ -2,10 +2,10 @@
 'use strict';
 
 var Decco = require("decco/src/Decco.bs.js");
-var Js_dict = require("rescript/lib/js/js_dict.js");
-var Js_json = require("rescript/lib/js/js_json.js");
-var Belt_Array = require("rescript/lib/js/belt_Array.js");
-var Belt_Option = require("rescript/lib/js/belt_Option.js");
+var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Js_json = require("@rescript/std/lib/js/js_json.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Message$Reventless = require("../../../Message.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
 

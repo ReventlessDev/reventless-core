@@ -2,15 +2,15 @@
 'use strict';
 
 var Jest = require("@glennsl/rescript-jest/src/jest.bs.js");
-var Curry = require("rescript/lib/js/curry.js");
-var Js_dict = require("rescript/lib/js/js_dict.js");
-var Caml_obj = require("rescript/lib/js/caml_obj.js");
-var Belt_List = require("rescript/lib/js/belt_List.js");
-var Belt_Array = require("rescript/lib/js/belt_Array.js");
-var Caml_array = require("rescript/lib/js/caml_array.js");
-var Pervasives = require("rescript/lib/js/pervasives.js");
-var Belt_Option = require("rescript/lib/js/belt_Option.js");
-var Caml_option = require("rescript/lib/js/caml_option.js");
+var Curry = require("@rescript/std/lib/js/curry.js");
+var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
+var Belt_List = require("@rescript/std/lib/js/belt_List.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Caml_array = require("@rescript/std/lib/js/caml_array.js");
+var Pervasives = require("@rescript/std/lib/js/pervasives.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Projection$Reventless = require("../src/Projection.bs.js");
 var TestFixtures$Reventless = require("./TestFixtures.bs.js");
 

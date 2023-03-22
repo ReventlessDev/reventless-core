@@ -2,7 +2,7 @@
 'use strict';
 
 var SSH2 = require("@reventless/bs-ssh2/src/SSH2.bs.js");
-var Belt_Int = require("rescript/lib/js/belt_Int.js");
+var Belt_Int = require("@rescript/std/lib/js/belt_Int.js");
 
 function parseUrl(url) {
   var colonI = url.indexOf(":");

@@ -3,9 +3,9 @@
 
 var SSH2 = require("@reventless/bs-ssh2/src/SSH2.bs.js");
 var Ssh2 = require("ssh2");
-var Curry = require("rescript/lib/js/curry.js");
-var Belt_Option = require("rescript/lib/js/belt_Option.js");
-var Caml_option = require("rescript/lib/js/caml_option.js");
+var Curry = require("@rescript/std/lib/js/curry.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Message$Reventless = require("../Message.bs.js");
 
 function ftp(connectionParams, ftpAction) {

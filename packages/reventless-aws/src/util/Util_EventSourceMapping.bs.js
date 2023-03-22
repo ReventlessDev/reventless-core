@@ -2,7 +2,7 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Caml_option = require("rescript/lib/js/caml_option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 
 function subscribe(batchSize, lambda, targetName, sourceName, source, opts, param) {

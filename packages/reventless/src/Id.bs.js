@@ -2,7 +2,7 @@
 'use strict';
 
 var Decco = require("decco/src/Decco.bs.js");
-var $$String = require("rescript/lib/js/string.js");
+var $$String = require("@rescript/std/lib/js/string.js");
 
 var t_encode = Decco.stringToJson;
 

@@ -2,16 +2,16 @@
 'use strict';
 
 var Uuid = require("@reventless/bs-uuid/src/Uuid.bs.js");
-var Curry = require("rescript/lib/js/curry.js");
+var Curry = require("@rescript/std/lib/js/curry.js");
 var Decco = require("decco/src/Decco.bs.js");
-var $$String = require("rescript/lib/js/string.js");
-var Js_dict = require("rescript/lib/js/js_dict.js");
-var Js_json = require("rescript/lib/js/js_json.js");
-var Caml_obj = require("rescript/lib/js/caml_obj.js");
-var Js_option = require("rescript/lib/js/js_option.js");
-var Belt_Option = require("rescript/lib/js/belt_Option.js");
-var Caml_option = require("rescript/lib/js/caml_option.js");
-var Caml_exceptions = require("rescript/lib/js/caml_exceptions.js");
+var $$String = require("@rescript/std/lib/js/string.js");
+var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Js_json = require("@rescript/std/lib/js/js_json.js");
+var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
+var Js_option = require("@rescript/std/lib/js/js_option.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Util_Decco$Reventless = require("./util/Util_Decco.bs.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.bs.js");
 

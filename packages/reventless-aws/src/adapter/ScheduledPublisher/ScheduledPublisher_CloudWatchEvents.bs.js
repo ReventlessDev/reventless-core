@@ -2,7 +2,7 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Caml_option = require("rescript/lib/js/caml_option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws = require("./ScheduledPublisher_CloudWatchEvents_Runtime.bs.js");

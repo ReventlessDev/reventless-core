@@ -3,7 +3,7 @@
 
 var Component = require("./Component").default;
 var Aws = require("@pulumi/aws");
-var Caml_option = require("rescript/lib/js/caml_option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var EC2_Eip$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Eip.bs.js");
 var EC2_Vpc$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Vpc.bs.js");
 var EC2_Subnet$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Subnet.bs.js");
