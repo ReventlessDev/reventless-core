@@ -51,5 +51,6 @@
         "@reventless/bs-pulumi-pulumi",
         "@reventless/bs-ssh2",
         "@reventless/bs-uuid"
-    ]
+    ],
+    "external-stdlib": "@rescript/std"
 }
