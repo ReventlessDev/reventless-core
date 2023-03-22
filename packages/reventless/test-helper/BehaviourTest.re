@@ -11,10 +11,16 @@ module type T = {
     (list(Spec.event), string, Spec.command) => list(Spec.event);
 
   let thenEvent: (list(Spec.event), Spec.event) => Jest.assertion;
+  let thenCompareEvent:
+    (list(Spec.event), Spec.event, (Spec.event, Spec.event) => bool) =>
+    Jest.assertion;
   let thenNoEvent: list(Spec.event) => Jest.assertion;
   let thenEventWithError:
     (list(Spec.event), Spec.event, Spec.error) => Jest.assertion;
   let thenEvents: (list(Spec.event), list(Spec.event)) => Jest.assertion;
+  let thenCompareEvents:
+    (list(Spec.event), list(Spec.event), (Spec.event, Spec.event) => bool) =>
+    Jest.assertion;
   let thenEventsWithError:
     (list(Spec.event), list(Spec.event), Spec.error) => Jest.assertion;
   let thenError: (list(Spec.event), Spec.error) => Jest.assertion;
@@ -72,6 +78,40 @@ module Make =
     expect(((errors^)->Belt.List.length, events))
     |> toEqual((0, expectedEvents));
 
+  let compare = (cmp, e1, e2) => {
+    let cmpResult = cmp(e1, e2);
+    if (!cmpResult) {
+      Js.log3("Events do not match:", e1, e2);
+    };
+    cmpResult;
+  };
+
+  let thenCompareEvents = (events, expectedEvents, cmp) =>
+    expect((
+      (errors^)->Belt.List.length,
+      events->Belt.List.length,
+      Belt.List.zip(events, expectedEvents)
+      ->Belt.List.map(((event, expectedEvent)) =>
+          cmp->compare(event, expectedEvent)
+        )
+      ->Belt.List.every(result => result),
+    ))
+    |> toEqual((0, expectedEvents->Belt.List.length, true));
+
+  let listErrors = () =>
+    "Errors occured: "
+    ++ (errors^)
+       ->Belt.List.map(err
+           /* NOTE: this process is very fragile!!
+              it relies on decco decoding the error-varints to arrays of string
+              */
+           =>
+             err->Spec.error_encode->Js.Json.decodeArray->Belt.Option.getExn[0]
+             ->Js.Json.decodeString
+             ->Belt.Option.getExn
+           )
+       ->Belt.List.reduce("", (a, b) => a ++ b ++ " ");
+
   let thenEvent = (events, expectedEvent) =>
     if (events->Belt.List.length > 0) {
       expect((
@@ -81,19 +121,22 @@ module Make =
       ))
       |> toEqual((0, 1, Some(expectedEvent)));
     } else if ((errors^)->Belt.List.length > 0) {
-      "Errors occured: "
-      ++ (errors^)
-         ->Belt.List.map(err
-             /* NOTE: this process is very fragile!!
-                it relies on decco decoding the error-varints to arrays of string
-                */
-             =>
-               err->Spec.error_encode->Js.Json.decodeArray->Belt.Option.getExn[0]
-               ->Js.Json.decodeString
-               ->Belt.Option.getExn
-             )
-         ->Belt.List.reduce("", (a, b) => a ++ b ++ " ")
-      |> Jest.fail;
+      listErrors()->Jest.fail;
+    } else {
+      Jest.fail("thenEvent: No event present to validate");
+    };
+
+  let thenCompareEvent = (events, expectedEvent, cmp) =>
+    if (events->Belt.List.length > 0) {
+      let firstEvent = events->Belt.List.head->Belt.Option.getExn;
+      expect((
+        (errors^)->Belt.List.length,
+        events->Belt.List.length,
+        cmp->compare(firstEvent, expectedEvent),
+      ))
+      |> toEqual((0, 1, true));
+    } else if ((errors^)->Belt.List.length > 0) {
+      listErrors()->Jest.fail;
     } else {
       Jest.fail("thenEvent: No event present to validate");
     };

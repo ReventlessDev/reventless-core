@@ -68,6 +68,35 @@ function Make(Spec) {
                         events
                       ]));
       };
+      var compare = function (cmp, e1, e2) {
+        var cmpResult = Curry._2(cmp, e1, e2);
+        if (!cmpResult) {
+          console.log("Events do not match:", e1, e2);
+        }
+        return cmpResult;
+      };
+      var thenCompareEvents = function (events, expectedEvents, cmp) {
+        return Jest.Expect.toEqual(/* tuple */[
+                    0,
+                    Belt_List.length(expectedEvents),
+                    true
+                  ], Jest.Expect.expect(/* tuple */[
+                        Belt_List.length(errors[0]),
+                        Belt_List.length(events),
+                        Belt_List.every(Belt_List.map(Belt_List.zip(events, expectedEvents), (function (param) {
+                                    return compare(cmp, param[0], param[1]);
+                                  })), (function (result) {
+                                return result;
+                              }))
+                      ]));
+      };
+      var listErrors = function (param) {
+        return "Errors occured: " + Belt_List.reduce(Belt_List.map(errors[0], (function (err) {
+                          return Belt_Option.getExn(Js_json.decodeString(Caml_array.caml_array_get(Belt_Option.getExn(Js_json.decodeArray(Curry._1(Spec.error_encode, err))), 0)));
+                        })), "", (function (a, b) {
+                      return a + (b + " ");
+                    }));
+      };
       var thenEvent = function (events, expectedEvent) {
         if (Belt_List.length(events) > 0) {
           return Jest.Expect.toEqual(/* tuple */[
@@ -80,11 +109,25 @@ function Make(Spec) {
                           Belt_List.head(events)
                         ]));
         } else if (Belt_List.length(errors[0]) > 0) {
-          return Jest.fail("Errors occured: " + Belt_List.reduce(Belt_List.map(errors[0], (function (err) {
-                                return Belt_Option.getExn(Js_json.decodeString(Caml_array.caml_array_get(Belt_Option.getExn(Js_json.decodeArray(Curry._1(Spec.error_encode, err))), 0)));
-                              })), "", (function (a, b) {
-                            return a + (b + " ");
-                          })));
+          return Jest.fail(listErrors(/* () */0));
+        } else {
+          return Jest.fail("thenEvent: No event present to validate");
+        }
+      };
+      var thenCompareEvent = function (events, expectedEvent, cmp) {
+        if (Belt_List.length(events) > 0) {
+          var firstEvent = Belt_Option.getExn(Belt_List.head(events));
+          return Jest.Expect.toEqual(/* tuple */[
+                      0,
+                      1,
+                      true
+                    ], Jest.Expect.expect(/* tuple */[
+                          Belt_List.length(errors[0]),
+                          Belt_List.length(events),
+                          compare(cmp, firstEvent, expectedEvent)
+                        ]));
+        } else if (Belt_List.length(errors[0]) > 0) {
+          return Jest.fail(listErrors(/* () */0));
         } else {
           return Jest.fail("thenEvent: No event present to validate");
         }
@@ -135,9 +178,11 @@ function Make(Spec) {
               whenCmd: whenCmd,
               whenCmdWithId: whenCmdWithId,
               thenEvent: thenEvent,
+              thenCompareEvent: thenCompareEvent,
               thenNoEvent: thenNoEvent,
               thenEventWithError: thenEventWithError,
               thenEvents: thenEvents,
+              thenCompareEvents: thenCompareEvents,
               thenEventsWithError: thenEventsWithError,
               thenError: thenError
             };
