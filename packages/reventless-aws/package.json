@@ -26,6 +26,7 @@
     "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
   },
   "dependencies": {
+    "@rescript/std": "^9.1.4",
     "@reventless/bs-aws-sdk": "^1.2.0-rescript.9",
     "@reventless/bs-pulumi-aws": "^1.2.0-rescript.18",
     "@reventless/bs-pulumi-pulumi": "^1.2.0-rescript.11",

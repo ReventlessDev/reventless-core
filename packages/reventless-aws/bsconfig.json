@@ -38,5 +38,6 @@
     "@reventless/bs-pulumi-pulumi",
     "@reventless/reventless-spec",
     "@reventless/reventless"
-  ]
+  ],
+  "external-stdlib": "@rescript/std"
 }
