@@ -1,1 +1,0 @@
-let generateCommand = (commandGenerator, event, _) => event->commandGenerator;

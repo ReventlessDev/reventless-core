@@ -35,23 +35,20 @@ function handleQueueEvent(handleCommands, queue, $$event, param) {
   return handleCommands(topicItems).catch(function (param) {
                 return Js_exn.raiseError("CommandTopicConnector_SQS_Runtime-ReventlessAws.handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!");
               }).then(function (results) {
-              var arg = Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (idx, result) {
-                          if (result.TAG === /* Ok */0) {
-                            var reference = result._0;
-                            console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.handleQueueEvent: Delete command with ReceiptHandle:", reference);
-                            return {
-                                    Id: String(idx),
-                                    ReceiptHandle: reference
-                                  };
-                          }
-                          console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
-                          
-                        })), (function (x) {
-                      return x;
-                    }));
-              return (function (param) {
-                              return SQS$AwsSdk.deleteMessageBatch(param, arg);
-                            })(queue.id.get()).then(function (param) {
+              return SQS$AwsSdk.deleteMessageBatch(queue.id.get(), Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (idx, result) {
+                                        if (result.TAG === /* Ok */0) {
+                                          var reference = result._0;
+                                          console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.handleQueueEvent: Delete command with ReceiptHandle:", reference);
+                                          return {
+                                                  Id: String(idx),
+                                                  ReceiptHandle: reference
+                                                };
+                                        }
+                                        console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
+                                        
+                                      })), (function (x) {
+                                    return x;
+                                  }))).then(function (param) {
                             return Promise.resolve(undefined);
                           }).catch(function (err) {
                           return Promise.resolve((console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws.handleQueueEvent: Error: Couldn't deleteMessageBatch:", err), undefined));

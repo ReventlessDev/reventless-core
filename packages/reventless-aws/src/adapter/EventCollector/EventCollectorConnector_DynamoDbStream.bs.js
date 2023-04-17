@@ -17,10 +17,10 @@ var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoD
 var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./EventCollectorConnector_DynamoDbStream_Runtime.bs.js");
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
-  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 14, characters 37-44", undefined, undefined, undefined, name + ": policy1", policy1);
-  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 15, characters 37-44", undefined, undefined, undefined, name + ": policy2", policy2);
+  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.res\", line 13, characters 35-42", undefined, undefined, undefined, name + ": policy1", policy1);
+  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.res\", line 14, characters 35-42", undefined, undefined, undefined, name + ": policy2", policy2);
   var policies = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2);
-  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.re\", line 17, characters 37-44", undefined, undefined, undefined, name + ": policies", policies);
+  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.res\", line 16, characters 35-42", undefined, undefined, undefined, name + ": policies", policies);
   var eventHandlerLambda = policies.apply(function (policies) {
         return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                         (function (param, param$1) {

@@ -1,2 +1,0 @@
-module AppSync = CommandGeneratorResolvers_AppSync;
-module AppSync_Runtime = CommandGeneratorResolvers_AppSync_Runtime;

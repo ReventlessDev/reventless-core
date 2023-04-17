@@ -45,12 +45,9 @@ function makeEntry(queueService, commandJson) {
 }
 
 function sendBatch(queue, queueService, commandJsons) {
-  var arg = Belt_Array.map(commandJsons, (function (commandJson) {
-          return makeEntry(queueService, commandJson);
-        }));
-  return Promise.allSettled((function (param) {
-                    return SQS$AwsSdk.sendMessageBatch(param, arg);
-                  })(queue.id.get())).then(function (results) {
+  return Promise.allSettled(SQS$AwsSdk.sendMessageBatch(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
+                          return makeEntry(queueService, commandJson);
+                        })))).then(function (results) {
               Belt_Array.forEach(Util_Promise$Reventless.filterRejected(results), (function (param) {
                       console.log("SQS.sendMessageBatch request " + param[0] + " failed: " + param[1]);
                       

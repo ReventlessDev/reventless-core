@@ -11,17 +11,17 @@ function emailIdentity(name, email, opts, _unit) {
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
 }
 
-function fromCustomResourceOptions(opts) {
-  if (opts === undefined) {
+function fromCustomResourceOptions(x) {
+  if (x === undefined) {
     return {};
   }
-  var opts$1 = Caml_option.valFromOption(opts);
+  var opts = Caml_option.valFromOption(x);
   var tmp = {};
-  if (opts$1.parent !== undefined) {
-    tmp.parent = Caml_option.valFromOption(opts$1.parent);
+  if (opts.parent !== undefined) {
+    tmp.parent = Caml_option.valFromOption(opts.parent);
   }
-  if (opts$1.provider !== undefined) {
-    tmp.provider = Caml_option.valFromOption(opts$1.provider);
+  if (opts.provider !== undefined) {
+    tmp.provider = Caml_option.valFromOption(opts.provider);
   }
   return tmp;
 }

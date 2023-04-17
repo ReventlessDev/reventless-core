@@ -1,3 +1,0 @@
-module DynamoDb = EventLogStorage_DynamoDb;
-module DynamoDbStream = EventLogStorage_DynamoDbStream;
-module DynamoDb_Runtime = EventLogStorage_DynamoDb_Runtime;

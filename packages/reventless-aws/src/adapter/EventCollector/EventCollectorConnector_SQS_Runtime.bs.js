@@ -39,7 +39,7 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
           }
         }));
   return handleEvents(jsons).then(function (param) {
-              var entries = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
+              var x = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
                           var match = record.eventSource;
                           if (match === "aws:sqs") {
                             return true;
@@ -53,7 +53,7 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
                             };
                     }));
               return (
-                        entries.length !== 0 ? SQS$AwsSdk.deleteMessageBatch(queue.id.get(), entries) : Promise.resolve(undefined)
+                        x.length !== 0 ? SQS$AwsSdk.deleteMessageBatch(queue.id.get(), x) : Promise.resolve(undefined)
                       ).then(function (param) {
                           return Promise.resolve(undefined);
                         });

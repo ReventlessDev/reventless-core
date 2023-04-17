@@ -152,13 +152,13 @@ function toTableConfig(resource) {
 }
 
 function cleanerFn(tablesToClean, _event, _context) {
-  var tableConfigs = Belt_Array.map(tablesToClean, toTableConfig);
-  if (tableConfigs.length === 0) {
+  var x = Belt_Array.map(tablesToClean, toTableConfig);
+  if (x.length === 0) {
     return new Promise((function (resolve, param) {
                   return resolve("No tables to clean.");
                 }));
   }
-  var __x = Promise.all(Belt_Array.map(tableConfigs, scanTableAndClean));
+  var __x = Promise.all(Belt_Array.map(x, scanTableAndClean));
   return __x.then(function (arr) {
               var summary = Belt_Array.reduce(arr, "", (function (state, item) {
                       return state + (" | " + item._0);

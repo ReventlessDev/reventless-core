@@ -85,10 +85,10 @@ function save(table) {
 function writeChunk(writeRequests, maxRetries) {
   var __x = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(writeRequests, maxRetries);
   return __x.then(function (param) {
-              var writeRequests = Belt_Array.get(Js_dict.values(param[0].UnprocessedItems), 0);
+              var x = Belt_Array.get(Js_dict.values(param[0].UnprocessedItems), 0);
               var tmp;
-              if (writeRequests !== undefined) {
-                var count = writeRequests.length;
+              if (x !== undefined) {
+                var count = x.length;
                 tmp = {
                   TAG: /* Error */1,
                   _0: "" + count + " request(s) failed after " + maxRetries

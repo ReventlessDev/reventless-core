@@ -13,28 +13,28 @@ function plural(count) {
   }
 }
 
-function toScheduleExpression(minutes) {
-  switch (minutes.TAG | 0) {
+function toScheduleExpression(x) {
+  switch (x.TAG | 0) {
     case /* Single */0 :
-        return "cron(" + minutes._4 + " " + minutes._3 + " " + minutes._2 + " " + minutes._1 + " ? " + minutes._0 + ")";
+        return "cron(" + x._4 + " " + x._3 + " " + x._2 + " " + x._1 + " ? " + x._0 + ")";
     case /* Minutes */1 :
-        var minutes$1 = minutes._0;
-        var plural$1 = plural(minutes$1);
-        return "rate(" + minutes$1 + " minute" + plural$1 + ")";
+        var minutes = x._0;
+        var plural$1 = plural(minutes);
+        return "rate(" + minutes + " minute" + plural$1 + ")";
     case /* Hours */2 :
-        var hours = minutes._0;
+        var hours = x._0;
         var plural$2 = plural(hours);
         return "rate(" + hours + " hour" + plural$2 + ")";
     case /* Days */3 :
-        var days = minutes._0;
+        var days = x._0;
         var plural$3 = plural(days);
         return "rate(" + days + " day" + plural$3 + ")";
     case /* Daily */4 :
-        return "cron(" + minutes._1 + " " + minutes._0 + " * * * *)";
+        return "cron(" + x._1 + " " + x._0 + " * * * *)";
     case /* Weekdays */5 :
-        return "cron(" + minutes._1 + " " + minutes._0 + " ? * MON-FRI *)";
+        return "cron(" + x._1 + " " + x._0 + " ? * MON-FRI *)";
     case /* WeekdaysAndSaturday */6 :
-        return "cron(" + minutes._1 + " " + minutes._0 + " ? * MON-SAT *)";
+        return "cron(" + x._1 + " " + x._0 + " ? * MON-SAT *)";
     
   }
 }

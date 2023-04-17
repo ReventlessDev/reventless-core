@@ -12,13 +12,13 @@ var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.bs.js");
 
-function toJson(str) {
-  switch (str.TAG | 0) {
+function toJson(x) {
+  switch (x.TAG | 0) {
     case /* Int */1 :
-        return str._0;
+        return x._0;
     case /* String */0 :
     case /* Bool */2 :
-        return str._0;
+        return x._0;
     
   }
 }
