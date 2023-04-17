@@ -1,37 +1,37 @@
-let name = "Core.Plugin";
+let name = "Core.Plugin"
 
-include Plugin;
+include Plugin
 
-[@decco]
-type timeout = int; // in minutes
+@decco
+type timeout = int // in minutes
 
-[@decco]
+@decco
 type forwardCommand = {
   extensionPointName: string,
   id: string,
   command: string,
-};
+}
 
-[@decco]
+@decco
 type command =
   | Heartbeat(timeout)
   | ConnectPlugin(pluginDefinition)
   | DisconnectPlugin
-  | ForwardCommand(forwardCommand);
+  | ForwardCommand(forwardCommand)
 
-[@decco]
+@decco
 type event =
   | UnknownPluginDetected
   | PluginConnected(pluginDefinition)
   | PluginReconnected(pluginDefinition)
   | PluginDisconnected(pluginDefinition)
   | PluginDeactivated(pluginDefinition)
-  | PluginActivated(pluginDefinition);
+  | PluginActivated(pluginDefinition)
 
-[@decco]
+@decco
 type callCommand =
   | CreateDisconnectSchedule(string, timeout)
   | DeleteDisconnectSchedule(string)
   | DoConnectPlugin(pluginDefinition)
   | DoDisconnectPlugin(pluginDefinition)
-  | ForwardCommand(forwardCommand);
+  | ForwardCommand(forwardCommand)

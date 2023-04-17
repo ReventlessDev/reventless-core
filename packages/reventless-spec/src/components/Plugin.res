@@ -1,27 +1,27 @@
-[@decco]
-type name = string;
-[@decco]
-type version = string;
+@decco
+type name = string
+@decco
+type version = string
 
-[@decco]
+@decco
 type extensionPointDefinition = {
   name: string,
   commandTopic: string,
   eventTopic: string,
-};
+}
 
-[@decco]
+@decco
 type extensionDefinition = {
   name: string,
   extensionPointName: string,
-};
+}
 
-[@decco]
+@decco
 type pluginDefinition = {
   id: string,
-  name,
-  version,
-  extensionPoints: array(extensionPointDefinition),
-  extensions: array(extensionDefinition),
+  name: name,
+  version: version,
+  extensionPoints: array<extensionPointDefinition>,
+  extensions: array<extensionDefinition>,
   eventCollector: string,
-};
+}
