@@ -3,7 +3,6 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Component = require("./Component").default;
-var Logger$Reventless = require("../util/Logger.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 var Adapter = {};
@@ -15,8 +14,6 @@ function Make(Connector) {
     };
   };
   var construct = function (eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, self, name) {
-    Logger$Reventless.logOutput("File \"EventCollector.res\", line 96, characters 37-44", undefined, undefined, undefined, name + ": policy1", policy1);
-    Logger$Reventless.logOutput("File \"EventCollector.res\", line 97, characters 37-44", undefined, undefined, undefined, name + ": policy2", policy2);
     var opts = {
       parent: self
     };

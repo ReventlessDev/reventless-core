@@ -93,8 +93,8 @@ module Make = (Connector: Adapter.Connector): T => {
     self,
     name,
   ) => {
-    Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy1", policy1)
-    Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy2", policy2)
+    //Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy1", policy1)
+    //Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy2", policy2)
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
 
     let connector = Connector.make(

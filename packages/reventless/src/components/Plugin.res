@@ -171,8 +171,6 @@ module Make = (
           coreStack => coreStack->Pulumi.StackReference.getOutput("extensionPoints"),
         )
 
-      Logger.logOutput(~loc=__LOC__, name ++ ": coreExtensionPoints - output", coreExtensionPoints)
-
       /*
        (
          switch (

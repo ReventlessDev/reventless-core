@@ -14,7 +14,6 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var AWS$Reventless = require("../util/AWS.bs.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
-var Logger$Reventless = require("../util/Logger.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var Extension$Reventless = require("./Extension.bs.js");
@@ -89,7 +88,6 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
     var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
             return coreStack.getOutput("extensionPoints");
           }));
-    Logger$Reventless.logOutput("File \"Plugin.res\", line 174, characters 28-35", undefined, undefined, undefined, name + ": coreExtensionPoints - output", coreExtensionPoints);
     var pureOutputs = coreExtensionPoints.apply(function (coreExtensionPoints) {
           var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? Caml_option.valFromOption(coreExtensionPoints) : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
           var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);

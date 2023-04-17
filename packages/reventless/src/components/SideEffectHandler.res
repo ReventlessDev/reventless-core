@@ -148,9 +148,6 @@ module Make = (EventCollector: EventCollector.T): T => {
     self,
     name,
   ) => {
-    Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy1", policy1)
-    Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": policy2", policy2)
-
     let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
 
     let aggregateNames =
@@ -195,22 +192,6 @@ module Make = (EventCollector: EventCollector.T): T => {
     ~opts=?,
     unit: unit,
   ) => {
-    open Reventless.Logger
-    let log = Reventless.Logger.log
-    log(~loc=__LOC__, name ++ ": 1. name", name)
-    log(~loc=__LOC__, name ++ ": 2. sideEffects", sideEffects)
-    log(~loc=__LOC__, name ++ ": 3. allEventTopics", allEventTopics)
-    log(~loc=__LOC__, name ++ ": 4. queryEngine", queryEngine)
-    log(~loc=__LOC__, name ++ ": 5. scheduler", scheduler)
-    log(~loc=__LOC__, name ++ ": 6. memorySize", memorySize)
-    log(~loc=__LOC__, name ++ ": 7. timeout", timeout)
-    log(~loc=__LOC__, name ++ ": 8a. policy1", policy1)
-    log(~loc=__LOC__, name ++ ": 9a. policy2", policy2)
-    logOutput(~loc=__LOC__, name ++ ": 8b. policy1", policy1)
-    logOutput(~loc=__LOC__, name ++ ": 9b. policy2", policy2)
-    log(~loc=__LOC__, name ++ ": 10. opts", opts)
-    log(~loc=__LOC__, name ++ ": 11. unit", unit)
-
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
