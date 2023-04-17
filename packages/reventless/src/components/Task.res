@@ -73,7 +73,7 @@ let construct = (
       let messageBody = commandJson->Js.Json.stringify
       Js.log(j`Task.publishCommands $idx/$count: id=$id, $messageBody`)
     })
-    (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn(cmdJsons))
+    (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(. cmdJsons)
   }
 
   setup(.
