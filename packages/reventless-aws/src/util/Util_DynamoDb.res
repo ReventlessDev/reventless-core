@@ -24,7 +24,8 @@ let arn2tableName = arn =>
 open PulumiAws.DynamoDb.Table
 
 let enableTtl: string => Js.Promise.t<PulumiAws.DynamoDb.Table.TableTtl.t> = tableName => {
-  Js.log(j`$__MODULE__: enableTimeToLive for $tableName`)
+  Js.log(`${__MODULE__}: enableTimeToLive for ${tableName}`)
+
   {
     open AwsSdk.DynamoDb_DynamoDb
     updateTimeToLive(
@@ -62,7 +63,8 @@ let verifyTtl: (
   )
 
 let enablePointInTimeRecovery = tableName => {
-  Js.log(j`$__MODULE__: enablePointInTimeRecovery for $tableName`)
+  Js.log(`${__MODULE__}: enablePointInTimeRecovery for ${tableName}`)
+
   {
     open AwsSdk.DynamoDb_DynamoDb
     updateContinuousBackups(
@@ -140,7 +142,7 @@ let makeTableArgs = (
 
 let option2Str = opt =>
   switch opt {
-  | Some(value) => j`Some($value)`
+  | Some(value) => `Some(${value})`
   | None => "None"
   }
 

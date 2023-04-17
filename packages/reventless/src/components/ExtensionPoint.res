@@ -147,7 +147,9 @@ module Make = (
         ->Belt.Option.mapWithDefault(
           _,
           () =>
-            Js.Exn.raiseError(j`ExtensionPoint.applyCommandAction: Aggregate $aggregateName doesn't exist`),
+            Js.Exn.raiseError(
+              `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
+            ),
           (x, ()) => x,
         )()
         ->Js.Promise.then_(_ => Belt.Result.Ok(reference)->Js.Promise.resolve, _)

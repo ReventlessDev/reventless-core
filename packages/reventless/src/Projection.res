@@ -46,11 +46,17 @@ let applyChanges = (
   let batchToDelete = deletedSubIds->Belt.Array.map(subId => (id, Some((subIdField, subId))))
   let deletedCount = batchToDelete->Belt.Array.size
 
-  logAction(j`$action($id): beforeStates:$beforeCount afterStates:$afterCount added:$addedCount changed:$changedCount deleted:$deletedCount`)
+  logAction(
+    `${action}(${id}): beforeStates:${beforeCount->Belt.Int.toString} afterStates:${afterCount->Belt.Int.toString} added:${addedCount->Belt.Int.toString} changed:${changedCount->Belt.Int.toString} deleted:${deletedCount->Belt.Int.toString}`,
+  )
   [deleteBatch(. batchToDelete), saveBatch(. batchToSave)]
   ->Js.Promise.all
   ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _)
 }
+
+let stateToString: 'a => string = state => state->Js.Json.stringifyAny->Belt.Option.getExn
+let statesToString: array<'a> => string = states =>
+  states->Belt.Array.map(stateToString)->Js.Array2.joinWith(", ")
 
 let handleAction = (
   action,
@@ -63,10 +69,14 @@ let handleAction = (
     Ok()->Js.Promise.resolve
 
   | Create(id, state) =>
-    logAction(j`Create($id, $state)`)
+    logAction(`Create(${id}, ${state->stateToString})`)
     save(. id, state, Init, None)
   | CreateMultiState(id, states) =>
-    logAction(j`CreateMultiState($id, $states)`)
+    logAction(
+      `CreateMultiState(${id}, ${states
+        ->Belt.Array.map(state => state->stateToString)
+        ->Js.Array2.joinWith(", ")})`,
+    )
     switch states {
     | [] => Ok()->Js.Promise.resolve
     | [state] => save(. id, state, Init, None)
@@ -76,17 +86,23 @@ let handleAction = (
     }
   | CreateMany(states) =>
     let batch = states->Belt.Array.map(((id, state)) => (id, state, None))
-    let statesStr = batch->Belt.Array.map(((id, state, _)) => j`($id,$state)`)
-    logAction(j`CreateMany($statesStr)`)
+    let statesStr =
+      batch
+      ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
+      ->Js.Array2.joinWith(", ")
+    logAction(`CreateMany(${statesStr})`)
     saveBatch(. batch) // TODO: think about using single saves with saveMode Init
 
   | Set(id, state) =>
-    logAction(j`Set($id, $state)`)
+    logAction(`Set(${id}, ${state->stateToString})`)
     save(. id, state, Any, None)
   | SetMany(ids, set) =>
     let batch = ids->Belt.Array.map(id => (id, set(id), None))
-    let statesStr = batch->Belt.Array.map(((id, state, _)) => j`($id,$state)`)
-    logAction(j`SetMany($statesStr)`)
+    let statesStr =
+      batch
+      ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
+      ->Js.Array2.joinWith(", ")
+    logAction(`SetMany(${statesStr})`)
     saveBatch(. batch)
 
   | Update(id, update) => load(. id)->Js.Promise.then_(x =>
@@ -94,14 +110,14 @@ let handleAction = (
       | Ok(states) =>
         switch states {
         | list{} =>
-          logAction(j`Update Error: No oldState for $id)`)
+          logAction(`Update Error: No oldState for ${id})`)
           Error(StaleState)->Js.Promise.resolve
         | list{oldState} =>
           let newState = oldState->update
-          logAction(j`Update($id, $oldState => $newState)`)
+          logAction(`Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
           save(. id, newState, Overwrite, None)
         | _ =>
-          logAction(j`Update Error: Multiple oldStates for $id)`)
+          logAction(`Update Error: Multiple oldStates for ${id})`)
           Error(StaleState)->Js.Promise.resolve
         }
       | Error(err) => Error(err)->Js.Promise.resolve
@@ -112,18 +128,22 @@ let handleAction = (
       | Ok(states) =>
         switch states {
         | list{} =>
-          logAction(j`UpdateWithDefault($id, default: $default)`)
+          logAction(`UpdateWithDefault(${id}, default: ${default->stateToString})`)
           save(. id, default, Init, None)
         | list{oldState} =>
           let newState = oldState->update
-          logAction(j`UpdateWithDefault($id, $oldState => $newState)`)
+          logAction(
+            `UpdateWithDefault(${id}, ${oldState->stateToString} => ${newState->stateToString})`,
+          )
           save(. id, newState, Overwrite, None)
         | _ =>
-          logAction(j`UpdateWithDefault Error: Multiple oldStates for $id)`)
+          logAction(`UpdateWithDefault Error: Multiple oldStates for ${id})`)
           Error(StaleState)->Js.Promise.resolve
         }
       | Error(err) =>
-        logAction(j`UpdateWithDefault Error: Couldn't load oldState(s) for $id: $err)`)
+        logAction(
+          `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->storageErrorToString})`,
+        )
         Error(err)->Js.Promise.resolve
       }
     , _)
@@ -135,7 +155,9 @@ let handleAction = (
         applyChanges("UpdateMultiState", id, beforeStates, afterStates, primitives, subIdConfig)
 
       | (Error(err), Some(_)) =>
-        logAction(j`UpdateMultiState Error: Couldn't load states for $id: $err)`)
+        logAction(
+          `UpdateMultiState Error: Couldn't load states for ${id}: ${err->storageErrorToString})`,
+        )
         Error(err)->Js.Promise.resolve
       | (_, None) =>
         logAction("UpdateMultiState Error: Missing SubIdConfig !")
@@ -185,10 +207,10 @@ let handleAction = (
   //     Error(MissingSubIdConfig)->Js.Promise.resolve;
   //   }
   | Delete(id) =>
-    logAction(j`Delete($id)`)
+    logAction(`Delete(${id})`)
     delete(. id, None)
   | DeleteMany(ids) =>
-    logAction(j`DeleteMany($ids)`)
+    logAction(`DeleteMany(${ids->Js.Array2.joinWith(", ")})`)
     deleteBatch(. ids->Belt.Array.map(id => (id, None)))
 
   // TODO: add missing actions
@@ -238,7 +260,9 @@ let handleActions = (actions, primitives, subIdConfig) => {
   let handleActionsForId = (actions, id) => {
     let actionCount = actions->Belt.Array.size
     if actionCount > 1 {
-      Js.log(j`Projection.handleActions: handling $actionCount actions for id=$id`)
+      Js.log(
+        `Projection.handleActions: handling ${actionCount->Belt.Int.toString} actions for id=${id}`,
+      )
     }
     actions->Belt.Array.reduce(Ok()->Js.Promise.resolve, (p, action) =>
       Js.Promise.then_(_ => action->handleAction(primitives, subIdConfig), p)
@@ -260,7 +284,11 @@ let handleActions = (actions, primitives, subIdConfig) => {
     | [] => Js.Promise.resolve()
     | errors =>
       let count = errors->Belt.Array.size
-      Js.Exn.raiseError(j`Projection.handleActions failed with $count errors: $errors`)
+      Js.Exn.raiseError(
+        `Projection.handleActions failed with ${count->Belt.Int.toString} errors: ${errors
+          ->Belt.Array.map(storageErrorToString)
+          ->Js.Array2.joinWith(",")}`,
+      )
     }
   }, _)
 }

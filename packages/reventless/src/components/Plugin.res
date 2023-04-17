@@ -41,7 +41,7 @@ module type T = {
 
 let toDict = els => els->Belt.Array.map(el => (el["name"], el))->Js.Dict.fromArray
 
-let makeId = (name, version) => j`$name@$version`
+let makeId = (name, version) => `${name}@${version}`
 
 module Make = (
   EventCollectorConnector: EventCollector.Adapter.Connector,
@@ -141,7 +141,7 @@ module Make = (
 
     let readModels = readModels->Belt.Array.map((module(ReadModel: ReadModel.T)) => {
       let readModel = ReadModel.make(~allEventTopics, ~opts, ())
-      (ReadModel.Spec.name, {module_: module(ReadModel), readModel: readModel})
+      (ReadModel.Spec.name, {module_: module(ReadModel), readModel})
     })
     let readModelsOutputs =
       readModels
@@ -233,7 +233,7 @@ module Make = (
                 (),
               ),
             ])
-          Js.log(j`addStatement: adding 1 statement with Sid $sid`)
+          Js.log(`addStatement: adding 1 statement with Sid ${sid}`)
           IAM.Policy.make(
             ~_Version=policy["_Version"],
             ~_Id=policy["_Id"],
@@ -245,7 +245,9 @@ module Make = (
           let statements = policy["_Statement"]
           let newStatements = statements->Belt.Array.keep(statement => statement["_Sid"] != sid)
           let removedStatements = statements->Belt.Array.length - newStatements->Belt.Array.length
-          Js.log(j`removeStatement: removing $removedStatements statement(s) with Sid $sid`)
+          Js.log(
+            `removeStatement: removing ${removedStatements->Belt.Int.toString} statement(s) with Sid ${sid}`,
+          )
           IAM.Policy.make(
             ~_Version=policy["_Version"],
             ~_Id=policy["_Id"],
@@ -275,13 +277,15 @@ module Make = (
           SNS.subscribeQueueToTopic(eventCollector, eventTopic)
           ->Js.Promise.then_(
             _ =>
-              Js.log(j`$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)`)->Js.Promise.resolve,
+              Js.log(
+                `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
+              )->Js.Promise.resolve,
             _,
           )
           ->Js.Promise.catch(
             err =>
               Js.log2(
-                j`Could not $action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName):`,
+                `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
                 err,
               )->Js.Promise.resolve,
             _,
@@ -296,13 +300,15 @@ module Make = (
           SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic)
           ->Js.Promise.then_(
             _ =>
-              Js.log(j`$action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName)`)->Js.Promise.resolve,
+              Js.log(
+                `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
+              )->Js.Promise.resolve,
             _,
           )
           ->Js.Promise.catch(
             err =>
               Js.log2(
-                j`Could not $action: $extensionPointName->$pluginId ($eventTopicName->$eventCollectorName):`,
+                `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
                 err,
               )->Js.Promise.resolve,
             _,
@@ -328,8 +334,8 @@ module Make = (
               otherPluginExtensionPoints
               ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
                 extensionsOutputs
-                ->Belt.Array.keep(extension =>
-                  extension["extensionPointName"] == extensionPointName
+                ->Belt.Array.keep(
+                  extension => extension["extensionPointName"] == extensionPointName,
                 )
                 ->Belt.Array.length > 0
                   ? Some(
@@ -350,8 +356,8 @@ module Make = (
               extensionPointsOutputs
               ->Belt.Array.keepMap(extensionPoint =>
                 otherPluginExtensions
-                ->Belt.Array.keep(({extensionPointName}) =>
-                  extensionPoint["name"] == extensionPointName
+                ->Belt.Array.keep(
+                  ({extensionPointName}) => extensionPoint["name"] == extensionPointName,
                 )
                 ->Belt.Array.length > 0
                   ? Some(
@@ -383,8 +389,8 @@ module Make = (
               pluginExtensionPoints
               ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
                 extensionsOutputs
-                ->Belt.Array.keep(extension =>
-                  extension["extensionPointName"] == extensionPointName
+                ->Belt.Array.keep(
+                  extension => extension["extensionPointName"] == extensionPointName,
                 )
                 ->Belt.Array.length > 0
                   ? Some(
@@ -405,8 +411,8 @@ module Make = (
               extensionPointsOutputs
               ->Belt.Array.keepMap(extensionPoint =>
                 pluginExtensions
-                ->Belt.Array.keep(({extensionPointName}) =>
-                  extensionPoint["name"] == extensionPointName
+                ->Belt.Array.keep(
+                  ({extensionPointName}) => extensionPoint["name"] == extensionPointName,
                 )
                 ->Belt.Array.length > 0
                   ? Some(
@@ -438,11 +444,13 @@ module Make = (
               extensionPoint["eventTopic"]["resources"][0]["id"],
             )
             ->Pulumi.Output.all2
-            ->Pulumi.Output.apply(((commandTopicConnectorId, eventTopicPublisherId)) => {
-              PluginSpec.name: extensionPoint["name"],
-              commandTopic: commandTopicConnectorId,
-              eventTopic: eventTopicPublisherId,
-            })
+            ->Pulumi.Output.apply(
+              ((commandTopicConnectorId, eventTopicPublisherId)) => {
+                PluginSpec.name: extensionPoint["name"],
+                commandTopic: commandTopicConnectorId,
+                eventTopic: eventTopicPublisherId,
+              },
+            )
           )
           ->Pulumi.Output.all
 
@@ -455,9 +463,9 @@ module Make = (
           (extensionPointsConfig, eventCollectorUrn)
           ->Pulumi.Output.all2
           ->Pulumi.Output.apply(((extensionPointsConfig, eventCollectorUrn)) => {
-            PluginSpec.id: id,
-            name: name,
-            version: version,
+            PluginSpec.id,
+            name,
+            version,
             extensionPoints: extensionPointsConfig,
             extensions: extensionsConfig,
             eventCollector: eventCollectorUrn,
@@ -561,12 +569,13 @@ module Make = (
           exs->Belt.Array.forEachU((. ex) =>
             ex
             ->getServiceNames
-            ->Belt.Array.forEachU((. serviceName) =>
-              switch dict->Js.Dict.get(serviceName) {
-              | Some(mappedExtensionPoints) =>
-                Js.Dict.set(dict, serviceName, mappedExtensionPoints->Belt.Array.concat([ex]))
-              | None => Js.Dict.set(dict, serviceName, [ex])
-              }
+            ->Belt.Array.forEachU(
+              (. serviceName) =>
+                switch dict->Js.Dict.get(serviceName) {
+                | Some(mappedExtensionPoints) =>
+                  Js.Dict.set(dict, serviceName, mappedExtensionPoints->Belt.Array.concat([ex]))
+                | None => Js.Dict.set(dict, serviceName, [ex])
+                },
             )
           )
           dict
@@ -596,8 +605,8 @@ module Make = (
           ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
           ->Belt.Option.mapWithDefault(Js.Promise.resolve(), exs =>
             exs
-            ->Belt.Array.map(ex =>
-              getEventHandler(ex)(. event'Json, pluginDefinition->Pulumi.Output.get)
+            ->Belt.Array.map(
+              ex => getEventHandler(ex)(. event'Json, pluginDefinition->Pulumi.Output.get),
             )
             ->Js.Promise.all
             ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
@@ -629,7 +638,9 @@ module Make = (
           events'Json
           ->Belt.Array.mapWithIndex((idx, event'Json) => {
             let idx = idx + 1
-            event'Json->Message.logEvent'Json(j`Plugin $id eventsHandler: incoming event $idx/$count:`)
+            event'Json->Message.logEvent'Json(
+              `Plugin ${id} eventsHandler: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
+            )
             detectUnhandledEvent(event'Json)
             handleEvent(
               event'Json,
@@ -638,14 +649,17 @@ module Make = (
             )->Js.Promise.then_(
               _ =>
                 [
-                  event'Json->handleEvent(serviceNameToExtensionPointsMapping, extensionPoint =>
-                    extensionPoint["outgoingEventHandler"]
+                  event'Json->handleEvent(
+                    serviceNameToExtensionPointsMapping,
+                    extensionPoint => extensionPoint["outgoingEventHandler"],
                   ),
-                  event'Json->handleEvent(outgoingServiceNameToExtensionsMapping, extension =>
-                    extension["outgoingEventHandler"]
+                  event'Json->handleEvent(
+                    outgoingServiceNameToExtensionsMapping,
+                    extension => extension["outgoingEventHandler"],
                   ),
-                  event'Json->handleEvent(incomingServiceNameToExtensionsMapping, extension =>
-                    extension["incomingEventHandler"]
+                  event'Json->handleEvent(
+                    incomingServiceNameToExtensionsMapping,
+                    extension => extension["incomingEventHandler"],
                   ),
                 ]
                 ->Js.Promise.all
@@ -694,20 +708,20 @@ module Make = (
         )
 
         {
-          id: id,
-          version: version,
-          heartbeatInterval: heartbeatInterval,
+          id,
+          version,
+          heartbeatInterval,
           eventCollector: eventCollectorOutputs,
           extensionPoints: extensionPointsOutputs->toDict,
           extensions: extensionsOutputs->toDict,
           aggregates: aggregatesOutputs,
           readModels: readModelsOutputs,
           tasks: tasksOutputs.contents->toDict,
-          resolvers: resolvers,
+          resolvers,
           heartbeat: heartbeat->Component.extractOutputs,
-          serviceNameToExtensionPointsMapping: serviceNameToExtensionPointsMapping,
-          outgoingServiceNameToExtensionsMapping: outgoingServiceNameToExtensionsMapping,
-          incomingServiceNameToExtensionsMapping: incomingServiceNameToExtensionsMapping,
+          serviceNameToExtensionPointsMapping,
+          outgoingServiceNameToExtensionsMapping,
+          incomingServiceNameToExtensionsMapping,
         }
       })
     }

@@ -7,5 +7,6 @@ type deploytimeQueryExn = string => resource
 let unwrapResource = (resource, resourceType, name) =>
   switch resource {
   | Some(resource) => resource
-  | None => Js.Exn.raiseError(j`ResourceQuery: Couldn't find $resourceType for Service/Task $name.`)
+  | None =>
+    Js.Exn.raiseError(`ResourceQuery: Couldn't find ${resourceType} for Service/Task ${name}.`)
   }

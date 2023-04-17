@@ -67,6 +67,7 @@ let serviceNameOfMsg = msgJson =>
             None
           }
       )
+
   | None =>
     Js.log2("Message.serviceNameOfMsg:", msgJson)
     None
@@ -97,10 +98,14 @@ let logEvent'Json = (event'Json, description) => {
   let eventStr = event'Json->Js.Json.stringify
   try {
     let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn
-    let id = event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString
+    let id =
+      event'
+      ->Js.Dict.unsafeGet("id")
+      ->Js.Json.decodeString
+      ->Belt.Option.getWithDefault("{ERROR (" ++ __LOC__ ++ "): Could not get id!}")
     let eventName =
       event'->Js.Dict.unsafeGet("event")->Util.Decco.Json.variantName->Belt.Option.getExn
-    Js.log(j`$description $eventName($id) complete event: $eventStr`)
+    Js.log(`${description} ${eventName}(${id}) complete event: $eventStr`)
   } catch {
   | _ => Js.log2("Couldn't log event:", eventStr)
   }
@@ -124,7 +129,7 @@ type errorHandler<'error, 'command, 'event> = (
 
 let generateMeta = (~service, ~ip="", ~user="unknown", ()) => {
   let msgId = uuid()
-  {service: service, ip: ip, user: user, time: nowAsISOString(), msgId: msgId, correlationId: msgId}
+  {service, ip, user, time: nowAsISOString(), msgId, correlationId: msgId}
 }
 
 let decomposeMeta = meta =>

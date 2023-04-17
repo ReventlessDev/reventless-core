@@ -83,46 +83,46 @@ module Make = (
 
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher)
 
-  let appendFn = (storage, eventTopic, . sequenceNr, id, events') =>
-    try events'->Belt.Array.map((event': Message.event'<Spec.Id.t, Spec.event>) =>
-      [
-        ("id", Spec.Id.t_encode(id)),
-        (
-          "sequenceNr",
-          Js.Json.string(Message.hrtimeToString(~hrtime=Message.hrtime(), ~now=Message.now())),
-        ),
-        ("event", event'.event |> Spec.event_encode),
-      ]
-      ->Belt.Array.concat(event'.meta->Message.decomposeMeta)
-      ->Js.Dict.fromArray
-      ->Js.Json.object_
-    )
-      |> (
-        data =>
-          storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, data)
-          |> Js.Promise.catch(err => {
-            let aggregateName = Spec.name
-            let err = j`EventLog: Error: Couldn't append for $aggregateName($id): $err`
-            Js.log(err)
-            err->Belt.Result.Error->Js.Promise.resolve
-          })
-          |> Js.Promise.then_(result => {
-            let _ = EventTopic.publish(eventTopic)(. events') |> Js.Promise.catch(err => {
-              let msg =
-                j`EventLog.appendFn($id): EventTopic.publish Error: ` ++
-                (err->Util.Error.ofPromise)["message"]
-
-              Js.log(msg)
-              Js.Exn.raiseError(msg)
+  let appendFn = (storage, eventTopic) =>
+    (. sequenceNr, id, events') =>
+      try events'->Belt.Array.map((event': Message.event'<Spec.Id.t, Spec.event>) =>
+        [
+          ("id", Spec.Id.t_encode(id)),
+          (
+            "sequenceNr",
+            Js.Json.string(Message.hrtimeToString(~hrtime=Message.hrtime(), ~now=Message.now())),
+          ),
+          ("event", event'.event |> Spec.event_encode),
+        ]
+        ->Belt.Array.concat(event'.meta->Message.decomposeMeta)
+        ->Js.Dict.fromArray
+        ->Js.Json.object_
+      )
+        |> (
+          data =>
+            storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, data)
+            ->Js.Promise2.catch(err => {
+              let aggregateName = Spec.name
+              let errMsg =
+                `EventLog: Error: Couldn't append for ${aggregateName}(${id->Spec.Id.toString}):` ++
+                (err->Util.Error.ofPromise).message
+              Js.log(errMsg)
+              errMsg->Belt.Result.Error->Js.Promise.resolve
             })
+            ->Js.Promise2.then(result => {
+              let _ = EventTopic.publish(eventTopic)(. events') |> Js.Promise.catch(err => {
+                let msg = `EventLog.appendFn(${id->Spec.Id.toString}): EventTopic.publish Error: `
+                Js.log2(msg, err)
+                Js.Exn.raiseError(msg) //FIXME: add err.message to msg itself
+              })
 
-            result->Js.Promise.resolve
-          })
-      ) catch {
-    | exn =>
-      Js.log2("EventLog.append: Couldn't decode:", exn)
-      raise(exn)
-    }
+              result->Js.Promise.resolve
+            })
+        ) catch {
+      | exn =>
+        Js.log2("EventLog.append: Couldn't decode:", exn)
+        raise(exn)
+      }
 
   let decodeEvent = json =>
     Js.Json.decodeObject(json)
@@ -134,7 +134,7 @@ module Make = (
       | (json, Error(err)) =>
         let eventStr = json |> Js.Json.stringify
         let message = err.message
-        Js.Exn.raiseError(j`EventLog.replay: Error: Couldn't decode $eventStr: $message`)
+        Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decode ${eventStr}: ${message}`)
       }
     )
     ->(
@@ -143,14 +143,15 @@ module Make = (
         | Some(event) => event
         | None =>
           let eventStr = json |> Js.Json.stringify
-          Js.Exn.raiseError(j`EventLog.replay: Error: Couldn't decodeObject $eventStr`)
+          Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decodeObject ${eventStr}`)
         }
     )
 
-  let replayFn = (storage, . id) =>
-    storage.Adapter.replay(. id |> Spec.Id.toString) |> Js.Promise.then_(jsons =>
-      jsons->Belt.Array.map(decodeEvent)->Js.Promise.resolve
-    )
+  let replayFn = storage =>
+    (. id) =>
+      storage.Adapter.replay(. id |> Spec.Id.toString) |> Js.Promise.then_(jsons =>
+        jsons->Belt.Array.map(decodeEvent)->Js.Promise.resolve
+      )
 
   let construct = (self, name) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())

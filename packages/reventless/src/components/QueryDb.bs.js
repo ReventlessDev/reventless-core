@@ -4,8 +4,10 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Decco = require("decco/src/Decco.bs.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
+var Js_array = require("@rescript/std/lib/js/js_array.js");
 var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
@@ -63,7 +65,7 @@ function storageError_decode(v) {
   if (jsonArr$1.length === 0) {
     return Decco.error(undefined, "Expected variant, found empty array", v);
   }
-  var tagged = jsonArr$1.map(Js_json.classify);
+  var tagged = Js_array.map(Js_json.classify, jsonArr$1);
   var match = Belt_Array.getExn(tagged, 0);
   if (typeof match !== "number" && match.TAG === /* JSONString */0) {
     switch (match._0) {
@@ -207,6 +209,29 @@ function storageError_decode(v) {
   return Decco.error(undefined, "Invalid variant constructor", Belt_Array.getExn(jsonArr$1, 0));
 }
 
+function storageErrorToString(err) {
+  if (typeof err === "number") {
+    if (err === /* StaleState */0) {
+      return "StaleState";
+    } else {
+      return "MissingSubIdConfig";
+    }
+  }
+  switch (err.TAG | 0) {
+    case /* NotSavedToStorage */0 :
+        return "NotSavedToStorage(" + err._0 + ")";
+    case /* NotLoadedFromStorage */1 :
+        return "NotLoadedFromStorage(" + err._0 + ")";
+    case /* NotCountedOnStorage */2 :
+        return "NotCountedOnStorage(" + err._0 + ")";
+    case /* NotDeletedFromStorage */3 :
+        return "NotDeletedFromStorage(" + err._0 + ")";
+    case /* BatchNotFullyWrittenToStorage */4 :
+        return "BatchNotFullyWrittenToStorage(" + err._0 + ")";
+    
+  }
+}
+
 function NoResolvers(Config) {
   var make = function (param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8) {
     return {
@@ -228,21 +253,21 @@ var Adapter = {
 function Make(Config, Spec, $$Storage, Resolvers) {
   var loadFn = function (storage) {
     return function (id) {
-      return storage.load(Curry._1(Spec.Id.toString, id)).then(function (result) {
-                  return Promise.resolve(Belt_Result.map(result, (function (states) {
-                                    return Belt_List.flatten(Belt_List.map(states, (function (param) {
-                                                      var state = Curry._1(Spec.state_decode, param);
-                                                      if (state.TAG === /* Ok */0) {
-                                                        return {
-                                                                hd: state._0,
-                                                                tl: /* [] */0
-                                                              };
-                                                      }
-                                                      console.log("QueryDb: Error: Couldn't decode state for " + id + ": " + state._0);
-                                                      return /* [] */0;
-                                                    })));
-                                  })));
-                });
+      return Js_promise.then_((function (result) {
+                    return Promise.resolve(Belt_Result.map(result, (function (states) {
+                                      return Belt_List.flatten(Belt_List.map(states, (function (param) {
+                                                        var state = Curry._1(Spec.state_decode, param);
+                                                        if (state.TAG === /* Ok */0) {
+                                                          return {
+                                                                  hd: state._0,
+                                                                  tl: /* [] */0
+                                                                };
+                                                        }
+                                                        console.log("QueryDb: Error: Couldn't decode state for " + Curry._1(Spec.Id.toString, id) + ": " + Belt_Option.getExn(JSON.stringify(state._0)) + "");
+                                                        return /* [] */0;
+                                                      })));
+                                    })));
+                  }), storage.load(Curry._1(Spec.Id.toString, id)));
     };
   };
   var saveFn = function (storage) {
@@ -279,7 +304,6 @@ function Make(Config, Spec, $$Storage, Resolvers) {
                       ];
               }
               console.log("QueryDB.saveBatch: Error: Couldn't decodeObject:", JSON.stringify(state));
-              
             }));
       return storage.saveBatch(batch);
     };
@@ -379,6 +403,7 @@ var componentType = /* QueryDb */11;
 exports.componentType = componentType;
 exports.storageError_encode = storageError_encode;
 exports.storageError_decode = storageError_decode;
+exports.storageErrorToString = storageErrorToString;
 exports.Adapter = Adapter;
 exports.Make = Make;
 /* ./Component Not a pure module */

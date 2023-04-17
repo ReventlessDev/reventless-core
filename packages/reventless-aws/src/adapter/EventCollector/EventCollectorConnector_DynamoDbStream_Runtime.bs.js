@@ -2,6 +2,7 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
@@ -13,12 +14,12 @@ function handleStreamEvent(handleEvents, streamEvent, param) {
           if (eventSource === "aws:dynamodb") {
             var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
             if (typeof match === "number") {
-              console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws: no NewImage included in Stream event !");
+              console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws" + ": no NewImage included in Stream event !");
               return ;
             }
             switch (match.TAG | 0) {
               case /* OldImage */1 :
-                  console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws: no NewImage included in Stream event !");
+                  console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws" + ": no NewImage included in Stream event !");
                   return ;
               case /* NewImage */0 :
               case /* NewAndOldImage */2 :
@@ -26,13 +27,13 @@ function handleStreamEvent(handleEvents, streamEvent, param) {
               
             }
           } else {
-            console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws: ignoring record from eventSource:", eventSource);
+            console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource:", eventSource);
             return ;
           }
         }));
-  return handleEvents(jsons).catch(function (err) {
-              return Promise.resolve((console.log("handleStreamEvent error:", err), undefined));
-            });
+  return Js_promise.$$catch((function (err) {
+                return Promise.resolve((console.log("handleStreamEvent error:", err), undefined));
+              }), handleEvents(jsons));
 }
 
 exports.handleStreamEvent = handleStreamEvent;

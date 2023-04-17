@@ -10,7 +10,11 @@ let makeGenericMap: (Mapper.decode<'msg>, mapImpl<'msg, 'action>) => mapGeneric<
   | Ok(msg) => msg->map
   | Error(err) =>
     let jsonStr = json->Js.Json.stringify
-    Js.Exn.raiseError(j`Couldn't decode source message: $err, $jsonStr`)
+    Js.Exn.raiseError(
+      `Couldn't decode source message: ${err
+        ->Js.Json.stringifyAny
+        ->Belt.Option.getExn}, ${jsonStr}`,
+    )
   }
 
 module type Spec = {

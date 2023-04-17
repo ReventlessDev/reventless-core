@@ -1,5 +1,5 @@
 type t<'component, 'outputs> = 'outputs constraint 'outputs = 'a
-type unknown
+// type unknown
 
 // in Component.js setOutputs(_), which is called in the constructor sets the output keys
 @get
@@ -28,7 +28,7 @@ let extractMultipleOutputs: array<t<'component, 'outputs>> => array<'outputs> = 
   components->Belt.Array.map(extractOutputs)
 
 external toPulumiResource: t<'component, 'outputs> => Pulumi.Resource.t = "%identity"
-external toUnknown: t<'component, 'outputs> => t<unknown, 'outputs> = "%identity"
+// external toUnknown: t<'component, 'outputs> => t<unknown, 'outputs> = "%identity"
 
 // TODO:
 //  - adapt components make function to return this t('outputs)

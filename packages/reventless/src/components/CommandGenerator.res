@@ -101,7 +101,7 @@ module Make = (
           ip: payload["meta"]["ip"]->Js.Array.shift->Belt.Option.getWithDefault(""),
           user: payload["meta"]["user"],
           time: Message.nowAsISOString(),
-          msgId: msgId,
+          msgId,
           correlationId: msgId,
         }
       }
@@ -131,12 +131,19 @@ module Make = (
           x =>
             switch x {
             | Belt.Result.Ok(command) => command
-            | Error(err) => Js.Exn.raiseError(j`Couldn't decode $params->Message.stringify: $err`)
+            | Error(err) =>
+              Js.Exn.raiseError(
+                `Couldn't decode ${params
+                  ->Belt.Array.map(Js.Json.stringify)
+                  ->Js.Array2.joinWith(", ")}->Message.stringify: ${err
+                  ->Js.Json.stringifyAny
+                  ->Belt.Option.getExn}`,
+              )
             }
         )
       let command' = {
         open Message
-        {id: id, meta: meta, command: command}
+        {id, meta, command}
       }
       publish(. command')->Js.Promise.then_(_ => Js.Promise.resolve(meta.msgId), _)
     }

@@ -67,7 +67,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
           return ;
         }
         var eventTopicNames = errorResources.join(",");
-        return Js_exn.raiseError("EventCollectorConnector_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
+        Js_exn.raiseError("EventCollectorConnector_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames + ""));
       });
   return {
           resources: [Util_SQS$ReventlessAws.toResource(queue)],

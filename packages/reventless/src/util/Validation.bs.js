@@ -3,6 +3,7 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 
 function merge(v1, v2) {
   switch (v1.TAG | 0) {
@@ -117,14 +118,14 @@ function defaultErrorHandler(err) {
 }
 
 function mergeAsync(a1, a2, handle) {
-  return Promise.all([
-                  a1,
-                  a2
-                ]).then(function (param) {
-                return Promise.resolve(merge(param[0], param[1]));
-              }).catch(function (err) {
-              return Promise.resolve(Curry._1(handle, err));
-            });
+  return Js_promise.$$catch((function (err) {
+                return Promise.resolve(Curry._1(handle, err));
+              }), Js_promise.then_((function (param) {
+                    return Promise.resolve(merge(param[0], param[1]));
+                  }), Promise.all([
+                      a1,
+                      a2
+                    ])));
 }
 
 function $less$question$great(a1, a2) {

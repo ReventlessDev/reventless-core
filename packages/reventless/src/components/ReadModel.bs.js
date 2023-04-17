@@ -84,7 +84,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                             var sourceName = Belt_Result.getWithDefault(Belt_Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
                                         return context.meta.service;
                                       })), "");
-                            console.log("ReadModel: handling event " + idx$1 + "/" + eventCount + " from " + sourceName + ":", json);
+                            console.log("ReadModel: handling event " + String(idx$1) + "/" + String(eventCount) + " from " + sourceName + ":", json);
                             return Curry._2(EventProjector.map, sourceName, json);
                           }))), primitives, Spec.subIdConfig);
     };

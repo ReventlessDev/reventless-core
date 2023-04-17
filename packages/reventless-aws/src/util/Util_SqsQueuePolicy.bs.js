@@ -24,7 +24,7 @@ function allowAllSnsTopicsSendMessage(queue) {
 }
 
 function allowResourceSendMessage(queueArn, idx, sourceArn) {
-  return "\n  {\n    \"Sid\": \"" + idx + "\",\n    \"Effect\": \"Allow\",\n    \"Principal\": \"*\",\n    \"Action\": \"sqs:SendMessage\",\n    \"Resource\": \"" + queueArn + "\",\n    \"Condition\": {\n      \"ArnEquals\": {\n        \"aws:SourceArn\": \"" + sourceArn + "\"\n      }\n    }\n  }\n";
+  return "\n  {\n    \"Sid\": \"" + String(idx) + "\",\n    \"Effect\": \"Allow\",\n    \"Principal\": \"*\",\n    \"Action\": \"sqs:SendMessage\",\n    \"Resource\": \"" + queueArn + "\",\n    \"Condition\": {\n      \"ArnEquals\": {\n        \"aws:SourceArn\": \"" + sourceArn + "\"\n      }\n    }\n  }\n";
 }
 
 function allowResourcesSendMessage(queue, resources) {

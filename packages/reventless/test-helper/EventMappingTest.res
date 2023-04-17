@@ -77,7 +77,7 @@ module MakeAggregate = (
   let errors = ref(list{})
 
   let errorHandler: Message.errorHandler<Spec.error, Spec.command, Spec.event> = (error, _, _) => {
-    errors := \"@"(errors.contents, list{error})
+    errors := Belt.List.concat(errors.contents, list{error})
     list{}
   }
 
@@ -203,11 +203,7 @@ module Make = (
           ->Js.Dict.get(id)
           ->Belt.Option.getWithDefault(list{})
           ->Belt.List.concat(targetEvents->Js.Dict.get(id)->Belt.Option.getWithDefault(list{}))
-        let newEvents = TargetAggregate.exec(
-          {...TestFixtures.context, id: id},
-          command,
-          targetHistory,
-        )
+        let newEvents = TargetAggregate.exec({...TestFixtures.context, id}, command, targetHistory)
         targetEvents->Js.Dict.set(
           id,
           targetEvents

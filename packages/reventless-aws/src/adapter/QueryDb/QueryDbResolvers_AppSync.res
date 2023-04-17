@@ -247,7 +247,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
       )
     })
 
-    \"@"(resolversByIndex, \"@"(idResolvers, idsResolvers))
+    Belt.List.concat(resolversByIndex, Belt.List.concat(idResolvers, idsResolvers)) // FIXME: use Belt.List.concatMany instead
     ->Belt.List.toArray
     ->Belt.Array.map(Util_AppSync.toResource)
   }
@@ -259,5 +259,5 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
 
   let resources = resolvers->Belt.Array.map(Util_AppSync.toResource)
 
-  {resources: resources, resourcesMaker: resourcesMaker}
+  {resources, resourcesMaker}
 }

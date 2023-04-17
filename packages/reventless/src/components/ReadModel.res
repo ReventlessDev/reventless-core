@@ -77,11 +77,11 @@ module Make = (
       )
 
     let primitives = {
-      Projection.load: load,
-      save: save,
-      saveBatch: saveBatch,
-      delete: delete,
-      deleteBatch: deleteBatch,
+      Projection.load,
+      save,
+      saveBatch,
+      delete,
+      deleteBatch,
     }
 
     module EventProjector = ProjectionMapper.Make(Spec, Mappings)
@@ -96,7 +96,10 @@ module Make = (
           ->ReventlessSpec.Message.context_decode
           ->Belt.Result.map(context => context.meta.service)
           ->Belt.Result.getWithDefault("")
-        Js.log2(j`ReadModel: handling event $idx/$eventCount from $sourceName:`, json)
+        Js.log2(
+          `ReadModel: handling event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString} from ${sourceName}:`,
+          json,
+        )
         json->EventProjector.map(~sourceName=Some(sourceName))
       })
       ->Belt.Array.concatMany

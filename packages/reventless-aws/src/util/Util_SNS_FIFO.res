@@ -12,7 +12,7 @@ let toResource = (topic: PulumiAws.SNS.Topic.t) =>
 let findTopicInUnwrappedResources = resources =>
   switch resources->Reventless.Util_Adapter.filterSupportedUnwrappedResources([service]) {
   | [] =>
-    let err = j`Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn't find SNS_FIFO Topic in resources`
+    let err = "Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn't find SNS_FIFO Topic in resources"
     Js.log(err)
     Js.Exn.raiseError(err)
 

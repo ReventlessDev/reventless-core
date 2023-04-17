@@ -26,7 +26,7 @@ let send = (queue, queueService, {id, delay} as commandJson) => {
 
 let makeEntry = (queueService, {id, meta: {msgId: messageId, service}, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
-  Js.log(j`Publishing command to Aggregate $service: $messageBody id: $id`)
+  Js.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${id}`)
   if queueService == Util_SQS_FIFO.service {
     SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay)
   } else {
@@ -43,7 +43,7 @@ let sendBatch = (queue, queueService, commandJsons) =>
       results
       ->Reventless.Util.Promise.filterRejected
       ->Belt.Array.forEach(((idx, reason)) =>
-        Js.log(j`SQS.sendMessageBatch request $idx failed: $reason`)
+        Js.log(`SQS.sendMessageBatch request ${idx->Belt.Int.toString} failed: ${reason}`)
       )
       Js.Promise.resolve() // TODO: error handling
     })

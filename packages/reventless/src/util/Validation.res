@@ -8,9 +8,8 @@ type t<'a, 'b> =
 
 type async<'a, 'b> = Js.Promise.t<t<'a, 'b>>
 
-open Belt.Array
-
-let merge: (t<'a, 'b>, t<'a, 'b>) => t<'a, 'b> = (v1, v2) =>
+let merge: (t<'a, 'b>, t<'a, 'b>) => t<'a, 'b> = (v1, v2) => {
+  open Belt.Array
   switch (v1, v2) {
   | (Successes(as1), Successes(as2)) => Successes(as1->concat(as2))
   | (Successes(as1), Success(a2)) => Successes(as1->concat([a2]))
@@ -29,6 +28,7 @@ let merge: (t<'a, 'b>, t<'a, 'b>) => t<'a, 'b> = (v1, v2) =>
   | (Failures(bs1), Failure(b2)) => Failures(bs1->concat([b2]))
   | (Failures(bs1), Failures(bs2)) => Failures(bs1->concat(bs2))
   }
+}
 
 let defaultErrorHandler = err => {
   Js.log(err)

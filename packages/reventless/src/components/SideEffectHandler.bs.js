@@ -5,6 +5,7 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -40,7 +41,6 @@ function Make(EventCollector) {
                     return ;
                   }
                   console.log("SideEffects.map: Invalid JSON object");
-                  
                 }));
   };
   var eventsHandler = function (sideEffects, queryEngine) {
@@ -61,9 +61,9 @@ function Make(EventCollector) {
                   }
                   if (idDecoded.TAG === /* Ok */0 && eventDecoded !== undefined && eventDecoded.TAG === /* Ok */0) {
                     var __x = sideEffect.execute(idDecoded._0, match[1], eventDecoded._0, queryEngine);
-                    return __x.catch(function (err) {
-                                return Promise.resolve((console.log("SideEffect: Error while processing:", err), undefined));
-                              });
+                    return Js_promise.$$catch((function (err) {
+                                  return Promise.resolve((console.log("SideEffect: Error while processing:", err), undefined));
+                                }), __x);
                   }
                   if (eventDecoded !== undefined) {
                     if (eventDecoded.TAG === /* Ok */0) {
@@ -75,9 +75,9 @@ function Make(EventCollector) {
                     return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), undefined));
                   }
                 })));
-      return __x.then(function (param) {
-                  return Promise.resolve(undefined);
-                });
+      return Js_promise.then_((function (param) {
+                    return Promise.resolve(undefined);
+                  }), __x);
     };
   };
   var createScheduleFn = function (scheduler, queueResources) {
@@ -125,7 +125,7 @@ function Make(EventCollector) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, policy1, policy2, opts, unit) {
+  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, policy1, policy2, opts, _unit) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
     var prim0 = ComponentType$Reventless.toString(/* SideEffectHandler */15);

@@ -4,7 +4,9 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Js_string = require("@rescript/std/lib/js/js_string.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
@@ -30,7 +32,7 @@ function streamArnFromDynamoDbTableResource(table) {
                 table.info,
                 table.name
               ]).apply(function (param) {
-              var parts = param[0].split(",");
+              var parts = Js_string.split(",", param[0]);
               if (parts.length < 3 || Caml_array.get(parts, 2).trim() === "") {
                 return Js_exn.raiseError("No streamArn field given for table " + param[1]);
               } else {
@@ -67,7 +69,7 @@ function toStreamResource(table) {
 }
 
 function enableStream(tableName) {
-  console.log("" + "Util_DynamoDbStream-ReventlessAws" + ": enableStream for " + tableName);
+  console.log("" + "Util_DynamoDbStream-ReventlessAws" + ": enableStream for " + tableName + "");
   var __x = DynamoDb_DynamoDb$AwsSdk.updateTable({
         TableName: tableName,
         StreamSpecification: {
@@ -75,13 +77,13 @@ function enableStream(tableName) {
           StreamViewType: "NEW_IMAGE"
         }
       });
-  return __x.then(function (res) {
-              return Promise.resolve([
-                          res.TableDescription.StreamSpecification.StreamEnabled,
-                          res.TableDescription.LatestStreamArn,
-                          res.TableDescription.LatestStreamLabel
-                        ]);
-            });
+  return Js_promise.then_((function (res) {
+                return Promise.resolve([
+                            res.TableDescription.StreamSpecification.StreamEnabled,
+                            res.TableDescription.LatestStreamArn,
+                            res.TableDescription.LatestStreamLabel
+                          ]);
+              }), __x);
 }
 
 function verifyStream(table) {

@@ -11,7 +11,6 @@ function make(param) {
   };
   var output = new Promise((function (resolve, param) {
           set.contents = resolve;
-          
         }));
   var set$1 = set.contents;
   return [

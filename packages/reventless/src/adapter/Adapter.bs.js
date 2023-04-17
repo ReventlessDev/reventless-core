@@ -83,21 +83,16 @@ function unwrappedOutputToResource(unwrappedResource) {
 function logResource(r) {
   r.name.apply(function (name) {
         console.log("Resource: ", name);
-        
       });
   r.id.apply(function (id) {
         console.log("  id: ", id);
-        
       });
   r.urn.apply(function (urn) {
         console.log("  urn: ", urn);
-        
       });
   r.service.apply(function (service) {
         console.log("  service: ", service);
-        
       });
-  
 }
 
 exports.outputToResource = outputToResource;

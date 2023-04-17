@@ -5,7 +5,6 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var $$String = require("@rescript/std/lib/js/string.js");
 var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Pervasives = require("@rescript/std/lib/js/pervasives.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Logger$Reventless = require("@reventless/reventless/src/util/Logger.bs.js");
@@ -125,7 +124,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
                               return AppSync_Resolver_Templates$PulumiAws.resolveIdsResult(param, idsField);
                             })), Caml_option.some(opts), undefined);
           }));
-    return Belt_Array.map(Belt_List.toArray(Pervasives.$at(resolversByIndex, Pervasives.$at(idResolvers, idsResolvers))), Util_AppSync$ReventlessAws.toResource);
+    return Belt_Array.map(Belt_List.toArray(Belt_List.concat(resolversByIndex, Belt_List.concat(idResolvers, idsResolvers))), Util_AppSync$ReventlessAws.toResource);
   };
   var resolvers = resolverByIdMultiple !== undefined ? [
       resolverByIdSingle,

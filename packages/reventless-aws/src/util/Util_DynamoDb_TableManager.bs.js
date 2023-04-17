@@ -25,7 +25,6 @@ function getDependencies(param) {
   };
   var promise = new Promise((function (resolve, param) {
           registerResource.contents = resolve;
-          
         }));
   dependencies.contents = Belt_Array.concat(dependencies.contents, [promise]);
   return [

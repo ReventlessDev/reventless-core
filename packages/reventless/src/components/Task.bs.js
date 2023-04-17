@@ -22,8 +22,7 @@ function construct(setup, queryBucketName, scheduler, publishToAggregates, query
     Belt_Array.forEachWithIndex(cmdJsons, (function (idx, param) {
             var idx$1 = idx + 1 | 0;
             var messageBody = JSON.stringify(param.commandJson);
-            console.log("Task.publishCommands " + idx$1 + "/" + count + ": id=" + param.id + ", " + messageBody);
-            
+            console.log("Task.publishCommands " + String(idx$1) + "/" + String(count) + ": id=" + param.id + ", " + messageBody + "");
           }));
     return Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName))(cmdJsons);
   };

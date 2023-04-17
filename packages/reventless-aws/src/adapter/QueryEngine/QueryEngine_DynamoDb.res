@@ -9,22 +9,22 @@ let toJson = x =>
 
 let createFilters = filters =>
   filters->Belt.List.mapWithIndex((idx, (key, comparator, value)) => {
-    let valueName = j`$key$idx`
+    let valueName = `${key}${idx->Belt.Int.toString}`
     (
       switch comparator {
-      | ReventlessSpec.QueryEngine.Equal => j`#$key = :$valueName`
-      | Unequal => j`#$key <> :$valueName`
-      | LessOrEqual => j`#$key <= :$valueName`
-      | Less => j`#$key < :$valueName`
-      | GreaterOrEqual => j`#$key >= :$valueName`
-      | Greater => j`#$key > :$valueName`
-      | Exists => j`attribute_exists( #$key )`
-      | NotExists => j`attribute_not_exists( #$key )`
-      | Contains => j`contains( #$key, :$valueName )`
-      | NotContains => j`NOT contains( #$key, :$valueName )`
-      | BeginsWith => j`begins_with( #$key, :$valueName )`
+      | ReventlessSpec.QueryEngine.Equal => `#${key} = :${valueName}`
+      | Unequal => `#${key} <> :${valueName}`
+      | LessOrEqual => `#${key} <= :${valueName}`
+      | Less => `#${key} < :${valueName}`
+      | GreaterOrEqual => `#${key} >= :${valueName}`
+      | Greater => `#${key} > :${valueName}`
+      | Exists => `attribute_exists( #${key} )`
+      | NotExists => `attribute_not_exists( #${key} )`
+      | Contains => `contains( #${key}, :${valueName} )`
+      | NotContains => `NOT contains( #${key}, :${valueName} )`
+      | BeginsWith => `begins_with( #${key}, :${valueName} )`
       },
-      ((j`#$key`, key), (j`:$valueName`, value |> toJson)),
+      ((`#${key}`, key), (`:${valueName}`, value->toJson)),
     )
   }) |> Belt.List.unzip
 
@@ -45,13 +45,13 @@ let queryByTableName = (
 
   let (filterNames, filterValues) = filterNamesValues->Belt.List.unzip
   let attributeValues =
-    \"@"(list{(":value", id->toJson)}, filterValues)
+    Belt.List.concat(list{(":value", id->toJson)}, filterValues)
     ->Js.Dict.fromList
     ->Js.Json.object_
     ->Js.Json.stringify
     ->parseJs
 
-  let attributeNames = \"@"(list{("#key", key)}, filterNames) |> Js.Dict.fromList
+  let attributeNames = Belt.List.concat(list{("#key", key)}, filterNames) |> Js.Dict.fromList
 
   let params = AwsSdk.DynamoDb.DocumentClient.QueryInput.make(
     ~_TableName=tableName,

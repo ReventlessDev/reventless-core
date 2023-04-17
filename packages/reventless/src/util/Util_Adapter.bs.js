@@ -5,6 +5,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var Adapter$Reventless = require("../adapter/Adapter.bs.js");
@@ -37,7 +38,9 @@ function findResource(resources, service) {
                   if (resources.length !== 0) {
                     return Caml_array.get(resources, 0);
                   }
-                  var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + resources;
+                  var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (resource) {
+                            return Belt_Option.getExn(JSON.stringify(resource));
+                          })).join(", ") + "";
                   console.log(err);
                   return Js_exn.raiseError(err);
                 }));
@@ -48,7 +51,9 @@ function findUnwrappedResource(resources, service) {
   if (resources$1.length !== 0) {
     return Caml_array.get(resources$1, 0);
   }
-  var err = "Util.Adapter.findUnwrappedResource: Couldn't find service " + service + " in resources: " + resources;
+  var err = "Util.Adapter.findUnwrappedResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (resource) {
+            return Belt_Option.getExn(JSON.stringify(resource));
+          })).join(", ") + "";
   console.log(err);
   return Js_exn.raiseError(err);
 }

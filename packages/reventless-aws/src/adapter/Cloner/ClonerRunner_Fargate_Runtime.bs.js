@@ -8,7 +8,7 @@ function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, payload
   var environment = [
     {
       name: "REVENTLESS_CORE_STACK",
-      value: "" + fullQualifiedStackName.organization + "/" + fullQualifiedStackName.project + "/" + fullQualifiedStackName.stack
+      value: "" + fullQualifiedStackName.organization + "/" + fullQualifiedStackName.project + "/" + fullQualifiedStackName.stack + ""
     },
     {
       name: "RESTORE_DATE_TIME",

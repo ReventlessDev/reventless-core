@@ -2,22 +2,23 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.bs.js");
 
 function append(table) {
   return function (_sequenceNr, _id, jsons) {
-    return Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(jsons, Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name.get()), 3).then(function (param) {
+    return Js_promise.$$catch((function (param) {
                   return Promise.resolve({
-                              TAG: /* Ok */0,
-                              _0: undefined
+                              TAG: /* Error */1,
+                              _0: "AwsSdk.DynamoDb.DocumentClient.putMany failed !"
                             });
-                }).catch(function (param) {
-                return Promise.resolve({
-                            TAG: /* Error */1,
-                            _0: "AwsSdk.DynamoDb.DocumentClient.putMany failed !"
-                          });
-              });
+                }), Js_promise.then_((function (param) {
+                      return Promise.resolve({
+                                  TAG: /* Ok */0,
+                                  _0: undefined
+                                });
+                    }), Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(jsons, Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name.get()), 3)));
   };
 }
 

@@ -5,12 +5,12 @@ var Jest = require("@glennsl/rescript-jest/src/jest.bs.js");
 var Message$Reventless = require("../src/Message.bs.js");
 
 Jest.describe("Message should", (function (param) {
-        return Jest.test("create a valid sequenceNr", (function (param) {
-                      return Jest.Expect.toBe(Jest.Expect.expect(Message$Reventless.hrtimeToString([
-                                          1,
-                                          1
-                                        ], 123456789)), "123456789-000000001");
-                    }));
+        Jest.test("create a valid sequenceNr", (function (param) {
+                return Jest.Expect.toBe(Jest.Expect.expect(Message$Reventless.hrtimeToString([
+                                    1,
+                                    1
+                                  ], 123456789)), "123456789-000000001");
+              }));
       }));
 
 /*  Not a pure module */

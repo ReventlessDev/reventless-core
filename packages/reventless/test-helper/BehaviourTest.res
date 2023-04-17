@@ -45,7 +45,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   let errors = ref(list{})
 
   let errorHandler: Message.errorHandler<Spec.error, Spec.command, Spec.event> = (error, _, _) => {
-    errors := \"@"(errors.contents, list{error})
+    errors := Belt.List.concat(errors.contents, list{error})
     list{}
   }
 
@@ -67,7 +67,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
 
   let givenEvents = events => events
   let whenCmd = (history, cmd) => history->exec(TestFixtures.context, cmd)
-  let whenCmdWithId = (history, id, cmd) => history->exec({...TestFixtures.context, id: id}, cmd)
+  let whenCmdWithId = (history, id, cmd) => history->exec({...TestFixtures.context, id}, cmd)
 
   open Jest.Expect
 
@@ -95,7 +95,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
     "Errors occured: " ++
     errors.contents
     ->Belt.List.map(err =>
-    /* NOTE: this process is very fragile!!
+      /* NOTE: this process is very fragile!!
               it relies on decco decoding the error-varints to arrays of string
  */
       (err->Spec.error_encode->Js.Json.decodeArray->Belt.Option.getExn)[0]

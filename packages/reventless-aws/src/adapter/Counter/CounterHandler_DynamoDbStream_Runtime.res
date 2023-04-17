@@ -32,13 +32,16 @@ let addToCounterTarget = (table, {counterId, target, targetRef}) => {
   )
   |> Js.Promise.then_((updateOutput: UpdateOutput.t<{"count": int}>) =>
     Js.log2(
-      __MODULE__ ++ j`.addToCounterTarget: current count for $counterId:`,
+      __MODULE__ ++ `.addToCounterTarget: current count for ${counterId}:`,
       updateOutput["_Attributes"]["count"],
     )->Js.Promise.resolve
   )
   |> Js.Promise.catch(err =>
     Js.Exn.raiseError(
-      __MODULE__ ++ j`.addToCounterTarget Error: Couldn't count on $tableName: $err`,
+      __MODULE__ ++
+      `.addToCounterTarget Error: Couldn't count on ${tableName}: ${(
+          err->Reventless.Util.Error.ofPromise
+        ).message}`,
     )
   )
 }

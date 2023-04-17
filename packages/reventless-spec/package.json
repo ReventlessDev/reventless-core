@@ -18,15 +18,16 @@
     "rebuild": "npm run clean && npm run build -- -with-deps"
   },
   "dependencies": {
-    "@rescript/std": "^9.1.4",
+    "@rescript/std": "^10.1.4",
     "@reventless/bs-pulumi-pulumi": "^1.2.0-rescript.13",
     "decco": "1.6.0"
   },
   "devDependencies": {
-    "rescript": "^9.1.4"
+    "rescript": "^10.1.4"
   },
   "peerDependencies": {
-    "@rescript/std": "^9.1.4"
+    "@rescript/std": "^10.1.4",
+    "rescript": "^10.1.4"
   },
   "gitHead": "57cabc1d1258516672ebe26c69ce7e954d2ba2cc"
 }

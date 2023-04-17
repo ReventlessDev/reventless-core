@@ -6,9 +6,11 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -43,21 +45,21 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
                                 ]
                               ], Message$Reventless.decomposeMeta(event$p.meta)));
               }));
-        return storage.append(sequenceNr, Curry._1(Spec.Id.toString, id), data).catch(function (err) {
-                      var err$1 = "EventLog: Error: Couldn't append for " + Spec.name + "(" + id + "): " + err;
-                      console.log(err$1);
-                      return Promise.resolve({
-                                  TAG: /* Error */1,
-                                  _0: err$1
-                                });
-                    }).then(function (result) {
-                    Curry._1(EventTopic.publish, eventTopic)(events$p).catch(function (err) {
-                          var msg = "EventLog.appendFn(" + id + "): EventTopic.publish Error: " + err.message;
-                          console.log(msg);
-                          return Js_exn.raiseError(msg);
-                        });
-                    return Promise.resolve(result);
-                  });
+        return Js_promise2.then(Js_promise2.$$catch(storage.append(sequenceNr, Curry._1(Spec.Id.toString, id), data), (function (err) {
+                          var errMsg = "EventLog: Error: Couldn't append for " + Spec.name + "(" + Curry._1(Spec.Id.toString, id) + "):" + err.message;
+                          console.log(errMsg);
+                          return Promise.resolve({
+                                      TAG: /* Error */1,
+                                      _0: errMsg
+                                    });
+                        })), (function (result) {
+                      Js_promise.$$catch((function (err) {
+                              var msg = "EventLog.appendFn(" + Curry._1(Spec.Id.toString, id) + "): EventTopic.publish Error: ";
+                              console.log(msg, err);
+                              return Js_exn.raiseError(msg);
+                            }), Curry._1(EventTopic.publish, eventTopic)(events$p));
+                      return Promise.resolve(result);
+                    }));
       }
       catch (raw_exn){
         var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
@@ -81,19 +83,19 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
             }
             var eventStr = JSON.stringify(x[0]);
             var message = $$event._0.message;
-            return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message);
+            return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message + "");
           }));
     if (x !== undefined) {
       return Caml_option.valFromOption(x);
     }
     var eventStr = JSON.stringify(json);
-    return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr);
+    return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr + "");
   };
   var replayFn = function (storage) {
     return function (id) {
-      return storage.replay(Curry._1(Spec.Id.toString, id)).then(function (jsons) {
-                  return Promise.resolve(Belt_Array.map(jsons, decodeEvent));
-                });
+      return Js_promise.then_((function (jsons) {
+                    return Promise.resolve(Belt_Array.map(jsons, decodeEvent));
+                  }), storage.replay(Curry._1(Spec.Id.toString, id)));
     };
   };
   var construct = function (self, name) {
