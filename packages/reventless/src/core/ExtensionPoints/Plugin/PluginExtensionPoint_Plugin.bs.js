@@ -35,25 +35,25 @@ function forwardCommand(_id, command, extensionPointName, queryEngine) {
           tl: /* [] */0
         }
       }, 1000);
-  return __x.then(function (plugins) {
-              if (plugins.length === 0) {
+  return __x.then(function (x) {
+              if (x.length === 0) {
                 return Promise.resolve((console.log("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName), undefined));
               }
-              var plugin = Belt_Array.getExn(plugins, 0);
-              var plugin$1 = PluginReadModelSpec$Reventless.state_decode(plugin);
-              if (plugin$1.TAG !== /* Ok */0) {
-                return Promise.resolve((console.log("ForwardCommand: Couldn't decode Plugin", plugin, plugin$1._0), undefined));
+              var plugin = Belt_Array.getExn(x, 0);
+              var x$1 = PluginReadModelSpec$Reventless.state_decode(plugin);
+              if (x$1.TAG !== /* Ok */0) {
+                return Promise.resolve((console.log("ForwardCommand: Couldn't decode Plugin", plugin, x$1._0), undefined));
               }
-              var plugin$2 = plugin$1._0;
-              var extensionPoint = Belt_Array.getBy(plugin$2.extensionPoints, (function (extensionPoint) {
+              var plugin$1 = x$1._0;
+              var x$2 = Belt_Array.getBy(plugin$1.extensionPoints, (function (extensionPoint) {
                       return extensionPoint.name === extensionPointName;
                     }));
-              if (extensionPoint === undefined) {
-                return Promise.resolve((console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$2), undefined));
+              if (x$2 === undefined) {
+                return Promise.resolve((console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$1), undefined));
               }
-              var __x = SQS$AwsSdk.sendMessage(extensionPoint.commandTopic, command, undefined, undefined, undefined, undefined);
+              var __x = SQS$AwsSdk.sendMessage(x$2.commandTopic, command, undefined, undefined, undefined, undefined);
               var __x$1 = __x.then(function (param) {
-                    return Promise.resolve((console.log("ForwardCommand: published command to", plugin$2.name, extensionPoint.commandTopic), undefined));
+                    return Promise.resolve((console.log("ForwardCommand: published command to", plugin$1.name, x$2.commandTopic), undefined));
                   });
               return __x$1.catch(function (err) {
                           return Promise.resolve((console.log("PluginExtensionPoint_PluginMapping: Error on publish command:", err), undefined));

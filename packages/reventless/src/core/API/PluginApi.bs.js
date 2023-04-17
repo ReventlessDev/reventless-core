@@ -2,11 +2,11 @@
 'use strict';
 
 
-var typesSchema = "\ntype Extension {\n\tname: String!\n\textensionPointName: String!\n}\n\ntype ExtensionPoint {\n\tname: String!\n\tcommandTopic: String!\n\teventTopic: String\n}\n\ntype StatusChange {\n  at: String!\n  by: String!\n}\n\ntype Plugin {\n\tid: ID!\n\tname: String!\n\tversion: String!\n\textensionPoints: [ExtensionPoint!]!\n\textensions: [Extension!]!\n\tstatus: [String!]!\n  statusChange: StatusChange!\n}\n\ntype Plugins {\n\tnextToken: String\n\tscannedCount: Int!\n\titems: [Plugin!]!\n}\n";
+var typesSchema = "\ntype Extension {\n	name: String!\n	extensionPointName: String!\n}\n\ntype ExtensionPoint {\n	name: String!\n	commandTopic: String!\n	eventTopic: String\n}\n\ntype StatusChange {\n  at: String!\n  by: String!\n}\n\ntype Plugin {\n	id: ID!\n	name: String!\n	version: String!\n	extensionPoints: [ExtensionPoint!]!\n	extensions: [Extension!]!\n	status: [String!]!\n  statusChange: StatusChange!\n}\n\ntype Plugins {\n	nextToken: String\n	scannedCount: Int!\n	items: [Plugin!]!\n}\n";
 
-var queriesSchema = "\n\tplugin(id: ID!): Plugin\n    @aws_auth(cognito_groups: [\"Admin\"])\n\teveryPlugin(nextToken: String, limit: Int): Plugins!\n    @aws_auth(cognito_groups: [\"Admin\"])\n";
+var queriesSchema = "\n	plugin(id: ID!): Plugin\n    @aws_auth(cognito_groups: [\"Admin\"])\n	everyPlugin(nextToken: String, limit: Int): Plugins!\n    @aws_auth(cognito_groups: [\"Admin\"])\n";
 
-var mutationsSchema = "\n\tPlugin_Deactivate(id: ID!): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n\tPlugin_Activate(id: ID!): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n";
+var mutationsSchema = "\n	Plugin_Deactivate(id: ID!): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n	Plugin_Activate(id: ID!): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n";
 
 exports.typesSchema = typesSchema;
 exports.queriesSchema = queriesSchema;

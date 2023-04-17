@@ -147,27 +147,27 @@ function $less$plus$question$great(v1, a2) {
   return mergeAsyncRight(v1, a2, defaultErrorHandler);
 }
 
-function toResult(s) {
-  switch (s.TAG | 0) {
+function toResult(x) {
+  switch (x.TAG | 0) {
     case /* Success */0 :
         return {
                 TAG: /* Ok */0,
-                _0: [s._0]
+                _0: [x._0]
               };
     case /* Successes */1 :
         return {
                 TAG: /* Ok */0,
-                _0: s._0
+                _0: x._0
               };
     case /* Failure */2 :
         return {
                 TAG: /* Error */1,
-                _0: [s._0]
+                _0: [x._0]
               };
     case /* Failures */3 :
         return {
                 TAG: /* Error */1,
-                _0: s._0
+                _0: x._0
               };
     
   }

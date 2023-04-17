@@ -3,7 +3,7 @@
 
 var PluginApi$Reventless = require("./PluginApi.bs.js");
 
-var mutationsSchema = PluginApi$Reventless.mutationsSchema + "\n\tclone(restoreDateTime: String): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n";
+var mutationsSchema = PluginApi$Reventless.mutationsSchema + "\n	clone(restoreDateTime: String): String!\n    @aws_auth(cognito_groups: [\"Admin\"])\n";
 
 var graphQLSchema = "\n" + PluginApi$Reventless.typesSchema + "\n\ntype Query {\n" + PluginApi$Reventless.queriesSchema + "\n}\n\ntype Mutation {\n" + mutationsSchema + "\n}\n";
 

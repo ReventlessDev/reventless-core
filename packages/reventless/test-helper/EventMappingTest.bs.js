@@ -173,19 +173,19 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
                     return Belt_List.fromArray(EventMapping.map(Curry._1(Source.Id.makeFromString, sourceId), sourceEvent, queryEngine));
                   }))));
     var targetHistories = Js_dict.fromList(param[0]);
-    var __x = Promise.all(Belt_Array.map(targetActions, (function (p) {
-                switch (p.TAG | 0) {
+    var __x = Promise.all(Belt_Array.map(targetActions, (function (x) {
+                switch (x.TAG | 0) {
                   case /* Publish */0 :
                   case /* PublishDelayed */1 :
                       break;
                   case /* PublishAsync */2 :
-                      return p._0;
+                      return x._0;
                   default:
                     return Promise.resolve([]);
                 }
                 return Promise.resolve([[
-                              p._0,
-                              p._1
+                              x._0,
+                              x._1
                             ]]);
               })));
     return __x.then(function (commands) {

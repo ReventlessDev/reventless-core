@@ -1,0 +1,190 @@
+open ReventlessSpec.Adapter
+
+let componentType = ComponentType.CommandTopic
+
+type outputs = {"resources": array<resource>}
+
+type t
+type component = Component.t<t, outputs>
+
+type publish<'id, 'command> = (. Message.command'<'id, 'command>) => Js.Promise.t<unit>
+type publishJsons = (. array<Message.commandJson>) => Js.Promise.t<unit>
+
+exception NotPublishedToConnector(Js.Promise.error)
+
+module type Spec = {
+  module Id: ReventlessSpec.Id.T
+
+  @decco
+  type command
+}
+
+type topicItem<'command> = {
+  command: 'command,
+  reference: string,
+}
+
+type commandsHandler<'command> = (
+  . array<topicItem<'command>>,
+) => Js.Promise.t<array<Belt.Result.t<string, string>>>
+
+module type T = {
+  module Spec: Spec
+
+  type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
+
+  let make: (
+    ~name: string,
+    ~commandsHandler: commandsHandler,
+    ~memorySize: int=?,
+    ~timeout: int=?,
+    ~opts: Pulumi.ComponentResource.Options.t=?,
+    unit,
+  ) => component
+
+  let publish: component => publish<Spec.Id.t, Spec.command>
+  let publishJsons: component => publishJsons
+}
+
+module Adapter = {
+  type connector = {
+    resources: array<resource>,
+    publish: publishJsons,
+  }
+  type connectorMaker = (
+    ~name: string,
+    ~handleCommands: commandsHandler<Js.Json.t>,
+    ~memorySize: int,
+    ~timeout: int,
+    ~opts: Pulumi.CustomResourceOptions.t,
+  ) => connector
+
+  module type Connector = {
+    let make: connectorMaker
+  }
+
+  type remoteConnector = {remotePublish: publishJsons}
+  type remoteConnectorMaker = outputs => remoteConnector
+
+  module type RemoteConnector = {
+    let make: remoteConnectorMaker
+  }
+}
+
+module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = Spec) => {
+  module Spec = Spec
+
+  type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
+
+  type constructed
+  type construct = (component, string, commandsHandler) => constructed
+
+  type publish = publish<Spec.Id.t, Spec.command>
+
+  @module("./Component") @new
+  external make: (
+    ~componentType: string,
+    ~name: string,
+    ~construct: construct,
+    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~commandsHandler: commandsHandler,
+  ) => component = "default"
+
+  @obj external makeOutputs: (~resources: array<resource>) => outputs = ""
+
+  @send
+  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
+  @send external setOutputs: (component, outputs) => unit = "setOutputs"
+  let setOutputs = (self, outputs) => {
+    self->setOutputs(outputs)
+    self->registerOutputs(outputs)
+  }
+
+  @set external setPublish: (component, publish) => unit = "publish"
+  @get external publish: component => publish = "publish"
+  @set
+  external setPublishJsons: (component, publishJsons) => unit = "publishJsons"
+  @get external publishJsons: component => publishJsons = "publishJsons"
+
+  let publishJsonsFn = (connector, . jsons) =>
+    connector.Adapter.publish(. jsons)->Js.Promise.catch(e => {
+      Js.log2(
+        "CommandTopic: Couldn't publish commands:",
+        jsons->Belt.Array.map(commandJson =>
+          commandJson->Message.commandJson_encode->Js.Json.stringify
+        ),
+      )
+      NotPublishedToConnector(e)->Js.Promise.reject
+    }, _)->Js.Promise.then_(
+      _ =>
+        Js.log2(
+          "CommandTopic: Published commands:",
+          jsons->Belt.Array.map(commandJson =>
+            commandJson->Message.commandJson_encode->Js.Json.stringify
+          ),
+        )->Js.Promise.resolve,
+      _,
+    )
+
+  let publishFn: (
+    Adapter.connector,
+    . Message.command'<Spec.Id.t, Spec.command>,
+  ) => Js.Promise.t<unit> = connector => {
+    (. command') => {
+      let commandJson = {
+        Message.id: command'.id->Spec.Id.toString,
+        meta: command'.meta,
+        commandJson: command'.command->Spec.command_encode,
+        delay: None,
+      }
+      publishJsonsFn(connector)(. [commandJson])
+    }
+  }
+
+  let handleCommands = (commandsHandler, . jsonItems) => {
+    Js.log2("starting CommandTopic.handleCommands. Command count:", jsonItems->Belt.Array.size)
+    let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
+      switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
+      | Belt_Result.Ok(command') => Some({reference: reference, command: command'})
+      | Belt_Result.Error(err) =>
+        let commandStr = json->Js.Json.stringify
+        let message = err.message
+        Js.log(j`CommandTopic: Error: Couldn't decode command $commandStr: $message`)
+        None
+      }
+    )
+    commandsHandler(. topicItems)->Js.Promise.then_(res => {
+      Js.log("finished CommandTopic.handleCommands")
+      res->Js.Promise.resolve
+    }, _)->Js.Promise.catch(err => {
+      let error = (err->Util.Error.ofPromise)["message"]
+      Js.Exn.raiseError(j`CommandTopic.handleCommand: Error: Couldn't handle commands: $error`)
+    }, _)
+  }
+
+  let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
+    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+
+    let connector = Connector.make(
+      ~name=name->ComponentType.name(componentType),
+      ~handleCommands=commandsHandler->handleCommands,
+      ~memorySize,
+      ~timeout,
+      ~opts,
+    )
+
+    self->setPublish(connector->publishFn)
+    self->setPublishJsons(connector->publishJsonsFn)
+
+    makeOutputs(~resources=connector.resources)->setOutputs(self, _)
+  }
+
+  let make = (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?, _) =>
+    make(
+      ~componentType=componentType->ComponentType.toString,
+      ~name,
+      ~construct=construct(~memorySize, ~timeout),
+      ~opts,
+      ~commandsHandler,
+    )
+}

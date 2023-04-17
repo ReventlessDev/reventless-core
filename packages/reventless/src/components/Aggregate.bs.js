@@ -106,9 +106,9 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                           var id = param[0];
                           return eventLogReplay(id).then(function (history) {
                                       var processCommand = function (accP, command$p) {
-                                        return accP.then(function (acc) {
-                                                    if (acc.TAG === /* Ok */0) {
-                                                      var param = acc._0;
+                                        return accP.then(function (x) {
+                                                    if (x.TAG === /* Ok */0) {
+                                                      var param = x._0;
                                                       var events = param[1];
                                                       var stateO = param[0];
                                                       if (stateO !== undefined) {
@@ -160,7 +160,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                                   ]
                                                                 });
                                                     } else {
-                                                      return Promise.resolve(acc);
+                                                      return Promise.resolve(x);
                                                     }
                                                   });
                                       };
@@ -188,9 +188,9 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                             Belt_List.reduce(Belt_List.fromArray(history), undefined, apply$p),
                                                             /* [] */0
                                                           ]
-                                                        }), processCommand).then(function (error) {
-                                                    if (error.TAG === /* Ok */0) {
-                                                      return Promise.resolve(Belt_List.toArray(Belt_List.flatten(Belt_List.map(error._0[1], (function (param) {
+                                                        }), processCommand).then(function (x) {
+                                                    if (x.TAG === /* Ok */0) {
+                                                      return Promise.resolve(Belt_List.toArray(Belt_List.flatten(Belt_List.map(x._0[1], (function (param) {
                                                                                 var meta = param[1];
                                                                                 return Belt_List.map(param[0], (function ($$event) {
                                                                                               return {
@@ -201,10 +201,10 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                                                             }));
                                                                               })))));
                                                     } else {
-                                                      return Js_exn.raiseError(error._0);
+                                                      return Js_exn.raiseError(x._0);
                                                     }
-                                                  }).then(function (generatedEvents$p) {
-                                                  if (generatedEvents$p.length === 0) {
+                                                  }).then(function (x) {
+                                                  if (x.length === 0) {
                                                     return Promise.resolve((console.log("Aggregate.handleCommands(" + id + "): no Event generated"), Belt_Array.map(references, (function (reference) {
                                                                         return {
                                                                                 TAG: /* Ok */0,
@@ -212,11 +212,11 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                                               };
                                                                       }))));
                                                   }
-                                                  var eventCount = generatedEvents$p.length;
-                                                  console.log("Aggregate.handleCommands(" + id + "): " + eventCount + " Event(s) generated:", Belt_Array.map(generatedEvents$p, (function (event$p) {
+                                                  var eventCount = x.length;
+                                                  console.log("Aggregate.handleCommands(" + id + "): " + eventCount + " Event(s) generated:", Belt_Array.map(x, (function (event$p) {
                                                               return Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
                                                             })));
-                                                  return eventLogAppend(history.length, id, generatedEvents$p).then(function (result) {
+                                                  return eventLogAppend(history.length, id, x).then(function (result) {
                                                                 var tmp;
                                                                 tmp = result.TAG === /* Ok */0 ? Belt_Array.map(references, (function (reference) {
                                                                           return {

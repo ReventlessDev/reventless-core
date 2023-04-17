@@ -46,16 +46,16 @@ function Make(Spec, MappingImpl) {
     var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
       return encodeExtensionPointCommandJson(Curry._1(Spec.command_encode, command), id, extensionPointName, action);
     };
-    return Belt_Array.map(Curry._5(MappingImpl.mapIncomingEvent, param.id, param.event, meta, pluginDef, queryEngine), (function (promise) {
-                  switch (promise.TAG | 0) {
+    return Belt_Array.map(Curry._5(MappingImpl.mapIncomingEvent, param.id, param.event, meta, pluginDef, queryEngine), (function (x) {
+                  switch (x.TAG | 0) {
                     case /* PublishAggregateCommand */0 :
                         return {
                                 TAG: /* AbstractPublishAggregateCommand */0,
                                 _0: aggregateName,
-                                _1: encodeAggregateCommandJson(promise._1, promise._0)
+                                _1: encodeAggregateCommandJson(x._1, x._0)
                               };
                     case /* PublishAggregateCommandAsync */1 :
-                        var promise$p = promise._0.then(function (param) {
+                        var promise$p = x._0.then(function (param) {
                               return Promise.resolve([
                                           aggregateName,
                                           encodeAggregateCommandJson(param[1], param[0])
@@ -66,7 +66,7 @@ function Make(Spec, MappingImpl) {
                                 _0: promise$p
                               };
                     case /* PublishAggregateCommandsAsync */2 :
-                        var promise$p$1 = promise._0.then(function (tupels) {
+                        var promise$p$1 = x._0.then(function (tupels) {
                               return Promise.all(Belt_Array.map(tupels, (function (param) {
                                                 return Promise.resolve([
                                                             aggregateName,
@@ -79,8 +79,8 @@ function Make(Spec, MappingImpl) {
                                 _0: promise$p$1
                               };
                     case /* PublishExtensionPointCommand */3 :
-                        var command = promise._1;
-                        var id = promise._0;
+                        var command = x._1;
+                        var id = x._0;
                         if (Spec.name === PluginExtensionPointSpec$ReventlessSpec.name) {
                           return {
                                   TAG: /* AbstractPublishPluginExtensionPointCommand */3,
@@ -94,7 +94,7 @@ function Make(Spec, MappingImpl) {
                                 };
                         }
                     case /* ForwardCommand */4 :
-                        var match = promise._0;
+                        var match = x._0;
                         var extensionPointName$1 = match.extensionPointName;
                         return {
                                 TAG: /* AbstractPublishExtensionPointCommand */4,
@@ -102,8 +102,8 @@ function Make(Spec, MappingImpl) {
                                 _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
                               };
                     case /* Call */5 :
-                        var callCommand = promise._1;
-                        var handler = promise._0;
+                        var callCommand = x._1;
+                        var handler = x._0;
                         console.log("ExtensionMapping incoming from ExtensionPoint " + extensionPointName + ": Handling call command", JSON.stringify(Curry._1(Spec.callCommand_encode, callCommand)));
                         return {
                                 TAG: /* AbstractCall */5,
@@ -135,11 +135,11 @@ function Make(Spec, MappingImpl) {
     var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
       return encodeExtensionPointCommandJson(Curry._1(Spec.command_encode, command), id, extensionPointName, action);
     };
-    return Belt_Array.map(Curry._4(MappingImpl.mapOutgoingEvent, Curry._1(Aggregate.Id.toString, match$1.id), match$1.event, meta, pluginDef), (function (param) {
-                  switch (param.TAG | 0) {
+    return Belt_Array.map(Curry._4(MappingImpl.mapOutgoingEvent, Curry._1(Aggregate.Id.toString, match$1.id), match$1.event, meta, pluginDef), (function (x) {
+                  switch (x.TAG | 0) {
                     case /* PublishExtensionPointCommand */0 :
-                        var command = param._1;
-                        var id = param._0;
+                        var command = x._1;
+                        var id = x._0;
                         if (Spec.name === PluginExtensionPointSpec$ReventlessSpec.name) {
                           return {
                                   TAG: /* AbstractPublishPluginExtensionPointCommand */0,
@@ -153,7 +153,7 @@ function Make(Spec, MappingImpl) {
                                 };
                         }
                     case /* ForwardCommand */1 :
-                        var match = param._0;
+                        var match = x._0;
                         var extensionPointName$1 = match.extensionPointName;
                         return {
                                 TAG: /* AbstractPublishExtensionPointCommand */1,
@@ -161,8 +161,8 @@ function Make(Spec, MappingImpl) {
                                 _1: encodeExtensionPointCommandJson(match.commandJson, match.id, extensionPointName$1, "Forward ExtensionPoint command")
                               };
                     case /* Call */2 :
-                        var callCommand = param._1;
-                        var handler = param._0;
+                        var callCommand = x._1;
+                        var handler = x._0;
                         console.log("ExtensionMapping outgoing from Aggregate " + aggregateName + ": Handling call command", JSON.stringify(Curry._1(Spec.callCommand_encode, callCommand)));
                         return {
                                 TAG: /* AbstractCall */2,

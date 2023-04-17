@@ -69,25 +69,26 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     var commandTopic = {
       contents: undefined
     };
-    var applyCommandAction = function (param) {
-      if (param.TAG === /* AbstractPublishCommand */0) {
-        var cmdJson = param._2;
-        var reference = param._1;
-        var aggregateName = param._0;
-        var __x = Curry._1(Belt_Option.mapWithDefault(Belt_Option.map(Js_dict.get(publishToAggregates, aggregateName), (function (publishJsons) {
-                        return publishJsons([cmdJson]);
-                      })), (function (param) {
+    var applyCommandAction = function (x) {
+      if (x.TAG === /* AbstractPublishCommand */0) {
+        var cmdJson = x._2;
+        var reference = x._1;
+        var aggregateName = x._0;
+        var __x = Belt_Option.map(Js_dict.get(publishToAggregates, aggregateName), (function (publishJsons) {
+                return publishJsons([cmdJson]);
+              }));
+        var __x$1 = Curry._1(Belt_Option.mapWithDefault(__x, (function (param) {
                     return Js_exn.raiseError("ExtensionPoint.applyCommandAction: Aggregate " + aggregateName + " doesn't exist");
                   }), (function (x, param) {
                     return x;
                   })), undefined);
-        var __x$1 = __x.then(function (param) {
+        var __x$2 = __x$1.then(function (param) {
               return Promise.resolve({
                           TAG: /* Ok */0,
                           _0: reference
                         });
             });
-        return __x$1.catch(function (err) {
+        return __x$2.catch(function (err) {
                     console.log("ExtensionPoint: Error on publish command:", err);
                     return Promise.resolve({
                                 TAG: /* Error */1,
@@ -95,15 +96,15 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                               });
                   });
       }
-      var reference$1 = param._0;
-      var __x$2 = Curry._1(param._1, undefined);
-      var __x$3 = __x$2.then(function (param) {
+      var reference$1 = x._0;
+      var __x$3 = Curry._1(x._1, undefined);
+      var __x$4 = __x$3.then(function (param) {
             return Promise.resolve({
                         TAG: /* Ok */0,
                         _0: reference$1
                       });
           });
-      return __x$3.catch(function (err) {
+      return __x$4.catch(function (err) {
                   console.log(err, "ExtensionPoint: Error on calling handler:");
                   return Promise.resolve({
                               TAG: /* Error */1,
@@ -112,24 +113,24 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                 });
     };
     var eventTopic = Curry._4(EventTopic.make, childName, [], Caml_option.some(opts), undefined);
-    var applyEventAction = function (event$p) {
-      switch (event$p.TAG | 0) {
+    var applyEventAction = function (x) {
+      switch (x.TAG | 0) {
         case /* AbstractPublishEvent */0 :
             var publish = Curry._1(EventTopic.publish, eventTopic);
-            var __x = publish([event$p._0]);
+            var __x = publish([x._0]);
             return __x.catch(function (err) {
                         return Promise.resolve((console.log(err, "ExtensionPoint: Error on publish command:"), undefined));
                       });
         case /* AbstractPublishEventAsync */1 :
             var publish$1 = Curry._1(EventTopic.publish, eventTopic);
-            return event$p._0.then(function (event$p) {
+            return x._0.then(function (event$p) {
                         var __x = publish$1([event$p]);
                         return __x.catch(function (err) {
                                     return Promise.resolve((console.log(err, "ExtensionPoint: Error on publish command:"), undefined));
                                   });
                       });
         case /* AbstractCall */2 :
-            var __x$1 = Curry._1(event$p._0, undefined);
+            var __x$1 = Curry._1(x._0, undefined);
             return __x$1.catch(function (err) {
                         return Promise.resolve((console.log(err, "ExtensionPoint: Error on calling handler:"), undefined));
                       });

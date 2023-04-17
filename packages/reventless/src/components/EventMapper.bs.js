@@ -64,29 +64,29 @@ function Make(Target, EventCollector, Mappings) {
           };
   };
   var processMappingActions = function (actions, eventMeta) {
-    return Belt_Array.map(actions, (function (promise) {
-                  switch (promise.TAG | 0) {
+    return Belt_Array.map(actions, (function (x) {
+                  switch (x.TAG | 0) {
                     case /* Publish */0 :
                         return {
                                 TAG: /* Publisher */1,
-                                _0: Promise.resolve([createCommandJson(undefined, promise._0, eventMeta, promise._1)])
+                                _0: Promise.resolve([createCommandJson(undefined, x._0, eventMeta, x._1)])
                               };
                     case /* PublishDelayed */1 :
                         return {
                                 TAG: /* Publisher */1,
-                                _0: Promise.resolve([createCommandJson(promise._2, promise._0, eventMeta, promise._1)])
+                                _0: Promise.resolve([createCommandJson(x._2, x._0, eventMeta, x._1)])
                               };
                     case /* PublishAsync */2 :
                         return {
                                 TAG: /* Publisher */1,
-                                _0: promise._0.then(function (cmds) {
+                                _0: x._0.then(function (cmds) {
                                       return Promise.resolve(Belt_Array.map(cmds, (function (param) {
                                                         return createCommandJson(undefined, param[0], eventMeta, param[1]);
                                                       })));
                                     })
                               };
                     case /* AddToCounterTarget */3 :
-                        var match = promise._0;
+                        var match = x._0;
                         return {
                                 TAG: /* Counter */0,
                                 _0: {
@@ -104,7 +104,7 @@ function Make(Target, EventCollector, Mappings) {
                                 _0: {
                                   TAG: /* Count */0,
                                   _0: {
-                                    counterId: promise._0,
+                                    counterId: x._0,
                                     reference: eventMeta.correlationId,
                                     inc: 1
                                   }
@@ -116,9 +116,9 @@ function Make(Target, EventCollector, Mappings) {
                                 _0: {
                                   TAG: /* Count */0,
                                   _0: {
-                                    counterId: promise._0,
+                                    counterId: x._0,
                                     reference: eventMeta.correlationId,
-                                    inc: promise._1
+                                    inc: x._1
                                   }
                                 }
                               };
@@ -168,19 +168,19 @@ function Make(Target, EventCollector, Mappings) {
               return true;
             }
           }));
-    var __x = Promise.all(Belt_Array.map(match[0], (function (entries) {
-                if (entries.TAG === /* Counter */0) {
+    var __x = Promise.all(Belt_Array.map(match[0], (function (x) {
+                if (x.TAG === /* Counter */0) {
                   return Js_exn.raiseError("Invalid EventMapper action");
                 } else {
-                  return entries._0;
+                  return x._0;
                 }
               })));
     var publisherEntries = __x.then(function (entries) {
           return Promise.resolve(Belt_Array.concatMany(entries));
         });
-    var counterActions = Belt_Array.map(match[1], (function (action) {
-            if (action.TAG === /* Counter */0) {
-              return action._0;
+    var counterActions = Belt_Array.map(match[1], (function (x) {
+            if (x.TAG === /* Counter */0) {
+              return x._0;
             } else {
               return Js_exn.raiseError("Invalid EventMapper action");
             }
@@ -193,17 +193,17 @@ function Make(Target, EventCollector, Mappings) {
   var eventCollectorEventsHandler = function (publishJsons, mappings, queryEngine, count, addToCounterTarget) {
     return function (events$pJson) {
       var match = commonEventsHandler(mappings, queryEngine, events$pJson);
-      var match$1 = Belt_Array.partition(match[1], (function (param) {
-              if (param.TAG === /* Count */0) {
+      var match$1 = Belt_Array.partition(match[1], (function (x) {
+              if (x.TAG === /* Count */0) {
                 return true;
               } else {
                 return false;
               }
             }));
       var addToCounterTargetActions = match$1[1];
-      var countActions = Belt_Array.keepMap(match$1[0], (function (countItem) {
-              if (countItem.TAG === /* Count */0) {
-                return countItem._0;
+      var countActions = Belt_Array.keepMap(match$1[0], (function (x) {
+              if (x.TAG === /* Count */0) {
+                return x._0;
               }
               
             }));
@@ -221,11 +221,11 @@ function Make(Target, EventCollector, Mappings) {
         countP = Promise.resolve(undefined);
       }
       console.log("EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:", JSON.stringify(addToCounterTargetActions));
-      var addToCounterTargetsP = Promise.all(Belt_Array.map(addToCounterTargetActions, (function (counterTarget) {
-                  if (counterTarget.TAG === /* Count */0) {
+      var addToCounterTargetsP = Promise.all(Belt_Array.map(addToCounterTargetActions, (function (x) {
+                  if (x.TAG === /* Count */0) {
                     return Promise.resolve(undefined);
                   } else {
-                    return Curry._1(addToCounterTarget, counterTarget._0);
+                    return Curry._1(addToCounterTarget, x._0);
                   }
                 })));
       var sendEntriesP = match[0].then(function (commandJsons) {

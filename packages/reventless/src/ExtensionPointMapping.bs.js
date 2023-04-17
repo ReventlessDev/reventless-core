@@ -16,10 +16,10 @@ function Make(Spec, MappingImpl) {
                       var reference = param.reference;
                       var match = param.command;
                       var meta = match.meta;
-                      return Belt_Array.map(Curry._3(MappingImpl.mapIncomingCommand, Id$Reventless.$$String.toString(match.id), match.command, meta), (function (param) {
-                                    if (param.TAG === /* PublishCommand */0) {
-                                      var aggregateCmd = param._1;
-                                      var aggregateId = param._0;
+                      return Belt_Array.map(Curry._3(MappingImpl.mapIncomingCommand, Id$Reventless.$$String.toString(match.id), match.command, meta), (function (x) {
+                                    if (x.TAG === /* PublishCommand */0) {
+                                      var aggregateCmd = x._1;
+                                      var aggregateId = x._0;
                                       var commandStr = JSON.stringify(Curry._1(Aggregate.command_encode, aggregateCmd));
                                       console.log("ExtensionPointMapping incoming from ExtensionPoint " + extensionPointName + " to Aggregate " + aggregateName + ": Publishing command: " + commandStr + " id: " + aggregateId);
                                       return {
@@ -41,8 +41,8 @@ function Make(Spec, MappingImpl) {
                                               }
                                             };
                                     }
-                                    var callCommand = param._1;
-                                    var handler = param._0;
+                                    var callCommand = x._1;
+                                    var handler = x._0;
                                     console.log("ExtensionPointMapping incoming from ExtensionPoint " + extensionPointName + ": Handling call command", JSON.stringify(Curry._1(Spec.callCommand_encode, callCommand)));
                                     return {
                                             TAG: /* AbstractCall */1,
@@ -61,11 +61,11 @@ function Make(Spec, MappingImpl) {
     }
     var match$1 = match._0;
     var meta = match$1.meta;
-    return Belt_Array.map(Curry._4(MappingImpl.mapOutgoingEvent, Curry._1(Aggregate.Id.toString, match$1.id), match$1.event, meta, queryEngine), (function (promise) {
-                  switch (promise.TAG | 0) {
+    return Belt_Array.map(Curry._4(MappingImpl.mapOutgoingEvent, Curry._1(Aggregate.Id.toString, match$1.id), match$1.event, meta, queryEngine), (function (x) {
+                  switch (x.TAG | 0) {
                     case /* PublishEvent */0 :
-                        var $$event = promise._1;
-                        var id = promise._0;
+                        var $$event = x._1;
+                        var id = x._0;
                         var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
                         console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id);
                         return {
@@ -84,7 +84,7 @@ function Make(Spec, MappingImpl) {
                                 }
                               };
                     case /* PublishEventAsync */1 :
-                        var promise$p = promise._0.then(function (param) {
+                        var promise$p = x._0.then(function (param) {
                               var $$event = param[1];
                               var id = param[0];
                               var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
@@ -107,8 +107,8 @@ function Make(Spec, MappingImpl) {
                                 _0: promise$p
                               };
                     case /* Call */2 :
-                        var msg = promise._1;
-                        var handler = promise._0;
+                        var msg = x._1;
+                        var handler = x._0;
                         console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + ": Handling call command", JSON.stringify(Curry._1(Spec.callCommand_encode, msg)));
                         return {
                                 TAG: /* AbstractCall */2,

@@ -36,12 +36,15 @@ function Make(Spec, Mappings) {
   };
   var construct = function (publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, self, name) {
     var publishAggregateCommand = function (aggregateName, cmdJson) {
-      return Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName))([cmdJson]).catch(function (err) {
+      var pub = Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName));
+      var __x = pub([cmdJson]);
+      return __x.catch(function (err) {
                   return Promise.resolve((console.log("Extension: Error on publish command to aggregate " + aggregateName + ": " + err), undefined));
                 });
     };
     var publishCorePluginExtensionPointCommand = function (cmdJson) {
-      return publishToCorePluginExtensionPoint([cmdJson]).catch(function (err) {
+      var __x = publishToCorePluginExtensionPoint([cmdJson]);
+      return __x.catch(function (err) {
                   return Promise.resolve((console.log("Extension: Error on publish command to Core.Plugin ExtensionPoint: " + err), undefined));
                 });
     };
@@ -68,17 +71,17 @@ function Make(Spec, Mappings) {
                   delay: undefined
                 });
     };
-    var applyIncomingCommandAction = function (promise) {
-      switch (promise.TAG | 0) {
+    var applyIncomingCommandAction = function (x) {
+      switch (x.TAG | 0) {
         case /* AbstractPublishAggregateCommand */0 :
-            return publishAggregateCommand(promise._0, promise._1);
+            return publishAggregateCommand(x._0, x._1);
         case /* AbstractPublishAggregateCommandAsync */1 :
-            var __x = promise._0;
+            var __x = x._0;
             return __x.then(function (param) {
                         return publishAggregateCommand(param[0], param[1]);
                       });
         case /* AbstractPublishAggregateCommandsAsync */2 :
-            var __x$1 = promise._0;
+            var __x$1 = x._0;
             return __x$1.then(function (tupels) {
                         var __x = Promise.all(Belt_Array.map(tupels, (function (param) {
                                     return publishAggregateCommand(param[0], param[1]);
@@ -88,24 +91,26 @@ function Make(Spec, Mappings) {
                                   });
                       });
         case /* AbstractPublishPluginExtensionPointCommand */3 :
-            return publishCorePluginExtensionPointCommand(promise._0);
+            return publishCorePluginExtensionPointCommand(x._0);
         case /* AbstractPublishExtensionPointCommand */4 :
-            return forwardCommand(promise._0, promise._1);
+            return forwardCommand(x._0, x._1);
         case /* AbstractCall */5 :
-            return Curry._1(promise._0, undefined).catch(function (err) {
+            var __x$2 = Curry._1(x._0, undefined);
+            return __x$2.catch(function (err) {
                         return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), undefined));
                       });
         
       }
     };
-    var applyOutgoingCommandAction = function (commandJson) {
-      switch (commandJson.TAG | 0) {
+    var applyOutgoingCommandAction = function (x) {
+      switch (x.TAG | 0) {
         case /* AbstractPublishPluginExtensionPointCommand */0 :
-            return publishCorePluginExtensionPointCommand(commandJson._0);
+            return publishCorePluginExtensionPointCommand(x._0);
         case /* AbstractPublishExtensionPointCommand */1 :
-            return forwardCommand(commandJson._0, commandJson._1);
+            return forwardCommand(x._0, x._1);
         case /* AbstractCall */2 :
-            return Curry._1(commandJson._0, undefined).catch(function (err) {
+            var __x = Curry._1(x._0, undefined);
+            return __x.catch(function (err) {
                         return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), undefined));
                       });
         
@@ -115,7 +120,8 @@ function Make(Spec, Mappings) {
       var event$p = Message$Reventless.event$p_decode(Id$Reventless.StringPure.t_decode, Spec.event_decode, event$pJson);
       if (event$p.TAG === /* Ok */0) {
         var commandActions = mapIncomingEvent(event$p._0, pluginDef, queryEngine);
-        return Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction)).then(function (param) {
+        var __x = Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction));
+        return __x.then(function (param) {
                     return Promise.resolve(undefined);
                   });
       }
@@ -124,7 +130,8 @@ function Make(Spec, Mappings) {
     };
     var outgoingEventHandler = function (event$pJson, pluginDef) {
       var commandActions = Curry._1(mapOutgoingEvent(event$pJson), pluginDef);
-      return Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction)).then(function (param) {
+      var __x = Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction));
+      return __x.then(function (param) {
                   return Promise.resolve(undefined);
                 });
     };

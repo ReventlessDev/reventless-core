@@ -15,8 +15,8 @@ function Make(Connector) {
     };
   };
   var construct = function (eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, self, name) {
-    Logger$Reventless.logOutput("File \"EventCollector.re\", line 107, characters 37-44", undefined, undefined, undefined, name + ": policy1", policy1);
-    Logger$Reventless.logOutput("File \"EventCollector.re\", line 108, characters 37-44", undefined, undefined, undefined, name + ": policy2", policy2);
+    Logger$Reventless.logOutput("File \"EventCollector.res\", line 96, characters 37-44", undefined, undefined, undefined, name + ": policy1", policy1);
+    Logger$Reventless.logOutput("File \"EventCollector.res\", line 97, characters 37-44", undefined, undefined, undefined, name + ": policy2", policy2);
     var opts = {
       parent: self
     };

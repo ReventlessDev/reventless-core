@@ -31,18 +31,18 @@ function Make(Config, Spec, Behaviour, Resolvers) {
         msgId: msgId,
         correlationId: msgId
       };
-      var obj = Belt_Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
+      var x = Belt_Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
               return Js_json.decodeObject(JSON.parse(jsonString));
             }));
-      var params = obj !== undefined ? Js_dict.values(Caml_option.valFromOption(obj)) : Js_exn.raiseError("Couldn't decode:" + Belt_Option.getWithDefault(JSON.stringify(payload.arguments), "<payload.arguments>"));
+      var params = x !== undefined ? Js_dict.values(Caml_option.valFromOption(x)) : Js_exn.raiseError("Couldn't decode:" + Belt_Option.getWithDefault(JSON.stringify(payload.arguments), "<payload.arguments>"));
       Caml_array.set(params, 0, payload.command);
-      var command = Curry._1(Behaviour.resolverConfig.commandDecoder, params);
-      var command$1;
-      command$1 = command.TAG === /* Ok */0 ? command._0 : Js_exn.raiseError("Couldn't decode " + params + "->Message.stringify: " + command._0);
+      var x$1 = Curry._1(Behaviour.resolverConfig.commandDecoder, params);
+      var command;
+      command = x$1.TAG === /* Ok */0 ? x$1._0 : Js_exn.raiseError("Couldn't decode " + params + "->Message.stringify: " + x$1._0);
       var command$p = {
         id: id,
         meta: meta,
-        command: command$1
+        command: command
       };
       var __x = publish(command$p);
       return __x.then(function (param) {

@@ -1,0 +1,13 @@
+let id = "id"
+let meta = {
+  Message.service: "service",
+  user: "ViewTest",
+  ip: "ip",
+  time: "time",
+  msgId: "msgId",
+  correlationId: "correlationId",
+}
+
+let context = {Message.meta: meta, id: id}
+
+let statusChange = {Message.at: context.meta.time, by: context.meta.user}

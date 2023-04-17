@@ -101,23 +101,23 @@ function handleAction(action, primitives, subIdConfig) {
         var update = action._1;
         var id$1 = action._0;
         var __x = load(id$1);
-        return __x.then(function (states) {
-                    if (states.TAG !== /* Ok */0) {
+        return __x.then(function (x) {
+                    if (x.TAG !== /* Ok */0) {
                       return Promise.resolve({
                                   TAG: /* Error */1,
-                                  _0: states._0
+                                  _0: x._0
                                 });
                     }
-                    var states$1 = states._0;
-                    if (states$1) {
-                      if (states$1.tl) {
+                    var states = x._0;
+                    if (states) {
+                      if (states.tl) {
                         console.log("Projection.handleAction:", "Update Error: Multiple oldStates for " + id$1 + ")");
                         return Promise.resolve({
                                     TAG: /* Error */1,
                                     _0: /* StaleState */0
                                   });
                       }
-                      var oldState = states$1.hd;
+                      var oldState = states.hd;
                       var newState = Curry._1(update, oldState);
                       console.log("Projection.handleAction:", "Update(" + id$1 + ", " + oldState + " => " + newState + ")");
                       return save(id$1, newState, /* Overwrite */1, undefined);
@@ -133,18 +133,18 @@ function handleAction(action, primitives, subIdConfig) {
         var $$default = action._1;
         var id$2 = action._0;
         var __x$1 = load(id$2);
-        return __x$1.then(function (states) {
-                    if (states.TAG === /* Ok */0) {
-                      var states$1 = states._0;
-                      if (states$1) {
-                        if (states$1.tl) {
+        return __x$1.then(function (x) {
+                    if (x.TAG === /* Ok */0) {
+                      var states = x._0;
+                      if (states) {
+                        if (states.tl) {
                           console.log("Projection.handleAction:", "UpdateWithDefault Error: Multiple oldStates for " + id$2 + ")");
                           return Promise.resolve({
                                       TAG: /* Error */1,
                                       _0: /* StaleState */0
                                     });
                         }
-                        var oldState = states$1.hd;
+                        var oldState = states.hd;
                         var newState = Curry._1(update$1, oldState);
                         console.log("Projection.handleAction:", "UpdateWithDefault(" + id$2 + ", " + oldState + " => " + newState + ")");
                         return save(id$2, newState, /* Overwrite */1, undefined);
@@ -152,7 +152,7 @@ function handleAction(action, primitives, subIdConfig) {
                       console.log("Projection.handleAction:", "UpdateWithDefault(" + id$2 + ", default: " + $$default + ")");
                       return save(id$2, $$default, /* Init */0, undefined);
                     }
-                    var err = states._0;
+                    var err = x._0;
                     console.log("Projection.handleAction:", "UpdateWithDefault Error: Couldn't load oldState(s) for " + id$2 + ": " + err + ")");
                     return Promise.resolve({
                                 TAG: /* Error */1,
@@ -357,11 +357,11 @@ function handleActions(actions, primitives, subIdConfig) {
                           }));
             })));
   return __x.then(function (results) {
-              var errors = Belt_Array.keepMap(results, (function (err) {
-                      if (err.TAG === /* Ok */0) {
+              var errors = Belt_Array.keepMap(results, (function (x) {
+                      if (x.TAG === /* Ok */0) {
                         return ;
                       } else {
-                        return err._0;
+                        return x._0;
                       }
                     }));
               if (errors.length === 0) {

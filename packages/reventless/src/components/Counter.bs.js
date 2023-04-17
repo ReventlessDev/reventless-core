@@ -240,13 +240,13 @@ function Make(Config, QueryDbStorage, Handler) {
       return param[0] + (separator + param[1]);
     };
     var unmakeId = function (id) {
-      var parts = id.split(separator);
-      var len = parts.length;
+      var x = id.split(separator);
+      var len = x.length;
       if (len !== 1) {
         if (len !== 0) {
           return [
-                  Caml_array.get(parts, 0),
-                  Caml_array.get(parts, 1)
+                  Caml_array.get(x, 0),
+                  Caml_array.get(x, 1)
                 ];
         } else {
           return [
@@ -255,7 +255,7 @@ function Make(Config, QueryDbStorage, Handler) {
                 ];
         }
       }
-      var counterId = parts[0];
+      var counterId = x[0];
       return [
               counterId,
               ""
@@ -360,14 +360,14 @@ function Make(Config, QueryDbStorage, Handler) {
                             ttl
                           ];
                   })));
-        return __x.then(function (param$1) {
-                    if (param$1.TAG === /* Ok */0) {
+        return __x.then(function (x) {
+                    if (x.TAG === /* Ok */0) {
                       var batchSize = param.length;
                       console.log("Counter-Reventless" + (": saved batch of " + batchSize + " reference(s):"));
                       logCountItems(param);
                       return Promise.resolve(undefined);
                     }
-                    var err = param$1._0;
+                    var err = x._0;
                     if (typeof err !== "number" && err.TAG === /* NotSavedToStorage */0) {
                       var batchSize$1 = param.length;
                       console.log("Counter error: couldn't save batch of " + batchSize$1 + " reference(s):");

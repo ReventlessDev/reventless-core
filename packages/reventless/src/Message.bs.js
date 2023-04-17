@@ -222,12 +222,12 @@ function toMessageBody(param) {
 function serviceNameOfMsg(msgJson) {
   var msgObj = Js_json.decodeObject(msgJson);
   if (msgObj !== undefined) {
-    var param = Belt_Option.map(Js_dict.get(Caml_option.valFromOption(msgObj), "meta"), Message$ReventlessSpec.meta_decode);
-    if (param !== undefined) {
-      if (param.TAG === /* Ok */0) {
-        return param._0.service;
+    var x = Belt_Option.map(Js_dict.get(Caml_option.valFromOption(msgObj), "meta"), Message$ReventlessSpec.meta_decode);
+    if (x !== undefined) {
+      if (x.TAG === /* Ok */0) {
+        return x._0.service;
       }
-      console.log("Message.serviceNameOfMsg: Couldn't decode meta:", param._0);
+      console.log("Message.serviceNameOfMsg: Couldn't decode meta:", x._0);
       return ;
     }
     console.log("Message.serviceNameOfMsg: Invalid JSON object");
@@ -285,15 +285,15 @@ function decomposeMeta(meta) {
   return Js_dict.entries(Js_option.getExn(Js_json.decodeObject(Message$ReventlessSpec.meta_encode(meta))));
 }
 
-function string(ip) {
-  if (ip === undefined) {
+function string(x) {
+  if (x === undefined) {
     return "";
   }
-  var ip$1 = Caml_option.valFromOption(ip);
-  if (Caml_obj.caml_equal(ip$1, null)) {
+  var ip = Caml_option.valFromOption(x);
+  if (Caml_obj.caml_equal(ip, null)) {
     return "";
   } else {
-    return ip$1;
+    return ip;
   }
 }
 

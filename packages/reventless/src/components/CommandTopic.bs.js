@@ -16,15 +16,17 @@ var Adapter = {};
 function Make(Spec, Connector) {
   var publishJsonsFn = function (connector) {
     return function (jsons) {
-      return connector.publish(jsons).catch(function (e) {
-                    console.log("CommandTopic: Couldn't publish commands:", Belt_Array.map(jsons, (function (commandJson) {
-                                return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
-                              })));
-                    return Promise.reject({
-                                RE_EXN_ID: NotPublishedToConnector,
-                                _1: e
-                              });
-                  }).then(function (param) {
+      var __x = connector.publish(jsons);
+      var __x$1 = __x.catch(function (e) {
+            console.log("CommandTopic: Couldn't publish commands:", Belt_Array.map(jsons, (function (commandJson) {
+                        return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
+                      })));
+            return Promise.reject({
+                        RE_EXN_ID: NotPublishedToConnector,
+                        _1: e
+                      });
+          });
+      return __x$1.then(function (param) {
                   return Promise.resolve((console.log("CommandTopic: Published commands:", Belt_Array.map(jsons, (function (commandJson) {
                                           return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
                                         }))), undefined));
@@ -62,10 +64,12 @@ function Make(Spec, Connector) {
               console.log("CommandTopic: Error: Couldn't decode command " + commandStr + ": " + message);
               
             }));
-      return commandsHandler(topicItems).then(function (res) {
-                    console.log("finished CommandTopic.handleCommands");
-                    return Promise.resolve(res);
-                  }).catch(function (err) {
+      var __x = commandsHandler(topicItems);
+      var __x$1 = __x.then(function (res) {
+            console.log("finished CommandTopic.handleCommands");
+            return Promise.resolve(res);
+          });
+      return __x$1.catch(function (err) {
                   var error = err.message;
                   return Js_exn.raiseError("CommandTopic.handleCommand: Error: Couldn't handle commands: " + error);
                 });

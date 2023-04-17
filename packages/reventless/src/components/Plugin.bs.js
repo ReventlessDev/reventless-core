@@ -89,7 +89,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
     var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
             return coreStack.getOutput("extensionPoints");
           }));
-    Logger$Reventless.logOutput("File \"Plugin.re\", line 230, characters 13-20", undefined, undefined, undefined, name + ": coreExtensionPoints - output", coreExtensionPoints);
+    Logger$Reventless.logOutput("File \"Plugin.res\", line 174, characters 28-35", undefined, undefined, undefined, name + ": coreExtensionPoints - output", coreExtensionPoints);
     var pureOutputs = coreExtensionPoints.apply(function (coreExtensionPoints) {
           var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? Caml_option.valFromOption(coreExtensionPoints) : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
           var corePluginExtensionPoint = StackReference$Pulumi.Infix.$neg$hash(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
@@ -125,10 +125,10 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                         return Promise.resolve((console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", err), undefined));
                       });
           };
-          var callHandler = function (param) {
-            switch (param.TAG | 0) {
+          var callHandler = function (x) {
+            switch (x.TAG | 0) {
               case /* DoConnectPlugin */2 :
-                  var match = param._0;
+                  var match = x._0;
                   var otherPluginEventCollector = match.eventCollector;
                   var otherPluginExtensions = match.extensions;
                   var otherPluginId = match.id;
@@ -163,7 +163,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                               return Promise.resolve(undefined);
                             });
               case /* DoDisconnectPlugin */3 :
-                  var match$1 = param._0;
+                  var match$1 = x._0;
                   var pluginEventCollector = match$1.eventCollector;
                   var pluginExtensions = match$1.extensions;
                   var pluginId = match$1.id;
@@ -403,7 +403,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                         }));
           };
           var detectUnhandledEvent = function (event$pJson) {
-            var param = Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(event$pJson), (function (serviceName) {
+            var x = Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(event$pJson), (function (serviceName) {
                     var match = Js_dict.get(serviceNameToExtensionPointsMapping, serviceName);
                     var match$1 = Js_dict.get(incomingServiceNameToExtensionsMapping, serviceName);
                     var match$2 = Js_dict.get(outgoingServiceNameToExtensionsMapping, serviceName);
@@ -412,7 +412,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                     }
                     
                   }));
-            if (param !== undefined) {
+            if (x !== undefined) {
               return ;
             } else {
               console.log("No mapping matches service name");

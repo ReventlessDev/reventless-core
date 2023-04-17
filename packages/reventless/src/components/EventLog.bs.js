@@ -67,24 +67,24 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
     };
   };
   var decodeEvent = function (json) {
-    var $$event = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
+    var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
                     return Js_dict.get(dict, "event");
                   })), (function (json) {
                 return [
                         json,
                         Curry._1(Spec.event_decode, json)
                       ];
-              })), (function (param) {
-            var $$event = param[1];
+              })), (function (x) {
+            var $$event = x[1];
             if ($$event.TAG === /* Ok */0) {
               return $$event._0;
             }
-            var eventStr = JSON.stringify(param[0]);
+            var eventStr = JSON.stringify(x[0]);
             var message = $$event._0.message;
             return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message);
           }));
-    if ($$event !== undefined) {
-      return Caml_option.valFromOption($$event);
+    if (x !== undefined) {
+      return Caml_option.valFromOption(x);
     }
     var eventStr = JSON.stringify(json);
     return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr);

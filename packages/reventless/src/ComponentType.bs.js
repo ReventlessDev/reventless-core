@@ -2,8 +2,8 @@
 'use strict';
 
 
-function toString(param) {
-  switch (param) {
+function toString(x) {
+  switch (x) {
     case /* Aggregate */0 :
         return "Aggregate";
     case /* Counter */1 :
@@ -50,8 +50,8 @@ function toString(param) {
   }
 }
 
-function ofString(param) {
-  switch (param) {
+function ofString(x) {
+  switch (x) {
     case "Aggregate" :
         return /* Aggregate */0;
     case "Cloner" :
@@ -99,8 +99,8 @@ function ofString(param) {
   }
 }
 
-function toName(param) {
-  switch (param) {
+function toName(x) {
+  switch (x) {
     case /* Aggregate */0 :
         return "Aggr";
     case /* Counter */1 :
