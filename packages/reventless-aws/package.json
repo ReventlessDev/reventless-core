@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-aws",
-  "version": "1.3.0-rescript.42",
+  "version": "1.3.0-rescript.43",
   "description": "AWS adapters for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -30,7 +30,7 @@
     "@reventless/bs-aws-sdk": "^1.2.0-rescript.12",
     "@reventless/bs-pulumi-aws": "^1.2.0-rescript.21",
     "@reventless/bs-pulumi-pulumi": "^1.2.0-rescript.14",
-    "@reventless/reventless": "^1.3.0-rescript.38",
+    "@reventless/reventless": "^1.3.0-rescript.39",
     "@reventless/reventless-spec": "^1.3.0-rescript.21",
     "decco": "1.6.0"
   },
