@@ -112,6 +112,11 @@ module ReplayUtil = {
           Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decodeObject ${eventStr}`)
         }
     )
+
+  let decodeEvents = (jsons, specEventDecode) => jsons->Belt.Array.map(decodeEvent(specEventDecode))
+
+  let decodeEventsToPromise = (jsons, specEventDecode) =>
+    decodeEvents(jsons, specEventDecode)->Js.Promise2.resolve
 }
 
 module Make = (
@@ -171,10 +176,12 @@ module Make = (
     }
 
   let replayFn = storage =>
-    (. id) =>
-      storage.Adapter.replay(. id->Spec.Id.toString)->Js.Promise2.then(jsons =>
-        jsons->Belt.Array.map(ReplayUtil.decodeEvent(Spec.event_decode))->Js.Promise.resolve
+    (. id) => {
+      open ReplayUtil
+      storage.Adapter.replay(. id->Spec.Id.toString)->Js.Promise2.then(json =>
+        json->decodeEventsToPromise(Spec.event_decode)
       )
+    }
 
   let construct = (self, name) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())

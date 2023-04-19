@@ -24,42 +24,42 @@ var Adapter = {};
 
 function eventToJson(specIdEncode, specEventEncode, id, event$p) {
   return Js_dict.fromArray(Belt_Array.concat([
-                  [
-                    "id",
-                    Curry._1(specIdEncode, id)
-                  ],
-                  [
-                    "sequenceNr",
-                    Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now(undefined))
-                  ],
-                  [
-                    "event",
-                    Curry._1(specEventEncode, event$p.event)
-                  ]
-                ], Message$Reventless.decomposeMeta(event$p.meta)));
+    [
+      "id",
+      Curry._1(specIdEncode, id)
+    ],
+    [
+      "sequenceNr",
+      Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now(undefined))
+    ],
+    [
+      "event",
+      Curry._1(specEventEncode, event$p.event)
+    ]
+  ], Message$Reventless.decomposeMeta(event$p.meta)));
 }
 
 function eventsToJson(events$p, specIdEncode, specEventEncode, id) {
   return Belt_Array.map(events$p, (function (param) {
-                return eventToJson(specIdEncode, specEventEncode, id, param);
-              }));
+    return eventToJson(specIdEncode, specEventEncode, id, param);
+  }));
 }
 
 function storageAppendErrorHandler(aggregateName, specIdToString, id, err) {
   var errMsg = "EventLog: Error: Couldn't append for " + aggregateName + "(" + Curry._1(specIdToString, id) + "):" + err.message;
   console.log(errMsg);
   return Promise.resolve({
-              TAG: /* Error */1,
-              _0: errMsg
-            });
+    TAG: /* Error */1,
+    _0: errMsg
+  });
 }
 
 function publishToEventTopic(eventTopicPublish, specIdToString, id, events$p, result) {
   Js_promise2.$$catch(eventTopicPublish(events$p), (function (err) {
-          var msg = "EventLog.appendFn(" + Curry._1(specIdToString, id) + "): EventTopic.publish Error: ";
-          console.log(msg, err);
-          return Js_exn.raiseError(msg + err.message);
-        }));
+    var msg = "EventLog.appendFn(" + Curry._1(specIdToString, id) + "): EventTopic.publish Error: ";
+    console.log(msg, err);
+    return Js_exn.raiseError(msg + err.message);
+  }));
   return Promise.resolve(result);
 }
 
@@ -78,21 +78,21 @@ var AppendUtil = {
 
 function decodeEvent(specEventDecode, json) {
   var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
-                  return Js_dict.get(dict, "event");
-                })), (function (json) {
-              return [
-                      json,
-                      Curry._1(specEventDecode, json)
-                    ];
-            })), (function (x) {
-          var $$event = x[1];
-          if ($$event.TAG === /* Ok */0) {
-            return $$event._0;
-          }
-          var eventStr = JSON.stringify(x[0]);
-          var message = $$event._0.message;
-          return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message + "");
-        }));
+    return Js_dict.get(dict, "event");
+  })), (function (json) {
+    return [
+      json,
+      Curry._1(specEventDecode, json)
+    ];
+  })), (function (x) {
+    var $$event = x[1];
+    if ($$event.TAG === /* Ok */0) {
+      return $$event._0;
+    }
+    var eventStr = JSON.stringify(x[0]);
+    var message = $$event._0.message;
+    return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message + "");
+  }));
   if (x !== undefined) {
     return Caml_option.valFromOption(x);
   }
@@ -100,8 +100,22 @@ function decodeEvent(specEventDecode, json) {
   return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr + "");
 }
 
+function decodeEvents(jsons, specEventDecode) {
+  return Belt_Array.map(jsons, (function (param) {
+    return decodeEvent(specEventDecode, param);
+  }));
+}
+
+function decodeEventsToPromise(jsons, specEventDecode) {
+  return Promise.resolve(Belt_Array.map(jsons, (function (param) {
+    return decodeEvent(specEventDecode, param);
+  })));
+}
+
 var ReplayUtil = {
-  decodeEvent: decodeEvent
+  decodeEvent: decodeEvent,
+  decodeEvents: decodeEvents,
+  decodeEventsToPromise: decodeEventsToPromise
 };
 
 function Make(Spec, $$Storage, EventTopicPublisher) {
@@ -113,23 +127,21 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
         var __x = eventsToJson(events$p, Spec.Id.t_encode, Spec.event_encode, id);
         var partial_arg = Curry._1(EventTopic.publish, eventTopic);
         return Js_promise2.then(Js_promise2.$$catch(storage.append(sequenceNr, Curry._1(Spec.Id.toString, id), __x), (function (param) {
-                          return storageAppendErrorHandler(Spec.name, Spec.Id.toString, id, param);
-                        })), (function (param) {
-                      return publishToEventTopic(partial_arg, Spec.Id.toString, id, events$p, param);
-                    }));
+          return storageAppendErrorHandler(Spec.name, Spec.Id.toString, id, param);
+        })), (function (param) {
+          return publishToEventTopic(partial_arg, Spec.Id.toString, id, events$p, param);
+        }));
       }
-      catch (raw_exn){
+      catch (raw_exn) {
         return catchErrorHandler(Caml_js_exceptions.internalToOCamlException(raw_exn));
       }
     };
   };
   var replayFn = function (storage) {
     return function (id) {
-      return Js_promise2.then(storage.replay(Curry._1(Spec.Id.toString, id)), (function (jsons) {
-                    return Promise.resolve(Belt_Array.map(jsons, (function (param) {
-                                      return decodeEvent(Spec.event_decode, param);
-                                    })));
-                  }));
+      return Js_promise2.then(storage.replay(Curry._1(Spec.Id.toString, id)), (function (json) {
+        return decodeEventsToPromise(json, Spec.event_decode);
+      }));
     };
   };
   var construct = function (self, name) {
@@ -152,15 +164,15 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
     return new Component(prim0, name, construct, opts);
   };
   return {
-          Spec: Spec,
-          make: make,
-          append: (function (prim) {
-              return prim.append;
-            }),
-          replay: (function (prim) {
-              return prim.replay;
-            })
-        };
+    Spec: Spec,
+    make: make,
+    append: (function (prim) {
+      return prim.append;
+    }),
+    replay: (function (prim) {
+      return prim.replay;
+    })
+  };
 }
 
 var componentType = /* EventLog */6;
