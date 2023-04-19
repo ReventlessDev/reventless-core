@@ -83,46 +83,58 @@ module Make = (
 
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher)
 
-  let appendFn = (storage, eventTopic) =>
-    (. sequenceNr, id, events') =>
-      try events'->Belt.Array.map((event': Message.event'<Spec.Id.t, Spec.event>) =>
-        [
-          ("id", Spec.Id.t_encode(id)),
-          (
-            "sequenceNr",
-            Js.Json.string(Message.hrtimeToString(~hrtime=Message.hrtime(), ~now=Message.now())),
-          ),
-          ("event", event'.event |> Spec.event_encode),
-        ]
-        ->Belt.Array.concat(event'.meta->Message.decomposeMeta)
-        ->Js.Dict.fromArray
-        ->Js.Json.object_
-      )
-        |> (
-          data =>
-            storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, data)
-            ->Js.Promise2.catch(err => {
-              let aggregateName = Spec.name
-              let errMsg =
-                `EventLog: Error: Couldn't append for ${aggregateName}(${id->Spec.Id.toString}):` ++
-                (err->Util.Error.ofPromise).message
-              Js.log(errMsg)
-              errMsg->Belt.Result.Error->Js.Promise.resolve
-            })
-            ->Js.Promise2.then(result => {
-              let _ = EventTopic.publish(eventTopic)(. events') |> Js.Promise.catch(err => {
-                let msg = `EventLog.appendFn(${id->Spec.Id.toString}): EventTopic.publish Error: `
-                Js.log2(msg, err)
-                Js.Exn.raiseError(msg) //FIXME: add err.message to msg itself
-              })
+  module AppendUtil = {
+    let eventToJson = (id, event': Message.event'<Spec.Id.t, Spec.event>) =>
+      [
+        ("id", Spec.Id.t_encode(id)),
+        (
+          "sequenceNr",
+          Js.Json.string(Message.hrtimeToString(~hrtime=Message.hrtime(), ~now=Message.now())),
+        ),
+        ("event", event'.event->Spec.event_encode),
+      ]
+      ->Belt.Array.concat(event'.meta->Message.decomposeMeta)
+      ->Js.Dict.fromArray
+      ->Js.Json.object_
 
-              result->Js.Promise.resolve
-            })
-        ) catch {
-      | exn =>
-        Js.log2("EventLog.append: Couldn't decode:", exn)
-        raise(exn)
+    let eventsToJson = (events', id) => events'->Belt.Array.map(eventToJson(id))
+
+    let storageAppendErrorHandler = (id, err) => {
+      let aggregateName = Spec.name
+      let errMsg =
+        `EventLog: Error: Couldn't append for ${aggregateName}(${id->Spec.Id.toString}):` ++
+        (err->Util.Error.ofPromise).message
+      Js.log(errMsg)
+      errMsg->Belt.Result.Error->Js.Promise2.resolve
+    }
+
+    let publishToEventTopic = (eventTopic, id, events', result) => {
+      let _publishResult = EventTopic.publish(eventTopic)(. events')->Js.Promise2.catch(err => {
+        let msg = `EventLog.appendFn(${id->Spec.Id.toString}): EventTopic.publish Error: `
+        Js.log2(msg, err)
+        Js.Exn.raiseError(msg ++ (err->Reventless.Util.Error.ofPromise).message)
+      })
+
+      result->Js.Promise2.resolve
+    }
+
+    let catchErrorHandler = exn => {
+      Js.log2("EventLog.append: Couldn't decode:", exn)
+      raise(exn)
+    }
+  }
+
+  let appendFn = (storage, eventTopic) =>
+    (. sequenceNr, id, events') => {
+      open AppendUtil
+      try events'
+      ->eventsToJson(id)
+      ->storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, _)
+      ->Js.Promise2.catch(storageAppendErrorHandler(id))
+      ->Js.Promise2.then(publishToEventTopic(eventTopic, id, events')) catch {
+      | exn => catchErrorHandler(exn)
       }
+    }
 
   let decodeEvent = json =>
     Js.Json.decodeObject(json)
@@ -132,7 +144,7 @@ module Make = (
       switch x {
       | (_, Belt.Result.Ok(event)) => event
       | (json, Error(err)) =>
-        let eventStr = json |> Js.Json.stringify
+        let eventStr = json->Js.Json.stringify
         let message = err.message
         Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decode ${eventStr}: ${message}`)
       }
@@ -142,14 +154,14 @@ module Make = (
         switch x {
         | Some(event) => event
         | None =>
-          let eventStr = json |> Js.Json.stringify
+          let eventStr = json->Js.Json.stringify
           Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decodeObject ${eventStr}`)
         }
     )
 
   let replayFn = storage =>
     (. id) =>
-      storage.Adapter.replay(. id |> Spec.Id.toString) |> Js.Promise.then_(jsons =>
+      storage.Adapter.replay(. id->Spec.Id.toString)->Js.Promise2.then(jsons =>
         jsons->Belt.Array.map(decodeEvent)->Js.Promise.resolve
       )
 
@@ -168,8 +180,10 @@ module Make = (
     self->setAppend(storage->appendFn(eventTopic))
     self->setReplay(storage->replayFn)
 
-    makeOutputs(~resources=storage.resources, ~eventTopic=eventTopic->Component.extractOutputs)
-    |> self->setOutputs
+    makeOutputs(
+      ~resources=storage.resources,
+      ~eventTopic=eventTopic->Component.extractOutputs,
+    )->setOutputs(self, _)
   }
 
   let make = (~name, ~opts=?, _) =>

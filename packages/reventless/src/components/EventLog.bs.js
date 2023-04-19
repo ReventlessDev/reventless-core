@@ -6,7 +6,6 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -29,7 +28,7 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
   var appendFn = function (storage, eventTopic) {
     return function (sequenceNr, id, events$p) {
       try {
-        var data = Belt_Array.map(events$p, (function (event$p) {
+        var __x = Belt_Array.map(events$p, (function (param) {
                 return Js_dict.fromArray(Belt_Array.concat([
                                 [
                                   "id",
@@ -41,24 +40,24 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
                                 ],
                                 [
                                   "event",
-                                  Curry._1(Spec.event_encode, event$p.event)
+                                  Curry._1(Spec.event_encode, param.event)
                                 ]
-                              ], Message$Reventless.decomposeMeta(event$p.meta)));
+                              ], Message$Reventless.decomposeMeta(param.meta)));
               }));
-        return Js_promise2.then(Js_promise2.$$catch(storage.append(sequenceNr, Curry._1(Spec.Id.toString, id), data), (function (err) {
-                          var errMsg = "EventLog: Error: Couldn't append for " + Spec.name + "(" + Curry._1(Spec.Id.toString, id) + "):" + err.message;
+        return Js_promise2.then(Js_promise2.$$catch(storage.append(sequenceNr, Curry._1(Spec.Id.toString, id), __x), (function (param) {
+                          var errMsg = "EventLog: Error: Couldn't append for " + Spec.name + "(" + Curry._1(Spec.Id.toString, id) + "):" + param.message;
                           console.log(errMsg);
                           return Promise.resolve({
                                       TAG: /* Error */1,
                                       _0: errMsg
                                     });
-                        })), (function (result) {
-                      Js_promise.$$catch((function (err) {
+                        })), (function (param) {
+                      Js_promise2.$$catch(Curry._1(EventTopic.publish, eventTopic)(events$p), (function (err) {
                               var msg = "EventLog.appendFn(" + Curry._1(Spec.Id.toString, id) + "): EventTopic.publish Error: ";
                               console.log(msg, err);
-                              return Js_exn.raiseError(msg);
-                            }), Curry._1(EventTopic.publish, eventTopic)(events$p));
-                      return Promise.resolve(result);
+                              return Js_exn.raiseError(msg + err.message);
+                            }));
+                      return Promise.resolve(param);
                     }));
       }
       catch (raw_exn){
@@ -93,9 +92,9 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
   };
   var replayFn = function (storage) {
     return function (id) {
-      return Js_promise.then_((function (jsons) {
+      return Js_promise2.then(storage.replay(Curry._1(Spec.Id.toString, id)), (function (jsons) {
                     return Promise.resolve(Belt_Array.map(jsons, decodeEvent));
-                  }), storage.replay(Curry._1(Spec.Id.toString, id)));
+                  }));
     };
   };
   var construct = function (self, name) {
