@@ -89,6 +89,31 @@ module AppendUtil = {
   }
 }
 
+module ReplayUtil = {
+  let decodeEvent = (specEventDecode, json) =>
+    Js.Json.decodeObject(json)
+    ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
+    ->Belt.Option.map(json => (json, specEventDecode(json)))
+    ->Belt.Option.map(x =>
+      switch x {
+      | (_, Belt.Result.Ok(event)) => event
+      | (json, Error(err: Decco.decodeError)) =>
+        let eventStr = json->Js.Json.stringify
+        let message = err.message
+        Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decode ${eventStr}: ${message}`)
+      }
+    )
+    ->(
+      x =>
+        switch x {
+        | Some(event) => event
+        | None =>
+          let eventStr = json->Js.Json.stringify
+          Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decodeObject ${eventStr}`)
+        }
+    )
+}
+
 module Make = (
   Spec: Spec,
   Storage: Adapter.Storage,
@@ -145,33 +170,10 @@ module Make = (
       }
     }
 
-  let decodeEvent = json =>
-    Js.Json.decodeObject(json)
-    ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
-    ->Belt.Option.map(json => (json, Spec.event_decode(json)))
-    ->Belt.Option.map(x =>
-      switch x {
-      | (_, Belt.Result.Ok(event)) => event
-      | (json, Error(err)) =>
-        let eventStr = json->Js.Json.stringify
-        let message = err.message
-        Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decode ${eventStr}: ${message}`)
-      }
-    )
-    ->(
-      x =>
-        switch x {
-        | Some(event) => event
-        | None =>
-          let eventStr = json->Js.Json.stringify
-          Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decodeObject ${eventStr}`)
-        }
-    )
-
   let replayFn = storage =>
     (. id) =>
       storage.Adapter.replay(. id->Spec.Id.toString)->Js.Promise2.then(jsons =>
-        jsons->Belt.Array.map(decodeEvent)->Js.Promise.resolve
+        jsons->Belt.Array.map(ReplayUtil.decodeEvent(Spec.event_decode))->Js.Promise.resolve
       )
 
   let construct = (self, name) => {
