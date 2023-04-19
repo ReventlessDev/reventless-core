@@ -127,11 +127,13 @@ module Make = (
   let appendFn = (storage, eventTopic) =>
     (. sequenceNr, id, events') => {
       open AppendUtil
-      try events'
-      ->eventsToJson(id)
-      ->storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, _)
-      ->Js.Promise2.catch(storageAppendErrorHandler(id))
-      ->Js.Promise2.then(publishToEventTopic(eventTopic, id, events')) catch {
+      try {
+        events'
+        ->eventsToJson(id)
+        ->storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, _)
+        ->Js.Promise2.catch(storageAppendErrorHandler(id))
+        ->Js.Promise2.then(publishToEventTopic(eventTopic, id, events'))
+      } catch {
       | exn => catchErrorHandler(exn)
       }
     }
@@ -177,8 +179,21 @@ module Make = (
       (),
     )
 
-    self->setAppend(storage->appendFn(eventTopic))
-    self->setReplay(storage->replayFn)
+    let appendFn2 = (. sequenceNr, id, events') => {
+      open AppendUtil
+      try {
+        events'
+        ->eventsToJson(id)
+        ->storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, _)
+        ->Js.Promise2.catch(storageAppendErrorHandler(id))
+        ->Js.Promise2.then(publishToEventTopic(eventTopic, id, events'))
+      } catch {
+      | exn => catchErrorHandler(exn)
+      }
+    }
+
+    self->setAppend(appendFn2)
+    self->setReplay(replayFn(storage))
 
     makeOutputs(
       ~resources=storage.resources,

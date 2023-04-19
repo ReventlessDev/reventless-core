@@ -25,8 +25,43 @@ var Adapter = {};
 function Make(Spec, $$Storage, EventTopicPublisher) {
   var partial_arg = EventTopic$Reventless.Make;
   var EventTopic = partial_arg(Spec, EventTopicPublisher);
-  var appendFn = function (storage, eventTopic) {
-    return function (sequenceNr, id, events$p) {
+  var decodeEvent = function (json) {
+    var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
+                    return Js_dict.get(dict, "event");
+                  })), (function (json) {
+                return [
+                        json,
+                        Curry._1(Spec.event_decode, json)
+                      ];
+              })), (function (x) {
+            var $$event = x[1];
+            if ($$event.TAG === /* Ok */0) {
+              return $$event._0;
+            }
+            var eventStr = JSON.stringify(x[0]);
+            var message = $$event._0.message;
+            return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message + "");
+          }));
+    if (x !== undefined) {
+      return Caml_option.valFromOption(x);
+    }
+    var eventStr = JSON.stringify(json);
+    return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr + "");
+  };
+  var replayFn = function (storage) {
+    return function (id) {
+      return Js_promise2.then(storage.replay(Curry._1(Spec.Id.toString, id)), (function (jsons) {
+                    return Promise.resolve(Belt_Array.map(jsons, decodeEvent));
+                  }));
+    };
+  };
+  var construct = function (self, name) {
+    var opts = {
+      parent: self
+    };
+    var storage = Curry._2($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts);
+    var eventTopic = Curry._4(EventTopic.make, name, storage.resources, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), undefined);
+    var appendFn2 = function (sequenceNr, id, events$p) {
       try {
         var __x = Belt_Array.map(events$p, (function (param) {
                 return Js_dict.fromArray(Belt_Array.concat([
@@ -66,44 +101,7 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
         throw exn;
       }
     };
-  };
-  var decodeEvent = function (json) {
-    var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
-                    return Js_dict.get(dict, "event");
-                  })), (function (json) {
-                return [
-                        json,
-                        Curry._1(Spec.event_decode, json)
-                      ];
-              })), (function (x) {
-            var $$event = x[1];
-            if ($$event.TAG === /* Ok */0) {
-              return $$event._0;
-            }
-            var eventStr = JSON.stringify(x[0]);
-            var message = $$event._0.message;
-            return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message + "");
-          }));
-    if (x !== undefined) {
-      return Caml_option.valFromOption(x);
-    }
-    var eventStr = JSON.stringify(json);
-    return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr + "");
-  };
-  var replayFn = function (storage) {
-    return function (id) {
-      return Js_promise2.then(storage.replay(Curry._1(Spec.Id.toString, id)), (function (jsons) {
-                    return Promise.resolve(Belt_Array.map(jsons, decodeEvent));
-                  }));
-    };
-  };
-  var construct = function (self, name) {
-    var opts = {
-      parent: self
-    };
-    var storage = Curry._2($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts);
-    var eventTopic = Curry._4(EventTopic.make, name, storage.resources, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), undefined);
-    self.append = appendFn(storage, eventTopic);
+    self.append = appendFn2;
     self.replay = replayFn(storage);
     var outputs = {
       resources: storage.resources,
