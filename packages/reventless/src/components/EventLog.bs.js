@@ -22,9 +22,79 @@ var ReplayError = /* @__PURE__ */Caml_exceptions.create("EventLog-Reventless.Rep
 
 var Adapter = {};
 
+function eventToJson(specIdEncode, specEventEncode, id, event$p) {
+  return Js_dict.fromArray(Belt_Array.concat([
+                  [
+                    "id",
+                    Curry._1(specIdEncode, id)
+                  ],
+                  [
+                    "sequenceNr",
+                    Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now(undefined))
+                  ],
+                  [
+                    "event",
+                    Curry._1(specEventEncode, event$p.event)
+                  ]
+                ], Message$Reventless.decomposeMeta(event$p.meta)));
+}
+
+function eventsToJson(events$p, specIdEncode, specEventEncode, id) {
+  return Belt_Array.map(events$p, (function (param) {
+                return eventToJson(specIdEncode, specEventEncode, id, param);
+              }));
+}
+
+function storageAppendErrorHandler(aggregateName, specIdToString, id, err) {
+  var errMsg = "EventLog: Error: Couldn't append for " + aggregateName + "(" + Curry._1(specIdToString, id) + "):" + err.message;
+  console.log(errMsg);
+  return Promise.resolve({
+              TAG: /* Error */1,
+              _0: errMsg
+            });
+}
+
+function publishToEventTopic(eventTopicPublish, specIdToString, id, events$p, result) {
+  Js_promise2.$$catch(eventTopicPublish(events$p), (function (err) {
+          var msg = "EventLog.appendFn(" + Curry._1(specIdToString, id) + "): EventTopic.publish Error: ";
+          console.log(msg, err);
+          return Js_exn.raiseError(msg + err.message);
+        }));
+  return Promise.resolve(result);
+}
+
+function catchErrorHandler(exn) {
+  console.log("EventLog.append: Couldn't decode:", exn);
+  throw exn;
+}
+
+var AppendUtil = {
+  eventToJson: eventToJson,
+  eventsToJson: eventsToJson,
+  storageAppendErrorHandler: storageAppendErrorHandler,
+  publishToEventTopic: publishToEventTopic,
+  catchErrorHandler: catchErrorHandler
+};
+
 function Make(Spec, $$Storage, EventTopicPublisher) {
   var partial_arg = EventTopic$Reventless.Make;
   var EventTopic = partial_arg(Spec, EventTopicPublisher);
+  var appendFn = function (storage, eventTopic) {
+    return function (sequenceNr, id, events$p) {
+      try {
+        var __x = eventsToJson(events$p, Spec.Id.t_encode, Spec.event_encode, id);
+        var partial_arg = Curry._1(EventTopic.publish, eventTopic);
+        return Js_promise2.then(Js_promise2.$$catch(storage.append(sequenceNr, Curry._1(Spec.Id.toString, id), __x), (function (param) {
+                          return storageAppendErrorHandler(Spec.name, Spec.Id.toString, id, param);
+                        })), (function (param) {
+                      return publishToEventTopic(partial_arg, Spec.Id.toString, id, events$p, param);
+                    }));
+      }
+      catch (raw_exn){
+        return catchErrorHandler(Caml_js_exceptions.internalToOCamlException(raw_exn));
+      }
+    };
+  };
   var decodeEvent = function (json) {
     var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
                     return Js_dict.get(dict, "event");
@@ -61,47 +131,7 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
     };
     var storage = Curry._2($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts);
     var eventTopic = Curry._4(EventTopic.make, name, storage.resources, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), undefined);
-    var appendFn2 = function (sequenceNr, id, events$p) {
-      try {
-        var __x = Belt_Array.map(events$p, (function (param) {
-                return Js_dict.fromArray(Belt_Array.concat([
-                                [
-                                  "id",
-                                  Curry._1(Spec.Id.t_encode, id)
-                                ],
-                                [
-                                  "sequenceNr",
-                                  Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now(undefined))
-                                ],
-                                [
-                                  "event",
-                                  Curry._1(Spec.event_encode, param.event)
-                                ]
-                              ], Message$Reventless.decomposeMeta(param.meta)));
-              }));
-        return Js_promise2.then(Js_promise2.$$catch(storage.append(sequenceNr, Curry._1(Spec.Id.toString, id), __x), (function (param) {
-                          var errMsg = "EventLog: Error: Couldn't append for " + Spec.name + "(" + Curry._1(Spec.Id.toString, id) + "):" + param.message;
-                          console.log(errMsg);
-                          return Promise.resolve({
-                                      TAG: /* Error */1,
-                                      _0: errMsg
-                                    });
-                        })), (function (param) {
-                      Js_promise2.$$catch(Curry._1(EventTopic.publish, eventTopic)(events$p), (function (err) {
-                              var msg = "EventLog.appendFn(" + Curry._1(Spec.Id.toString, id) + "): EventTopic.publish Error: ";
-                              console.log(msg, err);
-                              return Js_exn.raiseError(msg + err.message);
-                            }));
-                      return Promise.resolve(param);
-                    }));
-      }
-      catch (raw_exn){
-        var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-        console.log("EventLog.append: Couldn't decode:", exn);
-        throw exn;
-      }
-    };
-    self.append = appendFn2;
+    self.append = appendFn(storage, eventTopic);
     self.replay = replayFn(storage);
     var outputs = {
       resources: storage.resources,
@@ -131,5 +161,6 @@ var componentType = /* EventLog */6;
 exports.componentType = componentType;
 exports.ReplayError = ReplayError;
 exports.Adapter = Adapter;
+exports.AppendUtil = AppendUtil;
 exports.Make = Make;
 /* ./Component Not a pure module */
