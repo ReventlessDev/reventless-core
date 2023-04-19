@@ -115,8 +115,24 @@ module ReplayUtil = {
 
   let decodeEvents = (jsons, specEventDecode) => jsons->Belt.Array.map(decodeEvent(specEventDecode))
 
-  let decodeEventsToPromise = (jsons, specEventDecode) =>
+  let decodeEventsToPromise: (
+    Js.Json.t => result<'a, Decco.decodeError>,
+    array<Js.Json.t>,
+  ) => Js.Promise2.t<array<'a>> = (specEventDecode, jsons) =>
     decodeEvents(jsons, specEventDecode)->Js.Promise2.resolve
+
+  let replayFn: (
+    replay<string, Js.Json.t>,
+    'specId => string,
+    Js.Json.t => result<'specEvent, Decco.decodeError>,
+  ) => (. 'specId) => Js.Promise2.t<array<'specEvent>> = (
+    storageReplay,
+    specIdToString,
+    specEventDecode,
+  ) =>
+    (. id) => {
+      storageReplay(. id->specIdToString)->Js.Promise2.then(decodeEventsToPromise(specEventDecode))
+    }
 }
 
 module Make = (
@@ -175,14 +191,6 @@ module Make = (
       }
     }
 
-  let replayFn = storage =>
-    (. id) => {
-      open ReplayUtil
-      storage.Adapter.replay(. id->Spec.Id.toString)->Js.Promise2.then(json =>
-        json->decodeEventsToPromise(Spec.event_decode)
-      )
-    }
-
   let construct = (self, name) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
 
@@ -196,7 +204,9 @@ module Make = (
     )
 
     self->setAppend(appendFn(storage, eventTopic))
-    self->setReplay(replayFn(storage))
+    self->setReplay(
+      ReplayUtil.replayFn(storage.Adapter.replay, Spec.Id.toString, Spec.event_decode),
+    )
 
     makeOutputs(
       ~resources=storage.resources,
