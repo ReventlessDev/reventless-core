@@ -153,7 +153,7 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
     var storage = Curry._2($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts);
     var eventTopic = Curry._4(EventTopic.make, name, storage.resources, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), undefined);
     self.append = appendFn(storage, eventTopic);
-    self.replay = replayFn(storage.replay, Spec.Id.toString, Spec.event_decode);
+    self.replay = replayFn(storage.append, Spec.Id.toString, Spec.event_decode);
     var outputs = {
       resources: storage.resources,
       eventTopic: Component$Reventless.extractOutputs(eventTopic)

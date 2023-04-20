@@ -205,7 +205,11 @@ module Make = (
 
     self->setAppend(appendFn(storage, eventTopic))
     self->setReplay(
-      ReplayUtil.replayFn(storage.Adapter.replay, Spec.Id.toString, Spec.event_decode),
+      ReplayUtil.replayFn(
+        /* storage.Adapter.replay */ storage.Adapter.append->Obj.magic,
+        Spec.Id.toString,
+        Spec.event_decode,
+      ),
     )
 
     makeOutputs(
