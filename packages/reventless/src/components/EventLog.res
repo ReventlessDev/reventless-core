@@ -9,8 +9,8 @@ type component = Component.t<t, outputs>
 
 exception ReplayError(string)
 
-type append<'id, 'event> = (. int, 'id, array<'event>) => Js.Promise.t<Belt.Result.t<unit, string>>
-type replay<'id, 'event> = (. 'id) => Js.Promise.t<array<'event>>
+type append<'id, 'event> = (. int, 'id, array<'event>) => promise<Belt.Result.t<unit, string>>
+type replay<'id, 'event> = (. 'id) => promise<array<'event>>
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T
@@ -118,20 +118,21 @@ module ReplayUtil = {
   let decodeEventsToPromise: (
     Js.Json.t => result<'a, Decco.decodeError>,
     array<Js.Json.t>,
-  ) => Js.Promise2.t<array<'a>> = (specEventDecode, jsons) =>
+  ) => promise<array<'a>> = (specEventDecode, jsons) =>
     decodeEvents(jsons, specEventDecode)->Js.Promise2.resolve
 
   let replayFn: (
     replay<string, Js.Json.t>,
     'specId => string,
     Js.Json.t => result<'specEvent, Decco.decodeError>,
-  ) => (. 'specId) => Js.Promise2.t<array<'specEvent>> = (
+  ) => (. 'specId) => promise<array<'specEvent>> = (
     storageReplay,
     specIdToString,
     specEventDecode,
   ) =>
-    (. id) => {
-      storageReplay(. id->specIdToString)->Js.Promise2.then(decodeEventsToPromise(specEventDecode))
+    async (. id) => {
+      let jsonEvents = await storageReplay(. id->specIdToString)
+      await decodeEventsToPromise(specEventDecode, jsonEvents)
     }
 }
 

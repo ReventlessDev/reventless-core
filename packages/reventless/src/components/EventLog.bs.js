@@ -113,10 +113,11 @@ function decodeEventsToPromise(specEventDecode, jsons) {
 }
 
 function replayFn(storageReplay, specIdToString, specEventDecode) {
-  return function (id) {
-    return Js_promise2.then(storageReplay(Curry._1(specIdToString, id)), (function (param) {
-                  return decodeEventsToPromise(specEventDecode, param);
-                }));
+  return async function (id) {
+    var jsonEvents = await storageReplay(Curry._1(specIdToString, id));
+    return await Promise.resolve(Belt_Array.map(jsonEvents, (function (param) {
+                      return decodeEvent(specEventDecode, param);
+                    })));
   };
 }
 
