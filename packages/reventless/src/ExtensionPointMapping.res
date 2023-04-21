@@ -48,7 +48,9 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         switch x {
         | PublishCommand(aggregateId, aggregateCmd) =>
           let commandStr = aggregateCmd->Aggregate.command_encode->Js.Json.stringify
-          Js.log(j`ExtensionPointMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command: $commandStr id: $aggregateId`)
+          Js.log(
+            `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName} to Aggregate ${aggregateName}: Publishing command: ${commandStr} id: ${aggregateId}`,
+          )
 
           AbstractPublishCommand(
             aggregateName,
@@ -66,7 +68,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           )
         | Call(handler, callCommand) =>
           Js.log2(
-            j`ExtensionPointMapping incoming from ExtensionPoint $extensionPointName: Handling call command`,
+            `ExtensionPointMapping incoming from ExtensionPoint ${extensionPointName}: Handling call command`,
             callCommand->Spec.callCommand_encode->Js.Json.stringify,
           )
 
@@ -102,11 +104,13 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         switch x {
         | PublishEvent(id, event) =>
           let eventStr = event->Spec.event_encode->Js.Json.stringify
-          Js.log(j`ExtensionPointMapping: outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing event: $eventStr id: $id`)
+          Js.log(
+            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventStr} id: ${id}`,
+          )
 
           AbstractPublishEvent({
             Message.id: id->Id.String.makeFromString,
-            event: event,
+            event,
             meta: {
               ...meta,
               service: Spec.name,
@@ -116,10 +120,12 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         | PublishEventAsync(promise) =>
           let promise' = promise->Js.Promise.then_(((id, event)) => {
             let eventStr = event->Spec.event_encode->Js.Json.stringify
-            Js.log(j`ExtensionPointMapping: async outgoing from Aggregate $aggregateName to ExtensionPoint $extensionPointName: Publishing event: $eventStr id: $id`)
+            Js.log(
+              `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventStr} id: ${id}`,
+            )
             {
               Message.id: id->Id.String.makeFromString,
-              event: event,
+              event,
               meta: {
                 ...meta,
                 service: Spec.name,
@@ -131,7 +137,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           AbstractPublishEventAsync(promise')
         | Call(handler, msg) =>
           Js.log2(
-            j`ExtensionPointMapping: outgoing from Aggregate $aggregateName: Handling call command`,
+            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName}: Handling call command`,
             msg->Spec.callCommand_encode->Js.Json.stringify,
           )
 

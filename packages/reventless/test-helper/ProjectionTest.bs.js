@@ -8,7 +8,7 @@ var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
-var Pervasives = require("@rescript/std/lib/js/pervasives.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Projection$Reventless = require("../src/Projection.bs.js");
@@ -28,7 +28,7 @@ function Make(Projection) {
   };
   var describeWithId = function (description, id, fn) {
     testId.contents = id;
-    return Jest.describe(description, fn);
+    Jest.describe(description, fn);
   };
   var getSubId = function (state) {
     return Belt_Option.map(Target.subIdConfig, (function (param) {
@@ -43,7 +43,6 @@ function Make(Projection) {
   };
   var setStates = function (store, id, states) {
     store[id] = states;
-    
   };
   var updateState = function (store, id, subId, newState) {
     return Belt_List.map(states(store, id), (function (state) {
@@ -56,15 +55,13 @@ function Make(Projection) {
   };
   var deleteStates = function (store, id) {
     store[id] = /* [] */0;
-    
   };
   var deleteSubState = function (store, id, subId, getSubId) {
     store[id] = Belt_Option.getWithDefault(Belt_Option.map(Js_dict.get(store, id), (function (states) {
                 return Belt_List.keep(states, (function (state) {
-                              return Caml_obj.caml_notequal(Curry._1(getSubId, state), subId);
+                              return Caml_obj.notequal(Curry._1(getSubId, state), subId);
                             }));
               })), /* [] */0);
-    
   };
   var load = function (store) {
     return function (id) {
@@ -128,8 +125,7 @@ function Make(Projection) {
                     tl: /* [] */0
                   }
                 ];
-              store[id] = Pervasives.$at(match[0], match[1]);
-              
+              store[id] = Belt_List.concat(match[0], match[1]);
             }));
       return Promise.resolve({
                   TAG: /* Ok */0,
@@ -203,150 +199,150 @@ function Make(Projection) {
             event: $$event
           })];
     var __x = Projection$Reventless.handleActions(actions, primitives, Target.subIdConfig);
-    return __x.then(function (param) {
-                return Promise.resolve(store);
-              });
+    return Js_promise.then_((function (param) {
+                  return Promise.resolve(store);
+                }), __x);
   };
   var givenEvents = function (events) {
     var __x = Belt_List.reduce(events, Promise.resolve({}), (function (p, $$event) {
-            return p.then(function (store) {
-                        return update(store, testId.contents, meta.contents, $$event);
-                      });
+            return Js_promise.then_((function (store) {
+                          return update(store, testId.contents, meta.contents, $$event);
+                        }), p);
           }));
-    return __x.then(function (store) {
-                return Promise.resolve(store);
-              });
+    return Js_promise.then_((function (store) {
+                  return Promise.resolve(store);
+                }), __x);
   };
   var givenEventsWithTime = function (events) {
     var __x = Belt_List.reduce(events, Promise.resolve({}), (function (p, param) {
             var $$event = param[1];
             var time = param[0];
-            return p.then(function (store) {
-                        var init = meta.contents;
-                        return update(store, testId.contents, {
-                                    service: init.service,
-                                    time: time,
-                                    ip: init.ip,
-                                    user: init.user,
-                                    msgId: init.msgId,
-                                    correlationId: init.correlationId
-                                  }, $$event);
-                      });
+            return Js_promise.then_((function (store) {
+                          var init = meta.contents;
+                          return update(store, testId.contents, {
+                                      service: init.service,
+                                      time: time,
+                                      ip: init.ip,
+                                      user: init.user,
+                                      msgId: init.msgId,
+                                      correlationId: init.correlationId
+                                    }, $$event);
+                        }), p);
           }));
-    return __x.then(function (store) {
-                return Promise.resolve(store);
-              });
+    return Js_promise.then_((function (store) {
+                  return Promise.resolve(store);
+                }), __x);
   };
   var whenEvent = function (p, $$event) {
     return Jest.Expect.expect(function (param) {
-                return p.then(function (store) {
-                            return update(store, testId.contents, meta.contents, $$event);
-                          });
+                return Js_promise.then_((function (store) {
+                              return update(store, testId.contents, meta.contents, $$event);
+                            }), p);
               });
   };
   var whenEventWithTime = function (p, time, $$event) {
     return Jest.Expect.expect(function (param) {
-                return p.then(function (store) {
-                            var init = meta.contents;
-                            return update(store, testId.contents, {
-                                        service: init.service,
-                                        time: time,
-                                        ip: init.ip,
-                                        user: init.user,
-                                        msgId: init.msgId,
-                                        correlationId: init.correlationId
-                                      }, $$event);
-                          });
+                return Js_promise.then_((function (store) {
+                              var init = meta.contents;
+                              return update(store, testId.contents, {
+                                          service: init.service,
+                                          time: time,
+                                          ip: init.ip,
+                                          user: init.user,
+                                          msgId: init.msgId,
+                                          correlationId: init.correlationId
+                                        }, $$event);
+                            }), p);
               });
   };
   var thenStates = function (p, expectedStates) {
     var __x = Curry._1(p.VAL, undefined);
-    return __x.then(function (store) {
-                return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                    Object.keys(store).length,
-                                    Belt_Array.get(Object.keys(store), 0),
-                                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)
-                                  ]), [
-                                1,
-                                testId.contents,
-                                expectedStates
-                              ]));
-              });
+    return Js_promise.then_((function (store) {
+                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
+                                      Object.keys(store).length,
+                                      Belt_Array.get(Object.keys(store), 0),
+                                      Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)
+                                    ]), [
+                                  1,
+                                  testId.contents,
+                                  expectedStates
+                                ]));
+                }), __x);
   };
   var thenStatesWithId = function (p, id, expectedStates) {
     var __x = Curry._1(p.VAL, undefined);
-    return __x.then(function (store) {
-                return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                    Object.keys(store).length,
-                                    Belt_Array.get(Object.keys(store), 0),
-                                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)
-                                  ]), [
-                                1,
-                                id,
-                                expectedStates
-                              ]));
-              });
+    return Js_promise.then_((function (store) {
+                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
+                                      Object.keys(store).length,
+                                      Belt_Array.get(Object.keys(store), 0),
+                                      Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)
+                                    ]), [
+                                  1,
+                                  id,
+                                  expectedStates
+                                ]));
+                }), __x);
   };
   var thenAllStates = function (p, expectedStore) {
     var __x = Curry._1(p.VAL, undefined);
-    return __x.then(function (store) {
-                return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect(store), expectedStore));
-              });
+    return Js_promise.then_((function (store) {
+                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect(store), expectedStore));
+                }), __x);
   };
   var thenState = function (p, expectedState) {
     var __x = Curry._1(p.VAL, undefined);
-    return __x.then(function (store) {
-                return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                    Object.keys(store).length,
-                                    Belt_Array.get(Object.keys(store), 0),
-                                    Belt_List.length(Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)),
-                                    Belt_List.head(Caml_array.get(Js_dict.values(store), 0))
-                                  ]), [
-                                1,
-                                testId.contents,
-                                1,
-                                Caml_option.some(expectedState)
-                              ]));
-              });
+    return Js_promise.then_((function (store) {
+                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
+                                      Object.keys(store).length,
+                                      Belt_Array.get(Object.keys(store), 0),
+                                      Belt_List.length(Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)),
+                                      Belt_List.head(Caml_array.get(Js_dict.values(store), 0))
+                                    ]), [
+                                  1,
+                                  testId.contents,
+                                  1,
+                                  Caml_option.some(expectedState)
+                                ]));
+                }), __x);
   };
   var thenStateWithId = function (p, id, expectedState) {
     var __x = Curry._1(p.VAL, undefined);
-    return __x.then(function (store) {
-                return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                    Object.keys(store).length,
-                                    Belt_Array.get(Object.keys(store), 0),
-                                    Belt_List.length(Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)),
-                                    Belt_List.head(Caml_array.get(Js_dict.values(store), 0))
-                                  ]), [
-                                1,
-                                id,
-                                1,
-                                Caml_option.some(expectedState)
-                              ]));
-              });
+    return Js_promise.then_((function (store) {
+                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
+                                      Object.keys(store).length,
+                                      Belt_Array.get(Object.keys(store), 0),
+                                      Belt_List.length(Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), /* [] */0)),
+                                      Belt_List.head(Caml_array.get(Js_dict.values(store), 0))
+                                    ]), [
+                                  1,
+                                  id,
+                                  1,
+                                  Caml_option.some(expectedState)
+                                ]));
+                }), __x);
   };
   var thenNoState = function (p) {
     var __x = Curry._1(p.VAL, undefined);
-    return __x.then(function (store) {
-                return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect(Belt_Array.reduce(Js_dict.values(store), 0, (function (acc, states) {
-                                          return acc + Belt_List.size(states) | 0;
-                                        }))), 0));
-              });
+    return Js_promise.then_((function (store) {
+                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect(Belt_Array.reduce(Js_dict.values(store), 0, (function (acc, states) {
+                                            return acc + Belt_List.size(states) | 0;
+                                          }))), 0));
+                }), __x);
   };
   var thenThrow = function (p) {
     var __x = Curry._1(p.VAL, undefined);
-    return __x.then(function (param) {
-                return Promise.resolve(Jest.Expect.toThrow(p));
-              });
+    return Js_promise.then_((function (param) {
+                  return Promise.resolve(Jest.Expect.toThrow(p));
+                }), __x);
   };
   var thenFail = function (p) {
     var __x = Curry._1(p.VAL, undefined);
-    var __x$1 = __x.then(function (param) {
-          return Promise.resolve(Jest.fail("Expected Failure"));
-        });
-    return __x$1.catch(function (param) {
-                return Promise.resolve(Jest.pass);
-              });
+    var __x$1 = Js_promise.then_((function (param) {
+            return Promise.resolve(Jest.fail("Expected Failure"));
+          }), __x);
+    return Js_promise.$$catch((function (param) {
+                  return Promise.resolve(Jest.pass);
+                }), __x$1);
   };
   return {
           Source: Projection.Source,

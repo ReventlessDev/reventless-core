@@ -94,7 +94,7 @@ module Make = (
 
     let readModels = readModels->Belt.Array.map((module(ReadModel: ReadModel.T)) => {
       let readModel = ReadModel.make(~allEventTopics, ~opts, ())
-      (ReadModel.Spec.name, {module_: module(ReadModel), readModel: readModel})
+      (ReadModel.Spec.name, {module_: module(ReadModel), readModel})
     })
     let readModelsOutputs =
       readModels
@@ -138,7 +138,9 @@ module Make = (
       events'Json
       ->Belt.Array.mapWithIndex((idx, event'Json) => {
         let idx = idx + 1
-        event'Json->Message.logEvent'Json(j`Core eventHandler: outgoing event $idx/$count:`)
+        event'Json->Message.logEvent'Json(
+          `Core eventHandler: outgoing event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
+        )
         extensionPointsOutputs
         ->Belt.Array.map(extensionPoint => {
           let handle = extensionPoint["outgoingEventHandler"]

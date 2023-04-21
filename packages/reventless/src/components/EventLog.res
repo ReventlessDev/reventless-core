@@ -9,8 +9,8 @@ type component = Component.t<t, outputs>
 
 exception ReplayError(string)
 
-type append<'id, 'event> = (. int, 'id, array<'event>) => Js.Promise.t<Belt.Result.t<unit, string>>
-type replay<'id, 'event> = (. 'id) => Js.Promise.t<array<'event>>
+type append<'id, 'event> = (. int, 'id, array<'event>) => promise<Belt.Result.t<unit, string>>
+type replay<'id, 'event> = (. 'id) => promise<array<'event>>
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T
@@ -41,6 +41,145 @@ module Adapter = {
   module type Storage = {
     let make: storageMaker
   }
+}
+
+module AppendUtil = {
+  let eventToJson: (
+    'specId => Js.Json.t,
+    'specEvent => Js.Json.t,
+    'specId,
+    Message.event'<'specId, 'specEvent>,
+  ) => Js.Json.t = (specIdEncode, specEventEncode, id, event') =>
+    [
+      ("id", specIdEncode(id)),
+      (
+        "sequenceNr",
+        Js.Json.string(Message.hrtimeToString(~hrtime=Message.hrtime(), ~now=Message.now())),
+      ),
+      ("event", event'.event->specEventEncode),
+    ]
+    ->Belt.Array.concat(event'.meta->Message.decomposeMeta)
+    ->Js.Dict.fromArray
+    ->Js.Json.object_
+
+  let eventsToJson: (
+    array<Reventless.Message.event'<'specId, 'specEvent>>,
+    'specId => Js.Json.t,
+    'specEvent => Js.Json.t,
+    'specId,
+  ) => array<Js.Json.t> = (events', specIdEncode, specEventEncode, id) =>
+    events'->Belt.Array.map(eventToJson(specIdEncode, specEventEncode, id))
+
+  let storageAppendErrorHandler: (
+    string,
+    'specId => string,
+    'specId,
+    Js.Exn.t,
+  ) => result<unit, string> = (specName, specIdToString, id, err) => {
+    let errMsg =
+      `EventLog: Error: Couldn't append for ${specName}(${id->specIdToString}):` ++
+      err->Js.Exn.message->Belt.Option.getWithDefault("no error message given")
+    Js.log(errMsg)
+    errMsg->Belt.Result.Error
+  }
+
+  let publishToEventTopic: (
+    EventTopic.publish<'specId, 'specEvent>,
+    'specId => string,
+    'specId,
+    array<Reventless.Message.event'<'specId, 'specEvent>>,
+  ) => promise<unit> = async (eventTopicPublish, specIdToString, id, events') => {
+    try await eventTopicPublish(. events') catch {
+    | Js.Exn.Error(err) =>
+      let msg = `EventLog.appendFn(${id->specIdToString}): EventTopic.publish Error: `
+      Js.log2(msg, err)
+      Js.Exn.raiseError(
+        msg ++ err->Js.Exn.message->Belt.Option.getWithDefault("no error message given"),
+      )
+    }
+  }
+
+  let catchErrorHandler = exn => {
+    Js.log2("EventLog.append: Error:", exn)
+    raise(exn)
+  }
+
+  // FIXME: appendFn is supposed to return result<unit, string/*errorMessage*/>, but at the same moment, we throw errors
+  //        We should use result everywhere instead of throwing errors / exceptions
+  let appendFn = (
+    storageAppend: append<string, Js.Json.t>,
+    specIdToString: 'specId => string,
+    specIdEncode: 'specId => Js.Json.t,
+    specEventEncode: 'specEvent => Js.Json.t,
+    eventTopicPublish: EventTopic.publish<'specId, 'specEvent>,
+    specName: string,
+  ) =>
+    async (.
+      sequenceNr: int,
+      id: 'specId,
+      events': array<Reventless.Message.event'<'specId, 'specEvent>>,
+    ) => {
+      try {
+        let eventsJson = events'->eventsToJson(specIdEncode, specEventEncode, id)
+
+        switch await storageAppend(. sequenceNr, id->specIdToString, eventsJson) {
+        | appendResult =>
+          await publishToEventTopic(eventTopicPublish, specIdToString, id, events')
+          appendResult
+        | exception Js.Exn.Error(err) =>
+          storageAppendErrorHandler(specName, specIdToString, id, err)
+        }
+      } catch {
+      | exn => catchErrorHandler(exn)
+      }
+    }
+}
+
+module ReplayUtil = {
+  let decodeEvent = (specEventDecode, json) =>
+    Js.Json.decodeObject(json)
+    ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
+    ->Belt.Option.map(json => (json, specEventDecode(json)))
+    ->Belt.Option.map(x =>
+      switch x {
+      | (_, Belt.Result.Ok(event)) => event
+      | (json, Error(err: Decco.decodeError)) =>
+        let eventStr = json->Js.Json.stringify
+        let message = err.message
+        Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decode ${eventStr}: ${message}`)
+      }
+    )
+    ->(
+      x =>
+        switch x {
+        | Some(event) => event
+        | None =>
+          let eventStr = json->Js.Json.stringify
+          Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decodeObject ${eventStr}`)
+        }
+    )
+
+  let decodeEvents = (jsons, specEventDecode) => jsons->Belt.Array.map(decodeEvent(specEventDecode))
+
+  let decodeEventsToPromise: (
+    Js.Json.t => result<'a, Decco.decodeError>,
+    array<Js.Json.t>,
+  ) => promise<array<'a>> = (specEventDecode, jsons) =>
+    decodeEvents(jsons, specEventDecode)->Js.Promise2.resolve
+
+  let replayFn: (
+    replay<string, Js.Json.t>,
+    'specId => string,
+    Js.Json.t => result<'specEvent, Decco.decodeError>,
+  ) => (. 'specId) => promise<array<'specEvent>> = (
+    storageReplay,
+    specIdToString,
+    specEventDecode,
+  ) =>
+    async (. id) => {
+      let jsonEvents = await storageReplay(. id->specIdToString)
+      await decodeEventsToPromise(specEventDecode, jsonEvents)
+    }
 }
 
 module Make = (
@@ -83,75 +222,6 @@ module Make = (
 
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher)
 
-  let appendFn = (storage, eventTopic, . sequenceNr, id, events') =>
-    try events'->Belt.Array.map((event': Message.event'<Spec.Id.t, Spec.event>) =>
-      [
-        ("id", Spec.Id.t_encode(id)),
-        (
-          "sequenceNr",
-          Js.Json.string(Message.hrtimeToString(~hrtime=Message.hrtime(), ~now=Message.now())),
-        ),
-        ("event", event'.event |> Spec.event_encode),
-      ]
-      ->Belt.Array.concat(event'.meta->Message.decomposeMeta)
-      ->Js.Dict.fromArray
-      ->Js.Json.object_
-    )
-      |> (
-        data =>
-          storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, data)
-          |> Js.Promise.catch(err => {
-            let aggregateName = Spec.name
-            let err = j`EventLog: Error: Couldn't append for $aggregateName($id): $err`
-            Js.log(err)
-            err->Belt.Result.Error->Js.Promise.resolve
-          })
-          |> Js.Promise.then_(result => {
-            let _ = EventTopic.publish(eventTopic)(. events') |> Js.Promise.catch(err => {
-              let msg =
-                j`EventLog.appendFn($id): EventTopic.publish Error: ` ++
-                (err->Util.Error.ofPromise)["message"]
-
-              Js.log(msg)
-              Js.Exn.raiseError(msg)
-            })
-
-            result->Js.Promise.resolve
-          })
-      ) catch {
-    | exn =>
-      Js.log2("EventLog.append: Couldn't decode:", exn)
-      raise(exn)
-    }
-
-  let decodeEvent = json =>
-    Js.Json.decodeObject(json)
-    ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
-    ->Belt.Option.map(json => (json, Spec.event_decode(json)))
-    ->Belt.Option.map(x =>
-      switch x {
-      | (_, Belt.Result.Ok(event)) => event
-      | (json, Error(err)) =>
-        let eventStr = json |> Js.Json.stringify
-        let message = err.message
-        Js.Exn.raiseError(j`EventLog.replay: Error: Couldn't decode $eventStr: $message`)
-      }
-    )
-    ->(
-      x =>
-        switch x {
-        | Some(event) => event
-        | None =>
-          let eventStr = json |> Js.Json.stringify
-          Js.Exn.raiseError(j`EventLog.replay: Error: Couldn't decodeObject $eventStr`)
-        }
-    )
-
-  let replayFn = (storage, . id) =>
-    storage.Adapter.replay(. id |> Spec.Id.toString) |> Js.Promise.then_(jsons =>
-      jsons->Belt.Array.map(decodeEvent)->Js.Promise.resolve
-    )
-
   let construct = (self, name) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
 
@@ -164,11 +234,24 @@ module Make = (
       (),
     )
 
-    self->setAppend(storage->appendFn(eventTopic))
-    self->setReplay(storage->replayFn)
+    self->setAppend(
+      AppendUtil.appendFn(
+        storage.Adapter.append,
+        Spec.Id.toString,
+        Spec.Id.t_encode,
+        Spec.event_encode,
+        eventTopic->EventTopic.publish,
+        Spec.name,
+      ),
+    )
+    self->setReplay(
+      ReplayUtil.replayFn(storage.Adapter.replay, Spec.Id.toString, Spec.event_decode),
+    )
 
-    makeOutputs(~resources=storage.resources, ~eventTopic=eventTopic->Component.extractOutputs)
-    |> self->setOutputs
+    makeOutputs(
+      ~resources=storage.resources,
+      ~eventTopic=eventTopic->Component.extractOutputs,
+    )->setOutputs(self, _)
   }
 
   let make = (~name, ~opts=?, _) =>

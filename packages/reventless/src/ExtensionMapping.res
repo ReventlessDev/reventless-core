@@ -42,14 +42,16 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
 
   let encodeMeta = (meta: Message.meta, service) => {
     ...meta,
-    service: service,
+    service,
     msgId: Message.uuid(),
   }
 
   let mapIncomingEvent = ({Message.id: id, event, meta}, pluginDef, queryEngine) => {
     let encodeAggregateCommandJson = (aggregateCmd, aggregateId) => {
       let commandStr = aggregateCmd->Aggregate.command_encode->Js.Json.stringify
-      Js.log(j`ExtensionMapping incoming from ExtensionPoint $extensionPointName to Aggregate $aggregateName: Publishing command: $commandStr id: $aggregateId`)
+      Js.log(
+        `ExtensionMapping incoming from ExtensionPoint ${extensionPointName} to Aggregate ${aggregateName}: Publishing command: ${commandStr} id: ${aggregateId}`,
+      )
       {
         Message.id: aggregateId,
         meta: encodeMeta(meta, aggregateName),
@@ -60,11 +62,13 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
 
     let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
       let commandStr = commandJson->Js.Json.stringify
-      Js.log(j`ExtensionMapping incoming from ExtensionPoint $extensionPointName: $action: $commandStr id: $id`)
+      Js.log(
+        `ExtensionMapping incoming from ExtensionPoint ${extensionPointName}: ${action}: ${commandStr} id: ${id}`,
+      )
       {
-        Message.id: id,
+        Message.id,
         meta: encodeMeta(meta, extensionPointName),
-        commandJson: commandJson,
+        commandJson,
         delay: None,
       }
     }
@@ -97,11 +101,12 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
           promise->Js.Promise.then_(
             tupels =>
               tupels
-              ->Belt.Array.map(((aggregateId, aggregateCmd)) =>
-                (
-                  aggregateName,
-                  aggregateCmd->encodeAggregateCommandJson(aggregateId),
-                )->Js.Promise.resolve
+              ->Belt.Array.map(
+                ((aggregateId, aggregateCmd)) =>
+                  (
+                    aggregateName,
+                    aggregateCmd->encodeAggregateCommandJson(aggregateId),
+                  )->Js.Promise.resolve,
               )
               ->Js.Promise.all,
             _,
@@ -136,7 +141,7 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
         )
       | Call(handler, callCommand) =>
         Js.log2(
-          j`ExtensionMapping incoming from ExtensionPoint $extensionPointName: Handling call command`,
+          `ExtensionMapping incoming from ExtensionPoint ${extensionPointName}: Handling call command`,
           callCommand->Spec.callCommand_encode->Js.Json.stringify,
         )
 
@@ -154,11 +159,13 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
     | Ok({id, meta, event}) =>
       let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
         let commandStr = commandJson->Js.Json.stringify
-        Js.log(j`ExtensionMapping outgoing from Aggregate $aggregateName: $action: $commandStr id: $id`)
+        Js.log(
+          `ExtensionMapping outgoing from Aggregate ${aggregateName}: ${action}: ${commandStr} id: ${id}`,
+        )
         {
-          Message.id: id,
+          Message.id,
           meta: encodeMeta(meta, extensionPointName),
-          commandJson: commandJson,
+          commandJson,
           delay: None,
         }
       }
@@ -205,7 +212,7 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
           )
         | Call(handler, callCommand) =>
           Js.log2(
-            j`ExtensionMapping outgoing from Aggregate $aggregateName: Handling call command`,
+            `ExtensionMapping outgoing from Aggregate ${aggregateName}: Handling call command`,
             callCommand->Spec.callCommand_encode->Js.Json.stringify,
           )
 

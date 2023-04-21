@@ -71,7 +71,9 @@ let construct = (
     cmdJsons->Belt.Array.forEachWithIndex((idx, {Message.id: id, commandJson}) => {
       let idx = idx + 1
       let messageBody = commandJson->Js.Json.stringify
-      Js.log(j`Task.publishCommands $idx/$count: id=$id, $messageBody`)
+      Js.log(
+        `Task.publishCommands ${idx->Belt.Int.toString}/${count->Belt.Int.toString}: id=${id}, ${messageBody}`,
+      )
     })
     (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(. cmdJsons)
   }

@@ -6,11 +6,13 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
+var QueryDb$Reventless = require("./components/QueryDb.bs.js");
 
 function logAction(str) {
   console.log("Projection.handleAction:", str);
-  
 }
 
 function applyChanges(action, id, beforeStates, afterStates, param, param$1) {
@@ -29,7 +31,7 @@ function applyChanges(action, id, beforeStates, afterStates, param, param$1) {
           var beforeSubId = Curry._1(getSubId, before);
           return Belt_Array.getBy(afterStates, (function (after) {
                         if (Curry._1(getSubId, after) === beforeSubId) {
-                          return Caml_obj.caml_notequal(after, before);
+                          return Caml_obj.notequal(after, before);
                         } else {
                           return false;
                         }
@@ -54,17 +56,26 @@ function applyChanges(action, id, beforeStates, afterStates, param, param$1) {
                 ];
         }));
   var deletedCount = batchToDelete.length;
-  console.log("Projection.handleAction:", "" + action + "(" + id + "): beforeStates:" + beforeCount + " afterStates:" + afterCount + " added:" + addedCount + " changed:" + changedCount + " deleted:" + deletedCount);
+  var str = "" + action + "(" + id + "): beforeStates:" + String(beforeCount) + " afterStates:" + String(afterCount) + " added:" + String(addedCount) + " changed:" + String(changedCount) + " deleted:" + String(deletedCount) + "";
+  console.log("Projection.handleAction:", str);
   var __x = Promise.all([
         param.deleteBatch(batchToDelete),
         param.saveBatch(batchToSave)
       ]);
-  return __x.then(function (param) {
-              return Promise.resolve({
-                          TAG: /* Ok */0,
-                          _0: undefined
-                        });
-            });
+  return Js_promise.then_((function (param) {
+                return Promise.resolve({
+                            TAG: /* Ok */0,
+                            _0: undefined
+                          });
+              }), __x);
+}
+
+function stateToString(state) {
+  return Belt_Option.getExn(JSON.stringify(state));
+}
+
+function statesToString(states) {
+  return Belt_Array.map(states, stateToString).join(", ");
 }
 
 function handleAction(action, primitives, subIdConfig) {
@@ -82,7 +93,8 @@ function handleAction(action, primitives, subIdConfig) {
     case /* Create */0 :
         var state = action._1;
         var id = action._0;
-        console.log("Projection.handleAction:", "Create(" + id + ", " + state + ")");
+        var str = "Create(" + id + ", " + Belt_Option.getExn(JSON.stringify(state)) + ")";
+        console.log("Projection.handleAction:", str);
         return save(id, state, /* Init */0, undefined);
     case /* CreateMany */1 :
         var batch = Belt_Array.map(action._0, (function (param) {
@@ -93,76 +105,81 @@ function handleAction(action, primitives, subIdConfig) {
                       ];
               }));
         var statesStr = Belt_Array.map(batch, (function (param) {
-                return "(" + param[0] + "," + param[1] + ")";
-              }));
+                  return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
+                })).join(", ");
         console.log("Projection.handleAction:", "CreateMany(" + statesStr + ")");
         return saveBatch(batch);
     case /* Update */2 :
         var update = action._1;
         var id$1 = action._0;
         var __x = load(id$1);
-        return __x.then(function (x) {
-                    if (x.TAG !== /* Ok */0) {
-                      return Promise.resolve({
-                                  TAG: /* Error */1,
-                                  _0: x._0
-                                });
-                    }
-                    var states = x._0;
-                    if (states) {
-                      if (states.tl) {
-                        console.log("Projection.handleAction:", "Update Error: Multiple oldStates for " + id$1 + ")");
+        return Js_promise.then_((function (x) {
+                      if (x.TAG !== /* Ok */0) {
                         return Promise.resolve({
                                     TAG: /* Error */1,
-                                    _0: /* StaleState */0
+                                    _0: x._0
                                   });
                       }
-                      var oldState = states.hd;
-                      var newState = Curry._1(update, oldState);
-                      console.log("Projection.handleAction:", "Update(" + id$1 + ", " + oldState + " => " + newState + ")");
-                      return save(id$1, newState, /* Overwrite */1, undefined);
-                    }
-                    console.log("Projection.handleAction:", "Update Error: No oldState for " + id$1 + ")");
-                    return Promise.resolve({
-                                TAG: /* Error */1,
-                                _0: /* StaleState */0
-                              });
-                  });
-    case /* UpdateWithDefault */4 :
-        var update$1 = action._2;
-        var $$default = action._1;
-        var id$2 = action._0;
-        var __x$1 = load(id$2);
-        return __x$1.then(function (x) {
-                    if (x.TAG === /* Ok */0) {
                       var states = x._0;
                       if (states) {
                         if (states.tl) {
-                          console.log("Projection.handleAction:", "UpdateWithDefault Error: Multiple oldStates for " + id$2 + ")");
+                          console.log("Projection.handleAction:", "Update Error: Multiple oldStates for " + id$1 + ")");
                           return Promise.resolve({
                                       TAG: /* Error */1,
                                       _0: /* StaleState */0
                                     });
                         }
                         var oldState = states.hd;
-                        var newState = Curry._1(update$1, oldState);
-                        console.log("Projection.handleAction:", "UpdateWithDefault(" + id$2 + ", " + oldState + " => " + newState + ")");
-                        return save(id$2, newState, /* Overwrite */1, undefined);
+                        var newState = Curry._1(update, oldState);
+                        var str = "Update(" + id$1 + ", " + Belt_Option.getExn(JSON.stringify(oldState)) + " => " + Belt_Option.getExn(JSON.stringify(newState)) + ")";
+                        console.log("Projection.handleAction:", str);
+                        return save(id$1, newState, /* Overwrite */1, undefined);
                       }
-                      console.log("Projection.handleAction:", "UpdateWithDefault(" + id$2 + ", default: " + $$default + ")");
-                      return save(id$2, $$default, /* Init */0, undefined);
-                    }
-                    var err = x._0;
-                    console.log("Projection.handleAction:", "UpdateWithDefault Error: Couldn't load oldState(s) for " + id$2 + ": " + err + ")");
-                    return Promise.resolve({
-                                TAG: /* Error */1,
-                                _0: err
-                              });
-                  });
+                      console.log("Projection.handleAction:", "Update Error: No oldState for " + id$1 + ")");
+                      return Promise.resolve({
+                                  TAG: /* Error */1,
+                                  _0: /* StaleState */0
+                                });
+                    }), __x);
+    case /* UpdateWithDefault */4 :
+        var update$1 = action._2;
+        var $$default = action._1;
+        var id$2 = action._0;
+        var __x$1 = load(id$2);
+        return Js_promise.then_((function (x) {
+                      if (x.TAG === /* Ok */0) {
+                        var states = x._0;
+                        if (states) {
+                          if (states.tl) {
+                            console.log("Projection.handleAction:", "UpdateWithDefault Error: Multiple oldStates for " + id$2 + ")");
+                            return Promise.resolve({
+                                        TAG: /* Error */1,
+                                        _0: /* StaleState */0
+                                      });
+                          }
+                          var oldState = states.hd;
+                          var newState = Curry._1(update$1, oldState);
+                          var str = "UpdateWithDefault(" + id$2 + ", " + Belt_Option.getExn(JSON.stringify(oldState)) + " => " + Belt_Option.getExn(JSON.stringify(newState)) + ")";
+                          console.log("Projection.handleAction:", str);
+                          return save(id$2, newState, /* Overwrite */1, undefined);
+                        }
+                        var str$1 = "UpdateWithDefault(" + id$2 + ", default: " + Belt_Option.getExn(JSON.stringify($$default)) + ")";
+                        console.log("Projection.handleAction:", str$1);
+                        return save(id$2, $$default, /* Init */0, undefined);
+                      }
+                      var err = x._0;
+                      var str$2 = "UpdateWithDefault Error: Couldn't load oldState(s) for " + id$2 + ": " + QueryDb$Reventless.storageErrorToString(err) + ")";
+                      console.log("Projection.handleAction:", str$2);
+                      return Promise.resolve({
+                                  TAG: /* Error */1,
+                                  _0: err
+                                });
+                    }), __x$1);
     case /* Set */6 :
         var state$1 = action._1;
         var id$3 = action._0;
-        console.log("Projection.handleAction:", "Set(" + id$3 + ", " + state$1 + ")");
+        var str$1 = "Set(" + id$3 + ", " + Belt_Option.getExn(JSON.stringify(state$1)) + ")";
+        console.log("Projection.handleAction:", str$1);
         return save(id$3, state$1, /* Any */2, undefined);
     case /* SetMany */7 :
         var set = action._1;
@@ -174,8 +191,8 @@ function handleAction(action, primitives, subIdConfig) {
                       ];
               }));
         var statesStr$1 = Belt_Array.map(batch$1, (function (param) {
-                return "(" + param[0] + "," + param[1] + ")";
-              }));
+                  return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
+                })).join(", ");
         console.log("Projection.handleAction:", "SetMany(" + statesStr$1 + ")");
         return saveBatch(batch$1);
     case /* Delete */8 :
@@ -184,7 +201,8 @@ function handleAction(action, primitives, subIdConfig) {
         return primitives.delete(id$4, undefined);
     case /* DeleteMany */9 :
         var ids = action._0;
-        console.log("Projection.handleAction:", "DeleteMany(" + ids + ")");
+        var str$2 = "DeleteMany(" + ids.join(", ") + ")";
+        console.log("Projection.handleAction:", str$2);
         return primitives.deleteBatch(Belt_Array.map(ids, (function (id) {
                           return [
                                   id,
@@ -194,7 +212,10 @@ function handleAction(action, primitives, subIdConfig) {
     case /* CreateMultiState */12 :
         var states = action._1;
         var id$5 = action._0;
-        console.log("Projection.handleAction:", "CreateMultiState(" + id$5 + ", " + states + ")");
+        var str$3 = "CreateMultiState(" + id$5 + ", " + Belt_Array.map(states, (function (state) {
+                  return Belt_Option.getExn(JSON.stringify(state));
+                })).join(", ") + ")";
+        console.log("Projection.handleAction:", str$3);
         var len = states.length;
         if (len !== 1) {
           if (len === 0) {
@@ -218,33 +239,34 @@ function handleAction(action, primitives, subIdConfig) {
         var update$2 = action._1;
         var id$6 = action._0;
         var __x$2 = load(id$6);
-        return __x$2.then(function (states) {
-                    if (states.TAG === /* Ok */0) {
+        return Js_promise.then_((function (states) {
+                      if (states.TAG === /* Ok */0) {
+                        if (subIdConfig !== undefined) {
+                          var beforeStates = Belt_List.toArray(states._0);
+                          var afterStates = Curry._1(update$2, beforeStates);
+                          return applyChanges("UpdateMultiState", id$6, beforeStates, afterStates, primitives, subIdConfig);
+                        }
+                        console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
+                        return Promise.resolve({
+                                    TAG: /* Error */1,
+                                    _0: /* MissingSubIdConfig */1
+                                  });
+                      }
                       if (subIdConfig !== undefined) {
-                        var beforeStates = Belt_List.toArray(states._0);
-                        var afterStates = Curry._1(update$2, beforeStates);
-                        return applyChanges("UpdateMultiState", id$6, beforeStates, afterStates, primitives, subIdConfig);
+                        var err = states._0;
+                        var str = "UpdateMultiState Error: Couldn't load states for " + id$6 + ": " + QueryDb$Reventless.storageErrorToString(err) + ")";
+                        console.log("Projection.handleAction:", str);
+                        return Promise.resolve({
+                                    TAG: /* Error */1,
+                                    _0: err
+                                  });
                       }
                       console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
                       return Promise.resolve({
                                   TAG: /* Error */1,
                                   _0: /* MissingSubIdConfig */1
                                 });
-                    }
-                    if (subIdConfig !== undefined) {
-                      var err = states._0;
-                      console.log("Projection.handleAction:", "UpdateMultiState Error: Couldn't load states for " + id$6 + ": " + err + ")");
-                      return Promise.resolve({
-                                  TAG: /* Error */1,
-                                  _0: err
-                                });
-                    }
-                    console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
-                    return Promise.resolve({
-                                TAG: /* Error */1,
-                                _0: /* MissingSubIdConfig */1
-                              });
-                  });
+                    }), __x$2);
     default:
       console.log("Projection.handleAction:", "Error: Action not yet supported !");
       return Promise.resolve({
@@ -345,31 +367,31 @@ function handleActions(actions, primitives, subIdConfig) {
               var id = param[0];
               var actionCount = actions.length;
               if (actionCount > 1) {
-                console.log("Projection.handleActions: handling " + actionCount + " actions for id=" + id);
+                console.log("Projection.handleActions: handling " + String(actionCount) + " actions for id=" + id + "");
               }
               return Belt_Array.reduce(actions, Promise.resolve({
                               TAG: /* Ok */0,
                               _0: undefined
                             }), (function (p, action) {
-                            return p.then(function (param) {
-                                        return handleAction(action, primitives, subIdConfig);
-                                      });
+                            return Js_promise.then_((function (param) {
+                                          return handleAction(action, primitives, subIdConfig);
+                                        }), p);
                           }));
             })));
-  return __x.then(function (results) {
-              var errors = Belt_Array.keepMap(results, (function (x) {
-                      if (x.TAG === /* Ok */0) {
-                        return ;
-                      } else {
-                        return x._0;
-                      }
-                    }));
-              if (errors.length === 0) {
-                return Promise.resolve(undefined);
-              }
-              var count = errors.length;
-              return Js_exn.raiseError("Projection.handleActions failed with " + count + " errors: " + errors);
-            });
+  return Js_promise.then_((function (results) {
+                var errors = Belt_Array.keepMap(results, (function (x) {
+                        if (x.TAG === /* Ok */0) {
+                          return ;
+                        } else {
+                          return x._0;
+                        }
+                      }));
+                if (errors.length === 0) {
+                  return Promise.resolve(undefined);
+                }
+                var count = errors.length;
+                return Js_exn.raiseError("Projection.handleActions failed with " + String(count) + " errors: " + Belt_Array.map(errors, QueryDb$Reventless.storageErrorToString).join(",") + "");
+              }), __x);
 }
 
 var $$Set;
@@ -377,8 +399,10 @@ var $$Set;
 exports.$$Set = $$Set;
 exports.logAction = logAction;
 exports.applyChanges = applyChanges;
+exports.stateToString = stateToString;
+exports.statesToString = statesToString;
 exports.handleAction = handleAction;
 exports.actionsWithId = actionsWithId;
 exports.groupActionsById = groupActionsById;
 exports.handleActions = handleActions;
-/* No side effect */
+/* QueryDb-Reventless Not a pure module */

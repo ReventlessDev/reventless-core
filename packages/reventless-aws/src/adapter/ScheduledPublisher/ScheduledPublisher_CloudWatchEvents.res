@@ -13,7 +13,7 @@ let make: scheduledPublisherMaker = (~name as _, ~opts) => {
     ~args=PulumiAws.IAM.Policy.Args.makeFromString(
       ~policy=role["arn"]
       ->Pulumi.Output.apply(roleArn =>
-        j`{
+        `{
                     "Version": "2012-10-17",
                     "Statement": [{
                       "Effect": "Allow",
@@ -22,7 +22,7 @@ let make: scheduledPublisherMaker = (~name as _, ~opts) => {
                     },{
                       "Effect": "Allow",
                       "Action": "iam:PassRole",
-                      "Resource": "$roleArn"
+                      "Resource": "${roleArn}"
                   }]
                   }`
       )

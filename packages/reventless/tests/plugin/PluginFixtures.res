@@ -27,9 +27,9 @@ let pluginDefinition2 = {
   name: "name2",
   version: "1",
   extensionPoints: extensionPointNames2->Belt.Array.mapWithIndex((idx, name) => {
-    name: name,
-    commandTopic: j`commandTopic$idx`,
-    eventTopic: j`eventTopic$idx`,
+    name,
+    commandTopic: `commandTopic${idx->Belt.Int.toString}`,
+    eventTopic: `eventTopic${idx->Belt.Int.toString}`,
   }),
   extensions: [],
   eventCollector: "eventCollector",

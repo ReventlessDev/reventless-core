@@ -4,6 +4,7 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -45,7 +46,7 @@ function arn2tableName(arn) {
 }
 
 function enableTtl(tableName) {
-  console.log("" + "Util_DynamoDb-ReventlessAws" + ": enableTimeToLive for " + tableName);
+  console.log("" + "Util_DynamoDb-ReventlessAws" + ": enableTimeToLive for " + tableName + "");
   var __x = DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
         TableName: tableName,
         TimeToLiveSpecification: {
@@ -53,12 +54,12 @@ function enableTtl(tableName) {
           AttributeName: Util_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
         }
       });
-  return __x.then(function (res) {
-              return Promise.resolve({
-                          enabled: res.TimeToLiveSpecification.Enabled,
-                          attributeName: res.TimeToLiveSpecification.AttributeName
-                        });
-            });
+  return Js_promise.then_((function (res) {
+                return Promise.resolve({
+                            enabled: res.TimeToLiveSpecification.Enabled,
+                            attributeName: res.TimeToLiveSpecification.AttributeName
+                          });
+              }), __x);
 }
 
 function verifyTtl(expectedTtl, table) {
@@ -84,18 +85,18 @@ function verifyTtl(expectedTtl, table) {
 }
 
 function enablePointInTimeRecovery(tableName) {
-  console.log("" + "Util_DynamoDb-ReventlessAws" + ": enablePointInTimeRecovery for " + tableName);
+  console.log("" + "Util_DynamoDb-ReventlessAws" + ": enablePointInTimeRecovery for " + tableName + "");
   var __x = DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
         TableName: tableName,
         PointInTimeRecoverySpecification: {
           PointInTimeRecoveryEnabled: true
         }
       });
-  return __x.then(function (res) {
-              return Promise.resolve({
-                          enabled: res.ContinuousBackupsDescription.ContinuousBackupsStatus === "ENABLED"
-                        });
-            });
+  return Js_promise.then_((function (res) {
+                return Promise.resolve({
+                            enabled: res.ContinuousBackupsDescription.ContinuousBackupsStatus === "ENABLED"
+                          });
+              }), __x);
 }
 
 function verifyPointInTimeRecovery(table) {
@@ -217,7 +218,7 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
 
 function option2Str(opt) {
   if (opt !== undefined) {
-    return "Some(" + Caml_option.valFromOption(opt) + ")";
+    return "Some(" + opt + ")";
   } else {
     return "None";
   }

@@ -3,16 +3,16 @@ open Pulumi
 let allowAllResourcesSendMessage = queue =>
   queue["arn"]->Output.apply(queueArn => {
     let account = queueArn->Util_SQS.arn2Account
-    j`
+    `
         {
           "Sid": "allowAllResourcesSendMessage",
           "Effect": "Allow",
           "Principal": "*",
           "Action": "sqs:SendMessage",
-          "Resource": "$queueArn",
+          "Resource": "${queueArn}",
           "Condition": {
             "StringEquals": {
-              "aws:SourceAccount": "$account"
+              "aws:SourceAccount": "${account}"
             }
           }
         }
@@ -21,7 +21,7 @@ let allowAllResourcesSendMessage = queue =>
 let allowAllSnsTopicsSendMessage = queue =>
   queue["arn"]->Output.apply(queueArn => {
     let account = queueArn->Util_SQS.arn2Account
-    j`
+    `
         {
           "Sid": "allowAllSnsTopicsSendMessage",
           "Effect": "Allow",
@@ -31,26 +31,26 @@ let allowAllSnsTopicsSendMessage = queue =>
               ]
             },
           "Action": "sqs:SendMessage",
-          "Resource": "$queueArn",
+          "Resource": "${queueArn}",
           "Condition": {
             "StringEquals": {
-              "aws:SourceAccount": "$account"
+              "aws:SourceAccount": "${account}"
             }
           }
         }
       `
   })
 let allowResourceSendMessage = (queueArn, idx, sourceArn) =>
-  j`
+  `
   {
-    "Sid": "$idx",
+    "Sid": "${idx->Belt.Int.toString}",
     "Effect": "Allow",
     "Principal": "*",
     "Action": "sqs:SendMessage",
-    "Resource": "$queueArn",
+    "Resource": "${queueArn}",
     "Condition": {
       "ArnEquals": {
-        "aws:SourceArn": "$sourceArn"
+        "aws:SourceArn": "${sourceArn}"
       }
     }
   }
@@ -74,7 +74,7 @@ let allowResourcesSendMessage: (
     ->String.concat(",", _)
   )
 
-let allowCloudWatchEvents = j`{
+let allowCloudWatchEvents = `{
       "Effect": "Allow",
       "Principal": {
         "Service": ["events.amazonaws.com","sqs.amazonaws.com"]
@@ -95,11 +95,11 @@ let make: (
     ->Output.all
     ->Output.apply(statementStrs => {
       let statementStr = statementStrs->Belt.List.fromArray->String.concat(",", _)
-      j`{
+      `{
               "Version": "2012-10-17",
-              "Id": "$name",
+              "Id": "${name}",
               "Statement": [
-                $statementStr
+                ${statementStr}
               ]
             }`
     })

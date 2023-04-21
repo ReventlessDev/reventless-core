@@ -29,6 +29,17 @@ type storageError =
   | StaleState
   | MissingSubIdConfig
 
+let storageErrorToString: storageError => string = err =>
+  switch err {
+  | NotSavedToStorage(s) => `NotSavedToStorage(${s})`
+  | NotLoadedFromStorage(s) => `NotLoadedFromStorage(${s})`
+  | NotCountedOnStorage(s) => `NotCountedOnStorage(${s})`
+  | NotDeletedFromStorage(s) => `NotDeletedFromStorage(${s})`
+  | BatchNotFullyWrittenToStorage(s) => `BatchNotFullyWrittenToStorage(${s})`
+  | StaleState => `StaleState`
+  | MissingSubIdConfig => `MissingSubIdConfig`
+  }
+
 type load<'id, 'state> = (. 'id) => Js.Promise.t<Belt.Result.t<list<'state>, storageError>>
 type save<'id, 'state> = (
   . 'id,
@@ -214,52 +225,60 @@ module Make = (
     switch Spec.state_decode(item) {
     | Ok(state) => list{state}
     | Error(err) =>
-      Js.log(j`QueryDb: Error: Couldn't decode state for $id: $err`)
+      Js.log(
+        `QueryDb: Error: Couldn't decode state for ${id->Spec.Id.toString}: ${err
+          ->Js.Json.stringifyAny
+          ->Belt.Option.getExn}`,
+      )
       list{}
     }
 
-  let loadFn = (storage, . id) =>
-    storage.Adapter.load(. id->Spec.Id.toString) |> Js.Promise.then_(result =>
-      result
-      ->Belt.Result.map(states => states->Belt.List.map(decode(id))->Belt.List.flatten)
-      ->Js.Promise.resolve
-    )
+  let loadFn = storage =>
+    (. id) =>
+      storage.Adapter.load(. id->Spec.Id.toString) |> Js.Promise.then_(result =>
+        result
+        ->Belt.Result.map(states => states->Belt.List.map(decode(id))->Belt.List.flatten)
+        ->Js.Promise.resolve
+      )
 
-  let saveFn = (storage, . id, state, saveMode, ttl) =>
-    switch state->Spec.state_encode->Js.Json.decodeObject {
-    | Some(dict) =>
-      dict->Js.Dict.set("id", Spec.Id.t_encode(id))
-      let json = Js.Json.object_(dict)
-      storage.Adapter.save(. id->Spec.Id.toString, json, saveMode, ttl)
-    | None =>
-      Js.log2("QueryDB.save: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
-      Belt.Result.Error(NotSavedToStorage("Couldn't decodeObject"))->Js.Promise.resolve
-    }
-
-  let saveBatchFn = (storage, . items) => {
-    let batch = items->Belt.Array.keepMap(((id, state, ttl)) =>
+  let saveFn = storage =>
+    (. id, state, saveMode, ttl) =>
       switch state->Spec.state_encode->Js.Json.decodeObject {
       | Some(dict) =>
         dict->Js.Dict.set("id", Spec.Id.t_encode(id))
         let json = Js.Json.object_(dict)
-        Some((id->Spec.Id.toString, json, ttl))
+        storage.Adapter.save(. id->Spec.Id.toString, json, saveMode, ttl)
       | None =>
-        Js.log2("QueryDB.saveBatch: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
-        None
+        Js.log2("QueryDB.save: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+        Belt.Result.Error(NotSavedToStorage("Couldn't decodeObject"))->Js.Promise.resolve
       }
-    )
-    storage.Adapter.saveBatch(. batch)
-  }
 
-  let countFn = (storage, . id, fieldName, inc) =>
-    storage.Adapter.count(. id->Spec.Id.toString, fieldName, inc)
+  let saveBatchFn = storage =>
+    (. items) => {
+      let batch = items->Belt.Array.keepMap(((id, state, ttl)) =>
+        switch state->Spec.state_encode->Js.Json.decodeObject {
+        | Some(dict) =>
+          dict->Js.Dict.set("id", Spec.Id.t_encode(id))
+          let json = Js.Json.object_(dict)
+          Some((id->Spec.Id.toString, json, ttl))
+        | None =>
+          Js.log2("QueryDB.saveBatch: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+          None
+        }
+      )
+      storage.Adapter.saveBatch(. batch)
+    }
 
-  let deleteFn = (storage, . id, subId) => storage.Adapter.delete(. id->Spec.Id.toString, subId)
+  let countFn = storage =>
+    (. id, fieldName, inc) => storage.Adapter.count(. id->Spec.Id.toString, fieldName, inc)
 
-  let deleteBatchFn = (storage, . ids) => {
-    let ids = ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.toString, sort))
-    storage.Adapter.deleteBatch(. ids)
-  }
+  let deleteFn = storage => (. id, subId) => storage.Adapter.delete(. id->Spec.Id.toString, subId)
+
+  let deleteBatchFn = storage =>
+    (. ids) => {
+      let ids = ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.toString, sort))
+      storage.Adapter.deleteBatch(. ids)
+    }
 
   let outputs: component => outputs = component => Component.extractOutputs(component)
 

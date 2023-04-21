@@ -33,41 +33,35 @@ function ftp(connectionParams, ftpAction) {
                 }
                 SSH2.Client.onReady(client.on("end", (function (param) {
                                   console.log("Client.onEnd");
-                                  return resolvePromise(isDone.contents ? ({
-                                                  TAG: /* Ok */0,
-                                                  _0: true
-                                                }) : ({
-                                                  TAG: /* Error */1,
-                                                  _0: "Stream ended before action handling!"
-                                                }));
+                                  resolvePromise(isDone.contents ? ({
+                                            TAG: /* Ok */0,
+                                            _0: true
+                                          }) : ({
+                                            TAG: /* Error */1,
+                                            _0: "Stream ended before action handling!"
+                                          }));
                                 })).on("error", (function (err) {
                                 resolvePromise({
                                       TAG: /* Error */1,
                                       _0: Belt_Option.getWithDefault(err.message, "Error contains no message.")
                                     });
                                 client.end();
-                                
                               })).on("timeout", (function (param) {
                               client.emit("error", Message$Reventless.log(new Error("SSH-Client Error: Connection timed out"), "Client.onTimeout"));
-                              
                             })), (function (client) {
                           client.sftp(function (sftpError, sftp) {
                                 var fail = function (err) {
                                   sftp.emit("error", err);
-                                  
                                 };
                                 var endFtp = function (param) {
                                   sftp.end();
-                                  
                                 };
                                 sftp.on("end", (function (param) {
                                           console.log("end sftp stream");
                                           client.end();
-                                          
                                         })).on("error", (function (err) {
                                         client.emit("error", Message$Reventless.log(err, "SFTP.onError"));
                                         sftp.end();
-                                        
                                       }));
                                 if (sftpError !== undefined) {
                                   var err = Message$Reventless.log(Caml_option.valFromOption(sftpError), "Couldn't establish SFTP connection:");
@@ -85,29 +79,22 @@ function ftp(connectionParams, ftpAction) {
                                           }
                                           Curry._5(downloadAction, connectionParams, entities, sftp, fail, endFtp);
                                           isDone.contents = true;
-                                          
                                         }));
                                   return ;
                                 }
                                 ftpAction._0.pipe(sftp.createWriteStream(Message$Reventless.log(path + ("/" + ftpAction._1), "path for write stream"), undefined).on("finish", (function (param) {
                                                 isDone.contents = true;
                                                 console.log("writable ended");
-                                                
                                               })).on("close", (function (param) {
                                               console.log("writable closed");
                                               sftp.end();
-                                              
                                             })).on("error", (function (err) {
                                             console.error("Error in Write Stream:", err);
                                             var err$1 = new Error("Error in Write Stream");
                                             sftp.emit("error", err$1);
-                                            
                                           })));
-                                
                               });
-                          
                         })).connect(tmp);
-                
               }));
 }
 

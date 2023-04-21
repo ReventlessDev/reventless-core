@@ -2,6 +2,7 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -19,12 +20,12 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
             case "aws:dynamodb" :
                 var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
                 if (typeof match === "number") {
-                  console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.handleCallbackEvent: no NewImage included in Stream event !");
+                  console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
                   return ;
                 }
                 switch (match.TAG | 0) {
                   case /* OldImage */1 :
-                      console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.handleCallbackEvent: no NewImage included in Stream event !");
+                      console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
                       return ;
                   case /* NewImage */0 :
                   case /* NewAndOldImage */2 :
@@ -38,32 +39,30 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
               return ;
           }
         }));
-  return handleEvents(jsons).then(function (param) {
-              var x = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
-                          var match = record.eventSource;
-                          if (match === "aws:sqs") {
-                            return true;
-                          } else {
-                            return false;
-                          }
-                        })), (function (idx, record) {
-                      return {
-                              Id: String(idx),
-                              ReceiptHandle: record.receiptHandle
-                            };
-                    }));
-              return (
-                        x.length !== 0 ? SQS$AwsSdk.deleteMessageBatch(queue.id.get(), x) : Promise.resolve(undefined)
-                      ).then(function (param) {
-                          return Promise.resolve(undefined);
-                        });
-            });
+  return Js_promise.then_((function (param) {
+                var x = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
+                            var match = record.eventSource;
+                            if (match === "aws:sqs") {
+                              return true;
+                            } else {
+                              return false;
+                            }
+                          })), (function (idx, record) {
+                        return {
+                                Id: String(idx),
+                                ReceiptHandle: record.receiptHandle
+                              };
+                      }));
+                return Js_promise.then_((function (param) {
+                              return Promise.resolve(undefined);
+                            }), x.length !== 0 ? SQS$AwsSdk.deleteMessageBatch(queue.id.get(), x) : Promise.resolve(undefined));
+              }), handleEvents(jsons));
 }
 
 function enqueueEvent(queue) {
   return function (delay, _id, messageBody) {
     var queueName = OutputFailsafeRuntime$Reventless.get(queue.name);
-    console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.enqueueMessage:", delay, messageBody, queueName);
+    console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueMessage:", delay, messageBody, queueName);
     return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody);
   };
 }
@@ -71,7 +70,7 @@ function enqueueEvent(queue) {
 function enqueueFifoEvent(queue) {
   return function (delay, id, messageBody) {
     var queueName = OutputFailsafeRuntime$Reventless.get(queue.name);
-    console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws.enqueueMessage:", delay, messageBody, queueName);
+    console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueMessage:", delay, messageBody, queueName);
     return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, id, messageBody);
   };
 }

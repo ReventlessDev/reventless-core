@@ -94,7 +94,10 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       let pub = publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn
       pub(. [cmdJson])->Js.Promise.catch(
         err =>
-          Js.log(j`Extension: Error on publish command to aggregate $aggregateName: $err`)->Js.Promise.resolve,
+          Js.log2(
+            `Extension: Error on publish command to aggregate ${aggregateName}:`,
+            err,
+          )->Js.Promise.resolve,
         _,
       )
     }
@@ -102,7 +105,10 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
     let publishCorePluginExtensionPointCommand = cmdJson =>
       publishToCorePluginExtensionPoint(. [cmdJson])->Js.Promise.catch(
         err =>
-          Js.log(j`Extension: Error on publish command to Core.Plugin ExtensionPoint: $err`)->Js.Promise.resolve,
+          Js.log2(
+            `Extension: Error on publish command to Core.Plugin ExtensionPoint:`,
+            err,
+          )->Js.Promise.resolve,
         _,
       )
 
@@ -114,7 +120,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
           msgId: Message.uuid(),
         },
         commandJson: ForwardCommand({
-          extensionPointName: extensionPointName,
+          extensionPointName,
           id: commandJson.id,
           command: commandJson->Message.toMessageBody,
         })->ReventlessSpec.PluginExtensionPointSpec.command_encode,

@@ -4,6 +4,7 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Message$Reventless = require("./Message.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 
@@ -25,7 +26,7 @@ function Make(Spec, MappingImpl) {
     var meta = param.meta;
     var encodeAggregateCommandJson = function (aggregateCmd, aggregateId) {
       var commandStr = JSON.stringify(Curry._1(Aggregate.command_encode, aggregateCmd));
-      console.log("ExtensionMapping incoming from ExtensionPoint " + extensionPointName + " to Aggregate " + aggregateName + ": Publishing command: " + commandStr + " id: " + aggregateId);
+      console.log("ExtensionMapping incoming from ExtensionPoint " + extensionPointName + " to Aggregate " + aggregateName + ": Publishing command: " + commandStr + " id: " + aggregateId + "");
       return {
               id: aggregateId,
               meta: encodeMeta(meta, aggregateName),
@@ -35,7 +36,7 @@ function Make(Spec, MappingImpl) {
     };
     var encodeExtensionPointCommandJson = function (commandJson, id, extensionPointName, action) {
       var commandStr = JSON.stringify(commandJson);
-      console.log("ExtensionMapping incoming from ExtensionPoint " + extensionPointName + ": " + action + ": " + commandStr + " id: " + id);
+      console.log("ExtensionMapping incoming from ExtensionPoint " + extensionPointName + ": " + action + ": " + commandStr + " id: " + id + "");
       return {
               id: id,
               meta: encodeMeta(meta, extensionPointName),
@@ -55,25 +56,25 @@ function Make(Spec, MappingImpl) {
                                 _1: encodeAggregateCommandJson(x._1, x._0)
                               };
                     case /* PublishAggregateCommandAsync */1 :
-                        var promise$p = x._0.then(function (param) {
-                              return Promise.resolve([
-                                          aggregateName,
-                                          encodeAggregateCommandJson(param[1], param[0])
-                                        ]);
-                            });
+                        var promise$p = Js_promise.then_((function (param) {
+                                return Promise.resolve([
+                                            aggregateName,
+                                            encodeAggregateCommandJson(param[1], param[0])
+                                          ]);
+                              }), x._0);
                         return {
                                 TAG: /* AbstractPublishAggregateCommandAsync */1,
                                 _0: promise$p
                               };
                     case /* PublishAggregateCommandsAsync */2 :
-                        var promise$p$1 = x._0.then(function (tupels) {
-                              return Promise.all(Belt_Array.map(tupels, (function (param) {
-                                                return Promise.resolve([
-                                                            aggregateName,
-                                                            encodeAggregateCommandJson(param[1], param[0])
-                                                          ]);
-                                              })));
-                            });
+                        var promise$p$1 = Js_promise.then_((function (tupels) {
+                                return Promise.all(Belt_Array.map(tupels, (function (param) {
+                                                  return Promise.resolve([
+                                                              aggregateName,
+                                                              encodeAggregateCommandJson(param[1], param[0])
+                                                            ]);
+                                                })));
+                              }), x._0);
                         return {
                                 TAG: /* AbstractPublishAggregateCommandsAsync */2,
                                 _0: promise$p$1
@@ -124,7 +125,7 @@ function Make(Spec, MappingImpl) {
     var meta = match$1.meta;
     var encodeExtensionPointCommandJson = function (commandJson, id, extensionPointName, action) {
       var commandStr = JSON.stringify(commandJson);
-      console.log("ExtensionMapping outgoing from Aggregate " + aggregateName + ": " + action + ": " + commandStr + " id: " + id);
+      console.log("ExtensionMapping outgoing from Aggregate " + aggregateName + ": " + action + ": " + commandStr + " id: " + id + "");
       return {
               id: id,
               meta: encodeMeta(meta, extensionPointName),

@@ -66,7 +66,9 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
     secretUrns
     ->Belt.Array.map(urn =>
       PulumiAws.GetSecretVersion.getSecretNames(urn)->Pulumi.Output.apply(names =>
-        names->Belt.Array.map(name => ECS.Container.Secret.make(~name, ~valueFrom=j`$urn:$name::`))
+        names->Belt.Array.map(
+          name => ECS.Container.Secret.make(~name, ~valueFrom=`${urn}:${name}::`),
+        )
       )
     )
     ->Pulumi.Output.all
@@ -209,14 +211,14 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
         ~opts,
       )
 
-      let invokeClone = j`{
+      let invokeClone = `{
             "version": "2017-02-28",
             "operation": "Invoke",
             "payload": {
-                "restoreDateTime": \\$utils.toJson(\\$context.arguments.restoreDateTime),
+                "restoreDateTime": $utils.toJson($context.arguments.restoreDateTime),
                 "meta": {
-                  "ip": \\$util.toJson(\\$context.identity.sourceIp),
-                  "user": \\$util.toJson(\\$context.identity.username)
+                  "ip": $util.toJson($context.identity.sourceIp),
+                  "user": $util.toJson($context.identity.username)
                 }
             }
           }

@@ -91,7 +91,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
         : (store->states(id), list{state})
     | None => (store->states(id), list{state})
     }
-    store->Js.Dict.set(id, \"@"(updatedStates, newStates))
+    store->Js.Dict.set(id, Belt.List.concat(updatedStates, newStates))
   }
   let deleteStates = (store, id) => store->Js.Dict.set(id, list{})
   let deleteSubState = (store, id, subId, getSubId) =>
@@ -105,41 +105,45 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
 
   open Belt.Result
   open QueryDb
-  let load = (store, . id) => store->states(id)->Ok->Js.Promise.resolve
-  let save = (store, . id, state, saveMode, _ttl) =>
-    switch (store->states(id), saveMode) {
-    | (_, Any)
-    | (list{}, Init)
-    | (list{_}, Overwrite) =>
-      store->setStates(id, list{state})
+  let load = store => (. id) => store->states(id)->Ok->Js.Promise.resolve
+  let save = store =>
+    (. id, state, saveMode, _ttl) =>
+      switch (store->states(id), saveMode) {
+      | (_, Any)
+      | (list{}, Init)
+      | (list{_}, Overwrite) =>
+        store->setStates(id, list{state})
+        Ok()->Js.Promise.resolve
+      | _ => Error(StaleState)->Js.Promise.resolve
+      }
+  let saveBatch = store =>
+    (. batch) => {
+      batch->Belt.Array.forEach(((id, state, _ttl)) => store->addState(id, state))
       Ok()->Js.Promise.resolve
-    | _ => Error(StaleState)->Js.Promise.resolve
     }
-  let saveBatch = (store, . batch) => {
-    batch->Belt.Array.forEach(((id, state, _ttl)) => store->addState(id, state))
-    Ok()->Js.Promise.resolve
-  }
-  let delete = (store, . id, subId) =>
-    switch (subId, Target.subIdConfig) {
-    | (None, _) =>
-      store->deleteStates(id)
-      Ok()->Js.Promise.resolve
-    | (Some((_, subId)), Some({ReventlessSpec.ReadModelSpec.getSubId: getSubId})) =>
-      store->deleteSubState(id, subId, getSubId)
-      Ok()->Js.Promise.resolve
-    | _ => Ok()->Js.Promise.resolve
-    }
-  let deleteBatch = (store, . ids) => {
-    ids->Belt.Array.forEach(((id, subId)) =>
+  let delete = store =>
+    (. id, subId) =>
       switch (subId, Target.subIdConfig) {
-      | (None, _) => store->deleteStates(id)
+      | (None, _) =>
+        store->deleteStates(id)
+        Ok()->Js.Promise.resolve
       | (Some((_, subId)), Some({ReventlessSpec.ReadModelSpec.getSubId: getSubId})) =>
         store->deleteSubState(id, subId, getSubId)
-      | _ => ()
+        Ok()->Js.Promise.resolve
+      | _ => Ok()->Js.Promise.resolve
       }
-    )
-    Ok()->Js.Promise.resolve
-  }
+  let deleteBatch = store =>
+    (. ids) => {
+      ids->Belt.Array.forEach(((id, subId)) =>
+        switch (subId, Target.subIdConfig) {
+        | (None, _) => store->deleteStates(id)
+        | (Some((_, subId)), Some({ReventlessSpec.ReadModelSpec.getSubId: getSubId})) =>
+          store->deleteSubState(id, subId, getSubId)
+        | _ => ()
+        }
+      )
+      Ok()->Js.Promise.resolve
+    }
 
   let handleActions = (actions, primitives) =>
     actions->handleActions(primitives, Target.subIdConfig)
@@ -159,7 +163,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       // logStore("update after event:");
       store->Js.Promise.resolve
 
-    [{id: id, meta: meta, event: event}->Projection.map]
+    [{id, meta, event}->Projection.map]
     ->handleActions({
       load: load(store),
       save: save(store),
@@ -180,7 +184,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     events
     ->Belt.List.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, (time, event)) =>
       p->Js.Promise.then_(
-        store => store->update(testId.contents, {...meta.contents, time: time}, event),
+        store => store->update(testId.contents, {...meta.contents, time}, event),
         _,
       )
     )
@@ -194,7 +198,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let whenEventWithTime = (p, time, event) =>
     expect(() =>
       p->Js.Promise.then_(
-        store => store->update(testId.contents, {...meta.contents, time: time}, event),
+        store => store->update(testId.contents, {...meta.contents, time}, event),
         _,
       )
     )

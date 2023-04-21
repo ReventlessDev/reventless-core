@@ -6,7 +6,7 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Pervasives = require("@rescript/std/lib/js/pervasives.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.bs.js");
@@ -23,7 +23,7 @@ function MakeAggregate(Spec, Behaviour) {
     contents: /* [] */0
   };
   var errorHandler = function (error, param, param$1) {
-    errors.contents = Pervasives.$at(errors.contents, {
+    errors.contents = Belt_List.concat(errors.contents, {
           hd: error,
           tl: /* [] */0
         });
@@ -79,7 +79,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     contents: /* [] */0
   };
   var errorHandler = function (error, param, param$1) {
-    errors.contents = Pervasives.$at(errors.contents, {
+    errors.contents = Belt_List.concat(errors.contents, {
           hd: error,
           tl: /* [] */0
         });
@@ -123,7 +123,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     contents: /* [] */0
   };
   var errorHandler$1 = function (error, param, param$1) {
-    errors$1.contents = Pervasives.$at(errors$1.contents, {
+    errors$1.contents = Belt_List.concat(errors$1.contents, {
           hd: error,
           tl: /* [] */0
         });
@@ -188,53 +188,53 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
                               x._1
                             ]]);
               })));
-    return __x.then(function (commands) {
-                return Promise.resolve(Belt_Array.reduce(Belt_Array.concatMany(commands), {}, (function (targetEvents, param) {
-                                  var id = Curry._1(Target.Id.toString, param[0]);
-                                  var targetHistory = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), /* [] */0), Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0));
-                                  var newEvents = Curry._3(exec$1, {
-                                        id: id,
-                                        meta: TestFixtures$Reventless.context.meta
-                                      }, param[1], targetHistory);
-                                  targetEvents[id] = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0), newEvents);
-                                  return targetEvents;
-                                })));
-              });
+    return Js_promise.then_((function (commands) {
+                  return Promise.resolve(Belt_Array.reduce(Belt_Array.concatMany(commands), {}, (function (targetEvents, param) {
+                                    var id = Curry._1(Target.Id.toString, param[0]);
+                                    var targetHistory = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), /* [] */0), Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0));
+                                    var newEvents = Curry._3(exec$1, {
+                                          id: id,
+                                          meta: TestFixtures$Reventless.context.meta
+                                        }, param[1], targetHistory);
+                                    targetEvents[id] = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0), newEvents);
+                                    return targetEvents;
+                                  })));
+                }), __x);
   };
   var thenTargetEvents = function (expectedTargetEvents, targetEvents) {
-    return targetEvents.then(function (events) {
-                return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                    Belt_List.length(errors.contents),
-                                    Belt_List.length(errors$1.contents),
-                                    events
-                                  ]), [
-                                0,
-                                0,
-                                Js_dict.fromList(expectedTargetEvents)
-                              ]));
-              });
+    return Js_promise.then_((function (events) {
+                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
+                                      Belt_List.length(errors.contents),
+                                      Belt_List.length(errors$1.contents),
+                                      events
+                                    ]), [
+                                  0,
+                                  0,
+                                  Js_dict.fromList(expectedTargetEvents)
+                                ]));
+                }), targetEvents);
   };
   var thenTargetEvent = function (id, expectedTargetEvent, targetEvents) {
-    return targetEvents.then(function (eventsDict) {
-                var events = Js_dict.entries(eventsDict);
-                return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                    Belt_List.length(errors.contents),
-                                    Belt_List.length(errors$1.contents),
-                                    events.length,
-                                    Belt_Array.get(events, 0)
-                                  ]), [
-                                0,
-                                0,
-                                1,
-                                [
-                                  id,
-                                  {
-                                    hd: expectedTargetEvent,
-                                    tl: /* [] */0
-                                  }
-                                ]
-                              ]));
-              });
+    return Js_promise.then_((function (eventsDict) {
+                  var events = Js_dict.entries(eventsDict);
+                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
+                                      Belt_List.length(errors.contents),
+                                      Belt_List.length(errors$1.contents),
+                                      events.length,
+                                      Belt_Array.get(events, 0)
+                                    ]), [
+                                  0,
+                                  0,
+                                  1,
+                                  [
+                                    id,
+                                    {
+                                      hd: expectedTargetEvent,
+                                      tl: /* [] */0
+                                    }
+                                  ]
+                                ]));
+                }), targetEvents);
   };
   var thenNoTargetEvent = function (param) {
     return thenTargetEvents(/* [] */0, param);

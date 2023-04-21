@@ -74,16 +74,16 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker<api> = (
   )
 
   let invokeCommandGenerator = command =>
-    j`
+    `
       {
         "version": "2017-02-28",
         "operation": "Invoke",
         "payload": {
-            "command": "$command",
-            "arguments": \\$utils.toJson(\\$context.arguments),
+            "command": "${command}",
+            "arguments": $utils.toJson($context.arguments),
             "meta": {
-              "ip": \\$util.toJson(\\$context.identity.sourceIp),
-              "user": \\$util.toJson(\\$context.identity.username)
+              "ip": $util.toJson($context.identity.sourceIp),
+              "user": $util.toJson($context.identity.username)
             }
         }
       }
@@ -94,7 +94,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker<api> = (
     | [_aggregate, commandName] => commandName->String.capitalize_ascii
     | _ => field->String.capitalize_ascii
     }
-    Reventless.Logger.logOutput(~loc=__LOC__, j`$name: datasource-name`, dataSource["name"])
+    Reventless.Logger.logOutput(~loc=__LOC__, `${name}: datasource-name`, dataSource["name"])
     AppSync.Resolver.makeUnitResolver(
       ~name=field->String.capitalize_ascii,
       ~api,

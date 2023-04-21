@@ -20,7 +20,7 @@ let makeAddRemoveUserToGroupPolicy = (
     ~args=PulumiAws.IAM.Policy.Args.makeFromString(
       ~policy=userPoolArn
       ->Pulumi.Output.apply(userPoolArn =>
-        j`{
+        `{
             "Version": "2012-10-17",
             "Statement": [
               {
@@ -28,12 +28,12 @@ let makeAddRemoveUserToGroupPolicy = (
                   "Action": [
                       "cognito-idp:AdminAddUserToGroup"
                   ],
-                  "Resource": "$userPoolArn"
+                  "Resource": "${userPoolArn}"
               },
               {
                   "Effect": "Allow",
                   "Action": "cognito-idp:AdminRemoveUserFromGroup",
-                  "Resource": "$userPoolArn"
+                  "Resource": "${userPoolArn}"
               }
             ]
           }`

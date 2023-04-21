@@ -5,7 +5,9 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
+var Js_string = require("@rescript/std/lib/js/js_string.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
@@ -27,7 +29,7 @@ function queryById(table, id) {
 }
 
 function keysFromResource(resource) {
-  var parts = resource.info.get().split(",");
+  var parts = Js_string.split(",", resource.info.get());
   var len = parts.length;
   if (len < 3) {
     switch (len) {
@@ -70,8 +72,7 @@ function calcPurgeTime(ttl) {
 function insertTtl(json, ttl) {
   return Belt_Option.getWithDefault(Belt_Option.flatMap(ttl, (function (ttl) {
                     return Curry._1(Belt_Option.mapWithDefault(Js_json.decodeObject(json), (function (param) {
-                                      console.log("Util_DynamoDb_Runtime-ReventlessAws.insertTtl: Error: Couldn't decode JSON", JSON.stringify(json));
-                                      
+                                      console.log("Util_DynamoDb_Runtime-ReventlessAws" + ".insertTtl: Error: Couldn't decode JSON", JSON.stringify(json));
                                     }), (function (obj, param) {
                                       obj[purgeTimeAttributeName] = calcPurgeTime(ttl);
                                       return Caml_option.some(obj);
@@ -92,12 +93,12 @@ function batchWrite$p(itemRequestMap) {
 }
 
 function wrapWithCount(promise, count) {
-  return promise.then(function (pContent) {
-              return Promise.resolve([
-                          pContent,
-                          count
-                        ]);
-            });
+  return Js_promise.then_((function (pContent) {
+                return Promise.resolve([
+                            pContent,
+                            count
+                          ]);
+              }), promise);
 }
 
 function hasUnprocessedItems(writeOutput) {
@@ -105,18 +106,18 @@ function hasUnprocessedItems(writeOutput) {
 }
 
 function retryIfNecessary(p, maxRetries) {
-  return p.then(function (originalPromiseContent) {
-              var numberOfRetries = originalPromiseContent[1];
-              var writeOutput = originalPromiseContent[0];
-              var unprocessedItems = writeOutput.UnprocessedItems;
-              var unprocessedItemsPresent = hasUnprocessedItems(writeOutput);
-              var numberOfRetriesReached = numberOfRetries >= maxRetries;
-              if (unprocessedItemsPresent && !numberOfRetriesReached) {
-                return retryIfNecessary(wrapWithCount(batchWrite$p(unprocessedItems), numberOfRetries + 1 | 0), maxRetries);
-              } else {
-                return Promise.resolve(originalPromiseContent);
-              }
-            });
+  return Js_promise.then_((function (originalPromiseContent) {
+                var numberOfRetries = originalPromiseContent[1];
+                var writeOutput = originalPromiseContent[0];
+                var unprocessedItems = writeOutput.UnprocessedItems;
+                var unprocessedItemsPresent = hasUnprocessedItems(writeOutput);
+                var numberOfRetriesReached = numberOfRetries >= maxRetries;
+                if (unprocessedItemsPresent && !numberOfRetriesReached) {
+                  return retryIfNecessary(wrapWithCount(batchWrite$p(unprocessedItems), numberOfRetries + 1 | 0), maxRetries);
+                } else {
+                  return Promise.resolve(originalPromiseContent);
+                }
+              }), p);
 }
 
 function toPutRequest(json) {

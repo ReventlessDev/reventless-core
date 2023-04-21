@@ -4,6 +4,7 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Decco = require("decco/src/Decco.bs.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
+var Js_array = require("@rescript/std/lib/js/js_array.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Message$Reventless = require("../../../Message.bs.js");
 var PluginSpec$Reventless = require("./PluginSpec.bs.js");
@@ -44,7 +45,7 @@ function state_decode(v) {
   if (jsonArr$1.length === 0) {
     return Decco.error(undefined, "Expected variant, found empty array", v);
   }
-  var tagged = jsonArr$1.map(Js_json.classify);
+  var tagged = Js_array.map(Js_json.classify, jsonArr$1);
   var match = Belt_Array.getExn(tagged, 0);
   if (typeof match !== "number" && match.TAG === /* JSONString */0) {
     switch (match._0) {

@@ -6,6 +6,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var SNS$AwsSdk = require("@reventless/bs-aws-sdk/src/SNS.bs.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Component = require("./Component").default;
@@ -42,7 +43,7 @@ function toDict(els) {
 }
 
 function makeId(name, version) {
-  return "" + name + "@" + version;
+  return "" + name + "@" + version + "";
 }
 
 function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPointRemoteConnector) {
@@ -104,24 +105,24 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             var eventCollectorName = AWS$Reventless.arn2Name(eventCollector);
             AWS$Reventless.validateName(extensionPointName + ("-" + pluginId));
             var __x = SNS$AwsSdk.subscribeQueueToTopic(eventCollector, eventTopic);
-            var __x$1 = __x.then(function (param) {
-                  return Promise.resolve((console.log("" + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")"), undefined));
-                });
-            return __x$1.catch(function (err) {
-                        return Promise.resolve((console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", err), undefined));
-                      });
+            var __x$1 = Js_promise.then_((function (param) {
+                    return Promise.resolve((console.log("" + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")"), undefined));
+                  }), __x);
+            return Js_promise.$$catch((function (err) {
+                          return Promise.resolve((console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", err), undefined));
+                        }), __x$1);
           };
           var unsubscribe = function (action, extensionPointName, eventTopic, pluginId, eventCollector) {
             var eventTopicName = AWS$Reventless.arn2Name(eventTopic);
             var eventCollectorName = AWS$Reventless.arn2Name(eventCollector);
             AWS$Reventless.validateName(extensionPointName + ("-" + pluginId));
             var __x = SNS$AwsSdk.unsubscribeQueueFromTopic(eventCollector, eventTopic);
-            var __x$1 = __x.then(function (param) {
-                  return Promise.resolve((console.log("" + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")"), undefined));
-                });
-            return __x$1.catch(function (err) {
-                        return Promise.resolve((console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", err), undefined));
-                      });
+            var __x$1 = Js_promise.then_((function (param) {
+                    return Promise.resolve((console.log("" + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")"), undefined));
+                  }), __x);
+            return Js_promise.$$catch((function (err) {
+                          return Promise.resolve((console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", err), undefined));
+                        }), __x$1);
           };
           var callHandler = function (x) {
             switch (x.TAG | 0) {
@@ -139,9 +140,9 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                               }
                               
                             })));
-                  var connectToExtensionPoints = __x.then(function (param) {
-                        return Promise.resolve(undefined);
-                      });
+                  var connectToExtensionPoints = Js_promise.then_((function (param) {
+                          return Promise.resolve(undefined);
+                        }), __x);
                   var __x$1 = Promise.all(Belt_Array.keepMap(extensionPointsOutputs, (function (extensionPoint) {
                               if (Belt_Array.keep(otherPluginExtensions, (function (param) {
                                         return extensionPoint.name === param.extensionPointName;
@@ -150,16 +151,16 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                               }
                               
                             })));
-                  var connectToExtensions = __x$1.then(function (param) {
-                        return Promise.resolve(undefined);
-                      });
+                  var connectToExtensions = Js_promise.then_((function (param) {
+                          return Promise.resolve(undefined);
+                        }), __x$1);
                   var __x$2 = Promise.all([
                         connectToExtensionPoints,
                         connectToExtensions
                       ]);
-                  return __x$2.then(function (param) {
-                              return Promise.resolve(undefined);
-                            });
+                  return Js_promise.then_((function (param) {
+                                return Promise.resolve(undefined);
+                              }), __x$2);
               case /* DoDisconnectPlugin */3 :
                   var match$1 = x._0;
                   var pluginEventCollector = match$1.eventCollector;
@@ -174,9 +175,9 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                               }
                               
                             })));
-                  var disconnectFromExtensionPoints = __x$3.then(function (param) {
-                        return Promise.resolve(undefined);
-                      });
+                  var disconnectFromExtensionPoints = Js_promise.then_((function (param) {
+                          return Promise.resolve(undefined);
+                        }), __x$3);
                   var __x$4 = Promise.all(Belt_Array.keepMap(extensionPointsOutputs, (function (extensionPoint) {
                               if (Belt_Array.keep(pluginExtensions, (function (param) {
                                         return extensionPoint.name === param.extensionPointName;
@@ -185,16 +186,16 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                               }
                               
                             })));
-                  var disconnectFromExtensions = __x$4.then(function (param) {
-                        return Promise.resolve(undefined);
-                      });
+                  var disconnectFromExtensions = Js_promise.then_((function (param) {
+                          return Promise.resolve(undefined);
+                        }), __x$4);
                   var __x$5 = Promise.all([
                         disconnectFromExtensionPoints,
                         disconnectFromExtensions
                       ]);
-                  return __x$5.then(function (param) {
-                              return Promise.resolve(undefined);
-                            });
+                  return Js_promise.then_((function (param) {
+                                return Promise.resolve(undefined);
+                              }), __x$5);
               default:
                 return Promise.resolve(undefined);
             }
@@ -363,15 +364,14 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var serviceNameToEx = function (exs, getServiceNames) {
             var dict = {};
             Belt_Array.forEachU(exs, (function (ex) {
-                    return Belt_Array.forEachU(Curry._1(getServiceNames, ex), (function (serviceName) {
-                                  var mappedExtensionPoints = Js_dict.get(dict, serviceName);
-                                  if (mappedExtensionPoints !== undefined) {
-                                    dict[serviceName] = Belt_Array.concat(mappedExtensionPoints, [ex]);
-                                  } else {
-                                    dict[serviceName] = [ex];
-                                  }
-                                  
-                                }));
+                    Belt_Array.forEachU(Curry._1(getServiceNames, ex), (function (serviceName) {
+                            var mappedExtensionPoints = Js_dict.get(dict, serviceName);
+                            if (mappedExtensionPoints !== undefined) {
+                              dict[serviceName] = Belt_Array.concat(mappedExtensionPoints, [ex]);
+                            } else {
+                              dict[serviceName] = [ex];
+                            }
+                          }));
                   }));
             return dict;
           };
@@ -395,9 +395,9 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                           var __x = Promise.all(Belt_Array.map(exs, (function (ex) {
                                       return Curry._1(getEventHandler, ex)(event$pJson, pluginDefinition.get());
                                     })));
-                          return __x.then(function (param) {
-                                      return Promise.resolve(undefined);
-                                    });
+                          return Js_promise.then_((function (param) {
+                                        return Promise.resolve(undefined);
+                                      }), __x);
                         }));
           };
           var detectUnhandledEvent = function (event$pJson) {
@@ -421,31 +421,31 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             var count = events$pJson.length;
             var __x = Promise.all(Belt_Array.mapWithIndex(events$pJson, (function (idx, event$pJson) {
                         var idx$1 = idx + 1 | 0;
-                        Message$Reventless.logEvent$pJson(event$pJson, "Plugin " + id + " eventsHandler: incoming event " + idx$1 + "/" + count + ":");
+                        Message$Reventless.logEvent$pJson(event$pJson, "Plugin " + id + " eventsHandler: incoming event " + String(idx$1) + "/" + String(count) + ":");
                         detectUnhandledEvent(event$pJson);
                         var __x = handleEvent(event$pJson, incomingServiceNameToPluginConnectExtensionsMapping, (function (extension) {
                                 return extension.incomingEventHandler;
                               }));
-                        return __x.then(function (param) {
-                                    var __x = Promise.all([
-                                          handleEvent(event$pJson, serviceNameToExtensionPointsMapping, (function (extensionPoint) {
-                                                  return extensionPoint.outgoingEventHandler;
-                                                })),
-                                          handleEvent(event$pJson, outgoingServiceNameToExtensionsMapping, (function (extension) {
-                                                  return extension.outgoingEventHandler;
-                                                })),
-                                          handleEvent(event$pJson, incomingServiceNameToExtensionsMapping, (function (extension) {
-                                                  return extension.incomingEventHandler;
-                                                }))
-                                        ]);
-                                    return __x.then(function (param) {
-                                                return Promise.resolve(undefined);
-                                              });
-                                  });
+                        return Js_promise.then_((function (param) {
+                                      var __x = Promise.all([
+                                            handleEvent(event$pJson, serviceNameToExtensionPointsMapping, (function (extensionPoint) {
+                                                    return extensionPoint.outgoingEventHandler;
+                                                  })),
+                                            handleEvent(event$pJson, outgoingServiceNameToExtensionsMapping, (function (extension) {
+                                                    return extension.outgoingEventHandler;
+                                                  })),
+                                            handleEvent(event$pJson, incomingServiceNameToExtensionsMapping, (function (extension) {
+                                                    return extension.incomingEventHandler;
+                                                  }))
+                                          ]);
+                                      return Js_promise.then_((function (param) {
+                                                    return Promise.resolve(undefined);
+                                                  }), __x);
+                                    }), __x);
                       })));
-            return __x.then(function (param) {
-                        return Promise.resolve(undefined);
-                      });
+            return Js_promise.then_((function (param) {
+                          return Promise.resolve(undefined);
+                        }), __x);
           };
           var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
           var eventTopics = Util_Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));

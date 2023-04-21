@@ -5,7 +5,7 @@
    ")
 open AwsSdk
 
-let userPoolEndpoint = (region, userPoolId) => j`cognito-idp.$region.amazonaws.com/$userPoolId`
+let userPoolEndpoint = (region, userPoolId) => `cognito-idp.${region}.amazonaws.com/${userPoolId}`
 
 let signUp = (
   ~region: string,

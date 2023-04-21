@@ -5,11 +5,12 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 
 function filterSupportedResources(resources, supportedServices) {
   return Belt_Array.keep(resources, (function (resource) {
                 return Belt_Array.some(supportedServices, (function (supportedService) {
-                              return Caml_obj.caml_equal(resource.service.get(), supportedService);
+                              return Caml_obj.equal(resource.service.get(), supportedService);
                             }));
               }));
 }
@@ -27,7 +28,9 @@ function findResource(resources, service) {
   if (matching.length !== 0) {
     return Caml_array.get(matching, 0);
   }
-  var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + resources;
+  var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (res) {
+            return Belt_Option.getExn(JSON.stringify(res));
+          })).join(", ") + "";
   console.log(err);
   return Js_exn.raiseError(err);
 }
@@ -37,7 +40,9 @@ function findUnwrappedResource(resources, service) {
   if (resources$1.length !== 0) {
     return Caml_array.get(resources$1, 0);
   }
-  var err = "Util.Adapter.findUnwrappedResource: Couldn't find service " + service + " in resources: " + resources;
+  var err = "Util.Adapter.findUnwrappedResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (res) {
+            return Belt_Option.getExn(JSON.stringify(res));
+          })).join(", ") + "";
   console.log(err);
   return Js_exn.raiseError(err);
 }

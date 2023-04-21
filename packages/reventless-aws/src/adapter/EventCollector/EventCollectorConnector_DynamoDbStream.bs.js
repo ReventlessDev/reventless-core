@@ -50,12 +50,12 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
           return ;
         }
         var eventTopicNames = errorResources.join(",");
-        return Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
+        Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames + ""));
       });
   return {
           resources: [],
           enqueueEvent: (function (delay, id, messageBody) {
-              return Promise.resolve((console.log("EventCollectorConnector_DynamoDbStream-ReventlessAws supports no enqueueEvent:", delay, id, messageBody), undefined));
+              return Promise.resolve((console.log("EventCollectorConnector_DynamoDbStream-ReventlessAws" + " supports no enqueueEvent:", delay, id, messageBody), undefined));
             })
         };
 }

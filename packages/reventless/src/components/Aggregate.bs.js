@@ -8,7 +8,7 @@ var Belt_Set = require("@rescript/std/lib/js/belt_Set.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Pervasives = require("@rescript/std/lib/js/pervasives.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -60,7 +60,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
     var errorJson = JSON.stringify(Curry._1(Spec.error_encode, error));
     var commandJson = JSON.stringify(Curry._1(Spec.command_encode, command));
     var id = context.id;
-    console.log("Behaviour error " + errorJson + " in " + Spec.name + "(" + id + "): Command: " + commandJson);
+    console.log("Behaviour error " + errorJson + " in " + Spec.name + "(" + id + "): Command: " + commandJson + "");
     return /* [] */0;
   };
   var groupTopicItemsById = function (topicItems) {
@@ -73,7 +73,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                   return [
                           id,
                           Belt_Array.keep(topicItems, (function (param) {
-                                  return Caml_obj.caml_equal(param.command.id, id);
+                                  return Caml_obj.equal(param.command.id, id);
                                 }))
                         ];
                 }));
@@ -101,144 +101,143 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
               };
       };
       console.log("starting Aggregate.execCommands");
-      return Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (function (param) {
-                          var topicItems = param[1];
-                          var id = param[0];
-                          return eventLogReplay(id).then(function (history) {
-                                      var processCommand = function (accP, command$p) {
-                                        return accP.then(function (x) {
-                                                    if (x.TAG === /* Ok */0) {
-                                                      var param = x._0;
-                                                      var events = param[1];
-                                                      var stateO = param[0];
-                                                      if (stateO !== undefined) {
-                                                        var generatedEvents;
-                                                        try {
-                                                          generatedEvents = Behaviour.execute(Caml_option.valFromOption(stateO), command$p.command, {
-                                                                id: Curry._1(Spec.Id.toString, command$p.id),
-                                                                meta: command$p.meta
-                                                              }, errorHandler);
-                                                        }
-                                                        catch (raw_event){
-                                                          var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
-                                                          if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-                                                            console.log("Aggregate.processCommand: InvalidEvent", JSON.stringify($$event._1));
-                                                            generatedEvents = /* [] */0;
+      return Js_promise.then_((function (results) {
+                    return Promise.resolve(Belt_Array.concatMany(results));
+                  }), Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (function (param) {
+                            var topicItems = param[1];
+                            var id = param[0];
+                            return Js_promise.then_((function (history) {
+                                          var processCommand = function (accP, command$p) {
+                                            return Js_promise.then_((function (x) {
+                                                          if (x.TAG === /* Ok */0) {
+                                                            var param = x._0;
+                                                            var events = param[1];
+                                                            var stateO = param[0];
+                                                            if (stateO !== undefined) {
+                                                              var generatedEvents;
+                                                              try {
+                                                                generatedEvents = Behaviour.execute(Caml_option.valFromOption(stateO), command$p.command, {
+                                                                      id: Curry._1(Spec.Id.toString, command$p.id),
+                                                                      meta: command$p.meta
+                                                                    }, errorHandler);
+                                                              }
+                                                              catch (raw_event){
+                                                                var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
+                                                                if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
+                                                                  console.log("Aggregate.processCommand: InvalidEvent", JSON.stringify($$event._1));
+                                                                  generatedEvents = /* [] */0;
+                                                                } else {
+                                                                  throw $$event;
+                                                                }
+                                                              }
+                                                              return Promise.resolve({
+                                                                          TAG: /* Ok */0,
+                                                                          _0: [
+                                                                            Belt_List.reduce(generatedEvents, stateO, apply$p),
+                                                                            Belt_List.concat(events, {
+                                                                                  hd: [
+                                                                                    generatedEvents,
+                                                                                    updateMeta(command$p)
+                                                                                  ],
+                                                                                  tl: /* [] */0
+                                                                                })
+                                                                          ]
+                                                                        });
+                                                            }
+                                                            var generatedEvents$1 = Behaviour.create(command$p.command, {
+                                                                  id: Curry._1(Spec.Id.toString, command$p.id),
+                                                                  meta: command$p.meta
+                                                                }, errorHandler);
+                                                            return Promise.resolve({
+                                                                        TAG: /* Ok */0,
+                                                                        _0: [
+                                                                          Belt_List.reduce(generatedEvents$1, undefined, apply$p),
+                                                                          Belt_List.concat(events, {
+                                                                                hd: [
+                                                                                  generatedEvents$1,
+                                                                                  updateMeta(command$p)
+                                                                                ],
+                                                                                tl: /* [] */0
+                                                                              })
+                                                                        ]
+                                                                      });
                                                           } else {
-                                                            throw $$event;
+                                                            return Promise.resolve(x);
                                                           }
+                                                        }), accP);
+                                          };
+                                          console.log("finished eventLogReplay for id " + Curry._1(Spec.Id.toString, id) + "");
+                                          Belt_Array.mapWithIndex(topicItems, (function (idx, param) {
+                                                  var command = param.command;
+                                                  var count = topicItems.length;
+                                                  var id = command.id;
+                                                  var commandName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.command_encode, command.command)), "Could not get command-name");
+                                                  var commandStr = JSON.stringify(Message$Reventless.command$p_encode(Spec.Id.t_encode, Spec.command_encode, command));
+                                                  var idx$1 = idx + 1 | 0;
+                                                  console.log("CommandTopic: handling command " + String(idx$1) + "/" + String(count) + ": " + commandName + "(" + Curry._1(Spec.Id.toString, id) + ") ref: " + param.reference + ", complete command: " + commandStr + "");
+                                                }));
+                                          var match = Belt_Array.unzip(Belt_Array.map(topicItems, (function (param) {
+                                                      return [
+                                                              param.reference,
+                                                              param.command
+                                                            ];
+                                                    })));
+                                          var references = match[0];
+                                          return Js_promise.then_((function (x) {
+                                                        if (x.length === 0) {
+                                                          return Promise.resolve((console.log("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + "): no Event generated"), Belt_Array.map(references, (function (reference) {
+                                                                              return {
+                                                                                      TAG: /* Ok */0,
+                                                                                      _0: reference
+                                                                                    };
+                                                                            }))));
                                                         }
-                                                        return Promise.resolve({
-                                                                    TAG: /* Ok */0,
-                                                                    _0: [
-                                                                      Belt_List.reduce(generatedEvents, stateO, apply$p),
-                                                                      Pervasives.$at(events, {
-                                                                            hd: [
-                                                                              generatedEvents,
-                                                                              updateMeta(command$p)
-                                                                            ],
-                                                                            tl: /* [] */0
-                                                                          })
-                                                                    ]
-                                                                  });
-                                                      }
-                                                      var generatedEvents$1 = Behaviour.create(command$p.command, {
-                                                            id: Curry._1(Spec.Id.toString, command$p.id),
-                                                            meta: command$p.meta
-                                                          }, errorHandler);
-                                                      return Promise.resolve({
+                                                        var eventCount = x.length;
+                                                        console.log("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + "): " + String(eventCount) + " Event(s) generated:", Belt_Array.map(x, (function (event$p) {
+                                                                    return Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
+                                                                  })));
+                                                        return Js_promise.then_((function (results) {
+                                                                      console.log("finished eventLogAppend for id " + Curry._1(Spec.Id.toString, id) + "");
+                                                                      return Promise.resolve(results);
+                                                                    }), Js_promise.then_((function (result) {
+                                                                          var tmp;
+                                                                          tmp = result.TAG === /* Ok */0 ? Belt_Array.map(references, (function (reference) {
+                                                                                    return {
+                                                                                            TAG: /* Ok */0,
+                                                                                            _0: reference
+                                                                                          };
+                                                                                  })) : Belt_Array.map(references, (function (reference) {
+                                                                                    return {
+                                                                                            TAG: /* Error */1,
+                                                                                            _0: reference
+                                                                                          };
+                                                                                  }));
+                                                                          return Promise.resolve(tmp);
+                                                                        }), eventLogAppend(history.length, id, x)));
+                                                      }), Js_promise.then_((function (x) {
+                                                            if (x.TAG === /* Ok */0) {
+                                                              return Promise.resolve(Belt_List.toArray(Belt_List.flatten(Belt_List.map(x._0[1], (function (param) {
+                                                                                        var meta = param[1];
+                                                                                        return Belt_List.map(param[0], (function ($$event) {
+                                                                                                      return {
+                                                                                                              id: id,
+                                                                                                              meta: meta,
+                                                                                                              event: $$event
+                                                                                                            };
+                                                                                                    }));
+                                                                                      })))));
+                                                            } else {
+                                                              return Js_exn.raiseError(x._0);
+                                                            }
+                                                          }), Belt_Array.reduce(match[1], Promise.resolve({
                                                                   TAG: /* Ok */0,
                                                                   _0: [
-                                                                    Belt_List.reduce(generatedEvents$1, undefined, apply$p),
-                                                                    Pervasives.$at(events, {
-                                                                          hd: [
-                                                                            generatedEvents$1,
-                                                                            updateMeta(command$p)
-                                                                          ],
-                                                                          tl: /* [] */0
-                                                                        })
+                                                                    Belt_List.reduce(Belt_List.fromArray(history), undefined, apply$p),
+                                                                    /* [] */0
                                                                   ]
-                                                                });
-                                                    } else {
-                                                      return Promise.resolve(x);
-                                                    }
-                                                  });
-                                      };
-                                      console.log("finished eventLogReplay for id " + id);
-                                      Belt_Array.mapWithIndex(topicItems, (function (idx, param) {
-                                              var command = param.command;
-                                              var count = topicItems.length;
-                                              var id = command.id;
-                                              var commandName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.command_encode, command.command)), "Could not get command-name");
-                                              var commandStr = JSON.stringify(Message$Reventless.command$p_encode(Spec.Id.t_encode, Spec.command_encode, command));
-                                              var idx$1 = idx + 1 | 0;
-                                              console.log("CommandTopic: handling command " + idx$1 + "/" + count + ": " + commandName + "(" + id + ") ref: " + param.reference + ", complete command: " + commandStr);
-                                              
-                                            }));
-                                      var match = Belt_Array.unzip(Belt_Array.map(topicItems, (function (param) {
-                                                  return [
-                                                          param.reference,
-                                                          param.command
-                                                        ];
-                                                })));
-                                      var references = match[0];
-                                      return Belt_Array.reduce(match[1], Promise.resolve({
-                                                          TAG: /* Ok */0,
-                                                          _0: [
-                                                            Belt_List.reduce(Belt_List.fromArray(history), undefined, apply$p),
-                                                            /* [] */0
-                                                          ]
-                                                        }), processCommand).then(function (x) {
-                                                    if (x.TAG === /* Ok */0) {
-                                                      return Promise.resolve(Belt_List.toArray(Belt_List.flatten(Belt_List.map(x._0[1], (function (param) {
-                                                                                var meta = param[1];
-                                                                                return Belt_List.map(param[0], (function ($$event) {
-                                                                                              return {
-                                                                                                      id: id,
-                                                                                                      meta: meta,
-                                                                                                      event: $$event
-                                                                                                    };
-                                                                                            }));
-                                                                              })))));
-                                                    } else {
-                                                      return Js_exn.raiseError(x._0);
-                                                    }
-                                                  }).then(function (x) {
-                                                  if (x.length === 0) {
-                                                    return Promise.resolve((console.log("Aggregate.handleCommands(" + id + "): no Event generated"), Belt_Array.map(references, (function (reference) {
-                                                                        return {
-                                                                                TAG: /* Ok */0,
-                                                                                _0: reference
-                                                                              };
-                                                                      }))));
-                                                  }
-                                                  var eventCount = x.length;
-                                                  console.log("Aggregate.handleCommands(" + id + "): " + eventCount + " Event(s) generated:", Belt_Array.map(x, (function (event$p) {
-                                                              return Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
-                                                            })));
-                                                  return eventLogAppend(history.length, id, x).then(function (result) {
-                                                                var tmp;
-                                                                tmp = result.TAG === /* Ok */0 ? Belt_Array.map(references, (function (reference) {
-                                                                          return {
-                                                                                  TAG: /* Ok */0,
-                                                                                  _0: reference
-                                                                                };
-                                                                        })) : Belt_Array.map(references, (function (reference) {
-                                                                          return {
-                                                                                  TAG: /* Error */1,
-                                                                                  _0: reference
-                                                                                };
-                                                                        }));
-                                                                return Promise.resolve(tmp);
-                                                              }).then(function (results) {
-                                                              console.log("finished eventLogAppend for id " + id);
-                                                              return Promise.resolve(results);
-                                                            });
-                                                });
-                                    });
-                        }))).then(function (results) {
-                  return Promise.resolve(Belt_Array.concatMany(results));
-                });
+                                                                }), processCommand)));
+                                        }), eventLogReplay(id));
+                          }))));
     };
   };
   var construct = function (self, name) {

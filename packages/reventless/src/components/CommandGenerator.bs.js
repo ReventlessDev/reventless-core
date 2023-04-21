@@ -5,7 +5,9 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -38,16 +40,18 @@ function Make(Config, Spec, Behaviour, Resolvers) {
       Caml_array.set(params, 0, payload.command);
       var x$1 = Curry._1(Behaviour.resolverConfig.commandDecoder, params);
       var command;
-      command = x$1.TAG === /* Ok */0 ? x$1._0 : Js_exn.raiseError("Couldn't decode " + params + "->Message.stringify: " + x$1._0);
+      command = x$1.TAG === /* Ok */0 ? x$1._0 : Js_exn.raiseError("Couldn't decode " + Belt_Array.map(params, (function (prim) {
+                      return JSON.stringify(prim);
+                    })).join(", ") + "->Message.stringify: " + Belt_Option.getExn(JSON.stringify(x$1._0)) + "");
       var command$p = {
         id: id,
         meta: meta,
         command: command
       };
       var __x = publish(command$p);
-      return __x.then(function (param) {
-                  return Promise.resolve(msgId);
-                });
+      return Js_promise.then_((function (param) {
+                    return Promise.resolve(msgId);
+                  }), __x);
     };
   };
   var construct = function (self, name, api, commandHandler) {

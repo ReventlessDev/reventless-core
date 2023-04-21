@@ -41,7 +41,7 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 open AwsSdk.DynamoDb_DynamoDb
 
 let enableStream = tableName => {
-  Js.log(j`$__MODULE__: enableStream for $tableName`)
+  Js.log(`${__MODULE__}: enableStream for ${tableName}`)
   updateTable(
     UpdateTableInput.make(
       ~_TableName=tableName,

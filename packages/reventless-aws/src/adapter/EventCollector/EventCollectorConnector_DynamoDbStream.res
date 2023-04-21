@@ -53,7 +53,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
 
       if errorResources->Belt.Array.length > 0 {
         let eventTopicNames = errorResources->Js.Array2.joinWith(",")
-        Js.Exn.raiseError(__MODULE__ ++ j` cannot connect to EventTopic(s) $eventTopicNames`)
+        Js.Exn.raiseError(__MODULE__ ++ ` cannot connect to EventTopic(s) ${eventTopicNames}`)
       }
     })
 

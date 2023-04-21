@@ -7,7 +7,7 @@ var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.j
 
 var name = "DeadLetterQueue";
 
-var nameFifo = "FIFODeadLetterQueue";
+var nameFifo = "FIFO" + name;
 
 var queue = new (Aws.sqs.Queue)(name, {
       visibilityTimeoutSeconds: 180,
@@ -23,7 +23,7 @@ var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
 
 function callback(evt, ctx) {
   return new Promise((function (resolve, param) {
-                return resolve((console.log("DEAD LETTER ITEM:", evt, ctx), undefined));
+                resolve((console.log("DEAD LETTER ITEM:", evt, ctx), undefined));
               }));
 }
 

@@ -46,8 +46,8 @@ var extensionPointNames2 = ["Test.Test"];
 var pluginDefinition2_extensionPoints = Belt_Array.mapWithIndex(extensionPointNames2, (function (idx, name) {
         return {
                 name: name,
-                commandTopic: "commandTopic" + idx,
-                eventTopic: "eventTopic" + idx
+                commandTopic: "commandTopic" + String(idx) + "",
+                eventTopic: "eventTopic" + String(idx) + ""
               };
       }));
 

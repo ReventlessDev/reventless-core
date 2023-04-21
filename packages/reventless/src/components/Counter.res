@@ -187,31 +187,37 @@ module Make = (
       ->Belt.Array.forEach(((counterId, references)) => {
         let size = references->Belt.Array.size
         let referencesStr = references->Js.Array2.joinWith(",")
-        Js.log(j`  $size reference(s) for counterId $counterId: $referencesStr`)
+        Js.log(
+          `  ${size->Belt.Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`,
+        )
       })
 
     let count = (saveBatch, countItems) =>
       saveBatch(.
         countItems->Belt.Array.map(({counterId, reference, inc}) => {
           let id = makeId((counterId, reference))
-          let state: ReferencesSpec.state = {id: id, inc: inc}
+          let state: ReferencesSpec.state = {id, inc}
           (id, state, ttl)
         }),
       )->Js.Promise.then_(x =>
         switch x {
         | Belt.Result.Ok(_) =>
           let batchSize = countItems->Belt.Array.size
-          Js.log(__MODULE__ ++ j`: saved batch of $batchSize reference(s):`)
+          Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Belt.Int.toString} reference(s):`)
           countItems->logCountItems
           Js.Promise.resolve()
         | Error(QueryDb.NotSavedToStorage(err)) =>
           let batchSize = countItems->Belt.Array.size
-          Js.log(j`Counter error: couldn't save batch of $batchSize reference(s):`)
+          Js.log(
+            `Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
+          )
           countItems->logCountItems
           NotCounted(err)->Js.Promise.reject
         | Error(_) =>
           let batchSize = countItems->Belt.Array.size
-          Js.log(j`Unknown Counter error: couldn't save batch of $batchSize reference(s):`)
+          Js.log(
+            `Unknown Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
+          )
           countItems->logCountItems
           NotCounted("Unknown error")->Js.Promise.reject
         }
@@ -250,7 +256,10 @@ module Make = (
           switch state->CountsSpec.state_decode {
           | Ok({id, count}) if count == 0 =>
             let (counterId, _) = id->unmakeId
-            Js.log(__MODULE__ ++ j`.counterHandler: counted down $name($id) to $count`)
+            Js.log(
+              __MODULE__ ++
+              `.counterHandler: counted down ${name}(${id}) to ${count->Belt.Int.toString}`,
+            )
             let meta = Message.generateMeta(~service=Source.name, ~user="Counter", ())
             Some(
               [
@@ -262,11 +271,14 @@ module Make = (
               ->Js.Json.object_,
             )
           | Ok({id, count}) =>
-            Js.log(__MODULE__ ++ j`.counterHandler: counted down $name($id) to $count`)
+            Js.log(
+              __MODULE__ ++
+              `.counterHandler: counted down ${name}(${id}) to ${count->Belt.Int.toString}`,
+            )
             None
           | _ =>
             let stateStr = state->Js.Json.stringify
-            Js.log(__MODULE__ ++ j`.counterHandler: couldn't decode state $stateStr`)
+            Js.log(__MODULE__ ++ `.counterHandler: couldn't decode state ${stateStr}`)
             None
           }
         ),

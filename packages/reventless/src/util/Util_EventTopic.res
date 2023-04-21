@@ -5,7 +5,7 @@ let filterEventTopics = (allEventTopics, aggregateNames) =>
     try (aggregateName, allEventTopics->Js.Dict.get(aggregateName)->Belt.Option.getExn) catch {
     | exn =>
       Js.log2(
-        j`Util_EventTopic.filterEventTopics: Couldn't find Aggregate $aggregateName in`,
+        `Util_EventTopic.filterEventTopics: Couldn't find Aggregate ${aggregateName} in`,
         allEventTopics,
       )
       raise(exn)

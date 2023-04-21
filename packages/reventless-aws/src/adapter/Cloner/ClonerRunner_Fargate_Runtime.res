@@ -12,7 +12,7 @@ let clone = (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, paylo
   let environment = {
     open AwsSdk.ECS.KeyValuePair
     [
-      make(~name="REVENTLESS_CORE_STACK", ~value=j`$organization/$project/$stack`),
+      make(~name="REVENTLESS_CORE_STACK", ~value=`${organization}/${project}/${stack}`),
       make(~name="RESTORE_DATE_TIME", ~value=payload["restoreDateTime"]),
     ]
   }

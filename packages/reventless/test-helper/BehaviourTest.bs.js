@@ -6,7 +6,6 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
-var Pervasives = require("@rescript/std/lib/js/pervasives.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -24,7 +23,7 @@ function Make(Spec, Behaviour) {
     contents: /* [] */0
   };
   var errorHandler = function (error, param, param$1) {
-    errors.contents = Pervasives.$at(errors.contents, {
+    errors.contents = Belt_List.concat(errors.contents, {
           hd: error,
           tl: /* [] */0
         });

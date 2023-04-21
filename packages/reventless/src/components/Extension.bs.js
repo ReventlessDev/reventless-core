@@ -5,6 +5,7 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Id$Reventless = require("../Id.bs.js");
@@ -38,15 +39,15 @@ function Make(Spec, Mappings) {
     var publishAggregateCommand = function (aggregateName, cmdJson) {
       var pub = Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName));
       var __x = pub([cmdJson]);
-      return __x.catch(function (err) {
-                  return Promise.resolve((console.log("Extension: Error on publish command to aggregate " + aggregateName + ": " + err), undefined));
-                });
+      return Js_promise.$$catch((function (err) {
+                    return Promise.resolve((console.log("Extension: Error on publish command to aggregate " + aggregateName + ":", err), undefined));
+                  }), __x);
     };
     var publishCorePluginExtensionPointCommand = function (cmdJson) {
       var __x = publishToCorePluginExtensionPoint([cmdJson]);
-      return __x.catch(function (err) {
-                  return Promise.resolve((console.log("Extension: Error on publish command to Core.Plugin ExtensionPoint: " + err), undefined));
-                });
+      return Js_promise.$$catch((function (err) {
+                    return Promise.resolve((console.log("Extension: Error on publish command to Core.Plugin ExtensionPoint:", err), undefined));
+                  }), __x);
     };
     var forwardCommand = function (extensionPointName, commandJson) {
       var init = commandJson.meta;
@@ -77,28 +78,28 @@ function Make(Spec, Mappings) {
             return publishAggregateCommand(x._0, x._1);
         case /* AbstractPublishAggregateCommandAsync */1 :
             var __x = x._0;
-            return __x.then(function (param) {
-                        return publishAggregateCommand(param[0], param[1]);
-                      });
+            return Js_promise.then_((function (param) {
+                          return publishAggregateCommand(param[0], param[1]);
+                        }), __x);
         case /* AbstractPublishAggregateCommandsAsync */2 :
             var __x$1 = x._0;
-            return __x$1.then(function (tupels) {
-                        var __x = Promise.all(Belt_Array.map(tupels, (function (param) {
-                                    return publishAggregateCommand(param[0], param[1]);
-                                  })));
-                        return __x.then(function (param) {
-                                    return Promise.resolve(undefined);
-                                  });
-                      });
+            return Js_promise.then_((function (tupels) {
+                          var __x = Promise.all(Belt_Array.map(tupels, (function (param) {
+                                      return publishAggregateCommand(param[0], param[1]);
+                                    })));
+                          return Js_promise.then_((function (param) {
+                                        return Promise.resolve(undefined);
+                                      }), __x);
+                        }), __x$1);
         case /* AbstractPublishPluginExtensionPointCommand */3 :
             return publishCorePluginExtensionPointCommand(x._0);
         case /* AbstractPublishExtensionPointCommand */4 :
             return forwardCommand(x._0, x._1);
         case /* AbstractCall */5 :
             var __x$2 = Curry._1(x._0, undefined);
-            return __x$2.catch(function (err) {
-                        return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), undefined));
-                      });
+            return Js_promise.$$catch((function (err) {
+                          return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), undefined));
+                        }), __x$2);
         
       }
     };
@@ -110,9 +111,9 @@ function Make(Spec, Mappings) {
             return forwardCommand(x._0, x._1);
         case /* AbstractCall */2 :
             var __x = Curry._1(x._0, undefined);
-            return __x.catch(function (err) {
-                        return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), undefined));
-                      });
+            return Js_promise.$$catch((function (err) {
+                          return Promise.resolve((console.log("ExtensionPoint: Error on calling handler:", err), undefined));
+                        }), __x);
         
       }
     };
@@ -121,9 +122,9 @@ function Make(Spec, Mappings) {
       if (event$p.TAG === /* Ok */0) {
         var commandActions = mapIncomingEvent(event$p._0, pluginDef, queryEngine);
         var __x = Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction));
-        return __x.then(function (param) {
-                    return Promise.resolve(undefined);
-                  });
+        return Js_promise.then_((function (param) {
+                      return Promise.resolve(undefined);
+                    }), __x);
       }
       console.log("Could not decode event':", event$p._0);
       return Promise.resolve(undefined);
@@ -131,9 +132,9 @@ function Make(Spec, Mappings) {
     var outgoingEventHandler = function (event$pJson, pluginDef) {
       var commandActions = Curry._1(mapOutgoingEvent(event$pJson), pluginDef);
       var __x = Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction));
-      return __x.then(function (param) {
-                  return Promise.resolve(undefined);
-                });
+      return Js_promise.then_((function (param) {
+                    return Promise.resolve(undefined);
+                  }), __x);
     };
     var outputs = {
       name: name,

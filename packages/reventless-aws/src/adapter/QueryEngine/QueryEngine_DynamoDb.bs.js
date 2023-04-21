@@ -6,7 +6,7 @@ var $$String = require("@rescript/std/lib/js/string.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Pervasives = require("@rescript/std/lib/js/pervasives.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.bs.js");
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
@@ -26,26 +26,26 @@ function toJson(x) {
 function createFilters(filters) {
   return Belt_List.unzip(Belt_List.mapWithIndex(filters, (function (idx, param) {
                     var key = param[0];
-                    var valueName = "" + key + idx;
+                    var valueName = "" + key + "" + String(idx) + "";
                     var tmp;
                     switch (param[1]) {
                       case /* Equal */0 :
-                          tmp = "#" + key + " = :" + valueName;
+                          tmp = "#" + key + " = :" + valueName + "";
                           break;
                       case /* Unequal */1 :
-                          tmp = "#" + key + " <> :" + valueName;
+                          tmp = "#" + key + " <> :" + valueName + "";
                           break;
                       case /* LessOrEqual */2 :
-                          tmp = "#" + key + " <= :" + valueName;
+                          tmp = "#" + key + " <= :" + valueName + "";
                           break;
                       case /* Less */3 :
-                          tmp = "#" + key + " < :" + valueName;
+                          tmp = "#" + key + " < :" + valueName + "";
                           break;
                       case /* GreaterOrEqual */4 :
-                          tmp = "#" + key + " >= :" + valueName;
+                          tmp = "#" + key + " >= :" + valueName + "";
                           break;
                       case /* Greater */5 :
-                          tmp = "#" + key + " > :" + valueName;
+                          tmp = "#" + key + " > :" + valueName + "";
                           break;
                       case /* Exists */6 :
                           tmp = "attribute_exists( #" + key + " )";
@@ -68,11 +68,11 @@ function createFilters(filters) {
                             tmp,
                             [
                               [
-                                "#" + key,
+                                "#" + key + "",
                                 key
                               ],
                               [
-                                ":" + valueName,
+                                ":" + valueName + "",
                                 toJson(param[2])
                               ]
                             ]
@@ -89,14 +89,14 @@ function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendingOpt,
   var filterExpressions = match[0];
   var filterExpression = filterExpressions ? $$String.concat(" AND ", filterExpressions) : undefined;
   var match$1 = Belt_List.unzip(match[1]);
-  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromList(Pervasives.$at({
+  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromList(Belt_List.concat({
                     hd: [
                       ":value",
                       toJson(id)
                     ],
                     tl: /* [] */0
                   }, match$1[1]))));
-  var attributeNames = Js_dict.fromList(Pervasives.$at({
+  var attributeNames = Js_dict.fromList(Belt_List.concat({
             hd: [
               "#key",
               key
@@ -120,15 +120,15 @@ function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendingOpt,
   }
   var params = tmp;
   var __x = Curry._1(DynamoDb_DocumentClient$AwsSdk.queryRecursive(params)(undefined), undefined);
-  var __x$1 = __x.then(function (result) {
-        return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
-                          return JSON.parse(JSON.stringify(js));
-                        })));
-      });
-  return __x$1.catch(function (err) {
-              console.log("Task.query error:", err);
-              return Promise.resolve([]);
-            });
+  var __x$1 = Js_promise.then_((function (result) {
+          return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
+                            return JSON.parse(JSON.stringify(js));
+                          })));
+        }), __x);
+  return Js_promise.$$catch((function (err) {
+                console.log("Task.query error:", err);
+                return Promise.resolve([]);
+              }), __x$1);
 }
 
 function scanByTableName(tableName, filterConfigs, limit) {
@@ -148,14 +148,14 @@ function scanByTableName(tableName, filterConfigs, limit) {
     tmp.FilterExpression = filterExpression;
   }
   var params = tmp;
-  return Curry._1(DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined), undefined).then(function (result) {
-                return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
-                                  return JSON.parse(JSON.stringify(js));
-                                })));
-              }).catch(function (err) {
-              console.log("Task.query error:", err);
-              return Promise.resolve([]);
-            });
+  return Js_promise.$$catch((function (err) {
+                console.log("Task.query error:", err);
+                return Promise.resolve([]);
+              }), Js_promise.then_((function (result) {
+                    return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
+                                      return JSON.parse(JSON.stringify(js));
+                                    })));
+                  }), Curry._1(DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined), undefined)));
 }
 
 function make(allQueryDbs) {

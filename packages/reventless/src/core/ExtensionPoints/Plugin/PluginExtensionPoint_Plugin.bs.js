@@ -4,6 +4,7 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Decco = require("decco/src/Decco.bs.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Id$Reventless = require("../../../Id.bs.js");
 var Message$Reventless = require("../../../Message.bs.js");
@@ -35,30 +36,30 @@ function forwardCommand(_id, command, extensionPointName, queryEngine) {
           tl: /* [] */0
         }
       }, 1000);
-  return __x.then(function (x) {
-              if (x.length === 0) {
-                return Promise.resolve((console.log("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName), undefined));
-              }
-              var plugin = Belt_Array.getExn(x, 0);
-              var x$1 = PluginReadModelSpec$Reventless.state_decode(plugin);
-              if (x$1.TAG !== /* Ok */0) {
-                return Promise.resolve((console.log("ForwardCommand: Couldn't decode Plugin", plugin, x$1._0), undefined));
-              }
-              var plugin$1 = x$1._0;
-              var x$2 = Belt_Array.getBy(plugin$1.extensionPoints, (function (extensionPoint) {
-                      return extensionPoint.name === extensionPointName;
-                    }));
-              if (x$2 === undefined) {
-                return Promise.resolve((console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$1), undefined));
-              }
-              var __x = SQS$AwsSdk.sendMessage(x$2.commandTopic, command, undefined, undefined, undefined, undefined);
-              var __x$1 = __x.then(function (param) {
-                    return Promise.resolve((console.log("ForwardCommand: published command to", plugin$1.name, x$2.commandTopic), undefined));
-                  });
-              return __x$1.catch(function (err) {
-                          return Promise.resolve((console.log("PluginExtensionPoint_PluginMapping: Error on publish command:", err), undefined));
-                        });
-            });
+  return Js_promise.then_((function (x) {
+                if (x.length === 0) {
+                  return Promise.resolve((console.log("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName), undefined));
+                }
+                var plugin = Belt_Array.getExn(x, 0);
+                var x$1 = PluginReadModelSpec$Reventless.state_decode(plugin);
+                if (x$1.TAG !== /* Ok */0) {
+                  return Promise.resolve((console.log("ForwardCommand: Couldn't decode Plugin", plugin, x$1._0), undefined));
+                }
+                var plugin$1 = x$1._0;
+                var x$2 = Belt_Array.getBy(plugin$1.extensionPoints, (function (extensionPoint) {
+                        return extensionPoint.name === extensionPointName;
+                      }));
+                if (x$2 === undefined) {
+                  return Promise.resolve((console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$1), undefined));
+                }
+                var __x = SQS$AwsSdk.sendMessage(x$2.commandTopic, command, undefined, undefined, undefined, undefined);
+                var __x$1 = Js_promise.then_((function (param) {
+                        return Promise.resolve((console.log("ForwardCommand: published command to", plugin$1.name, x$2.commandTopic), undefined));
+                      }), __x);
+                return Js_promise.$$catch((function (err) {
+                              return Promise.resolve((console.log("PluginExtensionPoint_PluginMapping: Error on publish command:", err), undefined));
+                            }), __x$1);
+              }), __x);
 }
 
 function callHandler(createSchedule, deleteSchedule, queryEngine, callCommand) {

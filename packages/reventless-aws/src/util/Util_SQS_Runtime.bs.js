@@ -2,6 +2,7 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -36,7 +37,7 @@ function makeEntry(queueService, commandJson) {
   var messageId = match.msgId;
   var id = commandJson.id;
   var messageBody = Message$Reventless.toMessageBody(commandJson);
-  console.log("Publishing command to Aggregate " + match.service + ": " + messageBody + " id: " + id);
+  console.log("Publishing command to Aggregate " + match.service + ": " + messageBody + " id: " + id + "");
   if (queueService === Util_SQS_FIFO$ReventlessAws.service) {
     return SQS$AwsSdk.makeBatchEntryFifo(id, messageBody, messageId, delay);
   } else {
@@ -45,15 +46,14 @@ function makeEntry(queueService, commandJson) {
 }
 
 function sendBatch(queue, queueService, commandJsons) {
-  return Promise.allSettled(SQS$AwsSdk.sendMessageBatch(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
-                          return makeEntry(queueService, commandJson);
-                        })))).then(function (results) {
-              Belt_Array.forEach(Util_Promise$Reventless.filterRejected(results), (function (param) {
-                      console.log("SQS.sendMessageBatch request " + param[0] + " failed: " + param[1]);
-                      
-                    }));
-              return Promise.resolve(undefined);
-            });
+  return Js_promise.then_((function (results) {
+                Belt_Array.forEach(Util_Promise$Reventless.filterRejected(results), (function (param) {
+                        console.log("SQS.sendMessageBatch request " + String(param[0]) + " failed: " + param[1] + "");
+                      }));
+                return Promise.resolve(undefined);
+              }), Promise.allSettled(SQS$AwsSdk.sendMessageBatch(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
+                            return makeEntry(queueService, commandJson);
+                          })))));
 }
 
 function deleteMessage(queue, receiptHandle) {

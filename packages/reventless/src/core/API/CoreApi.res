@@ -8,14 +8,14 @@ let mutationsSchema =
     @aws_auth(cognito_groups: ["Admin"])
 `
 
-let graphQLSchema = j`
-$typesSchema
+let graphQLSchema = `
+${typesSchema}
 
 type Query {
-$queriesSchema
+${queriesSchema}
 }
 
 type Mutation {
-$mutationsSchema
+${mutationsSchema}
 }
 `

@@ -5,50 +5,50 @@ let plural = count => count == 1 ? "" : "s"
 
 let toScheduleExpression = x =>
   switch x {
-  | Single(year, month, day, hour, minute) => j`cron($minute $hour $day $month ? $year)`
+  | Single(year, month, day, hour, minute) =>
+    `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} ${day->Belt.Int.toString} ${month->Belt.Int.toString} ? ${year->Belt.Int.toString})`
   | Minutes(minutes) =>
     let plural = minutes->plural
-    j`rate($minutes minute$plural)`
+    `rate(${minutes->Belt.Int.toString} minute${plural})`
   | Hours(hours) =>
     let plural = hours->plural
-    j`rate($hours hour$plural)`
+    `rate(${hours->Belt.Int.toString} hour${plural})`
   | Days(days) =>
     let plural = days->plural
-    j`rate($days day$plural)`
-  | Daily(hour, minute) => j`cron($minute $hour * * * *)`
-  | Weekdays(hour, minute) => j`cron($minute $hour ? * MON-FRI *)`
-  | WeekdaysAndSaturday(hour, minute) => j`cron($minute $hour ? * MON-SAT *)`
+    `rate(${days->Belt.Int.toString} day${plural})`
+  | Daily(hour, minute) => `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} * * * *)`
+  | Weekdays(hour, minute) =>
+    `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} ? * MON-FRI *)`
+  | WeekdaysAndSaturday(hour, minute) =>
+    `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} ? * MON-SAT *)`
   }
 
-let createSchedule: PulumiAws.IAM.Role.t => Reventless.Scheduler.createSchedule = (
-  role,
-  . queueResources,
-  schedule,
-) =>
-  switch queueResources {
-  | [] =>
-    let err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !"
-    Js.log(err)
-    Js.Exn.raiseError(err)
-  | resources =>
-    let resource = resources[0] // FIXME
-    putRule(
-      ~name=schedule.name,
-      ~scheduleExpression=schedule.rate->toScheduleExpression,
-      ~roleArn=role["arn"]->Pulumi.Output.get,
-      ~state="ENABLED",
-      (),
-    )
-    |> Js.Promise.then_(_ =>
-      putTarget(
-        ~rule=schedule.name,
-        ~arn=resource["urn"]->Pulumi.Output.get,
-        ~id=resource["name"]->Pulumi.Output.get,
-        ~input=schedule.payload,
+let createSchedule: PulumiAws.IAM.Role.t => Reventless.Scheduler.createSchedule = role =>
+  (. queueResources, schedule) =>
+    switch queueResources {
+    | [] =>
+      let err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !"
+      Js.log(err)
+      Js.Exn.raiseError(err)
+    | resources =>
+      let resource = resources[0] // FIXME
+      putRule(
+        ~name=schedule.name,
+        ~scheduleExpression=schedule.rate->toScheduleExpression,
+        ~roleArn=role["arn"]->Pulumi.Output.get,
+        ~state="ENABLED",
+        (),
       )
-    )
-    |> Js.Promise.then_(_ => Js.Promise.resolve())
-  }
+      |> Js.Promise.then_(_ =>
+        putTarget(
+          ~rule=schedule.name,
+          ~arn=resource["urn"]->Pulumi.Output.get,
+          ~id=resource["name"]->Pulumi.Output.get,
+          ~input=schedule.payload,
+        )
+      )
+      |> Js.Promise.then_(_ => Js.Promise.resolve())
+    }
 
 let deleteSchedule: Reventless.Scheduler.deleteSchedule = (. queueResources, name) =>
   switch queueResources {

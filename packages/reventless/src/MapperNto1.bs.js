@@ -14,7 +14,7 @@ function makeGenericMap(decode, map, json) {
     return Curry._1(map, msg._0);
   }
   var jsonStr = JSON.stringify(json);
-  return Js_exn.raiseError("Couldn't decode source message: " + msg._0 + ", " + jsonStr);
+  return Js_exn.raiseError("Couldn't decode source message: " + Belt_Option.getExn(JSON.stringify(msg._0)) + ", " + jsonStr + "");
 }
 
 function Mapper(Spec, Target, Mappings) {
@@ -32,7 +32,7 @@ function Mapper(Spec, Target, Mappings) {
                   }
                   catch (raw_exn){
                     var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
-                    console.log("Mapping failed:", Belt_Option.map(Caml_js_exceptions.caml_as_js_exn(exn), (function (prim) {
+                    console.log("Mapping failed:", Belt_Option.map(Caml_js_exceptions.as_js_exn(exn), (function (prim) {
                                 return prim.message;
                               })));
                     return ;

@@ -234,7 +234,6 @@ function serviceNameOfMsg(msgJson) {
     return ;
   }
   console.log("Message.serviceNameOfMsg:", msgJson);
-  
 }
 
 var InvalidEvent = /* @__PURE__ */Caml_exceptions.create("Message-Reventless.InvalidEvent");
@@ -250,9 +249,9 @@ function logEvent$pJson(event$pJson, description) {
   var eventStr = JSON.stringify(event$pJson);
   try {
     var event$p = Belt_Option.getExn(Js_json.decodeObject(event$pJson));
-    var id = Js_json.decodeString(event$p["id"]);
+    var id = Belt_Option.getWithDefault(Js_json.decodeString(event$p["id"]), "{ERROR (" + "File \"Message.res\", line 105, characters 49-56" + "): Could not get id!}");
     var eventName = Belt_Option.getExn(Util_Decco$Reventless.Json.variantName(event$p["event"]));
-    console.log("" + description + " " + eventName + "(" + id + ") complete event: " + eventStr);
+    console.log("" + description + " " + eventName + "(" + id + ") complete event: $eventStr");
     return ;
   }
   catch (exn){
@@ -290,7 +289,7 @@ function string(x) {
     return "";
   }
   var ip = Caml_option.valFromOption(x);
-  if (Caml_obj.caml_equal(ip, null)) {
+  if (Caml_obj.equal(ip, null)) {
     return "";
   } else {
     return ip;

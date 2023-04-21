@@ -5,8 +5,10 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Decco = require("decco/src/Decco.bs.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
+var Js_array = require("@rescript/std/lib/js/js_array.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -37,7 +39,7 @@ function event_decode(v) {
   if (jsonArr$1.length === 0) {
     return Decco.error(undefined, "Expected variant, found empty array", v);
   }
-  var tagged = jsonArr$1.map(Js_json.classify);
+  var tagged = Js_array.map(Js_json.classify, jsonArr$1);
   var match = Belt_Array.getExn(tagged, 0);
   if (typeof match !== "number" && match.TAG === /* JSONString */0 && match._0 === "CountFinished") {
     if (tagged.length !== 1) {
@@ -267,18 +269,16 @@ function Make(Config, QueryDbStorage, Handler) {
               var counterId = param.counterId;
               var currentReferences = Belt_Option.getWithDefault(Js_dict.get(dict, counterId), []);
               dict[counterId] = Belt_Array.concat(currentReferences, [param.reference]);
-              
             }));
       return Js_dict.entries(dict);
     };
     var logCountItems = function (countItems) {
-      return Belt_Array.forEach(groupCountItemsByCounterId(countItems), (function (param) {
-                    var references = param[1];
-                    var size = references.length;
-                    var referencesStr = references.join(",");
-                    console.log("  " + size + " reference(s) for counterId " + param[0] + ": " + referencesStr);
-                    
-                  }));
+      Belt_Array.forEach(groupCountItemsByCounterId(countItems), (function (param) {
+              var references = param[1];
+              var size = references.length;
+              var referencesStr = references.join(",");
+              console.log("  " + String(size) + " reference(s) for counterId " + param[0] + ": " + referencesStr + "");
+            }));
     };
     var referencesDb = Curry._3(ReferencesDb.make, ttl, Caml_option.some(opts), undefined);
     var countsDb = Curry._3(CountsDb.make, ttl, Caml_option.some(opts), undefined);
@@ -288,7 +288,6 @@ function Make(Config, QueryDbStorage, Handler) {
               var counterId = unmakeId(param[0])[0];
               var current = Belt_Option.getWithDefault(Js_dict.get(dict, counterId), 0);
               dict[counterId] = current + param[1] | 0;
-              
             }));
       return Js_dict.entries(dict);
     };
@@ -298,9 +297,9 @@ function Make(Config, QueryDbStorage, Handler) {
       var __x = Promise.all(Belt_Array.map(groupByCounterId(references), (function (param) {
                   return Curry._1(CountsDb.count, countsDb)(param[0], "count", -param[1] | 0);
                 })));
-      var countP = __x.then(function (param) {
-            return Promise.resolve(undefined);
-          });
+      var countP = Js_promise.then_((function (param) {
+              return Promise.resolve(undefined);
+            }), __x);
       var counterEventsHandlerP = counterEventsHandler(Belt_Array.keepMap(counts, (function (state) {
                   var match = state_decode$1(state);
                   if (match.TAG === /* Ok */0) {
@@ -309,7 +308,7 @@ function Make(Config, QueryDbStorage, Handler) {
                     var id = match$1.id;
                     if (count === 0) {
                       var match$2 = unmakeId(id);
-                      console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + count));
+                      console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + String(count) + ""));
                       var meta = Message$Reventless.generateMeta(name, undefined, "Counter", undefined);
                       return Caml_option.some(Js_dict.fromArray([
                                       [
@@ -326,20 +325,19 @@ function Make(Config, QueryDbStorage, Handler) {
                                       ]
                                     ]));
                     }
-                    console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + count));
+                    console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + String(count) + ""));
                     return ;
                   }
                   var stateStr = JSON.stringify(state);
-                  console.log("Counter-Reventless" + (".counterHandler: couldn't decode state " + stateStr));
-                  
+                  console.log("Counter-Reventless" + (".counterHandler: couldn't decode state " + stateStr + ""));
                 })));
       var __x$1 = Promise.all([
             countP,
             counterEventsHandlerP
           ]);
-      return __x$1.then(function (param) {
-                  return Promise.resolve(undefined);
-                });
+      return Js_promise.then_((function (param) {
+                    return Promise.resolve(undefined);
+                  }), __x$1);
     };
     var handler = Curry._7(Handler.make, name$1, name$2, Component$Reventless.extractOutputs(referencesDb), name$3, Component$Reventless.extractOutputs(countsDb), counterHandler, opts2);
     var partial_arg$6 = Curry._1(ReferencesDb.saveBatch, referencesDb);
@@ -360,31 +358,31 @@ function Make(Config, QueryDbStorage, Handler) {
                             ttl
                           ];
                   })));
-        return __x.then(function (x) {
-                    if (x.TAG === /* Ok */0) {
-                      var batchSize = param.length;
-                      console.log("Counter-Reventless" + (": saved batch of " + batchSize + " reference(s):"));
-                      logCountItems(param);
-                      return Promise.resolve(undefined);
-                    }
-                    var err = x._0;
-                    if (typeof err !== "number" && err.TAG === /* NotSavedToStorage */0) {
-                      var batchSize$1 = param.length;
-                      console.log("Counter error: couldn't save batch of " + batchSize$1 + " reference(s):");
+        return Js_promise.then_((function (x) {
+                      if (x.TAG === /* Ok */0) {
+                        var batchSize = param.length;
+                        console.log("Counter-Reventless" + (": saved batch of " + String(batchSize) + " reference(s):"));
+                        logCountItems(param);
+                        return Promise.resolve(undefined);
+                      }
+                      var err = x._0;
+                      if (typeof err !== "number" && err.TAG === /* NotSavedToStorage */0) {
+                        var batchSize$1 = param.length;
+                        console.log("Counter error: couldn't save batch of " + String(batchSize$1) + " reference(s):");
+                        logCountItems(param);
+                        return Promise.reject({
+                                    RE_EXN_ID: NotCounted,
+                                    _1: err._0
+                                  });
+                      }
+                      var batchSize$2 = param.length;
+                      console.log("Unknown Counter error: couldn't save batch of " + String(batchSize$2) + " reference(s):");
                       logCountItems(param);
                       return Promise.reject({
                                   RE_EXN_ID: NotCounted,
-                                  _1: err._0
+                                  _1: "Unknown error"
                                 });
-                    }
-                    var batchSize$2 = param.length;
-                    console.log("Unknown Counter error: couldn't save batch of " + batchSize$2 + " reference(s):");
-                    logCountItems(param);
-                    return Promise.reject({
-                                RE_EXN_ID: NotCounted,
-                                _1: "Unknown error"
-                              });
-                  });
+                    }), __x);
       });
     self.addToCounterTarget = handler.addToCounterTarget;
     var outputs = {

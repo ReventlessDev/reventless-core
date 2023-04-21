@@ -7,6 +7,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
@@ -15,52 +16,52 @@ var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoD
 function addToCounterTarget(table, param) {
   var target = param.target;
   var counterId = param.counterId;
-  console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws.addToCounterTarget:", counterId, target);
+  console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ".addToCounterTarget:", counterId, target);
   var tableName = table.name.get();
-  return DynamoDb_DocumentClient$AwsSdk.update({
-                  TableName: tableName,
-                  Key: {
-                    id: counterId
-                  },
-                  UpdateExpression: "ADD #count :inc, #total :inc SET #targets = list_append(if_not_exists(#targets, :empty), :target),     #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRef)",
-                  ExpressionAttributeNames: Js_dict.fromList({
-                        hd: [
-                          "#count",
-                          "count"
-                        ],
-                        tl: {
-                          hd: [
-                            "#total",
-                            "total"
-                          ],
-                          tl: {
+  return Js_promise.$$catch((function (err) {
+                return Js_exn.raiseError("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget Error: Couldn't count on " + tableName + ": " + err.message + ""));
+              }), Js_promise.then_((function (updateOutput) {
+                    return Promise.resolve((console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget: current count for " + counterId + ":"), updateOutput.Attributes.count), undefined));
+                  }), DynamoDb_DocumentClient$AwsSdk.update({
+                      TableName: tableName,
+                      Key: {
+                        id: counterId
+                      },
+                      UpdateExpression: "ADD #count :inc, #total :inc SET #targets = list_append(if_not_exists(#targets, :empty), :target),     #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRef)",
+                      ExpressionAttributeNames: Js_dict.fromList({
                             hd: [
-                              "#targets",
-                              "targets"
+                              "#count",
+                              "count"
                             ],
                             tl: {
                               hd: [
-                                "#targetRefs",
-                                "targetRefs"
+                                "#total",
+                                "total"
                               ],
-                              tl: /* [] */0
+                              tl: {
+                                hd: [
+                                  "#targets",
+                                  "targets"
+                                ],
+                                tl: {
+                                  hd: [
+                                    "#targetRefs",
+                                    "targetRefs"
+                                  ],
+                                  tl: /* [] */0
+                                }
+                              }
                             }
-                          }
-                        }
-                      }),
-                  ExpressionAttributeValues: {
-                    ":inc": target,
-                    ":target": [target],
-                    ":targetRef": [param.targetRef],
-                    ":empty": []
-                  },
-                  ConditionExpression: "NOT contains(#targetRefs, :targetRef)",
-                  ReturnValues: "UPDATED_NEW"
-                }).then(function (updateOutput) {
-                return Promise.resolve((console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget: current count for " + counterId + ":"), updateOutput.Attributes.count), undefined));
-              }).catch(function (err) {
-              return Js_exn.raiseError("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget Error: Couldn't count on " + tableName + ": " + err));
-            });
+                          }),
+                      ExpressionAttributeValues: {
+                        ":inc": target,
+                        ":target": [target],
+                        ":targetRef": [param.targetRef],
+                        ":empty": []
+                      },
+                      ConditionExpression: "NOT contains(#targetRefs, :targetRef)",
+                      ReturnValues: "UPDATED_NEW"
+                    })));
 }
 
 function referencesView_encode(v) {
@@ -134,19 +135,14 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
           }
         }));
   Belt_Array.forEach(match[1], (function (record) {
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws: ignoring record from eventSource:", record.eventSource, record.eventSourceARN, JSON.stringify(record));
-          
+          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource:", record.eventSource, record.eventSourceARN, JSON.stringify(record));
         }));
   var match$1 = Belt_Array.partition(match[0], (function (record) {
           return record.eventSourceARN === referencesARN;
         }));
   var references = Belt_Array.keepMap(match$1[0], (function (record) {
           var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
-          if (typeof match === "number") {
-            console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (references): ignoring record:", JSON.stringify(record));
-            return ;
-          }
-          if (match.TAG === /* NewImage */0) {
+          if (typeof match !== "number" && match.TAG === /* NewImage */0) {
             var match$1 = referencesView_decode(match._1);
             var inc;
             inc = match$1.TAG === /* Ok */0 ? match$1._0.inc : 1;
@@ -155,24 +151,21 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
                     inc
                   ];
           }
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (references): ignoring record:", JSON.stringify(record));
-          
+          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + " (references): ignoring record:", JSON.stringify(record));
         }));
   var counts = Belt_Array.keepMap(match$1[1], (function (record) {
           var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
-          if (typeof match === "number") {
-            console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (counts): ignoring record:", JSON.stringify(record));
-            return ;
+          if (typeof match !== "number") {
+            switch (match.TAG | 0) {
+              case /* OldImage */1 :
+                  break;
+              case /* NewImage */0 :
+              case /* NewAndOldImage */2 :
+                  return Caml_option.some(match._1);
+              
+            }
           }
-          switch (match.TAG | 0) {
-            case /* OldImage */1 :
-                console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws (counts): ignoring record:", JSON.stringify(record));
-                return ;
-            case /* NewImage */0 :
-            case /* NewAndOldImage */2 :
-                return Caml_option.some(match._1);
-            
-          }
+          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + " (counts): ignoring record:", JSON.stringify(record));
         }));
   return Curry._2(counterHandler, references, counts);
 }
