@@ -9,7 +9,6 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -45,27 +44,63 @@ function eventsToJson(events$p, specIdEncode, specEventEncode, id) {
               }));
 }
 
-function storageAppendErrorHandler(aggregateName, specIdToString, id, err) {
-  var errMsg = "EventLog: Error: Couldn't append for " + aggregateName + "(" + Curry._1(specIdToString, id) + "):" + err.message;
+function storageAppendErrorHandler(specName, specIdToString, id, err) {
+  var errMsg = "EventLog: Error: Couldn't append for " + specName + "(" + Curry._1(specIdToString, id) + "):" + Belt_Option.getWithDefault(err.message, "no error message given");
   console.log(errMsg);
-  return Promise.resolve({
-              TAG: /* Error */1,
-              _0: errMsg
-            });
+  return {
+          TAG: /* Error */1,
+          _0: errMsg
+        };
 }
 
-function publishToEventTopic(eventTopicPublish, specIdToString, id, events$p, result) {
-  Js_promise2.$$catch(eventTopicPublish(events$p), (function (err) {
-          var msg = "EventLog.appendFn(" + Curry._1(specIdToString, id) + "): EventTopic.publish Error: ";
-          console.log(msg, err);
-          return Js_exn.raiseError(msg + err.message);
-        }));
-  return Promise.resolve(result);
+async function publishToEventTopic(eventTopicPublish, specIdToString, id, events$p) {
+  try {
+    return await eventTopicPublish(events$p);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === Js_exn.$$Error) {
+      var err$1 = err._1;
+      var msg = "EventLog.appendFn(" + Curry._1(specIdToString, id) + "): EventTopic.publish Error: ";
+      console.log(msg, err$1);
+      return Js_exn.raiseError(msg + Belt_Option.getWithDefault(err$1.message, "no error message given"));
+    }
+    throw err;
+  }
 }
 
 function catchErrorHandler(exn) {
-  console.log("EventLog.append: Couldn't decode:", exn);
+  console.log("EventLog.append: Error:", exn);
   throw exn;
+}
+
+function appendFn(storageAppend, specIdToString, specIdEncode, specEventEncode, eventTopicPublish, specName) {
+  return async function (sequenceNr, id, events$p) {
+    try {
+      var eventsJson = eventsToJson(events$p, specIdEncode, specEventEncode, id);
+      var exit = 0;
+      var appendResult;
+      try {
+        appendResult = await storageAppend(sequenceNr, Curry._1(specIdToString, id), eventsJson);
+        exit = 1;
+      }
+      catch (raw_err){
+        var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+        if (err.RE_EXN_ID === Js_exn.$$Error) {
+          return storageAppendErrorHandler(specName, specIdToString, id, err._1);
+        }
+        throw err;
+      }
+      if (exit === 1) {
+        await publishToEventTopic(eventTopicPublish, specIdToString, id, events$p);
+        return appendResult;
+      }
+      
+    }
+    catch (raw_exn){
+      return catchErrorHandler(Caml_js_exceptions.internalToOCamlException(raw_exn));
+    }
+  };
 }
 
 var AppendUtil = {
@@ -73,7 +108,8 @@ var AppendUtil = {
   eventsToJson: eventsToJson,
   storageAppendErrorHandler: storageAppendErrorHandler,
   publishToEventTopic: publishToEventTopic,
-  catchErrorHandler: catchErrorHandler
+  catchErrorHandler: catchErrorHandler,
+  appendFn: appendFn
 };
 
 function decodeEvent(specEventDecode, json) {
@@ -131,29 +167,13 @@ var ReplayUtil = {
 function Make(Spec, $$Storage, EventTopicPublisher) {
   var partial_arg = EventTopic$Reventless.Make;
   var EventTopic = partial_arg(Spec, EventTopicPublisher);
-  var appendFn = function (storage, eventTopic) {
-    return function (sequenceNr, id, events$p) {
-      try {
-        var __x = eventsToJson(events$p, Spec.Id.t_encode, Spec.event_encode, id);
-        var partial_arg = Curry._1(EventTopic.publish, eventTopic);
-        return Js_promise2.then(Js_promise2.$$catch(storage.append(sequenceNr, Curry._1(Spec.Id.toString, id), __x), (function (param) {
-                          return storageAppendErrorHandler(Spec.name, Spec.Id.toString, id, param);
-                        })), (function (param) {
-                      return publishToEventTopic(partial_arg, Spec.Id.toString, id, events$p, param);
-                    }));
-      }
-      catch (raw_exn){
-        return catchErrorHandler(Caml_js_exceptions.internalToOCamlException(raw_exn));
-      }
-    };
-  };
   var construct = function (self, name) {
     var opts = {
       parent: self
     };
     var storage = Curry._2($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts);
     var eventTopic = Curry._4(EventTopic.make, name, storage.resources, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), undefined);
-    self.append = appendFn(storage, eventTopic);
+    self.append = appendFn(storage.append, Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, Curry._1(EventTopic.publish, eventTopic), Spec.name);
     self.replay = replayFn(storage.replay, Spec.Id.toString, Spec.event_decode);
     var outputs = {
       resources: storage.resources,

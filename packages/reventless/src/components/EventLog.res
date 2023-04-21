@@ -62,31 +62,77 @@ module AppendUtil = {
     ->Js.Dict.fromArray
     ->Js.Json.object_
 
-  let eventsToJson = (events', specIdEncode, specEventEncode, id) =>
+  let eventsToJson: (
+    array<Reventless.Message.event'<'specId, 'specEvent>>,
+    'specId => Js.Json.t,
+    'specEvent => Js.Json.t,
+    'specId,
+  ) => array<Js.Json.t> = (events', specIdEncode, specEventEncode, id) =>
     events'->Belt.Array.map(eventToJson(specIdEncode, specEventEncode, id))
 
-  let storageAppendErrorHandler = (aggregateName, specIdToString, id, err) => {
+  let storageAppendErrorHandler: (
+    string,
+    'specId => string,
+    'specId,
+    Js.Exn.t,
+  ) => result<unit, string> = (specName, specIdToString, id, err) => {
     let errMsg =
-      `EventLog: Error: Couldn't append for ${aggregateName}(${id->specIdToString}):` ++
-      (err->Util.Error.ofPromise).message
+      `EventLog: Error: Couldn't append for ${specName}(${id->specIdToString}):` ++
+      err->Js.Exn.message->Belt.Option.getWithDefault("no error message given")
     Js.log(errMsg)
-    errMsg->Belt.Result.Error->Js.Promise2.resolve
+    errMsg->Belt.Result.Error
   }
 
-  let publishToEventTopic = (eventTopicPublish, specIdToString, id, events', result) => {
-    let _publishResult = eventTopicPublish(. events')->Js.Promise2.catch(err => {
+  let publishToEventTopic: (
+    EventTopic.publish<'specId, 'specEvent>,
+    'specId => string,
+    'specId,
+    array<Reventless.Message.event'<'specId, 'specEvent>>,
+  ) => promise<unit> = async (eventTopicPublish, specIdToString, id, events') => {
+    try await eventTopicPublish(. events') catch {
+    | Js.Exn.Error(err) =>
       let msg = `EventLog.appendFn(${id->specIdToString}): EventTopic.publish Error: `
       Js.log2(msg, err)
-      Js.Exn.raiseError(msg ++ (err->Reventless.Util.Error.ofPromise).message)
-    })
-
-    result->Js.Promise2.resolve
+      Js.Exn.raiseError(
+        msg ++ err->Js.Exn.message->Belt.Option.getWithDefault("no error message given"),
+      )
+    }
   }
 
   let catchErrorHandler = exn => {
-    Js.log2("EventLog.append: Couldn't decode:", exn)
+    Js.log2("EventLog.append: Error:", exn)
     raise(exn)
   }
+
+  // FIXME: appendFn is supposed to return result<unit, string/*errorMessage*/>, but at the same moment, we throw errors
+  //        We should use result everywhere instead of throwing errors / exceptions
+  let appendFn = (
+    storageAppend: append<string, Js.Json.t>,
+    specIdToString: 'specId => string,
+    specIdEncode: 'specId => Js.Json.t,
+    specEventEncode: 'specEvent => Js.Json.t,
+    eventTopicPublish: EventTopic.publish<'specId, 'specEvent>,
+    specName: string,
+  ) =>
+    async (.
+      sequenceNr: int,
+      id: 'specId,
+      events': array<Reventless.Message.event'<'specId, 'specEvent>>,
+    ) => {
+      try {
+        let eventsJson = events'->eventsToJson(specIdEncode, specEventEncode, id)
+
+        switch await storageAppend(. sequenceNr, id->specIdToString, eventsJson) {
+        | appendResult =>
+          await publishToEventTopic(eventTopicPublish, specIdToString, id, events')
+          appendResult
+        | exception Js.Exn.Error(err) =>
+          storageAppendErrorHandler(specName, specIdToString, id, err)
+        }
+      } catch {
+      | exn => catchErrorHandler(exn)
+      }
+    }
 }
 
 module ReplayUtil = {
@@ -176,22 +222,6 @@ module Make = (
 
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher)
 
-  let appendFn = (storage, eventTopic) =>
-    (. sequenceNr, id, events') => {
-      open AppendUtil
-      try {
-        events'
-        ->eventsToJson(Spec.Id.t_encode, Spec.event_encode, id)
-        ->storage.Adapter.append(. sequenceNr, id->Spec.Id.toString, _)
-        ->Js.Promise2.catch(storageAppendErrorHandler(Spec.name, Spec.Id.toString, id))
-        ->Js.Promise2.then(
-          publishToEventTopic(eventTopic->EventTopic.publish, Spec.Id.toString, id, events'),
-        )
-      } catch {
-      | exn => catchErrorHandler(exn)
-      }
-    }
-
   let construct = (self, name) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
 
@@ -204,7 +234,16 @@ module Make = (
       (),
     )
 
-    self->setAppend(appendFn(storage, eventTopic))
+    self->setAppend(
+      AppendUtil.appendFn(
+        storage.Adapter.append,
+        Spec.Id.toString,
+        Spec.Id.t_encode,
+        Spec.event_encode,
+        eventTopic->EventTopic.publish,
+        Spec.name,
+      ),
+    )
     self->setReplay(
       ReplayUtil.replayFn(storage.Adapter.replay, Spec.Id.toString, Spec.event_decode),
     )
