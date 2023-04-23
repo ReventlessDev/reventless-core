@@ -42,13 +42,13 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
     let msgId = Message.uuid()
     publishToCorePluginExtensionPoint(. [
       {
-        Message.id: id,
+        Message.id,
         meta: {
           service: ReventlessSpec.PluginExtensionPointSpec.name,
           time: Message.nowAsISOString(),
           ip: "",
           user: "Heartbeat",
-          msgId: msgId,
+          msgId,
           correlationId: msgId,
         },
         commandJson: {

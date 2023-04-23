@@ -109,7 +109,7 @@ module Make = (
     module Set = Belt.Set.String
     let aggregateNames =
       Mappings.mappings
-      ->Belt.Array.map((module(Mapping: Mappings.Mapping)) => Mapping.Source.name)
+      ->Belt.Array.map((module(Mapping: Mappings.Mapping)) => Mapping.sourceName)
       ->Set.fromArray
 
     module EventCollector = EventCollector.Make(EventCollectorConnector)

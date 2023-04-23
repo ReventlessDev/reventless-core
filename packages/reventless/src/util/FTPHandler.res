@@ -65,58 +65,72 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
     )
     ->Client.onReady(client =>
       client
-      ->make((sftpError, sftp) => {
-        let fail: failFn = err => sftp->error(err->toSftpError)->ignore
-        let endFtp: endFtpFn = () => sftp->end_
+      ->make(
+        (sftpError, sftp) => {
+          let fail: failFn = err => sftp->error(err->toSftpError)->ignore
+          let endFtp: endFtpFn = () => sftp->end_
 
-        sftp
-        ->onEnd(() => {
-          Js.log("end sftp stream")
-          client->Client.end_
-        })
-        ->onError(err => {
-          client->Client.error(err->Message.log("SFTP.onError")->FTP.toJsError)->ignore
-          endFtp()
-        })
-        ->ignore
-        switch (sftpError, ftpAction) {
-        | (None, Download(downloadAction)) =>
           sftp
-          ->readdir(~dirName=path, (readdirError, entities) =>
-            switch readdirError {
-            | None =>
-              downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp)
-              isDone := true
-
-            | Some(readdirError) =>
-              Js.Console.error2("Could not read directory:", readdirError)
-              makeError("Could not read directory")->fail
-            }
+          ->onEnd(
+            () => {
+              Js.log("end sftp stream")
+              client->Client.end_
+            },
           )
-          ->ignore // ignore bool return value, which states to listen for continue event before sending more data
-        | (None, Upload(readableStream, filename)) =>
-          readableStream
-          ->NodeStreams.Readable.pipe(
-            (path ++ ("/" ++ filename))
-            ->Message.log("path for write stream")
-            ->createWriteStream(sftp, ~path=_, ())
-            ->NodeStreams.Writable.onFinish(() => {
-              isDone := true
-              Js.log("writable ended")
-            })
-            ->NodeStreams.Writable.onClose(() => {
-              Js.log("writable closed")
-              sftp->end_
-            })
-            ->NodeStreams.Writable.onError(err => {
-              Js.Console.error2("Error in Write Stream:", err)
-              makeError("Error in Write Stream")->fail
-            }),
+          ->onError(
+            err => {
+              client->Client.error(err->Message.log("SFTP.onError")->FTP.toJsError)->ignore
+              endFtp()
+            },
           )
           ->ignore
-        | (Some(err), _) => err->Message.log("Couldn't establish SFTP connection:")->fail
-        }
-      })
+          switch (sftpError, ftpAction) {
+          | (None, Download(downloadAction)) =>
+            sftp
+            ->readdir(
+              ~dirName=path,
+              (readdirError, entities) =>
+                switch readdirError {
+                | None =>
+                  downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp)
+                  isDone := true
+
+                | Some(readdirError) =>
+                  Js.Console.error2("Could not read directory:", readdirError)
+                  makeError("Could not read directory")->fail
+                },
+            )
+            ->ignore // ignore bool return value, which states to listen for continue event before sending more data
+          | (None, Upload(readableStream, filename)) =>
+            readableStream
+            ->NodeStreams.Readable.pipe(
+              (path ++ ("/" ++ filename))
+              ->Message.log("path for write stream")
+              ->createWriteStream(sftp, ~path=_, ())
+              ->NodeStreams.Writable.onFinish(
+                () => {
+                  isDone := true
+                  Js.log("writable ended")
+                },
+              )
+              ->NodeStreams.Writable.onClose(
+                () => {
+                  Js.log("writable closed")
+                  sftp->end_
+                },
+              )
+              ->NodeStreams.Writable.onError(
+                err => {
+                  Js.Console.error2("Error in Write Stream:", err)
+                  makeError("Error in Write Stream")->fail
+                },
+              ),
+            )
+            ->ignore
+          | (Some(err), _) => err->Message.log("Couldn't establish SFTP connection:")->fail
+          }
+        },
+      )
       ->ignore
     ) // ignore bool return value, which states to listen for continue event before sending more data
     ->Client.connect(

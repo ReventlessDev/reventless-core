@@ -80,8 +80,8 @@ module Make = (Connector: Adapter.Connector): T => {
   external setEnqueueEvent: (component, enqueueEvent) => unit = "enqueueEvent"
   @get external enqueueEvent: component => enqueueEvent = "enqueueEvent"
 
-  let enqueueEventFn = (connector, . delay, id, message) =>
-    connector.Adapter.enqueueEvent(. delay, id, message)
+  let enqueueEventFn = connector =>
+    (. delay, id, message) => connector.Adapter.enqueueEvent(. delay, id, message)
 
   let construct = (
     ~eventTopics,

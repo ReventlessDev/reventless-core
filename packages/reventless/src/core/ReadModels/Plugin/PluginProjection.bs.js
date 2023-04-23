@@ -4,6 +4,8 @@
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Id$Reventless = require("../../../Id.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
+var Projection$Reventless = require("../../../Projection.bs.js");
+var PluginReadModelSpec$Reventless = require("./PluginReadModelSpec.bs.js");
 
 function extractExtensionPointNames(__x) {
   return Belt_Array.map(__x, (function (extensionPoint) {
@@ -21,6 +23,23 @@ var Util = {
   extractExtensionPointNames: extractExtensionPointNames,
   extractExtensionNames: extractExtensionNames
 };
+
+var partial_arg = {
+  Id: Id$Reventless.$$String,
+  name: PluginReadModelSpec$Reventless.name,
+  state_encode: PluginReadModelSpec$Reventless.state_encode,
+  state_decode: PluginReadModelSpec$Reventless.state_decode,
+  subIdConfig: undefined
+};
+
+var partial_arg$1 = {
+  Id: Id$Reventless.$$String,
+  name: PluginSpec$Reventless.name,
+  event_encode: PluginSpec$Reventless.event_encode,
+  event_decode: PluginSpec$Reventless.event_decode
+};
+
+var partial_arg$2 = Projection$Reventless.Mapping.Make;
 
 function map(param) {
   var $$event = param.event;
@@ -127,23 +146,24 @@ function map(param) {
         };
 }
 
-var PluginMapping = {
-  Source: undefined,
-  Target: undefined,
-  map: map
-};
+var PluginMapping = (function (param) {
+      return partial_arg$2(partial_arg$1, partial_arg, param);
+    })({
+      map: map
+    });
 
-var mappings = [{
-    Source: {
+var Mappings = Projection$Reventless.Mappings.Make({
       Id: Id$Reventless.$$String,
-      name: PluginSpec$Reventless.name,
-      event_encode: PluginSpec$Reventless.event_encode,
-      event_decode: PluginSpec$Reventless.event_decode
-    },
-    map: map
-  }];
+      name: PluginReadModelSpec$Reventless.name,
+      state_encode: PluginReadModelSpec$Reventless.state_encode,
+      state_decode: PluginReadModelSpec$Reventless.state_decode,
+      subIdConfig: undefined
+    });
+
+var mappings = [PluginMapping];
 
 exports.Util = Util;
 exports.PluginMapping = PluginMapping;
+exports.Mappings = Mappings;
 exports.mappings = mappings;
-/* No side effect */
+/* PluginMapping Not a pure module */

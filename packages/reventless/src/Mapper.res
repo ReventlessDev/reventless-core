@@ -21,18 +21,18 @@ module type EventSource = {
   let event_decode: decode<event> // TODO: is it possible to remove Decco here?
 }
 
-module MakeGenericSourceFromEventSource = (EventSource: EventSource): (
-  GenericSource with type t = Message.event'<string, EventSource.event>
+module MakeGenericSourceFromEventSource = (EventSource: ReventlessSpec.Projection.Mapping): (
+  GenericSource with type t = Message.event'<string, EventSource.sourceEvent>
 ) => {
-  let name = EventSource.name
-  type t = Message.event'<string, EventSource.event>
+  let name = EventSource.sourceName
+  type t = Message.event'<string, EventSource.sourceEvent>
   let decode = json =>
     json
-    ->Message.event'_decode(EventSource.Id.t_decode, EventSource.event_decode, _)
+    ->Message.event'_decode(EventSource.SourceId.t_decode, EventSource.sourceEvent_decode, _)
     ->Belt.Result.map(({id, meta, event}) => {
-      ReventlessSpec.Message.id: id->EventSource.Id.toString,
-      meta: meta,
-      event: event,
+      ReventlessSpec.Message.id: id->EventSource.SourceId.toString,
+      meta,
+      event,
     })
 }
 

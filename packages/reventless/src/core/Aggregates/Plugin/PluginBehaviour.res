@@ -37,7 +37,8 @@ let execute: Behaviour.execute<state, command, event, error> = (. state, command
     | Heartbeat => list{UnknownPluginDetected}
     | Disconnect
     | Activate
-    | Deactivate => list{}
+    | Deactivate =>
+      list{}
     }
   | Connected(pluginDefinition) =>
     switch command {

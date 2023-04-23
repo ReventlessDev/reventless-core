@@ -7,16 +7,16 @@ var Message$Reventless = require("./Message.bs.js");
 
 function MakeGenericSourceFromEventSource($$EventSource) {
   var decode = function (json) {
-    return Belt_Result.map(Message$Reventless.event$p_decode($$EventSource.Id.t_decode, $$EventSource.event_decode, json), (function (param) {
+    return Belt_Result.map(Message$Reventless.event$p_decode($$EventSource.SourceId.t_decode, $$EventSource.sourceEvent_decode, json), (function (param) {
                   return {
-                          id: Curry._1($$EventSource.Id.toString, param.id),
+                          id: Curry._1($$EventSource.SourceId.toString, param.id),
                           meta: param.meta,
                           event: param.event
                         };
                 }));
   };
   return {
-          name: $$EventSource.name,
+          name: $$EventSource.sourceName,
           decode: decode
         };
 }

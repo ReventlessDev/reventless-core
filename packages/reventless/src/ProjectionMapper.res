@@ -33,8 +33,8 @@ module Make = (
 
     let mappings: array<module(Mapping)> = Mappings.mappings->Belt.Array.map((module(M)) => {
       module GenericMapping = {
-        let sourceName = M.Source.name
-        module Source = Mapper.MakeGenericSourceFromEventSource(M.Source)
+        let sourceName = M.sourceName
+        module Source = Mapper.MakeGenericSourceFromEventSource(M)
         let map = MapperNto1.makeGenericMap(Source.decode, M.map)
       }
       module(GenericMapping: Mapping)

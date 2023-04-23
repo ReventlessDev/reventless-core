@@ -1,32 +1,34 @@
 module type T = {
-  module Source: ReventlessSpec.Projection.Spec.Source
-  module Target: ReventlessSpec.Projection.Spec.Target
+  type sourceEvent
+  type targetState
+  //module Source: ReventlessSpec.Projection.Spec.Source
+  //module Target: ReventlessSpec.Projection.Spec.Target
 
   let describe: (string, unit => unit) => unit
   let describeWithId: (string, string, unit => unit) => unit
   let test: (string, ~timeout: int=?, unit => Js.Promise.t<Jest.assertion>) => unit
 
-  type store = Js.Dict.t<list<Target.state>>
+  type store = Js.Dict.t<list<targetState>>
 
-  let givenEvents: list<Source.event> => Js.Promise.t<store>
-  let givenEventsWithTime: list<(string, Source.event)> => Js.Promise.t<store>
+  let givenEvents: list<sourceEvent> => Js.Promise.t<store>
+  let givenEventsWithTime: list<(string, sourceEvent)> => Js.Promise.t<store>
   let whenEvent: (
     Js.Promise.t<store>,
-    Source.event,
+    sourceEvent,
   ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
   let whenEventWithTime: (
     Js.Promise.t<store>,
     string,
-    Source.event,
+    sourceEvent,
   ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
   let thenStates: (
     Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
-    list<Target.state>,
+    list<targetState>,
   ) => Js.Promise.t<Jest.assertion>
   let thenStatesWithId: (
     Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
     string,
-    list<Target.state>,
+    list<targetState>,
   ) => Js.Promise.t<Jest.assertion>
   let thenAllStates: (
     Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
@@ -34,12 +36,12 @@ module type T = {
   ) => Js.Promise.t<Jest.assertion>
   let thenState: (
     Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
-    Target.state,
+    targetState,
   ) => Js.Promise.t<Jest.assertion>
   let thenStateWithId: (
     Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
     string,
-    Target.state,
+    targetState,
   ) => Js.Promise.t<Jest.assertion>
   let thenNoState: Jest.Expect.plainPartial<unit => Js.Promise.t<store>> => Js.Promise.t<
     Jest.assertion,
@@ -60,10 +62,10 @@ let unpack: Jest.Expect.plainPartial<'a> => 'a = p =>
 let handleActions = Projection.handleActions // create alias to avoid shadowing of same named modules
 
 module Make = (Projection: ReventlessSpec.Projection.Mapping): (
-  T with module Source = Projection.Source and module Target = Projection.Target
+  T with type sourceEvent := Projection.sourceEvent and type targetState := Projection.targetState
 ) => {
-  module Source = Projection.Source
-  module Target = Projection.Target
+  //module Source = Projection.Source
+  //module Target = Projection.Target
 
   let testId = ref(TestFixtures.id)
   let meta = ref(TestFixtures.meta)
@@ -75,9 +77,9 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   }
   let test = Jest.testPromise
 
-  type store = Js.Dict.t<list<Target.state>>
+  type store = Js.Dict.t<list<Projection.targetState>>
 
-  let getSubId = state => Target.subIdConfig->Belt.Option.map(({getSubId}) => state->getSubId)
+  let getSubId = state => Projection.subIdConfig->Belt.Option.map(({getSubId}) => state->getSubId)
   let hasSubId = (subId, state) => state->getSubId->Belt.Option.getExn == subId
   let states = (store, id) => store->Js.Dict.get(id)->Belt.Option.getWithDefault(list{})
   let setStates = (store, id, states) => store->Js.Dict.set(id, states)
@@ -123,7 +125,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     }
   let delete = store =>
     (. id, subId) =>
-      switch (subId, Target.subIdConfig) {
+      switch (subId, Projection.subIdConfig) {
       | (None, _) =>
         store->deleteStates(id)
         Ok()->Js.Promise.resolve
@@ -135,7 +137,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let deleteBatch = store =>
     (. ids) => {
       ids->Belt.Array.forEach(((id, subId)) =>
-        switch (subId, Target.subIdConfig) {
+        switch (subId, Projection.subIdConfig) {
         | (None, _) => store->deleteStates(id)
         | (Some((_, subId)), Some({ReventlessSpec.ReadModelSpec.getSubId: getSubId})) =>
           store->deleteSubState(id, subId, getSubId)
@@ -146,16 +148,16 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     }
 
   let handleActions = (actions, primitives) =>
-    actions->handleActions(primitives, Target.subIdConfig)
+    actions->handleActions(primitives, Projection.subIdConfig)
 
   let update = (store, id, meta, event) => {
     let logStore = text =>
       Js.log4(
         text,
-        event->Source.event_encode,
+        event->Projection.sourceEvent_encode,
         "\nstore:",
         Js.Dict.map(
-          (. states) => states->Belt.List.toArray->Belt.Array.map(Target.state_encode),
+          (. states) => states->Belt.List.toArray->Belt.Array.map(Projection.targetState_encode),
           store,
         ),
       )

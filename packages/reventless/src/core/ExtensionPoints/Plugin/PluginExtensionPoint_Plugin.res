@@ -53,6 +53,7 @@ let forwardCommand = (
                       )->Js.Promise.resolve,
                     _,
                   )
+
                 | None =>
                   Js.log3(
                     "ForwardCommand: Couldn't find ExtensionPoint",
@@ -61,6 +62,7 @@ let forwardCommand = (
                   )->Js.Promise.resolve
                 }
             )
+
           | Error(err) =>
             Js.log3("ForwardCommand: Couldn't decode Plugin", plugin, err)->Js.Promise.resolve
           }
@@ -80,7 +82,7 @@ let callHandler = (
       name: id, // TODO: prefix with Pulumi.Pulumi.getStackName()
       rate: timeout->Schedule.minutesFromNow,
       payload: {
-        Message.id: id,
+        Message.id,
         meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler", ()),
         command: ReventlessSpec.PluginExtensionPointSpec.DisconnectPlugin,
       }

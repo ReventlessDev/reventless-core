@@ -2,29 +2,11 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
-var Id$Reventless = require("../../src/Id.bs.js");
-var PluginSpec$Reventless = require("../../src/core/Aggregates/Plugin/PluginSpec.bs.js");
 var PluginFixtures$Reventless = require("./PluginFixtures.bs.js");
 var ProjectionTest$Reventless = require("../../test-helper/ProjectionTest.bs.js");
 var PluginProjection$Reventless = require("../../src/core/ReadModels/Plugin/PluginProjection.bs.js");
-var PluginReadModelSpec$Reventless = require("../../src/core/ReadModels/Plugin/PluginReadModelSpec.bs.js");
 
-var PluginProjectionTest = ProjectionTest$Reventless.Make({
-      Source: {
-        Id: Id$Reventless.$$String,
-        name: PluginSpec$Reventless.name,
-        event_encode: PluginSpec$Reventless.event_encode,
-        event_decode: PluginSpec$Reventless.event_decode
-      },
-      Target: {
-        Id: Id$Reventless.$$String,
-        name: PluginReadModelSpec$Reventless.name,
-        state_encode: PluginReadModelSpec$Reventless.state_encode,
-        state_decode: PluginReadModelSpec$Reventless.state_decode,
-        subIdConfig: undefined
-      },
-      map: PluginProjection$Reventless.PluginMapping.map
-    });
+var PluginProjectionTest = ProjectionTest$Reventless.Make(PluginProjection$Reventless.PluginMapping);
 
 Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
         Curry._3(PluginProjectionTest.test, "UnknownPluginDetected", undefined, (function (param) {

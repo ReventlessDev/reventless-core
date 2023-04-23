@@ -19,7 +19,6 @@ function unpack(p) {
 }
 
 function Make(Projection) {
-  var Target = Projection.Target;
   var testId = {
     contents: TestFixtures$Reventless.id
   };
@@ -31,7 +30,7 @@ function Make(Projection) {
     Jest.describe(description, fn);
   };
   var getSubId = function (state) {
-    return Belt_Option.map(Target.subIdConfig, (function (param) {
+    return Belt_Option.map(Projection.subIdConfig, (function (param) {
                   return Curry._1(param.getSubId, state);
                 }));
   };
@@ -135,7 +134,7 @@ function Make(Projection) {
   };
   var $$delete = function (store) {
     return function (id, subId) {
-      var match = Target.subIdConfig;
+      var match = Projection.subIdConfig;
       if (subId !== undefined) {
         if (match !== undefined) {
           deleteSubState(store, id, subId[1], match.getSubId);
@@ -163,7 +162,7 @@ function Make(Projection) {
       Belt_Array.forEach(ids, (function (param) {
               var subId = param[1];
               var id = param[0];
-              var match = Target.subIdConfig;
+              var match = Projection.subIdConfig;
               if (subId !== undefined) {
                 if (match !== undefined) {
                   return deleteSubState(store, id, subId[1], match.getSubId);
@@ -198,7 +197,7 @@ function Make(Projection) {
             meta: meta,
             event: $$event
           })];
-    var __x = Projection$Reventless.handleActions(actions, primitives, Target.subIdConfig);
+    var __x = Projection$Reventless.handleActions(actions, primitives, Projection.subIdConfig);
     return Js_promise.then_((function (param) {
                   return Promise.resolve(store);
                 }), __x);
@@ -345,8 +344,6 @@ function Make(Projection) {
                 }), __x$1);
   };
   return {
-          Source: Projection.Source,
-          Target: Target,
           describe: Jest.describe,
           describeWithId: describeWithId,
           test: Jest.testPromise,

@@ -89,7 +89,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                           }))), primitives, Spec.subIdConfig);
     };
     var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(Mappings.mappings, (function (Mapping) {
-                return Mapping.Source.name;
+                return Mapping.sourceName;
               })));
     var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
     var eventCollector = Curry.app(EventCollector.make, [

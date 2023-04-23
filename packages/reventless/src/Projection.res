@@ -5,6 +5,29 @@ open QueryDb
 
 module Set = Belt.Set.String
 
+module Mapping = {
+module Make = (Source: ReventlessSpec.Projection.Spec.Source, Target: ReventlessSpec.Projection.Spec.Target, 
+MappingImpl: ReventlessSpec.Projection.MappingImpl with type sourceEvent := Source.event and type targetState := Target.state): (
+  ReventlessSpec.Projection.Mapping with type targetState = Target.state and type sourceEvent = Source.event and module SourceId = Source.Id
+) => {
+  module SourceId = Source.Id
+  type sourceEvent = Source.event
+  type targetState = Target.state
+  let map = MappingImpl.map
+  let sourceEvent_decode = Source.event_decode
+  let sourceEvent_encode = Source.event_encode
+  let sourceName = Source.name
+  let subIdConfig = Target.subIdConfig
+  let targetState_encode = Target.state_encode
+}
+}
+
+module Mappings = {
+module Make = (Target: ReventlessSpec.Projection.Spec.Target) => {
+  module type Mapping = ReventlessSpec.Projection.Mapping with type targetState := Target.state
+}
+}
+
 type primitives<'id, 'state> = {
   load: load<'id, 'state>,
   save: save<'id, 'state>,

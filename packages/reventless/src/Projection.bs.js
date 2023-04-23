@@ -11,6 +11,30 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var QueryDb$Reventless = require("./components/QueryDb.bs.js");
 
+function Make(Source, Target, MappingImpl) {
+  return {
+          SourceId: Source.Id,
+          map: MappingImpl.map,
+          sourceEvent_decode: Source.event_decode,
+          sourceEvent_encode: Source.event_encode,
+          sourceName: Source.name,
+          subIdConfig: Target.subIdConfig,
+          targetState_encode: Target.state_encode
+        };
+}
+
+var Mapping = {
+  Make: Make
+};
+
+function Make$1(Target) {
+  return {};
+}
+
+var Mappings = {
+  Make: Make$1
+};
+
 function logAction(str) {
   console.log("Projection.handleAction:", str);
 }
@@ -397,6 +421,8 @@ function handleActions(actions, primitives, subIdConfig) {
 var $$Set;
 
 exports.$$Set = $$Set;
+exports.Mapping = Mapping;
+exports.Mappings = Mappings;
 exports.logAction = logAction;
 exports.applyChanges = applyChanges;
 exports.stateToString = stateToString;

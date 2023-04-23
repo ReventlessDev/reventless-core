@@ -8,6 +8,6 @@ let meta = {
   correlationId: "correlationId",
 }
 
-let context = {Message.meta: meta, id: id}
+let context = {Message.meta, id}
 
 let statusChange = {Message.at: context.meta.time, by: context.meta.user}

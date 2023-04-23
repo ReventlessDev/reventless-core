@@ -9,9 +9,9 @@ module Util = {
   )
 }
 
-module PluginMapping = {
-  module Source = PluginSpec
-  module Target = PluginReadModelSpec
+module PluginMapping = Projection.Mapping.Make(PluginSpec, PluginReadModelSpec, {
+  //module Source = PluginSpec
+  //module Target = PluginReadModelSpec
 
   let map = ({event, id, meta: {time, user}}) =>
     switch event {
@@ -20,13 +20,13 @@ module PluginMapping = {
       Set(
         id,
         {
-          PluginReadModelSpec.name: name,
-          version: version,
-          eventCollector: eventCollector,
-          extensionPoints: extensionPoints,
+          PluginReadModelSpec.name,
+          version,
+          eventCollector,
+          extensionPoints,
           extensionPointNames: extensionPoints->Util.extractExtensionPointNames,
           extensionNames: extensions->Util.extractExtensionNames,
-          extensions: extensions,
+          extensions,
           status: Connected,
           statusChange: {
             at: time,
@@ -72,8 +72,10 @@ module PluginMapping = {
         },
       )
     }
-}
+})
 
-module type Mapping = ReventlessSpec.Projection.Mapping with module Target := PluginReadModelSpec
+module Mappings = Reventless.Projection.Mappings.Make(PluginReadModelSpec)
+//module type Mapping = ReventlessSpec.Projection.Mapping
+  //with type targetState := PluginReadModelSpec.state
 
-let mappings: array<module(Mapping)> = [module(PluginMapping)]
+let mappings: array<module(Mappings.Mapping)> = [module(PluginMapping)]

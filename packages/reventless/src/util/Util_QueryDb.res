@@ -5,8 +5,9 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
     ->Pulumi.Output.apply(plugin =>
       plugin["readModels"]
       ->Belt.Option.flatMap(readModels => readModels->Js.Dict.get(queryDbName))
-      ->Belt.Option.map(readModel =>
-        readModel["queryDb"]["resources"]->Belt.Array.map(Adapter.unwrappedOutputToResource)
+      ->Belt.Option.map(
+        readModel =>
+          readModel["queryDb"]["resources"]->Belt.Array.map(Adapter.unwrappedOutputToResource),
       )
       ->Belt.Option.getWithDefault([])
     )

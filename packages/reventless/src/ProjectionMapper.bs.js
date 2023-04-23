@@ -24,18 +24,12 @@ function Make(DiscreteTarget, Mappings) {
     encode: GenericTarget_encode
   };
   var mappings = Belt_Array.map(Mappings.mappings, (function (M) {
-          var sourceName = M.Source.name;
-          var $$let = M.Source;
-          var Source = Mapper$Reventless.MakeGenericSourceFromEventSource({
-                Id: $$let.Id,
-                name: $$let.name,
-                event_decode: $$let.event_decode
-              });
+          var Source = Mapper$Reventless.MakeGenericSourceFromEventSource(M);
           var map = function (param) {
             return MapperNto1$Reventless.makeGenericMap(Source.decode, M.map, param);
           };
           return {
-                  sourceName: sourceName,
+                  sourceName: M.sourceName,
                   map: map
                 };
         }));
