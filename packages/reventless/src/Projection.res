@@ -24,7 +24,7 @@ MappingImpl: ReventlessSpec.Projection.MappingImpl with type sourceEvent := Sour
 
 module Mappings = {
 module Make = (Target: ReventlessSpec.Projection.Spec.Target) => {
-  module type Mapping = ReventlessSpec.Projection.Mapping with type targetState := Target.state
+  module type Mapping = ReventlessSpec.Projection.Mapping with type targetState = Target.state
 }
 }
 
