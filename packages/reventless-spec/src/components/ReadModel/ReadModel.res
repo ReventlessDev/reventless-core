@@ -1,0 +1,20 @@
+module Spec = ReadModel_Spec
+
+type t
+type outputs = {
+  "name": string,
+  "queryDb": QueryDb.outputs,
+  "eventCollector": EventCollector.outputs,
+}
+type component = Component.t<t, outputs>
+
+module type T = {
+  module Spec: Spec.T
+  type t
+
+  let make: (
+    ~allEventTopics: EventTopic.allOutputs,
+    ~opts: Pulumi.ComponentResource.Options.t=?,
+    unit,
+  ) => Component.t<t, outputs>
+}

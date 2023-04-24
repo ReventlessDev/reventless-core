@@ -8,7 +8,7 @@ var Js_array = require("@rescript/std/lib/js/js_array.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Message$Reventless = require("../../../Message.bs.js");
-var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
+var Plugin$ReventlessSpec = require("@reventless/reventless-spec/src/components/Plugin.bs.js");
 
 function status_encode(v) {
   switch (v) {
@@ -76,11 +76,11 @@ function state_encode(v) {
   return Js_dict.fromArray([
               [
                 "name",
-                PluginSpec$Reventless.name_encode(v.name)
+                Plugin$ReventlessSpec.name_encode(v.name)
               ],
               [
                 "version",
-                PluginSpec$Reventless.version_encode(v.version)
+                Plugin$ReventlessSpec.version_encode(v.version)
               ],
               [
                 "eventCollector",
@@ -88,7 +88,7 @@ function state_encode(v) {
               ],
               [
                 "extensionPoints",
-                Decco.arrayToJson(PluginSpec$Reventless.extensionPointDefinition_encode, v.extensionPoints)
+                Decco.arrayToJson(Plugin$ReventlessSpec.extensionPointDefinition_encode, v.extensionPoints)
               ],
               [
                 "extensionPointNames",
@@ -100,7 +100,7 @@ function state_encode(v) {
               ],
               [
                 "extensions",
-                Decco.arrayToJson(PluginSpec$Reventless.extensionDefinition_encode, v.extensions)
+                Decco.arrayToJson(Plugin$ReventlessSpec.extensionDefinition_encode, v.extensions)
               ],
               [
                 "status",
@@ -122,19 +122,19 @@ function state_decode(v) {
     return Decco.error(undefined, "Not an object", v);
   }
   var dict$1 = dict._0;
-  var name = PluginSpec$Reventless.name_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "name"), null));
+  var name = Plugin$ReventlessSpec.name_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "name"), null));
   if (name.TAG === /* Ok */0) {
-    var version = PluginSpec$Reventless.version_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "version"), null));
+    var version = Plugin$ReventlessSpec.version_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "version"), null));
     if (version.TAG === /* Ok */0) {
       var eventCollector = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "eventCollector"), null));
       if (eventCollector.TAG === /* Ok */0) {
-        var extensionPoints = Decco.arrayFromJson(PluginSpec$Reventless.extensionPointDefinition_decode, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionPoints"), null));
+        var extensionPoints = Decco.arrayFromJson(Plugin$ReventlessSpec.extensionPointDefinition_decode, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionPoints"), null));
         if (extensionPoints.TAG === /* Ok */0) {
           var extensionPointNames = Decco.arrayFromJson(Decco.stringFromJson, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionPointNames"), null));
           if (extensionPointNames.TAG === /* Ok */0) {
             var extensionNames = Decco.arrayFromJson(Decco.stringFromJson, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensionNames"), null));
             if (extensionNames.TAG === /* Ok */0) {
-              var extensions = Decco.arrayFromJson(PluginSpec$Reventless.extensionDefinition_decode, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensions"), null));
+              var extensions = Decco.arrayFromJson(Plugin$ReventlessSpec.extensionDefinition_decode, Belt_Option.getWithDefault(Js_dict.get(dict$1, "extensions"), null));
               if (extensions.TAG === /* Ok */0) {
                 var status = status_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "status"), null));
                 if (status.TAG === /* Ok */0) {

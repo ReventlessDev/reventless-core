@@ -1,4 +1,4 @@
-type t<'component, 'outputs> = 'outputs constraint 'outputs = 'a
+open ReventlessSpec.Component
 // type unknown
 
 // in Component.js setOutputs(_), which is called in the constructor sets the output keys

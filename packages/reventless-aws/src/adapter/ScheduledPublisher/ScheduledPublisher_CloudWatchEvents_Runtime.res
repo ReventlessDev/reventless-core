@@ -23,7 +23,7 @@ let toScheduleExpression = x =>
     `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} ? * MON-SAT *)`
   }
 
-let createSchedule: PulumiAws.IAM.Role.t => Reventless.Scheduler.createSchedule = role =>
+let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSchedule = role =>
   (. queueResources, schedule) =>
     switch queueResources {
     | [] =>
@@ -50,7 +50,7 @@ let createSchedule: PulumiAws.IAM.Role.t => Reventless.Scheduler.createSchedule 
       |> Js.Promise.then_(_ => Js.Promise.resolve())
     }
 
-let deleteSchedule: Reventless.Scheduler.deleteSchedule = (. queueResources, name) =>
+let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = (. queueResources, name) =>
   switch queueResources {
   | [] =>
     let err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !"

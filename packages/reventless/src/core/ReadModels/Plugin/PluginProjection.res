@@ -2,9 +2,9 @@ open ReventlessSpec.Message
 
 module Util = {
   let extractExtensionPointNames = Belt.Array.map(_, (
-    extensionPoint: PluginSpec.extensionPointDefinition,
+    extensionPoint: ReventlessSpec.Plugin.extensionPointDefinition,
   ) => extensionPoint.name)
-  let extractExtensionNames = Belt.Array.map(_, (extension: PluginSpec.extensionDefinition) =>
+  let extractExtensionNames = Belt.Array.map(_, (extension: ReventlessSpec.Plugin.extensionDefinition) =>
     extension.extensionPointName
   )
 }

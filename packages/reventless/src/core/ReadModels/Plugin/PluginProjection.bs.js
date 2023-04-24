@@ -2,7 +2,7 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Id$Reventless = require("../../../Id.bs.js");
+var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
 var Projection$Reventless = require("../../../Projection.bs.js");
 var PluginReadModelSpec$Reventless = require("./PluginReadModelSpec.bs.js");
@@ -25,7 +25,7 @@ var Util = {
 };
 
 var partial_arg = {
-  Id: Id$Reventless.$$String,
+  Id: Id$ReventlessSpec.$$String,
   name: PluginReadModelSpec$Reventless.name,
   state_encode: PluginReadModelSpec$Reventless.state_encode,
   state_decode: PluginReadModelSpec$Reventless.state_decode,
@@ -33,7 +33,7 @@ var partial_arg = {
 };
 
 var partial_arg$1 = {
-  Id: Id$Reventless.$$String,
+  Id: Id$ReventlessSpec.$$String,
   name: PluginSpec$Reventless.name,
   event_encode: PluginSpec$Reventless.event_encode,
   event_decode: PluginSpec$Reventless.event_decode
@@ -153,7 +153,7 @@ var PluginMapping = (function (param) {
     });
 
 var Mappings = Projection$Reventless.Mappings.Make({
-      Id: Id$Reventless.$$String,
+      Id: Id$ReventlessSpec.$$String,
       name: PluginReadModelSpec$Reventless.name,
       state_encode: PluginReadModelSpec$Reventless.state_encode,
       state_decode: PluginReadModelSpec$Reventless.state_decode,

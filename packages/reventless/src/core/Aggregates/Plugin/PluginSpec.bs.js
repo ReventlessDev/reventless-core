@@ -366,38 +366,8 @@ var name = "Plugin";
 
 var Id;
 
-var name_encode = Plugin$ReventlessSpec.name_encode;
-
-var name_decode = Plugin$ReventlessSpec.name_decode;
-
-var version_encode = Plugin$ReventlessSpec.version_encode;
-
-var version_decode = Plugin$ReventlessSpec.version_decode;
-
-var extensionPointDefinition_encode = Plugin$ReventlessSpec.extensionPointDefinition_encode;
-
-var extensionPointDefinition_decode = Plugin$ReventlessSpec.extensionPointDefinition_decode;
-
-var extensionDefinition_encode = Plugin$ReventlessSpec.extensionDefinition_encode;
-
-var extensionDefinition_decode = Plugin$ReventlessSpec.extensionDefinition_decode;
-
-var pluginDefinition_encode = Plugin$ReventlessSpec.pluginDefinition_encode;
-
-var pluginDefinition_decode = Plugin$ReventlessSpec.pluginDefinition_decode;
-
 exports.name = name;
 exports.Id = Id;
-exports.name_encode = name_encode;
-exports.name_decode = name_decode;
-exports.version_encode = version_encode;
-exports.version_decode = version_decode;
-exports.extensionPointDefinition_encode = extensionPointDefinition_encode;
-exports.extensionPointDefinition_decode = extensionPointDefinition_decode;
-exports.extensionDefinition_encode = extensionDefinition_encode;
-exports.extensionDefinition_decode = extensionDefinition_decode;
-exports.pluginDefinition_encode = pluginDefinition_encode;
-exports.pluginDefinition_decode = pluginDefinition_decode;
 exports.command_encode = command_encode;
 exports.command_decode = command_decode;
 exports.event_encode = event_encode;

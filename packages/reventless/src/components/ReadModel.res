@@ -1,38 +1,20 @@
 let componentType = ComponentType.ReadModel
 
-type outputs = {
-  "name": string,
-  "queryDb": QueryDb.outputs,
-  "eventCollector": EventCollector.outputs,
-}
-
-type t
-type component = Component.t<t, outputs>
-
-module type T = {
-  module Spec: ReventlessSpec.ReadModelSpec.T
-
-  let make: (
-    ~allEventTopics: EventTopic.allOutputs,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
-    unit,
-  ) => component
-}
-
 module Make = (
   Config: Config.T,
-  Spec: ReventlessSpec.ReadModelSpec.T,
+  Spec: ReventlessSpec.ReadModel.Spec.T,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
   QueryDbStorage: QueryDb.Adapter.Storage with type api = Config.api and type role = Config.role,
   QueryDbResolvers: QueryDb.Adapter.Resolvers
     with type api = Config.api
     and type role = Config.role,
   EventCollectorConnector: EventCollector.Adapter.Connector,
-): (T with module Spec = Spec) => {
+): (ReventlessSpec.ReadModel.T with module Spec = Spec) => {
   module Spec = Spec
+  type t
 
   type constructed
-  type construct = (component, string) => constructed
+  type construct = (ReventlessSpec.ReadModel.component, string) => constructed
 
   @module("./Component") @new
   external make: (
@@ -40,17 +22,17 @@ module Make = (
     ~name: string,
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
-  ) => component = "default"
+  ) => ReventlessSpec.ReadModel.component = "default"
 
   @obj
   external makeOutputs: (
     ~name: string,
-    ~queryDb: QueryDb.outputs,
-    ~eventCollector: EventCollector.outputs,
-  ) => outputs = ""
+    ~queryDb: ReventlessSpec.QueryDb.outputs,
+    ~eventCollector: ReventlessSpec.EventCollector.outputs,
+  ) => ReventlessSpec.ReadModel.outputs = ""
   @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (component, outputs) => unit = "setOutputs"
+  external registerOutputs: (ReventlessSpec.ReadModel.component, ReventlessSpec.ReadModel.outputs) => constructed = "registerOutputs"
+  @send external setOutputs: (ReventlessSpec.ReadModel.component, ReventlessSpec.ReadModel.outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)

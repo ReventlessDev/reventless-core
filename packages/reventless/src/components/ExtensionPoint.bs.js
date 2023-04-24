@@ -9,7 +9,7 @@ var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Id$Reventless = require("../Id.bs.js");
+var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
 var Component$Reventless = require("./Component.bs.js");
@@ -21,7 +21,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
   var partial_arg_command_encode = Spec.command_encode;
   var partial_arg_command_decode = Spec.command_decode;
   var partial_arg = {
-    Id: Id$Reventless.$$String,
+    Id: Id$ReventlessSpec.$$String,
     command_encode: partial_arg_command_encode,
     command_decode: partial_arg_command_decode
   };
@@ -33,7 +33,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
   var partial_arg_event_encode = Spec.event_encode;
   var partial_arg_event_decode = Spec.event_decode;
   var partial_arg$2 = {
-    Id: Id$Reventless.$$String,
+    Id: Id$ReventlessSpec.$$String,
     name: partial_arg_name,
     event_encode: partial_arg_event_encode,
     event_decode: partial_arg_event_decode

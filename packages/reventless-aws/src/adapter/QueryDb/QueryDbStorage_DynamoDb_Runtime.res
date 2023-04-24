@@ -20,11 +20,11 @@ let load = table =>
       let tableName = table["name"]->Pulumi.Output.get
       Js.log2(__MODULE__ ++ `.load: Error: Couldn't load state for ${id} from ${tableName}`, err)
 
-      Error(NotLoadedFromStorage((err->ofPromise).message))->resolve
+      Error(ReventlessSpec.QueryDb.NotLoadedFromStorage((err->ofPromise).message))->resolve
     })
 
 let save = table =>
-  (. _id, json, saveMode: saveMode, ttl) => {
+  (. _id, json, saveMode: ReventlessSpec.QueryDb.saveMode, ttl) => {
     let tableName = table["name"]->Pulumi.Output.get
     let stateStr = json->Js.Json.stringify
     let json = json->insertTtl(ttl)
@@ -47,10 +47,10 @@ let save = table =>
         switch err.code {
         | "ConditionalCheckFailedException" =>
           Js.log(__MODULE__ ++ `.save: Error: Stale State in ${tableName}`)
-          Error(StaleState)->resolve
+          Error(ReventlessSpec.QueryDb.StaleState)->resolve
         | _ =>
           Js.log2(__MODULE__ ++ `.save: Error: Couldn't save Init state to ${tableName}`, err)
-          Error(NotSavedToStorage(err.message))->resolve
+          Error(ReventlessSpec.QueryDb.NotSavedToStorage(err.message))->resolve
         }
       })
     | Any
@@ -63,7 +63,7 @@ let save = table =>
       |> catch(err => {
         let err = err->Reventless.Util.Error.ofPromise
         Js.log(__MODULE__ ++ `.save: Error: Couldn't save state to ${tableName}: ${err.message}`)
-        Error(NotSavedToStorage(err.message))->resolve
+        Error(ReventlessSpec.QueryDb.NotSavedToStorage(err.message))->resolve
       })
     }
   }
@@ -115,7 +115,7 @@ let writeBatch = (writeRequests, table, maxRetries) => {
       ->Belt.Array.keepMap(x => x)
     switch errors {
     | [] => Ok()->resolve
-    | errors => errors->Js.Array2.joinWith(",")->BatchNotFullyWrittenToStorage->Error->resolve
+    | errors => errors->Js.Array2.joinWith(",")->ReventlessSpec.QueryDb.BatchNotFullyWrittenToStorage->Error->resolve
     }
   }, _)
 }
@@ -125,7 +125,7 @@ let saveBatch: (
   PulumiAws.DynamoDb.Table.t,
 ) => (
   . array<(string, Js.Json.t, option<int>)>,
-) => Js.Promise.t<Belt.Result.t<unit, storageError>> = (~maxRetries=3, table) =>
+) => Js.Promise.t<Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>> = (~maxRetries=3, table) =>
   (. items) =>
     switch items {
     | [] => Ok()->resolve
@@ -166,7 +166,7 @@ let count = table =>
             err->Reventless.Util.Error.ofPromise
           ).message}`,
       )
-      Error(NotCountedOnStorage((err->ofPromise).message))->resolve
+      Error(ReventlessSpec.QueryDb.NotCountedOnStorage((err->ofPromise).message))->resolve
     })
   }
 
@@ -189,7 +189,7 @@ let delete = table =>
         __MODULE__ ++ `.delete: Error: Couldn't delete state for ${id} from ${tableName}`,
         err,
       )
-      Error(NotDeletedFromStorage((err->ofPromise).message))->resolve
+      Error(ReventlessSpec.QueryDb.NotDeletedFromStorage((err->ofPromise).message))->resolve
     })
   }
 

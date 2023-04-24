@@ -1,7 +1,7 @@
 module Make = (
   Spec: ReventlessSpec.ExtensionPointMapping.Spec,
   Mappings: Reventless.ExtensionPoint.Mappings with module Spec := Spec,
-): Reventless.ExtensionPoint.T => Reventless.ExtensionPoint.Make(
+): ReventlessSpec.ExtensionPoint.T => Reventless.ExtensionPoint.Make(
   Spec,
   Mappings,
   CommandTopicConnector.SQS,

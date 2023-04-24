@@ -8,18 +8,13 @@ type enqueueEvent = (
   /* ~message: */ string,
 ) => Js.Promise.t<unit>
 
-type outputs = {"name": string, "resources": array<resource>}
-
-type t
-type component = Component.t<t, outputs>
-
 type eventsHandler = (. array<Js.Json.t>) => Js.Promise.t<unit>
 
 module type T = {
   type t
   let make: (
     ~name: string,
-    ~eventTopics: EventTopic.allOutputs,
+    ~eventTopics: ReventlessSpec.EventTopic.allOutputs,
     ~eventsHandler: eventsHandler,
     ~memorySize: int=?,
     ~timeout: int=?,
@@ -27,9 +22,9 @@ module type T = {
     ~policy2: Pulumi.Output.t<option<string>>,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
     unit,
-  ) => component
+  ) => ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>
 
-  let enqueueEvent: component => enqueueEvent
+  let enqueueEvent: ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs> => enqueueEvent
 }
 
 module Adapter = {
@@ -39,7 +34,7 @@ module Adapter = {
   }
   type connectorMaker = (
     ~name: string,
-    ~eventTopics: EventTopic.allOutputs,
+    ~eventTopics: ReventlessSpec.EventTopic.allOutputs,
     ~handleEvents: eventsHandler,
     ~memorySize: int,
     ~timeout: int,
@@ -56,7 +51,7 @@ module Adapter = {
 module Make = (Connector: Adapter.Connector): T => {
   type t
   type constructed
-  type construct = (component, string) => constructed
+  type construct = (ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>, string) => constructed
 
   @module("./Component") @new
   external make: (
@@ -64,21 +59,21 @@ module Make = (Connector: Adapter.Connector): T => {
     ~name: string,
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
-  ) => component = "default"
+  ) => ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs> = "default"
 
   @obj
-  external makeOutputs: (~name: string, ~resources: array<resource>) => outputs = ""
+  external makeOutputs: (~name: string, ~resources: array<resource>) => ReventlessSpec.EventCollector.outputs = ""
   @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (component, outputs) => unit = "setOutputs"
+  external registerOutputs: (ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>,ReventlessSpec.EventCollector.outputs) => constructed = "registerOutputs"
+  @send external setOutputs: (ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>, ReventlessSpec.EventCollector.outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
   }
 
   @set
-  external setEnqueueEvent: (component, enqueueEvent) => unit = "enqueueEvent"
-  @get external enqueueEvent: component => enqueueEvent = "enqueueEvent"
+  external setEnqueueEvent: (ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>, enqueueEvent) => unit = "enqueueEvent"
+  @get external enqueueEvent: ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs> => enqueueEvent = "enqueueEvent"
 
   let enqueueEventFn = connector =>
     (. delay, id, message) => connector.Adapter.enqueueEvent(. delay, id, message)

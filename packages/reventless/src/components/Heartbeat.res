@@ -5,7 +5,7 @@ type outputs = {"name": string}
 type heartbeat // TODO: rename to t - after refactoring
 
 type constructed
-type construct = (Component.t<heartbeat, outputs>, string) => constructed
+type construct = (ReventlessSpec.Component.t<heartbeat, outputs>, string) => constructed
 
 @module("./Component") @new
 external make: (
@@ -13,7 +13,7 @@ external make: (
   ~name: string,
   ~construct: construct,
   ~opts: option<Pulumi.ComponentResource.Options.t>,
-) => Component.t<heartbeat, outputs> = "default"
+) => ReventlessSpec.Component.t<heartbeat, outputs> = "default"
 
 @obj external makeOutputs: (~name: string) => outputs = ""
 
@@ -27,10 +27,10 @@ external makeOutputsToRegister: (
 ) => outputsToRegister = ""
 
 @send
-external registerOutputs: (Component.t<heartbeat, outputs>, outputsToRegister) => constructed =
+external registerOutputs: (ReventlessSpec.Component.t<heartbeat, outputs>, outputsToRegister) => constructed =
   "registerOutputs"
 @send
-external setOutputs: (Component.t<heartbeat, outputs>, outputs) => unit = "setOutputs"
+external setOutputs: (ReventlessSpec.Component.t<heartbeat, outputs>, outputs) => unit = "setOutputs"
 
 let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) => {
   let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())

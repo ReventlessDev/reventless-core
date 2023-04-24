@@ -4,18 +4,18 @@ let componentType = ComponentType.EventMapper
 
 type outputs = {
   "name": string,
-  "eventCollector": EventCollector.outputs,
+  "eventCollector": ReventlessSpec.EventCollector.outputs,
   "counter": option<Counter.outputs>,
 }
 
 type t
-type component = Component.t<t, outputs>
+type component = ReventlessSpec.Component.t<t, outputs>
 
 module type T = {
   let make: (
-    ~allEventTopics: EventTopic.allOutputs,
+    ~allEventTopics: ReventlessSpec.EventTopic.allOutputs,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~publishJsons: CommandTopic.publishJsons,
+    ~publishJsons: ReventlessSpec.CommandTopic.publishJsons,
     ~memorySize: int=?,
     ~timeout: int=?,
     ~opts: Pulumi.ComponentResource.Options.t=?,
@@ -49,7 +49,7 @@ module Make = (
   @obj
   external makeOutputs: (
     ~name: string,
-    ~eventCollector: ReventlessEventCollector.outputs,
+    ~eventCollector: ReventlessSpec.EventCollector.outputs,
     ~counter: option<Counter.outputs>,
   ) => outputs = ""
   @send

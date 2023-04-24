@@ -1,4 +1,4 @@
-module Id = Id.String
+module Id = ReventlessSpec.Id.String
 
 open PluginSpec
 
@@ -10,26 +10,26 @@ type status =
 
 @decco
 type state = {
-  name: name,
-  version: version,
+  name: ReventlessSpec.Plugin.name,
+  version: ReventlessSpec.Plugin.version,
   eventCollector: string,
-  extensionPoints: array<extensionPointDefinition>,
+  extensionPoints: array<ReventlessSpec.Plugin.extensionPointDefinition>,
   extensionPointNames: array<string>,
   extensionNames: array<string>,
-  extensions: array<extensionDefinition>,
+  extensions: array<ReventlessSpec.Plugin.extensionDefinition>,
   status: status,
   statusChange: Message.statusChange,
 }
 
 type queryResult = {
   id: string,
-  name: name,
-  version: version,
+  name: ReventlessSpec.Plugin.name,
+  version: ReventlessSpec.Plugin.version,
   eventCollector: string,
-  extensionPoints: array<extensionPointDefinition>,
+  extensionPoints: array<ReventlessSpec.Plugin.extensionPointDefinition>,
   extensionPointNames: array<string>,
   extensionNames: array<string>,
-  extensions: array<extensionDefinition>,
+  extensions: array<ReventlessSpec.Plugin.extensionDefinition>,
   status: status,
 }
 

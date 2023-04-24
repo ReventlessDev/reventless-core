@@ -6,7 +6,7 @@ var Decco = require("decco/src/Decco.bs.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
-var Id$Reventless = require("../../../Id.bs.js");
+var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("../../../Message.bs.js");
 var Schedule$Reventless = require("../../../util/Schedule.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
@@ -224,7 +224,7 @@ var Mapping = (function (param) {
       return partial_arg$1(partial_arg, param);
     })({
       Aggregate: {
-        Id: Id$Reventless.$$String,
+        Id: Id$ReventlessSpec.$$String,
         name: PluginSpec$Reventless.name,
         command_encode: PluginSpec$Reventless.command_encode,
         command_decode: PluginSpec$Reventless.command_decode,

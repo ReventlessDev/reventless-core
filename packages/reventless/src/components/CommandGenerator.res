@@ -5,7 +5,7 @@ let componentType = ComponentType.CommandGenerator
 type outputs = {"resources": array<resource>}
 
 type t
-type component = Component.t<t, outputs>
+type component = ReventlessSpec.Component.t<t, outputs>
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T

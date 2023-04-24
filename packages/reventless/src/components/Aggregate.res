@@ -7,7 +7,7 @@ let componentType = ComponentType.Aggregate
 type outputs = {
   "name": string,
   "commandGenerator": CommandGenerator.outputs,
-  "commandTopic": CommandTopic.outputs,
+  "commandTopic": ReventlessSpec.CommandTopic.outputs,
   "eventLog": EventLog.outputs,
   "eventMapper": option<EventMapper.outputs>,
 }
@@ -16,16 +16,16 @@ type allOutputs = Js.Dict.t<outputs>
 type name = string
 
 type t
-type component = Component.t<t, outputs>
+type component = ReventlessSpec.Component.t<t, outputs>
 
-type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
+type addEventMapper = (ReventlessSpec.EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
 
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T
 
   let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component
 
-  let publishJsons: component => CommandTopic.publishJsons
+  let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
   let addEventMapper: component => addEventMapper
 }
 
@@ -57,7 +57,7 @@ module Make = (
   external makeOutputs: (
     ~name: string,
     ~commandGenerator: CommandGenerator.outputs,
-    ~commandTopic: CommandTopic.outputs,
+    ~commandTopic: ReventlessSpec.CommandTopic.outputs,
     ~eventLog: EventLog.outputs,
     ~eventMapper: option<EventMapper.outputs>,
   ) => outputs = ""
@@ -71,9 +71,9 @@ module Make = (
   }
 
   @set
-  external setPublishJsons: (component, CommandTopic.publishJsons) => unit = "publishJsons"
+  external setPublishJsons: (component, ReventlessSpec.CommandTopic.publishJsons) => unit = "publishJsons"
   @get
-  external publishJsons: component => CommandTopic.publishJsons = "publishJsons"
+  external publishJsons: component => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
   @set
   external setAddEventMapper: (component, addEventMapper) => unit = "addEventMapper"

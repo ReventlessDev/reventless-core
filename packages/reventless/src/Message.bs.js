@@ -2,8 +2,6 @@
 'use strict';
 
 var Uuid = require("@reventless/bs-uuid/src/Uuid.bs.js");
-var Curry = require("@rescript/std/lib/js/curry.js");
-var Decco = require("decco/src/Decco.bs.js");
 var $$String = require("@rescript/std/lib/js/string.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
@@ -21,170 +19,6 @@ function now(param) {
 
 function nowAsISOString(param) {
   return new Date().toISOString();
-}
-
-function command$p_encode(encoder_id, encoder_command, v) {
-  return Js_dict.fromArray([
-              [
-                "id",
-                Curry._1(encoder_id, v.id)
-              ],
-              [
-                "meta",
-                Message$ReventlessSpec.meta_encode(v.meta)
-              ],
-              [
-                "command",
-                Curry._1(encoder_command, v.command)
-              ]
-            ]);
-}
-
-function command$p_decode(decoder_id, decoder_command, v) {
-  var dict = Js_json.classify(v);
-  if (typeof dict === "number") {
-    return Decco.error(undefined, "Not an object", v);
-  }
-  if (dict.TAG !== /* JSONObject */2) {
-    return Decco.error(undefined, "Not an object", v);
-  }
-  var dict$1 = dict._0;
-  var id = Curry._1(decoder_id, Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
-  if (id.TAG === /* Ok */0) {
-    var meta = Message$ReventlessSpec.meta_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "meta"), null));
-    if (meta.TAG === /* Ok */0) {
-      var command = Curry._1(decoder_command, Belt_Option.getWithDefault(Js_dict.get(dict$1, "command"), null));
-      if (command.TAG === /* Ok */0) {
-        return {
-                TAG: /* Ok */0,
-                _0: {
-                  id: id._0,
-                  meta: meta._0,
-                  command: command._0
-                }
-              };
-      }
-      var e = command._0;
-      return {
-              TAG: /* Error */1,
-              _0: {
-                path: ".command" + e.path,
-                message: e.message,
-                value: e.value
-              }
-            };
-    }
-    var e$1 = meta._0;
-    return {
-            TAG: /* Error */1,
-            _0: {
-              path: ".meta" + e$1.path,
-              message: e$1.message,
-              value: e$1.value
-            }
-          };
-  }
-  var e$2 = id._0;
-  return {
-          TAG: /* Error */1,
-          _0: {
-            path: ".id" + e$2.path,
-            message: e$2.message,
-            value: e$2.value
-          }
-        };
-}
-
-function commandJson_encode(v) {
-  return Js_dict.fromArray([
-              [
-                "id",
-                Decco.stringToJson(v.id)
-              ],
-              [
-                "meta",
-                Message$ReventlessSpec.meta_encode(v.meta)
-              ],
-              [
-                "commandJson",
-                v.commandJson
-              ],
-              [
-                "delay",
-                Decco.optionToJson(Decco.intToJson, v.delay)
-              ]
-            ]);
-}
-
-function commandJson_decode(v) {
-  var dict = Js_json.classify(v);
-  if (typeof dict === "number") {
-    return Decco.error(undefined, "Not an object", v);
-  }
-  if (dict.TAG !== /* JSONObject */2) {
-    return Decco.error(undefined, "Not an object", v);
-  }
-  var dict$1 = dict._0;
-  var id = Decco.stringFromJson(Belt_Option.getWithDefault(Js_dict.get(dict$1, "id"), null));
-  if (id.TAG === /* Ok */0) {
-    var meta = Message$ReventlessSpec.meta_decode(Belt_Option.getWithDefault(Js_dict.get(dict$1, "meta"), null));
-    if (meta.TAG === /* Ok */0) {
-      var commandJson = {
-        TAG: /* Ok */0,
-        _0: Belt_Option.getWithDefault(Js_dict.get(dict$1, "commandJson"), null)
-      };
-      if (commandJson.TAG === /* Ok */0) {
-        var delay = Decco.optionFromJson(Decco.intFromJson, Belt_Option.getWithDefault(Js_dict.get(dict$1, "delay"), null));
-        if (delay.TAG === /* Ok */0) {
-          return {
-                  TAG: /* Ok */0,
-                  _0: {
-                    id: id._0,
-                    meta: meta._0,
-                    commandJson: commandJson._0,
-                    delay: delay._0
-                  }
-                };
-        }
-        var e = delay._0;
-        return {
-                TAG: /* Error */1,
-                _0: {
-                  path: ".delay" + e.path,
-                  message: e.message,
-                  value: e.value
-                }
-              };
-      }
-      var e$1 = commandJson._0;
-      return {
-              TAG: /* Error */1,
-              _0: {
-                path: ".commandJson" + e$1.path,
-                message: e$1.message,
-                value: e$1.value
-              }
-            };
-    }
-    var e$2 = meta._0;
-    return {
-            TAG: /* Error */1,
-            _0: {
-              path: ".meta" + e$2.path,
-              message: e$2.message,
-              value: e$2.value
-            }
-          };
-  }
-  var e$3 = id._0;
-  return {
-          TAG: /* Error */1,
-          _0: {
-            path: ".id" + e$3.path,
-            message: e$3.message,
-            value: e$3.value
-          }
-        };
 }
 
 function toMessageBody(param) {
@@ -249,7 +83,7 @@ function logEvent$pJson(event$pJson, description) {
   var eventStr = JSON.stringify(event$pJson);
   try {
     var event$p = Belt_Option.getExn(Js_json.decodeObject(event$pJson));
-    var id = Belt_Option.getWithDefault(Js_json.decodeString(event$p["id"]), "{ERROR (" + "File \"Message.res\", line 105, characters 49-56" + "): Could not get id!}");
+    var id = Belt_Option.getWithDefault(Js_json.decodeString(event$p["id"]), "{ERROR (" + "File \"Message.res\", line 90, characters 49-56" + "): Could not get id!}");
     var eventName = Belt_Option.getExn(Util_Decco$Reventless.Json.variantName(event$p["event"]));
     console.log("" + description + " " + eventName + "(" + id + ") complete event: $eventStr");
     return ;
@@ -347,6 +181,14 @@ var statusChange_encode = Message$ReventlessSpec.statusChange_encode;
 
 var statusChange_decode = Message$ReventlessSpec.statusChange_decode;
 
+var command$p_encode = Message$ReventlessSpec.command$p_encode;
+
+var command$p_decode = Message$ReventlessSpec.command$p_decode;
+
+var commandJson_encode = Message$ReventlessSpec.commandJson_encode;
+
+var commandJson_decode = Message$ReventlessSpec.commandJson_decode;
+
 var uuid = Uuid.v4;
 
 exports.service_encode = service_encode;
@@ -360,13 +202,13 @@ exports.event$p_decode = event$p_decode;
 exports.invalidEvent = invalidEvent;
 exports.statusChange_encode = statusChange_encode;
 exports.statusChange_decode = statusChange_decode;
-exports.uuid = uuid;
-exports.now = now;
-exports.nowAsISOString = nowAsISOString;
 exports.command$p_encode = command$p_encode;
 exports.command$p_decode = command$p_decode;
 exports.commandJson_encode = commandJson_encode;
 exports.commandJson_decode = commandJson_decode;
+exports.uuid = uuid;
+exports.now = now;
+exports.nowAsISOString = nowAsISOString;
 exports.toMessageBody = toMessageBody;
 exports.serviceNameOfMsg = serviceNameOfMsg;
 exports.InvalidEvent = InvalidEvent;

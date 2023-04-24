@@ -7,6 +7,7 @@ var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_array = require("@rescript/std/lib/js/js_array.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Message$Reventless = require("../../../Message.bs.js");
+var Plugin$ReventlessSpec = require("@reventless/reventless-spec/src/components/Plugin.bs.js");
 var PluginSpec$Reventless = require("./PluginSpec.bs.js");
 
 function state_encode(v) {
@@ -17,17 +18,17 @@ function state_encode(v) {
     case /* Connected */0 :
         return [
                 "Connected",
-                PluginSpec$Reventless.pluginDefinition_encode(v._0)
+                Plugin$ReventlessSpec.pluginDefinition_encode(v._0)
               ];
     case /* Disconnected */1 :
         return [
                 "Disconnected",
-                PluginSpec$Reventless.pluginDefinition_encode(v._0)
+                Plugin$ReventlessSpec.pluginDefinition_encode(v._0)
               ];
     case /* Inactive */2 :
         return [
                 "Inactive",
-                PluginSpec$Reventless.pluginDefinition_encode(v._0)
+                Plugin$ReventlessSpec.pluginDefinition_encode(v._0)
               ];
     
   }
@@ -53,7 +54,7 @@ function state_decode(v) {
           if (tagged.length !== 2) {
             return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
           }
-          var v0 = PluginSpec$Reventless.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          var v0 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
           if (v0.TAG === /* Ok */0) {
             return {
                     TAG: /* Ok */0,
@@ -85,7 +86,7 @@ function state_decode(v) {
           if (tagged.length !== 2) {
             return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
           }
-          var v0$1 = PluginSpec$Reventless.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          var v0$1 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
           if (v0$1.TAG === /* Ok */0) {
             return {
                     TAG: /* Ok */0,
@@ -108,7 +109,7 @@ function state_decode(v) {
           if (tagged.length !== 2) {
             return Decco.error(undefined, "Invalid number of arguments to variant constructor", v);
           }
-          var v0$2 = PluginSpec$Reventless.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
+          var v0$2 = Plugin$ReventlessSpec.pluginDefinition_decode(Belt_Array.getExn(jsonArr$1, 1));
           if (v0$2.TAG === /* Ok */0) {
             return {
                     TAG: /* Ok */0,

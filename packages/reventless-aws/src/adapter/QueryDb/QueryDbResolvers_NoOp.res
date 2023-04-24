@@ -1,5 +1,5 @@
 open Reventless
-open ReventlessSpec.ReadModelSpec
+open ReventlessSpec.ReadModel.Spec
 
 type api = unit
 type role = unit

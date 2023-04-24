@@ -106,17 +106,17 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     )
 
   open Belt.Result
-  open QueryDb
+  //open QueryDb
   let load = store => (. id) => store->states(id)->Ok->Js.Promise.resolve
   let save = store =>
-    (. id, state, saveMode, _ttl) =>
+    (. id, state, saveMode: ReventlessSpec.QueryDb.saveMode, _ttl) =>
       switch (store->states(id), saveMode) {
       | (_, Any)
       | (list{}, Init)
       | (list{_}, Overwrite) =>
         store->setStates(id, list{state})
         Ok()->Js.Promise.resolve
-      | _ => Error(StaleState)->Js.Promise.resolve
+      | _ => Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
       }
   let saveBatch = store =>
     (. batch) => {
@@ -129,7 +129,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       | (None, _) =>
         store->deleteStates(id)
         Ok()->Js.Promise.resolve
-      | (Some((_, subId)), Some({ReventlessSpec.ReadModelSpec.getSubId: getSubId})) =>
+      | (Some((_, subId)), Some({ReventlessSpec.ReadModel.Spec.getSubId: getSubId})) =>
         store->deleteSubState(id, subId, getSubId)
         Ok()->Js.Promise.resolve
       | _ => Ok()->Js.Promise.resolve
@@ -139,7 +139,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       ids->Belt.Array.forEach(((id, subId)) =>
         switch (subId, Projection.subIdConfig) {
         | (None, _) => store->deleteStates(id)
-        | (Some((_, subId)), Some({ReventlessSpec.ReadModelSpec.getSubId: getSubId})) =>
+        | (Some((_, subId)), Some({ReventlessSpec.ReadModel.Spec.getSubId: getSubId})) =>
           store->deleteSubState(id, subId, getSubId)
         | _ => ()
         }

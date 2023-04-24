@@ -8,7 +8,7 @@ let countFieldName = "count"
 type outputs = {"referencesDb": array<resource>, "countsDb": array<resource>}
 
 type t
-type component = Component.t<t, outputs>
+type component = ReventlessSpec.Component.t<t, outputs>
 
 type counterHandler = (
   ~references: array<(string, int)>,
@@ -37,7 +37,7 @@ type addToCounterTarget = counterTarget => Js.Promise.t<unit>
 exception NotCounted(string)
 
 module Source = {
-  module Id = Id.String
+  module Id = ReventlessSpec.Id.String
   let name = componentType->ComponentType.toName
   @decco
   type event = CountFinished
@@ -63,9 +63,9 @@ module Adapter = {
   type handlerMaker = (
     ~name: string,
     ~referencesName: string,
-    ~referencesDb: QueryDb.outputs,
+    ~referencesDb: ReventlessSpec.QueryDb.outputs,
     ~countsName: string,
-    ~countsDb: QueryDb.outputs,
+    ~countsDb: ReventlessSpec.QueryDb.outputs,
     ~counterHandler: counterHandler,
     ~opts: Pulumi.CustomResourceOptions.t,
   ) => handler
@@ -115,7 +115,7 @@ module Make = (
     let opts2 = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
 
     module ReferencesSpec = {
-      module Id = Id.StringPure
+      module Id = ReventlessSpec.Id.StringPure
       let name = name ++ "References"
       @decco
       type state = {
@@ -137,7 +137,7 @@ module Make = (
     )
 
     module CountsSpec = {
-      module Id = Id.StringPure
+      module Id = ReventlessSpec.Id.StringPure
       let name = name ++ "Counts"
       @decco
       type state = {
@@ -206,7 +206,7 @@ module Make = (
           Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Belt.Int.toString} reference(s):`)
           countItems->logCountItems
           Js.Promise.resolve()
-        | Error(QueryDb.NotSavedToStorage(err)) =>
+        | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) =>
           let batchSize = countItems->Belt.Array.size
           Js.log(
             `Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,

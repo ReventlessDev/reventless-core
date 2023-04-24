@@ -5,7 +5,7 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Js_promise = require("@rescript/std/lib/js/js_promise.js");
-var Id$Reventless = require("./Id.bs.js");
+var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("./Message.bs.js");
 
 function Make(Spec, MappingImpl) {
@@ -17,7 +17,7 @@ function Make(Spec, MappingImpl) {
                       var reference = param.reference;
                       var match = param.command;
                       var meta = match.meta;
-                      return Belt_Array.map(Curry._3(MappingImpl.mapIncomingCommand, Id$Reventless.$$String.toString(match.id), match.command, meta), (function (x) {
+                      return Belt_Array.map(Curry._3(MappingImpl.mapIncomingCommand, Id$ReventlessSpec.$$String.toString(match.id), match.command, meta), (function (x) {
                                     if (x.TAG === /* PublishCommand */0) {
                                       var aggregateCmd = x._1;
                                       var aggregateId = x._0;
@@ -72,7 +72,7 @@ function Make(Spec, MappingImpl) {
                         return {
                                 TAG: /* AbstractPublishEvent */0,
                                 _0: {
-                                  id: Id$Reventless.$$String.makeFromString(id),
+                                  id: Id$ReventlessSpec.$$String.makeFromString(id),
                                   meta: {
                                     service: Spec.name,
                                     time: meta.time,
@@ -91,7 +91,7 @@ function Make(Spec, MappingImpl) {
                                 var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
                                 console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id + "");
                                 return Promise.resolve({
-                                            id: Id$Reventless.$$String.makeFromString(id),
+                                            id: Id$ReventlessSpec.$$String.makeFromString(id),
                                             meta: {
                                               service: Spec.name,
                                               time: meta.time,

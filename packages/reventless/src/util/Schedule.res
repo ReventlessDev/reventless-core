@@ -27,7 +27,7 @@ let create = (scheduler, queueResources) =>
     })
   }
 
-let delete: (Scheduler.t, array<resource>) => delete = (scheduler, queueResources) =>
+let delete: (ReventlessSpec.Scheduler.t, array<resource>) => delete = (scheduler, queueResources) =>
   (. name) => {
     let name = name->AWS.validateName
     let deleteSchedule = scheduler["deleteSchedule"]

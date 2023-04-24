@@ -12,8 +12,8 @@ var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Id$Reventless = require("../Id.bs.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
+var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var QueryDb$Reventless = require("./QueryDb.bs.js");
 var Component$Reventless = require("./Component.bs.js");
@@ -126,8 +126,8 @@ function Make(Config, QueryDbStorage, Handler) {
             };
     };
     var partial_arg_Id = {
-      t_encode: Id$Reventless.StringPure.t_encode,
-      t_decode: Id$Reventless.StringPure.t_decode,
+      t_encode: Id$ReventlessSpec.StringPure.t_encode,
+      t_decode: Id$ReventlessSpec.StringPure.t_decode,
       make: (function (prim) {
           return prim;
         }),
@@ -137,7 +137,7 @@ function Make(Config, QueryDbStorage, Handler) {
       toString: (function (prim) {
           return prim;
         }),
-      cmp: Id$Reventless.StringPure.cmp
+      cmp: Id$ReventlessSpec.StringPure.cmp
     };
     var partial_arg = {
       Id: partial_arg_Id,
@@ -209,8 +209,8 @@ function Make(Config, QueryDbStorage, Handler) {
             };
     };
     var partial_arg_Id$1 = {
-      t_encode: Id$Reventless.StringPure.t_encode,
-      t_decode: Id$Reventless.StringPure.t_decode,
+      t_encode: Id$ReventlessSpec.StringPure.t_encode,
+      t_decode: Id$ReventlessSpec.StringPure.t_decode,
       make: (function (prim) {
           return prim;
         }),
@@ -220,7 +220,7 @@ function Make(Config, QueryDbStorage, Handler) {
       toString: (function (prim) {
           return prim;
         }),
-      cmp: Id$Reventless.StringPure.cmp
+      cmp: Id$ReventlessSpec.StringPure.cmp
     };
     var partial_arg$3 = {
       Id: partial_arg_Id$1,

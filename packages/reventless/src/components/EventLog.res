@@ -2,10 +2,10 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.EventLog
 
-type outputs = {"resources": array<resource>, "eventTopic": EventTopic.outputs}
+type outputs = {"resources": array<resource>, "eventTopic": ReventlessSpec.EventTopic.outputs}
 
 type t
-type component = Component.t<t, outputs>
+type component = ReventlessSpec.Component.t<t, outputs>
 
 exception ReplayError(string)
 
@@ -204,7 +204,7 @@ module Make = (
   ) => component = "default"
 
   @obj
-  external makeOutputs: (~resources: array<resource>, ~eventTopic: EventTopic.outputs) => outputs =
+  external makeOutputs: (~resources: array<resource>, ~eventTopic: ReventlessSpec.EventTopic.outputs) => outputs =
     ""
 
   @send

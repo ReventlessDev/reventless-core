@@ -1,8 +1,8 @@
 let name = "Plugin"
 
-module Id = Id.String
+module Id = ReventlessSpec.Id.String
 
-include ReventlessSpec.Plugin
+open ReventlessSpec.Plugin
 
 @decco
 type command =

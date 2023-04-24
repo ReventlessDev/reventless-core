@@ -6,8 +6,8 @@ type abstractCommandAction =
   | AbstractCall(string, unit => Js.Promise.t<unit>)
 
 type abstractEventAction<'extensionPointEvent> =
-  | AbstractPublishEvent(Message.event'<Id.String.t, 'extensionPointEvent>)
-  | AbstractPublishEventAsync(Js.Promise.t<Message.event'<Id.String.t, 'extensionPointEvent>>)
+  | AbstractPublishEvent(Message.event'<ReventlessSpec.Id.String.t, 'extensionPointEvent>)
+  | AbstractPublishEventAsync(Js.Promise.t<Message.event'<ReventlessSpec.Id.String.t, 'extensionPointEvent>>)
   | AbstractCall(unit => Js.Promise.t<unit>)
 
 module type T = {
@@ -16,7 +16,7 @@ module type T = {
   let aggregateName: string
 
   let mapIncomingCommands: (
-    array<CommandTopic.topicItem<Message.command'<Id.String.t, ExtensionPoint.command>>>,
+    array<CommandTopic.topicItem<Message.command'<ReventlessSpec.Id.String.t, ExtensionPoint.command>>>,
     ReventlessSpec.Schedule.create,
     ReventlessSpec.Schedule.delete,
     ReventlessSpec.QueryEngine.t,
@@ -26,7 +26,7 @@ module type T = {
     Js.Json.t,
     ReventlessSpec.Schedule.create,
     ReventlessSpec.Schedule.delete,
-    PluginSpec.pluginDefinition,
+    ReventlessSpec.Plugin.pluginDefinition,
     ReventlessSpec.QueryEngine.t,
   ) => array<abstractEventAction<ExtensionPoint.event>>
 }
@@ -44,7 +44,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       CommandTopic.reference: reference,
       command: {Message.id: id, command, meta},
     }) =>
-      MappingImpl.mapIncomingCommand(id->Id.String.toString, command, meta)->Belt.Array.map(x =>
+      MappingImpl.mapIncomingCommand(id->ReventlessSpec.Id.String.toString, command, meta)->Belt.Array.map(x =>
         switch x {
         | PublishCommand(aggregateId, aggregateCmd) =>
           let commandStr = aggregateCmd->Aggregate.command_encode->Js.Json.stringify
@@ -109,7 +109,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           )
 
           AbstractPublishEvent({
-            Message.id: id->Id.String.makeFromString,
+            Message.id: id->ReventlessSpec.Id.String.makeFromString,
             event,
             meta: {
               ...meta,
@@ -124,7 +124,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
               `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventStr} id: ${id}`,
             )
             {
-              Message.id: id->Id.String.makeFromString,
+              Message.id: id->ReventlessSpec.Id.String.makeFromString,
               event,
               meta: {
                 ...meta,

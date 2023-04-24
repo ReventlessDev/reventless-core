@@ -1,4 +1,5 @@
 open PluginSpec
+open ReventlessSpec.Plugin
 
 module Spec = PluginSpec
 

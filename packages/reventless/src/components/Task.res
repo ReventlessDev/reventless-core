@@ -13,14 +13,14 @@ type outputs = {
 }
 
 type t
-type component = Component.t<t, outputs>
+type component = ReventlessSpec.Component.t<t, outputs>
 
 type queryBucketName = string => string
 
 type maker = (
   ~queryBucketName: queryBucketName,
-  ~scheduler: Scheduler.t,
-  ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
+  ~scheduler: ReventlessSpec.Scheduler.t,
+  ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
   ~queryEngine: ReventlessSpec.QueryEngine.t,
   ~allAggregates: Js.Dict.t<Aggregate.outputs>,
   ~opts: option<Pulumi.ComponentResource.Options.t>,
@@ -28,10 +28,10 @@ type maker = (
 
 type setup = (
   . ReventlessSpec.QueryEngine.t,
-  Scheduler.t,
+  ReventlessSpec.Scheduler.t,
   publishCommands,
   queryBucketName,
-  EventTopic.allOutputs,
+  ReventlessSpec.EventTopic.allOutputs,
   Pulumi.CustomResourceOptions.t,
 ) => outputs
 
@@ -57,7 +57,7 @@ let setOutputs = (self, outputs) => {
 let construct = (
   ~setup: setup,
   ~queryBucketName,
-  ~scheduler: Scheduler.t,
+  ~scheduler: ReventlessSpec.Scheduler.t,
   ~publishToAggregates,
   ~queryEngine,
   ~allAggregates,

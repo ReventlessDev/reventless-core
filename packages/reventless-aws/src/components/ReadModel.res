@@ -1,8 +1,8 @@
 module Make = (
   Config: Config.T,
-  Spec: ReventlessSpec.ReadModelSpec.T,
+  Spec: ReventlessSpec.ReadModel.Spec.T,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
-): (Reventless.ReadModel.T with module Spec = Spec) => Reventless.ReadModel.Make(
+): (ReventlessSpec.ReadModel.T with module Spec = Spec) => Reventless.ReadModel.Make(
   Config,
   Spec,
   Mappings,

@@ -31,3 +31,18 @@ type statusChange = {
   at: string,
   by: string,
 }
+
+@decco
+type command'<'id, 'command> = {
+  id: 'id,
+  meta: meta,
+  command: 'command,
+}
+
+@decco
+type commandJson = {
+  id: string,
+  meta: meta,
+  commandJson: Js.Json.t,
+  delay: option<int>,
+}

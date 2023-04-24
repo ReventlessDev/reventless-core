@@ -24,21 +24,6 @@ let nowAsISOString = () => Js.Date.make()->Js.Date.toISOString
 
 type handler<'msg> = 'msg => Js.Promise.t<unit>
 
-@decco
-type command'<'id, 'command> = {
-  id: 'id,
-  meta: meta,
-  command: 'command,
-}
-
-@decco
-type commandJson = {
-  id: string,
-  meta: meta,
-  commandJson: Js.Json.t,
-  delay: option<int>,
-}
-
 let toMessageBody = ({id, meta, commandJson}) => {
   let commandMeta: meta = {...meta, msgId: uuid(), time: nowAsISOString()}
   [("id", id->Js.Json.string), ("meta", commandMeta->meta_encode), ("command", commandJson)]

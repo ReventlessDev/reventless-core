@@ -5,7 +5,7 @@ let componentType = ComponentType.EventTopic
 type outputs = {.}
 
 type t
-type component = Component.t<t, outputs>
+type component = ReventlessSpec.Component.t<t, outputs>
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T
@@ -22,7 +22,7 @@ module type T = {
   let make: (
     ~name: string,
     ~opts: Pulumi.ComponentResource.Options.t=?,
-    ~allQueryDbs: QueryDb.allOutputs,
+    ~allQueryDbs: ReventlessSpec.QueryDb.allOutputs,
     unit,
   ) => component
 }
@@ -32,7 +32,7 @@ module Adapter = {
   type publisherMaker = (
     ~name: string,
     ~opts: Pulumi.CustomResourceOptions.t,
-    ~allQueryDbs: QueryDb.allOutputs,
+    ~allQueryDbs: ReventlessSpec.QueryDb.allOutputs,
   ) => publisher
 
   module type Publisher = {
@@ -44,7 +44,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   module Spec = Spec
 
   type constructed
-  type construct = (component, string, QueryDb.allOutputs) => constructed
+  type construct = (component, string, ReventlessSpec.QueryDb.allOutputs) => constructed
 
   @module("./Component") @new
   external make: (
@@ -52,7 +52,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     ~name: string,
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
-    ~allQueryDbs: QueryDb.allOutputs,
+    ~allQueryDbs: ReventlessSpec.QueryDb.allOutputs,
   ) => component = "default"
 
   @obj external makeOutputs: (~publisher: resource) => outputs = ""

@@ -1,6 +1,6 @@
 open PulumiAws
 open DynamoDb.Table
-open ReventlessSpec.ReadModelSpec
+open ReventlessSpec.ReadModel.Spec
 
 type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
 type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>

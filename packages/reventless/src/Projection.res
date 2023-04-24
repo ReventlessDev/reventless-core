@@ -1,7 +1,7 @@
-open ReventlessSpec.Projection.Spec
-open ReventlessSpec.ReadModelSpec
-open Belt.Result
-open QueryDb
+open ReventlessSpec.Projection.Spec // FIXME: open locally
+open ReventlessSpec.ReadModel.Spec // FIXME: open locally
+open Belt.Result // FIXME: open locally
+open QueryDb // FIXME: open locally
 
 module Set = Belt.Set.String
 
@@ -29,11 +29,11 @@ module Make = (Target: ReventlessSpec.Projection.Spec.Target) => {
 }
 
 type primitives<'id, 'state> = {
-  load: load<'id, 'state>,
-  save: save<'id, 'state>,
-  saveBatch: saveBatch<'id, 'state>,
-  delete: delete<'id>,
-  deleteBatch: deleteBatch<'id>,
+  load: ReventlessSpec.QueryDb.load<'id, 'state>,
+  save: ReventlessSpec.QueryDb.save<'id, 'state>,
+  saveBatch: ReventlessSpec.QueryDb.saveBatch<'id, 'state>,
+  delete: ReventlessSpec.QueryDb.delete<'id>,
+  deleteBatch: ReventlessSpec.QueryDb.deleteBatch<'id>,
 }
 
 let logAction = str => Js.log2("Projection.handleAction:", str)
@@ -134,14 +134,14 @@ let handleAction = (
         switch states {
         | list{} =>
           logAction(`Update Error: No oldState for ${id})`)
-          Error(StaleState)->Js.Promise.resolve
+          Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
         | list{oldState} =>
           let newState = oldState->update
           logAction(`Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
           save(. id, newState, Overwrite, None)
         | _ =>
           logAction(`Update Error: Multiple oldStates for ${id})`)
-          Error(StaleState)->Js.Promise.resolve
+          Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
         }
       | Error(err) => Error(err)->Js.Promise.resolve
       }
@@ -161,7 +161,7 @@ let handleAction = (
           save(. id, newState, Overwrite, None)
         | _ =>
           logAction(`UpdateWithDefault Error: Multiple oldStates for ${id})`)
-          Error(StaleState)->Js.Promise.resolve
+          Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
         }
       | Error(err) =>
         logAction(
@@ -184,7 +184,7 @@ let handleAction = (
         Error(err)->Js.Promise.resolve
       | (_, None) =>
         logAction("UpdateMultiState Error: Missing SubIdConfig !")
-        Error(MissingSubIdConfig)->Js.Promise.resolve
+        Error(ReventlessSpec.QueryDb.MissingSubIdConfig)->Js.Promise.resolve
       }
     , _)
   // | UpdateManyMultiStates(ids, update) =>

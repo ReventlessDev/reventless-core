@@ -41,7 +41,7 @@ let forwardCommand = (
                       Js.log3(
                         "ForwardCommand: published command to",
                         plugin.name,
-                        extensionPoint.PluginSpec.commandTopic,
+                        extensionPoint.ReventlessSpec.Plugin.commandTopic,
                       )->Js.Promise.resolve,
                     _,
                   )

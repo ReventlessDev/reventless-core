@@ -8,7 +8,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Id$Reventless = require("../Id.bs.js");
+var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.bs.js");
@@ -118,7 +118,7 @@ function Make(Spec, Mappings) {
       }
     };
     var incomingEventHandler = function (event$pJson, pluginDef) {
-      var event$p = Message$Reventless.event$p_decode(Id$Reventless.StringPure.t_decode, Spec.event_decode, event$pJson);
+      var event$p = Message$Reventless.event$p_decode(Id$ReventlessSpec.StringPure.t_decode, Spec.event_decode, event$pJson);
       if (event$p.TAG === /* Ok */0) {
         var commandActions = mapIncomingEvent(event$p._0, pluginDef, queryEngine);
         var __x = Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction));

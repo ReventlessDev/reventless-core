@@ -3,40 +3,8 @@ module ReventlessEventTopic = EventTopic
 
 let componentType = ComponentType.ExtensionPoint
 
-type outputs = {
-  "name": string,
-  "aggregateNames": array<string>,
-  "outgoingEventHandler": (. Js.Json.t, PluginSpec.pluginDefinition) => Js.Promise.t<unit>,
-  "commandTopic": CommandTopic.outputs,
-  "eventTopic": EventTopic.outputs,
-}
-type t
-type component = Component.t<t, outputs>
-
 type name = string
 
-module type Spec = {
-  module Id = Id.String
-
-  let name: string
-
-  @decco
-  type command
-  @decco
-  type event
-  @decco
-  type callCommand
-}
-
-module type T = {
-  let make: (
-    ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
-    ~scheduler: Scheduler.t,
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
-    unit,
-  ) => component
-}
 
 module type Mappings = {
   module Spec: ReventlessSpec.ExtensionPointMapping.Spec
@@ -49,23 +17,25 @@ module Make = (
   Mappings: Mappings with module Spec := Spec,
   CommandTopicAdapter: CommandTopic.Adapter.Connector,
   EventTopicAdapter: EventTopic.Adapter.Publisher,
-): T => {
+): ReventlessSpec.ExtensionPoint.T => {
   module Spec = Spec
 
-  module SpecWithId: Spec
+  module SpecWithId: ReventlessSpec.ExtensionPoint.Spec
     with type command = Spec.command
     and type event = Spec.event
     and type callCommand = Spec.callCommand = {
     include Spec
-    module Id = Id.String
+    module Id = ReventlessSpec.Id.String
   }
 
   module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter)
 
   module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
 
+  type t
+
   type constructed
-  type construct = (component, string) => constructed
+  type construct = (ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs>, string) => constructed
 
   @module("./Component") @new
   external make: (
@@ -73,20 +43,20 @@ module Make = (
     ~name: string,
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
-  ) => component = "default"
+  ) => ReventlessSpec.Component.t<t,ReventlessSpec.ExtensionPoint.outputs> = "default"
 
   @obj
   external makeOutputs: (
     ~name: string,
     ~aggregateNames: array<string>,
-    ~outgoingEventHandler: (. Js.Json.t, PluginSpec.pluginDefinition) => Js.Promise.t<unit>,
-    ~commandTopic: ReventlessCommandTopic.outputs,
-    ~eventTopic: ReventlessEventTopic.outputs,
-  ) => outputs = ""
+    ~outgoingEventHandler: (. Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
+    ~commandTopic: ReventlessSpec.CommandTopic.outputs,
+    ~eventTopic: ReventlessSpec.EventTopic.outputs,
+  ) => ReventlessSpec.ExtensionPoint.outputs = ""
 
   @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (component, outputs) => unit = "setOutputs"
+  external registerOutputs: (ReventlessSpec.Component.t<t,ReventlessSpec.ExtensionPoint.outputs> , ReventlessSpec.ExtensionPoint.outputs) => constructed = "registerOutputs"
+  @send external setOutputs: (ReventlessSpec.Component.t<t,ReventlessSpec.ExtensionPoint.outputs>, ReventlessSpec.ExtensionPoint.outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
@@ -133,7 +103,7 @@ module Make = (
     let childName = name->Js.String2.replace(".", "")->ComponentType.name(componentType)
 
     let commandTopic: ref<
-      option<Component.t<ReventlessCommandTopic.t, ReventlessCommandTopic.outputs>>,
+      option<ReventlessSpec.Component.t<CommandTopic.t, ReventlessSpec.CommandTopic.outputs>>,
     > = ref(None)
 
     let applyCommandAction = x =>
@@ -141,7 +111,7 @@ module Make = (
       | ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
         publishToAggregates
         ->Js.Dict.get(aggregateName)
-        ->Belt.Option.map((publishJsons: ReventlessCommandTopic.publishJsons) =>
+        ->Belt.Option.map((publishJsons: ReventlessSpec.CommandTopic.publishJsons) =>
           publishJsons(. [cmdJson])
         )
         ->Belt.Option.mapWithDefault(

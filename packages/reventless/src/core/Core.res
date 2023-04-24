@@ -2,22 +2,22 @@ let componentType = ComponentType.Core
 
 type outputs = {
   "version": string,
-  "eventCollector": EventCollector.outputs,
-  "extensionPoints": Js.Dict.t<ExtensionPoint.outputs>,
+  "eventCollector": ReventlessSpec.EventCollector.outputs,
+  "extensionPoints": Js.Dict.t<ReventlessSpec.ExtensionPoint.outputs>,
   "aggregates": Pulumi.Output.t<Js.Dict.t<Aggregate.outputs>>,
-  "readModels": Pulumi.Output.t<Js.Dict.t<ReadModel.outputs>>,
+  "readModels": Pulumi.Output.t<Js.Dict.t<ReventlessSpec.ReadModel.outputs>>,
   "cloner": Cloner.outputs,
 }
 
 type t
-type component = Component.t<t, outputs>
+type component = ReventlessSpec.Component.t<t, outputs>
 
 type maker = (
   ~version: string,
-  ~extensionPoints: array<module(ExtensionPoint.T)>,
+  ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
   ~aggregates: array<module(Aggregate.T)>,
-  ~readModels: array<module(ReadModel.T)>,
-  ~scheduler: Scheduler.t,
+  ~readModels: array<module(ReventlessSpec.ReadModel.T)>,
+  ~scheduler: ReventlessSpec.Scheduler.t,
 ) => component
 
 module type T = {
@@ -46,10 +46,10 @@ module Make = (
   @obj
   external makeOutputs: (
     ~version: string,
-    ~eventCollector: EventCollector.outputs,
-    ~extensionPoints: Js.Dict.t<ExtensionPoint.outputs>,
+    ~eventCollector: ReventlessSpec.EventCollector.outputs,
+    ~extensionPoints: Js.Dict.t<ReventlessSpec.ExtensionPoint.outputs>,
     ~aggregates: Js.Dict.t<Aggregate.outputs>,
-    ~readModels: Js.Dict.t<ReadModel.outputs>,
+    ~readModels: Js.Dict.t<ReventlessSpec.ReadModel.outputs>,
     ~cloner: Cloner.outputs,
   ) => outputs = ""
 
@@ -62,16 +62,16 @@ module Make = (
   }
 
   type readModel = {
-    module_: module(ReadModel.T),
-    readModel: ReadModel.component,
+    module_: module(ReventlessSpec.ReadModel.T),
+    readModel: ReventlessSpec.ReadModel.component,
   }
 
   let construct = (
     ~version,
-    ~extensionPoints: array<module(ExtensionPoint.T)>,
+    ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
     ~aggregates: array<module(Aggregate.T)>,
-    ~readModels: array<module(ReadModel.T)>,
-    ~scheduler: Scheduler.t,
+    ~readModels: array<module(ReventlessSpec.ReadModel.T)>,
+    ~scheduler: ReventlessSpec.Scheduler.t,
     self,
     _,
   ) => {
@@ -92,7 +92,7 @@ module Make = (
 
     let allEventTopics = Util.Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
-    let readModels = readModels->Belt.Array.map((module(ReadModel: ReadModel.T)) => {
+    let readModels = readModels->Belt.Array.map((module(ReadModel: ReventlessSpec.ReadModel.T)) => {
       let readModel = ReadModel.make(~allEventTopics, ~opts, ())
       (ReadModel.Spec.name, {module_: module(ReadModel), readModel})
     })
@@ -112,7 +112,7 @@ module Make = (
     )
 
     let extensionPoints =
-      extensionPoints->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) =>
+      extensionPoints->Belt.Array.map((module(ExtensionPoint: ReventlessSpec.ExtensionPoint.T)) =>
         ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts), ())
       )
     let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs
@@ -124,7 +124,7 @@ module Make = (
       )
       ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union)
 
-    let fakePluginDefinition: PluginSpec.pluginDefinition = {
+    let fakePluginDefinition: ReventlessSpec.Plugin.pluginDefinition = {
       id: "Core@FAKE",
       name: "Core",
       version: "FAKE",

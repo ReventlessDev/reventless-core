@@ -2,14 +2,6 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.CommandTopic
 
-type outputs = {"resources": array<resource>}
-
-type t
-type component = Component.t<t, outputs>
-
-type publish<'id, 'command> = (. Message.command'<'id, 'command>) => Js.Promise.t<unit>
-type publishJsons = (. array<Message.commandJson>) => Js.Promise.t<unit>
-
 exception NotPublishedToConnector(Js.Promise.error)
 
 module type Spec = {
@@ -31,6 +23,8 @@ type commandsHandler<'command> = (
 module type T = {
   module Spec: Spec
 
+  type t
+
   type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 
   let make: (
@@ -40,16 +34,16 @@ module type T = {
     ~timeout: int=?,
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit,
-  ) => component
+  ) => ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> 
 
-  let publish: component => publish<Spec.Id.t, Spec.command>
-  let publishJsons: component => publishJsons
+  let publish: ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> => ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
+  let publishJsons:  ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> => ReventlessSpec.CommandTopic.publishJsons
 }
 
 module Adapter = {
   type connector = {
     resources: array<resource>,
-    publish: publishJsons,
+    publish: ReventlessSpec.CommandTopic.publishJsons,
   }
   type connectorMaker = (
     ~name: string,
@@ -63,8 +57,8 @@ module Adapter = {
     let make: connectorMaker
   }
 
-  type remoteConnector = {remotePublish: publishJsons}
-  type remoteConnectorMaker = outputs => remoteConnector
+  type remoteConnector = {remotePublish: ReventlessSpec.CommandTopic.publishJsons}
+  type remoteConnectorMaker = ReventlessSpec.CommandTopic.outputs => remoteConnector
 
   module type RemoteConnector = {
     let make: remoteConnectorMaker
@@ -74,12 +68,14 @@ module Adapter = {
 module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = Spec) => {
   module Spec = Spec
 
+  type t
+
   type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 
   type constructed
-  type construct = (component, string, commandsHandler) => constructed
+  type construct = (ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> , string, commandsHandler) => constructed
 
-  type publish = publish<Spec.Id.t, Spec.command>
+  type publish = ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
 
   @module("./Component") @new
   external make: (
@@ -88,23 +84,23 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
     ~commandsHandler: commandsHandler,
-  ) => component = "default"
+  ) => ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>  = "default"
 
-  @obj external makeOutputs: (~resources: array<resource>) => outputs = ""
+  @obj external makeOutputs: (~resources: array<resource>) => ReventlessSpec.CommandTopic.outputs = ""
 
   @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (component, outputs) => unit = "setOutputs"
+  external registerOutputs: ( ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>, ReventlessSpec.CommandTopic.outputs) => constructed = "registerOutputs"
+  @send external setOutputs: ( ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>, ReventlessSpec.CommandTopic.outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
   }
 
-  @set external setPublish: (component, publish) => unit = "publish"
-  @get external publish: component => publish = "publish"
+  @set external setPublish: (ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>, publish) => unit = "publish"
+  @get external publish: ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> => publish = "publish"
   @set
-  external setPublishJsons: (component, publishJsons) => unit = "publishJsons"
-  @get external publishJsons: component => publishJsons = "publishJsons"
+  external setPublishJsons: (ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>, ReventlessSpec.CommandTopic.publishJsons) => unit = "publishJsons"
+  @get external publishJsons: ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
   let publishJsonsFn = connector =>
     (. jsons) => connector.Adapter.publish(. jsons)->Js.Promise.catch(e => {
