@@ -151,6 +151,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     actions->handleActions(primitives, Projection.subIdConfig)
 
   let update = (store, id, meta, event) => {
+    /* NOTE: unused
     let logStore = text =>
       Js.log4(
         text,
@@ -161,6 +162,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
           store,
         ),
       )
+    */
     let resolveStore = () =>
       // logStore("update after event:");
       store->Js.Promise.resolve

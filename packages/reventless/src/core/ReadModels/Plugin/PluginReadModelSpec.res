@@ -1,7 +1,5 @@
 module Id = ReventlessSpec.Id.String
 
-open PluginSpec
-
 @decco
 type status =
   | Connected

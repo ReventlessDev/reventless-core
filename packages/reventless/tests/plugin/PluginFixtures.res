@@ -1,5 +1,3 @@
-open PluginSpec
-
 let pluginDefinition = {
   ReventlessSpec.Plugin.id: "id@1",
   name: "name",
