@@ -94,7 +94,6 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker<api> = (
     | [_aggregate, commandName] => commandName->String.capitalize_ascii
     | _ => field->String.capitalize_ascii
     }
-    Reventless.Logger.logOutput(~loc=__LOC__, `${name}: datasource-name`, dataSource["name"])
     AppSync.Resolver.makeUnitResolver(
       ~name=field->String.capitalize_ascii,
       ~api,

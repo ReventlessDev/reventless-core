@@ -17,7 +17,6 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
   ~opts,
 ) => {
   open Resolver.Templates
-  Reventless.Logger.logOutput(~loc=__LOC__, name ++ ": datasource name", dataSourceName)
   let dataSourceName = dataSourceName->Pulumi.Output.asInput
   let name = name->String.capitalize_ascii
   let resolverByIdSingle = Resolver.makeUnitResolver(

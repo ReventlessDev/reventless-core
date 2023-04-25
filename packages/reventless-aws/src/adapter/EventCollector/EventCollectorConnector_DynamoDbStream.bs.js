@@ -8,7 +8,6 @@ var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
-var Logger$Reventless = require("@reventless/reventless/src/util/Logger.bs.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.bs.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.bs.js");
@@ -17,10 +16,7 @@ var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoD
 var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./EventCollectorConnector_DynamoDbStream_Runtime.bs.js");
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
-  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.res\", line 13, characters 35-42", undefined, undefined, undefined, name + ": policy1", policy1);
-  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.res\", line 14, characters 35-42", undefined, undefined, undefined, name + ": policy2", policy2);
   var policies = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2);
-  Logger$Reventless.logOutput("File \"EventCollectorConnector_DynamoDbStream.res\", line 16, characters 35-42", undefined, undefined, undefined, name + ": policies", policies);
   var eventHandlerLambda = policies.apply(function (policies) {
         return new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [
                         (function (param, param$1) {
