@@ -16,12 +16,15 @@ module Make = (Spec: Spec) => {
       )
     )
     batch := []
+    Js.Promise2.resolve()
   }
 
   let add = (id: string, command: Spec.command) => {
     batch := batch.contents->Belt.Array.concat([(id, command)])
     if batch.contents->Belt.Array.size >= batchSize {
       send()
+    } else {
+      Js.Promise2.resolve()
     }
   }
 

@@ -14,6 +14,7 @@ function Make(Spec) {
             console.log("  " + String(idx) + ": " + param[0] + ": " + JSON.stringify(Curry._1(Spec.command_encode, param[1])) + "");
           }));
     batch.contents = [];
+    return Promise.resolve(undefined);
   };
   var add = function (id, command) {
     batch.contents = Belt_Array.concat(batch.contents, [[
@@ -22,8 +23,9 @@ function Make(Spec) {
           ]]);
     if (batch.contents.length >= 10) {
       return send(undefined);
+    } else {
+      return Promise.resolve(undefined);
     }
-    
   };
   return {
           batch: batch,
