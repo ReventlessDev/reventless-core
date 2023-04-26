@@ -150,9 +150,18 @@ This command will run 3 Shell-Scripts:
 # Code-Smells
 
 ## ReasonML
+
 * `...->ignore`
 
 ## Pulumi
+
 * `...->Pulumi.Output.apply(_, ...)`
 * `...->Pulumi.Output.all->Pulumi.Output.apply(...)`
 * type `option(Pulumi.Output.t('a))`: Rescript's js option encoding and Pulumi's Output lifting mechanics interact badly! - Therefore, such a type is not possible to use!
+
+# Common issues
+
+## `error: Duplicate resource URN 'urn:pulumi:dev::wm-raw::aws:sqs/queue:Queue::FIFODeadLetterQueue'; try giving it a unique name` during deployment
+
+This error usually occurs due to multiple different versions of `@reventless/reventless` or `@reventless/reventless-aws` being present in the dependencies (npm). To verify, call `npm ls @reventless/reventless` / `npm ls @reventless/reventless-aws` and verify there is only a single version present.
+To fix this use desired ranges in the dependencies definition (package.json) of the project and check upstream version ranges as well. (You can also use `npm why <packageName>` to see where a specific version is coming from.)
