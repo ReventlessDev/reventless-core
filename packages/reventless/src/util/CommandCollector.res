@@ -7,6 +7,7 @@ let batchSize = 10
 
 module Make = (Spec: Spec) => {
   let batch = ref([])
+  let promises = []
 
   let send = () => {
     Js.log("sending batch:")
@@ -16,17 +17,19 @@ module Make = (Spec: Spec) => {
       )
     )
     batch := []
-    Js.Promise2.resolve()
+    let p = Js.Promise2.resolve()
+    let _ = promises->Js.Array2.push(p)
   }
 
   let add = (id: string, command: Spec.command) => {
     batch := batch.contents->Belt.Array.concat([(id, command)])
     if batch.contents->Belt.Array.size >= batchSize {
       send()
-    } else {
-      Js.Promise2.resolve()
     }
   }
 
-  let flush = send
+  let flush = async () => {
+    send()
+    let _results = await promises->Util.Promise.allSettled
+  }
 }

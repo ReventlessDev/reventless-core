@@ -8,13 +8,15 @@ function Make(Spec) {
   var batch = {
     contents: []
   };
+  var promises = [];
   var send = function (param) {
     console.log("sending batch:");
     Belt_Array.forEachWithIndex(batch.contents, (function (idx, param) {
             console.log("  " + String(idx) + ": " + param[0] + ": " + JSON.stringify(Curry._1(Spec.command_encode, param[1])) + "");
           }));
     batch.contents = [];
-    return Promise.resolve(undefined);
+    var p = Promise.resolve(undefined);
+    promises.push(p);
   };
   var add = function (id, command) {
     batch.contents = Belt_Array.concat(batch.contents, [[
@@ -23,15 +25,19 @@ function Make(Spec) {
           ]]);
     if (batch.contents.length >= 10) {
       return send(undefined);
-    } else {
-      return Promise.resolve(undefined);
     }
+    
+  };
+  var flush = async function (param) {
+    send(undefined);
+    await Promise.allSettled(promises);
   };
   return {
           batch: batch,
+          promises: promises,
           send: send,
           add: add,
-          flush: send
+          flush: flush
         };
 }
 
