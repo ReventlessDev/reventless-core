@@ -51,7 +51,8 @@ function handleQueueEvent(handleCommands, queue, $$event, param) {
                                             })), (function (x) {
                                           return x;
                                         })))));
-              }), Js_promise.$$catch((function (param) {
+              }), Js_promise.$$catch((function (err) {
+                    console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent error:", err, JSON.stringify(err));
                     return Js_exn.raiseError("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!");
                   }), handleCommands(topicItems)));
 }

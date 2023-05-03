@@ -18,16 +18,17 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
     ->Belt.Array.map(record => record["receiptHandle"])
     ->Belt.Array.zip(jsons)
     ->Belt.Array.map(((reference, command)) => {
-      Reventless.CommandTopic.reference: reference,
-      command: command,
+      Reventless.CommandTopic.reference,
+      command,
     })
 
   handleCommands(. topicItems)
-  |> Js.Promise.catch(_ =>
+  |> Js.Promise.catch(err => {
+    Js.log3(__MODULE__ ++ ".handleQueueEvent error:", err, err->Js.Json.stringifyAny)
     Js.Exn.raiseError(
       __MODULE__ ++ ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!",
     )
-  )
+  })
   |> Js.Promise.then_(results =>
     results
     ->Belt.Array.mapWithIndex((idx, result) =>
@@ -58,7 +59,7 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
   )
 }
 
-let publish = (queue, queueService, . jsons) =>
+let publish = (queue, queueService) => (. jsons) =>
   switch jsons->Belt.Array.length {
   | 0 => Js.log(__MODULE__ ++ ".publish: No commands to send")->Js.Promise.resolve
   | 1 => queue->Util_SQS_Runtime.send(queueService, jsons[0])
