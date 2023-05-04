@@ -1,0 +1,1 @@
+let storageErrorToString: ReventlessSpec.QueryDb.storageError => string

@@ -7,18 +7,6 @@ module type AggregateSpec = {
   let name: string
 }
 
-let storageErrorToString: ReventlessSpec.QueryDb.storageError => string = err =>
-  switch err {
-  | NotSavedToStorage(s) => `NotSavedToStorage(${s})`
-  | NotLoadedFromStorage(s) => `NotLoadedFromStorage(${s})`
-  | NotCountedOnStorage(s) => `NotCountedOnStorage(${s})`
-  | NotDeletedFromStorage(s) => `NotDeletedFromStorage(${s})`
-  | BatchNotFullyWrittenToStorage(s) => `BatchNotFullyWrittenToStorage(${s})`
-  | StaleState => `StaleState`
-  | MissingSubIdConfig => `MissingSubIdConfig`
-  }
-
-
 module Adapter = {
   open ReventlessSpec.ReadModel.Spec
 
@@ -119,7 +107,12 @@ module Make = (
   type deleteBatch = ReventlessSpec.QueryDb.deleteBatch<Spec.Id.t>
 
   type constructed
-  type construct = (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> , string, api, role) => constructed
+  type construct = (
+    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
+    string,
+    api,
+    role,
+  ) => constructed
 
   @module("./Component") @new
   external make: (
@@ -138,27 +131,62 @@ module Make = (
   ) => ReventlessSpec.QueryDb.outputs = ""
 
   @send
-  external registerOutputs: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, ReventlessSpec.QueryDb.outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, ReventlessSpec.QueryDb.outputs) => unit = "setOutputs"
+  external registerOutputs: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
+    ReventlessSpec.QueryDb.outputs,
+  ) => constructed = "registerOutputs"
+  @send
+  external setOutputs: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
+    ReventlessSpec.QueryDb.outputs,
+  ) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
   }
 
-  @set external setLoad: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, load) => unit = "load"
-  @set external setSave: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, save) => unit = "save"
-  @set external setSaveBatch: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, saveBatch) => unit = "saveBatch"
-  @set external setCount: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, count) => unit = "count"
-  @set external setDelete: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, delete) => unit = "delete"
   @set
-  external setDeleteBatch: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, deleteBatch) => unit = "deleteBatch"
+  external setLoad: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, load) => unit =
+    "load"
+  @set
+  external setSave: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, save) => unit =
+    "save"
+  @set
+  external setSaveBatch: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
+    saveBatch,
+  ) => unit = "saveBatch"
+  @set
+  external setCount: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
+    count,
+  ) => unit = "count"
+  @set
+  external setDelete: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
+    delete,
+  ) => unit = "delete"
+  @set
+  external setDeleteBatch: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
+    deleteBatch,
+  ) => unit = "deleteBatch"
 
   @get external load: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => load = "load"
   @get external save: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => save = "save"
-  @get external saveBatch: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => saveBatch = "saveBatch"
-  @get external count: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => count = "count"
-  @get external delete: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => delete = "delete"
-  @get external deleteBatch: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => deleteBatch = "deleteBatch"
+  @get
+  external saveBatch: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => saveBatch =
+    "saveBatch"
+  @get
+  external count: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => count = "count"
+  @get
+  external delete: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => delete =
+    "delete"
+  @get
+  external deleteBatch: ReventlessSpec.Component.t<
+    t,
+    ReventlessSpec.QueryDb.outputs,
+  > => deleteBatch = "deleteBatch"
 
   let decode = (id, item) =>
     switch Spec.state_decode(item) {
@@ -172,54 +200,55 @@ module Make = (
       list{}
     }
 
-  let loadFn = storage =>
-    (. id) =>
-      storage.Adapter.load(. id->Spec.Id.toString) |> Js.Promise.then_(result =>
-        result
-        ->Belt.Result.map(states => states->Belt.List.map(decode(id))->Belt.List.flatten)
-        ->Js.Promise.resolve
-      )
+  let loadFn = storage => (. id) =>
+    storage.Adapter.load(. id->Spec.Id.toString) |> Js.Promise.then_(result =>
+      result
+      ->Belt.Result.map(states => states->Belt.List.map(decode(id))->Belt.List.flatten)
+      ->Js.Promise.resolve
+    )
 
-  let saveFn = storage =>
-    (. id, state, saveMode, ttl) =>
+  let saveFn = storage => (. id, state, saveMode, ttl) =>
+    switch state->Spec.state_encode->Js.Json.decodeObject {
+    | Some(dict) =>
+      dict->Js.Dict.set("id", Spec.Id.t_encode(id))
+      let json = Js.Json.object_(dict)
+      storage.Adapter.save(. id->Spec.Id.toString, json, saveMode, ttl)
+    | None =>
+      Js.log2("QueryDB.save: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+      Belt.Result.Error(
+        ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"),
+      )->Js.Promise.resolve
+    }
+
+  let saveBatchFn = storage => (. items) => {
+    let batch = items->Belt.Array.keepMap(((id, state, ttl)) =>
       switch state->Spec.state_encode->Js.Json.decodeObject {
       | Some(dict) =>
         dict->Js.Dict.set("id", Spec.Id.t_encode(id))
         let json = Js.Json.object_(dict)
-        storage.Adapter.save(. id->Spec.Id.toString, json, saveMode, ttl)
+        Some((id->Spec.Id.toString, json, ttl))
       | None =>
-        Js.log2("QueryDB.save: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
-        Belt.Result.Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))->Js.Promise.resolve
+        Js.log2("QueryDB.saveBatch: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+        None
       }
+    )
+    storage.Adapter.saveBatch(. batch)
+  }
 
-  let saveBatchFn = storage =>
-    (. items) => {
-      let batch = items->Belt.Array.keepMap(((id, state, ttl)) =>
-        switch state->Spec.state_encode->Js.Json.decodeObject {
-        | Some(dict) =>
-          dict->Js.Dict.set("id", Spec.Id.t_encode(id))
-          let json = Js.Json.object_(dict)
-          Some((id->Spec.Id.toString, json, ttl))
-        | None =>
-          Js.log2("QueryDB.saveBatch: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
-          None
-        }
-      )
-      storage.Adapter.saveBatch(. batch)
-    }
-
-  let countFn = storage =>
-    (. id, fieldName, inc) => storage.Adapter.count(. id->Spec.Id.toString, fieldName, inc)
+  let countFn = storage => (. id, fieldName, inc) =>
+    storage.Adapter.count(. id->Spec.Id.toString, fieldName, inc)
 
   let deleteFn = storage => (. id, subId) => storage.Adapter.delete(. id->Spec.Id.toString, subId)
 
-  let deleteBatchFn = storage =>
-    (. ids) => {
-      let ids = ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.toString, sort))
-      storage.Adapter.deleteBatch(. ids)
-    }
+  let deleteBatchFn = storage => (. ids) => {
+    let ids = ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.toString, sort))
+    storage.Adapter.deleteBatch(. ids)
+  }
 
-  let outputs: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => ReventlessSpec.QueryDb.outputs = component => Component.extractOutputs(component)
+  let outputs: ReventlessSpec.Component.t<
+    t,
+    ReventlessSpec.QueryDb.outputs,
+  > => ReventlessSpec.QueryDb.outputs = component => Component.extractOutputs(component)
 
   let construct = (~ttl=?, self, name, api, apiRole) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())

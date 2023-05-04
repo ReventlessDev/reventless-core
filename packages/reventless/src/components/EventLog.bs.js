@@ -2,167 +2,18 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
-var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
-var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
-var Message$Reventless = require("../Message.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var EventTopic$Reventless = require("./EventTopic.bs.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
+var EventLogRuntime$Reventless = require("./EventLogRuntime.bs.js");
 
 var ReplayError = /* @__PURE__ */Caml_exceptions.create("EventLog-Reventless.ReplayError");
 
 var Adapter = {};
-
-function eventToJson(specIdEncode, specEventEncode, id, event$p) {
-  return Js_dict.fromArray(Belt_Array.concat([
-                  [
-                    "id",
-                    Curry._1(specIdEncode, id)
-                  ],
-                  [
-                    "sequenceNr",
-                    Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now(undefined))
-                  ],
-                  [
-                    "event",
-                    Curry._1(specEventEncode, event$p.event)
-                  ]
-                ], Message$Reventless.decomposeMeta(event$p.meta)));
-}
-
-function eventsToJson(events$p, specIdEncode, specEventEncode, id) {
-  return Belt_Array.map(events$p, (function (param) {
-                return eventToJson(specIdEncode, specEventEncode, id, param);
-              }));
-}
-
-function storageAppendErrorHandler(specName, specIdToString, id, err) {
-  var errMsg = "EventLog: Error: Couldn't append for " + specName + "(" + Curry._1(specIdToString, id) + "):" + Belt_Option.getWithDefault(err.message, "no error message given");
-  console.log(errMsg);
-  return {
-          TAG: /* Error */1,
-          _0: errMsg
-        };
-}
-
-async function publishToEventTopic(eventTopicPublish, specIdToString, id, events$p) {
-  try {
-    return await eventTopicPublish(events$p);
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === Js_exn.$$Error) {
-      var err$1 = err._1;
-      var msg = "EventLog.appendFn(" + Curry._1(specIdToString, id) + "): EventTopic.publish Error: ";
-      console.log(msg, err$1);
-      return Js_exn.raiseError(msg + Belt_Option.getWithDefault(err$1.message, "no error message given"));
-    }
-    throw err;
-  }
-}
-
-function catchErrorHandler(exn) {
-  console.log("EventLog.append: Error:", exn);
-  throw exn;
-}
-
-function appendFn(storageAppend, specIdToString, specIdEncode, specEventEncode, eventTopicPublish, specName) {
-  return async function (sequenceNr, id, events$p) {
-    try {
-      var eventsJson = eventsToJson(events$p, specIdEncode, specEventEncode, id);
-      var exit = 0;
-      var appendResult;
-      try {
-        appendResult = await storageAppend(sequenceNr, Curry._1(specIdToString, id), eventsJson);
-        exit = 1;
-      }
-      catch (raw_err){
-        var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-        if (err.RE_EXN_ID === Js_exn.$$Error) {
-          return storageAppendErrorHandler(specName, specIdToString, id, err._1);
-        }
-        throw err;
-      }
-      if (exit === 1) {
-        await publishToEventTopic(eventTopicPublish, specIdToString, id, events$p);
-        return appendResult;
-      }
-      
-    }
-    catch (raw_exn){
-      return catchErrorHandler(Caml_js_exceptions.internalToOCamlException(raw_exn));
-    }
-  };
-}
-
-var AppendUtil = {
-  eventToJson: eventToJson,
-  eventsToJson: eventsToJson,
-  storageAppendErrorHandler: storageAppendErrorHandler,
-  publishToEventTopic: publishToEventTopic,
-  catchErrorHandler: catchErrorHandler,
-  appendFn: appendFn
-};
-
-function decodeEvent(specEventDecode, json) {
-  var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
-                  return Js_dict.get(dict, "event");
-                })), (function (json) {
-              return [
-                      json,
-                      Curry._1(specEventDecode, json)
-                    ];
-            })), (function (x) {
-          var $$event = x[1];
-          if ($$event.TAG === /* Ok */0) {
-            return $$event._0;
-          }
-          var eventStr = JSON.stringify(x[0]);
-          var message = $$event._0.message;
-          return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message + "");
-        }));
-  if (x !== undefined) {
-    return Caml_option.valFromOption(x);
-  }
-  var eventStr = JSON.stringify(json);
-  return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr + "");
-}
-
-function decodeEvents(jsons, specEventDecode) {
-  return Belt_Array.map(jsons, (function (param) {
-                return decodeEvent(specEventDecode, param);
-              }));
-}
-
-function decodeEventsToPromise(specEventDecode, jsons) {
-  return Promise.resolve(Belt_Array.map(jsons, (function (param) {
-                    return decodeEvent(specEventDecode, param);
-                  })));
-}
-
-function replayFn(storageReplay, specIdToString, specEventDecode) {
-  return async function (id) {
-    var jsonEvents = await storageReplay(Curry._1(specIdToString, id));
-    return await Promise.resolve(Belt_Array.map(jsonEvents, (function (param) {
-                      return decodeEvent(specEventDecode, param);
-                    })));
-  };
-}
-
-var ReplayUtil = {
-  decodeEvent: decodeEvent,
-  decodeEvents: decodeEvents,
-  decodeEventsToPromise: decodeEventsToPromise,
-  replayFn: replayFn
-};
 
 function Make(Spec, $$Storage, EventTopicPublisher) {
   var partial_arg = EventTopic$Reventless.Make;
@@ -173,8 +24,8 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
     };
     var storage = Curry._2($$Storage.make, ComponentType$Reventless.name(name, /* EventLog */6), opts);
     var eventTopic = Curry._4(EventTopic.make, name, storage.resources, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), undefined);
-    self.append = appendFn(storage.append, Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, Curry._1(EventTopic.publish, eventTopic), Spec.name);
-    self.replay = replayFn(storage.replay, Spec.Id.toString, Spec.event_decode);
+    self.append = EventLogRuntime$Reventless.appendFn(storage.append, Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, Curry._1(EventTopic.publish, eventTopic), Spec.name);
+    self.replay = EventLogRuntime$Reventless.replayFn(storage.replay, Spec.Id.toString, Spec.event_decode);
     var outputs = {
       resources: storage.resources,
       eventTopic: Component$Reventless.extractOutputs(eventTopic)
@@ -203,7 +54,5 @@ var componentType = /* EventLog */6;
 exports.componentType = componentType;
 exports.ReplayError = ReplayError;
 exports.Adapter = Adapter;
-exports.AppendUtil = AppendUtil;
-exports.ReplayUtil = ReplayUtil;
 exports.Make = Make;
 /* ./Component Not a pure module */

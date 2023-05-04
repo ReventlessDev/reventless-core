@@ -6,26 +6,34 @@ open QueryDb // FIXME: open locally
 module Set = Belt.Set.String
 
 module Mapping = {
-module Make = (Source: ReventlessSpec.Projection.Spec.Source, Target: ReventlessSpec.Projection.Spec.Target, 
-MappingImpl: ReventlessSpec.Projection.MappingImpl with type sourceEvent := Source.event and type targetState := Target.state): (
-  ReventlessSpec.Projection.Mapping with type targetState = Target.state and type sourceEvent = Source.event and module SourceId = Source.Id
-) => {
-  module SourceId = Source.Id
-  type sourceEvent = Source.event
-  type targetState = Target.state
-  let map = MappingImpl.map
-  let sourceEvent_decode = Source.event_decode
-  let sourceEvent_encode = Source.event_encode
-  let sourceName = Source.name
-  let subIdConfig = Target.subIdConfig
-  let targetState_encode = Target.state_encode
-}
+  module Make = (
+    Source: ReventlessSpec.Projection.Spec.Source,
+    Target: ReventlessSpec.Projection.Spec.Target,
+    MappingImpl: ReventlessSpec.Projection.MappingImpl
+      with type sourceEvent := Source.event
+      and type targetState := Target.state,
+  ): (
+    ReventlessSpec.Projection.Mapping
+      with type targetState = Target.state
+      and type sourceEvent = Source.event
+      and module SourceId = Source.Id
+  ) => {
+    module SourceId = Source.Id
+    type sourceEvent = Source.event
+    type targetState = Target.state
+    let map = MappingImpl.map
+    let sourceEvent_decode = Source.event_decode
+    let sourceEvent_encode = Source.event_encode
+    let sourceName = Source.name
+    let subIdConfig = Target.subIdConfig
+    let targetState_encode = Target.state_encode
+  }
 }
 
 module Mappings = {
-module Make = (Target: ReventlessSpec.Projection.Spec.Target) => {
-  module type Mapping = ReventlessSpec.Projection.Mapping with type targetState = Target.state
-}
+  module Make = (Target: ReventlessSpec.Projection.Spec.Target) => {
+    module type Mapping = ReventlessSpec.Projection.Mapping with type targetState = Target.state
+  }
 }
 
 type primitives<'id, 'state> = {
@@ -165,7 +173,7 @@ let handleAction = (
         }
       | Error(err) =>
         logAction(
-          `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->storageErrorToString})`,
+          `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
         )
         Error(err)->Js.Promise.resolve
       }
@@ -179,7 +187,7 @@ let handleAction = (
 
       | (Error(err), Some(_)) =>
         logAction(
-          `UpdateMultiState Error: Couldn't load states for ${id}: ${err->storageErrorToString})`,
+          `UpdateMultiState Error: Couldn't load states for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
         )
         Error(err)->Js.Promise.resolve
       | (_, None) =>
@@ -309,7 +317,7 @@ let handleActions = (actions, primitives, subIdConfig) => {
       let count = errors->Belt.Array.size
       Js.Exn.raiseError(
         `Projection.handleActions failed with ${count->Belt.Int.toString} errors: ${errors
-          ->Belt.Array.map(storageErrorToString)
+          ->Belt.Array.map(QueryDbRuntime.storageErrorToString)
           ->Js.Array2.joinWith(",")}`,
       )
     }

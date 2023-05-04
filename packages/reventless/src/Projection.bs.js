@@ -9,7 +9,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
-var QueryDb$Reventless = require("./components/QueryDb.bs.js");
+var QueryDbRuntime$Reventless = require("./components/QueryDbRuntime.bs.js");
 
 function Make(Source, Target, MappingImpl) {
   return {
@@ -192,7 +192,7 @@ function handleAction(action, primitives, subIdConfig) {
                         return save(id$2, $$default, /* Init */0, undefined);
                       }
                       var err = x._0;
-                      var str$2 = "UpdateWithDefault Error: Couldn't load oldState(s) for " + id$2 + ": " + QueryDb$Reventless.storageErrorToString(err) + ")";
+                      var str$2 = "UpdateWithDefault Error: Couldn't load oldState(s) for " + id$2 + ": " + QueryDbRuntime$Reventless.storageErrorToString(err) + ")";
                       console.log("Projection.handleAction:", str$2);
                       return Promise.resolve({
                                   TAG: /* Error */1,
@@ -278,7 +278,7 @@ function handleAction(action, primitives, subIdConfig) {
                       }
                       if (subIdConfig !== undefined) {
                         var err = states._0;
-                        var str = "UpdateMultiState Error: Couldn't load states for " + id$6 + ": " + QueryDb$Reventless.storageErrorToString(err) + ")";
+                        var str = "UpdateMultiState Error: Couldn't load states for " + id$6 + ": " + QueryDbRuntime$Reventless.storageErrorToString(err) + ")";
                         console.log("Projection.handleAction:", str);
                         return Promise.resolve({
                                     TAG: /* Error */1,
@@ -414,7 +414,7 @@ function handleActions(actions, primitives, subIdConfig) {
                   return Promise.resolve(undefined);
                 }
                 var count = errors.length;
-                return Js_exn.raiseError("Projection.handleActions failed with " + String(count) + " errors: " + Belt_Array.map(errors, QueryDb$Reventless.storageErrorToString).join(",") + "");
+                return Js_exn.raiseError("Projection.handleActions failed with " + String(count) + " errors: " + Belt_Array.map(errors, QueryDbRuntime$Reventless.storageErrorToString).join(",") + "");
               }), __x);
 }
 
@@ -431,4 +431,4 @@ exports.handleAction = handleAction;
 exports.actionsWithId = actionsWithId;
 exports.groupActionsById = groupActionsById;
 exports.handleActions = handleActions;
-/* QueryDb-Reventless Not a pure module */
+/* No side effect */

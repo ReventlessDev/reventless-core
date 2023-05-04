@@ -13,29 +13,6 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Component$Reventless = require("./Component.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
-function storageErrorToString(err) {
-  if (typeof err === "number") {
-    if (err === /* StaleState */0) {
-      return "StaleState";
-    } else {
-      return "MissingSubIdConfig";
-    }
-  }
-  switch (err.TAG | 0) {
-    case /* NotSavedToStorage */0 :
-        return "NotSavedToStorage(" + err._0 + ")";
-    case /* NotLoadedFromStorage */1 :
-        return "NotLoadedFromStorage(" + err._0 + ")";
-    case /* NotCountedOnStorage */2 :
-        return "NotCountedOnStorage(" + err._0 + ")";
-    case /* NotDeletedFromStorage */3 :
-        return "NotDeletedFromStorage(" + err._0 + ")";
-    case /* BatchNotFullyWrittenToStorage */4 :
-        return "BatchNotFullyWrittenToStorage(" + err._0 + ")";
-    
-  }
-}
-
 function NoResolvers(Config) {
   var make = function (param, param$1, param$2, param$3, param$4, param$5, param$6, param$7, param$8) {
     return {
@@ -205,7 +182,6 @@ function Make(Config, Spec, $$Storage, Resolvers) {
 var componentType = /* QueryDb */11;
 
 exports.componentType = componentType;
-exports.storageErrorToString = storageErrorToString;
 exports.Adapter = Adapter;
 exports.Make = Make;
 /* ./Component Not a pure module */
