@@ -2,11 +2,11 @@ let eventToJson: (
   'specId => Js.Json.t,
   'specEvent => Js.Json.t,
   'specId,
-  Reventless.Message.event'<'specId, 'specEvent>,
+  ReventlessSpec.Message.event'<'specId, 'specEvent>,
 ) => Js.Json.t
 
 let eventsToJson: (
-  array<Reventless.Message.event'<'specId, 'specEvent>>,
+  array<ReventlessSpec.Message.event'<'specId, 'specEvent>>,
   'specId => Js.Json.t,
   'specEvent => Js.Json.t,
   'specId,
@@ -20,25 +20,25 @@ let storageAppendErrorHandler: (
 ) => result<unit, string>
 
 let publishToEventTopic: (
-  Reventless.EventTopic.publish<'specId, 'specEvent>,
+  EventTopic.publish<'specId, 'specEvent>,
   'specId => string,
   'specId,
-  array<Reventless.Message.event'<'specId, 'specEvent>>,
+  array<ReventlessSpec.Message.event'<'specId, 'specEvent>>,
 ) => promise<unit>
 
 let catchErrorHandler: exn => 'a
 
 let appendFn: (
-  Reventless.EventLogCommon.append<string, Js.Json.t>,
+  EventLogCommon.append<string, Js.Json.t>,
   'specId => string,
   'specId => Js.Json.t,
   'specEvent => Js.Json.t,
-  Reventless.EventTopic.publish<'specId, 'specEvent>,
+  EventTopic.publish<'specId, 'specEvent>,
   string,
 ) => (
   . int,
   'specId,
-  array<Reventless.Message.event'<'specId, 'specEvent>>,
+  array<ReventlessSpec.Message.event'<'specId, 'specEvent>>,
 ) => promise<Belt.Result.t<unit, string>>
 
 let decodeEvent: (Js.Json.t => Belt.Result.t<'a, Decco.decodeError>, Js.Json.t) => 'a
@@ -54,7 +54,7 @@ let decodeEventsToPromise: (
 ) => promise<array<'a>>
 
 let replayFn: (
-  Reventless.EventLogCommon.replay<string, Js.Json.t>,
+  EventLogCommon.replay<string, Js.Json.t>,
   'specId => string,
   Js.Json.t => result<'specEvent, Decco.decodeError>,
 ) => (. 'specId) => promise<array<'specEvent>>
