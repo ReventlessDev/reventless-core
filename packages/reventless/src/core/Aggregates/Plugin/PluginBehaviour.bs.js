@@ -147,10 +147,7 @@ var resolverConfig = {
 
 function create(command, context, error) {
   if (command === 0) {
-    return {
-            hd: /* UnknownPluginDetected */0,
-            tl: /* [] */0
-          };
+    return [/* UnknownPluginDetected */0];
   } else {
     return Curry._3(error, /* NotExisting */0, command, context);
   }
@@ -160,21 +157,15 @@ function execute(state, command, context, error) {
   if (typeof state === "number") {
     if (typeof command === "number") {
       if (command !== 0) {
-        return /* [] */0;
+        return [];
       } else {
-        return {
-                hd: /* UnknownPluginDetected */0,
-                tl: /* [] */0
-              };
+        return [/* UnknownPluginDetected */0];
       }
     } else {
-      return {
-              hd: {
+      return [{
                 TAG: /* Connected */0,
                 _0: command._0
-              },
-              tl: /* [] */0
-            };
+              }];
     }
   }
   switch (state.TAG | 0) {
@@ -185,25 +176,19 @@ function execute(state, command, context, error) {
         }
         switch (command) {
           case /* Heartbeat */0 :
-              return /* [] */0;
+              return [];
           case /* Disconnect */1 :
-              return {
-                      hd: {
+              return [{
                         TAG: /* Disconnected */2,
                         _0: pluginDefinition
-                      },
-                      tl: /* [] */0
-                    };
+                      }];
           case /* Activate */2 :
               return Curry._3(error, /* AlreadyConnected */1, command, context);
           case /* Deactivate */3 :
-              return {
-                      hd: {
+              return [{
                         TAG: /* Deactivated */4,
                         _0: pluginDefinition
-                      },
-                      tl: /* [] */0
-                    };
+                      }];
           
         }
     case /* Disconnected */1 :
@@ -211,24 +196,18 @@ function execute(state, command, context, error) {
         if (typeof command === "number") {
           if (command !== 0) {
             if (command >= 3) {
-              return {
-                      hd: {
+              return [{
                         TAG: /* Deactivated */4,
                         _0: pluginDefinition$1
-                      },
-                      tl: /* [] */0
-                    };
+                      }];
             } else {
               return Curry._3(error, /* IsDisconnected */2, command, context);
             }
           } else {
-            return {
-                    hd: {
+            return [{
                       TAG: /* Reconnected */1,
                       _0: pluginDefinition$1
-                    },
-                    tl: /* [] */0
-                  };
+                    }];
           }
         } else {
           return Curry._3(error, /* IsDisconnected */2, command, context);
@@ -242,17 +221,14 @@ function execute(state, command, context, error) {
         }
         switch (command) {
           case /* Heartbeat */0 :
-              return /* [] */0;
+              return [];
           case /* Disconnect */1 :
               return Curry._3(error, /* IsInactive */3, command, context);
           case /* Activate */2 :
-              return {
-                      hd: {
+              return [{
                         TAG: /* Activated */3,
                         _0: state._0
-                      },
-                      tl: /* [] */0
-                    };
+                      }];
           
         }
     

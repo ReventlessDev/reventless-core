@@ -3,7 +3,6 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var $$String = require("@rescript/std/lib/js/string.js");
-var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -25,7 +24,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
   var fieldNameForAll = "every" + name$1;
   var resolverAll = AppSync_Resolver$PulumiAws.makeUnitResolver($$String.capitalize_ascii(fieldNameForAll), api, dataSourceName, "Query", fieldNameForAll, AppSync_Resolver_Templates$PulumiAws.listAllItems, AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
   var resourcesMaker = function (allQueryDbs) {
-    var resolversByIndex = Belt_List.map(indexes, (function (param) {
+    var resolversByIndex = Belt_Array.map(indexes, (function (param) {
             var authorization = param.authorization;
             var subIdField = param.subIdField;
             var index = param.index;
@@ -53,7 +52,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
         return AppSync_Resolver_Templates$PulumiAws.$$null;
       }
     };
-    var idResolvers = Belt_List.map(resolveIdConfigs, (function (config) {
+    var idResolvers = Belt_Array.map(resolveIdConfigs, (function (config) {
             var match = config.target;
             var targetSortField = match.subIdField;
             var targetId = match.idField;
@@ -110,7 +109,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
             var field$1 = resolvedField._0;
             return AppSync_Resolver$PulumiAws.makeUnitResolver(name$1 + $$String.capitalize_ascii(field$1), api, dataSourceName, name$1, field$1, AppSync_Resolver_Templates$PulumiAws.$$null, AppSync_Resolver_Templates$PulumiAws.$$null, Caml_option.some(opts), undefined);
           }));
-    var idsResolvers = Belt_List.map(resolveIdsConfigs, (function (config) {
+    var idsResolvers = Belt_Array.map(resolveIdsConfigs, (function (config) {
             var match = config.target;
             var sortField = match.subIdField;
             var match$1 = config.source;
@@ -122,7 +121,11 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
                               return AppSync_Resolver_Templates$PulumiAws.resolveIdsResult(param, idsField);
                             })), Caml_option.some(opts), undefined);
           }));
-    return Belt_Array.map(Belt_List.toArray(Belt_List.concat(resolversByIndex, Belt_List.concat(idResolvers, idsResolvers))), Util_AppSync$ReventlessAws.toResource);
+    return Belt_Array.map(Belt_Array.concatMany([
+                    resolversByIndex,
+                    idResolvers,
+                    idsResolvers
+                  ]), Util_AppSync$ReventlessAws.toResource);
   };
   var resolvers = resolverByIdMultiple !== undefined ? [
       resolverByIdSingle,

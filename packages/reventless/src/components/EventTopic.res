@@ -66,7 +66,8 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   @obj external makeOutputs: (~resources: array<resource>) => ReventlessSpec.EventTopic.outputs = ""
 
   @send
-  external registerOutputs: (component, ReventlessSpec.EventTopic.outputs) => constructed = "registerOutputs"
+  external registerOutputs: (component, ReventlessSpec.EventTopic.outputs) => constructed =
+    "registerOutputs"
   @send external setOutputs: (component, ReventlessSpec.EventTopic.outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
@@ -76,36 +77,37 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   @set external setPublish: (component, publish) => unit = "publish"
   @get external publish: component => publish = "publish"
 
-  let publishFn = (publisher: Adapter.publisher, name) =>
-    (. events') => {
-      let eventCount = events'->Belt.Array.length
-      events'
-      ->Belt.Array.mapWithIndex((idx, event') => {
-        let json = Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event')
+  let publishFn = (publisher: Adapter.publisher, name) => (. events') => {
+    let eventCount = events'->Belt.Array.length
+    events'
+    ->Belt.Array.mapWithIndex((idx, event') => {
+      let json = Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event')
 
-        let id = event'.id
-        let eventName: string =
-          event'.event
-          ->Spec.event_encode
-          ->Util.Decco.Json.variantName
-          ->Belt.Option.getWithDefault("Could not get event-name!")
-        let idx = idx + 1
+      let id = event'.id
+      let eventName: string =
+        event'.event
+        ->Spec.event_encode
+        ->Util.Decco.Json.variantName
+        ->Belt.Option.getWithDefault("Could not get event-name!")
+      let idx = idx + 1
 
-        publisher.publish(. id->Spec.Id.toString, event'.meta, json)->Js.Promise.catch(e => {
-          Js.log(
-            `EventTopic: Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}: ${eventName}(${id->Spec.Id.toString}) to ${name}`,
-          )
-          NotPublishedToPublisher(e)->Js.Promise.reject
-        }, _)->Js.Promise.then_(_ => {
-          let event = json->Js.Json.stringify
-          Js.log(
-            `EventTopic: Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}: ${eventName}(${id->Spec.Id.toString}) to ${name}: ${event}`,
-          )->Js.Promise.resolve
-        }, _)
+      publisher.publish(. id->Spec.Id.toString, event'.meta, json)
+      ->Js.Promise2.catch(e => {
+        Js.log(
+          `EventTopic: Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}: ${eventName}(${id->Spec.Id.toString}) to ${name}`,
+        )
+        NotPublishedToPublisher(e)->Js.Promise.reject
       })
-      ->Js.Promise.all
-      ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
-    }
+      ->Js.Promise2.then(_ => {
+        let event = json->Js.Json.stringify
+        Js.log(
+          `EventTopic: Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}: ${eventName}(${id->Spec.Id.toString}) to ${name}: ${event}`,
+        )->Js.Promise.resolve
+      })
+    })
+    ->Js.Promise.all
+    ->Js.Promise2.then(_ => Js.Promise.resolve())
+  }
 
   let construct = (~storageResources, self, name) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
@@ -118,7 +120,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
 
     self->setPublish(publisher->publishFn(name))
 
-    makeOutputs(~resources=publisher.resources) |> self->setOutputs
+    makeOutputs(~resources=publisher.resources)->(self->setOutputs)
   }
 
   let make = (~name, ~storageResources, ~opts=?, _) =>

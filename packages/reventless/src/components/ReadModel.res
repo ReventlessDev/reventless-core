@@ -31,8 +31,15 @@ module Make = (
     ~eventCollector: ReventlessSpec.EventCollector.outputs,
   ) => ReventlessSpec.ReadModel.outputs = ""
   @send
-  external registerOutputs: (ReventlessSpec.ReadModel.component, ReventlessSpec.ReadModel.outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (ReventlessSpec.ReadModel.component, ReventlessSpec.ReadModel.outputs) => unit = "setOutputs"
+  external registerOutputs: (
+    ReventlessSpec.ReadModel.component,
+    ReventlessSpec.ReadModel.outputs,
+  ) => constructed = "registerOutputs"
+  @send
+  external setOutputs: (
+    ReventlessSpec.ReadModel.component,
+    ReventlessSpec.ReadModel.outputs,
+  ) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
@@ -110,7 +117,8 @@ module Make = (
       ~queryDb=queryDb->Component.extractOutputs,
       ~eventCollector=eventCollector->Component.extractOutputs,
     )
-    |> self->setOutputs
+    ->(self
+    ->setOutputs)
   }
 
   let make = (~allEventTopics, ~opts=?, _) =>

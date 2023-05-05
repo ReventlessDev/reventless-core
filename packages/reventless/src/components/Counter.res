@@ -123,10 +123,10 @@ module Make = (
         inc: int,
       }
 
-      let resolveIdConfigs = list{}
-      let resolveIdsConfigs = list{}
+      let resolveIdConfigs = []
+      let resolveIdsConfigs = []
       let subIdConfig = None
-      let indexes = list{}
+      let indexes = []
     }
 
     module ReferencesDb = QueryDb.Make(
@@ -145,10 +145,10 @@ module Make = (
         count: int,
       } //TODO: generalize
 
-      let resolveIdConfigs = list{}
-      let resolveIdsConfigs = list{}
+      let resolveIdConfigs = []
+      let resolveIdsConfigs = []
       let subIdConfig = None
-      let indexes = list{}
+      let indexes = []
     }
 
     module CountsDb = QueryDb.Make(
@@ -199,7 +199,7 @@ module Make = (
           let state: ReferencesSpec.state = {id, inc}
           (id, state, ttl)
         }),
-      )->Js.Promise.then_(x =>
+      )->Js.Promise2.then(x =>
         switch x {
         | Belt.Result.Ok(_) =>
           let batchSize = countItems->Belt.Array.size
@@ -221,7 +221,7 @@ module Make = (
           countItems->logCountItems
           NotCounted("Unknown error")->Js.Promise.reject
         }
-      , _)
+      )
 
     let referencesDb = ReferencesDb.make(~ttl?, ~opts, ())
     let countsDb = CountsDb.make(~ttl?, ~opts, ())
@@ -249,7 +249,7 @@ module Make = (
           CountsDb.count(countsDb)(. counterId->CountsSpec.Id.makeFromString, countFieldName, -dec)
         )
         ->Js.Promise.all
-        ->Js.Promise.then_(_ => Js.Promise.resolve(), _) // TODO error handling
+        ->Js.Promise2.then(_ => Js.Promise.resolve()) // TODO error handling
 
       let counterEventsHandlerP = counterEventsHandler(.
         counts->Belt.Array.keepMap(state =>
@@ -284,9 +284,7 @@ module Make = (
         ),
       )
 
-      (countP, counterEventsHandlerP)
-      ->Js.Promise.all2
-      ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+      (countP, counterEventsHandlerP)->Js.Promise.all2->Js.Promise2.then(_ => Js.Promise.resolve())
     }
 
     let handler = Handler.make(
@@ -306,7 +304,8 @@ module Make = (
       ~referencesDb=(referencesDb->ReferencesDb.outputs)["resources"],
       ~countsDb=(countsDb->CountsDb.outputs)["resources"],
     )
-    |> self->setOutputs
+    ->(self
+    ->setOutputs)
   }
 
   let oneWeek = 60 * 60 * 24 * 7 //604800 sec

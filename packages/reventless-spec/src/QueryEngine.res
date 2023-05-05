@@ -20,7 +20,7 @@ type query = (
   ~viewName: string,
   ~key: string=?,
   ~id: value,
-  ~filterConfigs: list<filterConfig>=?,
+  ~filterConfigs: array<filterConfig>=?,
   ~ascending: bool=?,
   ~limit: int=?,
   unit,
@@ -28,7 +28,7 @@ type query = (
 
 type scan = (
   ~viewName: string,
-  ~filterConfigs: list<filterConfig>,
+  ~filterConfigs: array<filterConfig>,
   ~limit: int,
 ) => Js.Promise.t<array<Js.Json.t>>
 

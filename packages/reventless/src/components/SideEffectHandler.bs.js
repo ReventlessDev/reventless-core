@@ -5,10 +5,10 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
@@ -45,39 +45,37 @@ function Make(EventCollector) {
   };
   var eventsHandler = function (sideEffects, queryEngine) {
     return function (events$pJson) {
-      var __x = Promise.all(Belt_Array.map(events$pJson, (function (event$pJson) {
-                  var match = findSideEffect(sideEffects, event$pJson);
-                  if (match === undefined) {
+      return Js_promise2.then(Promise.all(Belt_Array.map(events$pJson, (function (event$pJson) {
+                            var match = findSideEffect(sideEffects, event$pJson);
+                            if (match === undefined) {
+                              return Promise.resolve(undefined);
+                            }
+                            var sideEffect = match[2];
+                            var eventObj = match[0];
+                            var sourceName = sideEffect.Source.name;
+                            Message$Reventless.logEvent$pJson(event$pJson, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
+                            var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
+                            var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
+                            if (idDecoded === undefined) {
+                              return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), undefined));
+                            }
+                            if (idDecoded.TAG === /* Ok */0 && eventDecoded !== undefined && eventDecoded.TAG === /* Ok */0) {
+                              return Js_promise2.$$catch(sideEffect.execute(idDecoded._0, match[1], eventDecoded._0, queryEngine), (function (err) {
+                                            return Promise.resolve((console.log("SideEffect: Error while processing:", err), undefined));
+                                          }));
+                            }
+                            if (eventDecoded !== undefined) {
+                              if (eventDecoded.TAG === /* Ok */0) {
+                                return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", idDecoded._0), undefined));
+                              } else {
+                                return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", eventDecoded._0), undefined));
+                              }
+                            } else {
+                              return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), undefined));
+                            }
+                          }))), (function (param) {
                     return Promise.resolve(undefined);
-                  }
-                  var sideEffect = match[2];
-                  var eventObj = match[0];
-                  var sourceName = sideEffect.Source.name;
-                  Message$Reventless.logEvent$pJson(event$pJson, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
-                  var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
-                  var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
-                  if (idDecoded === undefined) {
-                    return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), undefined));
-                  }
-                  if (idDecoded.TAG === /* Ok */0 && eventDecoded !== undefined && eventDecoded.TAG === /* Ok */0) {
-                    var __x = sideEffect.execute(idDecoded._0, match[1], eventDecoded._0, queryEngine);
-                    return Js_promise.$$catch((function (err) {
-                                  return Promise.resolve((console.log("SideEffect: Error while processing:", err), undefined));
-                                }), __x);
-                  }
-                  if (eventDecoded !== undefined) {
-                    if (eventDecoded.TAG === /* Ok */0) {
-                      return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", idDecoded._0), undefined));
-                    } else {
-                      return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", eventDecoded._0), undefined));
-                    }
-                  } else {
-                    return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), undefined));
-                  }
-                })));
-      return Js_promise.then_((function (param) {
-                    return Promise.resolve(undefined);
-                  }), __x);
+                  }));
     };
   };
   var createScheduleFn = function (scheduler, queueResources) {

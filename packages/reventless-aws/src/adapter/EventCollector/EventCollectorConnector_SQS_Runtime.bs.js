@@ -2,10 +2,10 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
@@ -39,7 +39,7 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
               return ;
           }
         }));
-  return Js_promise.then_((function (param) {
+  return Js_promise2.then(handleEvents(jsons), (function (param) {
                 var x = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
                             var match = record.eventSource;
                             if (match === "aws:sqs") {
@@ -53,10 +53,10 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
                                 ReceiptHandle: record.receiptHandle
                               };
                       }));
-                return Js_promise.then_((function (param) {
+                return Js_promise2.then(x.length !== 0 ? SQS$AwsSdk.deleteMessageBatch(queue.id.get(), x) : Promise.resolve(undefined), (function (param) {
                               return Promise.resolve(undefined);
-                            }), x.length !== 0 ? SQS$AwsSdk.deleteMessageBatch(queue.id.get(), x) : Promise.resolve(undefined));
-              }), handleEvents(jsons));
+                            }));
+              }));
 }
 
 function enqueueEvent(queue) {

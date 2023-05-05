@@ -147,10 +147,10 @@ module Make = (
           handle(. event'Json, fakePluginDefinition)
         })
         ->Js.Promise.all
-        ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+        ->Js.Promise2.then(_ => Js.Promise.resolve())
       })
       ->Js.Promise.all
-      ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+      ->Js.Promise2.then(_ => Js.Promise.resolve())
     }
 
     module EventCollector = EventCollector.Make(EventCollectorConnector)

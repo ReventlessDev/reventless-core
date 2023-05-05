@@ -1,4 +1,5 @@
 open ReventlessSpec.ExtensionPointMapping
+open ReventlessSpec.Plugin
 
 let forwardCommand = (
   _id,
@@ -8,12 +9,12 @@ let forwardCommand = (
 ) =>
   queryEngine.scan(
     ~viewName=PluginSpec.name,
-    ~filterConfigs=list{
+    ~filterConfigs=[
       ("extensionPointNames", Contains, String(extensionPointName)),
       ("status", Contains, String("Connected")),
-    },
+    ],
     ~limit=1000,
-  )->Js.Promise.then_(x =>
+  )->Js.Promise2.then(x =>
     switch x {
     | [] =>
       Js.log2(
@@ -36,22 +37,19 @@ let forwardCommand = (
                 | Some(extensionPoint) =>
                   command
                   ->AwsSdk.SQS.sendMessage(~queueId=extensionPoint.commandTopic, ~messageBody=_, ())
-                  ->Js.Promise.then_(
-                    _ =>
-                      Js.log3(
-                        "ForwardCommand: published command to",
-                        plugin.name,
-                        extensionPoint.ReventlessSpec.Plugin.commandTopic,
-                      )->Js.Promise.resolve,
-                    _,
+                  ->Js.Promise2.then(_ =>
+                    Js.log3(
+                      "ForwardCommand: published command to",
+                      plugin.name,
+                      extensionPoint.commandTopic,
+                    )->Js.Promise.resolve
                   )
-                  ->Js.Promise.catch(
+                  ->Js.Promise2.catch(
                     err =>
                       Js.log2(
                         "PluginExtensionPoint_PluginMapping: Error on publish command:",
                         err,
                       )->Js.Promise.resolve,
-                    _,
                   )
 
                 | None =>
@@ -68,7 +66,7 @@ let forwardCommand = (
           }
       )
     }
-  , _)
+  )
 
 let callHandler = (
   createSchedule: ReventlessSpec.Schedule.create,
@@ -86,11 +84,12 @@ let callHandler = (
         meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler", ()),
         command: ReventlessSpec.PluginExtensionPointSpec.DisconnectPlugin,
       }
-      |> Message.command'_encode(
+      ->Message.command'_encode(
         Decco.stringToJson,
         ReventlessSpec.PluginExtensionPointSpec.command_encode,
+        _,
       )
-      |> Js.Json.stringify,
+      ->Js.Json.stringify,
     })
   | DeleteDisconnectSchedule(id) => deleteSchedule(. id)
   | ForwardCommand({id, command, extensionPointName}) =>

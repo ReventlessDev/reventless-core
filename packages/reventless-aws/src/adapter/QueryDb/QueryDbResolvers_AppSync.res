@@ -10,10 +10,10 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
   ~api: api,
   ~apiRole: role,
   ~dataSourceName,
-  ~indexes: list<index>,
+  ~indexes: array<index>,
   ~subIdField,
-  ~resolveIdConfigs: list<resolveIdConfig>,
-  ~resolveIdsConfigs: list<resolveIdsConfig>,
+  ~resolveIdConfigs: array<resolveIdConfig>,
+  ~resolveIdsConfigs: array<resolveIdsConfig>,
   ~opts,
 ) => {
   open Resolver.Templates
@@ -65,7 +65,12 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
   )
 
   let resourcesMaker: ReventlessSpec.QueryDb.resolversResourcesMaker = allQueryDbs => {
-    let resolversByIndex = indexes->Belt.List.map(({index, idField, subIdField, authorization}) => {
+    let resolversByIndex = indexes->Belt.Array.map(({
+      index,
+      idField,
+      subIdField,
+      authorization,
+    }) => {
       let name = name ++ ("By" ++ index->String.capitalize_ascii)
       let idField = idField->Belt.Option.getWithDefault(index)
       switch authorization {
@@ -146,7 +151,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
       | None => null
       }
 
-    let idResolvers = resolveIdConfigs->Belt.List.map(config => {
+    let idResolvers = resolveIdConfigs->Belt.Array.map(config => {
       let {
         source: {idField: sourceIdField, subId: sourceSubId, resolvedField},
         target: {pluginName, tableName, idField: targetId, subIdField: targetSortField},
@@ -223,7 +228,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
       }
     })
 
-    let idsResolvers = resolveIdsConfigs->Belt.List.map(config => {
+    let idsResolvers = resolveIdsConfigs->Belt.Array.map(config => {
       let {
         source: {idsField, resolvedField},
         target: {pluginName, tableName, subIdField: sortField},
@@ -246,9 +251,9 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
       )
     })
 
-    Belt.List.concat(resolversByIndex, Belt.List.concat(idResolvers, idsResolvers)) // FIXME: use Belt.List.concatMany instead
-    ->Belt.List.toArray
-    ->Belt.Array.map(Util_AppSync.toResource)
+    Belt.Array.concatMany([resolversByIndex, idResolvers, idsResolvers])->Belt.Array.map(
+      Util_AppSync.toResource,
+    )
   }
 
   let resolvers = switch resolverByIdMultiple {

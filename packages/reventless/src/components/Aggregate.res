@@ -18,7 +18,10 @@ type name = string
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
 
-type addEventMapper = (ReventlessSpec.EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
+type addEventMapper = (
+  ReventlessSpec.EventTopic.allOutputs,
+  ReventlessSpec.QueryEngine.t,
+) => outputs
 
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T
@@ -71,7 +74,8 @@ module Make = (
   }
 
   @set
-  external setPublishJsons: (component, ReventlessSpec.CommandTopic.publishJsons) => unit = "publishJsons"
+  external setPublishJsons: (component, ReventlessSpec.CommandTopic.publishJsons) => unit =
+    "publishJsons"
   @get
   external publishJsons: component => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
@@ -90,12 +94,12 @@ module Make = (
   module EventLog = EventLog.Make(Spec, EventLogStorage, EventTopicPublisher)
 
   let errorHandler = (error, command, context: Message.context) => {
-    let errorJson = error |> Spec.error_encode |> Js.Json.stringify
-    let commandJson = command |> Spec.command_encode |> Js.Json.stringify
+    let errorJson = error->Spec.error_encode->Js.Json.stringify
+    let commandJson = command->Spec.command_encode->Js.Json.stringify
     let serviceName = Spec.name
     let id = context.id
     Js.log(`Behaviour error ${errorJson} in ${serviceName}(${id}): Command: ${commandJson}`)
-    list{}
+    []
   }
 
   @inline
@@ -127,9 +131,7 @@ module Make = (
       ->Util.Decco.Json.variantName
       ->Belt.Option.getWithDefault("Could not get command-name")
     let commandStr =
-      command'
-      |> Message.command'_encode(Spec.Id.t_encode, Spec.command_encode)
-      |> Js.Json.stringify
+      command'->Message.command'_encode(Spec.Id.t_encode, Spec.command_encode, _)->Js.Json.stringify
     let idx = idx + 1
     Js.log(
       `CommandTopic: handling command ${idx->Belt.Int.toString}/${count->Belt.Int.toString}: ${commandName}(${id->Spec.Id.toString}) ref: ${reference}, complete command: ${commandStr}`,
@@ -146,136 +148,135 @@ module Make = (
     ->Belt.Array.map(id => (id, topicItems->Belt.Array.keep(({command}) => command.id == id)))
   }
 
-  let handleCommands = ((eventLogAppend, eventLogReplay)) =>
-    (. allTopicItems) => {
-      let apply' = (stateOpt, event) =>
-        switch stateOpt {
-        | Some(state) => Some(Behaviour.apply(. state, event))
-        | None => Some(Behaviour.init(. event))
-        }
-
-      let updateState = (stateOpt, events) => events->Belt.List.reduce(stateOpt, apply')
-
-      let updateMeta = (command': Message.command'<Spec.Id.t, Spec.command>) => {
-        ...command'.meta,
-        time: Message.nowAsISOString(),
-        msgId: Message.uuid(),
+  let handleCommands = ((eventLogAppend, eventLogReplay)) => (. allTopicItems) => {
+    let apply' = (stateOpt, event) =>
+      switch stateOpt {
+      | Some(state) => Some(Behaviour.apply(. state, event))
+      | None => Some(Behaviour.init(. event))
       }
 
-      Js.log("starting Aggregate.execCommands")
-      allTopicItems
-      ->groupTopicItemsById
-      ->Belt.Array.map(((id, topicItems)) =>
-        eventLogReplay(. id) |> Js.Promise.then_(history => {
-          let processCommand = (accP, command': Message.command'<Spec.Id.t, Spec.command>) => {
-            let runBehaviour = ((stateO, events)) =>
-              switch stateO {
-              | Some(state) =>
-                let generatedEvents = try Behaviour.execute(.
-                  state,
-                  command'.command,
-                  {
-                    id: command'.id |> Spec.Id.toString,
-                    meta: command'.meta,
-                  },
-                  errorHandler,
-                ) catch {
-                | Message.InvalidEvent(event) =>
-                  Js.log2("Aggregate.processCommand: InvalidEvent", event |> Js.Json.stringify)
-                  list{}
-                }
-                Ok((
-                  updateState(stateO, generatedEvents),
-                  Belt.List.concat(events, list{(generatedEvents, command'->updateMeta)}),
-                ))->Js.Promise.resolve
-              | None =>
-                let generatedEvents = Behaviour.create(.
-                  command'.command,
-                  {
-                    id: command'.id |> Spec.Id.toString,
-                    meta: command'.meta,
-                  },
-                  errorHandler,
-                )
-                Ok((
-                  updateState(None, generatedEvents),
-                  Belt.List.concat(events, list{(generatedEvents, command'->updateMeta)}),
-                ))->Js.Promise.resolve
-              }
+    let updateState = (stateOpt, events) => events->Belt.Array.reduce(stateOpt, apply')
 
-            accP |> Js.Promise.then_(
-              x =>
-                switch x {
-                | Ok(acc) => runBehaviour(acc)
-                | Error(_) as error => error->Js.Promise.resolve
-                },
-            )
-          }
-
-          Js.log(`finished eventLogReplay for id ${id->Spec.Id.toString}`)
-          let _ =
-            topicItems->Belt.Array.mapWithIndex(
-              (idx, {reference, command}) =>
-                logCommand'(idx, topicItems->Belt.Array.length, reference, command),
-            )
-          let (references, commands') =
-            // TODO: handle finer granular references
-            topicItems
-            ->Belt.Array.map(({reference, command}) => (reference, command))
-            ->Belt.Array.unzip
-          commands'->Belt.Array.reduce(
-            Ok((updateState(None, history->Belt.List.fromArray), list{}))->Js.Promise.resolve,
-            processCommand,
-          )
-          |> Js.Promise.then_(
-            x =>
-              switch x {
-              | Ok((_, generatedEventsWithMeta)) =>
-                generatedEventsWithMeta
-                ->Belt.List.map(
-                  ((events, meta)) => events->Belt.List.map(event => {Message.id, meta, event}),
-                )
-                ->Belt.List.flatten
-                ->Belt.List.toArray
-                ->Js.Promise.resolve
-              | Error(error) => Js.Exn.raiseError(error)
-              },
-          )
-          |> Js.Promise.then_(
-            x =>
-              switch x {
-              | [] =>
-                {
-                  Js.log(`Aggregate.handleCommands(${id->Spec.Id.toString}): no Event generated`)
-                  references->Belt.Array.map(reference => Ok(reference))
-                }->Js.Promise.resolve
-              | generatedEvents' =>
-                let eventCount = generatedEvents'->Belt.Array.length
-                Js.log2(
-                  `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount->Belt.Int.toString} Event(s) generated:`,
-                  generatedEvents'->Belt.Array.map(event' => event'->eventName),
-                )
-                eventLogAppend(. history->Belt.Array.length, id, generatedEvents')
-                |> Js.Promise.then_(
-                  result =>
-                    switch result {
-                    | Ok(_) => references->Belt.Array.map(reference => Ok(reference))
-                    | Error(_) => references->Belt.Array.map(reference => Error(reference))
-                    }->Js.Promise.resolve,
-                )
-                |> Js.Promise.then_(
-                  results => {
-                    Js.log(`finished eventLogAppend for id ${id->Spec.Id.toString}`)
-                    results->Js.Promise.resolve
-                  },
-                )
-              },
-          )
-        })
-      )
-      ->Js.Promise.all
-        |> Js.Promise.then_(results => results->Belt.Array.concatMany->Js.Promise.resolve)
+    let updateMeta = (command': Message.command'<Spec.Id.t, Spec.command>) => {
+      ...command'.meta,
+      time: Message.nowAsISOString(),
+      msgId: Message.uuid(),
     }
+
+    Js.log("starting Aggregate.execCommands")
+    allTopicItems
+    ->groupTopicItemsById
+    ->Belt.Array.map(((id, topicItems)) =>
+      eventLogReplay(. id)->Js.Promise2.then(history => {
+        let processCommand = (accP, command': Message.command'<Spec.Id.t, Spec.command>) => {
+          let runBehaviour = ((stateO, events)) =>
+            switch stateO {
+            | Some(state) =>
+              let generatedEvents = try Behaviour.execute(.
+                state,
+                command'.command,
+                {
+                  id: command'.id->Spec.Id.toString,
+                  meta: command'.meta,
+                },
+                errorHandler,
+              ) catch {
+              | Message.InvalidEvent(event) =>
+                Js.log2("Aggregate.processCommand: InvalidEvent", event->Js.Json.stringify)
+                []
+              }
+              Ok((
+                updateState(stateO, generatedEvents),
+                Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
+              ))->Js.Promise.resolve
+            | None =>
+              let generatedEvents = Behaviour.create(.
+                command'.command,
+                {
+                  id: command'.id->Spec.Id.toString,
+                  meta: command'.meta,
+                },
+                errorHandler,
+              )
+              Ok((
+                updateState(None, generatedEvents),
+                Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
+              ))->Js.Promise.resolve
+            }
+
+          accP->Js.Promise2.then(
+            x =>
+              switch x {
+              | Ok(acc) => runBehaviour(acc)
+              | Error(_) as error => error->Js.Promise.resolve
+              },
+          )
+        }
+
+        Js.log(`finished eventLogReplay for id ${id->Spec.Id.toString}`)
+        let _ =
+          topicItems->Belt.Array.mapWithIndex(
+            (idx, {reference, command}) =>
+              logCommand'(idx, topicItems->Belt.Array.length, reference, command),
+          )
+        let (references, commands') =
+          // TODO: handle finer granular references
+          topicItems
+          ->Belt.Array.map(({reference, command}) => (reference, command))
+          ->Belt.Array.unzip
+        commands'
+        ->Belt.Array.reduce(
+          Ok((updateState(None, history), []))->Js.Promise.resolve,
+          processCommand,
+        )
+        ->Js.Promise2.then(
+          x =>
+            switch x {
+            | Ok((_, generatedEventsWithMeta)) =>
+              generatedEventsWithMeta
+              ->Belt.Array.map(
+                ((events, meta)) => events->Belt.Array.map(event => {Message.id, meta, event}),
+              )
+              ->Belt.Array.concatMany
+              ->Js.Promise.resolve
+            | Error(error) => Js.Exn.raiseError(error)
+            },
+        )
+        ->Js.Promise2.then(
+          x =>
+            switch x {
+            | [] =>
+              {
+                Js.log(`Aggregate.handleCommands(${id->Spec.Id.toString}): no Event generated`)
+                references->Belt.Array.map(reference => Ok(reference))
+              }->Js.Promise.resolve
+            | generatedEvents' =>
+              let eventCount = generatedEvents'->Belt.Array.length
+              Js.log2(
+                `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount->Belt.Int.toString} Event(s) generated:`,
+                generatedEvents'->Belt.Array.map(event' => event'->eventName),
+              )
+              eventLogAppend(. history->Belt.Array.length, id, generatedEvents')
+              ->Js.Promise2.then(
+                result =>
+                  switch result {
+                  | Ok(_) => references->Belt.Array.map(reference => Ok(reference))
+                  | Error(_) => references->Belt.Array.map(reference => Error(reference))
+                  }->Js.Promise.resolve,
+              )
+              ->Js.Promise2.then(
+                results => {
+                  Js.log(`finished eventLogAppend for id ${id->Spec.Id.toString}`)
+                  results->Js.Promise.resolve
+                },
+              )
+            },
+        )
+      })
+    )
+    ->Js.Promise.all
+    ->Js.Promise2.then(results => results->Belt.Array.concatMany->Js.Promise.resolve)
+  }
 
   let addEventMapperFn = (component, allEventTopics, queryEngine, ~opts) => {
     module EventCollector = EventCollector.Make(EventCollectorConnector)
@@ -336,7 +337,8 @@ module Make = (
       ~eventLog=eventLog->Component.extractOutputs,
       ~eventMapper=None,
     )
-    |> self->setOutputs
+    ->(self
+    ->setOutputs)
   }
 
   let make = (~opts=?, _) =>

@@ -34,10 +34,16 @@ module type T = {
     ~timeout: int=?,
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit,
-  ) => ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> 
+  ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>
 
-  let publish: ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> => ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
-  let publishJsons:  ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> => ReventlessSpec.CommandTopic.publishJsons
+  let publish: ReventlessSpec.Component.t<
+    t,
+    ReventlessSpec.CommandTopic.outputs,
+  > => ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
+  let publishJsons: ReventlessSpec.Component.t<
+    t,
+    ReventlessSpec.CommandTopic.outputs,
+  > => ReventlessSpec.CommandTopic.publishJsons
 }
 
 module Adapter = {
@@ -73,7 +79,11 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
   type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 
   type constructed
-  type construct = (ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> , string, commandsHandler) => constructed
+  type construct = (
+    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
+    string,
+    commandsHandler,
+  ) => constructed
 
   type publish = ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
 
@@ -84,43 +94,64 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
     ~commandsHandler: commandsHandler,
-  ) => ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>  = "default"
+  ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs> = "default"
 
-  @obj external makeOutputs: (~resources: array<resource>) => ReventlessSpec.CommandTopic.outputs = ""
+  @obj
+  external makeOutputs: (~resources: array<resource>) => ReventlessSpec.CommandTopic.outputs = ""
 
   @send
-  external registerOutputs: ( ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>, ReventlessSpec.CommandTopic.outputs) => constructed = "registerOutputs"
-  @send external setOutputs: ( ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>, ReventlessSpec.CommandTopic.outputs) => unit = "setOutputs"
+  external registerOutputs: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
+    ReventlessSpec.CommandTopic.outputs,
+  ) => constructed = "registerOutputs"
+  @send
+  external setOutputs: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
+    ReventlessSpec.CommandTopic.outputs,
+  ) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
   }
 
-  @set external setPublish: (ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>, publish) => unit = "publish"
-  @get external publish: ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> => publish = "publish"
   @set
-  external setPublishJsons: (ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs>, ReventlessSpec.CommandTopic.publishJsons) => unit = "publishJsons"
-  @get external publishJsons: ReventlessSpec.Component.t<t,ReventlessSpec.CommandTopic.outputs> => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
+  external setPublish: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
+    publish,
+  ) => unit = "publish"
+  @get
+  external publish: ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs> => publish =
+    "publish"
+  @set
+  external setPublishJsons: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
+    ReventlessSpec.CommandTopic.publishJsons,
+  ) => unit = "publishJsons"
+  @get
+  external publishJsons: ReventlessSpec.Component.t<
+    t,
+    ReventlessSpec.CommandTopic.outputs,
+  > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
-  let publishJsonsFn = connector =>
-    (. jsons) => connector.Adapter.publish(. jsons)->Js.Promise.catch(e => {
-        Js.log2(
-          "CommandTopic: Couldn't publish commands:",
-          jsons->Belt.Array.map(commandJson =>
-            commandJson->Message.commandJson_encode->Js.Json.stringify
-          ),
-        )
-        NotPublishedToConnector(e)->Js.Promise.reject
-      }, _)->Js.Promise.then_(
-        _ =>
-          Js.log2(
-            "CommandTopic: Published commands:",
-            jsons->Belt.Array.map(commandJson =>
-              commandJson->Message.commandJson_encode->Js.Json.stringify
-            ),
-          )->Js.Promise.resolve,
-        _,
+  let publishJsonsFn = connector => (. jsons) =>
+    connector.Adapter.publish(. jsons)
+    ->Js.Promise2.catch(e => {
+      Js.log2(
+        "CommandTopic: Couldn't publish commands:",
+        jsons->Belt.Array.map(commandJson =>
+          commandJson->Message.commandJson_encode->Js.Json.stringify
+        ),
       )
+      NotPublishedToConnector(e)->Js.Promise.reject
+    })
+    ->Js.Promise2.then(_ =>
+      Js.log2(
+        "CommandTopic: Published commands:",
+        jsons->Belt.Array.map(commandJson =>
+          commandJson->Message.commandJson_encode->Js.Json.stringify
+        ),
+      )->Js.Promise.resolve
+    )
 
   let publishFn: Adapter.connector => (
     . Message.command'<Spec.Id.t, Spec.command>,
@@ -136,27 +167,28 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     }
   }
 
-  let handleCommands = commandsHandler =>
-    (. jsonItems) => {
-      Js.log2("starting CommandTopic.handleCommands. Command count:", jsonItems->Belt.Array.size)
-      let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
-        switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
-        | Belt_Result.Ok(command') => Some({reference, command: command'})
-        | Belt_Result.Error(err) =>
-          let commandStr = json->Js.Json.stringify
-          let message = err.message
-          Js.log(`CommandTopic: Error: Couldn't decode command ${commandStr}: ${message}`)
-          None
-        }
-      )
-      commandsHandler(. topicItems)->Js.Promise.then_(res => {
-        Js.log("finished CommandTopic.handleCommands")
-        res->Js.Promise.resolve
-      }, _)->Js.Promise.catch(err => {
-        let error = (err->Util.Error.ofPromise).message
-        Js.Exn.raiseError(`CommandTopic.handleCommand: Error: Couldn't handle commands: ${error}`)
-      }, _)
-    }
+  let handleCommands = commandsHandler => (. jsonItems) => {
+    Js.log2("starting CommandTopic.handleCommands. Command count:", jsonItems->Belt.Array.size)
+    let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
+      switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
+      | Belt_Result.Ok(command') => Some({reference, command: command'})
+      | Belt_Result.Error(err) =>
+        let commandStr = json->Js.Json.stringify
+        let message = err.message
+        Js.log(`CommandTopic: Error: Couldn't decode command ${commandStr}: ${message}`)
+        None
+      }
+    )
+    commandsHandler(. topicItems)
+    ->Js.Promise2.then(res => {
+      Js.log("finished CommandTopic.handleCommands")
+      res->Js.Promise.resolve
+    })
+    ->Js.Promise2.catch(err => {
+      let error = (err->Util.Error.ofPromise).message
+      Js.Exn.raiseError(`CommandTopic.handleCommand: Error: Couldn't handle commands: ${error}`)
+    })
+  }
 
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())

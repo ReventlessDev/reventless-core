@@ -68,10 +68,7 @@ let allowResourcesSendMessage: (
       resources->Belt.Array.map(resource => resource["urn"])->Output.all
     ),
   ))->Output.apply(((queueArn, topicArns)) =>
-    topicArns
-    ->Belt.Array.mapWithIndex(allowResourceSendMessage(queueArn))
-    ->Belt.List.fromArray
-    ->String.concat(",", _)
+    topicArns->Belt.Array.mapWithIndex(allowResourceSendMessage(queueArn))->Js.Array2.joinWith(",")
   )
 
 let allowCloudWatchEvents = `{
@@ -94,7 +91,7 @@ let make: (
     statements
     ->Output.all
     ->Output.apply(statementStrs => {
-      let statementStr = statementStrs->Belt.List.fromArray->String.concat(",", _)
+      let statementStr = statementStrs->Js.Array2.joinWith(",")
       `{
               "Version": "2012-10-17",
               "Id": "${name}",

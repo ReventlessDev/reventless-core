@@ -7,7 +7,6 @@ type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
 
 let globalSecondaryIndexes = indexes =>
   indexes
-  ->Belt.List.toArray
   ->Belt.Array.map(({index, idField, subIdField, projectionType}) =>
     switch projectionType {
     | #ALL as projectionType
@@ -33,22 +32,18 @@ let globalSecondaryIndexes = indexes =>
   ->Pulumi.Input.make
 
 let attributes = (sortField, indexes) =>
-  list{
-    list{{"name": "id", "type": "S"}},
-    sortField->Belt.Option.mapWithDefault(list{}, sortField => list{
-      {"name": sortField, "type": "S"},
-    }),
+  [
+    [{"name": "id", "type": "S"}],
+    sortField->Belt.Option.mapWithDefault([], sortField => [{"name": sortField, "type": "S"}]),
     indexes
-    ->Belt.List.map(({index, _type, subIdField: sortField}) => list{
-      {"name": index, "type": _type},
-      ...sortField->Belt.Option.mapWithDefault(list{}, sortField => list{
-        {"name": sortField, "type": "S"},
-      }),
-    })
-    ->Belt.List.flatten,
-  }
-  ->Belt.List.flatten
-  ->Belt.List.toArray
+    ->Belt.Array.map(({index, _type, subIdField: sortField}) =>
+      [
+        [{"name": index, "type": _type}],
+        sortField->Belt.Option.mapWithDefault([], sortField => [{"name": sortField, "type": "S"}]),
+      ]->Belt.Array.concatMany
+    )
+    ->Belt.Array.concatMany,
+  ]->Belt.Array.concatMany
 
 let dataSource = (name, table, api, apiRole, opts) => {
   let _dataSourceRolePolicy = {

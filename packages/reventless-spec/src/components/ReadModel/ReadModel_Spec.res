@@ -44,7 +44,7 @@ type resolveIdsTargetConfig = {
   subIdField: option<string>, // TODO: make optional field
 }
 
-@ocaml.doc(" resolve id list field ")
+@ocaml.doc(" resolve id array field ")
 type resolveIdsConfig = resolveConfig<resolveIdsSourceConfig, resolveIdsTargetConfig>
 
 type authorization = {
@@ -74,10 +74,10 @@ module type T = {
   @decco
   type state
 
-  let resolveIdConfigs: list<resolveIdConfig>
-  let resolveIdsConfigs: list<resolveIdsConfig>
+  let resolveIdConfigs: array<resolveIdConfig>
+  let resolveIdsConfigs: array<resolveIdsConfig>
 
   let subIdConfig: option<subIdConfig<state>>
 
-  let indexes: list<index>
+  let indexes: array<index>
 }

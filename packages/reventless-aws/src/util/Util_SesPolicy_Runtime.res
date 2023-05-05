@@ -39,7 +39,7 @@ let sesPolicyDocument: (
     )
     make(
       ~args=Args.make(~statements=[statement], ()),
-      ~opts=opts |> fromCustomResourceOptions,
+      ~opts=opts->fromCustomResourceOptions,
       (),
     )->Pulumi.Output.fromPromise
   })

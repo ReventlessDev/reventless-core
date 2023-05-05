@@ -4,8 +4,14 @@ type outputs = {
   "name": string,
   "extensionPointName": string,
   "aggregateNames": array<string>,
-  "incomingEventHandler": (. Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
-  "outgoingEventHandler": (. Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
+  "incomingEventHandler": (
+    . Js.Json.t,
+    ReventlessSpec.Plugin.pluginDefinition,
+  ) => Js.Promise.t<unit>,
+  "outgoingEventHandler": (
+    . Js.Json.t,
+    ReventlessSpec.Plugin.pluginDefinition,
+  ) => Js.Promise.t<unit>,
 }
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -48,8 +54,14 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
     ~name: string,
     ~extensionPointName: string,
     ~aggregateNames: array<string>,
-    ~incomingEventHandler: (. Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
-    ~outgoingEventHandler: (. Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
+    ~incomingEventHandler: (
+      . Js.Json.t,
+      ReventlessSpec.Plugin.pluginDefinition,
+    ) => Js.Promise.t<unit>,
+    ~outgoingEventHandler: (
+      . Js.Json.t,
+      ReventlessSpec.Plugin.pluginDefinition,
+    ) => Js.Promise.t<unit>,
   ) => outputs = ""
 
   @send
@@ -92,24 +104,22 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
   ) => {
     let publishAggregateCommand = (aggregateName, cmdJson) => {
       let pub = publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn
-      pub(. [cmdJson])->Js.Promise.catch(
+      pub(. [cmdJson])->Js.Promise2.catch(
         err =>
           Js.log2(
             `Extension: Error on publish command to aggregate ${aggregateName}:`,
             err,
           )->Js.Promise.resolve,
-        _,
       )
     }
 
     let publishCorePluginExtensionPointCommand = cmdJson =>
-      publishToCorePluginExtensionPoint(. [cmdJson])->Js.Promise.catch(
+      publishToCorePluginExtensionPoint(. [cmdJson])->Js.Promise2.catch(
         err =>
           Js.log2(
             `Extension: Error on publish command to Core.Plugin ExtensionPoint:`,
             err,
           )->Js.Promise.resolve,
-        _,
       )
 
     let forwardCommand = (extensionPointName, commandJson: Message.commandJson) =>
@@ -132,21 +142,18 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       | ExtensionMapping.AbstractPublishAggregateCommand(aggregateName, commandJson) =>
         publishAggregateCommand(aggregateName, commandJson)
       | ExtensionMapping.AbstractPublishAggregateCommandAsync(promise) =>
-        promise->Js.Promise.then_(
-          ((aggregateName, commandJson)) => publishAggregateCommand(aggregateName, commandJson),
-          _,
+        promise->Js.Promise2.then(((aggregateName, commandJson)) =>
+          publishAggregateCommand(aggregateName, commandJson)
         )
 
       | AbstractPublishAggregateCommandsAsync(promise) =>
-        promise->Js.Promise.then_(
-          tupels =>
-            tupels
-            ->Belt.Array.map(((aggregateName, commandJson)) =>
-              publishAggregateCommand(aggregateName, commandJson)
-            )
-            ->Js.Promise.all
-            ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
-          _,
+        promise->Js.Promise2.then(tupels =>
+          tupels
+          ->Belt.Array.map(((aggregateName, commandJson)) =>
+            publishAggregateCommand(aggregateName, commandJson)
+          )
+          ->Js.Promise.all
+          ->Js.Promise2.then(_ => Js.Promise.resolve())
         )
 
       | AbstractPublishPluginExtensionPointCommand(commandJson) =>
@@ -154,9 +161,8 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
         forwardCommand(extensionPointName, commandJson)
       | AbstractCall(handler) =>
-        handler()->Js.Promise.catch(
+        handler()->Js.Promise2.catch(
           err => Js.log2("ExtensionPoint: Error on calling handler:", err)->Js.Promise.resolve,
-          _,
         )
       }
 
@@ -167,14 +173,17 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
         forwardCommand(extensionPointName, commandJson)
       | AbstractCall(handler) =>
-        handler()->Js.Promise.catch(
+        handler()->Js.Promise2.catch(
           err => Js.log2("ExtensionPoint: Error on calling handler:", err)->Js.Promise.resolve,
-          _,
         )
       }
 
     let incomingEventHandler = (. event'Json, pluginDef) => {
-      let event' = Message.event'_decode(ReventlessSpec.Id.StringPure.t_decode, Spec.event_decode, event'Json)
+      let event' = Message.event'_decode(
+        ReventlessSpec.Id.StringPure.t_decode,
+        Spec.event_decode,
+        event'Json,
+      )
 
       switch event' {
       | Belt.Result.Ok(event') =>
@@ -182,7 +191,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
         commandActions
         ->Belt.Array.map(applyIncomingCommandAction)
         ->Js.Promise.all
-        ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+        ->Js.Promise2.then(_ => Js.Promise.resolve())
       | Error(msg) =>
         Js.log2("Could not decode event':", msg)
         Js.Promise.resolve()
@@ -194,7 +203,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       commandActions
       ->Belt.Array.map(applyOutgoingCommandAction)
       ->Js.Promise.all
-      ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+      ->Js.Promise2.then(_ => Js.Promise.resolve())
     }
 
     makeOutputs(

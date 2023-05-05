@@ -10,19 +10,13 @@ var PluginProjectionTest = ProjectionTest$Reventless.Make(PluginProjection$Reven
 
 Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
         Curry._3(PluginProjectionTest.test, "UnknownPluginDetected", undefined, (function (param) {
-                return Curry._1(PluginProjectionTest.thenNoState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, /* [] */0), /* UnknownPluginDetected */0));
+                return Curry._1(PluginProjectionTest.thenNoState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, []), /* UnknownPluginDetected */0));
               }));
         Curry._3(PluginProjectionTest.test, "UnknownPluginDetected (already detected)", undefined, (function (param) {
-                return Curry._1(PluginProjectionTest.thenNoState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: /* [] */0
-                                  }), /* UnknownPluginDetected */0));
+                return Curry._1(PluginProjectionTest.thenNoState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, [/* UnknownPluginDetected */0]), /* UnknownPluginDetected */0));
               }));
         Curry._3(PluginProjectionTest.test, "Connected", undefined, (function (param) {
-                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: /* [] */0
-                                  }), {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, [/* UnknownPluginDetected */0]), {
                                 TAG: /* Connected */0,
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), {
@@ -38,16 +32,13 @@ Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
                           });
               }));
         Curry._3(PluginProjectionTest.test, "Disconnected", undefined, (function (param) {
-                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: /* [] */0
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), {
+                                  ]), {
                                 TAG: /* Disconnected */2,
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), {
@@ -63,16 +54,13 @@ Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
                           });
               }));
         Curry._3(PluginProjectionTest.test, "Deactivated", undefined, (function (param) {
-                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: /* [] */0
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), {
+                                  ]), {
                                 TAG: /* Deactivated */4,
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), {
@@ -88,22 +76,17 @@ Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
                           });
               }));
         Curry._3(PluginProjectionTest.test, "Activated", undefined, (function (param) {
-                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Deactivated */4,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: /* [] */0
-                                      }
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Deactivated */4,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), {
+                                  ]), {
                                 TAG: /* Activated */3,
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), {
@@ -119,28 +102,21 @@ Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
                           });
               }));
         Curry._3(PluginProjectionTest.test, "Reconnected (after activated)", undefined, (function (param) {
-                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Deactivated */4,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: {
-                                          hd: {
-                                            TAG: /* Activated */3,
-                                            _0: PluginFixtures$Reventless.pluginDefinition
-                                          },
-                                          tl: /* [] */0
-                                        }
-                                      }
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Deactivated */4,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Activated */3,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), {
+                                  ]), {
                                 TAG: /* Reconnected */1,
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), {

@@ -246,17 +246,17 @@ function state_decode(v) {
         };
 }
 
+var resolveIdConfigs = [];
+
+var resolveIdsConfigs = [];
+
+var indexes = [];
+
 var Id;
 
 var name = "Plugin";
 
-var resolveIdConfigs = /* [] */0;
-
-var resolveIdsConfigs = /* [] */0;
-
 var subIdConfig;
-
-var indexes = /* [] */0;
 
 exports.Id = Id;
 exports.status_encode = status_encode;

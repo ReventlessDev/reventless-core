@@ -3,7 +3,7 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var CloudWatchEvents$AwsSdk = require("@reventless/bs-aws-sdk/src/CloudWatchEvents.bs.js");
 
 function plural(count) {
@@ -44,11 +44,11 @@ function createSchedule(role) {
   return function (queueResources, schedule) {
     if (queueResources.length !== 0) {
       var resource = Caml_array.get(queueResources, 0);
-      return Js_promise.then_((function (param) {
-                    return Promise.resolve(undefined);
-                  }), Js_promise.then_((function (param) {
+      return Js_promise2.then(Js_promise2.then(CloudWatchEvents$AwsSdk.putRule(schedule.name, toScheduleExpression(schedule.rate), role.arn.get(), "ENABLED", undefined), (function (param) {
                         return CloudWatchEvents$AwsSdk.putTarget(schedule.name, resource.name.get(), resource.urn.get(), schedule.payload);
-                      }), CloudWatchEvents$AwsSdk.putRule(schedule.name, toScheduleExpression(schedule.rate), role.arn.get(), "ENABLED", undefined)));
+                      })), (function (param) {
+                    return Promise.resolve(undefined);
+                  }));
     }
     var err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !";
     console.log(err);
@@ -59,13 +59,13 @@ function createSchedule(role) {
 function deleteSchedule(queueResources, name) {
   if (queueResources.length !== 0) {
     var resource = Caml_array.get(queueResources, 0);
-    return Js_promise.then_((function (param) {
-                  return Promise.resolve(undefined);
-                }), Js_promise.then_((function (param) {
-                      return Js_promise.then_((function (param) {
+    return Js_promise2.then(Js_promise2.then(CloudWatchEvents$AwsSdk.removeTarget(name, resource.name.get()), (function (param) {
+                      return Js_promise2.then(CloudWatchEvents$AwsSdk.deleteRule(name), (function (param) {
                                     return Promise.resolve(undefined);
-                                  }), CloudWatchEvents$AwsSdk.deleteRule(name));
-                    }), CloudWatchEvents$AwsSdk.removeTarget(name, resource.name.get())));
+                                  }));
+                    })), (function (param) {
+                  return Promise.resolve(undefined);
+                }));
   }
   var err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !";
   console.log(err);

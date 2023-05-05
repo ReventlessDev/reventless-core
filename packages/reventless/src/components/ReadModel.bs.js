@@ -103,13 +103,13 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
           Caml_option.some(opts),
           undefined
         ]);
-    var outputs = {
+    var self$1 = {
       name: name,
       queryDb: Component$Reventless.extractOutputs(queryDb),
       eventCollector: Component$Reventless.extractOutputs(eventCollector)
     };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
+    self$1.setOutputs(self);
+    return self$1.registerOutputs(self);
   };
   var make = function (allEventTopics, opts, param) {
     var prim0 = ComponentType$Reventless.toString(/* ReadModel */12);

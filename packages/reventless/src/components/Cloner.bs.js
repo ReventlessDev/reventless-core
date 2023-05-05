@@ -68,11 +68,11 @@ function Make(Config, Runner) {
         runner = noRunner;
       }
     }
-    var outputs = {
+    var self$1 = {
       resources: runner.resources
     };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
+    self$1.setOutputs(self);
+    return self$1.registerOutputs(self);
   };
   var make = function (opts, param) {
     var prim0 = ComponentType$Reventless.toString(/* Cloner */20);

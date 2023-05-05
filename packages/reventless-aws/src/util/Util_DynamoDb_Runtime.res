@@ -12,7 +12,7 @@ let queryById = (table: PulumiAws.DynamoDb.Table.t, id) =>
   queryByIdWithTableName(table["name"]->Pulumi.Output.get, id)
 
 let keysFromResource = (resource: ReventlessSpec.Adapter.resource) =>
-  switch resource["info"] |> Pulumi.Output.get |> Js.String.split(",") {
+  switch resource["info"]->Pulumi.Output.get->Js.String2.split(",") {
   | [] => Js.Exn.raiseError("No id field given for table " ++ resource["name"]->Pulumi.Output.get)
   | [id]
   | [id, ""] => (id, None)
@@ -63,7 +63,7 @@ let batchWrite' = itemRequestMap =>
   )
 
 let wrapWithCount = (promise, count) =>
-  promise->Js.Promise.then_(pContent => (pContent, count)->Js.Promise.resolve, _)
+  promise->Js.Promise2.then(pContent => (pContent, count)->Js.Promise.resolve)
 
 let hasUnprocessedItems = writeOutput =>
   writeOutput["_UnprocessedItems"]->Js.Dict.keys->Belt.Array.size > 0
@@ -72,7 +72,7 @@ let rec retryIfNecessary: (
   Js.Promise.t<(BatchWriteItemOutput.t, /* numberOfRetries */ int)>,
   int,
 ) => Js.Promise.t<(BatchWriteItemOutput.t, /* numberOfRetries */ int)> = (p, maxRetries) =>
-  p->Js.Promise.then_(((writeOutput, numberOfRetries) as originalPromiseContent) => {
+  p->Js.Promise2.then(((writeOutput, numberOfRetries) as originalPromiseContent) => {
     let unprocessedItems = writeOutput["_UnprocessedItems"]
     let unprocessedItemsPresent = hasUnprocessedItems(writeOutput)
     let numberOfRetriesReached = numberOfRetries >= maxRetries
@@ -83,7 +83,7 @@ let rec retryIfNecessary: (
     } else {
       originalPromiseContent->Js.Promise.resolve
     }
-  }, _)
+  })
 
 let toPutRequest = json =>
   WriteRequest.make(~_PutRequest=WriteRequest.PutRequest.make(~_Item=json), ())

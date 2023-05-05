@@ -27,7 +27,7 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
     }
   )
 
-  handleEvents(. jsons) |> Js.Promise.then_(_ =>
+  handleEvents(. jsons)->Js.Promise2.then(_ =>
     records
     ->Belt.Array.keep(record =>
       switch record["eventSource"] {
@@ -41,23 +41,22 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
         ~_ReceiptHandle=(record->Record.toSqsRecord)["receiptHandle"],
       )
     )
-    ->(
-      x =>
-        switch x {
-        | [] => Js.Promise.resolve()
-        | entries => AwsSdk.SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get, entries)
-        }
-    ) |> Js.Promise.then_(_ => Js.Promise.resolve())
+    ->(x =>
+      switch x {
+      | [] => Js.Promise.resolve()
+      | entries => AwsSdk.SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get, entries)
+      })
+    ->Js.Promise2.then(_ => Js.Promise.resolve())
   )
 }
 
-let enqueueEvent = (queue, . delay, _id, messageBody) => {
+let enqueueEvent = queue => (. delay, _id, messageBody) => {
   let queueName = queue["name"]->Reventless.OutputFailsafeRuntime.get
   Js.log4(__MODULE__ ++ ".enqueueMessage:", delay, messageBody, queueName)
   queue->Util_SQS_Runtime.sendMessage(~delay, messageBody)
 }
 
-let enqueueFifoEvent = (queue, . delay, id, messageBody) => {
+let enqueueFifoEvent = queue => (. delay, id, messageBody) => {
   let queueName = queue["name"]->Reventless.OutputFailsafeRuntime.get
   Js.log4(__MODULE__ ++ ".enqueueMessage:", delay, messageBody, queueName)
   queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=id, messageBody)

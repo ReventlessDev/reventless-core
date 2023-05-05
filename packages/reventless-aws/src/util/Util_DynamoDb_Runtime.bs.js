@@ -5,11 +5,10 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Js_string = require("@rescript/std/lib/js/js_string.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.bs.js");
@@ -29,7 +28,7 @@ function queryById(table, id) {
 }
 
 function keysFromResource(resource) {
-  var parts = Js_string.split(",", resource.info.get());
+  var parts = resource.info.get().split(",");
   var len = parts.length;
   if (len < 3) {
     switch (len) {
@@ -93,12 +92,12 @@ function batchWrite$p(itemRequestMap) {
 }
 
 function wrapWithCount(promise, count) {
-  return Js_promise.then_((function (pContent) {
+  return Js_promise2.then(promise, (function (pContent) {
                 return Promise.resolve([
                             pContent,
                             count
                           ]);
-              }), promise);
+              }));
 }
 
 function hasUnprocessedItems(writeOutput) {
@@ -106,7 +105,7 @@ function hasUnprocessedItems(writeOutput) {
 }
 
 function retryIfNecessary(p, maxRetries) {
-  return Js_promise.then_((function (originalPromiseContent) {
+  return Js_promise2.then(p, (function (originalPromiseContent) {
                 var numberOfRetries = originalPromiseContent[1];
                 var writeOutput = originalPromiseContent[0];
                 var unprocessedItems = writeOutput.UnprocessedItems;
@@ -117,7 +116,7 @@ function retryIfNecessary(p, maxRetries) {
                 } else {
                   return Promise.resolve(originalPromiseContent);
                 }
-              }), p);
+              }));
 }
 
 function toPutRequest(json) {

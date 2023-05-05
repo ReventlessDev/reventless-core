@@ -8,10 +8,10 @@ var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_array = require("@rescript/std/lib/js/js_array.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -125,6 +125,9 @@ function Make(Config, QueryDbStorage, Handler) {
               }
             };
     };
+    var resolveIdConfigs = [];
+    var resolveIdsConfigs = [];
+    var indexes = [];
     var partial_arg_Id = {
       t_encode: Id$ReventlessSpec.StringPure.t_encode,
       t_decode: Id$ReventlessSpec.StringPure.t_decode,
@@ -144,10 +147,10 @@ function Make(Config, QueryDbStorage, Handler) {
       name: name$2,
       state_encode: state_encode,
       state_decode: state_decode,
-      resolveIdConfigs: /* [] */0,
-      resolveIdsConfigs: /* [] */0,
+      resolveIdConfigs: resolveIdConfigs,
+      resolveIdsConfigs: resolveIdsConfigs,
       subIdConfig: undefined,
-      indexes: /* [] */0
+      indexes: indexes
     };
     var partial_arg$1 = QueryDb$Reventless.Make;
     var partial_arg$2 = function (param, param$1) {
@@ -208,6 +211,9 @@ function Make(Config, QueryDbStorage, Handler) {
               }
             };
     };
+    var resolveIdConfigs$1 = [];
+    var resolveIdsConfigs$1 = [];
+    var indexes$1 = [];
     var partial_arg_Id$1 = {
       t_encode: Id$ReventlessSpec.StringPure.t_encode,
       t_decode: Id$ReventlessSpec.StringPure.t_decode,
@@ -227,10 +233,10 @@ function Make(Config, QueryDbStorage, Handler) {
       name: name$3,
       state_encode: state_encode$1,
       state_decode: state_decode$1,
-      resolveIdConfigs: /* [] */0,
-      resolveIdsConfigs: /* [] */0,
+      resolveIdConfigs: resolveIdConfigs$1,
+      resolveIdsConfigs: resolveIdsConfigs$1,
       subIdConfig: undefined,
-      indexes: /* [] */0
+      indexes: indexes$1
     };
     var partial_arg$4 = QueryDb$Reventless.Make;
     var partial_arg$5 = function (param, param$1) {
@@ -294,12 +300,11 @@ function Make(Config, QueryDbStorage, Handler) {
     var counterHandler = function (references, counts) {
       console.log("counterHandler: references:", references.length);
       console.log("counterHandler: counts:", counts);
-      var __x = Promise.all(Belt_Array.map(groupByCounterId(references), (function (param) {
-                  return Curry._1(CountsDb.count, countsDb)(param[0], "count", -param[1] | 0);
-                })));
-      var countP = Js_promise.then_((function (param) {
+      var countP = Js_promise2.then(Promise.all(Belt_Array.map(groupByCounterId(references), (function (param) {
+                      return Curry._1(CountsDb.count, countsDb)(param[0], "count", -param[1] | 0);
+                    }))), (function (param) {
               return Promise.resolve(undefined);
-            }), __x);
+            }));
       var counterEventsHandlerP = counterEventsHandler(Belt_Array.keepMap(counts, (function (state) {
                   var match = state_decode$1(state);
                   if (match.TAG === /* Ok */0) {
@@ -331,34 +336,32 @@ function Make(Config, QueryDbStorage, Handler) {
                   var stateStr = JSON.stringify(state);
                   console.log("Counter-Reventless" + (".counterHandler: couldn't decode state " + stateStr + ""));
                 })));
-      var __x$1 = Promise.all([
-            countP,
-            counterEventsHandlerP
-          ]);
-      return Js_promise.then_((function (param) {
+      return Js_promise2.then(Promise.all([
+                      countP,
+                      counterEventsHandlerP
+                    ]), (function (param) {
                     return Promise.resolve(undefined);
-                  }), __x$1);
+                  }));
     };
     var handler = Curry._7(Handler.make, name$1, name$2, Component$Reventless.extractOutputs(referencesDb), name$3, Component$Reventless.extractOutputs(countsDb), counterHandler, opts2);
     var partial_arg$6 = Curry._1(ReferencesDb.saveBatch, referencesDb);
     self.count = (function (param) {
-        var __x = partial_arg$6(Belt_Array.map(param, (function (param) {
-                    var id = makeId([
-                          param.counterId,
-                          param.reference
-                        ]);
-                    var state_inc = param.inc;
-                    var state = {
-                      id: id,
-                      inc: state_inc
-                    };
-                    return [
-                            id,
-                            state,
-                            ttl
-                          ];
-                  })));
-        return Js_promise.then_((function (x) {
+        return Js_promise2.then(partial_arg$6(Belt_Array.map(param, (function (param) {
+                              var id = makeId([
+                                    param.counterId,
+                                    param.reference
+                                  ]);
+                              var state_inc = param.inc;
+                              var state = {
+                                id: id,
+                                inc: state_inc
+                              };
+                              return [
+                                      id,
+                                      state,
+                                      ttl
+                                    ];
+                            }))), (function (x) {
                       if (x.TAG === /* Ok */0) {
                         var batchSize = param.length;
                         console.log("Counter-Reventless" + (": saved batch of " + String(batchSize) + " reference(s):"));
@@ -382,15 +385,15 @@ function Make(Config, QueryDbStorage, Handler) {
                                   RE_EXN_ID: NotCounted,
                                   _1: "Unknown error"
                                 });
-                    }), __x);
+                    }));
       });
     self.addToCounterTarget = handler.addToCounterTarget;
-    var outputs = {
+    var self$1 = {
       referencesDb: Curry._1(ReferencesDb.outputs, referencesDb).resources,
       countsDb: Curry._1(CountsDb.outputs, countsDb).resources
     };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
+    self$1.setOutputs(self);
+    return self$1.registerOutputs(self);
   };
   var make = function (name, counterEventsHandler, ttlOpt, opts, param) {
     var ttl = ttlOpt !== undefined ? ttlOpt : 604800;

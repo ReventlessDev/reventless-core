@@ -7,10 +7,10 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
@@ -48,10 +48,9 @@ function Make(Config, Spec, Behaviour, Resolvers) {
         meta: meta,
         command: command
       };
-      var __x = publish(command$p);
-      return Js_promise.then_((function (param) {
+      return Js_promise2.then(publish(command$p), (function (param) {
                     return Promise.resolve(msgId);
-                  }), __x);
+                  }));
     };
   };
   var construct = function (self, name, api, commandHandler) {

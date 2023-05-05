@@ -7,8 +7,8 @@ type event = {"tables": Js.nullable<array<tableConfig>>}
 
 let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<Belt.Result.t<'a, 'b>> = p =>
   p
-  ->Js.Promise.then_(res => Belt.Result.Ok(res)->Js.Promise.resolve, _)
-  ->Js.Promise.catch(err => Belt.Result.Error(err)->Js.Promise.resolve, _)
+  ->Js.Promise2.then(res => Belt.Result.Ok(res)->Js.Promise.resolve)
+  ->Js.Promise2.catch(err => Belt.Result.Error(err)->Js.Promise.resolve)
 
 let handleDeleteResult = result => {
   if mode == #debug {
@@ -23,7 +23,7 @@ let handleDeleteResult = result => {
   }
 }
 
-let deleteAllItems = (tableConfig: tableConfig, items: array<Js.Dict.t<string>>): unit =>
+let deleteAllItems = (items: array<Js.Dict.t<string>>, tableConfig: tableConfig): unit =>
   items
   ->Belt.Array.map((item: Js.Dict.t<string>) => {
     let id = item->Js.Dict.get(tableConfig["id"])
@@ -37,11 +37,11 @@ let deleteAllItems = (tableConfig: tableConfig, items: array<Js.Dict.t<string>>)
         ~sortKey=sort,
       )
       ->promiseToResult
-      ->Js.Promise.then_(res => res->handleDeleteResult->Js.Promise.resolve, _)
+      ->Js.Promise2.then(res => res->handleDeleteResult->Js.Promise.resolve)
     | (Some(id), None) =>
       AwsSdk.DynamoDb.DocumentClient.deleteById(~tableName=tableConfig["name"], ~id)
       ->promiseToResult
-      ->Js.Promise.then_(res => res->handleDeleteResult->Js.Promise.resolve, _)
+      ->Js.Promise2.then(res => res->handleDeleteResult->Js.Promise.resolve)
     //Promise.handlePromise(handeDeleteResult)
     | _ =>
       Js.Promise.make((~resolve, ~reject as _) =>
@@ -50,7 +50,7 @@ let deleteAllItems = (tableConfig: tableConfig, items: array<Js.Dict.t<string>>)
     }
   })
   ->Js.Promise.all
-  ->Js.Promise.then_(result =>
+  ->Js.Promise2.then(result =>
     result
     ->Belt.Array.reduce(0, (state, item) =>
       switch item {
@@ -66,7 +66,8 @@ let deleteAllItems = (tableConfig: tableConfig, items: array<Js.Dict.t<string>>)
       (" items in table " ++ tableConfig["name"])),
     )
     ->Js.Promise.resolve
-  , _) |> ignore
+  )
+  ->ignore
 
 let handleScanResult = (
   tableConfig: tableConfig,
@@ -80,7 +81,7 @@ let handleScanResult = (
     if mode == #debug {
       Js.log2("Items in scan-result:", scanResult["_Items"]->Belt.Array.length)
     }
-    scanResult["_Items"] |> deleteAllItems(tableConfig)
+    scanResult["_Items"]->deleteAllItems(tableConfig)
     Belt.Result.Ok(-1)
   | Belt.Result.Error(error) =>
     if mode == #debug {
@@ -99,9 +100,9 @@ let scanTableAndClean = (tableConfig: tableConfig): Js.Promise.t<Belt.Result.t<s
   let (projectionExpression, expressionAttributeNames) = switch tableConfig["sort"] {
   | Some(sortKey) => (
       "#" ++ (idKey ++ (",#" ++ sortKey)),
-      list{("#" ++ idKey, idKey), ("#" ++ sortKey, sortKey)} |> Js.Dict.fromList,
+      [("#" ++ idKey, idKey), ("#" ++ sortKey, sortKey)]->Js.Dict.fromArray,
     )
-  | None => ("#" ++ idKey, list{("#" ++ idKey, idKey)} |> Js.Dict.fromList)
+  | None => ("#" ++ idKey, [("#" ++ idKey, idKey)]->Js.Dict.fromArray)
   }
 
   AwsSdk.DynamoDb.DocumentClient.scan(
@@ -113,7 +114,7 @@ let scanTableAndClean = (tableConfig: tableConfig): Js.Promise.t<Belt.Result.t<s
     ),
   )
   ->promiseToResult
-  ->Js.Promise.then_(res => {
+  ->Js.Promise2.then(res => {
     let scanResult = handleScanResult(tableConfig, res)
     let deletedItemsCount = switch scanResult {
     | Belt.Result.Ok(deletedItemsCount) =>
@@ -121,7 +122,7 @@ let scanTableAndClean = (tableConfig: tableConfig): Js.Promise.t<Belt.Result.t<s
     | Belt.Result.Error(_err) => Belt.Result.Error(tableConfig["name"] ++ " [ERROR]")
     }
     deletedItemsCount->Js.Promise.resolve
-  }, _)
+  })
 }
 
 let toTableConfig: resource => tableConfig = resource => {
@@ -140,7 +141,10 @@ let cleanerFn: array<resource> => eventHandler<event, string> = (tablesToClean, 
       | tableConfigs if tableConfigs->Belt.Array.length == 0 =>
         Js.Promise.make((~resolve, ~reject as _) => resolve(. "No tables to clean."))
       | tableConfigs =>
-        tableConfigs->Belt.Array.map(scanTableAndClean)->Js.Promise.all->Js.Promise.then_(arr => {
+        tableConfigs
+        ->Belt.Array.map(scanTableAndClean)
+        ->Js.Promise.all
+        ->Js.Promise2.then(arr => {
           let summary = arr->Belt.Array.reduce("", (state, item) =>
             state ++
             (" | " ++
@@ -153,13 +157,13 @@ let cleanerFn: array<resource> => eventHandler<event, string> = (tablesToClean, 
             ))
           )
           ("Cleaned tables " ++ summary)->Js.Promise.resolve
-        }, _)
+        })
       }
   )
 
 let stackName = prefix =>
   switch prefix {
-  | Some(prefix) => (prefix |> Js.String.replace("_", "-")) ++ "-"
+  | Some(prefix) => prefix->Js.String2.replace("_", "-") ++ "-"
   | None => ""
   } ++
   (Pulumi.Pulumi.getProjectName() ++

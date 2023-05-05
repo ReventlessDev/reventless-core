@@ -87,29 +87,25 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
         )
       | PublishAggregateCommandAsync(promise) =>
         let promise' =
-          promise->Js.Promise.then_(
-            ((aggregateId, aggregateCmd)) =>
-              (
-                aggregateName,
-                aggregateCmd->encodeAggregateCommandJson(aggregateId),
-              )->Js.Promise.resolve,
-            _,
+          promise->Js.Promise2.then(((aggregateId, aggregateCmd)) =>
+            (
+              aggregateName,
+              aggregateCmd->encodeAggregateCommandJson(aggregateId),
+            )->Js.Promise.resolve
           )
         AbstractPublishAggregateCommandAsync(promise')
       | PublishAggregateCommandsAsync(promise) =>
         let promise' =
-          promise->Js.Promise.then_(
-            tupels =>
-              tupels
-              ->Belt.Array.map(
-                ((aggregateId, aggregateCmd)) =>
-                  (
-                    aggregateName,
-                    aggregateCmd->encodeAggregateCommandJson(aggregateId),
-                  )->Js.Promise.resolve,
-              )
-              ->Js.Promise.all,
-            _,
+          promise->Js.Promise2.then(tupels =>
+            tupels
+            ->Belt.Array.map(
+              ((aggregateId, aggregateCmd)) =>
+                (
+                  aggregateName,
+                  aggregateCmd->encodeAggregateCommandJson(aggregateId),
+                )->Js.Promise.resolve,
+            )
+            ->Js.Promise.all
           )
         AbstractPublishAggregateCommandsAsync(promise')
       | PublishExtensionPointCommand(id, command)

@@ -37,13 +37,11 @@ let enableTtl: string => Js.Promise.t<PulumiAws.DynamoDb.Table.TableTtl.t> = tab
         ),
       ),
     )
-  }->Js.Promise.then_(
-    res =>
-      TableTtl.make(
-        ~enabled=Some(res["_TimeToLiveSpecification"]["_Enabled"]),
-        ~attributeName=res["_TimeToLiveSpecification"]["_AttributeName"],
-      )->Js.Promise.resolve,
-    _,
+  }->Js.Promise2.then(res =>
+    TableTtl.make(
+      ~enabled=Some(res["_TimeToLiveSpecification"]["_Enabled"]),
+      ~attributeName=res["_TimeToLiveSpecification"]["_AttributeName"],
+    )->Js.Promise.resolve
   )
 }
 

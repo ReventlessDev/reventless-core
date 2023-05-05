@@ -9,7 +9,7 @@ let streamArnFromDynamoDbTableResource = table =>
   (table["info"], table["name"])
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((tableInfo, tableName)) =>
-    switch tableInfo |> Js.String.split(",") {
+    switch tableInfo->Js.String2.split(",") {
     | parts if parts->Belt.Array.length < 3 || parts[2]->Js.String2.trim == "" =>
       Js.Exn.raiseError("No streamArn field given for table " ++ tableName)
     | parts => parts[2]
@@ -52,14 +52,12 @@ let enableStream = tableName => {
       ),
       (),
     ),
-  )->Js.Promise.then_(
-    res =>
-      (
-        res["_TableDescription"]["_StreamSpecification"]["_StreamEnabled"],
-        Some(res["_TableDescription"]["_LatestStreamArn"]),
-        res["_TableDescription"]["_LatestStreamLabel"],
-      )->Js.Promise.resolve,
-    _,
+  )->Js.Promise2.then(res =>
+    (
+      res["_TableDescription"]["_StreamSpecification"]["_StreamEnabled"],
+      Some(res["_TableDescription"]["_LatestStreamArn"]),
+      res["_TableDescription"]["_LatestStreamLabel"],
+    )->Js.Promise.resolve
   )
 }
 

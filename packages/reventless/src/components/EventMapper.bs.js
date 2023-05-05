@@ -6,10 +6,10 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Counter$Reventless = require("./Counter.bs.js");
@@ -79,11 +79,11 @@ function Make(Target, EventCollector, Mappings) {
                     case /* PublishAsync */2 :
                         return {
                                 TAG: /* Publisher */1,
-                                _0: Js_promise.then_((function (cmds) {
+                                _0: Js_promise2.then(x._0, (function (cmds) {
                                         return Promise.resolve(Belt_Array.map(cmds, (function (param) {
                                                           return createCommandJson(undefined, param[0], eventMeta, param[1]);
                                                         })));
-                                      }), x._0)
+                                      }))
                               };
                     case /* AddToCounterTarget */3 :
                         var match = x._0;
@@ -167,16 +167,15 @@ function Make(Target, EventCollector, Mappings) {
               return true;
             }
           }));
-    var __x = Promise.all(Belt_Array.map(match[0], (function (x) {
-                if (x.TAG === /* Counter */0) {
-                  return Js_exn.raiseError("Invalid EventMapper action");
-                } else {
-                  return x._0;
-                }
-              })));
-    var publisherEntries = Js_promise.then_((function (entries) {
+    var publisherEntries = Js_promise2.then(Promise.all(Belt_Array.map(match[0], (function (x) {
+                    if (x.TAG === /* Counter */0) {
+                      return Js_exn.raiseError("Invalid EventMapper action");
+                    } else {
+                      return x._0;
+                    }
+                  }))), (function (entries) {
             return Promise.resolve(Belt_Array.concatMany(entries));
-          }), __x);
+          }));
     var counterActions = Belt_Array.map(match[1], (function (x) {
             if (x.TAG === /* Counter */0) {
               return x._0;
@@ -208,17 +207,11 @@ function Make(Target, EventCollector, Mappings) {
             }));
       console.log("EventMapper.eventCollectorEventsHandler: countActions:", countActions.length);
       var match$2 = countActions.length;
-      var countP;
-      if (match$2 !== 0) {
-        var __x = Curry._1(count, countActions);
-        countP = Js_promise.$$catch((function (err) {
+      var countP = match$2 !== 0 ? Js_promise2.$$catch(Curry._1(count, countActions), (function (err) {
                 var error = "EventMapper-Reventless" + ".eventCollectorEventsHandler: count error";
                 console.log(error, err);
                 return Js_exn.raiseError(error);
-              }), __x);
-      } else {
-        countP = Promise.resolve(undefined);
-      }
+              })) : Promise.resolve(undefined);
       console.log("EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:", JSON.stringify(addToCounterTargetActions));
       var addToCounterTargetsP = Promise.all(Belt_Array.map(addToCounterTargetActions, (function (x) {
                   if (x.TAG === /* Count */0) {
@@ -227,17 +220,16 @@ function Make(Target, EventCollector, Mappings) {
                     return Curry._1(addToCounterTarget, x._0);
                   }
                 })));
-      var sendEntriesP = Js_promise.then_((function (commandJsons) {
+      var sendEntriesP = Js_promise2.then(match[0], (function (commandJsons) {
               return publishJsons(commandJsons);
-            }), match[0]);
-      var __x$1 = Promise.all([
-            countP,
-            addToCounterTargetsP,
-            sendEntriesP
-          ]);
-      return Js_promise.then_((function (param) {
+            }));
+      return Js_promise2.then(Promise.all([
+                      countP,
+                      addToCounterTargetsP,
+                      sendEntriesP
+                    ]), (function (param) {
                     return Promise.resolve(undefined);
-                  }), __x$1);
+                  }));
     };
   };
   var counterEventsHandler = function (publishJsons, mappings, queryEngine) {
@@ -246,9 +238,9 @@ function Make(Target, EventCollector, Mappings) {
       if (match[1].length !== 0) {
         console.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!");
       }
-      return Js_promise.then_((function (commandJsons) {
+      return Js_promise2.then(match[0], (function (commandJsons) {
                     return publishJsons(commandJsons);
-                  }), match[0]);
+                  }));
     };
   };
   var construct = function (allEventTopics, queryEngine, publishJsons, memorySize, timeout, self, name) {

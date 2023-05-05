@@ -4,10 +4,10 @@
 var Jest = require("@glennsl/rescript-jest/src/jest.bs.js");
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
+var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.bs.js");
 var TestFixtures$Reventless = require("./TestFixtures.bs.js");
@@ -17,21 +17,18 @@ function MakeAggregate(Spec, Behaviour) {
     return Behaviour.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Belt_List.reduce(Belt_List.tailExn(events), Behaviour.init(Belt_List.headExn(events)), apply$p);
+    return Belt_Array.reduce(Belt_Array.sliceToEnd(events, 1), Behaviour.init(Caml_array.get(events, 0)), apply$p);
   };
   var errors = {
-    contents: /* [] */0
+    contents: []
   };
   var errorHandler = function (error, param, param$1) {
-    errors.contents = Belt_List.concat(errors.contents, {
-          hd: error,
-          tl: /* [] */0
-        });
-    return /* [] */0;
+    errors.contents = Belt_Array.concat(errors.contents, [error]);
+    return [];
   };
   var exec = function (context, command, history) {
-    errors.contents = /* [] */0;
-    if (!history) {
+    errors.contents = [];
+    if (history.length === 0) {
       return Behaviour.create(command, context, errorHandler);
     }
     try {
@@ -40,7 +37,7 @@ function MakeAggregate(Spec, Behaviour) {
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
       if (exn.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-        return /* [] */0;
+        return [];
       }
       throw exn;
     }
@@ -73,21 +70,18 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     return SourceBehaviour.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Belt_List.reduce(Belt_List.tailExn(events), SourceBehaviour.init(Belt_List.headExn(events)), apply$p);
+    return Belt_Array.reduce(Belt_Array.sliceToEnd(events, 1), SourceBehaviour.init(Caml_array.get(events, 0)), apply$p);
   };
   var errors = {
-    contents: /* [] */0
+    contents: []
   };
   var errorHandler = function (error, param, param$1) {
-    errors.contents = Belt_List.concat(errors.contents, {
-          hd: error,
-          tl: /* [] */0
-        });
-    return /* [] */0;
+    errors.contents = Belt_Array.concat(errors.contents, [error]);
+    return [];
   };
   var exec = function (context, command, history) {
-    errors.contents = /* [] */0;
-    if (!history) {
+    errors.contents = [];
+    if (history.length === 0) {
       return SourceBehaviour.create(command, context, errorHandler);
     }
     try {
@@ -96,7 +90,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
       if (exn.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-        return /* [] */0;
+        return [];
       }
       throw exn;
     }
@@ -117,21 +111,18 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     return TargetBehaviour.apply(state, $$event);
   };
   var currentState$1 = function (events) {
-    return Belt_List.reduce(Belt_List.tailExn(events), TargetBehaviour.init(Belt_List.headExn(events)), apply$p$1);
+    return Belt_Array.reduce(Belt_Array.sliceToEnd(events, 1), TargetBehaviour.init(Caml_array.get(events, 0)), apply$p$1);
   };
   var errors$1 = {
-    contents: /* [] */0
+    contents: []
   };
   var errorHandler$1 = function (error, param, param$1) {
-    errors$1.contents = Belt_List.concat(errors$1.contents, {
-          hd: error,
-          tl: /* [] */0
-        });
-    return /* [] */0;
+    errors$1.contents = Belt_Array.concat(errors$1.contents, [error]);
+    return [];
   };
   var exec$1 = function (context, command, history) {
-    errors$1.contents = /* [] */0;
-    if (!history) {
+    errors$1.contents = [];
+    if (history.length === 0) {
       return TargetBehaviour.create(command, context, errorHandler$1);
     }
     try {
@@ -140,7 +131,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     catch (raw_exn){
       var exn = Caml_js_exceptions.internalToOCamlException(raw_exn);
       if (exn.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-        return /* [] */0;
+        return [];
       }
       throw exn;
     }
@@ -169,57 +160,56 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
           id: sourceId,
           meta: TestFixtures$Reventless.context.meta
         }, cmd, param[1]);
-    var targetActions = Belt_List.toArray(Belt_List.flatten(Belt_List.map(sourceEvents, (function (sourceEvent) {
-                    return Belt_List.fromArray(EventMapping.map(Curry._1(Source.Id.makeFromString, sourceId), sourceEvent, queryEngine));
-                  }))));
-    var targetHistories = Js_dict.fromList(param[0]);
-    var __x = Promise.all(Belt_Array.map(targetActions, (function (x) {
-                switch (x.TAG | 0) {
-                  case /* Publish */0 :
-                  case /* PublishDelayed */1 :
-                      break;
-                  case /* PublishAsync */2 :
-                      return x._0;
-                  default:
-                    return Promise.resolve([]);
-                }
-                return Promise.resolve([[
-                              x._0,
-                              x._1
-                            ]]);
+    var targetActions = Belt_Array.concatMany(Belt_Array.map(sourceEvents, (function (sourceEvent) {
+                return EventMapping.map(Curry._1(Source.Id.makeFromString, sourceId), sourceEvent, queryEngine);
               })));
-    return Js_promise.then_((function (commands) {
+    var targetHistories = Js_dict.fromArray(param[0]);
+    return Js_promise2.then(Promise.all(Belt_Array.map(targetActions, (function (x) {
+                          switch (x.TAG | 0) {
+                            case /* Publish */0 :
+                            case /* PublishDelayed */1 :
+                                break;
+                            case /* PublishAsync */2 :
+                                return x._0;
+                            default:
+                              return Promise.resolve([]);
+                          }
+                          return Promise.resolve([[
+                                        x._0,
+                                        x._1
+                                      ]]);
+                        }))), (function (commands) {
                   return Promise.resolve(Belt_Array.reduce(Belt_Array.concatMany(commands), {}, (function (targetEvents, param) {
                                     var id = Curry._1(Target.Id.toString, param[0]);
-                                    var targetHistory = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), /* [] */0), Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0));
+                                    var targetHistory = Belt_Array.concat(Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), []), Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []));
                                     var newEvents = Curry._3(exec$1, {
                                           id: id,
                                           meta: TestFixtures$Reventless.context.meta
                                         }, param[1], targetHistory);
-                                    targetEvents[id] = Belt_List.concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), /* [] */0), newEvents);
+                                    targetEvents[id] = Belt_Array.concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []), newEvents);
                                     return targetEvents;
                                   })));
-                }), __x);
+                }));
   };
   var thenTargetEvents = function (expectedTargetEvents, targetEvents) {
-    return Js_promise.then_((function (events) {
+    return Js_promise2.then(targetEvents, (function (events) {
                   return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                      Belt_List.length(errors.contents),
-                                      Belt_List.length(errors$1.contents),
+                                      errors.contents.length,
+                                      errors$1.contents.length,
                                       events
                                     ]), [
                                   0,
                                   0,
-                                  Js_dict.fromList(expectedTargetEvents)
+                                  Js_dict.fromArray(expectedTargetEvents)
                                 ]));
-                }), targetEvents);
+                }));
   };
   var thenTargetEvent = function (id, expectedTargetEvent, targetEvents) {
-    return Js_promise.then_((function (eventsDict) {
+    return Js_promise2.then(targetEvents, (function (eventsDict) {
                   var events = Js_dict.entries(eventsDict);
                   return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                      Belt_List.length(errors.contents),
-                                      Belt_List.length(errors$1.contents),
+                                      errors.contents.length,
+                                      errors$1.contents.length,
                                       events.length,
                                       Belt_Array.get(events, 0)
                                     ]), [
@@ -228,16 +218,14 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
                                   1,
                                   [
                                     id,
-                                    {
-                                      hd: expectedTargetEvent,
-                                      tl: /* [] */0
-                                    }
+                                    [expectedTargetEvent]
                                   ]
                                 ]));
-                }), targetEvents);
+                }));
   };
+  var partial_arg = [];
   var thenNoTargetEvent = function (param) {
-    return thenTargetEvents(/* [] */0, param);
+    return thenTargetEvents(partial_arg, param);
   };
   return {
           Source: Source,

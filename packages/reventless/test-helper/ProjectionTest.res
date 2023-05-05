@@ -8,10 +8,10 @@ module type T = {
   let describeWithId: (string, string, unit => unit) => unit
   let test: (string, ~timeout: int=?, unit => Js.Promise.t<Jest.assertion>) => unit
 
-  type store = Js.Dict.t<list<targetState>>
+  type store = Js.Dict.t<array<targetState>>
 
-  let givenEvents: list<sourceEvent> => Js.Promise.t<store>
-  let givenEventsWithTime: list<(string, sourceEvent)> => Js.Promise.t<store>
+  let givenEvents: array<sourceEvent> => Js.Promise.t<store>
+  let givenEventsWithTime: array<(string, sourceEvent)> => Js.Promise.t<store>
   let whenEvent: (
     Js.Promise.t<store>,
     sourceEvent,
@@ -23,12 +23,12 @@ module type T = {
   ) => Jest.Expect.plainPartial<unit => Js.Promise.t<store>>
   let thenStates: (
     Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
-    list<targetState>,
+    array<targetState>,
   ) => Js.Promise.t<Jest.assertion>
   let thenStatesWithId: (
     Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
     string,
-    list<targetState>,
+    array<targetState>,
   ) => Js.Promise.t<Jest.assertion>
   let thenAllStates: (
     Jest.Expect.plainPartial<unit => Js.Promise.t<store>>,
@@ -77,75 +77,71 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   }
   let test = Jest.testPromise
 
-  type store = Js.Dict.t<list<Projection.targetState>>
+  type store = Js.Dict.t<array<Projection.targetState>>
 
   let getSubId = state => Projection.subIdConfig->Belt.Option.map(({getSubId}) => state->getSubId)
   let hasSubId = (subId, state) => state->getSubId->Belt.Option.getExn == subId
-  let states = (store, id) => store->Js.Dict.get(id)->Belt.Option.getWithDefault(list{})
+  let states = (store, id) => store->Js.Dict.get(id)->Belt.Option.getWithDefault([])
   let setStates = (store, id, states) => store->Js.Dict.set(id, states)
   let updateState = (store, id, subId, newState) =>
-    store->states(id)->Belt.List.map(state => hasSubId(subId, state) ? newState : state)
+    store->states(id)->Belt.Array.map(state => hasSubId(subId, state) ? newState : state)
   let addState = (store, id, state) => {
     let (updatedStates, newStates) = switch state->getSubId {
     | Some(subId) =>
-      store->states(id)->Belt.List.some(hasSubId(subId))
-        ? (store->updateState(id, subId, state), list{})
-        : (store->states(id), list{state})
-    | None => (store->states(id), list{state})
+      store->states(id)->Belt.Array.some(hasSubId(subId))
+        ? (store->updateState(id, subId, state), [])
+        : (store->states(id), [state])
+    | None => (store->states(id), [state])
     }
-    store->Js.Dict.set(id, Belt.List.concat(updatedStates, newStates))
+    store->Js.Dict.set(id, Belt.Array.concat(updatedStates, newStates))
   }
-  let deleteStates = (store, id) => store->Js.Dict.set(id, list{})
+  let deleteStates = (store, id) => store->Js.Dict.set(id, [])
   let deleteSubState = (store, id, subId, getSubId) =>
     store->Js.Dict.set(
       id,
       store
       ->Js.Dict.get(id)
-      ->Belt.Option.map(states => states->Belt.List.keep(state => state->getSubId != subId))
-      ->Belt.Option.getWithDefault(list{}),
+      ->Belt.Option.map(states => states->Belt.Array.keep(state => state->getSubId != subId))
+      ->Belt.Option.getWithDefault([]),
     )
 
   open Belt.Result
   //open QueryDb
   let load = store => (. id) => store->states(id)->Ok->Js.Promise.resolve
-  let save = store =>
-    (. id, state, saveMode: ReventlessSpec.QueryDb.saveMode, _ttl) =>
-      switch (store->states(id), saveMode) {
-      | (_, Any)
-      | (list{}, Init)
-      | (list{_}, Overwrite) =>
-        store->setStates(id, list{state})
-        Ok()->Js.Promise.resolve
-      | _ => Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
-      }
-  let saveBatch = store =>
-    (. batch) => {
-      batch->Belt.Array.forEach(((id, state, _ttl)) => store->addState(id, state))
+  let save = store => (. id, state, saveMode: ReventlessSpec.QueryDb.saveMode, _ttl) =>
+    switch (store->states(id), saveMode) {
+    | (_, Any)
+    | ([], Init)
+    | ([_], Overwrite) =>
+      store->setStates(id, [state])
       Ok()->Js.Promise.resolve
+    | _ => Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
     }
-  let delete = store =>
-    (. id, subId) =>
+  let saveBatch = store => (. batch) => {
+    batch->Belt.Array.forEach(((id, state, _ttl)) => store->addState(id, state))
+    Ok()->Js.Promise.resolve
+  }
+  let delete = store => (. id, subId) =>
+    switch (subId, Projection.subIdConfig) {
+    | (None, _) =>
+      store->deleteStates(id)
+      Ok()->Js.Promise.resolve
+    | (Some((_, subId)), Some({ReventlessSpec.ReadModel.Spec.getSubId: getSubId})) =>
+      store->deleteSubState(id, subId, getSubId)
+      Ok()->Js.Promise.resolve
+    | _ => Ok()->Js.Promise.resolve
+    }
+  let deleteBatch = store => (. ids) => {
+    ids->Belt.Array.forEach(((id, subId)) =>
       switch (subId, Projection.subIdConfig) {
-      | (None, _) =>
-        store->deleteStates(id)
-        Ok()->Js.Promise.resolve
+      | (None, _) => store->deleteStates(id)
       | (Some((_, subId)), Some({ReventlessSpec.ReadModel.Spec.getSubId: getSubId})) =>
         store->deleteSubState(id, subId, getSubId)
-        Ok()->Js.Promise.resolve
-      | _ => Ok()->Js.Promise.resolve
+      | _ => ()
       }
-  let deleteBatch = store =>
-    (. ids) => {
-      ids->Belt.Array.forEach(((id, subId)) =>
-        switch (subId, Projection.subIdConfig) {
-        | (None, _) => store->deleteStates(id)
-        | (Some((_, subId)), Some({ReventlessSpec.ReadModel.Spec.getSubId: getSubId})) =>
-          store->deleteSubState(id, subId, getSubId)
-        | _ => ()
-        }
-      )
-      Ok()->Js.Promise.resolve
-    }
+    )
+    Ok()->Js.Promise.resolve
+  }
 
   let handleActions = (actions, primitives) =>
     actions->handleActions(primitives, Projection.subIdConfig)
@@ -158,11 +154,11 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
         event->Projection.sourceEvent_encode,
         "\nstore:",
         Js.Dict.map(
-          (. states) => states->Belt.List.toArray->Belt.Array.map(Projection.targetState_encode),
+          (. states) => states->Belt.Array.toArray->Belt.Array.map(Projection.targetState_encode),
           store,
         ),
       )
-    */
+ */
     let resolveStore = () =>
       // logStore("update after event:");
       store->Js.Promise.resolve
@@ -175,128 +171,100 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       delete: delete(store),
       deleteBatch: deleteBatch(store),
     })
-    ->Js.Promise.then_(_ => resolveStore(), _)
+    ->Js.Promise2.then(_ => resolveStore())
   }
 
   let givenEvents = events =>
     events
-    ->Belt.List.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, event) =>
-      p->Js.Promise.then_(store => store->update(testId.contents, meta.contents, event), _)
+    ->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, event) =>
+      p->Js.Promise2.then(store => store->update(testId.contents, meta.contents, event))
     )
-    ->Js.Promise.then_(store => store->Js.Promise.resolve, _)
+    ->Js.Promise2.then(store => store->Js.Promise.resolve)
   let givenEventsWithTime = events =>
     events
-    ->Belt.List.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, (time, event)) =>
-      p->Js.Promise.then_(
-        store => store->update(testId.contents, {...meta.contents, time}, event),
-        _,
-      )
+    ->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, (time, event)) =>
+      p->Js.Promise2.then(store => store->update(testId.contents, {...meta.contents, time}, event))
     )
-    ->Js.Promise.then_(store => store->Js.Promise.resolve, _)
+    ->Js.Promise2.then(store => store->Js.Promise.resolve)
 
   open Jest.Expect
   let whenEvent = (p, event) =>
-    expect(() =>
-      p->Js.Promise.then_(store => store->update(testId.contents, meta.contents, event), _)
-    )
+    expect(() => p->Js.Promise2.then(store => store->update(testId.contents, meta.contents, event)))
   let whenEventWithTime = (p, time, event) =>
     expect(() =>
-      p->Js.Promise.then_(
-        store => store->update(testId.contents, {...meta.contents, time}, event),
-        _,
-      )
+      p->Js.Promise2.then(store => store->update(testId.contents, {...meta.contents, time}, event))
     )
 
   let thenStates = (p, expectedStates) =>
     p
     ->unpack()
-    ->Js.Promise.then_(
-      store =>
-        expect((
-          store->Js.Dict.keys->Belt.Array.length,
-          store->Js.Dict.keys->Belt.Array.get(0),
-          store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault(list{}),
-        ))
-        ->toEqual((1, Some(testId.contents), expectedStates))
-        ->Js.Promise.resolve,
-      _,
+    ->Js.Promise2.then(store =>
+      expect((
+        store->Js.Dict.keys->Belt.Array.length,
+        store->Js.Dict.keys->Belt.Array.get(0),
+        store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([]),
+      ))
+      ->toEqual((1, Some(testId.contents), expectedStates))
+      ->Js.Promise.resolve
     )
   let thenStatesWithId = (p, id, expectedStates) =>
     p
     ->unpack()
-    ->Js.Promise.then_(
-      store =>
-        expect((
-          store->Js.Dict.keys->Belt.Array.length,
-          store->Js.Dict.keys->Belt.Array.get(0),
-          store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault(list{}),
-        ))
-        ->toEqual((1, Some(id), expectedStates))
-        ->Js.Promise.resolve,
-      _,
+    ->Js.Promise2.then(store =>
+      expect((
+        store->Js.Dict.keys->Belt.Array.length,
+        store->Js.Dict.keys->Belt.Array.get(0),
+        store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([]),
+      ))
+      ->toEqual((1, Some(id), expectedStates))
+      ->Js.Promise.resolve
     )
 
   let thenAllStates = (p, expectedStore: store) =>
     p
     ->unpack()
-    ->Js.Promise.then_(store => expect(store)->toEqual(expectedStore)->Js.Promise.resolve, _)
+    ->Js.Promise2.then(store => expect(store)->toEqual(expectedStore)->Js.Promise.resolve)
   let thenState = (p, expectedState) =>
     p
     ->unpack()
-    ->Js.Promise.then_(
-      store =>
-        expect((
-          store->Js.Dict.keys->Belt.Array.length,
-          store->Js.Dict.keys->Belt.Array.get(0),
-          store
-          ->Js.Dict.values
-          ->Belt.Array.get(0)
-          ->Belt.Option.getWithDefault(list{})
-          ->Belt.List.length,
-          (store->Js.Dict.values)[0]->Belt.List.head,
-        ))
-        ->toEqual((1, Some(testId.contents), 1, Some(expectedState)))
-        ->Js.Promise.resolve,
-      _,
+    ->Js.Promise2.then(store =>
+      expect((
+        store->Js.Dict.keys->Belt.Array.length,
+        store->Js.Dict.keys->Belt.Array.get(0),
+        store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Belt.Array.length,
+        (store->Js.Dict.values)[0]->Belt.Array.get(0),
+      ))
+      ->toEqual((1, Some(testId.contents), 1, Some(expectedState)))
+      ->Js.Promise.resolve
     )
   let thenStateWithId = (p, id, expectedState) =>
     p
     ->unpack()
-    ->Js.Promise.then_(
-      store =>
-        expect((
-          store->Js.Dict.keys->Belt.Array.length,
-          store->Js.Dict.keys->Belt.Array.get(0),
-          store
-          ->Js.Dict.values
-          ->Belt.Array.get(0)
-          ->Belt.Option.getWithDefault(list{})
-          ->Belt.List.length,
-          (store->Js.Dict.values)[0]->Belt.List.head,
-        ))
-        ->toEqual((1, Some(id), 1, Some(expectedState)))
-        ->Js.Promise.resolve,
-      _,
+    ->Js.Promise2.then(store =>
+      expect((
+        store->Js.Dict.keys->Belt.Array.length,
+        store->Js.Dict.keys->Belt.Array.get(0),
+        store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Belt.Array.length,
+        (store->Js.Dict.values)[0]->Belt.Array.get(0),
+      ))
+      ->toEqual((1, Some(id), 1, Some(expectedState)))
+      ->Js.Promise.resolve
     )
   let thenNoState = p =>
     p
     ->unpack()
-    ->Js.Promise.then_(
-      store =>
-        expect(
-          store
-          ->Js.Dict.values
-          ->Belt.Array.reduce(0, (acc, states) => acc + states->Belt.List.size),
-        )
-        ->toEqual(0)
-        ->Js.Promise.resolve,
-      _,
+    ->Js.Promise2.then(store =>
+      expect(
+        store->Js.Dict.values->Belt.Array.reduce(0, (acc, states) => acc + states->Belt.Array.size),
+      )
+      ->toEqual(0)
+      ->Js.Promise.resolve
     )
-  let thenThrow = p => p->unpack()->Js.Promise.then_(_ => p->toThrow->Js.Promise.resolve, _)
+  let thenThrow = p => p->unpack()->Js.Promise2.then(_ => p->toThrow->Js.Promise.resolve)
 
   let thenFail = p =>
     p
     ->unpack()
-    ->Js.Promise.then_(_ => Jest.fail("Expected Failure")->Js.Promise.resolve, _)
-    ->Js.Promise.catch(_ => Jest.pass->Js.Promise.resolve, _)
+    ->Js.Promise2.then(_ => Jest.fail("Expected Failure")->Js.Promise.resolve)
+    ->Js.Promise2.catch(_ => Jest.pass->Js.Promise.resolve)
 }

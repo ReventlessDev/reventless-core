@@ -3,29 +3,27 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Js_string = require("@rescript/std/lib/js/js_string.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("../util/Util_DynamoDb_Runtime.bs.js");
 
 function promiseToResult(p) {
-  var __x = Js_promise.then_((function (res) {
-          return Promise.resolve({
-                      TAG: /* Ok */0,
-                      _0: res
-                    });
-        }), p);
-  return Js_promise.$$catch((function (err) {
+  return Js_promise2.$$catch(Js_promise2.then(p, (function (res) {
+                    return Promise.resolve({
+                                TAG: /* Ok */0,
+                                _0: res
+                              });
+                  })), (function (err) {
                 return Promise.resolve({
                             TAG: /* Error */1,
                             _0: err
                           });
-              }), __x);
+              }));
 }
 
 function handleDeleteResult(result) {
@@ -42,32 +40,31 @@ function handleDeleteResult(result) {
         };
 }
 
-function deleteAllItems(tableConfig, items) {
-  var __x = Promise.all(Belt_Array.map(items, (function (item) {
-              var id = Js_dict.get(item, tableConfig.id);
-              var sort = Belt_Option.flatMap(tableConfig.sort, (function (sortField) {
-                      return Js_dict.get(item, sortField);
-                    }));
-              if (id === undefined) {
-                return new Promise((function (resolve, param) {
-                              resolve({
-                                    TAG: /* Error */1,
-                                    _0: "No valid Config found!"
-                                  });
-                            }));
-              }
-              if (sort !== undefined) {
-                var __x = promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteByIdSort(tableConfig.name, id, Belt_Option.getExn(tableConfig.sort), sort));
-                return Js_promise.then_((function (res) {
-                              return Promise.resolve(handleDeleteResult(res));
-                            }), __x);
-              }
-              var __x$1 = promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteById(tableConfig.name, id));
-              return Js_promise.then_((function (res) {
-                            return Promise.resolve(handleDeleteResult(res));
-                          }), __x$1);
-            })));
-  Js_promise.then_((function (result) {
+function deleteAllItems(items, tableConfig) {
+  Js_promise2.then(Promise.all(Belt_Array.map(items, (function (item) {
+                  var id = Js_dict.get(item, tableConfig.id);
+                  var sort = Belt_Option.flatMap(tableConfig.sort, (function (sortField) {
+                          return Js_dict.get(item, sortField);
+                        }));
+                  if (id !== undefined) {
+                    if (sort !== undefined) {
+                      return Js_promise2.then(promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteByIdSort(tableConfig.name, id, Belt_Option.getExn(tableConfig.sort), sort)), (function (res) {
+                                    return Promise.resolve(handleDeleteResult(res));
+                                  }));
+                    } else {
+                      return Js_promise2.then(promiseToResult(DynamoDb_DocumentClient$AwsSdk.deleteById(tableConfig.name, id)), (function (res) {
+                                    return Promise.resolve(handleDeleteResult(res));
+                                  }));
+                    }
+                  } else {
+                    return new Promise((function (resolve, param) {
+                                  resolve({
+                                        TAG: /* Error */1,
+                                        _0: "No valid Config found!"
+                                      });
+                                }));
+                  }
+                }))), (function (result) {
           var __x = Belt_Array.reduce(result, 0, (function (state, item) {
                   if (item.TAG === /* Ok */0) {
                     return state + 1 | 0;
@@ -76,13 +73,13 @@ function deleteAllItems(tableConfig, items) {
                   }
                 }));
           return Promise.resolve((console.log("Deleted", __x, "of " + (String(result.length) + (" items in table " + tableConfig.name))), undefined));
-        }), __x);
+        }));
 }
 
 function handleScanResult(tableConfig, scanResult) {
   if (scanResult.TAG === /* Ok */0) {
     var scanResult$1 = scanResult._0;
-    deleteAllItems(tableConfig, scanResult$1.Items);
+    deleteAllItems(scanResult$1.Items, tableConfig);
     return {
             TAG: /* Ok */0,
             _0: -1
@@ -100,35 +97,28 @@ function scanTableAndClean(tableConfig) {
   var sortKey = tableConfig.sort;
   var match = sortKey !== undefined ? [
       "#" + (idKey + (",#" + sortKey)),
-      Js_dict.fromList({
-            hd: [
+      Js_dict.fromArray([
+            [
               "#" + idKey,
               idKey
             ],
-            tl: {
-              hd: [
-                "#" + sortKey,
-                sortKey
-              ],
-              tl: /* [] */0
-            }
-          })
+            [
+              "#" + sortKey,
+              sortKey
+            ]
+          ])
     ] : [
       "#" + idKey,
-      Js_dict.fromList({
-            hd: [
+      Js_dict.fromArray([[
               "#" + idKey,
               idKey
-            ],
-            tl: /* [] */0
-          })
+            ]])
     ];
-  var __x = promiseToResult(DynamoDb_DocumentClient$AwsSdk.scan({
-            TableName: tableConfig.name,
-            ExpressionAttributeNames: match[1],
-            ProjectionExpression: match[0]
-          }));
-  return Js_promise.then_((function (res) {
+  return Js_promise2.then(promiseToResult(DynamoDb_DocumentClient$AwsSdk.scan({
+                      TableName: tableConfig.name,
+                      ExpressionAttributeNames: match[1],
+                      ProjectionExpression: match[0]
+                    })), (function (res) {
                 var scanResult = handleScanResult(tableConfig, res);
                 var tmp;
                 tmp = scanResult.TAG === /* Ok */0 ? ({
@@ -139,7 +129,7 @@ function scanTableAndClean(tableConfig) {
                       _0: tableConfig.name + " [ERROR]"
                     });
                 return Promise.resolve(tmp);
-              }), __x);
+              }));
 }
 
 function toTableConfig(resource) {
@@ -158,19 +148,19 @@ function cleanerFn(tablesToClean, _event, _context) {
     return new Promise((function (resolve, param) {
                   resolve("No tables to clean.");
                 }));
+  } else {
+    return Js_promise2.then(Promise.all(Belt_Array.map(x, scanTableAndClean)), (function (arr) {
+                  var summary = Belt_Array.reduce(arr, "", (function (state, item) {
+                          return state + (" | " + item._0);
+                        }));
+                  return Promise.resolve("Cleaned tables " + summary);
+                }));
   }
-  var __x = Promise.all(Belt_Array.map(x, scanTableAndClean));
-  return Js_promise.then_((function (arr) {
-                var summary = Belt_Array.reduce(arr, "", (function (state, item) {
-                        return state + (" | " + item._0);
-                      }));
-                return Promise.resolve("Cleaned tables " + summary);
-              }), __x);
 }
 
 function stackName(prefix) {
   return (
-          prefix !== undefined ? Js_string.replace("_", "-", prefix) + "-" : ""
+          prefix !== undefined ? prefix.replace("_", "-") + "-" : ""
         ) + (Pulumi.getProject() + ("-" + Pulumi.getStack()));
 }
 

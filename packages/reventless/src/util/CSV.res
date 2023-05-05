@@ -17,7 +17,7 @@ let fromValidation: (Validation.t<unit, string>, callback) => calledBack = (vali
  *  example:
  *  {[
  *    parseFile(~path=\"x\",())
- *    |> validateValidation(_row => Validation.Failure(\"Some reason for invalidation\"))
+ *    -> validateValidation(_row => Validation.Failure(\"Some reason for invalidation\"))
  *  ]}
  ")
 let validateValidation: (row => Validation.t<unit, string>, t) => t = (validation, parser) =>

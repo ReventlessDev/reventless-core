@@ -22,7 +22,7 @@ module Adapter = {
   }
   type storageMaker<'api, 'role> = (
     ~name: string,
-    ~indexes: list<index>,
+    ~indexes: array<index>,
     ~subIdField: string=?,
     ~ttl: int=?,
     ~api: 'api,
@@ -52,10 +52,10 @@ module Adapter = {
     ~api: 'api,
     ~apiRole: 'role,
     ~dataSourceName: Pulumi.Output.t<string>,
-    ~indexes: list<index>,
+    ~indexes: array<index>,
     ~subIdField: option<string>,
-    ~resolveIdConfigs: list<resolveIdConfig>,
-    ~resolveIdsConfigs: list<resolveIdsConfig>,
+    ~resolveIdConfigs: array<resolveIdConfig>,
+    ~resolveIdsConfigs: array<resolveIdsConfig>,
     ~opts: Pulumi.CustomResourceOptions.t,
   ) => resolvers
 
@@ -75,10 +75,10 @@ module Adapter = {
       ~api as _: api,
       ~apiRole as _: role,
       ~dataSourceName as _,
-      ~indexes as _: list<index>,
+      ~indexes as _: array<index>,
       ~subIdField as _,
-      ~resolveIdConfigs as _: list<resolveIdConfig>,
-      ~resolveIdsConfigs as _: list<resolveIdsConfig>,
+      ~resolveIdConfigs as _: array<resolveIdConfig>,
+      ~resolveIdsConfigs as _: array<resolveIdsConfig>,
       ~opts as _,
     ) => {
       resources: [],
@@ -190,20 +190,20 @@ module Make = (
 
   let decode = (id, item) =>
     switch Spec.state_decode(item) {
-    | Ok(state) => list{state}
+    | Ok(state) => [state]
     | Error(err) =>
       Js.log(
         `QueryDb: Error: Couldn't decode state for ${id->Spec.Id.toString}: ${err
           ->Js.Json.stringifyAny
           ->Belt.Option.getExn}`,
       )
-      list{}
+      []
     }
 
   let loadFn = storage => (. id) =>
-    storage.Adapter.load(. id->Spec.Id.toString) |> Js.Promise.then_(result =>
+    storage.Adapter.load(. id->Spec.Id.toString)->Js.Promise2.then(result =>
       result
-      ->Belt.Result.map(states => states->Belt.List.map(decode(id))->Belt.List.flatten)
+      ->Belt.Result.map(states => states->Belt.Array.map(decode(id))->Belt.Array.concatMany)
       ->Js.Promise.resolve
     )
 
@@ -288,7 +288,8 @@ module Make = (
       ~resources=storage.resources->Belt.Array.concat(resolvers.resources),
       ~resolversMaker=resolvers.resourcesMaker,
     )
-    |> self->setOutputs
+    ->(self
+    ->setOutputs)
   }
 
   let make = (~ttl=?, ~opts=?, _) =>

@@ -73,7 +73,7 @@ let sendTextEmail = (
         ),
       ),
     ),
-  ) |> AwsSdk.Request.promise
+  )->AwsSdk.Request.promise
 
 module EmailIdentity = {
   type t = {"arn": Pulumi.Output.t<PulumiAws.Aws.arn>, "email": Pulumi.Output.t<string>}

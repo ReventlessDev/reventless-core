@@ -30,326 +30,221 @@ var PluginTest = (function (param) {
 
 Curry._2(PluginTest.describe, "PluginBehaviour:", (function (param) {
         Curry._2(PluginTest.test, "Heartbeat (first)", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, /* [] */0), /* Heartbeat */0), {
-                            hd: /* UnknownPluginDetected */0,
-                            tl: /* [] */0
-                          });
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, []), /* Heartbeat */0), [/* UnknownPluginDetected */0]);
               }));
         Curry._2(PluginTest.test, "Heartbeat (again)", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: /* [] */0
-                                  }), /* Heartbeat */0), {
-                            hd: /* UnknownPluginDetected */0,
-                            tl: /* [] */0
-                          });
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [/* UnknownPluginDetected */0]), /* Heartbeat */0), [/* UnknownPluginDetected */0]);
               }));
         Curry._2(PluginTest.test, "Heartbeat (connected)", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: /* [] */0
+                return Curry._1(PluginTest.thenNoEvent, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Heartbeat */0), /* [] */0);
+                                  ]), /* Heartbeat */0));
               }));
         Curry._2(PluginTest.test, "Heartbeat (inactive)", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Deactivated */4,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: /* [] */0
-                                      }
+                return Curry._1(PluginTest.thenNoEvent, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Deactivated */4,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Heartbeat */0), /* [] */0);
+                                  ]), /* Heartbeat */0));
               }));
         Curry._2(PluginTest.test, "Connect", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: /* [] */0
-                                  }), /* Connect */{
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [/* UnknownPluginDetected */0]), /* Connect */{
                                 _0: PluginFixtures$Reventless.pluginDefinition
-                              }), {
-                            hd: {
+                              }), [{
                               TAG: /* Connected */0,
                               _0: PluginFixtures$Reventless.pluginDefinition
-                            },
-                            tl: /* [] */0
-                          });
+                            }]);
               }));
         Curry._2(PluginTest.test, "Connect (after multiple Heartbeats)", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: /* UnknownPluginDetected */0,
-                                      tl: /* [] */0
-                                    }
-                                  }), /* Connect */{
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    /* UnknownPluginDetected */0
+                                  ]), /* Connect */{
                                 _0: PluginFixtures$Reventless.pluginDefinition
-                              }), {
-                            hd: {
+                              }), [{
                               TAG: /* Connected */0,
                               _0: PluginFixtures$Reventless.pluginDefinition
-                            },
-                            tl: /* [] */0
-                          });
+                            }]);
               }));
         Curry._2(PluginTest.test, "Connect (again)", (function (param) {
-                return Curry._2(PluginTest.thenError, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: /* [] */0
+                return Curry._2(PluginTest.thenError, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Connect */{
+                                  ]), /* Connect */{
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), /* AlreadyConnected */1);
               }));
         Curry._2(PluginTest.test, "Disconnect", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: /* [] */0
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Disconnect */1), {
-                            hd: {
+                                  ]), /* Disconnect */1), [{
                               TAG: /* Disconnected */2,
                               _0: PluginFixtures$Reventless.pluginDefinition
-                            },
-                            tl: /* [] */0
-                          });
+                            }]);
               }));
         Curry._2(PluginTest.test, "Heartbeat (re-connect)", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Disconnected */2,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: /* [] */0
-                                      }
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Disconnected */2,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Heartbeat */0), {
-                            hd: {
+                                  ]), /* Heartbeat */0), [{
                               TAG: /* Reconnected */1,
                               _0: PluginFixtures$Reventless.pluginDefinition
-                            },
-                            tl: /* [] */0
-                          });
+                            }]);
               }));
         Curry._2(PluginTest.test, "Connect (disconnected)", (function (param) {
-                return Curry._2(PluginTest.thenError, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Disconnected */2,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: /* [] */0
-                                      }
+                return Curry._2(PluginTest.thenError, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Disconnected */2,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Connect */{
+                                  ]), /* Connect */{
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), /* IsDisconnected */2);
               }));
         Curry._2(PluginTest.test, "Deactivate", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: /* [] */0
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Deactivate */3), {
-                            hd: {
+                                  ]), /* Deactivate */3), [{
                               TAG: /* Deactivated */4,
                               _0: PluginFixtures$Reventless.pluginDefinition
-                            },
-                            tl: /* [] */0
-                          });
+                            }]);
               }));
         Curry._2(PluginTest.test, "Deactivate (disconnected)", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Disconnected */2,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: /* [] */0
-                                      }
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Disconnected */2,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Deactivate */3), {
-                            hd: {
+                                  ]), /* Deactivate */3), [{
                               TAG: /* Deactivated */4,
                               _0: PluginFixtures$Reventless.pluginDefinition
-                            },
-                            tl: /* [] */0
-                          });
+                            }]);
               }));
         Curry._2(PluginTest.test, "Activate (deactivated, disconnected)", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Disconnected */2,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: {
-                                          hd: {
-                                            TAG: /* Deactivated */4,
-                                            _0: PluginFixtures$Reventless.pluginDefinition
-                                          },
-                                          tl: /* [] */0
-                                        }
-                                      }
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Disconnected */2,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Deactivated */4,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Activate */2), {
-                            hd: {
+                                  ]), /* Activate */2), [{
                               TAG: /* Activated */3,
                               _0: PluginFixtures$Reventless.pluginDefinition
-                            },
-                            tl: /* [] */0
-                          });
+                            }]);
               }));
         Curry._2(PluginTest.test, "Connect (inactive)", (function (param) {
-                return Curry._2(PluginTest.thenError, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Deactivated */4,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: /* [] */0
-                                      }
+                return Curry._2(PluginTest.thenError, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Deactivated */4,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Connect */{
+                                  ]), /* Connect */{
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), /* IsInactive */3);
               }));
         Curry._2(PluginTest.test, "Activate again", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Deactivated */4,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: /* [] */0
-                                      }
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Deactivated */4,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Activate */2), {
-                            hd: {
+                                  ]), /* Activate */2), [{
                               TAG: /* Activated */3,
                               _0: PluginFixtures$Reventless.pluginDefinition
-                            },
-                            tl: /* [] */0
-                          });
+                            }]);
               }));
         Curry._2(PluginTest.test, "Heartbeat (re-connected after re-activated)", (function (param) {
-                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Deactivated */4,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: {
-                                          hd: {
-                                            TAG: /* Activated */3,
-                                            _0: PluginFixtures$Reventless.pluginDefinition
-                                          },
-                                          tl: /* [] */0
-                                        }
-                                      }
+                return Curry._2(PluginTest.thenEvents, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Deactivated */4,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Activated */3,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Heartbeat */0), {
-                            hd: {
+                                  ]), /* Heartbeat */0), [{
                               TAG: /* Reconnected */1,
                               _0: PluginFixtures$Reventless.pluginDefinition
-                            },
-                            tl: /* [] */0
-                          });
+                            }]);
               }));
         Curry._2(PluginTest.test, "Connect (re-activated)", (function (param) {
-                return Curry._2(PluginTest.thenError, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, {
-                                    hd: /* UnknownPluginDetected */0,
-                                    tl: {
-                                      hd: {
-                                        TAG: /* Connected */0,
-                                        _0: PluginFixtures$Reventless.pluginDefinition
-                                      },
-                                      tl: {
-                                        hd: {
-                                          TAG: /* Deactivated */4,
-                                          _0: PluginFixtures$Reventless.pluginDefinition
-                                        },
-                                        tl: {
-                                          hd: {
-                                            TAG: /* Activated */3,
-                                            _0: PluginFixtures$Reventless.pluginDefinition
-                                          },
-                                          tl: /* [] */0
-                                        }
-                                      }
+                return Curry._2(PluginTest.thenError, Curry._2(PluginTest.whenCmd, Curry._1(PluginTest.givenEvents, [
+                                    /* UnknownPluginDetected */0,
+                                    {
+                                      TAG: /* Connected */0,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Deactivated */4,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
+                                    },
+                                    {
+                                      TAG: /* Activated */3,
+                                      _0: PluginFixtures$Reventless.pluginDefinition
                                     }
-                                  }), /* Connect */{
+                                  ]), /* Connect */{
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), /* IsDisconnected */2);
               }));

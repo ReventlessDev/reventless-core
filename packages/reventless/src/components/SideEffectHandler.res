@@ -113,9 +113,8 @@ module Make = (EventCollector: EventCollector.T): T => {
 
           switch (idDecoded, eventDecoded) {
           | (Some(Ok(eventId)), Some(Ok(event))) =>
-            SideEffect.execute(. eventId, eventMeta, event, queryEngine)->Js.Promise.catch(
+            SideEffect.execute(. eventId, eventMeta, event, queryEngine)->Js.Promise2.catch(
               err => Js.log2("SideEffect: Error while processing:", err)->Js.Promise.resolve,
-              _,
             )
 
           | (None, _)
@@ -131,7 +130,7 @@ module Make = (EventCollector: EventCollector.T): T => {
         }
       )
       ->Js.Promise.all
-      ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+      ->Js.Promise2.then(_ => Js.Promise.resolve())
 
   let createScheduleFn = (scheduler, queueResources) =>
     (. schedule) => Schedule.create(scheduler, queueResources)(. schedule)

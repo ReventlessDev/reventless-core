@@ -4,27 +4,27 @@ module type T = {
   let describe: (string, unit => unit) => unit
   let test: (string, unit => Jest.assertion) => unit
 
-  let givenEvents: list<Spec.event> => list<Spec.event>
+  let givenEvents: array<Spec.event> => array<Spec.event>
 
-  let whenCmd: (list<Spec.event>, Spec.command) => list<Spec.event>
-  let whenCmdWithId: (list<Spec.event>, string, Spec.command) => list<Spec.event>
+  let whenCmd: (array<Spec.event>, Spec.command) => array<Spec.event>
+  let whenCmdWithId: (array<Spec.event>, string, Spec.command) => array<Spec.event>
 
-  let thenEvent: (list<Spec.event>, Spec.event) => Jest.assertion
+  let thenEvent: (array<Spec.event>, Spec.event) => Jest.assertion
   let thenCompareEvent: (
-    list<Spec.event>,
+    array<Spec.event>,
     Spec.event,
     (Spec.event, Spec.event) => bool,
   ) => Jest.assertion
-  let thenNoEvent: list<Spec.event> => Jest.assertion
-  let thenEventWithError: (list<Spec.event>, Spec.event, Spec.error) => Jest.assertion
-  let thenEvents: (list<Spec.event>, list<Spec.event>) => Jest.assertion
+  let thenNoEvent: array<Spec.event> => Jest.assertion
+  let thenEventWithError: (array<Spec.event>, Spec.event, Spec.error) => Jest.assertion
+  let thenEvents: (array<Spec.event>, array<Spec.event>) => Jest.assertion
   let thenCompareEvents: (
-    list<Spec.event>,
-    list<Spec.event>,
+    array<Spec.event>,
+    array<Spec.event>,
     (Spec.event, Spec.event) => bool,
   ) => Jest.assertion
-  let thenEventsWithError: (list<Spec.event>, list<Spec.event>, Spec.error) => Jest.assertion
-  let thenError: (list<Spec.event>, Spec.error) => Jest.assertion
+  let thenEventsWithError: (array<Spec.event>, array<Spec.event>, Spec.error) => Jest.assertion
+  let thenError: (array<Spec.event>, Spec.error) => Jest.assertion
 }
 
 module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := Spec): (
@@ -37,22 +37,20 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
 
   let apply' = (state, event) => Behaviour.apply(. state, event)
 
-  let currentState = events => {
-    open Belt.List
-    events->tailExn->reduce(Behaviour.init(. events->headExn), apply')
-  }
+  let currentState = events =>
+    events->Belt.Array.sliceToEnd(1)->Belt.Array.reduce(Behaviour.init(. events[0]), apply')
 
-  let errors = ref(list{})
+  let errors = ref([])
 
   let errorHandler: Message.errorHandler<Spec.error, Spec.command, Spec.event> = (error, _, _) => {
-    errors := Belt.List.concat(errors.contents, list{error})
-    list{}
+    errors := Belt.Array.concat(errors.contents, [error])
+    []
   }
 
-  let exec = (history, context, command): list<Spec.event> => {
-    errors := list{}
+  let exec = (history, context, command): array<Spec.event> => {
+    errors := []
     switch history {
-    | list{} => Behaviour.create(. command, context, errorHandler)
+    | [] => Behaviour.create(. command, context, errorHandler)
     | history =>
       try Behaviour.execute(.
         currentState(history),
@@ -60,7 +58,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
         TestFixtures.context,
         errorHandler,
       ) catch {
-      | Reventless.Message.InvalidEvent(_) => list{}
+      | Reventless.Message.InvalidEvent(_) => []
       }
     }
   }
@@ -72,7 +70,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   open Jest.Expect
 
   let thenEvents = (events, expectedEvents) =>
-    expect((errors.contents->Belt.List.length, events))->toEqual((0, expectedEvents))
+    expect((errors.contents->Belt.Array.length, events))->toEqual((0, expectedEvents))
 
   let compare = (cmp, e1, e2) => {
     let cmpResult = cmp(e1, e2)
@@ -84,17 +82,17 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
 
   let thenCompareEvents = (events, expectedEvents, cmp) =>
     expect((
-      errors.contents->Belt.List.length,
-      events->Belt.List.length,
-      Belt.List.zip(events, expectedEvents)
-      ->Belt.List.map(((event, expectedEvent)) => cmp->compare(event, expectedEvent))
-      ->Belt.List.every(result => result),
-    ))->toEqual((0, expectedEvents->Belt.List.length, true))
+      errors.contents->Belt.Array.length,
+      events->Belt.Array.length,
+      Belt.Array.zip(events, expectedEvents)
+      ->Belt.Array.map(((event, expectedEvent)) => cmp->compare(event, expectedEvent))
+      ->Belt.Array.every(result => result),
+    ))->toEqual((0, expectedEvents->Belt.Array.length, true))
 
   let listErrors = () =>
     "Errors occured: " ++
     errors.contents
-    ->Belt.List.map(err =>
+    ->Belt.Array.map(err =>
       /* NOTE: this process is very fragile!!
               it relies on decco decoding the error-varints to arrays of string
  */
@@ -102,56 +100,56 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
       ->Js.Json.decodeString
       ->Belt.Option.getExn
     )
-    ->Belt.List.reduce("", (a, b) => a ++ (b ++ " "))
+    ->Belt.Array.reduce("", (a, b) => a ++ (b ++ " "))
 
   let thenEvent = (events, expectedEvent) =>
-    if events->Belt.List.length > 0 {
+    if events->Belt.Array.length > 0 {
       expect((
-        errors.contents->Belt.List.length,
-        events->Belt.List.length,
-        events->Belt.List.head,
+        errors.contents->Belt.Array.length,
+        events->Belt.Array.length,
+        events->Belt.Array.get(0),
       ))->toEqual((0, 1, Some(expectedEvent)))
-    } else if errors.contents->Belt.List.length > 0 {
+    } else if errors.contents->Belt.Array.length > 0 {
       listErrors()->Jest.fail
     } else {
       Jest.fail("thenEvent: No event present to validate")
     }
 
   let thenCompareEvent = (events, expectedEvent, cmp) =>
-    if events->Belt.List.length > 0 {
-      let firstEvent = events->Belt.List.head->Belt.Option.getExn
+    if events->Belt.Array.length > 0 {
+      let firstEvent = events->Belt.Array.get(0)->Belt.Option.getExn
       expect((
-        errors.contents->Belt.List.length,
-        events->Belt.List.length,
+        errors.contents->Belt.Array.length,
+        events->Belt.Array.length,
         cmp->compare(firstEvent, expectedEvent),
       ))->toEqual((0, 1, true))
-    } else if errors.contents->Belt.List.length > 0 {
+    } else if errors.contents->Belt.Array.length > 0 {
       listErrors()->Jest.fail
     } else {
       Jest.fail("thenEvent: No event present to validate")
     }
 
-  let thenNoEvent = thenEvents(list{})
+  let thenNoEvent = thenEvents([])
 
   let thenEventWithError = (events, expectedEvent, expectedError) =>
     expect((
-      events->Belt.List.length,
-      events->Belt.List.head,
-      errors.contents->Belt.List.length,
-      errors.contents->Belt.List.head,
+      events->Belt.Array.length,
+      events->Belt.Array.get(0),
+      errors.contents->Belt.Array.length,
+      errors.contents->Belt.Array.get(0),
     ))->toEqual((1, Some(expectedEvent), 1, Some(expectedError)))
 
   let thenEventsWithError = (events, expectedEvents, expectedError) =>
-    expect((events, errors.contents->Belt.List.length, errors.contents->Belt.List.head))->toEqual((
-      expectedEvents,
-      1,
-      Some(expectedError),
-    ))
+    expect((
+      events,
+      errors.contents->Belt.Array.length,
+      errors.contents->Belt.Array.get(0),
+    ))->toEqual((expectedEvents, 1, Some(expectedError)))
 
   let thenError = (events, expectedError) =>
-    expect((events, errors.contents->Belt.List.length, errors.contents->Belt.List.head))->toEqual((
-      list{},
-      1,
-      Some(expectedError),
-    ))
+    expect((
+      events,
+      errors.contents->Belt.Array.length,
+      errors.contents->Belt.Array.get(0),
+    ))->toEqual(([], 1, Some(expectedError)))
 }

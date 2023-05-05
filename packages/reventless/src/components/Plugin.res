@@ -256,18 +256,16 @@ module Make = (
         }
 
         let _addPermission = (sid, eventCollector, eventTopic) =>
-          SQS.getQueuePolicy(eventCollector)->Js.Promise.then_(
+          SQS.getQueuePolicy(eventCollector)->Js.Promise2.then(
             policy =>
               eventCollector->SQS.setQueuePolicy(
                 policy->addStatement(sid, eventCollector, eventTopic),
               ),
-            _,
           )
 
         let _removePermission = (sid, eventCollector) =>
-          SQS.getQueuePolicy(eventCollector)->Js.Promise.then_(
+          SQS.getQueuePolicy(eventCollector)->Js.Promise2.then(
             policy => eventCollector->SQS.setQueuePolicy(policy->removeStatement(sid)),
-            _,
           )
 
         let subscribe = (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
@@ -275,20 +273,18 @@ module Make = (
           let eventCollectorName = eventCollector->AWS.arn2Name
           let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
           SNS.subscribeQueueToTopic(eventCollector, eventTopic)
-          ->Js.Promise.then_(
+          ->Js.Promise2.then(
             _ =>
               Js.log(
                 `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
               )->Js.Promise.resolve,
-            _,
           )
-          ->Js.Promise.catch(
+          ->Js.Promise2.catch(
             err =>
               Js.log2(
                 `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
                 err,
               )->Js.Promise.resolve,
-            _,
           )
         }
 
@@ -298,20 +294,18 @@ module Make = (
           let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
 
           SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic)
-          ->Js.Promise.then_(
+          ->Js.Promise2.then(
             _ =>
               Js.log(
                 `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
               )->Js.Promise.resolve,
-            _,
           )
-          ->Js.Promise.catch(
+          ->Js.Promise2.catch(
             err =>
               Js.log2(
                 `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
                 err,
               )->Js.Promise.resolve,
-            _,
           )
         }
 
@@ -350,7 +344,7 @@ module Make = (
                   : None
               )
               ->Js.Promise.all
-              ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+              ->Js.Promise2.then(_ => Js.Promise.resolve())
 
             let connectToExtensions =
               extensionPointsOutputs
@@ -372,12 +366,11 @@ module Make = (
                   : None
               )
               ->Js.Promise.all
-              ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+              ->Js.Promise2.then(_ => Js.Promise.resolve())
 
             // await connections of extensionpoints & extensions
-            Js.Promise.all2((connectToExtensionPoints, connectToExtensions))->Js.Promise.then_(
+            Js.Promise.all2((connectToExtensionPoints, connectToExtensions))->Js.Promise2.then(
               _ => Js.Promise.resolve(),
-              _,
             )
           | DoDisconnectPlugin({
               id: pluginId,
@@ -405,7 +398,7 @@ module Make = (
                   : None
               )
               ->Js.Promise.all
-              ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+              ->Js.Promise2.then(_ => Js.Promise.resolve())
 
             let disconnectFromExtensions =
               extensionPointsOutputs
@@ -427,12 +420,12 @@ module Make = (
                   : None
               )
               ->Js.Promise.all
-              ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+              ->Js.Promise2.then(_ => Js.Promise.resolve())
 
             Js.Promise.all2((
               disconnectFromExtensionPoints,
               disconnectFromExtensions,
-            ))->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+            ))->Js.Promise2.then(_ => Js.Promise.resolve())
           | _ => Js.Promise.resolve()
           }
 
@@ -609,7 +602,7 @@ module Make = (
               ex => getEventHandler(ex)(. event'Json, pluginDefinition->Pulumi.Output.get),
             )
             ->Js.Promise.all
-            ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+            ->Js.Promise2.then(_ => Js.Promise.resolve())
           )
 
         let detectUnhandledEvent = event'Json =>
@@ -646,7 +639,7 @@ module Make = (
               event'Json,
               incomingServiceNameToPluginConnectExtensionsMapping,
               extension => extension["incomingEventHandler"],
-            )->Js.Promise.then_(
+            )->Js.Promise2.then(
               _ =>
                 [
                   event'Json->handleEvent(
@@ -663,12 +656,11 @@ module Make = (
                   ),
                 ]
                 ->Js.Promise.all
-                ->Js.Promise.then_(_ => Js.Promise.resolve(), _),
-              _,
+                ->Js.Promise2.then(_ => Js.Promise.resolve()),
             )
           })
           ->Js.Promise.all
-          ->Js.Promise.then_(_ => Js.Promise.resolve(), _)
+          ->Js.Promise2.then(_ => Js.Promise.resolve())
         }
 
         module EventCollector = EventCollector.Make(EventCollectorConnector)

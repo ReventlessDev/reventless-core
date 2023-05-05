@@ -5,7 +5,6 @@ let componentType = ComponentType.ExtensionPoint
 
 type name = string
 
-
 module type Mappings = {
   module Spec: ReventlessSpec.ExtensionPointMapping.Spec
   module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec
@@ -35,7 +34,10 @@ module Make = (
   type t
 
   type constructed
-  type construct = (ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs>, string) => constructed
+  type construct = (
+    ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs>,
+    string,
+  ) => constructed
 
   @module("./Component") @new
   external make: (
@@ -43,20 +45,30 @@ module Make = (
     ~name: string,
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
-  ) => ReventlessSpec.Component.t<t,ReventlessSpec.ExtensionPoint.outputs> = "default"
+  ) => ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs> = "default"
 
   @obj
   external makeOutputs: (
     ~name: string,
     ~aggregateNames: array<string>,
-    ~outgoingEventHandler: (. Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
+    ~outgoingEventHandler: (
+      . Js.Json.t,
+      ReventlessSpec.Plugin.pluginDefinition,
+    ) => Js.Promise.t<unit>,
     ~commandTopic: ReventlessSpec.CommandTopic.outputs,
     ~eventTopic: ReventlessSpec.EventTopic.outputs,
   ) => ReventlessSpec.ExtensionPoint.outputs = ""
 
   @send
-  external registerOutputs: (ReventlessSpec.Component.t<t,ReventlessSpec.ExtensionPoint.outputs> , ReventlessSpec.ExtensionPoint.outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (ReventlessSpec.Component.t<t,ReventlessSpec.ExtensionPoint.outputs>, ReventlessSpec.ExtensionPoint.outputs) => unit = "setOutputs"
+  external registerOutputs: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs>,
+    ReventlessSpec.ExtensionPoint.outputs,
+  ) => constructed = "registerOutputs"
+  @send
+  external setOutputs: (
+    ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs>,
+    ReventlessSpec.ExtensionPoint.outputs,
+  ) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
@@ -122,18 +134,18 @@ module Make = (
             ),
           (x, ()) => x,
         )()
-        ->Js.Promise.then_(_ => Belt.Result.Ok(reference)->Js.Promise.resolve, _)
-        ->Js.Promise.catch(err => {
+        ->Js.Promise2.then(_ => Belt.Result.Ok(reference)->Js.Promise.resolve)
+        ->Js.Promise2.catch(err => {
           Js.log2("ExtensionPoint: Error on publish command:", err)
           Belt.Result.Error(reference)->Js.Promise.resolve
-        }, _)
+        })
       | AbstractCall(reference, handler) =>
         handler()
-        ->Js.Promise.then_(_ => Belt.Result.Ok(reference)->Js.Promise.resolve, _)
-        ->Js.Promise.catch(err => {
+        ->Js.Promise2.then(_ => Belt.Result.Ok(reference)->Js.Promise.resolve)
+        ->Js.Promise2.catch(err => {
           err->Js.log2("ExtensionPoint: Error on calling handler:")
           Belt.Result.Error(reference)->Js.Promise.resolve
-        }, _)
+        })
       }
 
     let eventTopic = EventTopic.make(~name=childName, ~storageResources=[], ~opts, ())
@@ -142,24 +154,19 @@ module Make = (
       switch x {
       | ExtensionPointMapping.AbstractPublishEvent(event') =>
         let publish = EventTopic.publish(eventTopic)
-        publish(. [event'])->Js.Promise.catch(
+        publish(. [event'])->Js.Promise2.catch(
           err => err->Js.log2("ExtensionPoint: Error on publish command:")->Js.Promise.resolve,
-          _,
         )
       | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
         let publish = EventTopic.publish(eventTopic)
-        promise->Js.Promise.then_(
-          event' =>
-            publish(. [event'])->Js.Promise.catch(
-              err => err->Js.log2("ExtensionPoint: Error on publish command:")->Js.Promise.resolve,
-              _,
-            ),
-          _,
+        promise->Js.Promise2.then(event' =>
+          publish(. [event'])->Js.Promise2.catch(err =>
+            err->Js.log2("ExtensionPoint: Error on publish command:")->Js.Promise.resolve
+          )
         )
       | AbstractCall(handler) =>
-        handler()->Js.Promise.catch(
+        handler()->Js.Promise2.catch(
           err => err->Js.log2("ExtensionPoint: Error on calling handler:")->Js.Promise.resolve,
-          _,
         )
       }
 
@@ -174,9 +181,10 @@ module Make = (
           queryEngine,
         )
 
-      eventActions->Belt.Array.map(applyEventAction)
-      |> Js.Promise.all
-      |> Js.Promise.then_(_ => Js.Promise.resolve())
+      eventActions
+      ->Belt.Array.map(applyEventAction)
+      ->Js.Promise.all
+      ->Js.Promise2.then(_ => Js.Promise.resolve())
     }
 
     let incomingCommandsHandler = (. topicItems) => {

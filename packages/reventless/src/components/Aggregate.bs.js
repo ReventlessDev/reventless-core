@@ -6,12 +6,11 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Id = require("@rescript/std/lib/js/belt_Id.js");
 var Belt_Set = require("@rescript/std/lib/js/belt_Set.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
-var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var EventLog$Reventless = require("./EventLog.bs.js");
@@ -61,7 +60,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
     var commandJson = JSON.stringify(Curry._1(Spec.command_encode, command));
     var id = context.id;
     console.log("Behaviour error " + errorJson + " in " + Spec.name + "(" + id + "): Command: " + commandJson + "");
-    return /* [] */0;
+    return [];
   };
   var groupTopicItemsById = function (topicItems) {
     var ids = Belt_Array.map(topicItems, (function (param) {
@@ -101,14 +100,12 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
               };
       };
       console.log("starting Aggregate.execCommands");
-      return Js_promise.then_((function (results) {
-                    return Promise.resolve(Belt_Array.concatMany(results));
-                  }), Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (function (param) {
+      return Js_promise2.then(Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (function (param) {
                             var topicItems = param[1];
                             var id = param[0];
-                            return Js_promise.then_((function (history) {
+                            return Js_promise2.then(eventLogReplay(id), (function (history) {
                                           var processCommand = function (accP, command$p) {
-                                            return Js_promise.then_((function (x) {
+                                            return Js_promise2.then(accP, (function (x) {
                                                           if (x.TAG === /* Ok */0) {
                                                             var param = x._0;
                                                             var events = param[1];
@@ -125,7 +122,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                                 var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
                                                                 if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
                                                                   console.log("Aggregate.processCommand: InvalidEvent", JSON.stringify($$event._1));
-                                                                  generatedEvents = /* [] */0;
+                                                                  generatedEvents = [];
                                                                 } else {
                                                                   throw $$event;
                                                                 }
@@ -133,14 +130,11 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                               return Promise.resolve({
                                                                           TAG: /* Ok */0,
                                                                           _0: [
-                                                                            Belt_List.reduce(generatedEvents, stateO, apply$p),
-                                                                            Belt_List.concat(events, {
-                                                                                  hd: [
+                                                                            Belt_Array.reduce(generatedEvents, stateO, apply$p),
+                                                                            Belt_Array.concat(events, [[
                                                                                     generatedEvents,
                                                                                     updateMeta(command$p)
-                                                                                  ],
-                                                                                  tl: /* [] */0
-                                                                                })
+                                                                                  ]])
                                                                           ]
                                                                         });
                                                             }
@@ -151,20 +145,17 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                             return Promise.resolve({
                                                                         TAG: /* Ok */0,
                                                                         _0: [
-                                                                          Belt_List.reduce(generatedEvents$1, undefined, apply$p),
-                                                                          Belt_List.concat(events, {
-                                                                                hd: [
+                                                                          Belt_Array.reduce(generatedEvents$1, undefined, apply$p),
+                                                                          Belt_Array.concat(events, [[
                                                                                   generatedEvents$1,
                                                                                   updateMeta(command$p)
-                                                                                ],
-                                                                                tl: /* [] */0
-                                                                              })
+                                                                                ]])
                                                                         ]
                                                                       });
                                                           } else {
                                                             return Promise.resolve(x);
                                                           }
-                                                        }), accP);
+                                                        }));
                                           };
                                           console.log("finished eventLogReplay for id " + Curry._1(Spec.Id.toString, id) + "");
                                           Belt_Array.mapWithIndex(topicItems, (function (idx, param) {
@@ -183,7 +174,28 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                             ];
                                                     })));
                                           var references = match[0];
-                                          return Js_promise.then_((function (x) {
+                                          return Js_promise2.then(Js_promise2.then(Belt_Array.reduce(match[1], Promise.resolve({
+                                                                  TAG: /* Ok */0,
+                                                                  _0: [
+                                                                    Belt_Array.reduce(history, undefined, apply$p),
+                                                                    []
+                                                                  ]
+                                                                }), processCommand), (function (x) {
+                                                            if (x.TAG === /* Ok */0) {
+                                                              return Promise.resolve(Belt_Array.concatMany(Belt_Array.map(x._0[1], (function (param) {
+                                                                                    var meta = param[1];
+                                                                                    return Belt_Array.map(param[0], (function ($$event) {
+                                                                                                  return {
+                                                                                                          id: id,
+                                                                                                          meta: meta,
+                                                                                                          event: $$event
+                                                                                                        };
+                                                                                                }));
+                                                                                  }))));
+                                                            } else {
+                                                              return Js_exn.raiseError(x._0);
+                                                            }
+                                                          })), (function (x) {
                                                         if (x.length === 0) {
                                                           return Promise.resolve((console.log("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + "): no Event generated"), Belt_Array.map(references, (function (reference) {
                                                                               return {
@@ -196,10 +208,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                         console.log("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + "): " + String(eventCount) + " Event(s) generated:", Belt_Array.map(x, (function (event$p) {
                                                                     return Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
                                                                   })));
-                                                        return Js_promise.then_((function (results) {
-                                                                      console.log("finished eventLogAppend for id " + Curry._1(Spec.Id.toString, id) + "");
-                                                                      return Promise.resolve(results);
-                                                                    }), Js_promise.then_((function (result) {
+                                                        return Js_promise2.then(Js_promise2.then(eventLogAppend(history.length, id, x), (function (result) {
                                                                           var tmp;
                                                                           tmp = result.TAG === /* Ok */0 ? Belt_Array.map(references, (function (reference) {
                                                                                     return {
@@ -213,31 +222,15 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                                                           };
                                                                                   }));
                                                                           return Promise.resolve(tmp);
-                                                                        }), eventLogAppend(history.length, id, x)));
-                                                      }), Js_promise.then_((function (x) {
-                                                            if (x.TAG === /* Ok */0) {
-                                                              return Promise.resolve(Belt_List.toArray(Belt_List.flatten(Belt_List.map(x._0[1], (function (param) {
-                                                                                        var meta = param[1];
-                                                                                        return Belt_List.map(param[0], (function ($$event) {
-                                                                                                      return {
-                                                                                                              id: id,
-                                                                                                              meta: meta,
-                                                                                                              event: $$event
-                                                                                                            };
-                                                                                                    }));
-                                                                                      })))));
-                                                            } else {
-                                                              return Js_exn.raiseError(x._0);
-                                                            }
-                                                          }), Belt_Array.reduce(match[1], Promise.resolve({
-                                                                  TAG: /* Ok */0,
-                                                                  _0: [
-                                                                    Belt_List.reduce(Belt_List.fromArray(history), undefined, apply$p),
-                                                                    /* [] */0
-                                                                  ]
-                                                                }), processCommand)));
-                                        }), eventLogReplay(id));
-                          }))));
+                                                                        })), (function (results) {
+                                                                      console.log("finished eventLogAppend for id " + Curry._1(Spec.Id.toString, id) + "");
+                                                                      return Promise.resolve(results);
+                                                                    }));
+                                                      }));
+                                        }));
+                          }))), (function (results) {
+                    return Promise.resolve(Belt_Array.concatMany(results));
+                  }));
     };
   };
   var construct = function (self, name) {
@@ -282,15 +275,15 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                 };
         };
       });
-    var outputs = {
+    var self$1 = {
       name: name,
       commandGenerator: Component$Reventless.extractOutputs(commandGenerator),
       commandTopic: Component$Reventless.extractOutputs(commandTopic),
       eventLog: Component$Reventless.extractOutputs(eventLog),
       eventMapper: undefined
     };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
+    self$1.setOutputs(self);
+    return self$1.registerOutputs(self);
   };
   var make = function (opts, param) {
     var prim0 = ComponentType$Reventless.toString(/* Aggregate */0);

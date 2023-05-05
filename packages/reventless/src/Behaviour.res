@@ -10,14 +10,14 @@ type create<'command, 'event, 'error> = (
   . 'command,
   Message.context,
   Message.errorHandler<'error, 'command, 'event>,
-) => list<'event>
+) => array<'event>
 
 type execute<'state, 'command, 'event, 'error> = (
   . 'state,
   'command,
   Message.context,
   Message.errorHandler<'error, 'command, 'event>,
-) => list<'event>
+) => array<'event>
 
 module type Spec = {
   @decco

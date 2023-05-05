@@ -2,9 +2,9 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.bs.js");
@@ -46,14 +46,14 @@ function makeEntry(queueService, commandJson) {
 }
 
 function sendBatch(queue, queueService, commandJsons) {
-  return Js_promise.then_((function (results) {
+  return Js_promise2.then(Promise.allSettled(SQS$AwsSdk.sendMessageBatch(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
+                            return makeEntry(queueService, commandJson);
+                          })))), (function (results) {
                 Belt_Array.forEach(Util_Promise$Reventless.filterRejected(results), (function (param) {
                         console.log("SQS.sendMessageBatch request " + String(param[0]) + " failed: " + param[1] + "");
                       }));
                 return Promise.resolve(undefined);
-              }), Promise.allSettled(SQS$AwsSdk.sendMessageBatch(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
-                            return makeEntry(queueService, commandJson);
-                          })))));
+              }));
 }
 
 function deleteMessage(queue, receiptHandle) {

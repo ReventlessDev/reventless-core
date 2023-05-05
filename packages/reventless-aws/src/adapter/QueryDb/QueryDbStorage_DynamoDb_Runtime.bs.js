@@ -3,16 +3,20 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.bs.js");
 
 function load(table) {
   return function (id) {
-    return Js_promise.$$catch((function (err) {
+    return Js_promise2.$$catch(Js_promise2.then(DynamoDb_DocumentClient$AwsSdk.queryByIdWithTableName(table.name.get(), id), (function (arr) {
+                      return Promise.resolve({
+                                  TAG: /* Ok */0,
+                                  _0: arr
+                                });
+                    })), (function (err) {
                   var tableName = table.name.get();
                   console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".load: Error: Couldn't load state for " + id + " from " + tableName + ""), err);
                   return Promise.resolve({
@@ -22,12 +26,7 @@ function load(table) {
                                 _0: err.message
                               }
                             });
-                }), Js_promise.then_((function (arr) {
-                      return Promise.resolve({
-                                  TAG: /* Ok */0,
-                                  _0: arr.length !== 0 ? Belt_List.fromArray(arr) : /* [] */0
-                                });
-                    }), DynamoDb_DocumentClient$AwsSdk.queryByIdWithTableName(table.name.get(), id)));
+                }));
   };
 }
 
@@ -37,7 +36,13 @@ function save(table) {
     var stateStr = JSON.stringify(json);
     var json$1 = Util_DynamoDb_Runtime$ReventlessAws.insertTtl(json, ttl);
     if (saveMode !== 0) {
-      return Js_promise.$$catch((function (err) {
+      return Js_promise2.$$catch(Js_promise2.then(DynamoDb_DocumentClient$AwsSdk.putWithTableName(tableName, json$1), (function (param) {
+                        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: save state to " + tableName + ": " + stateStr + ""));
+                        return Promise.resolve({
+                                    TAG: /* Ok */0,
+                                    _0: undefined
+                                  });
+                      })), (function (err) {
                     console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: Error: Couldn't save state to " + tableName + ": " + err.message + ""));
                     return Promise.resolve({
                                 TAG: /* Error */1,
@@ -46,15 +51,15 @@ function save(table) {
                                   _0: err.message
                                 }
                               });
-                  }), Js_promise.then_((function (param) {
-                        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: save state to " + tableName + ": " + stateStr + ""));
+                  }));
+    } else {
+      return Js_promise2.$$catch(Js_promise2.then(DynamoDb_DocumentClient$AwsSdk.putIfNotExists(tableName, table.hashKey.get(), table.rangeKey.get(), json$1), (function (param) {
+                        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: save Init state to " + tableName + ": " + stateStr + ""));
                         return Promise.resolve({
                                     TAG: /* Ok */0,
                                     _0: undefined
                                   });
-                      }), DynamoDb_DocumentClient$AwsSdk.putWithTableName(tableName, json$1)));
-    } else {
-      return Js_promise.$$catch((function (err) {
+                      })), (function (err) {
                     var tableName = table.name.get();
                     var match = err.code;
                     if (match === "ConditionalCheckFailedException") {
@@ -72,20 +77,13 @@ function save(table) {
                                   _0: err.message
                                 }
                               });
-                  }), Js_promise.then_((function (param) {
-                        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: save Init state to " + tableName + ": " + stateStr + ""));
-                        return Promise.resolve({
-                                    TAG: /* Ok */0,
-                                    _0: undefined
-                                  });
-                      }), DynamoDb_DocumentClient$AwsSdk.putIfNotExists(tableName, table.hashKey.get(), table.rangeKey.get(), json$1)));
+                  }));
     }
   };
 }
 
 function writeChunk(writeRequests, maxRetries) {
-  var __x = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(writeRequests, maxRetries);
-  return Js_promise.then_((function (param) {
+  return Js_promise2.then(Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(writeRequests, maxRetries), (function (param) {
                 var x = Belt_Array.get(Js_dict.values(param[0].UnprocessedItems), 0);
                 var tmp;
                 if (x !== undefined) {
@@ -101,7 +99,7 @@ function writeChunk(writeRequests, maxRetries) {
                   };
                 }
                 return Promise.resolve(tmp);
-              }), __x);
+              }));
 }
 
 function writeBatch(writeRequests, table, maxRetries) {
@@ -110,10 +108,9 @@ function writeBatch(writeRequests, table, maxRetries) {
   if (chunks > 1) {
     console.log("writeBatch: splitting up batch of size " + String(batchSize) + " into " + String(chunks) + " chunks");
   }
-  var __x = Promise.allSettled(Belt_Array.makeBy(chunks, (function (chunkNr) {
-              return writeChunk(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.slice(writeRequests, Math.imul(chunkNr, DynamoDb_DocumentClient$AwsSdk.maxBatchSize), DynamoDb_DocumentClient$AwsSdk.maxBatchSize), table.name.get()), maxRetries);
-            })));
-  return Js_promise.then_((function (results) {
+  return Js_promise2.then(Promise.allSettled(Belt_Array.makeBy(chunks, (function (chunkNr) {
+                        return writeChunk(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.slice(writeRequests, Math.imul(chunkNr, DynamoDb_DocumentClient$AwsSdk.maxBatchSize), DynamoDb_DocumentClient$AwsSdk.maxBatchSize), table.name.get()), maxRetries);
+                      }))), (function (results) {
                 var errors = Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (batchNr, result) {
                             var match = result.value;
                             var match$1 = result.reason;
@@ -141,7 +138,7 @@ function writeBatch(writeRequests, table, maxRetries) {
                               _0: undefined
                             });
                 }
-              }), __x);
+              }));
 }
 
 function saveBatch(maxRetriesOpt, table) {
@@ -172,7 +169,26 @@ function count(table) {
   return function (id, fieldName, inc) {
     var tableName = table.name.get();
     console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".count: " + tableName + ", " + id + ", " + fieldName + ", " + String(inc) + ""));
-    return Js_promise.$$catch((function (err) {
+    return Js_promise2.$$catch(Js_promise2.then(DynamoDb_DocumentClient$AwsSdk.update({
+                        TableName: tableName,
+                        Key: {
+                          id: id
+                        },
+                        UpdateExpression: "ADD #fieldName :inc",
+                        ExpressionAttributeNames: Js_dict.fromArray([[
+                                "#fieldName",
+                                fieldName
+                              ]]),
+                        ExpressionAttributeValues: {
+                          ":inc": inc
+                        },
+                        ReturnValues: "UPDATED_NEW"
+                      }), (function (updateOutput) {
+                      return Promise.resolve({
+                                  TAG: /* Ok */0,
+                                  _0: updateOutput.Attributes.count
+                                });
+                    })), (function (err) {
                   console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".count: Error: Couldn't count on " + tableName + ": " + err.message + ""));
                   return Promise.resolve({
                               TAG: /* Error */1,
@@ -181,29 +197,7 @@ function count(table) {
                                 _0: err.message
                               }
                             });
-                }), Js_promise.then_((function (updateOutput) {
-                      return Promise.resolve({
-                                  TAG: /* Ok */0,
-                                  _0: updateOutput.Attributes.count
-                                });
-                    }), DynamoDb_DocumentClient$AwsSdk.update({
-                        TableName: tableName,
-                        Key: {
-                          id: id
-                        },
-                        UpdateExpression: "ADD #fieldName :inc",
-                        ExpressionAttributeNames: Js_dict.fromList({
-                              hd: [
-                                "#fieldName",
-                                fieldName
-                              ],
-                              tl: /* [] */0
-                            }),
-                        ExpressionAttributeValues: {
-                          ":inc": inc
-                        },
-                        ReturnValues: "UPDATED_NEW"
-                      })));
+                }));
   };
 }
 
@@ -211,7 +205,13 @@ function $$delete(table) {
   return function (id, sort) {
     var tableName = table.name.get();
     console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + ".delete: tableName, id, sort", table.name.get(), id, sort);
-    return Js_promise.$$catch((function (err) {
+    return Js_promise2.$$catch(Js_promise2.then(DynamoDb_DocumentClient$AwsSdk.deleteWithTableName(tableName, id, sort), (function (param) {
+                      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".delete: delete state for " + id + " from " + tableName + ""));
+                      return Promise.resolve({
+                                  TAG: /* Ok */0,
+                                  _0: undefined
+                                });
+                    })), (function (err) {
                   console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".delete: Error: Couldn't delete state for " + id + " from " + tableName + ""), err);
                   return Promise.resolve({
                               TAG: /* Error */1,
@@ -220,13 +220,7 @@ function $$delete(table) {
                                 _0: err.message
                               }
                             });
-                }), Js_promise.then_((function (param) {
-                      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".delete: delete state for " + id + " from " + tableName + ""));
-                      return Promise.resolve({
-                                  TAG: /* Ok */0,
-                                  _0: undefined
-                                });
-                    }), DynamoDb_DocumentClient$AwsSdk.deleteWithTableName(tableName, id, sort)));
+                }));
   };
 }
 
@@ -248,28 +242,22 @@ function deleteBatch(maxRetriesOpt, table) {
                         if (sort !== undefined) {
                           var sortField = sort[0];
                           console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".deleteBatch: delete state for " + id + " (" + sortField + "=sortKey) from " + tableName + ""));
-                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromList({
-                                          hd: [
+                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([
+                                          [
                                             "id",
                                             id
                                           ],
-                                          tl: {
-                                            hd: [
-                                              sortField,
-                                              sort[1]
-                                            ],
-                                            tl: /* [] */0
-                                          }
-                                        }));
+                                          [
+                                            sortField,
+                                            sort[1]
+                                          ]
+                                        ]));
                         }
                         console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".deleteBatch: delete state for " + id + " from " + tableName + ""));
-                        return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromList({
-                                        hd: [
+                        return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([[
                                           "id",
                                           id
-                                        ],
-                                        tl: /* [] */0
-                                      }));
+                                        ]]));
                       })), table, maxRetries);
     }
     var match = ids[0];

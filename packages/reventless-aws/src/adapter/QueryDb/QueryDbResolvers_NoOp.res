@@ -9,10 +9,10 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
   ~api as _: api,
   ~apiRole as _: role,
   ~dataSourceName as _,
-  ~indexes as _: list<index>,
+  ~indexes as _: array<index>,
   ~subIdField as _,
-  ~resolveIdConfigs as _: list<resolveIdConfig>,
-  ~resolveIdsConfigs as _: list<resolveIdsConfig>,
+  ~resolveIdConfigs as _: array<resolveIdConfig>,
+  ~resolveIdsConfigs as _: array<resolveIdsConfig>,
   ~opts as _,
 ) => {
   resources: [],

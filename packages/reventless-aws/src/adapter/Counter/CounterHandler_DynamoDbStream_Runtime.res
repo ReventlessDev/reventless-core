@@ -13,12 +13,12 @@ let addToCounterTarget = (table, {counterId, target, targetRef}) => {
       ~_UpdateExpression="ADD #count :inc, #total :inc " ++
       ("SET #targets = list_append(if_not_exists(#targets, :empty), :target), " ++
       "    #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRef)"),
-      ~_ExpressionAttributeNames=list{
+      ~_ExpressionAttributeNames=[
         ("#count", countFieldName),
         ("#total", "total"),
         ("#targets", "targets"),
         ("#targetRefs", "targetRefs"),
-      }->Js.Dict.fromList,
+      ]->Js.Dict.fromArray,
       ~_ExpressionAttributeValues={
         ":inc": target,
         ":target": [target],
@@ -30,13 +30,13 @@ let addToCounterTarget = (table, {counterId, target, targetRef}) => {
       (),
     ),
   )
-  |> Js.Promise.then_((updateOutput: UpdateOutput.t<{"count": int}>) =>
+  ->Js.Promise2.then((updateOutput: UpdateOutput.t<{"count": int}>) =>
     Js.log2(
       __MODULE__ ++ `.addToCounterTarget: current count for ${counterId}:`,
       updateOutput["_Attributes"]["count"],
     )->Js.Promise.resolve
   )
-  |> Js.Promise.catch(err =>
+  ->Js.Promise2.catch(err =>
     Js.Exn.raiseError(
       __MODULE__ ++
       `.addToCounterTarget Error: Couldn't count on ${tableName}: ${(

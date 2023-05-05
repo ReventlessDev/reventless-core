@@ -4,8 +4,8 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Cloner$Reventless = require("../components/Cloner.bs.js");
@@ -84,20 +84,18 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
     };
     var eventsHandler = function (events$pJson) {
       var count = events$pJson.length;
-      var __x = Promise.all(Belt_Array.mapWithIndex(events$pJson, (function (idx, event$pJson) {
-                  var idx$1 = idx + 1 | 0;
-                  Message$Reventless.logEvent$pJson(event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
-                  var __x = Promise.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
-                              var handle = extensionPoint.outgoingEventHandler;
-                              return handle(event$pJson, fakePluginDefinition);
-                            })));
-                  return Js_promise.then_((function (param) {
-                                return Promise.resolve(undefined);
-                              }), __x);
-                })));
-      return Js_promise.then_((function (param) {
+      return Js_promise2.then(Promise.all(Belt_Array.mapWithIndex(events$pJson, (function (idx, event$pJson) {
+                            var idx$1 = idx + 1 | 0;
+                            Message$Reventless.logEvent$pJson(event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
+                            return Js_promise2.then(Promise.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
+                                                  var handle = extensionPoint.outgoingEventHandler;
+                                                  return handle(event$pJson, fakePluginDefinition);
+                                                }))), (function (param) {
+                                          return Promise.resolve(undefined);
+                                        }));
+                          }))), (function (param) {
                     return Promise.resolve(undefined);
-                  }), __x);
+                  }));
     };
     var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
     var eventCollector = Curry.app(EventCollector.make, [

@@ -202,9 +202,11 @@ let construct: construct = (self, name, availabilityZone) => {
   let s3Endpoint = VpcEndpoint.make(
     ~name=name ++ "S3Endpoint",
     ~args=VpcEndpoint.Args.make(
-      ~serviceName=(region |> Js.Promise.then_(region =>
+      ~serviceName=region
+      ->Js.Promise2.then(region =>
         ("com.amazonaws." ++ (region["name"] ++ ".s3"))->Js.Promise.resolve
-      ))->Pulumi.Input.ofPromise,
+      )
+      ->Pulumi.Input.ofPromise,
       ~vpcId=vpc["id"]->Pulumi.Output.asInput,
       ~routeTableIds,
       (),
@@ -216,9 +218,11 @@ let construct: construct = (self, name, availabilityZone) => {
   let dynamoDbEndpoint = VpcEndpoint.make(
     ~name=name ++ "DynamoDbEndpoint",
     ~args=VpcEndpoint.Args.make(
-      ~serviceName=(region |> Js.Promise.then_(region =>
+      ~serviceName=region
+      ->Js.Promise2.then(region =>
         ("com.amazonaws." ++ (region["name"] ++ ".dynamodb"))->Js.Promise.resolve
-      ))->Pulumi.Input.ofPromise,
+      )
+      ->Pulumi.Input.ofPromise,
       ~vpcId=vpc["id"]->Pulumi.Output.asInput,
       ~routeTableIds,
       (),

@@ -3,9 +3,9 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Util_Decco$Reventless = require("../util/Util_Decco.bs.js");
@@ -19,27 +19,24 @@ function Make(Spec, Publisher) {
   var publishFn = function (publisher, name) {
     return function (events$p) {
       var eventCount = events$p.length;
-      var __x = Promise.all(Belt_Array.mapWithIndex(events$p, (function (idx, event$p) {
-                  var json = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
-                  var id = event$p.id;
-                  var eventName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
-                  var idx$1 = idx + 1 | 0;
-                  var __x = publisher.publish(Curry._1(Spec.Id.toString, id), event$p.meta, json);
-                  var __x$1 = Js_promise.$$catch((function (e) {
-                          console.log("EventTopic: Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + "");
-                          return Promise.reject({
-                                      RE_EXN_ID: NotPublishedToPublisher,
-                                      _1: e
-                                    });
-                        }), __x);
-                  return Js_promise.then_((function (param) {
-                                var $$event = JSON.stringify(json);
-                                return Promise.resolve((console.log("EventTopic: Published event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + ": " + $$event + ""), undefined));
-                              }), __x$1);
-                })));
-      return Js_promise.then_((function (param) {
+      return Js_promise2.then(Promise.all(Belt_Array.mapWithIndex(events$p, (function (idx, event$p) {
+                            var json = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
+                            var id = event$p.id;
+                            var eventName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
+                            var idx$1 = idx + 1 | 0;
+                            return Js_promise2.then(Js_promise2.$$catch(publisher.publish(Curry._1(Spec.Id.toString, id), event$p.meta, json), (function (e) {
+                                              console.log("EventTopic: Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + "");
+                                              return Promise.reject({
+                                                          RE_EXN_ID: NotPublishedToPublisher,
+                                                          _1: e
+                                                        });
+                                            })), (function (param) {
+                                          var $$event = JSON.stringify(json);
+                                          return Promise.resolve((console.log("EventTopic: Published event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + ": " + $$event + ""), undefined));
+                                        }));
+                          }))), (function (param) {
                     return Promise.resolve(undefined);
-                  }), __x);
+                  }));
     };
   };
   var construct = function (storageResources, self, name) {
@@ -48,11 +45,11 @@ function Make(Spec, Publisher) {
     };
     var publisher = Curry._3(Publisher.make, ComponentType$Reventless.name(name, /* EventTopic */8), storageResources, opts);
     self.publish = publishFn(publisher, name);
-    var outputs = {
+    var self$1 = {
       resources: publisher.resources
     };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
+    self$1.setOutputs(self);
+    return self$1.registerOutputs(self);
   };
   var make = function (name, storageResources, opts, param) {
     var prim0 = ComponentType$Reventless.toString(/* EventTopic */8);

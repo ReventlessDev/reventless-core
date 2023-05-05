@@ -90,7 +90,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
       Js.log("No ClonerRunner created because no secrets are configured in Pulumi config !")
       Adapter.noRunner
     }
-    makeOutputs(~resources=runner.resources) |> self->setOutputs
+    makeOutputs(~resources=runner.resources)->(self->setOutputs)
   }
 
   let make = (~opts=?, _) =>

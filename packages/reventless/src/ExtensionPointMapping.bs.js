@@ -4,7 +4,7 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("./Message.bs.js");
 
@@ -85,7 +85,7 @@ function Make(Spec, MappingImpl) {
                                 }
                               };
                     case /* PublishEventAsync */1 :
-                        var promise$p = Js_promise.then_((function (param) {
+                        var promise$p = Js_promise2.then(x._0, (function (param) {
                                 var $$event = param[1];
                                 var id = param[0];
                                 var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
@@ -102,7 +102,7 @@ function Make(Spec, MappingImpl) {
                                             },
                                             event: $$event
                                           });
-                              }), x._0);
+                              }));
                         return {
                                 TAG: /* AbstractPublishEventAsync */1,
                                 _0: promise$p

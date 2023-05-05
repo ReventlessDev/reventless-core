@@ -43,8 +43,8 @@ let mergeAsync: (async<'a, 'b>, async<'a, 'b>, Js.Promise.error => t<'a, 'b>) =>
   handle,
 ) =>
   Js.Promise.all2((a1, a2))
-  |> Js.Promise.then_(((v1, v2)) => Js.Promise.resolve(\"<+>"(v1, v2)))
-  |> Js.Promise.catch(err => Js.Promise.resolve(err |> handle))
+  ->Js.Promise2.then(((v1, v2)) => Js.Promise.resolve(\"<+>"(v1, v2)))
+  ->Js.Promise2.catch(err => Js.Promise.resolve(err->handle))
 
 let \"<?>" = (a1, a2) => mergeAsync(a1, a2, defaultErrorHandler)
 

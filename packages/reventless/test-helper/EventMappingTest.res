@@ -5,47 +5,49 @@ module type T = {
   let describe: (string, unit => unit) => unit
   let test: (string, ~timeout: int=?, unit => Js.Promise.t<Jest.assertion>) => unit
 
-  let givenSourceEvents: list<Source.event> => list<Source.event>
+  let givenSourceEvents: array<Source.event> => array<Source.event>
   let givenTargetEvents: (
-    list<(string, list<Target.event>)>,
-    list<Source.event>,
-  ) => (list<(string, list<Target.event>)>, list<Source.event>)
+    array<(string, array<Target.event>)>,
+    array<Source.event>,
+  ) => (array<(string, array<Target.event>)>, array<Source.event>)
 
   let whenSourceCmd: (
     string,
     Source.command,
-    (list<(string, list<Target.event>)>, list<Source.event>),
-  ) => Js.Promise.t<Js.Dict.t<list<Target.event>>>
+    (array<(string, array<Target.event>)>, array<Source.event>),
+  ) => Js.Promise.t<Js.Dict.t<array<Target.event>>>
 
   let thenTargetEvents: (
-    list<(string, list<Target.event>)>,
-    Js.Promise.t<Js.Dict.t<list<Target.event>>>,
+    array<(string, array<Target.event>)>,
+    Js.Promise.t<Js.Dict.t<array<Target.event>>>,
   ) => Js.Promise.t<Jest.assertion>
 
   let thenTargetEvent: (
     string,
     Target.event,
-    Js.Promise.t<Js.Dict.t<list<Target.event>>>,
+    Js.Promise.t<Js.Dict.t<array<Target.event>>>,
   ) => Js.Promise.t<Jest.assertion>
 
-  let thenNoTargetEvent: Js.Promise.t<Js.Dict.t<list<Target.event>>> => Js.Promise.t<Jest.assertion>
+  let thenNoTargetEvent: Js.Promise.t<Js.Dict.t<array<Target.event>>> => Js.Promise.t<
+    Jest.assertion,
+  >
   // let thenTargetEventWithError:
   //   (
   //     Target.Id.t,
   //     Target.event,
   //     Target.error,
-  //     list((Target.Id.t, list(Target.event)))
+  //     array((Target.Id.t, array(Target.event)))
   //   ) =>
   //   Jest.assertion;
   // let thenTargetEventsWithError:
   //   (
-  //     list((Target.Id.t, list(Target.event))),
+  //     array((Target.Id.t, array(Target.event))),
   //     Target.error,
-  //     list((Target.Id.t, list(Target.event)))
+  //     array((Target.Id.t, array(Target.event)))
   //   ) =>
   //   Jest.assertion;
   // let thenTargetError:
-  //   (Target.error, list((Target.Id.t, list(Target.event)))) =>
+  //   (Target.error, array((Target.Id.t, array(Target.event)))) =>
   //   Jest.assertion;
 }
 
@@ -54,10 +56,10 @@ module type Aggregate = {
   module Behaviour: Reventless.Behaviour.T
 
   let apply': (Behaviour.state, Spec.event) => Behaviour.state
-  let currentState: list<Spec.event> => Behaviour.state
-  let errors: list<Spec.error>
+  let currentState: array<Spec.event> => Behaviour.state
+  let errors: array<Spec.error>
   let errorHandler: Reventless.Message.errorHandler<Spec.error, Spec.command, Spec.event>
-  let exec: (Reventless.Message.context, Spec.command, list<Spec.event>) => list<Spec.event>
+  let exec: (Reventless.Message.context, Spec.command, array<Spec.event>) => array<Spec.event>
 }
 
 module MakeAggregate = (
@@ -69,22 +71,20 @@ module MakeAggregate = (
 
   let apply' = (state, event) => Behaviour.apply(. state, event)
 
-  let currentState = events => {
-    open Belt.List
-    events->tailExn->reduce(Behaviour.init(. events->headExn), apply')
-  }
+  let currentState = events =>
+    events->Belt.Array.sliceToEnd(1)->Belt.Array.reduce(Behaviour.init(. events[0]), apply')
 
-  let errors = ref(list{})
+  let errors = ref([])
 
   let errorHandler: Message.errorHandler<Spec.error, Spec.command, Spec.event> = (error, _, _) => {
-    errors := Belt.List.concat(errors.contents, list{error})
-    list{}
+    errors := Belt.Array.concat(errors.contents, [error])
+    []
   }
 
-  let exec = (context, command, history): list<Spec.event> => {
-    errors := list{}
+  let exec = (context, command, history): array<Spec.event> => {
+    errors := []
     switch history {
-    | list{} => Behaviour.create(. command, context, errorHandler)
+    | [] => Behaviour.create(. command, context, errorHandler)
     | history =>
       try Behaviour.execute(.
         history->currentState,
@@ -92,7 +92,7 @@ module MakeAggregate = (
         TestFixtures.context,
         errorHandler,
       ) catch {
-      | Reventless.Message.InvalidEvent(_) => list{}
+      | Reventless.Message.InvalidEvent(_) => []
       }
     }
   }
@@ -122,7 +122,7 @@ module Make = (
       ~viewName as _: string,
       ~key as _: option<string>=?,
       ~id as _: ReventlessSpec.QueryEngine.value,
-      ~filterConfigs as _: option<list<ReventlessSpec.QueryEngine.filterConfig>>=?,
+      ~filterConfigs as _: option<array<ReventlessSpec.QueryEngine.filterConfig>>=?,
       ~ascending as _: option<bool>=?,
       ~limit as _: option<int>=?,
       _: unit,
@@ -135,7 +135,7 @@ module Make = (
   /*
    TODO: The following functions were unused and are due to be deleted:
      let logSourceEvents = events =>
-       events->Belt.List.forEachWithIndex((idx, event) => {
+       events->Belt.Array.forEachWithIndex((idx, event) => {
          let eventStr = event->Source.event_encode;
          Js.log({j|Source event[$idx]: $eventStr|j});
        });
@@ -147,7 +147,7 @@ module Make = (
        commands;
      };
      let logTargetEvents = events =>
-       events->Belt.List.forEachWithIndex((idx, event) => {
+       events->Belt.Array.forEachWithIndex((idx, event) => {
          let eventStr = event->Target.event_encode;
          Js.log({j|  new Target event[$idx]: $eventStr|j});
        });
@@ -155,7 +155,7 @@ module Make = (
        events
        ->Js.Dict.entries
        ->Belt.Array.forEachWithIndex((idx1, (id, events)) =>
-           events->Belt.List.forEachWithIndex((idx2, event) => {
+           events->Belt.Array.forEachWithIndex((idx2, event) => {
              let eventStr = event->Target.event_encode;
              Js.log({j|$prefix Target event[$idx1,$idx2]: $eventStr id:$id|j});
            })
@@ -171,16 +171,11 @@ module Make = (
     // sourceEvents->logSourceEvents;
     let targetActions =
       sourceEvents
-      ->Belt.List.map(sourceEvent =>
-        EventMapping.map(.
-          sourceId->Source.Id.makeFromString,
-          sourceEvent,
-          queryEngine,
-        )->Belt.List.fromArray
+      ->Belt.Array.map(sourceEvent =>
+        EventMapping.map(. sourceId->Source.Id.makeFromString, sourceEvent, queryEngine)
       )
-      ->Belt.List.flatten
-      ->Belt.List.toArray
-    let targetHistories = targetHistory->Js.Dict.fromList
+      ->Belt.Array.concatMany
+    let targetHistories = targetHistory->Js.Dict.fromArray
     targetActions
     ->Belt.Array.map(x =>
       switch x {
@@ -193,7 +188,7 @@ module Make = (
     ->Js.Promise.all
     //  ->logTargetCommands
     //  newEvents->logTargetEvents;
-    ->Js.Promise.then_(commands =>
+    ->Js.Promise2.then(commands =>
       commands
       ->Belt.Array.concatMany
       ->Belt.Array.reduce(Js.Dict.empty(), (targetEvents, (id, command)) => {
@@ -201,67 +196,63 @@ module Make = (
         let targetHistory =
           targetHistories
           ->Js.Dict.get(id)
-          ->Belt.Option.getWithDefault(list{})
-          ->Belt.List.concat(targetEvents->Js.Dict.get(id)->Belt.Option.getWithDefault(list{}))
+          ->Belt.Option.getWithDefault([])
+          ->Belt.Array.concat(targetEvents->Js.Dict.get(id)->Belt.Option.getWithDefault([]))
         let newEvents = TargetAggregate.exec({...TestFixtures.context, id}, command, targetHistory)
         targetEvents->Js.Dict.set(
           id,
           targetEvents
           ->Js.Dict.get(id)
-          ->Belt.Option.getWithDefault(list{})
-          ->Belt.List.concat(newEvents),
+          ->Belt.Option.getWithDefault([])
+          ->Belt.Array.concat(newEvents),
         )
         targetEvents
       })
       ->Js.Promise.resolve
-    , _)
+    )
   }
 
   open Jest.Expect
 
   let thenTargetEvents = (expectedTargetEvents, targetEvents) =>
-    targetEvents->Js.Promise.then_(
-      events => {
-        let assertion =
-          expect((
-            SourceAggregate.errors.contents->Belt.List.length,
-            TargetAggregate.errors.contents->Belt.List.length,
-            events,
-          ))->toEqual((0, 0, expectedTargetEvents->Js.Dict.fromList))
-        assertion->Js.Promise.resolve
-      },
-      //  events->logTargetEventsDict("");
-
-      _,
-    )
+    targetEvents->Js.Promise2.then(events => {
+      let assertion =
+        expect((
+          SourceAggregate.errors.contents->Belt.Array.length,
+          TargetAggregate.errors.contents->Belt.Array.length,
+          events,
+        ))->toEqual((0, 0, expectedTargetEvents->Js.Dict.fromArray))
+      assertion->Js.Promise.resolve
+    })
+  //  events->logTargetEventsDict("");
 
   let thenTargetEvent = (id, expectedTargetEvent, targetEvents) =>
-    targetEvents->Js.Promise.then_(eventsDict => {
+    targetEvents->Js.Promise2.then(eventsDict => {
       let events = eventsDict->Js.Dict.entries
       expect((
-        SourceAggregate.errors.contents->Belt.List.length,
-        TargetAggregate.errors.contents->Belt.List.length,
+        SourceAggregate.errors.contents->Belt.Array.length,
+        TargetAggregate.errors.contents->Belt.Array.length,
         events->Belt.Array.length,
         events->Belt.Array.get(0),
       ))
-      ->toEqual((0, 0, 1, Some((id, list{expectedTargetEvent}))))
+      ->toEqual((0, 0, 1, Some((id, [expectedTargetEvent]))))
       ->Js.Promise.resolve
-    }, _)
+    })
 
-  let thenNoTargetEvent = thenTargetEvents(list{})
+  let thenNoTargetEvent = thenTargetEvents([])
   // let thenEventWithError = (expectedEvent, expectedError, events) =>
   //   expect((
-  //     events->Belt.List.length,
-  //     events->Belt.List.head,
-  //     (errors^)->Belt.List.length,
-  //     (errors^)->Belt.List.head,
+  //     events->Belt.Array.length,
+  //     events->Belt.Array.head,
+  //     (errors^)->Belt.Array.length,
+  //     (errors^)->Belt.Array.head,
   //   ))
   //   |> toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
   // let thenEventsWithError = (expectedEvents, expectedError, events) =>
-  //   expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
+  //   expect((events, (errors^)->Belt.Array.length, (errors^)->Belt.Array.head))
   //   |> toEqual((expectedEvents, 1, Some(expectedError)));
   // let thenError = (expectedError, events) => {
-  //   expect((events, (errors^)->Belt.List.length, (errors^)->Belt.List.head))
+  //   expect((events, (errors^)->Belt.Array.length, (errors^)->Belt.Array.head))
   //   |> toEqual(([], 1, Some(expectedError)));
   // };
 }

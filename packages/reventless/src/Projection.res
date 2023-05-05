@@ -82,7 +82,7 @@ let applyChanges = (
   )
   [deleteBatch(. batchToDelete), saveBatch(. batchToSave)]
   ->Js.Promise.all
-  ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _)
+  ->Js.Promise2.then(_ => Ok()->Js.Promise.resolve)
 }
 
 let stateToString: 'a => string = state => state->Js.Json.stringifyAny->Belt.Option.getExn
@@ -136,14 +136,15 @@ let handleAction = (
     logAction(`SetMany(${statesStr})`)
     saveBatch(. batch)
 
-  | Update(id, update) => load(. id)->Js.Promise.then_(x =>
+  | Update(id, update) =>
+    load(. id)->Js.Promise2.then(x =>
       switch x {
       | Ok(states) =>
         switch states {
-        | list{} =>
+        | [] =>
           logAction(`Update Error: No oldState for ${id})`)
           Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
-        | list{oldState} =>
+        | [oldState] =>
           let newState = oldState->update
           logAction(`Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
           save(. id, newState, Overwrite, None)
@@ -153,15 +154,16 @@ let handleAction = (
         }
       | Error(err) => Error(err)->Js.Promise.resolve
       }
-    , _)
-  | UpdateWithDefault(id, default, update) => load(. id)->Js.Promise.then_(x =>
+    )
+  | UpdateWithDefault(id, default, update) =>
+    load(. id)->Js.Promise2.then(x =>
       switch x {
       | Ok(states) =>
         switch states {
-        | list{} =>
+        | [] =>
           logAction(`UpdateWithDefault(${id}, default: ${default->stateToString})`)
           save(. id, default, Init, None)
-        | list{oldState} =>
+        | [oldState] =>
           let newState = oldState->update
           logAction(
             `UpdateWithDefault(${id}, ${oldState->stateToString} => ${newState->stateToString})`,
@@ -177,11 +179,12 @@ let handleAction = (
         )
         Error(err)->Js.Promise.resolve
       }
-    , _)
-  | UpdateMultiState(id, update) => load(. id)->Js.Promise.then_(states =>
+    )
+  | UpdateMultiState(id, update) =>
+    load(. id)->Js.Promise2.then(states =>
       switch (states, subIdConfig) {
       | (Ok(states), Some(subIdConfig)) =>
-        let beforeStates = states->Belt.List.toArray
+        let beforeStates = states
         let afterStates = beforeStates->update
         applyChanges("UpdateMultiState", id, beforeStates, afterStates, primitives, subIdConfig)
 
@@ -194,28 +197,27 @@ let handleAction = (
         logAction("UpdateMultiState Error: Missing SubIdConfig !")
         Error(ReventlessSpec.QueryDb.MissingSubIdConfig)->Js.Promise.resolve
       }
-    , _)
+    )
   // | UpdateManyMultiStates(ids, update) =>
   //   switch (subIdConfig) {
   //   | Some(subIdConfig) =>
   //     ids
   //     ->Belt.Array.map(id =>
   //         load(. id)
-  //         ->Js.Promise.then_(
+  //         ->Js.Promise2.then(
   //             fun
   //             | Ok(states) =>
-  //               Some((id, states->Belt.List.toArray))->Js.Promise.resolve
+  //               Some((id, states))->Js.Promise.resolve
   //             | Error(err) => {
   //                 logAction(
   //                   {j|UpdateMultiState Error: Couldn't load states for $id: $err)|j},
   //                 );
   //                 None->Js.Promise.resolve;
   //               },
-  //             _,
   //           )
   //       )
   //     ->Js.Promise.all
-  //     ->Js.Promise.then_(
+  //     ->Js.Promise2.then(
   //         results =>
   //           results
   //           ->Belt.Array.keepMap(y => y)
@@ -230,8 +232,7 @@ let handleAction = (
   //               )
   //             )
   //           ->Js.Promise.all
-  //           ->Js.Promise.then_(_ => Ok()->Js.Promise.resolve, _),
-  //         _,
+  //           ->Js.Promise2.then(_ => Ok()->Js.Promise.resolve),
   //       )
   //   | None =>
   //     logAction("UpdateManyMultiStates Error: Missing SubIdConfig !");
@@ -304,7 +305,7 @@ let handleActions = (actions, primitives, subIdConfig) => {
   ->groupActionsById
   ->Belt.Array.map(((id, actions)) => actions->handleActionsForId(id))
   ->Js.Promise.all
-  ->Js.Promise.then_(results => {
+  ->Js.Promise2.then(results => {
     let errors = results->Belt.Array.keepMap(x =>
       switch x {
       | Belt.Result.Error(err) => Some(err)
@@ -321,5 +322,5 @@ let handleActions = (actions, primitives, subIdConfig) => {
           ->Js.Array2.joinWith(",")}`,
       )
     }
-  }, _)
+  })
 }

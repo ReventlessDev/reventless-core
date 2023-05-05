@@ -39,19 +39,21 @@ type commandsHandler<'id, 'command> = (. 'id, array<command'<'id, 'command>>) =>
 let serviceNameOfMsg = msgJson =>
   switch msgJson->Js.Json.decodeObject {
   | Some(msgObj) =>
-    msgObj->Js.Dict.get("meta")->Belt.Option.map(meta_decode)
-      |> (
-        x =>
-          switch x {
-          | Some(Ok(msgMeta)) => Some(msgMeta.service)
-          | Some(Error(err)) =>
-            Js.log2("Message.serviceNameOfMsg: Couldn't decode meta:", err)
-            None
-          | _ =>
-            Js.log("Message.serviceNameOfMsg: Invalid JSON object")
-            None
-          }
-      )
+    msgObj
+    ->Js.Dict.get("meta")
+    ->Belt.Option.map(meta_decode)
+    ->(
+      x =>
+        switch x {
+        | Some(Ok(msgMeta)) => Some(msgMeta.service)
+        | Some(Error(err)) =>
+          Js.log2("Message.serviceNameOfMsg: Couldn't decode meta:", err)
+          None
+        | _ =>
+          Js.log("Message.serviceNameOfMsg: Invalid JSON object")
+          None
+        }
+    )
 
   | None =>
     Js.log2("Message.serviceNameOfMsg:", msgJson)
@@ -110,7 +112,7 @@ type errorHandler<'error, 'command, 'event> = (
   'error,
   'command,
   ReventlessSpec.Message.context,
-) => list<'event>
+) => array<'event>
 
 let generateMeta = (~service, ~ip="", ~user="unknown", ()) => {
   let msgId = uuid()

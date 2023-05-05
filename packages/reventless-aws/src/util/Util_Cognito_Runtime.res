@@ -39,7 +39,7 @@ let signUpIfMissing = (
   ~password: string,
 ) =>
   signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password)
-  |> Js.Promise.then_(result =>
+  ->Js.Promise2.then(result =>
     Js.Promise.resolve(Js.log3("Created User", userName, result["_UserSub"]))
   )
-  |> Js.Promise.catch(_ => Js.Promise.resolve(Js.log2("Didn't create user:", userName)))
+  ->Js.Promise2.catch(_ => Js.Promise.resolve(Js.log2("Didn't create user:", userName)))

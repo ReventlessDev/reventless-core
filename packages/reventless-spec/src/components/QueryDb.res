@@ -17,7 +17,7 @@ type storageError =
   | StaleState
   | MissingSubIdConfig
 
-type load<'id, 'state> = (. 'id) => Js.Promise.t<Belt.Result.t<list<'state>, storageError>>
+type load<'id, 'state> = (. 'id) => Js.Promise.t<Belt.Result.t<array<'state>, storageError>>
 type save<'id, 'state> = (
   . 'id,
   'state,
@@ -47,7 +47,11 @@ module type T = {
   type delete = delete<Spec.Id.t>
   type deleteBatch = deleteBatch<Spec.Id.t>
 
-  let make: (~ttl: int=?, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => Component.t<t, outputs>
+  let make: (
+    ~ttl: int=?,
+    ~opts: Pulumi.ComponentResource.Options.t=?,
+    unit,
+  ) => Component.t<t, outputs>
 
   let load: Component.t<t, outputs> => load
   let save: Component.t<t, outputs> => save

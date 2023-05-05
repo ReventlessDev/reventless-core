@@ -2,9 +2,9 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
 function handleStreamEvent(handleEvents, streamEvent, param) {
@@ -31,9 +31,9 @@ function handleStreamEvent(handleEvents, streamEvent, param) {
             return ;
           }
         }));
-  return Js_promise.$$catch((function (err) {
+  return Js_promise2.$$catch(handleEvents(jsons), (function (err) {
                 return Promise.resolve((console.log("handleStreamEvent error:", err), undefined));
-              }), handleEvents(jsons));
+              }));
 }
 
 exports.handleStreamEvent = handleStreamEvent;

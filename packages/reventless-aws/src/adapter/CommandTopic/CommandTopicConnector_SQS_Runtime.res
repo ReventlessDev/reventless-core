@@ -23,13 +23,13 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
     })
 
   handleCommands(. topicItems)
-  |> Js.Promise.catch(err => {
+  ->Js.Promise2.catch(err => {
     Js.log3(__MODULE__ ++ ".handleQueueEvent error:", err, err->Js.Json.stringifyAny)
     Js.Exn.raiseError(
       __MODULE__ ++ ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!",
     )
   })
-  |> Js.Promise.then_(results =>
+  ->Js.Promise2.then(results =>
     results
     ->Belt.Array.mapWithIndex((idx, result) =>
       switch result {
@@ -49,8 +49,8 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
     )
     ->Belt.Array.keepMap(x => x)
     ->AwsSdk.SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get)
-    |> Js.Promise.then_(_ => Js.Promise.resolve())
-    |> Js.Promise.catch(err =>
+    ->Js.Promise2.then(_ => Js.Promise.resolve())
+    ->Js.Promise2.catch(err =>
       Js.log2(
         __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:",
         err,

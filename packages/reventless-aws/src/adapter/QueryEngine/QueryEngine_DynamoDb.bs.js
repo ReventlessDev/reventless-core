@@ -2,11 +2,9 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
-var $$String = require("@rescript/std/lib/js/string.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.bs.js");
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
@@ -24,7 +22,7 @@ function toJson(x) {
 }
 
 function createFilters(filters) {
-  return Belt_List.unzip(Belt_List.mapWithIndex(filters, (function (idx, param) {
+  return Belt_Array.unzip(Belt_Array.mapWithIndex(filters, (function (idx, param) {
                     var key = param[0];
                     var valueName = "" + key + "" + String(idx) + "";
                     var tmp;
@@ -82,27 +80,27 @@ function createFilters(filters) {
 
 function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendingOpt, limitOpt, param) {
   var key = keyOpt !== undefined ? keyOpt : "id";
-  var filterConfigs = filterConfigsOpt !== undefined ? filterConfigsOpt : /* [] */0;
+  var filterConfigs = filterConfigsOpt !== undefined ? filterConfigsOpt : [];
   var ascending = ascendingOpt !== undefined ? ascendingOpt : true;
   var limit = limitOpt !== undefined ? limitOpt : 1;
   var match = createFilters(filterConfigs);
   var filterExpressions = match[0];
-  var filterExpression = filterExpressions ? $$String.concat(" AND ", filterExpressions) : undefined;
-  var match$1 = Belt_List.unzip(match[1]);
-  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromList(Belt_List.concat({
-                    hd: [
-                      ":value",
-                      toJson(id)
-                    ],
-                    tl: /* [] */0
-                  }, match$1[1]))));
-  var attributeNames = Js_dict.fromList(Belt_List.concat({
-            hd: [
-              "#key",
-              key
-            ],
-            tl: /* [] */0
-          }, match$1[0]));
+  var filterExpression = filterExpressions.length !== 0 ? filterExpressions.join(" AND ") : undefined;
+  var match$1 = Belt_Array.unzip(match[1]);
+  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromArray(Belt_Array.concatMany([
+                    [[
+                        ":value",
+                        toJson(id)
+                      ]],
+                    match$1[1]
+                  ]))));
+  var attributeNames = Js_dict.fromArray(Belt_Array.concatMany([
+            [[
+                "#key",
+                key
+              ]],
+            match$1[0]
+          ]));
   var tmp = {
     TableName: tableName,
     KeyConditionExpression: "#key = :value",
@@ -119,25 +117,23 @@ function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendingOpt,
     tmp.FilterExpression = filterExpression;
   }
   var params = tmp;
-  var __x = Curry._1(DynamoDb_DocumentClient$AwsSdk.queryRecursive(params)(undefined), undefined);
-  var __x$1 = Js_promise.then_((function (result) {
-          return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
-                            return JSON.parse(JSON.stringify(js));
-                          })));
-        }), __x);
-  return Js_promise.$$catch((function (err) {
+  return Js_promise2.$$catch(Js_promise2.then(Curry._1(DynamoDb_DocumentClient$AwsSdk.queryRecursive(params)(undefined), undefined), (function (result) {
+                    return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
+                                      return JSON.parse(JSON.stringify(js));
+                                    })));
+                  })), (function (err) {
                 console.log("Task.query error:", err);
                 return Promise.resolve([]);
-              }), __x$1);
+              }));
 }
 
 function scanByTableName(tableName, filterConfigs, limit) {
   var match = createFilters(filterConfigs);
   var filterExpressions = match[0];
-  var filterExpression = filterExpressions ? $$String.concat(" AND ", filterExpressions) : undefined;
-  var match$1 = Belt_List.unzip(match[1]);
-  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromList(match$1[1])));
-  var attributeNames = Js_dict.fromList(match$1[0]);
+  var filterExpression = filterExpressions.length !== 0 ? filterExpressions.join(" AND ") : undefined;
+  var match$1 = Belt_Array.unzip(match[1]);
+  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromArray(match$1[1])));
+  var attributeNames = Js_dict.fromArray(match$1[0]);
   var tmp = {
     TableName: tableName,
     ExpressionAttributeNames: attributeNames,
@@ -148,14 +144,14 @@ function scanByTableName(tableName, filterConfigs, limit) {
     tmp.FilterExpression = filterExpression;
   }
   var params = tmp;
-  return Js_promise.$$catch((function (err) {
-                console.log("Task.query error:", err);
-                return Promise.resolve([]);
-              }), Js_promise.then_((function (result) {
+  return Js_promise2.$$catch(Js_promise2.then(Curry._1(DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined), undefined), (function (result) {
                     return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
                                       return JSON.parse(JSON.stringify(js));
                                     })));
-                  }), Curry._1(DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined), undefined)));
+                  })), (function (err) {
+                console.log("Task.query error:", err);
+                return Promise.resolve([]);
+              }));
 }
 
 function make(allQueryDbs) {

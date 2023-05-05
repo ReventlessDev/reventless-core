@@ -76,7 +76,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
 
     let publisherOutputs = publisher.resource
 
-    makeOutputs(~publisher=publisherOutputs) |> self->setOutputs
+    self->setOutputs(makeOutputs(~publisher=publisherOutputs))
   }
 
   let make = (~name, ~opts=?, ~allQueryDbs, _) =>

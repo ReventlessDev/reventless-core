@@ -145,7 +145,7 @@ module Make = (
         open Message
         {id, meta, command}
       }
-      publish(. command')->Js.Promise.then_(_ => Js.Promise.resolve(meta.msgId), _)
+      publish(. command')->Js.Promise2.then(_ => Js.Promise.resolve(meta.msgId))
     }
     fn
   }

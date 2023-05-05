@@ -2,7 +2,7 @@
 'use strict';
 
 var AwsSdk = require("aws-sdk");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 
 function userPoolEndpoint(region, userPoolId) {
   return "cognito-idp." + region + ".amazonaws.com/" + userPoolId + "";
@@ -20,11 +20,11 @@ function signUp(region, userPoolId, userPoolClientId, userName, password) {
 }
 
 function signUpIfMissing(region, userPoolId, userPoolClientId, userName, password) {
-  return Js_promise.$$catch((function (param) {
-                return Promise.resolve((console.log("Didn't create user:", userName), undefined));
-              }), Js_promise.then_((function (result) {
+  return Js_promise2.$$catch(Js_promise2.then(signUp(region, userPoolId, userPoolClientId, userName, password), (function (result) {
                     return Promise.resolve((console.log("Created User", userName, result.UserSub), undefined));
-                  }), signUp(region, userPoolId, userPoolClientId, userName, password)));
+                  })), (function (param) {
+                return Promise.resolve((console.log("Didn't create user:", userName), undefined));
+              }));
 }
 
 exports.userPoolEndpoint = userPoolEndpoint;

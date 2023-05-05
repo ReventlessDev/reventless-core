@@ -22,7 +22,7 @@ let atomicCounter = None
 
 let create: Behaviour.create<command, event, error> = (. command, context, error) =>
   switch command {
-  | Heartbeat => list{UnknownPluginDetected}
+  | Heartbeat => [UnknownPluginDetected]
   | Connect(_)
   | Disconnect
   | Activate
@@ -34,26 +34,25 @@ let execute: Behaviour.execute<state, command, event, error> = (. state, command
   switch state {
   | Detected =>
     switch command {
-    | Connect(pluginDefinition) => list{(Connected(pluginDefinition): event)}
-    | Heartbeat => list{UnknownPluginDetected}
+    | Connect(pluginDefinition) => [(Connected(pluginDefinition): event)]
+    | Heartbeat => [UnknownPluginDetected]
     | Disconnect
     | Activate
-    | Deactivate =>
-      list{}
+    | Deactivate => []
     }
   | Connected(pluginDefinition) =>
     switch command {
-    | Disconnect => list{Disconnected(pluginDefinition)}
-    | Deactivate => list{Deactivated(pluginDefinition)}
-    | Heartbeat => list{} // ignore
+    | Disconnect => [Disconnected(pluginDefinition)]
+    | Deactivate => [Deactivated(pluginDefinition)]
+    | Heartbeat => [] // ignore
     | Connect(_)
     | Activate =>
       error(AlreadyConnected, command, context)
     }
   | Disconnected(pluginDefinition) =>
     switch command {
-    | Heartbeat => list{Reconnected(pluginDefinition)}
-    | Deactivate => list{Deactivated(pluginDefinition)}
+    | Heartbeat => [Reconnected(pluginDefinition)]
+    | Deactivate => [Deactivated(pluginDefinition)]
     | Connect(_)
     | Disconnect
     | Activate =>
@@ -61,8 +60,8 @@ let execute: Behaviour.execute<state, command, event, error> = (. state, command
     }
   | Inactive(pluginDefinition) =>
     switch command {
-    | Activate => list{Activated(pluginDefinition)}
-    | Heartbeat => list{} // ignore
+    | Activate => [Activated(pluginDefinition)]
+    | Heartbeat => [] // ignore
     | Connect(_)
     | Disconnect
     | Deactivate =>

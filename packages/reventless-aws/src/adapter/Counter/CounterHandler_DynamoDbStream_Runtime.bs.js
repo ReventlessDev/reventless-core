@@ -7,9 +7,9 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
@@ -18,41 +18,30 @@ function addToCounterTarget(table, param) {
   var counterId = param.counterId;
   console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ".addToCounterTarget:", counterId, target);
   var tableName = table.name.get();
-  return Js_promise.$$catch((function (err) {
-                return Js_exn.raiseError("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget Error: Couldn't count on " + tableName + ": " + err.message + ""));
-              }), Js_promise.then_((function (updateOutput) {
-                    return Promise.resolve((console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget: current count for " + counterId + ":"), updateOutput.Attributes.count), undefined));
-                  }), DynamoDb_DocumentClient$AwsSdk.update({
+  return Js_promise2.$$catch(Js_promise2.then(DynamoDb_DocumentClient$AwsSdk.update({
                       TableName: tableName,
                       Key: {
                         id: counterId
                       },
                       UpdateExpression: "ADD #count :inc, #total :inc SET #targets = list_append(if_not_exists(#targets, :empty), :target),     #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRef)",
-                      ExpressionAttributeNames: Js_dict.fromList({
-                            hd: [
+                      ExpressionAttributeNames: Js_dict.fromArray([
+                            [
                               "#count",
                               "count"
                             ],
-                            tl: {
-                              hd: [
-                                "#total",
-                                "total"
-                              ],
-                              tl: {
-                                hd: [
-                                  "#targets",
-                                  "targets"
-                                ],
-                                tl: {
-                                  hd: [
-                                    "#targetRefs",
-                                    "targetRefs"
-                                  ],
-                                  tl: /* [] */0
-                                }
-                              }
-                            }
-                          }),
+                            [
+                              "#total",
+                              "total"
+                            ],
+                            [
+                              "#targets",
+                              "targets"
+                            ],
+                            [
+                              "#targetRefs",
+                              "targetRefs"
+                            ]
+                          ]),
                       ExpressionAttributeValues: {
                         ":inc": target,
                         ":target": [target],
@@ -61,7 +50,11 @@ function addToCounterTarget(table, param) {
                       },
                       ConditionExpression: "NOT contains(#targetRefs, :targetRef)",
                       ReturnValues: "UPDATED_NEW"
-                    })));
+                    }), (function (updateOutput) {
+                    return Promise.resolve((console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget: current count for " + counterId + ":"), updateOutput.Attributes.count), undefined));
+                  })), (function (err) {
+                return Js_exn.raiseError("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + (".addToCounterTarget Error: Couldn't count on " + tableName + ": " + err.message + ""));
+              }));
 }
 
 function referencesView_encode(v) {

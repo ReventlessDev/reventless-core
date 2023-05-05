@@ -8,7 +8,8 @@ let toJson = x =>
 @val @scope("JSON") external parseJs: string => _ = "parse"
 
 let createFilters = filters =>
-  filters->Belt.List.mapWithIndex((idx, (key, comparator, value)) => {
+  filters
+  ->Belt.Array.mapWithIndex((idx, (key, comparator, value)) => {
     let valueName = `${key}${idx->Belt.Int.toString}`
     (
       switch comparator {
@@ -26,32 +27,33 @@ let createFilters = filters =>
       },
       ((`#${key}`, key), (`:${valueName}`, value->toJson)),
     )
-  }) |> Belt.List.unzip
+  })
+  ->Belt.Array.unzip
 
 let queryByTableName = (
   ~tableName,
   ~key="id",
   ~id,
-  ~filterConfigs=list{},
+  ~filterConfigs=[],
   ~ascending=true,
   ~limit=1,
   (),
 ) => {
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilters
   let filterExpression = switch filterExpressions {
-  | list{} => None
-  | filterExpressions => Some(filterExpressions->String.concat(" AND ", _))
+  | [] => None
+  | filterExpressions => Some(filterExpressions->Js.Array2.joinWith(" AND "))
   }
 
-  let (filterNames, filterValues) = filterNamesValues->Belt.List.unzip
+  let (filterNames, filterValues) = filterNamesValues->Belt.Array.unzip
   let attributeValues =
-    Belt.List.concat(list{(":value", id->toJson)}, filterValues)
-    ->Js.Dict.fromList
+    Belt.Array.concatMany([[(":value", id->toJson)], filterValues])
+    ->Js.Dict.fromArray
     ->Js.Json.object_
     ->Js.Json.stringify
     ->parseJs
 
-  let attributeNames = Belt.List.concat(list{("#key", key)}, filterNames) |> Js.Dict.fromList
+  let attributeNames = Belt.Array.concatMany([[("#key", key)], filterNames])->Js.Dict.fromArray
 
   let params = AwsSdk.DynamoDb.DocumentClient.QueryInput.make(
     ~_TableName=tableName,
@@ -69,31 +71,28 @@ let queryByTableName = (
     (),
   )
   AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params, ())
-  ->Js.Promise.then_(
-    result =>
-      Js.Promise.resolve(
-        result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn),
-      ),
-    _,
+  ->Js.Promise2.then(result =>
+    Js.Promise.resolve(
+      result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn),
+    )
   )
-  ->Js.Promise.catch(err => {
+  ->Js.Promise2.catch(err => {
     Js.log2("Task.query error:", err)
     Js.Promise.resolve([])
-  }, _)
+  })
 }
 
 let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
-  let (filterExpressions, filterNamesValues) = filterConfigs |> createFilters
+  let (filterExpressions, filterNamesValues) = filterConfigs->createFilters
   let filterExpression = switch filterExpressions {
-  | list{} => None
-  | filterExpressions => Some(filterExpressions |> String.concat(" AND "))
+  | [] => None
+  | filterExpressions => Some(filterExpressions->Js.Array2.joinWith(" AND "))
   }
 
-  let (filterNames, filterValues) = filterNamesValues |> Belt.List.unzip
-  let attributeValues =
-    filterValues |> Js.Dict.fromList |> Js.Json.object_ |> Js.Json.stringify |> parseJs
+  let (filterNames, filterValues) = filterNamesValues->Belt.Array.unzip
+  let attributeValues = filterValues->Js.Dict.fromArray->Js.Json.object_->Js.Json.stringify->parseJs
 
-  let attributeNames = filterNames |> Js.Dict.fromList
+  let attributeNames = filterNames->Js.Dict.fromArray
 
   let params = AwsSdk.DynamoDb.DocumentClient.ScanInput.make(
     ~_TableName=tableName,
@@ -104,12 +103,12 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
     (),
   )
   AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params, ())
-  |> Js.Promise.then_(result =>
+  ->Js.Promise2.then(result =>
     Js.Promise.resolve(
       result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn),
     )
   )
-  |> Js.Promise.catch(err => {
+  ->Js.Promise2.catch(err => {
     Js.log2("Task.query error:", err)
     Js.Promise.resolve([])
   })

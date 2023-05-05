@@ -3,13 +3,12 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_List = require("@rescript/std/lib/js/belt_List.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Component$Reventless = require("./Component.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
@@ -34,21 +33,18 @@ var Adapter = {
 function Make(Config, Spec, $$Storage, Resolvers) {
   var loadFn = function (storage) {
     return function (id) {
-      return Js_promise.then_((function (result) {
+      return Js_promise2.then(storage.load(Curry._1(Spec.Id.toString, id)), (function (result) {
                     return Promise.resolve(Belt_Result.map(result, (function (states) {
-                                      return Belt_List.flatten(Belt_List.map(states, (function (param) {
+                                      return Belt_Array.concatMany(Belt_Array.map(states, (function (param) {
                                                         var state = Curry._1(Spec.state_decode, param);
                                                         if (state.TAG === /* Ok */0) {
-                                                          return {
-                                                                  hd: state._0,
-                                                                  tl: /* [] */0
-                                                                };
+                                                          return [state._0];
                                                         }
                                                         console.log("QueryDb: Error: Couldn't decode state for " + Curry._1(Spec.Id.toString, id) + ": " + Belt_Option.getExn(JSON.stringify(state._0)) + "");
-                                                        return /* [] */0;
+                                                        return [];
                                                       })));
                                     })));
-                  }), storage.load(Curry._1(Spec.Id.toString, id)));
+                  }));
     };
   };
   var saveFn = function (storage) {
@@ -137,12 +133,12 @@ function Make(Config, Spec, $$Storage, Resolvers) {
           Spec.resolveIdsConfigs,
           opts
         ]);
-    var outputs = {
+    var self$1 = {
       resources: Belt_Array.concat(storage.resources, resolvers.resources),
       resolversMaker: resolvers.resourcesMaker
     };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
+    self$1.setOutputs(self);
+    return self$1.registerOutputs(self);
   };
   var make = function (ttl, opts, param) {
     var prim0 = ComponentType$Reventless.toString(/* QueryDb */11);
