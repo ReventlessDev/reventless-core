@@ -54,8 +54,8 @@ module Adapter = {
     ~dataSourceName: Pulumi.Output.t<string>,
     ~indexes: array<indexConfig>,
     ~subIdField: option<string>,
-    ~resolveIdConfigs: array<resolveIdConfig>,
-    ~resolveIdsConfigs: array<resolveIdsConfig>,
+    ~idResolverConfigs: array<idResolverConfig>,
+    ~idsResolverConfigs: array<idsResolverConfig>,
     ~opts: Pulumi.CustomResourceOptions.t,
   ) => resolvers
 
@@ -77,8 +77,8 @@ module Adapter = {
       ~dataSourceName as _,
       ~indexes as _: array<indexConfig>,
       ~subIdField as _,
-      ~resolveIdConfigs as _: array<resolveIdConfig>,
-      ~resolveIdsConfigs as _: array<resolveIdsConfig>,
+      ~idResolverConfigs as _: array<idResolverConfig>,
+      ~idsResolverConfigs as _: array<idsResolverConfig>,
       ~opts as _,
     ) => {
       resources: [],
@@ -279,8 +279,8 @@ module Make = (
       ~dataSourceName=storage.dataSourceName,
       ~indexes=Spec.config.indexes,
       ~subIdField,
-      ~resolveIdConfigs=Spec.config.resolveId,
-      ~resolveIdsConfigs=Spec.config.resolveIds,
+      ~idResolverConfigs=Spec.config.idResolvers,
+      ~idsResolverConfigs=Spec.config.idsResolvers,
       ~opts,
     )
 

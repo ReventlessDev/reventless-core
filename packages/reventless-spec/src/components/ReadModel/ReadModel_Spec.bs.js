@@ -2,13 +2,13 @@
 'use strict';
 
 
-function config(resolveIdOpt, resolveIdsOpt, indexesOpt, param) {
-  var resolveId = resolveIdOpt !== undefined ? resolveIdOpt : [];
-  var resolveIds = resolveIdsOpt !== undefined ? resolveIdsOpt : [];
+function config(idResolversOpt, idsResolversOpt, indexesOpt, param) {
+  var idResolvers = idResolversOpt !== undefined ? idResolversOpt : [];
+  var idsResolvers = idsResolversOpt !== undefined ? idsResolversOpt : [];
   var indexes = indexesOpt !== undefined ? indexesOpt : [];
   return {
-          resolveId: resolveId,
-          resolveIds: resolveIds,
+          idResolvers: idResolvers,
+          idsResolvers: idsResolvers,
           indexes: indexes
         };
 }

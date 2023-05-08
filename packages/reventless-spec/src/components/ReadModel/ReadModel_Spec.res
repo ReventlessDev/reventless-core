@@ -7,7 +7,7 @@ type resolvedField =
   | Single(string)
   | Multi(string)
 
-type resolveIdSourceConfig = {
+type idResolverSourceConfig = {
   idField: string,
   subId: subId,
   resolvedField: resolvedField,
@@ -18,7 +18,7 @@ type targetIdField =
   | IndexWithId(string, string)
   | Id
 
-type resolveIdTargetConfig = {
+type idResolverTargetConfig = {
   pluginName?: string,
   tableName: string,
   idField: targetIdField,
@@ -31,21 +31,21 @@ type resolveConfig<'source, 'target> = {
 }
 
 @ocaml.doc(" resolve single id field ")
-type resolveIdConfig = resolveConfig<resolveIdSourceConfig, resolveIdTargetConfig>
+type idResolverConfig = resolveConfig<idResolverSourceConfig, idResolverTargetConfig>
 
-type resolveIdsSourceConfig = {
+type idsResolverSourceConfig = {
   idsField: string,
   resolvedField: string,
 }
 
-type resolveIdsTargetConfig = {
+type idsResolverTargetConfig = {
   pluginName?: string,
   tableName: string,
   subIdField?: string,
 }
 
 @ocaml.doc(" resolve id array field ")
-type resolveIdsConfig = resolveConfig<resolveIdsSourceConfig, resolveIdsTargetConfig>
+type idsResolverConfig = resolveConfig<idsResolverSourceConfig, idsResolverTargetConfig>
 
 type authorization = {
   tableName: string,
@@ -67,14 +67,14 @@ type subIdConfig<'state> = {
 }
 
 type config = {
-  resolveId: array<resolveIdConfig>,
-  resolveIds: array<resolveIdsConfig>,
+  idResolvers: array<idResolverConfig>,
+  idsResolvers: array<idsResolverConfig>,
   indexes: array<indexConfig>,
 }
 
-let config = (~resolveId=[], ~resolveIds=[], ~indexes=[], ()) => {
-  resolveId,
-  resolveIds,
+let config = (~idResolvers=[], ~idsResolvers=[], ~indexes=[], ()) => {
+  idResolvers,
+  idsResolvers,
   indexes,
 }
 

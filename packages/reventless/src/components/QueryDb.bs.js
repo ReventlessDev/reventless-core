@@ -129,8 +129,8 @@ function Make(Config, Spec, $$Storage, Resolvers) {
           storage.dataSourceName,
           Spec.config.indexes,
           subIdField,
-          Spec.config.resolveId,
-          Spec.config.resolveIds,
+          Spec.config.idResolvers,
+          Spec.config.idsResolvers,
           opts
         ]);
     var self$1 = {
