@@ -55,8 +55,8 @@ type authorization = {
 type indexConfig = {
   index: string,
   _type: string,
-  idField?: string, 
-  subIdField?: string, 
+  idField?: string,
+  subIdField?: string,
   projectionType: [#KEYS_ONLY | #ALL | #INCLUDE(array<string>)],
   authorization?: authorization,
 }
@@ -87,5 +87,5 @@ module type T = {
   type state
 
   let config: config
-  let subIdConfig: option<subIdConfig<'state>>
+  let subIdConfig: option<subIdConfig<state>>
 }
