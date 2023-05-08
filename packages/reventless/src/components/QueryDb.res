@@ -22,7 +22,7 @@ module Adapter = {
   }
   type storageMaker<'api, 'role> = (
     ~name: string,
-    ~indexes: array<index>,
+    ~indexes: array<indexConfig>,
     ~subIdField: string=?,
     ~ttl: int=?,
     ~api: 'api,
@@ -52,7 +52,7 @@ module Adapter = {
     ~api: 'api,
     ~apiRole: 'role,
     ~dataSourceName: Pulumi.Output.t<string>,
-    ~indexes: array<index>,
+    ~indexes: array<indexConfig>,
     ~subIdField: option<string>,
     ~resolveIdConfigs: array<resolveIdConfig>,
     ~resolveIdsConfigs: array<resolveIdsConfig>,
@@ -75,7 +75,7 @@ module Adapter = {
       ~api as _: api,
       ~apiRole as _: role,
       ~dataSourceName as _,
-      ~indexes as _: array<index>,
+      ~indexes as _: array<indexConfig>,
       ~subIdField as _,
       ~resolveIdConfigs as _: array<resolveIdConfig>,
       ~resolveIdsConfigs as _: array<resolveIdsConfig>,
@@ -257,7 +257,7 @@ module Make = (
     let storageName = name->ComponentType.name(componentType)
     let storage = Storage.make(
       ~name=storageName,
-      ~indexes=Spec.indexes,
+      ~indexes=Spec.config.indexes,
       ~subIdField?,
       ~ttl?,
       ~api,
@@ -277,10 +277,10 @@ module Make = (
       ~api,
       ~apiRole,
       ~dataSourceName=storage.dataSourceName,
-      ~indexes=Spec.indexes,
+      ~indexes=Spec.config.indexes,
       ~subIdField,
-      ~resolveIdConfigs=Spec.resolveIdConfigs,
-      ~resolveIdsConfigs=Spec.resolveIdsConfigs,
+      ~resolveIdConfigs=Spec.config.resolveId,
+      ~resolveIdsConfigs=Spec.config.resolveIds,
       ~opts,
     )
 

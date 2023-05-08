@@ -10,7 +10,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
   ~api: api,
   ~apiRole: role,
   ~dataSourceName,
-  ~indexes: array<index>,
+  ~indexes: array<indexConfig>,
   ~subIdField,
   ~resolveIdConfigs: array<resolveIdConfig>,
   ~resolveIdsConfigs: array<resolveIdsConfig>,
@@ -154,14 +154,14 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
     let idResolvers = resolveIdConfigs->Belt.Array.map(config => {
       let {
         source: {idField: sourceIdField, subId: sourceSubId, resolvedField},
-        target: {pluginName, tableName, idField: targetId, subIdField: targetSortField},
+        target: {tableName, idField: targetId} as target,
       }: resolveIdConfig = config
       let (index, targetIdField) = switch targetId {
       | Index(index) => (index, index)
       | IndexWithId(index, targetIdField) => (index, targetIdField)
       | _ => ("", "")
       }
-      switch (storageResource(~pluginName, ~tableName), resolvedField) {
+      switch (storageResource(~pluginName=target.pluginName, ~tableName), resolvedField) {
       | (Some(storageResource), Single(field))
       | (Some(storageResource), Multi(field)) =>
         let dataSourceName =
@@ -180,7 +180,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
           ~dataSourceName,
           ~_type=name->Pulumi.Input.make,
           ~field=field->Pulumi.Input.make,
-          ~requestTemplate=switch (targetId, sourceSubId, targetSortField) {
+          ~requestTemplate=switch (targetId, sourceSubId, target.subIdField) {
           | (Id, Field(sourceSortField), Some(targetSortField)) =>
             resolveIdSort(~sourceIdField, ~sourceSortField, ~targetSortField)
           | (Id, Argument(sourceSortArgument), Some(targetSortField)) =>
@@ -229,11 +229,8 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
     })
 
     let idsResolvers = resolveIdsConfigs->Belt.Array.map(config => {
-      let {
-        source: {idsField, resolvedField},
-        target: {pluginName, tableName, subIdField: sortField},
-      } = config
-      let storageResource = storageResource(~pluginName, ~tableName)
+      let {source: {idsField, resolvedField}, target: {tableName} as target} = config
+      let storageResource = storageResource(~pluginName=target.pluginName, ~tableName)
 
       Resolver.makeUnitResolver(
         ~name=name ++ idsField->String.capitalize_ascii,
@@ -243,7 +240,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
         ~field=resolvedField->Pulumi.Input.make,
         ~requestTemplate=generateTemplate(
           ~storageResource,
-          ~template=resolveIds(~idsField, ~sortField),
+          ~template=resolveIds(~idsField, ~sortField=target.subIdField),
         ),
         ~responseTemplate=generateTemplate(~storageResource, ~template=resolveIdsResult(~idsField)),
         ~opts,

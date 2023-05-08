@@ -19,10 +19,10 @@ type targetIdField =
   | Id
 
 type resolveIdTargetConfig = {
-  pluginName: option<string>, // TODO: make optional field
+  pluginName?: string,
   tableName: string,
   idField: targetIdField,
-  subIdField: option<string>, // TODO: make optional field
+  subIdField?: string,
 }
 
 type resolveConfig<'source, 'target> = {
@@ -39,9 +39,9 @@ type resolveIdsSourceConfig = {
 }
 
 type resolveIdsTargetConfig = {
-  pluginName: option<string>, // TODO: make optional field
+  pluginName?: string,
   tableName: string,
-  subIdField: option<string>, // TODO: make optional field
+  subIdField?: string,
 }
 
 @ocaml.doc(" resolve id array field ")
@@ -52,7 +52,7 @@ type authorization = {
   group: string,
 }
 
-type index = {
+type indexConfig = {
   index: string,
   _type: string,
   idField: option<string>, // TODO: make optional field
@@ -66,6 +66,18 @@ type subIdConfig<'state> = {
   getSubId: 'state => string,
 }
 
+type config = {
+  resolveId: array<resolveIdConfig>,
+  resolveIds: array<resolveIdsConfig>,
+  indexes: array<indexConfig>,
+}
+
+let config = (~resolveId=[], ~resolveIds=[], ~indexes=[], ()) => {
+  resolveId,
+  resolveIds,
+  indexes,
+}
+
 module type T = {
   module Id: Id.T
 
@@ -74,10 +86,6 @@ module type T = {
   @decco
   type state
 
-  let resolveIdConfigs: array<resolveIdConfig>
-  let resolveIdsConfigs: array<resolveIdsConfig>
-
-  let subIdConfig: option<subIdConfig<state>>
-
-  let indexes: array<index>
+  let config: config
+  let subIdConfig: option<subIdConfig<'state>>
 }

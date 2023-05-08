@@ -34,9 +34,5 @@ type queryResult = {
 let name = "Plugin"
 
 open ReventlessSpec.ReadModel.Spec
-let resolveIdConfigs: array<resolveIdConfig> = []
-let resolveIdsConfigs: array<resolveIdsConfig> = []
-
+let config = config()
 let subIdConfig = None
-
-let indexes: array<index> = []

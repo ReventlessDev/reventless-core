@@ -1,5 +1,6 @@
 open ReventlessSpec.Adapter
 open ReventlessSpec.Counter
+open ReventlessSpec.ReadModel.Spec
 
 let componentType = ComponentType.Counter
 @inline
@@ -123,10 +124,8 @@ module Make = (
         inc: int,
       }
 
-      let resolveIdConfigs = []
-      let resolveIdsConfigs = []
       let subIdConfig = None
-      let indexes = []
+      let config = config()
     }
 
     module ReferencesDb = QueryDb.Make(
@@ -145,10 +144,8 @@ module Make = (
         count: int,
       } //TODO: generalize
 
-      let resolveIdConfigs = []
-      let resolveIdsConfigs = []
       let subIdConfig = None
-      let indexes = []
+      let config = config()
     }
 
     module CountsDb = QueryDb.Make(

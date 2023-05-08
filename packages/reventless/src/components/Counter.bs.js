@@ -18,6 +18,7 @@ var Message$Reventless = require("../Message.bs.js");
 var QueryDb$Reventless = require("./QueryDb.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
+var ReadModel_Spec$ReventlessSpec = require("@reventless/reventless-spec/src/components/ReadModel/ReadModel_Spec.bs.js");
 
 var NotCounted = /* @__PURE__ */Caml_exceptions.create("Counter-Reventless.NotCounted");
 
@@ -125,9 +126,7 @@ function Make(Config, QueryDbStorage, Handler) {
               }
             };
     };
-    var resolveIdConfigs = [];
-    var resolveIdsConfigs = [];
-    var indexes = [];
+    var config = ReadModel_Spec$ReventlessSpec.config(undefined, undefined, undefined, undefined);
     var partial_arg_Id = {
       t_encode: Id$ReventlessSpec.StringPure.t_encode,
       t_decode: Id$ReventlessSpec.StringPure.t_decode,
@@ -147,10 +146,8 @@ function Make(Config, QueryDbStorage, Handler) {
       name: name$2,
       state_encode: state_encode,
       state_decode: state_decode,
-      resolveIdConfigs: resolveIdConfigs,
-      resolveIdsConfigs: resolveIdsConfigs,
-      subIdConfig: undefined,
-      indexes: indexes
+      config: config,
+      subIdConfig: undefined
     };
     var partial_arg$1 = QueryDb$Reventless.Make;
     var partial_arg$2 = function (param, param$1) {
@@ -211,9 +208,7 @@ function Make(Config, QueryDbStorage, Handler) {
               }
             };
     };
-    var resolveIdConfigs$1 = [];
-    var resolveIdsConfigs$1 = [];
-    var indexes$1 = [];
+    var config$1 = ReadModel_Spec$ReventlessSpec.config(undefined, undefined, undefined, undefined);
     var partial_arg_Id$1 = {
       t_encode: Id$ReventlessSpec.StringPure.t_encode,
       t_decode: Id$ReventlessSpec.StringPure.t_decode,
@@ -233,10 +228,8 @@ function Make(Config, QueryDbStorage, Handler) {
       name: name$3,
       state_encode: state_encode$1,
       state_decode: state_decode$1,
-      resolveIdConfigs: resolveIdConfigs$1,
-      resolveIdsConfigs: resolveIdsConfigs$1,
-      subIdConfig: undefined,
-      indexes: indexes$1
+      config: config$1,
+      subIdConfig: undefined
     };
     var partial_arg$4 = QueryDb$Reventless.Make;
     var partial_arg$5 = function (param, param$1) {

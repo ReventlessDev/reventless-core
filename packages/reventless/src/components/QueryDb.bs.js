@@ -115,7 +115,7 @@ function Make(Config, Spec, $$Storage, Resolvers) {
             return config.subIdField;
           }));
     var storageName = ComponentType$Reventless.name(name, /* QueryDb */11);
-    var storage = Curry._7($$Storage.make, storageName, Spec.indexes, subIdField, ttl, api, apiRole, opts);
+    var storage = Curry._7($$Storage.make, storageName, Spec.config.indexes, subIdField, ttl, api, apiRole, opts);
     self.load = loadFn(storage);
     self.save = saveFn(storage);
     self.saveBatch = saveBatchFn(storage);
@@ -127,10 +127,10 @@ function Make(Config, Spec, $$Storage, Resolvers) {
           api,
           apiRole,
           storage.dataSourceName,
-          Spec.indexes,
+          Spec.config.indexes,
           subIdField,
-          Spec.resolveIdConfigs,
-          Spec.resolveIdsConfigs,
+          Spec.config.resolveId,
+          Spec.config.resolveIds,
           opts
         ]);
     var self$1 = {

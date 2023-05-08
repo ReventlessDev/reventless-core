@@ -9,6 +9,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Message$Reventless = require("../../../Message.bs.js");
 var Plugin$ReventlessSpec = require("@reventless/reventless-spec/src/components/Plugin.bs.js");
+var ReadModel_Spec$ReventlessSpec = require("@reventless/reventless-spec/src/components/ReadModel/ReadModel_Spec.bs.js");
 
 function status_encode(v) {
   switch (v) {
@@ -246,11 +247,7 @@ function state_decode(v) {
         };
 }
 
-var resolveIdConfigs = [];
-
-var resolveIdsConfigs = [];
-
-var indexes = [];
+var config = ReadModel_Spec$ReventlessSpec.config(undefined, undefined, undefined, undefined);
 
 var Id;
 
@@ -264,8 +261,6 @@ exports.status_decode = status_decode;
 exports.state_encode = state_encode;
 exports.state_decode = state_decode;
 exports.name = name;
-exports.resolveIdConfigs = resolveIdConfigs;
-exports.resolveIdsConfigs = resolveIdsConfigs;
+exports.config = config;
 exports.subIdConfig = subIdConfig;
-exports.indexes = indexes;
-/* Message-Reventless Not a pure module */
+/* config Not a pure module */
