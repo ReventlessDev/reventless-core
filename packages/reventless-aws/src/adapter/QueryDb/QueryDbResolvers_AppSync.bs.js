@@ -15,7 +15,7 @@ var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSyn
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.bs.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.bs.js");
 
-function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveIdConfigs, resolveIdsConfigs, opts) {
+function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, opts) {
   var name$1 = $$String.capitalize_ascii(name);
   var resolverByIdSingle = AppSync_Resolver$PulumiAws.makeUnitResolver(name$1, api, dataSourceName, "Query", $$String.uncapitalize_ascii(name$1), subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Templates$PulumiAws.getItemById, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
   var resolverByIdMultiple = Belt_Option.map(subIdField, (function (_sortField) {
@@ -52,7 +52,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
         return AppSync_Resolver_Templates$PulumiAws.$$null;
       }
     };
-    var idResolvers = Belt_Array.map(resolveIdConfigs, (function (config) {
+    var idResolvers = Belt_Array.map(idResolverConfigs, (function (config) {
             var target = config.target;
             var targetId = target.idField;
             var match = config.source;
@@ -109,7 +109,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, resolveId
             var field$1 = resolvedField._0;
             return AppSync_Resolver$PulumiAws.makeUnitResolver(name$1 + $$String.capitalize_ascii(field$1), api, dataSourceName, name$1, field$1, AppSync_Resolver_Templates$PulumiAws.$$null, AppSync_Resolver_Templates$PulumiAws.$$null, Caml_option.some(opts), undefined);
           }));
-    var idsResolvers = Belt_Array.map(resolveIdsConfigs, (function (config) {
+    var idsResolvers = Belt_Array.map(idsResolverConfigs, (function (config) {
             var target = config.target;
             var match = config.source;
             var idsField = match.idsField;

@@ -177,13 +177,13 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
           ~field=field->Pulumi.Input.make,
           ~requestTemplate=switch (targetId, sourceSubId, target.subIdField) {
           | (Id, Field(sourceSortField), Some(targetSortField)) =>
-            idResolverSort(~sourceIdField, ~sourceSortField, ~targetSortField)
+            resolveIdSort(~sourceIdField, ~sourceSortField, ~targetSortField)
           | (Id, Argument(sourceSortArgument), Some(targetSortField)) =>
-            idResolverSortArgument(~sourceIdField, ~sourceSortArgument, ~targetSortField)
-          | (Id, _, _) => idResolver(~sourceIdField)
+            resolveIdSortArgument(~sourceIdField, ~sourceSortArgument, ~targetSortField)
+          | (Id, _, _) => resolveId(~sourceIdField)
 
           | (_, Field(sourceSortField), Some(targetSortField)) =>
-            idResolverByIndexSort(
+            resolveIdByIndexSort(
               ~index,
               ~sourceIdField,
               ~targetIdField,
@@ -191,14 +191,14 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
               ~targetSortField,
             )
           | (_, Argument(sourceSortArgument), Some(targetSortField)) =>
-            idResolverByIndexSortArgument(
+            resolveIdByIndexSortArgument(
               ~index,
               ~sourceIdField,
               ~targetIdField,
               ~sourceSortArgument,
               ~targetSortField,
             )
-          | _ => idResolverByIndex(~index, ~sourceIdField, ~targetIdField)
+          | _ => resolveIdByIndex(~index, ~sourceIdField, ~targetIdField)
           },
           ~responseTemplate=switch resolvedField {
           | Single(_) => firstResult
@@ -235,9 +235,9 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
         ~field=resolvedField->Pulumi.Input.make,
         ~requestTemplate=generateTemplate(
           ~storageResource,
-          ~template=idsResolver(~idsField, ~sortField=target.subIdField),
+          ~template=resolveIds(~idsField, ~sortField=target.subIdField),
         ),
-        ~responseTemplate=generateTemplate(~storageResource, ~template=idsResolverResult(~idsField)),
+        ~responseTemplate=generateTemplate(~storageResource, ~template=resolveIdsResult(~idsField)),
         ~opts,
         (),
       )
