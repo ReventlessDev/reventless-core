@@ -55,10 +55,10 @@ type authorization = {
 type indexConfig = {
   index: string,
   _type: string,
-  idField: option<string>, // TODO: make optional field
-  subIdField: option<string>, // TODO: make optional field
+  idField?: string, 
+  subIdField?: string, 
   projectionType: [#KEYS_ONLY | #ALL | #INCLUDE(array<string>)],
-  authorization: option<authorization>,
+  authorization?: authorization,
 }
 
 type subIdConfig<'state> = {

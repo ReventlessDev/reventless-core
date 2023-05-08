@@ -7,22 +7,22 @@ type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
 
 let globalSecondaryIndexes = indexes =>
   indexes
-  ->Belt.Array.map(({index, idField, subIdField, projectionType}) =>
+  ->Belt.Array.map(({index, projectionType} as indexConfig) =>
     switch projectionType {
     | #ALL as projectionType
     | #KEYS_ONLY as projectionType =>
       GlobalSecondaryIndex.make(
         ~name=index,
-        ~hashKey=idField->Belt.Option.getWithDefault(index),
-        ~rangeKey=?subIdField,
+        ~hashKey=indexConfig.idField->Belt.Option.getWithDefault(index),
+        ~rangeKey=?indexConfig.subIdField,
         ~projectionType,
         (),
       )
     | #INCLUDE(includes) =>
       GlobalSecondaryIndex.make(
         ~name=index,
-        ~hashKey=idField->Belt.Option.getWithDefault(index),
-        ~rangeKey=?subIdField,
+        ~hashKey=indexConfig.idField->Belt.Option.getWithDefault(index),
+        ~rangeKey=?indexConfig.subIdField,
         ~projectionType=#INCLUDE,
         ~nonKeyAttributes=includes,
         (),
@@ -36,10 +36,12 @@ let attributes = (sortField, indexes) =>
     [{"name": "id", "type": "S"}],
     sortField->Belt.Option.mapWithDefault([], sortField => [{"name": sortField, "type": "S"}]),
     indexes
-    ->Belt.Array.map(({index, _type, subIdField: sortField}) =>
+    ->Belt.Array.map(({index, _type} as indexConfig) =>
       [
         [{"name": index, "type": _type}],
-        sortField->Belt.Option.mapWithDefault([], sortField => [{"name": sortField, "type": "S"}]),
+        indexConfig.subIdField->Belt.Option.mapWithDefault([], sortField => [
+          {"name": sortField, "type": "S"},
+        ]),
       ]->Belt.Array.concatMany
     )
     ->Belt.Array.concatMany,

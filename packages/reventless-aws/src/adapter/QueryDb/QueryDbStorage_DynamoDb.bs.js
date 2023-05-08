@@ -12,30 +12,28 @@ var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSyn
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_DynamoDb_Runtime.bs.js");
 
 function globalSecondaryIndexes(indexes) {
-  return Belt_Array.map(indexes, (function (param) {
-                var projectionType = param.projectionType;
-                var subIdField = param.subIdField;
-                var idField = param.idField;
-                var index = param.index;
+  return Belt_Array.map(indexes, (function (indexConfig) {
+                var projectionType = indexConfig.projectionType;
+                var index = indexConfig.index;
                 if (typeof projectionType === "object") {
                   var tmp = {
-                    hashKey: Belt_Option.getWithDefault(idField, index),
+                    hashKey: Belt_Option.getWithDefault(indexConfig.idField, index),
                     name: index,
                     projectionType: "INCLUDE",
                     nonKeyAttributes: projectionType.VAL
                   };
-                  if (subIdField !== undefined) {
-                    tmp.rangeKey = subIdField;
+                  if (indexConfig.subIdField !== undefined) {
+                    tmp.rangeKey = indexConfig.subIdField;
                   }
                   return tmp;
                 }
                 var tmp$1 = {
-                  hashKey: Belt_Option.getWithDefault(idField, index),
+                  hashKey: Belt_Option.getWithDefault(indexConfig.idField, index),
                   name: index,
                   projectionType: projectionType
                 };
-                if (subIdField !== undefined) {
-                  tmp$1.rangeKey = subIdField;
+                if (indexConfig.subIdField !== undefined) {
+                  tmp$1.rangeKey = indexConfig.subIdField;
                 }
                 return tmp$1;
               }));
@@ -53,13 +51,13 @@ function attributes(sortField, indexes) {
                                 type: "S"
                               }];
                     })),
-              Belt_Array.concatMany(Belt_Array.map(indexes, (function (param) {
+              Belt_Array.concatMany(Belt_Array.map(indexes, (function (indexConfig) {
                           return Belt_Array.concatMany([
                                       [{
-                                          name: param.index,
-                                          type: param._type
+                                          name: indexConfig.index,
+                                          type: indexConfig._type
                                         }],
-                                      Belt_Option.mapWithDefault(param.subIdField, [], (function (sortField) {
+                                      Belt_Option.mapWithDefault(indexConfig.subIdField, [], (function (sortField) {
                                               return [{
                                                         name: sortField,
                                                         type: "S"

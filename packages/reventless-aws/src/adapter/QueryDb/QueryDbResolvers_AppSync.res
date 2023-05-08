@@ -65,15 +65,10 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
   )
 
   let resourcesMaker: ReventlessSpec.QueryDb.resolversResourcesMaker = allQueryDbs => {
-    let resolversByIndex = indexes->Belt.Array.map(({
-      index,
-      idField,
-      subIdField,
-      authorization,
-    }) => {
+    let resolversByIndex = indexes->Belt.Array.map(({index} as indexConfig) => {
       let name = name ++ ("By" ++ index->String.capitalize_ascii)
-      let idField = idField->Belt.Option.getWithDefault(index)
-      switch authorization {
+      let idField = indexConfig.idField->Belt.Option.getWithDefault(index)
+      switch indexConfig.authorization {
       | None =>
         Resolver.makeUnitResolver(
           ~name,
@@ -81,7 +76,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
           ~dataSourceName,
           ~_type="Query"->Pulumi.Input.make,
           ~field=name->String.uncapitalize_ascii->Pulumi.Input.make,
-          ~requestTemplate=switch subIdField {
+          ~requestTemplate=switch indexConfig.subIdField {
           | Some(sortField) => queryByIndexSortFiltered(~index, ~idField, ~sortField)
           | None => queryByIndexFiltered(~index, ~idField)
           },
