@@ -133,12 +133,12 @@ function Make(Config, Spec, $$Storage, Resolvers) {
           Spec.config.idsResolvers,
           opts
         ]);
-    var self$1 = {
+    var outputs = {
       resources: Belt_Array.concat(storage.resources, resolvers.resources),
       resolversMaker: resolvers.resourcesMaker
     };
-    self$1.setOutputs(self);
-    return self$1.registerOutputs(self);
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
   };
   var make = function (ttl, opts, param) {
     var prim0 = ComponentType$Reventless.toString(/* QueryDb */11);

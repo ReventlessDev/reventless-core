@@ -154,8 +154,8 @@ module Make = (
       switch x {
       | ExtensionPointMapping.AbstractPublishEvent(event') =>
         let publish = EventTopic.publish(eventTopic)
-        publish(. [event'])->Js.Promise2.catch(
-          err => err->Js.log2("ExtensionPoint: Error on publish command:")->Js.Promise.resolve,
+        publish(. [event'])->Js.Promise2.catch(err =>
+          err->Js.log2("ExtensionPoint: Error on publish command:")->Js.Promise.resolve
         )
       | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
         let publish = EventTopic.publish(eventTopic)
@@ -165,8 +165,8 @@ module Make = (
           )
         )
       | AbstractCall(handler) =>
-        handler()->Js.Promise2.catch(
-          err => err->Js.log2("ExtensionPoint: Error on calling handler:")->Js.Promise.resolve,
+        handler()->Js.Promise2.catch(err =>
+          err->Js.log2("ExtensionPoint: Error on calling handler:")->Js.Promise.resolve
         )
       }
 
@@ -203,13 +203,17 @@ module Make = (
     commandTopic :=
       Some(CommandTopic.make(~name=childName, ~commandsHandler=incomingCommandsHandler, ~opts, ()))
 
-    makeOutputs(
-      ~name,
-      ~aggregateNames=Mappings.mappings->Belt.Array.map((module(Mapping)) => Mapping.aggregateName),
-      ~outgoingEventHandler,
-      ~commandTopic=commandTopic.contents->Belt.Option.getExn->Component.extractOutputs,
-      ~eventTopic=eventTopic->Component.extractOutputs,
-    )->setOutputs(self, _)
+    self->setOutputs(
+      makeOutputs(
+        ~name,
+        ~aggregateNames=Mappings.mappings->Belt.Array.map((module(Mapping)) =>
+          Mapping.aggregateName
+        ),
+        ~outgoingEventHandler,
+        ~commandTopic=commandTopic.contents->Belt.Option.getExn->Component.extractOutputs,
+        ~eventTopic=eventTopic->Component.extractOutputs,
+      ),
+    )
   }
 
   let make = (~publishToAggregates, ~scheduler, ~queryEngine, ~opts, _) =>

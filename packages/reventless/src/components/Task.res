@@ -78,14 +78,16 @@ let construct = (
     (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(. cmdJsons)
   }
 
-  setup(.
-    queryEngine,
-    scheduler,
-    publishCommands,
-    queryBucketName,
-    Util.Aggregate.allEventTopics(allAggregates),
-    opts,
-  )->setOutputs(self, _)
+  self->setOutputs(
+    setup(.
+      queryEngine,
+      scheduler,
+      publishCommands,
+      queryBucketName,
+      Util.Aggregate.allEventTopics(allAggregates),
+      opts,
+    ),
+  )
 }
 
 let make = (

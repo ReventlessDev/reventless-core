@@ -284,12 +284,12 @@ module Make = (
       ~opts,
     )
 
-    makeOutputs(
-      ~resources=storage.resources->Belt.Array.concat(resolvers.resources),
-      ~resolversMaker=resolvers.resourcesMaker,
+    self->setOutputs(
+      makeOutputs(
+        ~resources=storage.resources->Belt.Array.concat(resolvers.resources),
+        ~resolversMaker=resolvers.resourcesMaker,
+      ),
     )
-    ->(self
-    ->setOutputs)
   }
 
   let make = (~ttl=?, ~opts=?, _) =>

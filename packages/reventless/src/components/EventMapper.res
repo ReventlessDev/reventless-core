@@ -220,7 +220,8 @@ module Make = (
     Js.log2("EventMapper.eventCollectorEventsHandler: countActions:", countActions->Belt.Array.size)
     let countP = switch countActions->Belt.Array.size {
     | 0 => Js.Promise.resolve()
-    | _ => count(countActions)->Js.Promise2.catch(err => {
+    | _ =>
+      count(countActions)->Js.Promise2.catch(err => {
         let error = __MODULE__ ++ ".eventCollectorEventsHandler: count error"
         Js.log2(error, err)
         Js.Exn.raiseError(error)
@@ -319,11 +320,13 @@ module Make = (
       (),
     )
 
-    makeOutputs(
-      ~name,
-      ~eventCollector=eventCollector->Component.extractOutputs,
-      ~counter=counterOutputs,
-    )->setOutputs(self, _)
+    self->setOutputs(
+      makeOutputs(
+        ~name,
+        ~eventCollector=eventCollector->Component.extractOutputs,
+        ~counter=counterOutputs,
+      ),
+    )
   }
 
   let make = (

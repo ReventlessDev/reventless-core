@@ -297,12 +297,12 @@ module Make = (
     self->setCount(count(referencesDb->ReferencesDb.saveBatch))
     self->setAddToCounterTarget(handler.addToCounterTarget)
 
-    makeOutputs(
-      ~referencesDb=(referencesDb->ReferencesDb.outputs)["resources"],
-      ~countsDb=(countsDb->CountsDb.outputs)["resources"],
+    self->setOutputs(
+      makeOutputs(
+        ~referencesDb=(referencesDb->ReferencesDb.outputs)["resources"],
+        ~countsDb=(countsDb->CountsDb.outputs)["resources"],
+      ),
     )
-    ->(self
-    ->setOutputs)
   }
 
   let oneWeek = 60 * 60 * 24 * 7 //604800 sec

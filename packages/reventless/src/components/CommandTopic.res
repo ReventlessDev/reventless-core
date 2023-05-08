@@ -204,7 +204,7 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     self->setPublish(connector->publishFn)
     self->setPublishJsons(connector->publishJsonsFn)
 
-    makeOutputs(~resources=connector.resources)->setOutputs(self, _)
+    self->setOutputs(makeOutputs(~resources=connector.resources))
   }
 
   let make = (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?, _) =>

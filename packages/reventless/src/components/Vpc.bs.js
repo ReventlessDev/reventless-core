@@ -103,7 +103,7 @@ function construct(self, name, availabilityZone) {
               })),
         vpcId: vpc.id
       }, Caml_option.some(opts), undefined);
-  var outputs = {
+  var self$1 = {
     dynamoDbEndpoint: dynamoDbEndpoint,
     eip: eip,
     internetGateway: internetGateway,
@@ -118,8 +118,8 @@ function construct(self, name, availabilityZone) {
     securityGroup: securityGroup,
     vpc: vpc
   };
-  self.setOutputs(outputs);
-  return self.registerOutputs(outputs);
+  self$1.setOutputs(self);
+  return self$1.registerOutputs(self);
 }
 
 function make(name, availabilityZone, opts, param) {

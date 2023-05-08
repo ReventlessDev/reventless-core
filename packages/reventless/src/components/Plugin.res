@@ -15,7 +15,9 @@ type outputs = {
   "tasks": Pulumi.Output.t<Js.Dict.t<Task.outputs>>,
   "resolvers": Pulumi.Output.t<array<resource>>,
   "heartbeat": Pulumi.Output.t<Heartbeat.outputs>,
-  "serviceNameToExtensionPointsMapping": Pulumi.Output.t<Js.Dict.t<array<ReventlessSpec.ExtensionPoint.outputs>>>,
+  "serviceNameToExtensionPointsMapping": Pulumi.Output.t<
+    Js.Dict.t<array<ReventlessSpec.ExtensionPoint.outputs>>,
+  >,
   "outgoingServiceNameToExtensionsMapping": Pulumi.Output.t<Js.Dict.t<array<Extension.outputs>>>,
   "incomingServiceNameToExtensionsMapping": Pulumi.Output.t<Js.Dict.t<array<Extension.outputs>>>,
 }
@@ -72,7 +74,9 @@ module Make = (
     ~tasks: Pulumi.Output.t<Js.Dict.t<Task.outputs>>,
     ~resolvers: Pulumi.Output.t<array<resource>>,
     ~heartbeat: Pulumi.Output.t<Heartbeat.outputs>,
-    ~serviceNameToExtensionPointsMapping: Pulumi.Output.t<Js.Dict.t<array<ReventlessSpec.ExtensionPoint.outputs>>>,
+    ~serviceNameToExtensionPointsMapping: Pulumi.Output.t<
+      Js.Dict.t<array<ReventlessSpec.ExtensionPoint.outputs>>,
+    >,
     ~outgoingServiceNameToExtensionsMapping: Pulumi.Output.t<Js.Dict.t<array<Extension.outputs>>>,
     ~incomingServiceNameToExtensionsMapping: Pulumi.Output.t<Js.Dict.t<array<Extension.outputs>>>,
   ) => outputs = ""
@@ -256,16 +260,15 @@ module Make = (
         }
 
         let _addPermission = (sid, eventCollector, eventTopic) =>
-          SQS.getQueuePolicy(eventCollector)->Js.Promise2.then(
-            policy =>
-              eventCollector->SQS.setQueuePolicy(
-                policy->addStatement(sid, eventCollector, eventTopic),
-              ),
+          SQS.getQueuePolicy(eventCollector)->Js.Promise2.then(policy =>
+            eventCollector->SQS.setQueuePolicy(
+              policy->addStatement(sid, eventCollector, eventTopic),
+            )
           )
 
         let _removePermission = (sid, eventCollector) =>
-          SQS.getQueuePolicy(eventCollector)->Js.Promise2.then(
-            policy => eventCollector->SQS.setQueuePolicy(policy->removeStatement(sid)),
+          SQS.getQueuePolicy(eventCollector)->Js.Promise2.then(policy =>
+            eventCollector->SQS.setQueuePolicy(policy->removeStatement(sid))
           )
 
         let subscribe = (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
@@ -273,18 +276,16 @@ module Make = (
           let eventCollectorName = eventCollector->AWS.arn2Name
           let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
           SNS.subscribeQueueToTopic(eventCollector, eventTopic)
-          ->Js.Promise2.then(
-            _ =>
-              Js.log(
-                `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
-              )->Js.Promise.resolve,
+          ->Js.Promise2.then(_ =>
+            Js.log(
+              `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
+            )->Js.Promise.resolve
           )
-          ->Js.Promise2.catch(
-            err =>
-              Js.log2(
-                `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
-                err,
-              )->Js.Promise.resolve,
+          ->Js.Promise2.catch(err =>
+            Js.log2(
+              `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
+              err,
+            )->Js.Promise.resolve
           )
         }
 
@@ -294,18 +295,16 @@ module Make = (
           let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
 
           SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic)
-          ->Js.Promise2.then(
-            _ =>
-              Js.log(
-                `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
-              )->Js.Promise.resolve,
+          ->Js.Promise2.then(_ =>
+            Js.log(
+              `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
+            )->Js.Promise.resolve
           )
-          ->Js.Promise2.catch(
-            err =>
-              Js.log2(
-                `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
-                err,
-              )->Js.Promise.resolve,
+          ->Js.Promise2.catch(err =>
+            Js.log2(
+              `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
+              err,
+            )->Js.Promise.resolve
           )
         }
 
@@ -369,8 +368,8 @@ module Make = (
               ->Js.Promise2.then(_ => Js.Promise.resolve())
 
             // await connections of extensionpoints & extensions
-            Js.Promise.all2((connectToExtensionPoints, connectToExtensions))->Js.Promise2.then(
-              _ => Js.Promise.resolve(),
+            Js.Promise.all2((connectToExtensionPoints, connectToExtensions))->Js.Promise2.then(_ =>
+              Js.Promise.resolve()
             )
           | DoDisconnectPlugin({
               id: pluginId,
@@ -717,28 +716,30 @@ module Make = (
         }
       })
     }
-    makeOutputs(
-      ~id=pureOutputs->Pulumi.Output.apply(outputs => outputs.id),
-      ~version=pureOutputs->Pulumi.Output.apply(outputs => outputs.version),
-      ~heartbeatInterval=pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeatInterval),
-      ~eventCollector=pureOutputs->Pulumi.Output.apply(outputs => outputs.eventCollector),
-      ~extensionPoints=pureOutputs->Pulumi.Output.apply(outputs => outputs.extensionPoints),
-      ~extensions=pureOutputs->Pulumi.Output.apply(outputs => outputs.extensions),
-      ~aggregates=pureOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),
-      ~readModels=pureOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
-      ~tasks=pureOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
-      ~resolvers=pureOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
-      ~heartbeat=pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
-      ~serviceNameToExtensionPointsMapping=pureOutputs->Pulumi.Output.apply(outputs =>
-        outputs.serviceNameToExtensionPointsMapping
+    self->setOutputs(
+      makeOutputs(
+        ~id=pureOutputs->Pulumi.Output.apply(outputs => outputs.id),
+        ~version=pureOutputs->Pulumi.Output.apply(outputs => outputs.version),
+        ~heartbeatInterval=pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeatInterval),
+        ~eventCollector=pureOutputs->Pulumi.Output.apply(outputs => outputs.eventCollector),
+        ~extensionPoints=pureOutputs->Pulumi.Output.apply(outputs => outputs.extensionPoints),
+        ~extensions=pureOutputs->Pulumi.Output.apply(outputs => outputs.extensions),
+        ~aggregates=pureOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),
+        ~readModels=pureOutputs->Pulumi.Output.apply(outputs => outputs.readModels),
+        ~tasks=pureOutputs->Pulumi.Output.apply(outputs => outputs.tasks),
+        ~resolvers=pureOutputs->Pulumi.Output.apply(outputs => outputs.resolvers),
+        ~heartbeat=pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeat),
+        ~serviceNameToExtensionPointsMapping=pureOutputs->Pulumi.Output.apply(outputs =>
+          outputs.serviceNameToExtensionPointsMapping
+        ),
+        ~outgoingServiceNameToExtensionsMapping=pureOutputs->Pulumi.Output.apply(outputs =>
+          outputs.outgoingServiceNameToExtensionsMapping
+        ),
+        ~incomingServiceNameToExtensionsMapping=pureOutputs->Pulumi.Output.apply(outputs =>
+          outputs.incomingServiceNameToExtensionsMapping
+        ),
       ),
-      ~outgoingServiceNameToExtensionsMapping=pureOutputs->Pulumi.Output.apply(outputs =>
-        outputs.outgoingServiceNameToExtensionsMapping
-      ),
-      ~incomingServiceNameToExtensionsMapping=pureOutputs->Pulumi.Output.apply(outputs =>
-        outputs.incomingServiceNameToExtensionsMapping
-      ),
-    )->setOutputs(self, _)
+    )
   }
 
   let make = (

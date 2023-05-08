@@ -108,10 +108,9 @@ module Make = (
       EventLogRuntime.replayFn(storage.Adapter.replay, Spec.Id.toString, Spec.event_decode),
     )
 
-    makeOutputs(
-      ~resources=storage.resources,
-      ~eventTopic=eventTopic->Component.extractOutputs,
-    )->setOutputs(self, _)
+    self->setOutputs(
+      makeOutputs(~resources=storage.resources, ~eventTopic=eventTopic->Component.extractOutputs),
+    )
   }
 
   let make = (~name, ~opts=?, _) =>

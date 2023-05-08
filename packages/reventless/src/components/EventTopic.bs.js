@@ -45,11 +45,11 @@ function Make(Spec, Publisher) {
     };
     var publisher = Curry._3(Publisher.make, ComponentType$Reventless.name(name, /* EventTopic */8), storageResources, opts);
     self.publish = publishFn(publisher, name);
-    var self$1 = {
+    var outputs = {
       resources: publisher.resources
     };
-    self$1.setOutputs(self);
-    return self$1.registerOutputs(self);
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
   };
   var make = function (name, storageResources, opts, param) {
     var prim0 = ComponentType$Reventless.toString(/* EventTopic */8);

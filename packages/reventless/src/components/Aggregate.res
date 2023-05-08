@@ -330,15 +330,15 @@ module Make = (
     self->setPublishJsons(commandTopic->CommandTopic.publishJsons)
     self->setAddEventMapper(self->addEventMapperFn(~opts))
 
-    makeOutputs(
-      ~name,
-      ~commandGenerator=commandGenerator->Component.extractOutputs,
-      ~commandTopic=commandTopic->Component.extractOutputs,
-      ~eventLog=eventLog->Component.extractOutputs,
-      ~eventMapper=None,
+    self->setOutputs(
+      makeOutputs(
+        ~name,
+        ~commandGenerator=commandGenerator->Component.extractOutputs,
+        ~commandTopic=commandTopic->Component.extractOutputs,
+        ~eventLog=eventLog->Component.extractOutputs,
+        ~eventMapper=None,
+      ),
     )
-    ->(self
-    ->setOutputs)
   }
 
   let make = (~opts=?, _) =>

@@ -112,13 +112,13 @@ module Make = (
       (),
     )
 
-    makeOutputs(
-      ~name,
-      ~queryDb=queryDb->Component.extractOutputs,
-      ~eventCollector=eventCollector->Component.extractOutputs,
+    self->setOutputs(
+      makeOutputs(
+        ~name,
+        ~queryDb=queryDb->Component.extractOutputs,
+        ~eventCollector=eventCollector->Component.extractOutputs,
+      ),
     )
-    ->(self
-    ->setOutputs)
   }
 
   let make = (~allEventTopics, ~opts=?, _) =>

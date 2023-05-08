@@ -98,8 +98,8 @@ module Make = (Connector: Adapter.Connector): T => {
     ReventlessSpec.EventCollector.outputs,
   > => enqueueEvent = "enqueueEvent"
 
-  let enqueueEventFn = connector =>
-    (. delay, id, message) => connector.Adapter.enqueueEvent(. delay, id, message)
+  let enqueueEventFn = connector => (. delay, id, message) =>
+    connector.Adapter.enqueueEvent(. delay, id, message)
 
   let construct = (
     ~eventTopics,
@@ -126,7 +126,7 @@ module Make = (Connector: Adapter.Connector): T => {
 
     self->setEnqueueEvent(connector->enqueueEventFn)
 
-    makeOutputs(~name, ~resources=connector.resources)->setOutputs(self, _)
+    self->setOutputs(makeOutputs(~name, ~resources=connector.resources))
   }
 
   let make = (

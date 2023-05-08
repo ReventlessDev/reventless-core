@@ -120,7 +120,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
 
     self->setPublish(publisher->publishFn(name))
 
-    makeOutputs(~resources=publisher.resources)->(self->setOutputs)
+    self->setOutputs(makeOutputs(~resources=publisher.resources))
   }
 
   let make = (~name, ~storageResources, ~opts=?, _) =>

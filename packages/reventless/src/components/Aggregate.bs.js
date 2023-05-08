@@ -275,15 +275,15 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                 };
         };
       });
-    var self$1 = {
+    var outputs = {
       name: name,
       commandGenerator: Component$Reventless.extractOutputs(commandGenerator),
       commandTopic: Component$Reventless.extractOutputs(commandTopic),
       eventLog: Component$Reventless.extractOutputs(eventLog),
       eventMapper: undefined
     };
-    self$1.setOutputs(self);
-    return self$1.registerOutputs(self);
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
   };
   var make = function (opts, param) {
     var prim0 = ComponentType$Reventless.toString(/* Aggregate */0);

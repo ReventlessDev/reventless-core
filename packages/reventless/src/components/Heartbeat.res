@@ -27,10 +27,13 @@ external makeOutputsToRegister: (
 ) => outputsToRegister = ""
 
 @send
-external registerOutputs: (ReventlessSpec.Component.t<heartbeat, outputs>, outputsToRegister) => constructed =
-  "registerOutputs"
+external registerOutputs: (
+  ReventlessSpec.Component.t<heartbeat, outputs>,
+  outputsToRegister,
+) => constructed = "registerOutputs"
 @send
-external setOutputs: (ReventlessSpec.Component.t<heartbeat, outputs>, outputs) => unit = "setOutputs"
+external setOutputs: (ReventlessSpec.Component.t<heartbeat, outputs>, outputs) => unit =
+  "setOutputs"
 
 let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) => {
   let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
@@ -128,7 +131,7 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
     )
   }
 
-  makeOutputs(~name)->setOutputs(self, _)
+  self->setOutputs(makeOutputs(~name))
 
   makeOutputsToRegister(
     ~name,

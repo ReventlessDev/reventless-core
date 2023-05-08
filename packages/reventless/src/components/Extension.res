@@ -104,22 +104,20 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
   ) => {
     let publishAggregateCommand = (aggregateName, cmdJson) => {
       let pub = publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn
-      pub(. [cmdJson])->Js.Promise2.catch(
-        err =>
-          Js.log2(
-            `Extension: Error on publish command to aggregate ${aggregateName}:`,
-            err,
-          )->Js.Promise.resolve,
+      pub(. [cmdJson])->Js.Promise2.catch(err =>
+        Js.log2(
+          `Extension: Error on publish command to aggregate ${aggregateName}:`,
+          err,
+        )->Js.Promise.resolve
       )
     }
 
     let publishCorePluginExtensionPointCommand = cmdJson =>
-      publishToCorePluginExtensionPoint(. [cmdJson])->Js.Promise2.catch(
-        err =>
-          Js.log2(
-            `Extension: Error on publish command to Core.Plugin ExtensionPoint:`,
-            err,
-          )->Js.Promise.resolve,
+      publishToCorePluginExtensionPoint(. [cmdJson])->Js.Promise2.catch(err =>
+        Js.log2(
+          `Extension: Error on publish command to Core.Plugin ExtensionPoint:`,
+          err,
+        )->Js.Promise.resolve
       )
 
     let forwardCommand = (extensionPointName, commandJson: Message.commandJson) =>
@@ -161,8 +159,8 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
         forwardCommand(extensionPointName, commandJson)
       | AbstractCall(handler) =>
-        handler()->Js.Promise2.catch(
-          err => Js.log2("ExtensionPoint: Error on calling handler:", err)->Js.Promise.resolve,
+        handler()->Js.Promise2.catch(err =>
+          Js.log2("ExtensionPoint: Error on calling handler:", err)->Js.Promise.resolve
         )
       }
 
@@ -173,8 +171,8 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
         forwardCommand(extensionPointName, commandJson)
       | AbstractCall(handler) =>
-        handler()->Js.Promise2.catch(
-          err => Js.log2("ExtensionPoint: Error on calling handler:", err)->Js.Promise.resolve,
+        handler()->Js.Promise2.catch(err =>
+          Js.log2("ExtensionPoint: Error on calling handler:", err)->Js.Promise.resolve
         )
       }
 
@@ -206,15 +204,17 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       ->Js.Promise2.then(_ => Js.Promise.resolve())
     }
 
-    makeOutputs(
-      ~name,
-      ~extensionPointName=Spec.name,
-      ~aggregateNames=Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
-        Mapping.aggregateName == NoAggregate.name ? None : Some(Mapping.aggregateName)
+    self->setOutputs(
+      makeOutputs(
+        ~name,
+        ~extensionPointName=Spec.name,
+        ~aggregateNames=Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
+          Mapping.aggregateName == NoAggregate.name ? None : Some(Mapping.aggregateName)
+        ),
+        ~incomingEventHandler,
+        ~outgoingEventHandler,
       ),
-      ~incomingEventHandler,
-      ~outgoingEventHandler,
-    )->setOutputs(self, _)
+    )
   }
 
   let make: (

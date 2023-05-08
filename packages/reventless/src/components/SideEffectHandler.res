@@ -95,51 +95,47 @@ module Make = (EventCollector: EventCollector.T): T => {
       }
     })
 
-  let eventsHandler = (sideEffects, queryEngine) =>
-    (. events'Json) =>
-      events'Json
-      ->Belt.Array.map(event'Json =>
-        switch sideEffects->findSideEffect(event'Json) {
-        | Some((eventObj, eventMeta, sideEffect)) =>
-          module SideEffect = unpack(sideEffect)
-          let sourceName = SideEffect.Source.name
-          event'Json->Message.logEvent'Json(
-            `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
+  let eventsHandler = (sideEffects, queryEngine) => (. events'Json) =>
+    events'Json
+    ->Belt.Array.map(event'Json =>
+      switch sideEffects->findSideEffect(event'Json) {
+      | Some((eventObj, eventMeta, sideEffect)) =>
+        module SideEffect = unpack(sideEffect)
+        let sourceName = SideEffect.Source.name
+        event'Json->Message.logEvent'Json(
+          `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
+        )
+        let idDecoded = eventObj->Js.Dict.get("id")->Belt.Option.map(SideEffect.Source.Id.t_decode)
+        let eventDecoded =
+          eventObj->Js.Dict.get("event")->Belt.Option.map(SideEffect.Source.event_decode)
+
+        switch (idDecoded, eventDecoded) {
+        | (Some(Ok(eventId)), Some(Ok(event))) =>
+          SideEffect.execute(. eventId, eventMeta, event, queryEngine)->Js.Promise2.catch(err =>
+            Js.log2("SideEffect: Error while processing:", err)->Js.Promise.resolve
           )
-          let idDecoded =
-            eventObj->Js.Dict.get("id")->Belt.Option.map(SideEffect.Source.Id.t_decode)
-          let eventDecoded =
-            eventObj->Js.Dict.get("event")->Belt.Option.map(SideEffect.Source.event_decode)
 
-          switch (idDecoded, eventDecoded) {
-          | (Some(Ok(eventId)), Some(Ok(event))) =>
-            SideEffect.execute(. eventId, eventMeta, event, queryEngine)->Js.Promise2.catch(
-              err => Js.log2("SideEffect: Error while processing:", err)->Js.Promise.resolve,
-            )
-
-          | (None, _)
-          | (_, None) =>
-            Js.Promise.resolve(Js.log("SideEffectHandler.eventHandler: Invalid event"))
-          | (_, Some(Error(err)))
-          | (Some(Error(err)), _) =>
-            Js.Promise.resolve(
-              Js.log2("SideEffectHandler.eventHandler: Couldn't decode event:", err),
-            )
-          }
-        | None => Js.Promise.resolve()
+        | (None, _)
+        | (_, None) =>
+          Js.Promise.resolve(Js.log("SideEffectHandler.eventHandler: Invalid event"))
+        | (_, Some(Error(err)))
+        | (Some(Error(err)), _) =>
+          Js.Promise.resolve(Js.log2("SideEffectHandler.eventHandler: Couldn't decode event:", err))
         }
-      )
-      ->Js.Promise.all
-      ->Js.Promise2.then(_ => Js.Promise.resolve())
+      | None => Js.Promise.resolve()
+      }
+    )
+    ->Js.Promise.all
+    ->Js.Promise2.then(_ => Js.Promise.resolve())
 
-  let createScheduleFn = (scheduler, queueResources) =>
-    (. schedule) => Schedule.create(scheduler, queueResources)(. schedule)
+  let createScheduleFn = (scheduler, queueResources) => (. schedule) =>
+    Schedule.create(scheduler, queueResources)(. schedule)
 
-  let deleteScheduleFn = (scheduler, queueResources) =>
-    (. scheduleName) => Schedule.delete(scheduler, queueResources)(. scheduleName)
+  let deleteScheduleFn = (scheduler, queueResources) => (. scheduleName) =>
+    Schedule.delete(scheduler, queueResources)(. scheduleName)
 
-  let enqueueEventFn = eventCollector =>
-    (. delay, id, message) => EventCollector.enqueueEvent(eventCollector)(. delay, id, message)
+  let enqueueEventFn = eventCollector => (. delay, id, message) =>
+    EventCollector.enqueueEvent(eventCollector)(. delay, id, message)
 
   let construct = (
     ~sideEffects,
@@ -178,10 +174,7 @@ module Make = (EventCollector: EventCollector.T): T => {
     self->setCreateSchedule(createScheduleFn(scheduler, eventCollectorResources))
     self->setDeleteSchedule(deleteScheduleFn(scheduler, eventCollectorResources))
 
-    makeOutputs(~name, ~eventCollector=eventCollector->Component.extractOutputs)->setOutputs(
-      self,
-      _,
-    )
+    self->setOutputs(makeOutputs(~name, ~eventCollector=eventCollector->Component.extractOutputs))
   }
 
   let make = (

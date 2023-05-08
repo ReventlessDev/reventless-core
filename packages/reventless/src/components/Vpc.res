@@ -231,21 +231,23 @@ let construct: construct = (self, name, availabilityZone) => {
     (),
   )
 
-  makeOutputs(
-    ~dynamoDbEndpoint,
-    ~eip,
-    ~internetGateway,
-    ~natGateway,
-    ~privateSubnet,
-    ~privateSubnetRouteTable,
-    ~privateSubnetRouteTableAssociation,
-    ~publicSubnet,
-    ~publicSubnetRouteTable,
-    ~publicSubnetRouteTableAssociation,
-    ~s3Endpoint,
-    ~securityGroup,
-    ~vpc,
-  )->setOutputs(self)
+  self->setOutputs(
+    makeOutputs(
+      ~dynamoDbEndpoint,
+      ~eip,
+      ~internetGateway,
+      ~natGateway,
+      ~privateSubnet,
+      ~privateSubnetRouteTable,
+      ~privateSubnetRouteTableAssociation,
+      ~publicSubnet,
+      ~publicSubnetRouteTable,
+      ~publicSubnetRouteTableAssociation,
+      ~s3Endpoint,
+      ~securityGroup,
+      ~vpc,
+    ),
+  )
 }
 
 let make: (

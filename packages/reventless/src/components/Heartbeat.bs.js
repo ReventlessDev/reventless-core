@@ -66,10 +66,9 @@ function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
         principal: "events.amazonaws.com",
         sourceArn: cloudwatchEventRule.arn
       }, opts);
-  var __x = {
-    name: name
-  };
-  self.setOutputs(__x);
+  self.setOutputs({
+        name: name
+      });
   return self.registerOutputs({
               name: name,
               cloudwatchEventRule: cloudwatchEventRule,

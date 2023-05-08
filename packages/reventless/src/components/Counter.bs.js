@@ -381,12 +381,12 @@ function Make(Config, QueryDbStorage, Handler) {
                     }));
       });
     self.addToCounterTarget = handler.addToCounterTarget;
-    var self$1 = {
+    var outputs = {
       referencesDb: Curry._1(ReferencesDb.outputs, referencesDb).resources,
       countsDb: Curry._1(CountsDb.outputs, countsDb).resources
     };
-    self$1.setOutputs(self);
-    return self$1.registerOutputs(self);
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
   };
   var make = function (name, counterEventsHandler, ttlOpt, opts, param) {
     var ttl = ttlOpt !== undefined ? ttlOpt : 604800;
