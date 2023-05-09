@@ -118,59 +118,62 @@ module Make = (
       option<ReventlessSpec.Component.t<CommandTopic.t, ReventlessSpec.CommandTopic.outputs>>,
     > = ref(None)
 
-    let applyCommandAction = x =>
-      switch x {
+    let applyCommandAction = async action =>
+      switch action {
       | ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
-        publishToAggregates
-        ->Js.Dict.get(aggregateName)
-        ->Belt.Option.map((publishJsons: ReventlessSpec.CommandTopic.publishJsons) =>
-          publishJsons(. [cmdJson])
-        )
-        ->Belt.Option.mapWithDefault(
-          _,
-          () =>
-            Js.Exn.raiseError(
-              `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
-            ),
-          (x, ()) => x,
-        )()
-        ->Js.Promise2.then(_ => Belt.Result.Ok(reference)->Js.Promise.resolve)
-        ->Js.Promise2.catch(err => {
-          Js.log2("ExtensionPoint: Error on publish command:", err)
-          Belt.Result.Error(reference)->Js.Promise.resolve
-        })
+        let result =
+          publishToAggregates
+          ->Js.Dict.get(aggregateName)
+          ->Belt.Option.map((publishJsons: ReventlessSpec.CommandTopic.publishJsons) =>
+            publishJsons(. [cmdJson])
+          )
+          ->Belt.Option.mapWithDefault(
+            _,
+            () =>
+              Js.Exn.raiseError(
+                `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
+              ),
+            (x, ()) => x,
+          )()
+        switch result {
+        | _ => Belt.Result.Ok(reference)
+        | exception err => {
+            Js.log2("ExtensionPoint: Error on publish command:", err)
+            Belt.Result.Error(reference)
+          }
+        }
       | AbstractCall(reference, handler) =>
-        handler()
-        ->Js.Promise2.then(_ => Belt.Result.Ok(reference)->Js.Promise.resolve)
-        ->Js.Promise2.catch(err => {
-          err->Js.log2("ExtensionPoint: Error on calling handler:")
-          Belt.Result.Error(reference)->Js.Promise.resolve
-        })
+        switch await handler() {
+        | _ => Belt.Result.Ok(reference)
+        | exception err => {
+            err->Js.log2("ExtensionPoint: Error on calling handler:")
+            Belt.Result.Error(reference)
+          }
+        }
       }
 
     let eventTopic = EventTopic.make(~name=childName, ~storageResources=[], ~opts, ())
+    let publish = EventTopic.publish(eventTopic)
 
-    let applyEventAction = x =>
-      switch x {
+    let applyEventAction = async action =>
+      switch action {
       | ExtensionPointMapping.AbstractPublishEvent(event') =>
-        let publish = EventTopic.publish(eventTopic)
-        publish(. [event'])->Js.Promise2.catch(err =>
-          err->Js.log2("ExtensionPoint: Error on publish command:")->Js.Promise.resolve
-        )
+        try await publish(. [event']) catch {
+        | err => err->Js.log2("ExtensionPoint: Error on publish command:")
+        }
       | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
-        let publish = EventTopic.publish(eventTopic)
-        promise->Js.Promise2.then(event' =>
-          publish(. [event'])->Js.Promise2.catch(err =>
-            err->Js.log2("ExtensionPoint: Error on publish command:")->Js.Promise.resolve
-          )
-        )
+        let publish = async promise =>
+          try await publish(. [await promise]) catch {
+          | err => err->Js.log2("ExtensionPoint: Error on publish command:")
+          }
+        await promise->publish
       | AbstractCall(handler) =>
-        handler()->Js.Promise2.catch(err =>
-          err->Js.log2("ExtensionPoint: Error on calling handler:")->Js.Promise.resolve
-        )
+        try await handler() catch {
+        | err => err->Js.log2("ExtensionPoint: Error on calling handler:")
+        }
       }
 
-    let outgoingEventHandler = (. event'Json, pluginDef) => {
+    let outgoingEventHandler = async (. event'Json, pluginDef) => {
       let commandTopic = commandTopic.contents->Belt.Option.getExn
       let eventActions =
         event'Json->Mapper.mapOutgoingEvent(
@@ -181,10 +184,7 @@ module Make = (
           queryEngine,
         )
 
-      eventActions
-      ->Belt.Array.map(applyEventAction)
-      ->Js.Promise.all
-      ->Js.Promise2.then(_ => Js.Promise.resolve())
+      await eventActions->Belt.Array.map(applyEventAction)->Js.Promise.all->Util.Promise.toUnit
     }
 
     let incomingCommandsHandler = (. topicItems) => {

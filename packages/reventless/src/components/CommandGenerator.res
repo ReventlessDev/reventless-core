@@ -91,7 +91,7 @@ module Make = (
   //[@send] external setOutputs: (t, outputs) => unit = "setOutputs";
 
   let generateCommand: publish => commandGenerator = publish => {
-    let fn = payload => {
+    let fn = async payload => {
       let msgId = Message.uuid()
       let id = payload["arguments"]["id"]->Spec.Id.makeFromString
       let meta = {
@@ -145,7 +145,8 @@ module Make = (
         open Message
         {id, meta, command}
       }
-      publish(. command')->Js.Promise2.then(_ => Js.Promise.resolve(meta.msgId))
+      await publish(. command')
+      meta.msgId
     }
     fn
   }

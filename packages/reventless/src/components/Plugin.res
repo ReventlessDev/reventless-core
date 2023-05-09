@@ -259,57 +259,69 @@ module Make = (
           )
         }
 
-        let _addPermission = (sid, eventCollector, eventTopic) =>
-          SQS.getQueuePolicy(eventCollector)->Js.Promise2.then(policy =>
+        let _addPermission = async (sid, eventCollector, eventTopic) =>
+          switch await SQS.getQueuePolicy(eventCollector) {
+          | policy =>
             eventCollector->SQS.setQueuePolicy(
               policy->addStatement(sid, eventCollector, eventTopic),
             )
-          )
+          }
 
-        let _removePermission = (sid, eventCollector) =>
-          SQS.getQueuePolicy(eventCollector)->Js.Promise2.then(policy =>
-            eventCollector->SQS.setQueuePolicy(policy->removeStatement(sid))
-          )
+        let _removePermission = async (sid, eventCollector) =>
+          switch await SQS.getQueuePolicy(eventCollector) {
+          | policy => eventCollector->SQS.setQueuePolicy(policy->removeStatement(sid))
+          }
 
-        let subscribe = (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
-          let eventTopicName = eventTopic->AWS.arn2Name
-          let eventCollectorName = eventCollector->AWS.arn2Name
-          let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
-          SNS.subscribeQueueToTopic(eventCollector, eventTopic)
-          ->Js.Promise2.then(_ =>
-            Js.log(
-              `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
-            )->Js.Promise.resolve
-          )
-          ->Js.Promise2.catch(err =>
-            Js.log2(
-              `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
-              err,
-            )->Js.Promise.resolve
-          )
-        }
-
-        let unsubscribe = (action, extensionPointName, eventTopic, pluginId, eventCollector) => {
+        let subscribe = async (
+          action,
+          extensionPointName,
+          eventTopic,
+          pluginId,
+          eventCollector,
+        ) => {
           let eventTopicName = eventTopic->AWS.arn2Name
           let eventCollectorName = eventCollector->AWS.arn2Name
           let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
 
-          SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic)
-          ->Js.Promise2.then(_ =>
+          switch await SNS.subscribeQueueToTopic(eventCollector, eventTopic) {
+          | _ =>
             Js.log(
               `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
-            )->Js.Promise.resolve
-          )
-          ->Js.Promise2.catch(err =>
+            )
+          | exception err =>
             Js.log2(
               `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
               err,
-            )->Js.Promise.resolve
-          )
+            )
+          }
         }
 
-        let callHandler = x =>
-          switch x {
+        let unsubscribe = async (
+          action,
+          extensionPointName,
+          eventTopic,
+          pluginId,
+          eventCollector,
+        ) => {
+          let eventTopicName = eventTopic->AWS.arn2Name
+          let eventCollectorName = eventCollector->AWS.arn2Name
+          let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
+
+          switch await SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic) {
+          | _ =>
+            Js.log(
+              `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
+            )
+          | exception err =>
+            Js.log2(
+              `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
+              err,
+            )
+          }
+        }
+
+        let callHandler = async command =>
+          switch command {
           | ReventlessSpec.PluginExtensionPointSpec.DoConnectPlugin({
               id: otherPluginId,
               extensionPoints: otherPluginExtensionPoints,
@@ -323,8 +335,8 @@ module Make = (
              * - if the newly deployed (received) plugin contains extensions the current plugin holds an extensionpoint for:
              *    connect received extensions to current plugin's extension point
              */
-            let connectToExtensionPoints =
-              otherPluginExtensionPoints
+            let _connectToExtensionPoints =
+              await otherPluginExtensionPoints
               ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
                 extensionsOutputs
                 ->Belt.Array.keep(
@@ -343,10 +355,9 @@ module Make = (
                   : None
               )
               ->Js.Promise.all
-              ->Js.Promise2.then(_ => Js.Promise.resolve())
 
-            let connectToExtensions =
-              extensionPointsOutputs
+            let _connectToExtensions =
+              await extensionPointsOutputs
               ->Belt.Array.keepMap(extensionPoint =>
                 otherPluginExtensions
                 ->Belt.Array.keep(
@@ -365,20 +376,15 @@ module Make = (
                   : None
               )
               ->Js.Promise.all
-              ->Js.Promise2.then(_ => Js.Promise.resolve())
 
-            // await connections of extensionpoints & extensions
-            Js.Promise.all2((connectToExtensionPoints, connectToExtensions))->Js.Promise2.then(_ =>
-              Js.Promise.resolve()
-            )
           | DoDisconnectPlugin({
               id: pluginId,
               extensionPoints: pluginExtensionPoints,
               extensions: pluginExtensions,
               eventCollector: pluginEventCollector,
             }) =>
-            let disconnectFromExtensionPoints =
-              pluginExtensionPoints
+            let _disconnectFromExtensionPoints =
+              await pluginExtensionPoints
               ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
                 extensionsOutputs
                 ->Belt.Array.keep(
@@ -397,10 +403,9 @@ module Make = (
                   : None
               )
               ->Js.Promise.all
-              ->Js.Promise2.then(_ => Js.Promise.resolve())
 
-            let disconnectFromExtensions =
-              extensionPointsOutputs
+            let _disconnectFromExtensions =
+              await extensionPointsOutputs
               ->Belt.Array.keepMap(extensionPoint =>
                 pluginExtensions
                 ->Belt.Array.keep(
@@ -419,13 +424,8 @@ module Make = (
                   : None
               )
               ->Js.Promise.all
-              ->Js.Promise2.then(_ => Js.Promise.resolve())
 
-            Js.Promise.all2((
-              disconnectFromExtensionPoints,
-              disconnectFromExtensions,
-            ))->Js.Promise2.then(_ => Js.Promise.resolve())
-          | _ => Js.Promise.resolve()
+          | _ => ()
           }
 
         let extensionPointsConfig =
@@ -591,18 +591,19 @@ module Make = (
 
         let extensionAggregateNames = extensionsOutputs->collectAggregateNames
 
-        let handleEvent = (event'Json, dict, getEventHandler) =>
-          event'Json
+        let handleEvent = async (event'Json, dict, getEventHandler) => {
+          await event'Json
           ->Message.serviceNameOfMsg
           ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
-          ->Belt.Option.mapWithDefault(Js.Promise.resolve(), exs =>
-            exs
+          ->Belt.Option.mapWithDefault(Js.Promise.resolve(), async exs => {
+            await exs
             ->Belt.Array.map(
               ex => getEventHandler(ex)(. event'Json, pluginDefinition->Pulumi.Output.get),
             )
             ->Js.Promise.all
-            ->Js.Promise2.then(_ => Js.Promise.resolve())
-          )
+            ->Util.Promise.toUnit
+          })
+        }
 
         let detectUnhandledEvent = event'Json =>
           event'Json
@@ -625,21 +626,22 @@ module Make = (
               }
           )
 
-        let eventsHandler = (. events'Json) => {
+        let eventsHandler = async (. events'Json) => {
           let count = events'Json->Belt.Array.size
-          events'Json
-          ->Belt.Array.mapWithIndex((idx, event'Json) => {
-            let idx = idx + 1
-            event'Json->Message.logEvent'Json(
-              `Plugin ${id} eventsHandler: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
-            )
-            detectUnhandledEvent(event'Json)
-            handleEvent(
-              event'Json,
-              incomingServiceNameToPluginConnectExtensionsMapping,
-              extension => extension["incomingEventHandler"],
-            )->Js.Promise2.then(
-              _ =>
+          let x =
+            events'Json
+            ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
+              let idx = idx + 1
+              event'Json->Message.logEvent'Json(
+                `Plugin ${id} eventsHandler: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
+              )
+              detectUnhandledEvent(event'Json)
+              switch await handleEvent(
+                event'Json,
+                incomingServiceNameToPluginConnectExtensionsMapping,
+                extension => extension["incomingEventHandler"],
+              ) {
+              | _ =>
                 [
                   event'Json->handleEvent(
                     serviceNameToExtensionPointsMapping,
@@ -653,13 +655,11 @@ module Make = (
                     incomingServiceNameToExtensionsMapping,
                     extension => extension["incomingEventHandler"],
                   ),
-                ]
-                ->Js.Promise.all
-                ->Js.Promise2.then(_ => Js.Promise.resolve()),
-            )
-          })
-          ->Js.Promise.all
-          ->Js.Promise2.then(_ => Js.Promise.resolve())
+                ]->Js.Promise.all
+              }
+            })
+            ->Js.Promise.all
+            ->Util.Promise.toUnit
         }
 
         module EventCollector = EventCollector.Make(EventCollectorConnector)

@@ -133,25 +133,24 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     ReventlessSpec.CommandTopic.outputs,
   > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
-  let publishJsonsFn = connector => (. jsons) =>
-    connector.Adapter.publish(. jsons)
-    ->Js.Promise2.catch(e => {
+  let publishJsonsFn = connector => async (. jsons) =>
+    switch await connector.Adapter.publish(. jsons) {
+    | exception e =>
       Js.log2(
         "CommandTopic: Couldn't publish commands:",
         jsons->Belt.Array.map(commandJson =>
           commandJson->Message.commandJson_encode->Js.Json.stringify
         ),
       )
-      NotPublishedToConnector(e)->Js.Promise.reject
-    })
-    ->Js.Promise2.then(_ =>
+      raise(e)
+    | _ =>
       Js.log2(
         "CommandTopic: Published commands:",
         jsons->Belt.Array.map(commandJson =>
           commandJson->Message.commandJson_encode->Js.Json.stringify
         ),
-      )->Js.Promise.resolve
-    )
+      )
+    }
 
   let publishFn: Adapter.connector => (
     . Message.command'<Spec.Id.t, Spec.command>,
@@ -167,7 +166,7 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     }
   }
 
-  let handleCommands = commandsHandler => (. jsonItems) => {
+  let handleCommands = commandsHandler => async (. jsonItems) => {
     Js.log2("starting CommandTopic.handleCommands. Command count:", jsonItems->Belt.Array.size)
     let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
       switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
@@ -179,15 +178,13 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
         None
       }
     )
-    commandsHandler(. topicItems)
-    ->Js.Promise2.then(res => {
+    switch await commandsHandler(. topicItems) {
+    | res =>
       Js.log("finished CommandTopic.handleCommands")
-      res->Js.Promise.resolve
-    })
-    ->Js.Promise2.catch(err => {
-      let error = (err->Util.Error.ofPromise).message
-      Js.Exn.raiseError(`CommandTopic.handleCommand: Error: Couldn't handle commands: ${error}`)
-    })
+      res
+    | exception _ =>
+      Js.Exn.raiseError(`CommandTopic.handleCommand: Error: Couldn't handle commands`) // TODO: exception details
+    }
   }
 
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {

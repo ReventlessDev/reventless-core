@@ -189,36 +189,35 @@ module Make = (
         )
       })
 
-    let count = (saveBatch, countItems) =>
-      saveBatch(.
+    let count = async (saveBatch, countItems) => {
+      let result = await saveBatch(.
         countItems->Belt.Array.map(({counterId, reference, inc}) => {
           let id = makeId((counterId, reference))
           let state: ReferencesSpec.state = {id, inc}
           (id, state, ttl)
         }),
-      )->Js.Promise2.then(x =>
-        switch x {
-        | Belt.Result.Ok(_) =>
-          let batchSize = countItems->Belt.Array.size
-          Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Belt.Int.toString} reference(s):`)
-          countItems->logCountItems
-          Js.Promise.resolve()
-        | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) =>
-          let batchSize = countItems->Belt.Array.size
-          Js.log(
-            `Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
-          )
-          countItems->logCountItems
-          NotCounted(err)->Js.Promise.reject
-        | Error(_) =>
-          let batchSize = countItems->Belt.Array.size
-          Js.log(
-            `Unknown Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
-          )
-          countItems->logCountItems
-          NotCounted("Unknown error")->Js.Promise.reject
-        }
       )
+      switch result {
+      | Belt.Result.Ok(_) =>
+        let batchSize = countItems->Belt.Array.size
+        Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Belt.Int.toString} reference(s):`)
+        countItems->logCountItems
+      | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) =>
+        let batchSize = countItems->Belt.Array.size
+        Js.log(
+          `Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
+        )
+        countItems->logCountItems
+        raise(NotCounted(err))
+      | Error(_) =>
+        let batchSize = countItems->Belt.Array.size
+        Js.log(
+          `Unknown Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
+        )
+        countItems->logCountItems
+        raise(NotCounted("Unknown error"))
+      }
+    }
 
     let referencesDb = ReferencesDb.make(~ttl?, ~opts, ())
     let countsDb = CountsDb.make(~ttl?, ~opts, ())
@@ -236,19 +235,19 @@ module Make = (
       dict->Js.Dict.entries
     }
 
-    let counterHandler: counterHandler = (~references, ~counts) => {
+    let counterHandler: counterHandler = async (~references, ~counts) => {
       Js.log2("counterHandler: references:", references->Belt.Array.size)
       Js.log2("counterHandler: counts:", counts)
-      let countP =
-        references
-        ->groupByCounterId
-        ->Belt.Array.map(((counterId, dec)) =>
-          CountsDb.count(countsDb)(. counterId->CountsSpec.Id.makeFromString, countFieldName, -dec)
-        )
-        ->Js.Promise.all
-        ->Js.Promise2.then(_ => Js.Promise.resolve()) // TODO error handling
+      await references
+      ->groupByCounterId
+      ->Belt.Array.map(((counterId, dec)) =>
+        CountsDb.count(countsDb)(. counterId->CountsSpec.Id.makeFromString, countFieldName, -dec)
+      )
+      ->Js.Promise.all
+      ->Util.Promise.toUnit
+      // TODO error handling
 
-      let counterEventsHandlerP = counterEventsHandler(.
+      await counterEventsHandler(.
         counts->Belt.Array.keepMap(state =>
           switch state->CountsSpec.state_decode {
           | Ok({id, count}) if count == 0 =>
@@ -280,8 +279,6 @@ module Make = (
           }
         ),
       )
-
-      (countP, counterEventsHandlerP)->Js.Promise.all2->Js.Promise2.then(_ => Js.Promise.resolve())
     }
 
     let handler = Handler.make(

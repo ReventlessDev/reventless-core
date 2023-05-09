@@ -5,8 +5,8 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Decco = require("decco/src/Decco.bs.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../../Message.bs.js");
 var Schedule$Reventless = require("../../../util/Schedule.bs.js");
 var PluginSpec$Reventless = require("../../Aggregates/Plugin/PluginSpec.bs.js");
@@ -14,50 +14,56 @@ var PluginReadModelSpec$Reventless = require("../../ReadModels/Plugin/PluginRead
 var ExtensionPointMapping$Reventless = require("../../../ExtensionPointMapping.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 
-function forwardCommand(_id, command, extensionPointName, queryEngine) {
-  return Js_promise2.then(Curry._3(queryEngine.scan, PluginSpec$Reventless.name, [
-                  [
-                    "extensionPointNames",
-                    /* Contains */8,
-                    {
-                      TAG: /* String */0,
-                      _0: extensionPointName
-                    }
-                  ],
-                  [
-                    "status",
-                    /* Contains */8,
-                    {
-                      TAG: /* String */0,
-                      _0: "Connected"
-                    }
-                  ]
-                ], 1000), (function (x) {
-                if (x.length === 0) {
-                  return Promise.resolve((console.log("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName), undefined));
+async function forwardCommand(_id, command, extensionPointName, queryEngine) {
+  var jsons = await Curry._3(queryEngine.scan, PluginSpec$Reventless.name, [
+        [
+          "extensionPointNames",
+          /* Contains */8,
+          {
+            TAG: /* String */0,
+            _0: extensionPointName
+          }
+        ],
+        [
+          "status",
+          /* Contains */8,
+          {
+            TAG: /* String */0,
+            _0: "Connected"
+          }
+        ]
+      ], 1000);
+  if (jsons.length !== 0) {
+    var plugin = Belt_Array.getExn(jsons, 0);
+    return await (async function (result) {
+                if (result.TAG === /* Ok */0) {
+                  var plugin$1 = result._0;
+                  return await (async function (extensionPoint) {
+                              if (extensionPoint !== undefined) {
+                                var val;
+                                try {
+                                  val = await SQS$AwsSdk.sendMessage(extensionPoint.commandTopic, command, undefined, undefined, undefined, undefined);
+                                }
+                                catch (raw_err){
+                                  var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+                                  console.log("PluginExtensionPoint_PluginMapping: Error on publish command:", err);
+                                  return ;
+                                }
+                                console.log("ForwardCommand: published command to", plugin$1.name, extensionPoint.commandTopic);
+                                return ;
+                              }
+                              console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$1);
+                            })(Belt_Array.getBy(plugin$1.extensionPoints, (function (extensionPoint) {
+                                    return extensionPoint.name === extensionPointName;
+                                  })));
                 }
-                var plugin = Belt_Array.getExn(x, 0);
-                var x$1 = PluginReadModelSpec$Reventless.state_decode(plugin);
-                if (x$1.TAG !== /* Ok */0) {
-                  return Promise.resolve((console.log("ForwardCommand: Couldn't decode Plugin", plugin, x$1._0), undefined));
-                }
-                var plugin$1 = x$1._0;
-                var x$2 = Belt_Array.getBy(plugin$1.extensionPoints, (function (extensionPoint) {
-                        return extensionPoint.name === extensionPointName;
-                      }));
-                if (x$2 !== undefined) {
-                  return Js_promise2.$$catch(Js_promise2.then(SQS$AwsSdk.sendMessage(x$2.commandTopic, command, undefined, undefined, undefined, undefined), (function (param) {
-                                    return Promise.resolve((console.log("ForwardCommand: published command to", plugin$1.name, x$2.commandTopic), undefined));
-                                  })), (function (err) {
-                                return Promise.resolve((console.log("PluginExtensionPoint_PluginMapping: Error on publish command:", err), undefined));
-                              }));
-                } else {
-                  return Promise.resolve((console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$1), undefined));
-                }
-              }));
+                console.log("ForwardCommand: Couldn't decode Plugin", plugin, result._0);
+              })(PluginReadModelSpec$Reventless.state_decode(plugin));
+  }
+  console.log("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName);
 }
 
-function callHandler(createSchedule, deleteSchedule, queryEngine, callCommand) {
+async function callHandler(createSchedule, deleteSchedule, queryEngine, callCommand) {
   switch (callCommand.TAG | 0) {
     case /* CreateDisconnectSchedule */0 :
         var id = callCommand._0;
@@ -67,19 +73,19 @@ function callHandler(createSchedule, deleteSchedule, queryEngine, callCommand) {
           meta: __x_meta,
           command: /* DisconnectPlugin */0
         };
-        return createSchedule({
+        return await createSchedule({
                     name: id,
                     rate: Schedule$Reventless.minutesFromNow(callCommand._1),
                     payload: JSON.stringify(Message$Reventless.command$p_encode(Decco.stringToJson, PluginExtensionPointSpec$ReventlessSpec.command_encode, __x))
                   });
     case /* DeleteDisconnectSchedule */1 :
-        return deleteSchedule(callCommand._0);
+        return await deleteSchedule(callCommand._0);
     case /* DoConnectPlugin */2 :
     case /* DoDisconnectPlugin */3 :
-        return Promise.resolve(undefined);
+        return ;
     case /* ForwardCommand */4 :
         var match = callCommand._0;
-        return forwardCommand(match.id, match.command, match.extensionPointName, queryEngine);
+        return await forwardCommand(match.id, match.command, match.extensionPointName, queryEngine);
     
   }
 }

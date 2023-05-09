@@ -136,7 +136,7 @@ module Make = (
     let eventsHandler = (. events'Json) => {
       let count = events'Json->Belt.Array.size
       events'Json
-      ->Belt.Array.mapWithIndex((idx, event'Json) => {
+      ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
         let idx = idx + 1
         event'Json->Message.logEvent'Json(
           `Core eventHandler: outgoing event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
@@ -147,10 +147,10 @@ module Make = (
           handle(. event'Json, fakePluginDefinition)
         })
         ->Js.Promise.all
-        ->Js.Promise2.then(_ => Js.Promise.resolve())
+        ->Util.Promise.toUnit
       })
       ->Js.Promise.all
-      ->Js.Promise2.then(_ => Js.Promise.resolve())
+      ->Util.Promise.toUnit
     }
 
     module EventCollector = EventCollector.Make(EventCollectorConnector)

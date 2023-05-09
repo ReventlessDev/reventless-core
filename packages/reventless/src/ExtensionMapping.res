@@ -86,28 +86,18 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
           aggregateCmd->encodeAggregateCommandJson(aggregateId),
         )
       | PublishAggregateCommandAsync(promise) =>
-        let promise' =
-          promise->Js.Promise2.then(((aggregateId, aggregateCmd)) =>
-            (
-              aggregateName,
-              aggregateCmd->encodeAggregateCommandJson(aggregateId),
-            )->Js.Promise.resolve
-          )
-        AbstractPublishAggregateCommandAsync(promise')
+        let toCommandJson = async promise => {
+          let (aggregateId, aggregateCmd) = await promise
+          (aggregateName, aggregateCmd->encodeAggregateCommandJson(aggregateId))
+        }
+        AbstractPublishAggregateCommandAsync(promise->toCommandJson)
       | PublishAggregateCommandsAsync(promise) =>
-        let promise' =
-          promise->Js.Promise2.then(tupels =>
-            tupels
-            ->Belt.Array.map(
-              ((aggregateId, aggregateCmd)) =>
-                (
-                  aggregateName,
-                  aggregateCmd->encodeAggregateCommandJson(aggregateId),
-                )->Js.Promise.resolve,
-            )
-            ->Js.Promise.all
-          )
-        AbstractPublishAggregateCommandsAsync(promise')
+        let toCommandJsons = async promise =>
+          (await promise)->Belt.Array.map(((aggregateId, aggregateCmd)) => (
+            aggregateName,
+            aggregateCmd->encodeAggregateCommandJson(aggregateId),
+          ))
+        AbstractPublishAggregateCommandsAsync(promise->toCommandJsons)
       | PublishExtensionPointCommand(id, command)
         if Spec.name == ReventlessSpec.PluginExtensionPointSpec.name =>
         AbstractPublishPluginExtensionPointCommand(

@@ -5,7 +5,6 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
@@ -16,20 +15,20 @@ var Adapter = {};
 
 function Make(Spec, Connector) {
   var publishJsonsFn = function (connector) {
-    return function (jsons) {
-      return Js_promise2.then(Js_promise2.$$catch(connector.publish(jsons), (function (e) {
-                        console.log("CommandTopic: Couldn't publish commands:", Belt_Array.map(jsons, (function (commandJson) {
-                                    return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
-                                  })));
-                        return Promise.reject({
-                                    RE_EXN_ID: NotPublishedToConnector,
-                                    _1: e
-                                  });
-                      })), (function (param) {
-                    return Promise.resolve((console.log("CommandTopic: Published commands:", Belt_Array.map(jsons, (function (commandJson) {
-                                            return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
-                                          }))), undefined));
-                  }));
+    return async function (jsons) {
+      var val;
+      try {
+        val = await connector.publish(jsons);
+      }
+      catch (e){
+        console.log("CommandTopic: Couldn't publish commands:", Belt_Array.map(jsons, (function (commandJson) {
+                    return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
+                  })));
+        throw e;
+      }
+      console.log("CommandTopic: Published commands:", Belt_Array.map(jsons, (function (commandJson) {
+                  return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
+                })));
     };
   };
   var publishFn = function (connector) {
@@ -47,7 +46,7 @@ function Make(Spec, Connector) {
     };
   };
   var handleCommands = function (commandsHandler) {
-    return function (jsonItems) {
+    return async function (jsonItems) {
       console.log("starting CommandTopic.handleCommands. Command count:", jsonItems.length);
       var topicItems = Belt_Array.keepMap(jsonItems, (function (param) {
               var json = param.command;
@@ -62,13 +61,15 @@ function Make(Spec, Connector) {
               var message = command$p._0.message;
               console.log("CommandTopic: Error: Couldn't decode command " + commandStr + ": " + message + "");
             }));
-      return Js_promise2.$$catch(Js_promise2.then(commandsHandler(topicItems), (function (res) {
-                        console.log("finished CommandTopic.handleCommands");
-                        return Promise.resolve(res);
-                      })), (function (err) {
-                    var error = err.message;
-                    return Js_exn.raiseError("CommandTopic.handleCommand: Error: Couldn't handle commands: " + error + "");
-                  }));
+      var res;
+      try {
+        res = await commandsHandler(topicItems);
+      }
+      catch (exn){
+        return Js_exn.raiseError("CommandTopic.handleCommand: Error: Couldn't handle commands");
+      }
+      console.log("finished CommandTopic.handleCommands");
+      return res;
     };
   };
   var construct = function (memorySize, timeout, self, name, commandsHandler) {

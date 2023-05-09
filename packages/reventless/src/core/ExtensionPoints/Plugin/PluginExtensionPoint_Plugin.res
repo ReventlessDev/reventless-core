@@ -1,74 +1,68 @@
 open ReventlessSpec.ExtensionPointMapping
 open ReventlessSpec.Plugin
 
-let forwardCommand = (
+let forwardCommand = async (
   _id,
   command,
   extensionPointName,
   queryEngine: ReventlessSpec.QueryEngine.t,
 ) =>
-  queryEngine.scan(
+  switch await queryEngine.scan(
     ~viewName=PluginSpec.name,
     ~filterConfigs=[
       ("extensionPointNames", Contains, String(extensionPointName)),
       ("status", Contains, String("Connected")),
     ],
     ~limit=1000,
-  )->Js.Promise2.then(x =>
-    switch x {
-    | [] =>
-      Js.log2(
-        "ForwardCommand: Couldn't find Plugin with ExtensionPoint",
-        extensionPointName,
-      )->Js.Promise.resolve
+  ) {
+  | jsons =>
+    switch jsons {
+    | [] => Js.log2("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName)
     | plugins =>
       let plugin = plugins->Belt.Array.getExn(0)
-      plugin
+      await plugin
       ->PluginReadModelSpec.state_decode
       ->(
-        x =>
-          switch x {
+        async result =>
+          switch result {
           | Belt.Result.Ok(plugin: PluginReadModelSpec.state) =>
-            plugin.extensionPoints
+            await plugin.extensionPoints
             ->Belt.Array.getBy(extensionPoint => extensionPoint.name == extensionPointName)
             ->(
-              x =>
-                switch x {
+              async extensionPoint =>
+                switch extensionPoint {
                 | Some(extensionPoint) =>
-                  command
-                  ->AwsSdk.SQS.sendMessage(~queueId=extensionPoint.commandTopic, ~messageBody=_, ())
-                  ->Js.Promise2.then(_ =>
+                  switch await AwsSdk.SQS.sendMessage(
+                    ~queueId=extensionPoint.commandTopic,
+                    ~messageBody=command,
+                    (),
+                  ) {
+                  | _ =>
                     Js.log3(
                       "ForwardCommand: published command to",
                       plugin.name,
                       extensionPoint.commandTopic,
-                    )->Js.Promise.resolve
-                  )
-                  ->Js.Promise2.catch(
-                    err =>
-                      Js.log2(
-                        "PluginExtensionPoint_PluginMapping: Error on publish command:",
-                        err,
-                      )->Js.Promise.resolve,
-                  )
+                    )
+                  | exception err =>
+                    Js.log2("PluginExtensionPoint_PluginMapping: Error on publish command:", err)
+                  }
 
                 | None =>
                   Js.log3(
                     "ForwardCommand: Couldn't find ExtensionPoint",
                     extensionPointName,
                     plugin,
-                  )->Js.Promise.resolve
+                  )
                 }
             )
 
-          | Error(err) =>
-            Js.log3("ForwardCommand: Couldn't decode Plugin", plugin, err)->Js.Promise.resolve
+          | Error(err) => Js.log3("ForwardCommand: Couldn't decode Plugin", plugin, err)
           }
       )
     }
-  )
+  }
 
-let callHandler = (
+let callHandler = async (
   createSchedule: ReventlessSpec.Schedule.create,
   deleteSchedule: ReventlessSpec.Schedule.delete,
   queryEngine: ReventlessSpec.QueryEngine.t,
@@ -76,7 +70,7 @@ let callHandler = (
 ) =>
   switch callCommand {
   | ReventlessSpec.PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
-    createSchedule(. {
+    await createSchedule(. {
       name: id, // TODO: prefix with Pulumi.Pulumi.getStackName()
       rate: timeout->Schedule.minutesFromNow,
       payload: {
@@ -91,10 +85,10 @@ let callHandler = (
       )
       ->Js.Json.stringify,
     })
-  | DeleteDisconnectSchedule(id) => deleteSchedule(. id)
+  | DeleteDisconnectSchedule(id) => await deleteSchedule(. id)
   | ForwardCommand({id, command, extensionPointName}) =>
-    forwardCommand(id, command, extensionPointName, queryEngine)
-  | _ => Js.Promise.resolve()
+    await forwardCommand(id, command, extensionPointName, queryEngine)
+  | _ => ()
   }
 
 module Impl = {

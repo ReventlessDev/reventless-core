@@ -11,12 +11,12 @@ var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var QueryDb$Reventless = require("./QueryDb.bs.js");
 var Component$Reventless = require("./Component.bs.js");
+var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var ReadModel_Spec$ReventlessSpec = require("@reventless/reventless-spec/src/components/ReadModel/ReadModel_Spec.bs.js");
 
@@ -279,6 +279,48 @@ function Make(Config, QueryDbStorage, Handler) {
               console.log("  " + String(size) + " reference(s) for counterId " + param[0] + ": " + referencesStr + "");
             }));
     };
+    var count = async function (saveBatch, countItems) {
+      var result = await saveBatch(Belt_Array.map(countItems, (function (param) {
+                  var id = makeId([
+                        param.counterId,
+                        param.reference
+                      ]);
+                  var state_inc = param.inc;
+                  var state = {
+                    id: id,
+                    inc: state_inc
+                  };
+                  return [
+                          id,
+                          state,
+                          ttl
+                        ];
+                })));
+      if (result.TAG === /* Ok */0) {
+        var batchSize = countItems.length;
+        console.log("Counter-Reventless" + (": saved batch of " + String(batchSize) + " reference(s):"));
+        return logCountItems(countItems);
+      }
+      var err = result._0;
+      if (typeof err !== "number" && err.TAG === /* NotSavedToStorage */0) {
+        var batchSize$1 = countItems.length;
+        console.log("Counter error: couldn't save batch of " + String(batchSize$1) + " reference(s):");
+        logCountItems(countItems);
+        throw {
+              RE_EXN_ID: NotCounted,
+              _1: err._0,
+              Error: new Error()
+            };
+      }
+      var batchSize$2 = countItems.length;
+      console.log("Unknown Counter error: couldn't save batch of " + String(batchSize$2) + " reference(s):");
+      logCountItems(countItems);
+      throw {
+            RE_EXN_ID: NotCounted,
+            _1: "Unknown error",
+            Error: new Error()
+          };
+    };
     var referencesDb = Curry._3(ReferencesDb.make, ttl, Caml_option.some(opts), undefined);
     var countsDb = Curry._3(CountsDb.make, ttl, Caml_option.some(opts), undefined);
     var groupByCounterId = function (references) {
@@ -290,95 +332,48 @@ function Make(Config, QueryDbStorage, Handler) {
             }));
       return Js_dict.entries(dict);
     };
-    var counterHandler = function (references, counts) {
+    var counterHandler = async function (references, counts) {
       console.log("counterHandler: references:", references.length);
       console.log("counterHandler: counts:", counts);
-      var countP = Js_promise2.then(Promise.all(Belt_Array.map(groupByCounterId(references), (function (param) {
+      await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(groupByCounterId(references), (function (param) {
                       return Curry._1(CountsDb.count, countsDb)(param[0], "count", -param[1] | 0);
-                    }))), (function (param) {
-              return Promise.resolve(undefined);
-            }));
-      var counterEventsHandlerP = counterEventsHandler(Belt_Array.keepMap(counts, (function (state) {
-                  var match = state_decode$1(state);
-                  if (match.TAG === /* Ok */0) {
-                    var match$1 = match._0;
-                    var count = match$1.count;
-                    var id = match$1.id;
-                    if (count === 0) {
-                      var match$2 = unmakeId(id);
-                      console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + String(count) + ""));
-                      var meta = Message$Reventless.generateMeta(name, undefined, "Counter", undefined);
-                      return Caml_option.some(Js_dict.fromArray([
-                                      [
-                                        "id",
-                                        match$2[0]
-                                      ],
-                                      [
-                                        "meta",
-                                        Message$Reventless.meta_encode(meta)
-                                      ],
-                                      [
-                                        "event",
-                                        ["CountFinished"]
-                                      ]
-                                    ]));
-                    }
-                    console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + String(count) + ""));
-                    return ;
-                  }
-                  var stateStr = JSON.stringify(state);
-                  console.log("Counter-Reventless" + (".counterHandler: couldn't decode state " + stateStr + ""));
-                })));
-      return Js_promise2.then(Promise.all([
-                      countP,
-                      counterEventsHandlerP
-                    ]), (function (param) {
-                    return Promise.resolve(undefined);
-                  }));
+                    }))));
+      return await counterEventsHandler(Belt_Array.keepMap(counts, (function (state) {
+                        var match = state_decode$1(state);
+                        if (match.TAG === /* Ok */0) {
+                          var match$1 = match._0;
+                          var count = match$1.count;
+                          var id = match$1.id;
+                          if (count === 0) {
+                            var match$2 = unmakeId(id);
+                            console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + String(count) + ""));
+                            var meta = Message$Reventless.generateMeta(name, undefined, "Counter", undefined);
+                            return Caml_option.some(Js_dict.fromArray([
+                                            [
+                                              "id",
+                                              match$2[0]
+                                            ],
+                                            [
+                                              "meta",
+                                              Message$Reventless.meta_encode(meta)
+                                            ],
+                                            [
+                                              "event",
+                                              ["CountFinished"]
+                                            ]
+                                          ]));
+                          }
+                          console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + String(count) + ""));
+                          return ;
+                        }
+                        var stateStr = JSON.stringify(state);
+                        console.log("Counter-Reventless" + (".counterHandler: couldn't decode state " + stateStr + ""));
+                      })));
     };
     var handler = Curry._7(Handler.make, name$1, name$2, Component$Reventless.extractOutputs(referencesDb), name$3, Component$Reventless.extractOutputs(countsDb), counterHandler, opts2);
     var partial_arg$6 = Curry._1(ReferencesDb.saveBatch, referencesDb);
     self.count = (function (param) {
-        return Js_promise2.then(partial_arg$6(Belt_Array.map(param, (function (param) {
-                              var id = makeId([
-                                    param.counterId,
-                                    param.reference
-                                  ]);
-                              var state_inc = param.inc;
-                              var state = {
-                                id: id,
-                                inc: state_inc
-                              };
-                              return [
-                                      id,
-                                      state,
-                                      ttl
-                                    ];
-                            }))), (function (x) {
-                      if (x.TAG === /* Ok */0) {
-                        var batchSize = param.length;
-                        console.log("Counter-Reventless" + (": saved batch of " + String(batchSize) + " reference(s):"));
-                        logCountItems(param);
-                        return Promise.resolve(undefined);
-                      }
-                      var err = x._0;
-                      if (typeof err !== "number" && err.TAG === /* NotSavedToStorage */0) {
-                        var batchSize$1 = param.length;
-                        console.log("Counter error: couldn't save batch of " + String(batchSize$1) + " reference(s):");
-                        logCountItems(param);
-                        return Promise.reject({
-                                    RE_EXN_ID: NotCounted,
-                                    _1: err._0
-                                  });
-                      }
-                      var batchSize$2 = param.length;
-                      console.log("Unknown Counter error: couldn't save batch of " + String(batchSize$2) + " reference(s):");
-                      logCountItems(param);
-                      return Promise.reject({
-                                  RE_EXN_ID: NotCounted,
-                                  _1: "Unknown error"
-                                });
-                    }));
+        return count(partial_arg$6, param);
       });
     self.addToCounterTarget = handler.addToCounterTarget;
     var outputs = {

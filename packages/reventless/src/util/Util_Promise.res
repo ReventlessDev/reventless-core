@@ -17,3 +17,22 @@ let filterRejected = results =>
 @val
 @scope("Promise")
 external allSettled: array<Js.Promise.t<'a>> => Js.Promise.t<array<result<'a>>> = "allSettled"
+
+let map: (promise<'a>, 'a => 'b, exn => 'b) => promise<'b> = async (p, mapOk, mapExn) =>
+  switch await p {
+  | a => a->mapOk
+  | exception e => e->mapExn
+  }
+
+let mapOk: (promise<'a>, 'a => 'b) => promise<'b> = async (p, mapOk) =>
+  switch await p {
+  | a => a->mapOk
+  }
+
+let mapExn: (promise<'a>, 'exn => 'b) => promise<'b> = async (p, mapExn) =>
+  switch await p {
+  | a => a
+  | exception e => e->mapExn
+  }
+
+let toUnit: promise<'a> => promise<unit> = p => p->mapOk(ignore)

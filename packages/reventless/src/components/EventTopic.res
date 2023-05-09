@@ -77,10 +77,10 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   @set external setPublish: (component, publish) => unit = "publish"
   @get external publish: component => publish = "publish"
 
-  let publishFn = (publisher: Adapter.publisher, name) => (. events') => {
+  let publishFn = (publisher: Adapter.publisher, name) => async (. events') => {
     let eventCount = events'->Belt.Array.length
-    events'
-    ->Belt.Array.mapWithIndex((idx, event') => {
+    await events'
+    ->Belt.Array.mapWithIndex(async (idx, event') => {
       let json = Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event')
 
       let id = event'.id
@@ -91,22 +91,21 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
         ->Belt.Option.getWithDefault("Could not get event-name!")
       let idx = idx + 1
 
-      publisher.publish(. id->Spec.Id.toString, event'.meta, json)
-      ->Js.Promise2.catch(e => {
+      switch await publisher.publish(. id->Spec.Id.toString, event'.meta, json) {
+      | exception e =>
         Js.log(
           `EventTopic: Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}: ${eventName}(${id->Spec.Id.toString}) to ${name}`,
         )
-        NotPublishedToPublisher(e)->Js.Promise.reject
-      })
-      ->Js.Promise2.then(_ => {
+        raise(e)
+      | _ =>
         let event = json->Js.Json.stringify
         Js.log(
           `EventTopic: Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}: ${eventName}(${id->Spec.Id.toString}) to ${name}: ${event}`,
-        )->Js.Promise.resolve
-      })
+        )
+      }
     })
     ->Js.Promise.all
-    ->Js.Promise2.then(_ => Js.Promise.resolve())
+    ->Util.Promise.toUnit
   }
 
   let construct = (~storageResources, self, name) => {

@@ -10,7 +10,6 @@ var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
@@ -18,7 +17,7 @@ var Adapter = {};
 
 function Make(Config, Spec, Behaviour, Resolvers) {
   var generateCommand = function (publish) {
-    return function (payload) {
+    return async function (payload) {
       var msgId = Message$Reventless.uuid(undefined);
       var id = Curry._1(Spec.Id.makeFromString, payload.arguments.id);
       var meta_service = Spec.name;
@@ -48,9 +47,8 @@ function Make(Config, Spec, Behaviour, Resolvers) {
         meta: meta,
         command: command
       };
-      return Js_promise2.then(publish(command$p), (function (param) {
-                    return Promise.resolve(msgId);
-                  }));
+      await publish(command$p);
+      return msgId;
     };
   };
   var construct = function (self, name, api, commandHandler) {

@@ -17,7 +17,7 @@ let eventsToJson = (events', specIdEncode, specEventEncode, id) =>
 let storageAppendErrorHandler = (specName, specIdToString, id, err) => {
   let errMsg =
     `EventLog: Error: Couldn't append for ${specName}(${id->specIdToString}):` ++
-    err->Js.Exn.message->Belt.Option.getWithDefault("no error message given")
+    err->Util.Error.message
   Js.log(errMsg)
   errMsg->Belt.Result.Error
 }
@@ -59,7 +59,7 @@ let appendFn = (
     | appendResult =>
       await publishToEventTopic(eventTopicPublish, specIdToString, id, events')
       appendResult
-    | exception Js.Exn.Error(err) => storageAppendErrorHandler(specName, specIdToString, id, err)
+    | exception Js.Exn.Error(e) => storageAppendErrorHandler(specName, specIdToString, id, e)
     }
   } catch {
   | exn => catchErrorHandler(exn)
@@ -91,21 +91,9 @@ let decodeEvent = (specEventDecode, json) =>
 
 let decodeEvents = (jsons, specEventDecode) => jsons->Belt.Array.map(decodeEvent(specEventDecode))
 
-let decodeEventsToPromise: (
-  Js.Json.t => result<'a, Decco.decodeError>,
-  array<Js.Json.t>,
-) => promise<array<'a>> = (specEventDecode, jsons) =>
-  decodeEvents(jsons, specEventDecode)->Js.Promise2.resolve
+let decodeEventsToPromise = async (specEventDecode, jsons) => decodeEvents(jsons, specEventDecode)
 
-let replayFn: (
-  EventLogCommon.replay<string, Js.Json.t>,
-  'specId => string,
-  Js.Json.t => result<'specEvent, Decco.decodeError>,
-) => (. 'specId) => promise<array<'specEvent>> = (
-  storageReplay,
-  specIdToString,
-  specEventDecode,
-) => async (. id) => {
+let replayFn = (storageReplay, specIdToString, specEventDecode) => async (. id) => {
   let jsonEvents = await storageReplay(. id->specIdToString)
   await decodeEventsToPromise(specEventDecode, jsonEvents)
 }

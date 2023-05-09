@@ -110,33 +110,33 @@ module Make = (
   }
 
   let processMappingActions = (actions, eventMeta) =>
-    actions->Belt.Array.map(x =>
-      switch x {
+    actions->Belt.Array.map(action =>
+      switch action {
       | ReventlessSpec.EventMapping.Publish(id, command) =>
-        [createCommandJson(id, eventMeta, command)]->Js.Promise.resolve->Publisher
+        Publisher([createCommandJson(id, eventMeta, command)]->Js.Promise.resolve)
       | PublishDelayed(id, command, delay) =>
-        [createCommandJson(~delay, id, eventMeta, command)]->Js.Promise.resolve->Publisher
+        Publisher([createCommandJson(~delay, id, eventMeta, command)]->Js.Promise.resolve)
       | PublishAsync(promise) =>
-        promise
-        ->Js.Promise2.then(cmds =>
-          cmds
-          ->Belt.Array.map(((id, command)) => createCommandJson(id, eventMeta, command))
-          ->Js.Promise.resolve
-        )
-        ->Publisher
+        let toCommandJson = async promise =>
+          {await promise}->Belt.Array.map(((id, command)) =>
+            createCommandJson(id, eventMeta, command)
+          )
+        Publisher(promise->toCommandJson)
       | AddToCounterTarget({counterId, target}) =>
-        AddToCounterTarget({
-          counterId,
-          target,
-          targetRef: eventMeta.correlationId,
-        })->Counter
-      | Count(counterId) => Count({counterId, reference: eventMeta.correlationId, inc: 1})->Counter
+        Counter(
+          AddToCounterTarget({
+            counterId,
+            target,
+            targetRef: eventMeta.correlationId,
+          }),
+        )
+      | Count(counterId) => Counter(Count({counterId, reference: eventMeta.correlationId, inc: 1}))
       | CountMulti(counterId, inc) =>
-        Count({counterId, reference: eventMeta.correlationId, inc})->Counter
+        Counter(Count({counterId, reference: eventMeta.correlationId, inc}))
       }
     )
 
-  let commonEventsHandler = (mappings, queryEngine, events'Json) => {
+  let commonEventsHandler = async (mappings, queryEngine, events'Json) => {
     let eventsCount = events'Json->Belt.Array.size
     let (publisherActions, counterActions) =
       events'Json
@@ -178,15 +178,16 @@ module Make = (
         }
       )
     let publisherEntries =
-      publisherActions
-      ->Belt.Array.map(x =>
-        switch x {
+      (await publisherActions
+      ->Belt.Array.map(action =>
+        switch action {
         | Publisher(entries) => entries
         | Counter(_) => Js.Exn.raiseError("Invalid EventMapper action")
         }
       )
-      ->Js.Promise.all
-      ->Js.Promise2.then(entries => entries->Belt.Array.concatMany->Js.Promise.resolve)
+      ->Js.Promise.all)
+      ->Belt.Array.concatMany
+      ->Js.Promise.resolve
     let counterActions = counterActions->Belt.Array.map(x =>
       switch x {
       | Counter(action) => action
@@ -202,8 +203,12 @@ module Make = (
     queryEngine,
     count: Counter.count,
     addToCounterTarget: Counter.addToCounterTarget,
-  ) => (. events'Json) => {
-    let (publisherEntries, counterActions) = commonEventsHandler(mappings, queryEngine, events'Json)
+  ) => async (. events'Json) => {
+    let (publisherEntries, counterActions) = await commonEventsHandler(
+      mappings,
+      queryEngine,
+      events'Json,
+    )
     let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(x =>
       switch x {
       | Counter.Count(_) => true
@@ -218,44 +223,45 @@ module Make = (
       }
     )
     Js.log2("EventMapper.eventCollectorEventsHandler: countActions:", countActions->Belt.Array.size)
-    let countP = switch countActions->Belt.Array.size {
-    | 0 => Js.Promise.resolve()
+    switch countActions->Belt.Array.size {
+    | 0 => ()
     | _ =>
-      count(countActions)->Js.Promise2.catch(err => {
+      switch await count(countActions) {
+      | exception e =>
         let error = __MODULE__ ++ ".eventCollectorEventsHandler: count error"
-        Js.log2(error, err)
+        Js.log2(error, e)
         Js.Exn.raiseError(error)
-      })
+      | _ => ()
+      }
     }
 
     Js.log2(
       "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
       addToCounterTargetActions->Js.Json.stringifyAny,
     )
-    let addToCounterTargetsP =
-      addToCounterTargetActions
-      ->Belt.Array.map(x =>
-        switch x {
-        | AddToCounterTarget(counterTarget) => addToCounterTarget(counterTarget)
-        | _ => Js.Promise.resolve()
-        }
-      )
-      ->Js.Promise.all
+    await addToCounterTargetActions
+    ->Belt.Array.map(async x =>
+      switch x {
+      | AddToCounterTarget(counterTarget) => await addToCounterTarget(counterTarget)
+      | _ => ()
+      }
+    )
+    ->Js.Promise.all
+    ->Util.Promise.toUnit
 
-    let sendEntriesP =
-      publisherEntries->Js.Promise2.then(commandJsons => publishJsons(. commandJsons))
-
-    (countP, addToCounterTargetsP, sendEntriesP)
-    ->Js.Promise.all3
-    ->Js.Promise2.then(_ => Js.Promise.resolve())
+    await publishJsons(. await publisherEntries)
   }
 
-  let counterEventsHandler = (publishJsons, mappings, queryEngine) => (. events'Json) => {
-    let (publisherEntries, countActions) = commonEventsHandler(mappings, queryEngine, events'Json)
+  let counterEventsHandler = (publishJsons, mappings, queryEngine) => async (. events'Json) => {
+    let (publisherEntries, countActions) = await commonEventsHandler(
+      mappings,
+      queryEngine,
+      events'Json,
+    )
     if countActions->Belt.Array.size > 0 {
       Js.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!")
     }
-    publisherEntries->Js.Promise2.then(commandJsons => publishJsons(. commandJsons))
+    await publishJsons(. await publisherEntries)
   }
 
   let construct = (

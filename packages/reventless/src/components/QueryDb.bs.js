@@ -8,7 +8,6 @@ var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Component$Reventless = require("./Component.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
@@ -32,41 +31,40 @@ var Adapter = {
 
 function Make(Config, Spec, $$Storage, Resolvers) {
   var loadFn = function (storage) {
-    return function (id) {
-      return Js_promise2.then(storage.load(Curry._1(Spec.Id.toString, id)), (function (result) {
-                    return Promise.resolve(Belt_Result.map(result, (function (states) {
-                                      return Belt_Array.concatMany(Belt_Array.map(states, (function (param) {
-                                                        var state = Curry._1(Spec.state_decode, param);
-                                                        if (state.TAG === /* Ok */0) {
-                                                          return [state._0];
-                                                        }
-                                                        console.log("QueryDb: Error: Couldn't decode state for " + Curry._1(Spec.Id.toString, id) + ": " + Belt_Option.getExn(JSON.stringify(state._0)) + "");
-                                                        return [];
-                                                      })));
+    return async function (id) {
+      var result = await storage.load(Curry._1(Spec.Id.toString, id));
+      return Belt_Result.map(result, (function (states) {
+                    return Belt_Array.concatMany(Belt_Array.map(states, (function (param) {
+                                      var state = Curry._1(Spec.state_decode, param);
+                                      if (state.TAG === /* Ok */0) {
+                                        return [state._0];
+                                      }
+                                      console.log("QueryDb: Error: Couldn't decode state for " + Curry._1(Spec.Id.toString, id) + ": " + Belt_Option.getExn(JSON.stringify(state._0)) + "");
+                                      return [];
                                     })));
                   }));
     };
   };
   var saveFn = function (storage) {
-    return function (id, state, saveMode, ttl) {
+    return async function (id, state, saveMode, ttl) {
       var dict = Js_json.decodeObject(Curry._1(Spec.state_encode, state));
       if (dict !== undefined) {
         var dict$1 = Caml_option.valFromOption(dict);
         dict$1["id"] = Curry._1(Spec.Id.t_encode, id);
-        return storage.save(Curry._1(Spec.Id.toString, id), dict$1, saveMode, ttl);
+        return await storage.save(Curry._1(Spec.Id.toString, id), dict$1, saveMode, ttl);
       }
       console.log("QueryDB.save: Error: Couldn't decodeObject:", JSON.stringify(state));
-      return Promise.resolve({
-                  TAG: /* Error */1,
-                  _0: {
-                    TAG: /* NotSavedToStorage */0,
-                    _0: "Couldn't decodeObject"
-                  }
-                });
+      return {
+              TAG: /* Error */1,
+              _0: {
+                TAG: /* NotSavedToStorage */0,
+                _0: "Couldn't decodeObject"
+              }
+            };
     };
   };
   var saveBatchFn = function (storage) {
-    return function (items) {
+    return async function (items) {
       var batch = Belt_Array.keepMap(items, (function (param) {
               var state = param[1];
               var id = param[0];
@@ -82,28 +80,28 @@ function Make(Config, Spec, $$Storage, Resolvers) {
               }
               console.log("QueryDB.saveBatch: Error: Couldn't decodeObject:", JSON.stringify(state));
             }));
-      return storage.saveBatch(batch);
+      return await storage.saveBatch(batch);
     };
   };
   var countFn = function (storage) {
-    return function (id, fieldName, inc) {
-      return storage.count(Curry._1(Spec.Id.toString, id), fieldName, inc);
+    return async function (id, fieldName, inc) {
+      return await storage.count(Curry._1(Spec.Id.toString, id), fieldName, inc);
     };
   };
   var deleteFn = function (storage) {
-    return function (id, subId) {
-      return storage.delete(Curry._1(Spec.Id.toString, id), subId);
+    return async function (id, subId) {
+      return await storage.delete(Curry._1(Spec.Id.toString, id), subId);
     };
   };
   var deleteBatchFn = function (storage) {
-    return function (ids) {
+    return async function (ids) {
       var ids$1 = Belt_Array.map(ids, (function (param) {
               return [
                       Curry._1(Spec.Id.toString, param[0]),
                       param[1]
                     ];
             }));
-      return storage.deleteBatch(ids$1);
+      return await storage.deleteBatch(ids$1);
     };
   };
   var outputs = Component$Reventless.extractOutputs;

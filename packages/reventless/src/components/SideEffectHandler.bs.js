@@ -8,12 +8,13 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
+var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var Util_EventTopic$Reventless = require("../util/Util_EventTopic.bs.js");
 
@@ -45,10 +46,10 @@ function Make(EventCollector) {
   };
   var eventsHandler = function (sideEffects, queryEngine) {
     return function (events$pJson) {
-      return Js_promise2.then(Promise.all(Belt_Array.map(events$pJson, (function (event$pJson) {
+      return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(events$pJson, (async function (event$pJson) {
                             var match = findSideEffect(sideEffects, event$pJson);
                             if (match === undefined) {
-                              return Promise.resolve(undefined);
+                              return ;
                             }
                             var sideEffect = match[2];
                             var eventObj = match[0];
@@ -56,41 +57,47 @@ function Make(EventCollector) {
                             Message$Reventless.logEvent$pJson(event$pJson, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
                             var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
                             var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
-                            if (idDecoded === undefined) {
-                              return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), undefined));
-                            }
-                            if (idDecoded.TAG === /* Ok */0 && eventDecoded !== undefined && eventDecoded.TAG === /* Ok */0) {
-                              return Js_promise2.$$catch(sideEffect.execute(idDecoded._0, match[1], eventDecoded._0, queryEngine), (function (err) {
-                                            return Promise.resolve((console.log("SideEffect: Error while processing:", err), undefined));
-                                          }));
+                            if (idDecoded !== undefined) {
+                              if (idDecoded.TAG === /* Ok */0 && eventDecoded !== undefined && eventDecoded.TAG === /* Ok */0) {
+                                try {
+                                  return await sideEffect.execute(idDecoded._0, match[1], eventDecoded._0, queryEngine);
+                                }
+                                catch (raw_err){
+                                  var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+                                  console.log("SideEffect: Error while processing:", err);
+                                  return ;
+                                }
+                              }
+                              
+                            } else {
+                              console.log("SideEffectHandler.eventHandler: Invalid event");
+                              return ;
                             }
                             if (eventDecoded !== undefined) {
                               if (eventDecoded.TAG === /* Ok */0) {
-                                return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", idDecoded._0), undefined));
-                              } else {
-                                return Promise.resolve((console.log("SideEffectHandler.eventHandler: Couldn't decode event:", eventDecoded._0), undefined));
+                                console.log("SideEffectHandler.eventHandler: Couldn't decode event:", idDecoded._0);
+                                return ;
                               }
-                            } else {
-                              return Promise.resolve((console.log("SideEffectHandler.eventHandler: Invalid event"), undefined));
+                              console.log("SideEffectHandler.eventHandler: Couldn't decode event:", eventDecoded._0);
+                              return ;
                             }
-                          }))), (function (param) {
-                    return Promise.resolve(undefined);
-                  }));
+                            console.log("SideEffectHandler.eventHandler: Invalid event");
+                          }))));
     };
   };
   var createScheduleFn = function (scheduler, queueResources) {
-    return function (schedule) {
-      return Schedule$Reventless.create(scheduler, queueResources)(schedule);
+    return async function (schedule) {
+      return await Schedule$Reventless.create(scheduler, queueResources)(schedule);
     };
   };
   var deleteScheduleFn = function (scheduler, queueResources) {
-    return function (scheduleName) {
-      return Schedule$Reventless.$$delete(scheduler, queueResources)(scheduleName);
+    return async function (scheduleName) {
+      return await Schedule$Reventless.$$delete(scheduler, queueResources)(scheduleName);
     };
   };
   var enqueueEventFn = function (eventCollector) {
-    return function (delay, id, message) {
-      return Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
+    return async function (delay, id, message) {
+      return await Curry._1(EventCollector.enqueueEvent, eventCollector)(delay, id, message);
     };
   };
   var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name) {

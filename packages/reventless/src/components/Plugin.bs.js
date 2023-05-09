@@ -11,10 +11,10 @@ var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Pulumi = require("@pulumi/pulumi");
 var AWS$Reventless = require("../util/AWS.bs.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var Extension$Reventless = require("./Extension.bs.js");
@@ -22,6 +22,7 @@ var Heartbeat$Reventless = require("./Heartbeat.bs.js");
 var Interstack$Reventless = require("../util/Interstack.bs.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.bs.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.bs.js");
+var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
 var Util_QueryDb$Reventless = require("../util/Util_QueryDb.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 var EventCollector$Reventless = require("./EventCollector.bs.js");
@@ -100,94 +101,86 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var extensionsOutputs = Component$Reventless.extractMultipleOutputs(extensions$1);
           var match = Curry._1(Util_Pulumi$Reventless.Output.Async.make, undefined);
           var eventCollectorUrn = match[0];
-          var subscribe = function (action, extensionPointName, eventTopic, pluginId, eventCollector) {
+          var subscribe = async function (action, extensionPointName, eventTopic, pluginId, eventCollector) {
             var eventTopicName = AWS$Reventless.arn2Name(eventTopic);
             var eventCollectorName = AWS$Reventless.arn2Name(eventCollector);
             AWS$Reventless.validateName(extensionPointName + ("-" + pluginId));
-            return Js_promise2.$$catch(Js_promise2.then(SNS$AwsSdk.subscribeQueueToTopic(eventCollector, eventTopic), (function (param) {
-                              return Promise.resolve((console.log("" + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")"), undefined));
-                            })), (function (err) {
-                          return Promise.resolve((console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", err), undefined));
-                        }));
+            var val;
+            try {
+              val = await SNS$AwsSdk.subscribeQueueToTopic(eventCollector, eventTopic);
+            }
+            catch (raw_err){
+              var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+              console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", err);
+              return ;
+            }
+            console.log("" + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")");
           };
-          var unsubscribe = function (action, extensionPointName, eventTopic, pluginId, eventCollector) {
+          var unsubscribe = async function (action, extensionPointName, eventTopic, pluginId, eventCollector) {
             var eventTopicName = AWS$Reventless.arn2Name(eventTopic);
             var eventCollectorName = AWS$Reventless.arn2Name(eventCollector);
             AWS$Reventless.validateName(extensionPointName + ("-" + pluginId));
-            return Js_promise2.$$catch(Js_promise2.then(SNS$AwsSdk.unsubscribeQueueFromTopic(eventCollector, eventTopic), (function (param) {
-                              return Promise.resolve((console.log("" + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")"), undefined));
-                            })), (function (err) {
-                          return Promise.resolve((console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", err), undefined));
-                        }));
+            var val;
+            try {
+              val = await SNS$AwsSdk.unsubscribeQueueFromTopic(eventCollector, eventTopic);
+            }
+            catch (raw_err){
+              var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+              console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", err);
+              return ;
+            }
+            console.log("" + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")");
           };
-          var callHandler = function (x) {
-            switch (x.TAG | 0) {
+          var callHandler = async function (command) {
+            switch (command.TAG | 0) {
               case /* DoConnectPlugin */2 :
-                  var match = x._0;
+                  var match = command._0;
                   var otherPluginEventCollector = match.eventCollector;
                   var otherPluginExtensions = match.extensions;
                   var otherPluginId = match.id;
-                  var connectToExtensionPoints = Js_promise2.then(Promise.all(Belt_Array.keepMap(match.extensionPoints, (function (param) {
-                                  var extensionPointName = param.name;
-                                  if (Belt_Array.keep(extensionsOutputs, (function (extension) {
-                                            return extension.extensionPointName === extensionPointName;
-                                          })).length !== 0) {
-                                    return Caml_option.some(subscribe("connectToExtensionPoints", extensionPointName, param.eventTopic, id, eventCollectorUrn.get()));
-                                  }
-                                  
-                                }))), (function (param) {
-                          return Promise.resolve(undefined);
-                        }));
-                  var connectToExtensions = Js_promise2.then(Promise.all(Belt_Array.keepMap(extensionPointsOutputs, (function (extensionPoint) {
-                                  if (Belt_Array.keep(otherPluginExtensions, (function (param) {
-                                            return extensionPoint.name === param.extensionPointName;
-                                          })).length !== 0) {
-                                    return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, Caml_array.get(extensionPoint.eventTopic.resources, 0).id.get(), otherPluginId, otherPluginEventCollector));
-                                  }
-                                  
-                                }))), (function (param) {
-                          return Promise.resolve(undefined);
-                        }));
-                  return Js_promise2.then(Promise.all([
-                                  connectToExtensionPoints,
-                                  connectToExtensions
-                                ]), (function (param) {
-                                return Promise.resolve(undefined);
-                              }));
+                  await Promise.all(Belt_Array.keepMap(match.extensionPoints, (function (param) {
+                              var extensionPointName = param.name;
+                              if (Belt_Array.keep(extensionsOutputs, (function (extension) {
+                                        return extension.extensionPointName === extensionPointName;
+                                      })).length !== 0) {
+                                return Caml_option.some(subscribe("connectToExtensionPoints", extensionPointName, param.eventTopic, id, eventCollectorUrn.get()));
+                              }
+                              
+                            })));
+                  await Promise.all(Belt_Array.keepMap(extensionPointsOutputs, (function (extensionPoint) {
+                              if (Belt_Array.keep(otherPluginExtensions, (function (param) {
+                                        return extensionPoint.name === param.extensionPointName;
+                                      })).length !== 0) {
+                                return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, Caml_array.get(extensionPoint.eventTopic.resources, 0).id.get(), otherPluginId, otherPluginEventCollector));
+                              }
+                              
+                            })));
+                  return ;
               case /* DoDisconnectPlugin */3 :
-                  var match$1 = x._0;
+                  var match$1 = command._0;
                   var pluginEventCollector = match$1.eventCollector;
                   var pluginExtensions = match$1.extensions;
                   var pluginId = match$1.id;
-                  var disconnectFromExtensionPoints = Js_promise2.then(Promise.all(Belt_Array.keepMap(match$1.extensionPoints, (function (param) {
-                                  var extensionPointName = param.name;
-                                  if (Belt_Array.keep(extensionsOutputs, (function (extension) {
-                                            return extension.extensionPointName === extensionPointName;
-                                          })).length !== 0) {
-                                    return Caml_option.some(unsubscribe("disconnectFromExtensionPoints", extensionPointName, param.eventTopic, id, eventCollectorUrn.get()));
-                                  }
-                                  
-                                }))), (function (param) {
-                          return Promise.resolve(undefined);
-                        }));
-                  var disconnectFromExtensions = Js_promise2.then(Promise.all(Belt_Array.keepMap(extensionPointsOutputs, (function (extensionPoint) {
-                                  if (Belt_Array.keep(pluginExtensions, (function (param) {
-                                            return extensionPoint.name === param.extensionPointName;
-                                          })).length !== 0) {
-                                    return Caml_option.some(unsubscribe("disconnectFromExtensions", extensionPoint.name, Caml_array.get(extensionPoint.eventTopic.resources, 0).id.get(), pluginId, pluginEventCollector));
-                                  }
-                                  
-                                }))), (function (param) {
-                          return Promise.resolve(undefined);
-                        }));
-                  return Js_promise2.then(Promise.all([
-                                  disconnectFromExtensionPoints,
-                                  disconnectFromExtensions
-                                ]), (function (param) {
-                                return Promise.resolve(undefined);
-                              }));
+                  await Promise.all(Belt_Array.keepMap(match$1.extensionPoints, (function (param) {
+                              var extensionPointName = param.name;
+                              if (Belt_Array.keep(extensionsOutputs, (function (extension) {
+                                        return extension.extensionPointName === extensionPointName;
+                                      })).length !== 0) {
+                                return Caml_option.some(unsubscribe("disconnectFromExtensionPoints", extensionPointName, param.eventTopic, id, eventCollectorUrn.get()));
+                              }
+                              
+                            })));
+                  await Promise.all(Belt_Array.keepMap(extensionPointsOutputs, (function (extensionPoint) {
+                              if (Belt_Array.keep(pluginExtensions, (function (param) {
+                                        return extensionPoint.name === param.extensionPointName;
+                                      })).length !== 0) {
+                                return Caml_option.some(unsubscribe("disconnectFromExtensions", extensionPoint.name, Caml_array.get(extensionPoint.eventTopic.resources, 0).id.get(), pluginId, pluginEventCollector));
+                              }
+                              
+                            })));
+                  return ;
               default:
-                return Promise.resolve(undefined);
+                return ;
             }
           };
           var extensionPointsConfig = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
@@ -378,15 +371,13 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                   return [extension.extensionPointName];
                 }));
           var extensionAggregateNames = collectAggregateNames(extensionsOutputs);
-          var handleEvent = function (event$pJson, dict, getEventHandler) {
-            return Belt_Option.mapWithDefault(Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(event$pJson), (function (serviceName) {
+          var handleEvent = async function (event$pJson, dict, getEventHandler) {
+            return await Belt_Option.mapWithDefault(Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(event$pJson), (function (serviceName) {
                               return Js_dict.get(dict, serviceName);
-                            })), Promise.resolve(undefined), (function (exs) {
-                          return Js_promise2.then(Promise.all(Belt_Array.map(exs, (function (ex) {
+                            })), Promise.resolve(undefined), (async function (exs) {
+                          return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(exs, (function (ex) {
                                                 return Curry._1(getEventHandler, ex)(event$pJson, pluginDefinition.get());
-                                              }))), (function (param) {
-                                        return Promise.resolve(undefined);
-                                      }));
+                                              }))));
                         }));
           };
           var detectUnhandledEvent = function (event$pJson) {
@@ -406,32 +397,27 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
               return ;
             }
           };
-          var eventsHandler = function (events$pJson) {
+          var eventsHandler = async function (events$pJson) {
             var count = events$pJson.length;
-            return Js_promise2.then(Promise.all(Belt_Array.mapWithIndex(events$pJson, (function (idx, event$pJson) {
-                                  var idx$1 = idx + 1 | 0;
-                                  Message$Reventless.logEvent$pJson(event$pJson, "Plugin " + id + " eventsHandler: incoming event " + String(idx$1) + "/" + String(count) + ":");
-                                  detectUnhandledEvent(event$pJson);
-                                  return Js_promise2.then(handleEvent(event$pJson, incomingServiceNameToPluginConnectExtensionsMapping, (function (extension) {
-                                                    return extension.incomingEventHandler;
-                                                  })), (function (param) {
-                                                return Js_promise2.then(Promise.all([
-                                                                handleEvent(event$pJson, serviceNameToExtensionPointsMapping, (function (extensionPoint) {
-                                                                        return extensionPoint.outgoingEventHandler;
-                                                                      })),
-                                                                handleEvent(event$pJson, outgoingServiceNameToExtensionsMapping, (function (extension) {
-                                                                        return extension.outgoingEventHandler;
-                                                                      })),
-                                                                handleEvent(event$pJson, incomingServiceNameToExtensionsMapping, (function (extension) {
-                                                                        return extension.incomingEventHandler;
-                                                                      }))
-                                                              ]), (function (param) {
-                                                              return Promise.resolve(undefined);
-                                                            }));
-                                              }));
-                                }))), (function (param) {
-                          return Promise.resolve(undefined);
-                        }));
+            Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
+                            var idx$1 = idx + 1 | 0;
+                            Message$Reventless.logEvent$pJson(event$pJson, "Plugin " + id + " eventsHandler: incoming event " + String(idx$1) + "/" + String(count) + ":");
+                            detectUnhandledEvent(event$pJson);
+                            await handleEvent(event$pJson, incomingServiceNameToPluginConnectExtensionsMapping, (function (extension) {
+                                    return extension.incomingEventHandler;
+                                  }));
+                            return Promise.all([
+                                        handleEvent(event$pJson, serviceNameToExtensionPointsMapping, (function (extensionPoint) {
+                                                return extensionPoint.outgoingEventHandler;
+                                              })),
+                                        handleEvent(event$pJson, outgoingServiceNameToExtensionsMapping, (function (extension) {
+                                                return extension.outgoingEventHandler;
+                                              })),
+                                        handleEvent(event$pJson, incomingServiceNameToExtensionsMapping, (function (extension) {
+                                                return extension.incomingEventHandler;
+                                              }))
+                                      ]);
+                          }))));
           };
           var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
           var eventTopics = Util_Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));

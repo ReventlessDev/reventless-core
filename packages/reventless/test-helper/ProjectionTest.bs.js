@@ -9,7 +9,6 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Projection$Reventless = require("../src/Projection.bs.js");
 var TestFixtures$Reventless = require("./TestFixtures.bs.js");
 
@@ -178,7 +177,7 @@ function Make(Projection) {
                 });
     };
   };
-  var update = function (store, id, meta, $$event) {
+  var update = async function (store, id, meta, $$event) {
     var primitives_load = load(store);
     var primitives_save = save(store);
     var primitives_saveBatch = saveBatch(store);
@@ -196,139 +195,119 @@ function Make(Projection) {
             meta: meta,
             event: $$event
           })];
-    return Js_promise2.then(Projection$Reventless.handleActions(actions, primitives, Projection.subIdConfig), (function (param) {
-                  return Promise.resolve(store);
-                }));
+    await Projection$Reventless.handleActions(actions, primitives, Projection.subIdConfig);
+    return store;
   };
   var givenEvents = function (events) {
-    return Js_promise2.then(Belt_Array.reduce(events, Promise.resolve({}), (function (p, $$event) {
-                      return Js_promise2.then(p, (function (store) {
-                                    return update(store, testId.contents, meta.contents, $$event);
-                                  }));
-                    })), (function (store) {
-                  return Promise.resolve(store);
+    return Belt_Array.reduce(events, Promise.resolve({}), (async function (store, $$event) {
+                  return await update(await store, testId.contents, meta.contents, $$event);
                 }));
   };
   var givenEventsWithTime = function (events) {
-    return Js_promise2.then(Belt_Array.reduce(events, Promise.resolve({}), (function (p, param) {
-                      var $$event = param[1];
-                      var time = param[0];
-                      return Js_promise2.then(p, (function (store) {
-                                    var init = meta.contents;
-                                    return update(store, testId.contents, {
-                                                service: init.service,
-                                                time: time,
-                                                ip: init.ip,
-                                                user: init.user,
-                                                msgId: init.msgId,
-                                                correlationId: init.correlationId
-                                              }, $$event);
-                                  }));
-                    })), (function (store) {
-                  return Promise.resolve(store);
+    return Belt_Array.reduce(events, Promise.resolve({}), (async function (store, param) {
+                  var init = meta.contents;
+                  return await update(await store, testId.contents, {
+                              service: init.service,
+                              time: param[0],
+                              ip: init.ip,
+                              user: init.user,
+                              msgId: init.msgId,
+                              correlationId: init.correlationId
+                            }, param[1]);
                 }));
   };
-  var whenEvent = function (p, $$event) {
-    return Jest.Expect.expect(function (param) {
-                return Js_promise2.then(p, (function (store) {
-                              return update(store, testId.contents, meta.contents, $$event);
-                            }));
+  var whenEvent = function (store, $$event) {
+    return Jest.Expect.expect(async function (param) {
+                return await update(await store, testId.contents, meta.contents, $$event);
               });
   };
-  var whenEventWithTime = function (p, time, $$event) {
-    return Jest.Expect.expect(function (param) {
-                return Js_promise2.then(p, (function (store) {
-                              var init = meta.contents;
-                              return update(store, testId.contents, {
-                                          service: init.service,
-                                          time: time,
-                                          ip: init.ip,
-                                          user: init.user,
-                                          msgId: init.msgId,
-                                          correlationId: init.correlationId
-                                        }, $$event);
-                            }));
+  var whenEventWithTime = function (store, time, $$event) {
+    return Jest.Expect.expect(async function (param) {
+                var init = meta.contents;
+                return await update(await store, testId.contents, {
+                            service: init.service,
+                            time: time,
+                            ip: init.ip,
+                            user: init.user,
+                            msgId: init.msgId,
+                            correlationId: init.correlationId
+                          }, $$event);
               });
   };
-  var thenStates = function (p, expectedStates) {
-    return Js_promise2.then(Curry._1(p.VAL, undefined), (function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                      Object.keys(store).length,
-                                      Belt_Array.get(Object.keys(store), 0),
-                                      Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), [])
-                                    ]), [
-                                  1,
-                                  testId.contents,
-                                  expectedStates
-                                ]));
-                }));
+  var thenStates = async function (p, expectedStates) {
+    var store = await Curry._1(p.VAL, undefined);
+    return Jest.Expect.toEqual(Jest.Expect.expect([
+                    Object.keys(store).length,
+                    Belt_Array.get(Object.keys(store), 0),
+                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), [])
+                  ]), [
+                1,
+                testId.contents,
+                expectedStates
+              ]);
   };
-  var thenStatesWithId = function (p, id, expectedStates) {
-    return Js_promise2.then(Curry._1(p.VAL, undefined), (function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                      Object.keys(store).length,
-                                      Belt_Array.get(Object.keys(store), 0),
-                                      Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), [])
-                                    ]), [
-                                  1,
-                                  id,
-                                  expectedStates
-                                ]));
-                }));
+  var thenStatesWithId = async function (p, id, expectedStates) {
+    var store = await Curry._1(p.VAL, undefined);
+    return Jest.Expect.toEqual(Jest.Expect.expect([
+                    Object.keys(store).length,
+                    Belt_Array.get(Object.keys(store), 0),
+                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), [])
+                  ]), [
+                1,
+                id,
+                expectedStates
+              ]);
   };
-  var thenAllStates = function (p, expectedStore) {
-    return Js_promise2.then(Curry._1(p.VAL, undefined), (function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect(store), expectedStore));
-                }));
+  var thenAllStates = async function (p, expectedStore) {
+    var store = await Curry._1(p.VAL, undefined);
+    return Jest.Expect.toEqual(Jest.Expect.expect(store), expectedStore);
   };
-  var thenState = function (p, expectedState) {
-    return Js_promise2.then(Curry._1(p.VAL, undefined), (function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                      Object.keys(store).length,
-                                      Belt_Array.get(Object.keys(store), 0),
-                                      Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), []).length,
-                                      Belt_Array.get(Caml_array.get(Js_dict.values(store), 0), 0)
-                                    ]), [
-                                  1,
-                                  testId.contents,
-                                  1,
-                                  Caml_option.some(expectedState)
-                                ]));
-                }));
+  var thenState = async function (p, expectedState) {
+    var store = await Curry._1(p.VAL, undefined);
+    return Jest.Expect.toEqual(Jest.Expect.expect([
+                    Object.keys(store).length,
+                    Belt_Array.get(Object.keys(store), 0),
+                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), []).length,
+                    Belt_Array.get(Caml_array.get(Js_dict.values(store), 0), 0)
+                  ]), [
+                1,
+                testId.contents,
+                1,
+                Caml_option.some(expectedState)
+              ]);
   };
-  var thenStateWithId = function (p, id, expectedState) {
-    return Js_promise2.then(Curry._1(p.VAL, undefined), (function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect([
-                                      Object.keys(store).length,
-                                      Belt_Array.get(Object.keys(store), 0),
-                                      Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), []).length,
-                                      Belt_Array.get(Caml_array.get(Js_dict.values(store), 0), 0)
-                                    ]), [
-                                  1,
-                                  id,
-                                  1,
-                                  Caml_option.some(expectedState)
-                                ]));
-                }));
+  var thenStateWithId = async function (p, id, expectedState) {
+    var store = await Curry._1(p.VAL, undefined);
+    return Jest.Expect.toEqual(Jest.Expect.expect([
+                    Object.keys(store).length,
+                    Belt_Array.get(Object.keys(store), 0),
+                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), []).length,
+                    Belt_Array.get(Caml_array.get(Js_dict.values(store), 0), 0)
+                  ]), [
+                1,
+                id,
+                1,
+                Caml_option.some(expectedState)
+              ]);
   };
-  var thenNoState = function (p) {
-    return Js_promise2.then(Curry._1(p.VAL, undefined), (function (store) {
-                  return Promise.resolve(Jest.Expect.toEqual(Jest.Expect.expect(Belt_Array.reduce(Js_dict.values(store), 0, (function (acc, states) {
-                                            return acc + states.length | 0;
-                                          }))), 0));
-                }));
+  var thenNoState = async function (p) {
+    var store = await Curry._1(p.VAL, undefined);
+    return Jest.Expect.toEqual(Jest.Expect.expect(Belt_Array.reduce(Js_dict.values(store), 0, (function (acc, states) {
+                          return acc + states.length | 0;
+                        }))), 0);
   };
-  var thenThrow = function (p) {
-    return Js_promise2.then(Curry._1(p.VAL, undefined), (function (param) {
-                  return Promise.resolve(Jest.Expect.toThrow(p));
-                }));
+  var thenThrow = async function (p) {
+    return Jest.Expect.toThrow(p);
   };
-  var thenFail = function (p) {
-    return Js_promise2.$$catch(Js_promise2.then(Curry._1(p.VAL, undefined), (function (param) {
-                      return Promise.resolve(Jest.fail("Expected Failure"));
-                    })), (function (param) {
-                  return Promise.resolve(Jest.pass);
-                }));
+  var thenFail = async function (p) {
+    var val;
+    try {
+      val = await Curry._1(p.VAL, undefined);
+    }
+    catch (exn){
+      return Jest.pass;
+    }
+    return Jest.fail("Expected Failure");
   };
   return {
           describe: Jest.describe,

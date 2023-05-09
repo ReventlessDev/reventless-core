@@ -46,7 +46,7 @@ type primitives<'id, 'state> = {
 
 let logAction = str => Js.log2("Projection.handleAction:", str)
 
-let applyChanges = (
+let applyChanges = async (
   action,
   id,
   beforeStates,
@@ -80,16 +80,17 @@ let applyChanges = (
   logAction(
     `${action}(${id}): beforeStates:${beforeCount->Belt.Int.toString} afterStates:${afterCount->Belt.Int.toString} added:${addedCount->Belt.Int.toString} changed:${changedCount->Belt.Int.toString} deleted:${deletedCount->Belt.Int.toString}`,
   )
-  [deleteBatch(. batchToDelete), saveBatch(. batchToSave)]
-  ->Js.Promise.all
-  ->Js.Promise2.then(_ => Ok()->Js.Promise.resolve)
+  let result = await [deleteBatch(. batchToDelete), saveBatch(. batchToSave)]->Js.Promise.all
+  switch result {
+  | _ => Ok() // TODO: Error handling
+  }
 }
 
 let stateToString: 'a => string = state => state->Js.Json.stringifyAny->Belt.Option.getExn
 let statesToString: array<'a> => string = states =>
   states->Belt.Array.map(stateToString)->Js.Array2.joinWith(", ")
 
-let handleAction = (
+let handleAction = async (
   action,
   {load, save, saveBatch, delete, deleteBatch} as primitives,
   subIdConfig,
@@ -97,11 +98,11 @@ let handleAction = (
   switch action {
   | Ignore =>
     logAction("Ignore")
-    Ok()->Js.Promise.resolve
+    Ok()
 
   | Create(id, state) =>
     logAction(`Create(${id}, ${state->stateToString})`)
-    save(. id, state, Init, None)
+    await save(. id, state, Init, None)
   | CreateMultiState(id, states) =>
     logAction(
       `CreateMultiState(${id}, ${states
@@ -109,11 +110,11 @@ let handleAction = (
         ->Js.Array2.joinWith(", ")})`,
     )
     switch states {
-    | [] => Ok()->Js.Promise.resolve
-    | [state] => save(. id, state, Init, None)
+    | [] => Ok()
+    | [state] => await save(. id, state, Init, None)
     | states =>
       let batch = states->Belt.Array.map(state => (id, state, None))
-      saveBatch(. batch)
+      await saveBatch(. batch)
     }
   | CreateMany(states) =>
     let batch = states->Belt.Array.map(((id, state)) => (id, state, None))
@@ -122,11 +123,11 @@ let handleAction = (
       ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
       ->Js.Array2.joinWith(", ")
     logAction(`CreateMany(${statesStr})`)
-    saveBatch(. batch) // TODO: think about using single saves with saveMode Init
+    await saveBatch(. batch) // TODO: think about using single saves with saveMode Init
 
   | Set(id, state) =>
     logAction(`Set(${id}, ${state->stateToString})`)
-    save(. id, state, Any, None)
+    await save(. id, state, Any, None)
   | SetMany(ids, set) =>
     let batch = ids->Belt.Array.map(id => (id, set(id), None))
     let statesStr =
@@ -134,121 +135,75 @@ let handleAction = (
       ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
       ->Js.Array2.joinWith(", ")
     logAction(`SetMany(${statesStr})`)
-    saveBatch(. batch)
+    await saveBatch(. batch)
 
   | Update(id, update) =>
-    load(. id)->Js.Promise2.then(x =>
-      switch x {
-      | Ok(states) =>
-        switch states {
-        | [] =>
-          logAction(`Update Error: No oldState for ${id})`)
-          Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
-        | [oldState] =>
-          let newState = oldState->update
-          logAction(`Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
-          save(. id, newState, Overwrite, None)
-        | _ =>
-          logAction(`Update Error: Multiple oldStates for ${id})`)
-          Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
-        }
-      | Error(err) => Error(err)->Js.Promise.resolve
+    switch await load(. id) {
+    | Ok(states) =>
+      switch states {
+      | [] =>
+        logAction(`Update Error: No oldState for ${id})`)
+        Error(ReventlessSpec.QueryDb.StaleState)
+      | [oldState] =>
+        let newState = oldState->update
+        logAction(`Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
+        await save(. id, newState, Overwrite, None)
+      | _ =>
+        logAction(`Update Error: Multiple oldStates for ${id})`)
+        Error(ReventlessSpec.QueryDb.StaleState)
       }
-    )
+    | Error(err) => Error(err)
+    }
   | UpdateWithDefault(id, default, update) =>
-    load(. id)->Js.Promise2.then(x =>
-      switch x {
-      | Ok(states) =>
-        switch states {
-        | [] =>
-          logAction(`UpdateWithDefault(${id}, default: ${default->stateToString})`)
-          save(. id, default, Init, None)
-        | [oldState] =>
-          let newState = oldState->update
-          logAction(
-            `UpdateWithDefault(${id}, ${oldState->stateToString} => ${newState->stateToString})`,
-          )
-          save(. id, newState, Overwrite, None)
-        | _ =>
-          logAction(`UpdateWithDefault Error: Multiple oldStates for ${id})`)
-          Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
-        }
-      | Error(err) =>
+    switch await load(. id) {
+    | Ok(states) =>
+      switch states {
+      | [] =>
+        logAction(`UpdateWithDefault(${id}, default: ${default->stateToString})`)
+        await save(. id, default, Init, None)
+      | [oldState] =>
+        let newState = oldState->update
         logAction(
-          `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
+          `UpdateWithDefault(${id}, ${oldState->stateToString} => ${newState->stateToString})`,
         )
-        Error(err)->Js.Promise.resolve
+        await save(. id, newState, Overwrite, None)
+      | _ =>
+        logAction(`UpdateWithDefault Error: Multiple oldStates for ${id})`)
+        Error(ReventlessSpec.QueryDb.StaleState)
       }
-    )
+    | Error(err) =>
+      logAction(
+        `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
+      )
+      Error(err)
+    }
   | UpdateMultiState(id, update) =>
-    load(. id)->Js.Promise2.then(states =>
-      switch (states, subIdConfig) {
-      | (Ok(states), Some(subIdConfig)) =>
-        let beforeStates = states
-        let afterStates = beforeStates->update
-        applyChanges("UpdateMultiState", id, beforeStates, afterStates, primitives, subIdConfig)
+    switch (await load(. id), subIdConfig) {
+    | (Ok(states), Some(subIdConfig)) =>
+      let beforeStates = states
+      let afterStates = beforeStates->update
+      await applyChanges("UpdateMultiState", id, beforeStates, afterStates, primitives, subIdConfig)
 
-      | (Error(err), Some(_)) =>
-        logAction(
-          `UpdateMultiState Error: Couldn't load states for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
-        )
-        Error(err)->Js.Promise.resolve
-      | (_, None) =>
-        logAction("UpdateMultiState Error: Missing SubIdConfig !")
-        Error(ReventlessSpec.QueryDb.MissingSubIdConfig)->Js.Promise.resolve
-      }
-    )
-  // | UpdateManyMultiStates(ids, update) =>
-  //   switch (subIdConfig) {
-  //   | Some(subIdConfig) =>
-  //     ids
-  //     ->Belt.Array.map(id =>
-  //         load(. id)
-  //         ->Js.Promise2.then(
-  //             fun
-  //             | Ok(states) =>
-  //               Some((id, states))->Js.Promise.resolve
-  //             | Error(err) => {
-  //                 logAction(
-  //                   {j|UpdateMultiState Error: Couldn't load states for $id: $err)|j},
-  //                 );
-  //                 None->Js.Promise.resolve;
-  //               },
-  //           )
-  //       )
-  //     ->Js.Promise.all
-  //     ->Js.Promise2.then(
-  //         results =>
-  //           results
-  //           ->Belt.Array.keepMap(y => y)
-  //           ->Belt.Array.map(((id, beforeStates)) =>
-  //               applyChanges(
-  //                 "UpdateManyMultiStates",
-  //                 id,
-  //                 beforeStates,
-  //                 update(id, beforeStates),
-  //                 primitives,
-  //                 subIdConfig,
-  //               )
-  //             )
-  //           ->Js.Promise.all
-  //           ->Js.Promise2.then(_ => Ok()->Js.Promise.resolve),
-  //       )
-  //   | None =>
-  //     logAction("UpdateManyMultiStates Error: Missing SubIdConfig !");
-  //     Error(MissingSubIdConfig)->Js.Promise.resolve;
-  //   }
+    | (Error(err), Some(_)) =>
+      logAction(
+        `UpdateMultiState Error: Couldn't load states for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
+      )
+      Error(err)
+    | (_, None) =>
+      logAction("UpdateMultiState Error: Missing SubIdConfig !")
+      Error(ReventlessSpec.QueryDb.MissingSubIdConfig)
+    }
   | Delete(id) =>
     logAction(`Delete(${id})`)
-    delete(. id, None)
+    await delete(. id, None)
   | DeleteMany(ids) =>
     logAction(`DeleteMany(${ids->Js.Array2.joinWith(", ")})`)
-    deleteBatch(. ids->Belt.Array.map(id => (id, None)))
+    await deleteBatch(. ids->Belt.Array.map(id => (id, None)))
 
   // TODO: add missing actions
   | _ =>
     logAction("Error: Action not yet supported !")
-    Ok()->Js.Promise.resolve
+    Ok()
   }
 
 let actionsWithId = action =>
@@ -288,39 +243,39 @@ let groupActionsById = actions => {
   ))
 }
 
-let handleActions = (actions, primitives, subIdConfig) => {
-  let handleActionsForId = (actions, id) => {
+let handleActions = async (actions, primitives, subIdConfig) => {
+  let handleActionsForId = async (actions, id) => {
     let actionCount = actions->Belt.Array.size
     if actionCount > 1 {
       Js.log(
         `Projection.handleActions: handling ${actionCount->Belt.Int.toString} actions for id=${id}`,
       )
     }
-    actions->Belt.Array.reduce(Ok()->Js.Promise.resolve, (p, action) =>
-      Js.Promise.then_(_ => action->handleAction(primitives, subIdConfig), p)
-    )
+    await actions->Belt.Array.reduce(Ok()->Js.Promise.resolve, async (p, action) => {
+      let _ = await p
+      await action->handleAction(primitives, subIdConfig)
+    })
   }
 
-  actions
-  ->groupActionsById
-  ->Belt.Array.map(((id, actions)) => actions->handleActionsForId(id))
-  ->Js.Promise.all
-  ->Js.Promise2.then(results => {
-    let errors = results->Belt.Array.keepMap(x =>
-      switch x {
-      | Belt.Result.Error(err) => Some(err)
-      | _ => None
-      }
-    )
-    switch errors {
-    | [] => Js.Promise.resolve()
-    | errors =>
-      let count = errors->Belt.Array.size
-      Js.Exn.raiseError(
-        `Projection.handleActions failed with ${count->Belt.Int.toString} errors: ${errors
-          ->Belt.Array.map(QueryDbRuntime.storageErrorToString)
-          ->Js.Array2.joinWith(",")}`,
-      )
+  let results =
+    await actions
+    ->groupActionsById
+    ->Belt.Array.map(((id, actions)) => actions->handleActionsForId(id))
+    ->Js.Promise.all
+  let errors = results->Belt.Array.keepMap(x =>
+    switch x {
+    | Belt.Result.Error(err) => Some(err)
+    | _ => None
     }
-  })
+  )
+  switch errors {
+  | [] => ()
+  | errors =>
+    let count = errors->Belt.Array.size
+    Js.Exn.raiseError(
+      `Projection.handleActions failed with ${count->Belt.Int.toString} errors: ${errors
+        ->Belt.Array.map(QueryDbRuntime.storageErrorToString)
+        ->Js.Array2.joinWith(",")}`,
+    )
+  }
 }

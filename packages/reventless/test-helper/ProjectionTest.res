@@ -146,7 +146,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let handleActions = (actions, primitives) =>
     actions->handleActions(primitives, Projection.subIdConfig)
 
-  let update = (store, id, meta, event) => {
+  let update = async (store, id, meta, event) => {
     /* NOTE: unused
     let logStore = text =>
       Js.log4(
@@ -159,112 +159,84 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
         ),
       )
  */
-    let resolveStore = () =>
-      // logStore("update after event:");
-      store->Js.Promise.resolve
 
-    [{id, meta, event}->Projection.map]
-    ->handleActions({
+    await [{id, meta, event}->Projection.map]->handleActions({
       load: load(store),
       save: save(store),
       saveBatch: saveBatch(store),
       delete: delete(store),
       deleteBatch: deleteBatch(store),
     })
-    ->Js.Promise2.then(_ => resolveStore())
+    store
   }
 
   let givenEvents = events =>
-    events
-    ->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, event) =>
-      p->Js.Promise2.then(store => store->update(testId.contents, meta.contents, event))
+    events->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, async (store, event) =>
+      await (await store)->update(testId.contents, meta.contents, event)
     )
-    ->Js.Promise2.then(store => store->Js.Promise.resolve)
   let givenEventsWithTime = events =>
-    events
-    ->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, (p, (time, event)) =>
-      p->Js.Promise2.then(store => store->update(testId.contents, {...meta.contents, time}, event))
+    events->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, async (store, (time, event)) =>
+      await (await store)->update(testId.contents, {...meta.contents, time}, event)
     )
-    ->Js.Promise2.then(store => store->Js.Promise.resolve)
 
   open Jest.Expect
-  let whenEvent = (p, event) =>
-    expect(() => p->Js.Promise2.then(store => store->update(testId.contents, meta.contents, event)))
-  let whenEventWithTime = (p, time, event) =>
-    expect(() =>
-      p->Js.Promise2.then(store => store->update(testId.contents, {...meta.contents, time}, event))
+  let whenEvent = (store, event) =>
+    expect(async () => await (await store)->update(testId.contents, meta.contents, event))
+  let whenEventWithTime = (store, time, event) =>
+    expect(async () =>
+      await (await store)->update(testId.contents, {...meta.contents, time}, event)
     )
 
-  let thenStates = (p, expectedStates) =>
-    p
-    ->unpack()
-    ->Js.Promise2.then(store =>
-      expect((
-        store->Js.Dict.keys->Belt.Array.length,
-        store->Js.Dict.keys->Belt.Array.get(0),
-        store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([]),
-      ))
-      ->toEqual((1, Some(testId.contents), expectedStates))
-      ->Js.Promise.resolve
-    )
-  let thenStatesWithId = (p, id, expectedStates) =>
-    p
-    ->unpack()
-    ->Js.Promise2.then(store =>
-      expect((
-        store->Js.Dict.keys->Belt.Array.length,
-        store->Js.Dict.keys->Belt.Array.get(0),
-        store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([]),
-      ))
-      ->toEqual((1, Some(id), expectedStates))
-      ->Js.Promise.resolve
-    )
+  let thenStates = async (p, expectedStates) => {
+    let store = await p->unpack()
+    expect((
+      store->Js.Dict.keys->Belt.Array.length,
+      store->Js.Dict.keys->Belt.Array.get(0),
+      store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([]),
+    ))->toEqual((1, Some(testId.contents), expectedStates))
+  }
+  let thenStatesWithId = async (p, id, expectedStates) => {
+    let store = await p->unpack()
+    expect((
+      store->Js.Dict.keys->Belt.Array.length,
+      store->Js.Dict.keys->Belt.Array.get(0),
+      store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([]),
+    ))->toEqual((1, Some(id), expectedStates))
+  }
 
-  let thenAllStates = (p, expectedStore: store) =>
-    p
-    ->unpack()
-    ->Js.Promise2.then(store => expect(store)->toEqual(expectedStore)->Js.Promise.resolve)
-  let thenState = (p, expectedState) =>
-    p
-    ->unpack()
-    ->Js.Promise2.then(store =>
-      expect((
-        store->Js.Dict.keys->Belt.Array.length,
-        store->Js.Dict.keys->Belt.Array.get(0),
-        store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Belt.Array.length,
-        (store->Js.Dict.values)[0]->Belt.Array.get(0),
-      ))
-      ->toEqual((1, Some(testId.contents), 1, Some(expectedState)))
-      ->Js.Promise.resolve
-    )
-  let thenStateWithId = (p, id, expectedState) =>
-    p
-    ->unpack()
-    ->Js.Promise2.then(store =>
-      expect((
-        store->Js.Dict.keys->Belt.Array.length,
-        store->Js.Dict.keys->Belt.Array.get(0),
-        store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Belt.Array.length,
-        (store->Js.Dict.values)[0]->Belt.Array.get(0),
-      ))
-      ->toEqual((1, Some(id), 1, Some(expectedState)))
-      ->Js.Promise.resolve
-    )
-  let thenNoState = p =>
-    p
-    ->unpack()
-    ->Js.Promise2.then(store =>
-      expect(
-        store->Js.Dict.values->Belt.Array.reduce(0, (acc, states) => acc + states->Belt.Array.size),
-      )
-      ->toEqual(0)
-      ->Js.Promise.resolve
-    )
-  let thenThrow = p => p->unpack()->Js.Promise2.then(_ => p->toThrow->Js.Promise.resolve)
+  let thenAllStates = async (p, expectedStore: store) => {
+    let store = await p->unpack()
+    expect(store)->toEqual(expectedStore)
+  }
+  let thenState = async (p, expectedState) => {
+    let store = await p->unpack()
+    expect((
+      store->Js.Dict.keys->Belt.Array.length,
+      store->Js.Dict.keys->Belt.Array.get(0),
+      store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Belt.Array.length,
+      (store->Js.Dict.values)[0]->Belt.Array.get(0),
+    ))->toEqual((1, Some(testId.contents), 1, Some(expectedState)))
+  }
+  let thenStateWithId = async (p, id, expectedState) => {
+    let store = await p->unpack()
+    expect((
+      store->Js.Dict.keys->Belt.Array.length,
+      store->Js.Dict.keys->Belt.Array.get(0),
+      store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Belt.Array.length,
+      (store->Js.Dict.values)[0]->Belt.Array.get(0),
+    ))->toEqual((1, Some(id), 1, Some(expectedState)))
+  }
+  let thenNoState = async p => {
+    let store = await p->unpack()
+    expect(
+      store->Js.Dict.values->Belt.Array.reduce(0, (acc, states) => acc + states->Belt.Array.size),
+    )->toEqual(0)
+  }
+  let thenThrow = async p => {p->toThrow}
 
-  let thenFail = p =>
-    p
-    ->unpack()
-    ->Js.Promise2.then(_ => Jest.fail("Expected Failure")->Js.Promise.resolve)
-    ->Js.Promise2.catch(_ => Jest.pass->Js.Promise.resolve)
+  let thenFail = async p =>
+    switch await p->unpack() {
+    | _ => Jest.fail("Expected Failure")
+    | exception _ => Jest.pass
+    }
 }

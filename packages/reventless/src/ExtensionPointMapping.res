@@ -126,7 +126,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
             },
           })
         | PublishEventAsync(promise) =>
-          let promise' = promise->Js.Promise2.then(((id, event)) => {
+          let toEvent' = async promise => {
+            let (id, event) = await promise
             let eventStr = event->Spec.event_encode->Js.Json.stringify
             Js.log(
               `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventStr} id: ${id}`,
@@ -139,10 +140,9 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
                 service: Spec.name,
                 msgId: Message.uuid(),
               },
-            }->Js.Promise.resolve
-          })
-
-          AbstractPublishEventAsync(promise')
+            }
+          }
+          AbstractPublishEventAsync(promise->toEvent')
         | Call(handler, msg) =>
           Js.log2(
             `ExtensionPointMapping: outgoing from Aggregate ${aggregateName}: Handling call command`,

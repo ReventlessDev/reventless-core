@@ -5,10 +5,10 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Util_Decco$Reventless = require("../util/Util_Decco.bs.js");
+var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 var NotPublishedToPublisher = /* @__PURE__ */Caml_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
@@ -17,26 +17,24 @@ var Adapter = {};
 
 function Make(Spec, Publisher) {
   var publishFn = function (publisher, name) {
-    return function (events$p) {
+    return async function (events$p) {
       var eventCount = events$p.length;
-      return Js_promise2.then(Promise.all(Belt_Array.mapWithIndex(events$p, (function (idx, event$p) {
+      return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$p, (async function (idx, event$p) {
                             var json = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
                             var id = event$p.id;
                             var eventName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
                             var idx$1 = idx + 1 | 0;
-                            return Js_promise2.then(Js_promise2.$$catch(publisher.publish(Curry._1(Spec.Id.toString, id), event$p.meta, json), (function (e) {
-                                              console.log("EventTopic: Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + "");
-                                              return Promise.reject({
-                                                          RE_EXN_ID: NotPublishedToPublisher,
-                                                          _1: e
-                                                        });
-                                            })), (function (param) {
-                                          var $$event = JSON.stringify(json);
-                                          return Promise.resolve((console.log("EventTopic: Published event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + ": " + $$event + ""), undefined));
-                                        }));
-                          }))), (function (param) {
-                    return Promise.resolve(undefined);
-                  }));
+                            var val;
+                            try {
+                              val = await publisher.publish(Curry._1(Spec.Id.toString, id), event$p.meta, json);
+                            }
+                            catch (e){
+                              console.log("EventTopic: Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + "");
+                              throw e;
+                            }
+                            var $$event = JSON.stringify(json);
+                            console.log("EventTopic: Published event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + ": " + $$event + "");
+                          }))));
     };
   };
   var construct = function (storageResources, self, name) {

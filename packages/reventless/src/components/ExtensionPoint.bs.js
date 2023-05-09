@@ -8,13 +8,14 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
 var Component$Reventless = require("./Component.bs.js");
 var EventTopic$Reventless = require("./EventTopic.bs.js");
 var CommandTopic$Reventless = require("./CommandTopic.bs.js");
+var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
 function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
@@ -70,73 +71,95 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     var commandTopic = {
       contents: undefined
     };
-    var applyCommandAction = function (x) {
-      if (x.TAG === /* AbstractPublishCommand */0) {
-        var cmdJson = x._2;
-        var reference = x._1;
-        var aggregateName = x._0;
+    var applyCommandAction = async function (action) {
+      if (action.TAG === /* AbstractPublishCommand */0) {
+        var cmdJson = action._2;
+        var reference = action._1;
+        var aggregateName = action._0;
         var __x = Belt_Option.map(Js_dict.get(publishToAggregates, aggregateName), (function (publishJsons) {
                 return publishJsons([cmdJson]);
               }));
-        return Js_promise2.$$catch(Js_promise2.then(Curry._1(Belt_Option.mapWithDefault(__x, (function (param) {
-                                  return Js_exn.raiseError("ExtensionPoint.applyCommandAction: Aggregate " + aggregateName + " doesn't exist");
-                                }), (function (x, param) {
-                                  return x;
-                                })), undefined), (function (param) {
-                          return Promise.resolve({
-                                      TAG: /* Ok */0,
-                                      _0: reference
-                                    });
-                        })), (function (err) {
-                      console.log("ExtensionPoint: Error on publish command:", err);
-                      return Promise.resolve({
-                                  TAG: /* Error */1,
-                                  _0: reference
-                                });
-                    }));
+        var result = Curry._1(Belt_Option.mapWithDefault(__x, (function (param) {
+                    return Js_exn.raiseError("ExtensionPoint.applyCommandAction: Aggregate " + aggregateName + " doesn't exist");
+                  }), (function (x, param) {
+                    return x;
+                  })), undefined);
+        var val;
+        try {
+          val = result;
+        }
+        catch (raw_err){
+          var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+          console.log("ExtensionPoint: Error on publish command:", err);
+          return {
+                  TAG: /* Error */1,
+                  _0: reference
+                };
+        }
+        return {
+                TAG: /* Ok */0,
+                _0: reference
+              };
       }
-      var reference$1 = x._0;
-      return Js_promise2.$$catch(Js_promise2.then(Curry._1(x._1, undefined), (function (param) {
-                        return Promise.resolve({
-                                    TAG: /* Ok */0,
-                                    _0: reference$1
-                                  });
-                      })), (function (err) {
-                    console.log(err, "ExtensionPoint: Error on calling handler:");
-                    return Promise.resolve({
-                                TAG: /* Error */1,
-                                _0: reference$1
-                              });
-                  }));
+      var reference$1 = action._0;
+      var val$1;
+      try {
+        val$1 = await Curry._1(action._1, undefined);
+      }
+      catch (raw_err$1){
+        var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+        console.log(err$1, "ExtensionPoint: Error on calling handler:");
+        return {
+                TAG: /* Error */1,
+                _0: reference$1
+              };
+      }
+      return {
+              TAG: /* Ok */0,
+              _0: reference$1
+            };
     };
     var eventTopic = Curry._4(EventTopic.make, childName, [], Caml_option.some(opts), undefined);
-    var applyEventAction = function (x) {
-      switch (x.TAG | 0) {
+    var publish = Curry._1(EventTopic.publish, eventTopic);
+    var applyEventAction = async function (action) {
+      switch (action.TAG | 0) {
         case /* AbstractPublishEvent */0 :
-            var publish = Curry._1(EventTopic.publish, eventTopic);
-            return Js_promise2.$$catch(publish([x._0]), (function (err) {
-                          return Promise.resolve((console.log(err, "ExtensionPoint: Error on publish command:"), undefined));
-                        }));
+            try {
+              return await publish([action._0]);
+            }
+            catch (raw_err){
+              var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+              console.log(err, "ExtensionPoint: Error on publish command:");
+              return ;
+            }
         case /* AbstractPublishEventAsync */1 :
-            var publish$1 = Curry._1(EventTopic.publish, eventTopic);
-            return Js_promise2.then(x._0, (function (event$p) {
-                          return Js_promise2.$$catch(publish$1([event$p]), (function (err) {
-                                        return Promise.resolve((console.log(err, "ExtensionPoint: Error on publish command:"), undefined));
-                                      }));
-                        }));
+            var publish$1 = async function (promise) {
+              try {
+                return await publish([await promise]);
+              }
+              catch (raw_err){
+                var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+                console.log(err, "ExtensionPoint: Error on publish command:");
+                return ;
+              }
+            };
+            return await publish$1(action._0);
         case /* AbstractCall */2 :
-            return Js_promise2.$$catch(Curry._1(x._0, undefined), (function (err) {
-                          return Promise.resolve((console.log(err, "ExtensionPoint: Error on calling handler:"), undefined));
-                        }));
+            try {
+              return await Curry._1(action._0, undefined);
+            }
+            catch (raw_err$1){
+              var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+              console.log(err$1, "ExtensionPoint: Error on calling handler:");
+              return ;
+            }
         
       }
     };
-    var outgoingEventHandler = function (event$pJson, pluginDef) {
+    var outgoingEventHandler = async function (event$pJson, pluginDef) {
       var commandTopic$1 = Belt_Option.getExn(commandTopic.contents);
       var eventActions = Curry._2(mapOutgoingEvent(event$pJson, Mappings.mappings, scheduler, Component$Reventless.extractOutputs(commandTopic$1).resources), pluginDef, queryEngine);
-      return Js_promise2.then(Promise.all(Belt_Array.map(eventActions, applyEventAction)), (function (param) {
-                    return Promise.resolve(undefined);
-                  }));
+      return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventActions, applyEventAction)));
     };
     var incomingCommandsHandler = function (topicItems) {
       var commandTopic$1 = Belt_Option.getExn(commandTopic.contents);

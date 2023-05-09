@@ -102,23 +102,17 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
     self,
     name,
   ) => {
-    let publishAggregateCommand = (aggregateName, cmdJson) => {
+    let publishAggregateCommand = async (aggregateName, cmdJson) => {
       let pub = publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn
-      pub(. [cmdJson])->Js.Promise2.catch(err =>
-        Js.log2(
-          `Extension: Error on publish command to aggregate ${aggregateName}:`,
-          err,
-        )->Js.Promise.resolve
-      )
+      try await pub(. [cmdJson]) catch {
+      | err => Js.log2(`Extension: Error on publish command to aggregate ${aggregateName}:`, err)
+      }
     }
 
-    let publishCorePluginExtensionPointCommand = cmdJson =>
-      publishToCorePluginExtensionPoint(. [cmdJson])->Js.Promise2.catch(err =>
-        Js.log2(
-          `Extension: Error on publish command to Core.Plugin ExtensionPoint:`,
-          err,
-        )->Js.Promise.resolve
-      )
+    let publishCorePluginExtensionPointCommand = async cmdJson =>
+      try await publishToCorePluginExtensionPoint(. [cmdJson]) catch {
+      | err => Js.log2(`Extension: Error on publish command to Core.Plugin ExtensionPoint:`, err)
+      }
 
     let forwardCommand = (extensionPointName, commandJson: Message.commandJson) =>
       publishCorePluginExtensionPointCommand({
@@ -135,48 +129,51 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
         delay: None,
       })
 
-    let applyIncomingCommandAction = x =>
-      switch x {
-      | ExtensionMapping.AbstractPublishAggregateCommand(aggregateName, commandJson) =>
-        publishAggregateCommand(aggregateName, commandJson)
-      | ExtensionMapping.AbstractPublishAggregateCommandAsync(promise) =>
-        promise->Js.Promise2.then(((aggregateName, commandJson)) =>
-          publishAggregateCommand(aggregateName, commandJson)
-        )
-
-      | AbstractPublishAggregateCommandsAsync(promise) =>
-        promise->Js.Promise2.then(tupels =>
-          tupels
-          ->Belt.Array.map(((aggregateName, commandJson)) =>
-            publishAggregateCommand(aggregateName, commandJson)
-          )
-          ->Js.Promise.all
-          ->Js.Promise2.then(_ => Js.Promise.resolve())
-        )
-
-      | AbstractPublishPluginExtensionPointCommand(commandJson) =>
-        publishCorePluginExtensionPointCommand(commandJson)
-      | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
-        forwardCommand(extensionPointName, commandJson)
-      | AbstractCall(handler) =>
-        handler()->Js.Promise2.catch(err =>
-          Js.log2("ExtensionPoint: Error on calling handler:", err)->Js.Promise.resolve
-        )
+    let handle = async handler =>
+      try await handler() catch {
+      | err => Js.log2("ExtensionPoint: Error on calling handler:", err)
       }
 
-    let applyOutgoingCommandAction = x =>
-      switch x {
+    let applyIncomingCommandAction = async action =>
+      await (
+        switch action {
+        | ExtensionMapping.AbstractPublishAggregateCommand(aggregateName, commandJson) =>
+          publishAggregateCommand(aggregateName, commandJson)
+        | AbstractPublishAggregateCommandAsync(promise) => {
+            let (aggregateName, commandJson) = await promise
+            publishAggregateCommand(aggregateName, commandJson)
+          }
+        | AbstractPublishAggregateCommandsAsync(promise) =>
+          let publish = async promise => {
+            await promise
+            ->Util.Promise.mapOk(arr =>
+              arr
+              ->Belt.Array.map(((aggregateName, commandJson)) =>
+                publishAggregateCommand(aggregateName, commandJson)
+              )
+              ->Js.Promise.all
+            )
+            ->Util.Promise.toUnit
+          }
+          promise->publish
+        | AbstractPublishPluginExtensionPointCommand(commandJson) =>
+          publishCorePluginExtensionPointCommand(commandJson)
+        | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
+          forwardCommand(extensionPointName, commandJson)
+        | AbstractCall(handler) => handler->handle
+        }
+      )
+
+    let applyOutgoingCommandAction = async action =>
+      switch action {
       | ExtensionMapping.AbstractPublishPluginExtensionPointCommand(commandJson) =>
         publishCorePluginExtensionPointCommand(commandJson)
       | AbstractPublishExtensionPointCommand(extensionPointName, commandJson) =>
         forwardCommand(extensionPointName, commandJson)
-      | AbstractCall(handler) =>
-        handler()->Js.Promise2.catch(err =>
-          Js.log2("ExtensionPoint: Error on calling handler:", err)->Js.Promise.resolve
-        )
+      | AbstractCall(handler) => handler->handle
       }
 
-    let incomingEventHandler = (. event'Json, pluginDef) => {
+    let incomingEventHandler = async (. event'Json, pluginDef) => {
       let event' = Message.event'_decode(
         ReventlessSpec.Id.StringPure.t_decode,
         Spec.event_decode,
@@ -186,13 +183,14 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       switch event' {
       | Belt.Result.Ok(event') =>
         let commandActions = mapIncomingEvent(event', pluginDef, queryEngine)
-        commandActions
-        ->Belt.Array.map(applyIncomingCommandAction)
-        ->Js.Promise.all
-        ->Js.Promise2.then(_ => Js.Promise.resolve())
-      | Error(msg) =>
-        Js.log2("Could not decode event':", msg)
-        Js.Promise.resolve()
+        let apply = async commandActions => {
+          await commandActions
+          ->Belt.Array.map(applyIncomingCommandAction)
+          ->Js.Promise.all
+          ->Util.Promise.toUnit
+        }
+        await commandActions->apply
+      | Error(msg) => Js.log2("Could not decode event':", msg)
       }
     }
 
@@ -201,7 +199,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       commandActions
       ->Belt.Array.map(applyOutgoingCommandAction)
       ->Js.Promise.all
-      ->Js.Promise2.then(_ => Js.Promise.resolve())
+      ->Util.Promise.toUnit
     }
 
     self->setOutputs(

@@ -4,7 +4,6 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("./Message.bs.js");
 
@@ -85,27 +84,28 @@ function Make(Spec, MappingImpl) {
                                 }
                               };
                     case /* PublishEventAsync */1 :
-                        var promise$p = Js_promise2.then(x._0, (function (param) {
-                                var $$event = param[1];
-                                var id = param[0];
-                                var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
-                                console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id + "");
-                                return Promise.resolve({
-                                            id: Id$ReventlessSpec.$$String.makeFromString(id),
-                                            meta: {
-                                              service: Spec.name,
-                                              time: meta.time,
-                                              ip: meta.ip,
-                                              user: meta.user,
-                                              msgId: Message$Reventless.uuid(undefined),
-                                              correlationId: meta.correlationId
-                                            },
-                                            event: $$event
-                                          });
-                              }));
+                        var toEvent$p = async function (promise) {
+                          var match = await promise;
+                          var $$event = match[1];
+                          var id = match[0];
+                          var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
+                          console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id + "");
+                          return {
+                                  id: Id$ReventlessSpec.$$String.makeFromString(id),
+                                  meta: {
+                                    service: Spec.name,
+                                    time: meta.time,
+                                    ip: meta.ip,
+                                    user: meta.user,
+                                    msgId: Message$Reventless.uuid(undefined),
+                                    correlationId: meta.correlationId
+                                  },
+                                  event: $$event
+                                };
+                        };
                         return {
                                 TAG: /* AbstractPublishEventAsync */1,
-                                _0: promise$p
+                                _0: toEvent$p(x._0)
                               };
                     case /* Call */2 :
                         var msg = x._1;

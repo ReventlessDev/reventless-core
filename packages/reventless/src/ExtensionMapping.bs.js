@@ -4,7 +4,6 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Message$Reventless = require("./Message.bs.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.bs.js");
 
@@ -56,28 +55,29 @@ function Make(Spec, MappingImpl) {
                                 _1: encodeAggregateCommandJson(x._1, x._0)
                               };
                     case /* PublishAggregateCommandAsync */1 :
-                        var promise$p = Js_promise2.then(x._0, (function (param) {
-                                return Promise.resolve([
-                                            aggregateName,
-                                            encodeAggregateCommandJson(param[1], param[0])
-                                          ]);
-                              }));
+                        var toCommandJson = async function (promise) {
+                          var match = await promise;
+                          return [
+                                  aggregateName,
+                                  encodeAggregateCommandJson(match[1], match[0])
+                                ];
+                        };
                         return {
                                 TAG: /* AbstractPublishAggregateCommandAsync */1,
-                                _0: promise$p
+                                _0: toCommandJson(x._0)
                               };
                     case /* PublishAggregateCommandsAsync */2 :
-                        var promise$p$1 = Js_promise2.then(x._0, (function (tupels) {
-                                return Promise.all(Belt_Array.map(tupels, (function (param) {
-                                                  return Promise.resolve([
-                                                              aggregateName,
-                                                              encodeAggregateCommandJson(param[1], param[0])
-                                                            ]);
-                                                })));
-                              }));
+                        var toCommandJsons = async function (promise) {
+                          return Belt_Array.map(await promise, (function (param) {
+                                        return [
+                                                aggregateName,
+                                                encodeAggregateCommandJson(param[1], param[0])
+                                              ];
+                                      }));
+                        };
                         return {
                                 TAG: /* AbstractPublishAggregateCommandsAsync */2,
-                                _0: promise$p$1
+                                _0: toCommandJsons(x._0)
                               };
                     case /* PublishExtensionPointCommand */3 :
                         var command = x._1;

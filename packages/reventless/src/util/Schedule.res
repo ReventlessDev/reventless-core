@@ -11,31 +11,33 @@ let minutesFromNow = minutes => {
   Single(m->year, m->month + 1, m->date, m->hour, m->minute)
 }
 
-exception ScheduleNotCreated(schedule, Js.Promise.error)
-exception ScheduleNotDeleted(string, Js.Promise.error)
+exception ScheduleNotCreated(schedule)
+exception ScheduleNotDeleted(string)
 
-let create = (scheduler, queueResources) => (. schedule) => {
+let create = (scheduler, queueResources) => async (. schedule) => {
   let name = schedule.name->AWS.validateName
   let schedule = {...schedule, name}
   let createSchedule = scheduler["createSchedule"]
-  createSchedule(. queueResources, schedule)
-  ->Js.Promise2.then(_ => Js.log2("Schedule.create: created", schedule)->Js.Promise.resolve)
-  ->Js.Promise2.catch(err => {
-    Js.log3("Schedule.create: couldn't create", schedule, err)
-    ScheduleNotCreated(schedule, err)->Js.Promise.reject
-  })
+  switch await createSchedule(. queueResources, schedule) {
+  | _ => Js.log2("Schedule.create: created", schedule)
+  | exception err => {
+      Js.log3("Schedule.create: couldn't create", schedule, err)
+      raise(ScheduleNotCreated(schedule))
+    }
+  }
 }
 
 let delete: (ReventlessSpec.Scheduler.t, array<resource>) => delete = (
   scheduler,
   queueResources,
-) => (. name) => {
+) => async (. name) => {
   let name = name->AWS.validateName
   let deleteSchedule = scheduler["deleteSchedule"]
-  deleteSchedule(. queueResources, name)
-  ->Js.Promise2.then(_ => Js.log2("Schedule.delete: deleted", name)->Js.Promise.resolve)
-  ->Js.Promise2.catch(err => {
-    Js.log3("Schedule.delete: couldn't delete", name, err)
-    ScheduleNotDeleted(name, err)->Js.Promise.reject
-  })
+  switch await deleteSchedule(. queueResources, name) {
+  | _ => Js.log2("Schedule.delete: deleted", name)
+  | exception err => {
+      Js.log3("Schedule.delete: couldn't delete", name, err)
+      raise(ScheduleNotDeleted(name))
+    }
+  }
 }

@@ -4,7 +4,6 @@
 var Component = require("./Component").default;
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var EC2_Eip$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Eip.bs.js");
 var EC2_Vpc$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Vpc.bs.js");
 var EC2_Subnet$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Subnet.bs.js");
@@ -84,23 +83,22 @@ function construct(self, name, availabilityZone) {
         routeTableId: privateSubnetRouteTable.id,
         subnetId: privateSubnet.id
       }, Caml_option.some(opts), undefined);
-  var region = Aws.getRegion(undefined, undefined);
+  Aws.getRegion(undefined, undefined);
+  var service = async function (serviceName) {
+    return "com.amazonaws.{(await region)[\"name\"]}." + serviceName + "";
+  };
   var routeTableIds = [
     publicSubnetRouteTable.id,
     privateSubnetRouteTable.id
   ];
   var s3Endpoint = EC2_VpcEndpoint$PulumiAws.make(name + "S3Endpoint", {
         routeTableIds: routeTableIds,
-        serviceName: Js_promise2.then(region, (function (region) {
-                return Promise.resolve("com.amazonaws." + (region.name + ".s3"));
-              })),
+        serviceName: service("s3"),
         vpcId: vpc.id
       }, Caml_option.some(opts), undefined);
   var dynamoDbEndpoint = EC2_VpcEndpoint$PulumiAws.make(name + "DynamoDbEndpoint", {
         routeTableIds: routeTableIds,
-        serviceName: Js_promise2.then(region, (function (region) {
-                return Promise.resolve("com.amazonaws." + (region.name + ".dynamodb"));
-              })),
+        serviceName: service("dynamodb"),
         vpcId: vpc.id
       }, Caml_option.some(opts), undefined);
   var self$1 = {

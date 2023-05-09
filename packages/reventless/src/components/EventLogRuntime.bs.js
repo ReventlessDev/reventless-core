@@ -10,6 +10,7 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
+var Util_Error$Reventless = require("../util/Util_Error.bs.js");
 
 function eventToJson(specIdEncode, specEventEncode, id, event$p) {
   return Js_dict.fromArray(Belt_Array.concat([
@@ -35,7 +36,7 @@ function eventsToJson(events$p, specIdEncode, specEventEncode, id) {
 }
 
 function storageAppendErrorHandler(specName, specIdToString, id, err) {
-  var errMsg = "EventLog: Error: Couldn't append for " + specName + "(" + Curry._1(specIdToString, id) + "):" + Belt_Option.getWithDefault(err.message, "no error message given");
+  var errMsg = "EventLog: Error: Couldn't append for " + specName + "(" + Curry._1(specIdToString, id) + "):" + Util_Error$Reventless.message(undefined, err);
   console.log(errMsg);
   return {
           TAG: /* Error */1,
@@ -74,12 +75,12 @@ function appendFn(storageAppend, specIdToString, specIdEncode, specEventEncode, 
         appendResult = await storageAppend(sequenceNr, Curry._1(specIdToString, id), eventsJson);
         exit = 1;
       }
-      catch (raw_err){
-        var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-        if (err.RE_EXN_ID === Js_exn.$$Error) {
-          return storageAppendErrorHandler(specName, specIdToString, id, err._1);
+      catch (raw_e){
+        var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+        if (e.RE_EXN_ID === Js_exn.$$Error) {
+          return storageAppendErrorHandler(specName, specIdToString, id, e._1);
         }
-        throw err;
+        throw e;
       }
       if (exit === 1) {
         await publishToEventTopic(eventTopicPublish, specIdToString, id, events$p);
@@ -123,18 +124,16 @@ function decodeEvents(jsons, specEventDecode) {
               }));
 }
 
-function decodeEventsToPromise(specEventDecode, jsons) {
-  return Promise.resolve(Belt_Array.map(jsons, (function (param) {
-                    return decodeEvent(specEventDecode, param);
-                  })));
+async function decodeEventsToPromise(specEventDecode, jsons) {
+  return Belt_Array.map(jsons, (function (param) {
+                return decodeEvent(specEventDecode, param);
+              }));
 }
 
 function replayFn(storageReplay, specIdToString, specEventDecode) {
   return async function (id) {
     var jsonEvents = await storageReplay(Curry._1(specIdToString, id));
-    return await Promise.resolve(Belt_Array.map(jsonEvents, (function (param) {
-                      return decodeEvent(specEventDecode, param);
-                    })));
+    return await decodeEventsToPromise(specEventDecode, jsonEvents);
   };
 }
 

@@ -95,9 +95,9 @@ module Make = (EventCollector: EventCollector.T): T => {
       }
     })
 
-  let eventsHandler = (sideEffects, queryEngine) => (. events'Json) =>
+  let eventsHandler = (sideEffects, queryEngine) => (. events'Json) => {
     events'Json
-    ->Belt.Array.map(event'Json =>
+    ->Belt.Array.map(async event'Json =>
       switch sideEffects->findSideEffect(event'Json) {
       | Some((eventObj, eventMeta, sideEffect)) =>
         module SideEffect = unpack(sideEffect)
@@ -111,31 +111,32 @@ module Make = (EventCollector: EventCollector.T): T => {
 
         switch (idDecoded, eventDecoded) {
         | (Some(Ok(eventId)), Some(Ok(event))) =>
-          SideEffect.execute(. eventId, eventMeta, event, queryEngine)->Js.Promise2.catch(err =>
-            Js.log2("SideEffect: Error while processing:", err)->Js.Promise.resolve
-          )
+          try await SideEffect.execute(. eventId, eventMeta, event, queryEngine) catch {
+          | err => Js.log2("SideEffect: Error while processing:", err)
+          }
 
         | (None, _)
         | (_, None) =>
-          Js.Promise.resolve(Js.log("SideEffectHandler.eventHandler: Invalid event"))
+          Js.log("SideEffectHandler.eventHandler: Invalid event")
         | (_, Some(Error(err)))
         | (Some(Error(err)), _) =>
-          Js.Promise.resolve(Js.log2("SideEffectHandler.eventHandler: Couldn't decode event:", err))
+          Js.log2("SideEffectHandler.eventHandler: Couldn't decode event:", err)
         }
-      | None => Js.Promise.resolve()
+      | None => ()
       }
     )
     ->Js.Promise.all
-    ->Js.Promise2.then(_ => Js.Promise.resolve())
+    ->Util.Promise.toUnit
+  }
 
-  let createScheduleFn = (scheduler, queueResources) => (. schedule) =>
-    Schedule.create(scheduler, queueResources)(. schedule)
+  let createScheduleFn = (scheduler, queueResources) => async (. schedule) =>
+    await Schedule.create(scheduler, queueResources)(. schedule)
 
-  let deleteScheduleFn = (scheduler, queueResources) => (. scheduleName) =>
-    Schedule.delete(scheduler, queueResources)(. scheduleName)
+  let deleteScheduleFn = (scheduler, queueResources) => async (. scheduleName) =>
+    await Schedule.delete(scheduler, queueResources)(. scheduleName)
 
-  let enqueueEventFn = eventCollector => (. delay, id, message) =>
-    EventCollector.enqueueEvent(eventCollector)(. delay, id, message)
+  let enqueueEventFn = eventCollector => async (. delay, id, message) =>
+    await EventCollector.enqueueEvent(eventCollector)(. delay, id, message)
 
   let construct = (
     ~sideEffects,
