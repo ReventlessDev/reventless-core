@@ -45,10 +45,10 @@ function makeEntry(queueService, commandJson) {
 }
 
 async function sendBatch(queue, queueService, commandJsons) {
-  var results = await Promise.allSettled(SQS$AwsSdk.sendMessageBatch(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
+  var sendResult = await Promise.allSettled(SQS$AwsSdk.sendMessageBatch(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
                   return makeEntry(queueService, commandJson);
                 }))));
-  return Belt_Array.forEach(Util_Promise$Reventless.filterRejected(results), (function (param) {
+  return Belt_Array.forEach(Util_Promise$Reventless.filterRejected(sendResult), (function (param) {
                 console.log("SQS.sendMessageBatch request " + String(param[0]) + " failed: " + param[1] + "");
               }));
 }
