@@ -1,6 +1,6 @@
 {
   "name": "aws-lambda-layer",
-  "version": "0.0.1",
+  "version": "0.0.2-alpha.0",
   "description": "aws lambda layer to be used in reventless based projects",
   "author": "Christoph Porod-Wanasek <christoph.wanasek@atos.net>",
   "homepage": "https://gitlab.com/reventless/reventless-universe#readme",
