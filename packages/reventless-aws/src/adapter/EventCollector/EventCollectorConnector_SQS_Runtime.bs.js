@@ -5,14 +5,13 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
 var Record = {};
 
-function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
+async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
   var records = Belt_Option.getWithDefault(callbackEvent.Records, []);
   var jsons = Belt_Array.keepMap(records, (function (record) {
           var eventSource = record.eventSource;
@@ -39,24 +38,24 @@ function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
               return ;
           }
         }));
-  return Js_promise2.then(handleEvents(jsons), (function (param) {
-                var x = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
-                            var match = record.eventSource;
-                            if (match === "aws:sqs") {
-                              return true;
-                            } else {
-                              return false;
-                            }
-                          })), (function (idx, record) {
-                        return {
-                                Id: String(idx),
-                                ReceiptHandle: record.receiptHandle
-                              };
-                      }));
-                return Js_promise2.then(x.length !== 0 ? SQS$AwsSdk.deleteMessageBatch(queue.id.get(), x) : Promise.resolve(undefined), (function (param) {
-                              return Promise.resolve(undefined);
-                            }));
-              }));
+  await handleEvents(jsons);
+  var entries = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
+              var match = record.eventSource;
+              if (match === "aws:sqs") {
+                return true;
+              } else {
+                return false;
+              }
+            })), (function (idx, record) {
+          return {
+                  Id: String(idx),
+                  ReceiptHandle: record.receiptHandle
+                };
+        }));
+  if (entries.length !== 0) {
+    return await SQS$AwsSdk.deleteMessageBatch(queue.id.get(), entries);
+  }
+  
 }
 
 function enqueueEvent(queue) {

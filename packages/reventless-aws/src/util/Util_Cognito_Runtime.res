@@ -31,15 +31,14 @@ let signUp = (
 @ocaml.doc(" sign up a user to a given userPool, if the user is not already present
    NOTE: should be called in runtime
    ")
-let signUpIfMissing = (
+let signUpIfMissing = async (
   ~region: string,
   ~userPoolId: string,
   ~userPoolClientId: string,
   ~userName: string,
   ~password: string,
 ) =>
-  signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password)
-  ->Js.Promise2.then(result =>
-    Js.Promise.resolve(Js.log3("Created User", userName, result["_UserSub"]))
-  )
-  ->Js.Promise2.catch(_ => Js.Promise.resolve(Js.log2("Didn't create user:", userName)))
+  switch await signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password) {
+  | result => Js.log3("Created User", userName, result["_UserSub"])
+  | exception _ => Js.log2("Didn't create user:", userName)
+  }

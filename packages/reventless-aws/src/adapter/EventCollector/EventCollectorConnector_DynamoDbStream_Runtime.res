@@ -1,4 +1,4 @@
-let handleStreamEvent = (handleEvents, streamEvent, _) => {
+let handleStreamEvent = async (handleEvents, streamEvent, _) => {
   let records = streamEvent["_Records"]->Belt.Option.getWithDefault([])
   let jsons = records->Belt.Array.keepMap(record =>
     switch record["eventSource"] {
@@ -17,8 +17,9 @@ let handleStreamEvent = (handleEvents, streamEvent, _) => {
     }
   )
 
-  handleEvents(. jsons)->Js.Promise2.catch(err =>
+  try await handleEvents(. jsons) catch {
+  | err =>
     //  Js.Exn.raiseError(err->Reventless.Util.Error.ofPromise##message)
-    Js.log2("handleStreamEvent error:", err)->Js.Promise.resolve
-  )
+    Js.log2("handleStreamEvent error:", err)
+  }
 }

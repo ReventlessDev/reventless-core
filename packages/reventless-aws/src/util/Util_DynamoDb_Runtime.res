@@ -62,8 +62,7 @@ let batchWrite' = itemRequestMap =>
     ),
   )
 
-let wrapWithCount = (promise, count) =>
-  promise->Js.Promise2.then(pContent => (pContent, count)->Js.Promise.resolve)
+let wrapWithCount = async (promise, count) => (await promise, count)
 
 let hasUnprocessedItems = writeOutput =>
   writeOutput["_UnprocessedItems"]->Js.Dict.keys->Belt.Array.size > 0
@@ -71,19 +70,20 @@ let hasUnprocessedItems = writeOutput =>
 let rec retryIfNecessary: (
   Js.Promise.t<(BatchWriteItemOutput.t, /* numberOfRetries */ int)>,
   int,
-) => Js.Promise.t<(BatchWriteItemOutput.t, /* numberOfRetries */ int)> = (p, maxRetries) =>
-  p->Js.Promise2.then(((writeOutput, numberOfRetries) as originalPromiseContent) => {
-    let unprocessedItems = writeOutput["_UnprocessedItems"]
-    let unprocessedItemsPresent = hasUnprocessedItems(writeOutput)
-    let numberOfRetriesReached = numberOfRetries >= maxRetries
-    if unprocessedItemsPresent && !numberOfRetriesReached {
-      batchWrite'(unprocessedItems)
-      ->wrapWithCount(numberOfRetries + 1)
-      ->retryIfNecessary(maxRetries)
-    } else {
-      originalPromiseContent->Js.Promise.resolve
-    }
-  })
+) => Js.Promise.t<(BatchWriteItemOutput.t, /* numberOfRetries */ int)> = async (p, maxRetries) => {
+  let originalPromiseContent = await p
+  let (writeOutput, numberOfRetries) = originalPromiseContent
+  let unprocessedItems = writeOutput["_UnprocessedItems"]
+  let unprocessedItemsPresent = hasUnprocessedItems(writeOutput)
+  let numberOfRetriesReached = numberOfRetries >= maxRetries
+  if unprocessedItemsPresent && !numberOfRetriesReached {
+    await batchWrite'(unprocessedItems)
+    ->wrapWithCount(numberOfRetries + 1)
+    ->retryIfNecessary(maxRetries)
+  } else {
+    originalPromiseContent
+  }
+}
 
 let toPutRequest = json =>
   WriteRequest.make(~_PutRequest=WriteRequest.PutRequest.make(~_Item=json), ())

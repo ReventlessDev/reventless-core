@@ -6,11 +6,10 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
 
-function handleQueueEvent(handleCommands, queue, $$event, param) {
+async function handleQueueEvent(handleCommands, queue, $$event, param) {
   var records = $$event.Records;
   var jsons = Belt_Array.keepMap(records, (function (record) {
           var commandStr = record.body;
@@ -33,28 +32,35 @@ function handleQueueEvent(handleCommands, queue, $$event, param) {
                   reference: param[0]
                 };
         }));
-  return Js_promise2.then(Js_promise2.$$catch(handleCommands(topicItems), (function (err) {
-                    console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent error:", err, JSON.stringify(err));
-                    return Js_exn.raiseError("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!");
-                  })), (function (results) {
-                return Js_promise2.$$catch(Js_promise2.then(SQS$AwsSdk.deleteMessageBatch(queue.id.get(), Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (idx, result) {
-                                              if (result.TAG === /* Ok */0) {
-                                                var reference = result._0;
-                                                console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Delete command with ReceiptHandle:", reference);
-                                                return {
-                                                        Id: String(idx),
-                                                        ReceiptHandle: reference
-                                                      };
-                                              }
-                                              console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
-                                            })), (function (x) {
-                                          return x;
-                                        }))), (function (param) {
-                                  return Promise.resolve(undefined);
-                                })), (function (err) {
-                              return Promise.resolve((console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", err), undefined));
-                            }));
-              }));
+  var results;
+  try {
+    results = await handleCommands(topicItems);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent error:", err, JSON.stringify(err));
+    return Js_exn.raiseError("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!");
+  }
+  try {
+    return await SQS$AwsSdk.deleteMessageBatch(queue.id.get(), Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (idx, result) {
+                          if (result.TAG === /* Ok */0) {
+                            var reference = result._0;
+                            console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Delete command with ReceiptHandle:", reference);
+                            return {
+                                    Id: String(idx),
+                                    ReceiptHandle: reference
+                                  };
+                          }
+                          console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
+                        })), (function (x) {
+                      return x;
+                    })));
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", err$1);
+    return ;
+  }
 }
 
 function publish(queue, queueService) {

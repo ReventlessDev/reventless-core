@@ -4,10 +4,10 @@
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
-function handleStreamEvent(handleEvents, streamEvent, param) {
+async function handleStreamEvent(handleEvents, streamEvent, param) {
   var records = Belt_Option.getWithDefault(streamEvent.Records, []);
   var jsons = Belt_Array.keepMap(records, (function (record) {
           var eventSource = record.eventSource;
@@ -31,9 +31,14 @@ function handleStreamEvent(handleEvents, streamEvent, param) {
             return ;
           }
         }));
-  return Js_promise2.$$catch(handleEvents(jsons), (function (err) {
-                return Promise.resolve((console.log("handleStreamEvent error:", err), undefined));
-              }));
+  try {
+    return await handleEvents(jsons);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    console.log("handleStreamEvent error:", err);
+    return ;
+  }
 }
 
 exports.handleStreamEvent = handleStreamEvent;

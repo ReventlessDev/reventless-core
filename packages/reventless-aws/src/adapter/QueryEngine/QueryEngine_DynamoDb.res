@@ -30,7 +30,7 @@ let createFilters = filters =>
   })
   ->Belt.Array.unzip
 
-let queryByTableName = (
+let queryByTableName = async (
   ~tableName,
   ~key="id",
   ~id,
@@ -70,19 +70,15 @@ let queryByTableName = (
     ~_Limit=limit,
     (),
   )
-  AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params, ())
-  ->Js.Promise2.then(result =>
-    Js.Promise.resolve(
-      result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn),
-    )
-  )
-  ->Js.Promise2.catch(err => {
+  switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params, ()) {
+  | result => result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
+  | exception err =>
     Js.log2("Task.query error:", err)
-    Js.Promise.resolve([])
-  })
+    []
+  }
 }
 
-let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
+let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilters
   let filterExpression = switch filterExpressions {
   | [] => None
@@ -102,16 +98,12 @@ let scanByTableName = (~tableName, ~filterConfigs, ~limit) => {
     ~_Limit=limit,
     (),
   )
-  AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params, ())
-  ->Js.Promise2.then(result =>
-    Js.Promise.resolve(
-      result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn),
-    )
-  )
-  ->Js.Promise2.catch(err => {
-    Js.log2("Task.query error:", err)
-    Js.Promise.resolve([])
-  })
+  switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params, ()) {
+  | result => result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
+  | exception Js.Exn.Error(e) =>
+    Js.log2("Task.query error:", e)
+    []
+  }
 }
 
 let make: Reventless.QueryDb.Adapter.queryEngineMaker = allQueryDbs => {

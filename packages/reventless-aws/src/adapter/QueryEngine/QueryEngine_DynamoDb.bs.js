@@ -2,9 +2,10 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
+var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.bs.js");
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.bs.js");
@@ -78,7 +79,7 @@ function createFilters(filters) {
                   })));
 }
 
-function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendingOpt, limitOpt, param) {
+async function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendingOpt, limitOpt, param) {
   var key = keyOpt !== undefined ? keyOpt : "id";
   var filterConfigs = filterConfigsOpt !== undefined ? filterConfigsOpt : [];
   var ascending = ascendingOpt !== undefined ? ascendingOpt : true;
@@ -117,17 +118,21 @@ function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendingOpt,
     tmp.FilterExpression = filterExpression;
   }
   var params = tmp;
-  return Js_promise2.$$catch(Js_promise2.then(Curry._1(DynamoDb_DocumentClient$AwsSdk.queryRecursive(params)(undefined), undefined), (function (result) {
-                    return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
-                                      return JSON.parse(JSON.stringify(js));
-                                    })));
-                  })), (function (err) {
-                console.log("Task.query error:", err);
-                return Promise.resolve([]);
+  var result;
+  try {
+    result = await Curry._1(DynamoDb_DocumentClient$AwsSdk.queryRecursive(params)(undefined), undefined);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    console.log("Task.query error:", err);
+    return [];
+  }
+  return Belt_Array.map(result.Items, (function (js) {
+                return JSON.parse(JSON.stringify(js));
               }));
 }
 
-function scanByTableName(tableName, filterConfigs, limit) {
+async function scanByTableName(tableName, filterConfigs, limit) {
   var match = createFilters(filterConfigs);
   var filterExpressions = match[0];
   var filterExpression = filterExpressions.length !== 0 ? filterExpressions.join(" AND ") : undefined;
@@ -144,13 +149,20 @@ function scanByTableName(tableName, filterConfigs, limit) {
     tmp.FilterExpression = filterExpression;
   }
   var params = tmp;
-  return Js_promise2.$$catch(Js_promise2.then(Curry._1(DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined), undefined), (function (result) {
-                    return Promise.resolve(Belt_Array.map(result.Items, (function (js) {
-                                      return JSON.parse(JSON.stringify(js));
-                                    })));
-                  })), (function (err) {
-                console.log("Task.query error:", err);
-                return Promise.resolve([]);
+  var result;
+  try {
+    result = await Curry._1(DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined), undefined);
+  }
+  catch (raw_e){
+    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+    if (e.RE_EXN_ID === Js_exn.$$Error) {
+      console.log("Task.query error:", e._1);
+      return [];
+    }
+    throw e;
+  }
+  return Belt_Array.map(result.Items, (function (js) {
+                return JSON.parse(JSON.stringify(js));
               }));
 }
 

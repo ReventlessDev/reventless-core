@@ -1,4 +1,4 @@
-let handleQueueEvent = (handleCommands, queue, event, _) => {
+let handleQueueEvent = async (handleCommands, queue, event, _) => {
   let records = event["_Records"]
   let jsons = records->Belt.Array.keepMap(record => {
     let commandStr = record["body"]
@@ -22,15 +22,14 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
       command,
     })
 
-  handleCommands(. topicItems)
-  ->Js.Promise2.catch(err => {
+  switch await handleCommands(. topicItems) {
+  | exception err =>
     Js.log3(__MODULE__ ++ ".handleQueueEvent error:", err, err->Js.Json.stringifyAny)
     Js.Exn.raiseError(
       __MODULE__ ++ ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!",
     )
-  })
-  ->Js.Promise2.then(results =>
-    results
+  | results =>
+    try await results
     ->Belt.Array.mapWithIndex((idx, result) =>
       switch result {
       | Belt.Result.Ok(reference) =>
@@ -48,15 +47,10 @@ let handleQueueEvent = (handleCommands, queue, event, _) => {
       }
     )
     ->Belt.Array.keepMap(x => x)
-    ->AwsSdk.SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get)
-    ->Js.Promise2.then(_ => Js.Promise.resolve())
-    ->Js.Promise2.catch(err =>
-      Js.log2(
-        __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:",
-        err,
-      )->Js.Promise.resolve
-    )
-  )
+    ->AwsSdk.SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get) catch {
+    | err => Js.log2(__MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", err)
+    }
+  }
 }
 
 let publish = (queue, queueService) => (. jsons) =>

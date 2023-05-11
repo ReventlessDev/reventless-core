@@ -5,7 +5,7 @@ module Record = {
   external toDynamoDbRecord: t => AwsSdk.DynamoDb.Stream.Record.t = "%identity"
 }
 
-let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
+let handleCallbackEvent = async (handleEvents, queue, callbackEvent, _) => {
   let records = callbackEvent["_Records"]->Belt.Option.getWithDefault([])
   let jsons = records->Belt.Array.keepMap(record =>
     switch record["eventSource"] {
@@ -27,27 +27,28 @@ let handleCallbackEvent = (handleEvents, queue, callbackEvent, _) => {
     }
   )
 
-  handleEvents(. jsons)->Js.Promise2.then(_ =>
-    records
-    ->Belt.Array.keep(record =>
-      switch record["eventSource"] {
-      | "aws:sqs" => true
-      | _ => false
-      }
-    )
-    ->Belt.Array.mapWithIndex((idx, record) =>
-      AwsSdk.SQS.DeleteMessageBatchEntry.make(
-        ~_Id=idx->string_of_int,
-        ~_ReceiptHandle=(record->Record.toSqsRecord)["receiptHandle"],
+  switch await handleEvents(. jsons) {
+  | _ =>
+    let entries =
+      records
+      ->Belt.Array.keep(record =>
+        switch record["eventSource"] {
+        | "aws:sqs" => true
+        | _ => false
+        }
       )
-    )
-    ->(x =>
-      switch x {
-      | [] => Js.Promise.resolve()
-      | entries => AwsSdk.SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get, entries)
-      })
-    ->Js.Promise2.then(_ => Js.Promise.resolve())
-  )
+      ->Belt.Array.mapWithIndex((idx, record) =>
+        AwsSdk.SQS.DeleteMessageBatchEntry.make(
+          ~_Id=idx->string_of_int,
+          ~_ReceiptHandle=(record->Record.toSqsRecord)["receiptHandle"],
+        )
+      )
+    switch entries {
+    | [] => ()
+    | entries =>
+      await AwsSdk.SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get, entries)
+    }
+  }
 }
 
 let enqueueEvent = queue => (. delay, _id, messageBody) => {

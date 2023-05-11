@@ -3,10 +3,10 @@ open Reventless.Counter
 open AwsSdk.DynamoDb.DocumentClient
 open Util.DynamoDbStream_Runtime
 
-let addToCounterTarget = (table, {counterId, target, targetRef}) => {
+let addToCounterTarget = async (table, {counterId, target, targetRef}) => {
   Js.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target)
   let tableName = table["name"]->Pulumi.Output.get
-  update(
+  switch await update(
     UpdateInput.make(
       ~_TableName=tableName,
       ~_Key={"id": counterId},
@@ -29,21 +29,15 @@ let addToCounterTarget = (table, {counterId, target, targetRef}) => {
       ~_ConditionExpression="NOT contains(#targetRefs, :targetRef)",
       (),
     ),
-  )
-  ->Js.Promise2.then((updateOutput: UpdateOutput.t<{"count": int}>) =>
+  ) {
+  | (updateOutput: UpdateOutput.t<{"count": int}>) =>
     Js.log2(
       __MODULE__ ++ `.addToCounterTarget: current count for ${counterId}:`,
       updateOutput["_Attributes"]["count"],
-    )->Js.Promise.resolve
-  )
-  ->Js.Promise2.catch(err =>
-    Js.Exn.raiseError(
-      __MODULE__ ++
-      `.addToCounterTarget Error: Couldn't count on ${tableName}: ${(
-          err->Reventless.Util.Error.ofPromise
-        ).message}`,
     )
-  )
+  | exception _ =>
+    Js.Exn.raiseError(__MODULE__ ++ `.addToCounterTarget Error: Couldn't count on ${tableName}`)
+  }
 }
 
 @decco

@@ -40,9 +40,9 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 // Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again
 open AwsSdk.DynamoDb_DynamoDb
 
-let enableStream = tableName => {
+let enableStream = async tableName => {
   Js.log(`${__MODULE__}: enableStream for ${tableName}`)
-  updateTable(
+  switch await updateTable(
     UpdateTableInput.make(
       ~_TableName=tableName,
       ~_StreamSpecification=StreamSpecification.make(
@@ -52,13 +52,13 @@ let enableStream = tableName => {
       ),
       (),
     ),
-  )->Js.Promise2.then(res =>
-    (
+  ) {
+  | res => (
       res["_TableDescription"]["_StreamSpecification"]["_StreamEnabled"],
       Some(res["_TableDescription"]["_LatestStreamArn"]),
       res["_TableDescription"]["_LatestStreamLabel"],
-    )->Js.Promise.resolve
-  )
+    )
+  }
 }
 
 let verifyStream = table =>

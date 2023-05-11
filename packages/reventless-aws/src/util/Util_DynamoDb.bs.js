@@ -4,11 +4,9 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Js_promise = require("@rescript/std/lib/js/js_promise.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
@@ -46,20 +44,19 @@ function arn2tableName(arn) {
   }
 }
 
-function enableTtl(tableName) {
+async function enableTtl(tableName) {
   console.log("" + "Util_DynamoDb-ReventlessAws" + ": enableTimeToLive for " + tableName + "");
-  return Js_promise2.then(DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
-                  TableName: tableName,
-                  TimeToLiveSpecification: {
-                    Enabled: true,
-                    AttributeName: Util_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
-                  }
-                }), (function (res) {
-                return Promise.resolve({
-                            enabled: res.TimeToLiveSpecification.Enabled,
-                            attributeName: res.TimeToLiveSpecification.AttributeName
-                          });
-              }));
+  var res = await DynamoDb_DynamoDb$AwsSdk.updateTimeToLive({
+        TableName: tableName,
+        TimeToLiveSpecification: {
+          Enabled: true,
+          AttributeName: Util_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+        }
+      });
+  return {
+          enabled: res.TimeToLiveSpecification.Enabled,
+          attributeName: res.TimeToLiveSpecification.AttributeName
+        };
 }
 
 function verifyTtl(expectedTtl, table) {
@@ -84,19 +81,17 @@ function verifyTtl(expectedTtl, table) {
               }));
 }
 
-function enablePointInTimeRecovery(tableName) {
+async function enablePointInTimeRecovery(tableName) {
   console.log("" + "Util_DynamoDb-ReventlessAws" + ": enablePointInTimeRecovery for " + tableName + "");
-  var __x = DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
+  var res = await DynamoDb_DynamoDb$AwsSdk.updateContinuousBackups({
         TableName: tableName,
         PointInTimeRecoverySpecification: {
           PointInTimeRecoveryEnabled: true
         }
       });
-  return Js_promise.then_((function (res) {
-                return Promise.resolve({
-                            enabled: res.ContinuousBackupsDescription.ContinuousBackupsStatus === "ENABLED"
-                          });
-              }), __x);
+  return {
+          enabled: res.ContinuousBackupsDescription.ContinuousBackupsStatus === "ENABLED"
+        };
 }
 
 function verifyPointInTimeRecovery(table) {

@@ -8,7 +8,6 @@ var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.bs.js");
@@ -91,32 +90,29 @@ function batchWrite$p(itemRequestMap) {
             });
 }
 
-function wrapWithCount(promise, count) {
-  return Js_promise2.then(promise, (function (pContent) {
-                return Promise.resolve([
-                            pContent,
-                            count
-                          ]);
-              }));
+async function wrapWithCount(promise, count) {
+  return [
+          await promise,
+          count
+        ];
 }
 
 function hasUnprocessedItems(writeOutput) {
   return Object.keys(writeOutput.UnprocessedItems).length !== 0;
 }
 
-function retryIfNecessary(p, maxRetries) {
-  return Js_promise2.then(p, (function (originalPromiseContent) {
-                var numberOfRetries = originalPromiseContent[1];
-                var writeOutput = originalPromiseContent[0];
-                var unprocessedItems = writeOutput.UnprocessedItems;
-                var unprocessedItemsPresent = hasUnprocessedItems(writeOutput);
-                var numberOfRetriesReached = numberOfRetries >= maxRetries;
-                if (unprocessedItemsPresent && !numberOfRetriesReached) {
-                  return retryIfNecessary(wrapWithCount(batchWrite$p(unprocessedItems), numberOfRetries + 1 | 0), maxRetries);
-                } else {
-                  return Promise.resolve(originalPromiseContent);
-                }
-              }));
+async function retryIfNecessary(p, maxRetries) {
+  var originalPromiseContent = await p;
+  var numberOfRetries = originalPromiseContent[1];
+  var writeOutput = originalPromiseContent[0];
+  var unprocessedItems = writeOutput.UnprocessedItems;
+  var unprocessedItemsPresent = hasUnprocessedItems(writeOutput);
+  var numberOfRetriesReached = numberOfRetries >= maxRetries;
+  if (unprocessedItemsPresent && !numberOfRetriesReached) {
+    return await retryIfNecessary(wrapWithCount(batchWrite$p(unprocessedItems), numberOfRetries + 1 | 0), maxRetries);
+  } else {
+    return originalPromiseContent;
+  }
 }
 
 function toPutRequest(json) {

@@ -7,7 +7,6 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Js_promise2 = require("@rescript/std/lib/js/js_promise2.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.bs.js");
 var Pulumi = require("@pulumi/pulumi");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
@@ -67,21 +66,20 @@ function toStreamResource(table) {
         };
 }
 
-function enableStream(tableName) {
+async function enableStream(tableName) {
   console.log("" + "Util_DynamoDbStream-ReventlessAws" + ": enableStream for " + tableName + "");
-  return Js_promise2.then(DynamoDb_DynamoDb$AwsSdk.updateTable({
-                  TableName: tableName,
-                  StreamSpecification: {
-                    StreamEnabled: true,
-                    StreamViewType: "NEW_IMAGE"
-                  }
-                }), (function (res) {
-                return Promise.resolve([
-                            res.TableDescription.StreamSpecification.StreamEnabled,
-                            res.TableDescription.LatestStreamArn,
-                            res.TableDescription.LatestStreamLabel
-                          ]);
-              }));
+  var res = await DynamoDb_DynamoDb$AwsSdk.updateTable({
+        TableName: tableName,
+        StreamSpecification: {
+          StreamEnabled: true,
+          StreamViewType: "NEW_IMAGE"
+        }
+      });
+  return [
+          res.TableDescription.StreamSpecification.StreamEnabled,
+          res.TableDescription.LatestStreamArn,
+          res.TableDescription.LatestStreamLabel
+        ];
 }
 
 function verifyStream(table) {

@@ -23,7 +23,7 @@ let toScheduleExpression = x =>
     `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} ? * MON-SAT *)`
   }
 
-let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSchedule = role => (.
+let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSchedule = role => async (.
   queueResources,
   schedule,
 ) =>
@@ -34,25 +34,22 @@ let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSched
     Js.Exn.raiseError(err)
   | resources =>
     let resource = resources[0] // FIXME
-    putRule(
+    let _ = await putRule(
       ~name=schedule.name,
       ~scheduleExpression=schedule.rate->toScheduleExpression,
       ~roleArn=role["arn"]->Pulumi.Output.get,
       ~state="ENABLED",
       (),
     )
-    ->Js.Promise2.then(_ =>
-      putTarget(
-        ~rule=schedule.name,
-        ~arn=resource["urn"]->Pulumi.Output.get,
-        ~id=resource["name"]->Pulumi.Output.get,
-        ~input=schedule.payload,
-      )
+    let _ = await putTarget(
+      ~rule=schedule.name,
+      ~arn=resource["urn"]->Pulumi.Output.get,
+      ~id=resource["name"]->Pulumi.Output.get,
+      ~input=schedule.payload,
     )
-    ->Js.Promise2.then(_ => Js.Promise.resolve())
   }
 
-let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = (. queueResources, name) =>
+let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = async (. queueResources, name) =>
   switch queueResources {
   | [] =>
     let err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !"
@@ -60,7 +57,6 @@ let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = (. queueResources,
     Js.Exn.raiseError(err)
   | resources =>
     let resource = resources[0] // FIXME
-    removeTarget(~rule=name, ~id=resource["name"]->Pulumi.Output.get)
-    ->Js.Promise2.then(_ => deleteRule(~name)->Js.Promise2.then(_ => Js.Promise.resolve()))
-    ->Js.Promise2.then(_ => Js.Promise.resolve())
+    let _ = await removeTarget(~rule=name, ~id=resource["name"]->Pulumi.Output.get)
+    let _ = deleteRule(~name)
   }

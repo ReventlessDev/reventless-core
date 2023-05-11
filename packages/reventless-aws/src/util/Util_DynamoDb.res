@@ -23,26 +23,25 @@ let arn2tableName = arn =>
 // Workaround when restore enabled: turn on ttl & pointInTimeRecovery again
 open PulumiAws.DynamoDb.Table
 
-let enableTtl: string => Js.Promise.t<PulumiAws.DynamoDb.Table.TableTtl.t> = tableName => {
+let enableTtl: string => Js.Promise.t<PulumiAws.DynamoDb.Table.TableTtl.t> = async tableName => {
   Js.log(`${__MODULE__}: enableTimeToLive for ${tableName}`)
 
-  {
-    open AwsSdk.DynamoDb_DynamoDb
-    updateTimeToLive(
-      UpdateTimeToLiveInput.make(
-        ~_TableName=tableName,
-        ~_TimeToLiveSpecification=TimeToLiveSpecification.make(
-          ~_Enabled=true,
-          ~_AttributeName=Util_DynamoDb_Runtime.purgeTimeAttributeName,
-        ),
+  open AwsSdk.DynamoDb_DynamoDb
+  switch await updateTimeToLive(
+    UpdateTimeToLiveInput.make(
+      ~_TableName=tableName,
+      ~_TimeToLiveSpecification=TimeToLiveSpecification.make(
+        ~_Enabled=true,
+        ~_AttributeName=Util_DynamoDb_Runtime.purgeTimeAttributeName,
       ),
-    )
-  }->Js.Promise2.then(res =>
+    ),
+  ) {
+  | res =>
     TableTtl.make(
       ~enabled=Some(res["_TimeToLiveSpecification"]["_Enabled"]),
       ~attributeName=res["_TimeToLiveSpecification"]["_AttributeName"],
-    )->Js.Promise.resolve
-  )
+    )
+  }
 }
 
 let verifyTtl: (
@@ -60,26 +59,23 @@ let verifyTtl: (
     }->Pulumi.Output.fromPromise
   )
 
-let enablePointInTimeRecovery = tableName => {
+let enablePointInTimeRecovery = async tableName => {
   Js.log(`${__MODULE__}: enablePointInTimeRecovery for ${tableName}`)
 
-  {
-    open AwsSdk.DynamoDb_DynamoDb
-    updateContinuousBackups(
-      UpdateContinuousBackupsInput.make(
-        ~_TableName=tableName,
-        ~_PointInTimeRecoverySpecification=UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
-          ~_PointInTimeRecoveryEnabled=true,
-        ),
+  open AwsSdk.DynamoDb_DynamoDb
+  switch await updateContinuousBackups(
+    UpdateContinuousBackupsInput.make(
+      ~_TableName=tableName,
+      ~_PointInTimeRecoverySpecification=UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
+        ~_PointInTimeRecoveryEnabled=true,
       ),
+    ),
+  ) {
+  | res =>
+    TablePointInTimeRecovery.make(
+      ~enabled=res["_ContinuousBackupsDescription"]["_ContinuousBackupsStatus"] == "ENABLED",
     )
-  }->Js.Promise.then_(
-    res =>
-      TablePointInTimeRecovery.make(
-        ~enabled=res["_ContinuousBackupsDescription"]["_ContinuousBackupsStatus"] == "ENABLED",
-      )->Js.Promise.resolve,
-    _,
-  )
+  }
 }
 
 let verifyPointInTimeRecovery = (table: table) =>

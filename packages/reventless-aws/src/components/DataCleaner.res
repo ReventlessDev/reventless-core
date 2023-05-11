@@ -5,10 +5,11 @@ open ReventlessSpec.Adapter
 type tableConfig = {"name": string, "id": string, "sort": option<string>}
 type event = {"tables": Js.nullable<array<tableConfig>>}
 
-let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<Belt.Result.t<'a, 'b>> = p =>
-  p
-  ->Js.Promise2.then(res => Belt.Result.Ok(res)->Js.Promise.resolve)
-  ->Js.Promise2.catch(err => Belt.Result.Error(err)->Js.Promise.resolve)
+let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<Belt.Result.t<'a, 'b>> = async p =>
+  switch await p {
+  | res => Belt.Result.Ok(res)
+  | exception err => Belt.Result.Error(err)
+  }
 
 let handleDeleteResult = result => {
   if mode == #debug {
@@ -23,34 +24,34 @@ let handleDeleteResult = result => {
   }
 }
 
-let deleteAllItems = (items: array<Js.Dict.t<string>>, tableConfig: tableConfig): unit =>
-  items
-  ->Belt.Array.map((item: Js.Dict.t<string>) => {
+let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableConfig): unit =>
+  switch await items
+  ->Belt.Array.map(async (item: Js.Dict.t<string>) => {
     let id = item->Js.Dict.get(tableConfig["id"])
     let sort = tableConfig["sort"]->Belt.Option.flatMap(sortField => item->Js.Dict.get(sortField))
     switch (id, sort) {
     | (Some(id), Some(sort)) =>
-      AwsSdk.DynamoDb.DocumentClient.deleteByIdSort(
+      switch await AwsSdk.DynamoDb.DocumentClient.deleteByIdSort(
         ~tableName=tableConfig["name"],
         ~id,
         ~sortField=tableConfig["sort"]->Belt.Option.getExn,
         ~sortKey=sort,
-      )
-      ->promiseToResult
-      ->Js.Promise2.then(res => res->handleDeleteResult->Js.Promise.resolve)
+      )->promiseToResult {
+      | res => res->handleDeleteResult
+      }
     | (Some(id), None) =>
-      AwsSdk.DynamoDb.DocumentClient.deleteById(~tableName=tableConfig["name"], ~id)
-      ->promiseToResult
-      ->Js.Promise2.then(res => res->handleDeleteResult->Js.Promise.resolve)
+      switch await AwsSdk.DynamoDb.DocumentClient.deleteById(
+        ~tableName=tableConfig["name"],
+        ~id,
+      )->promiseToResult {
+      | res => res->handleDeleteResult
+      }
     //Promise.handlePromise(handeDeleteResult)
-    | _ =>
-      Js.Promise.make((~resolve, ~reject as _) =>
-        resolve(. Belt.Result.Error("No valid Config found!"))
-      )
+    | _ => Belt.Result.Error("No valid Config found!")
     }
   })
-  ->Js.Promise.all
-  ->Js.Promise2.then(result =>
+  ->Js.Promise.all {
+  | result =>
     result
     ->Belt.Array.reduce(0, (state, item) =>
       switch item {
@@ -65,11 +66,9 @@ let deleteAllItems = (items: array<Js.Dict.t<string>>, tableConfig: tableConfig)
       (result->Belt.Array.length->string_of_int ++
       (" items in table " ++ tableConfig["name"])),
     )
-    ->Js.Promise.resolve
-  )
-  ->ignore
+  }
 
-let handleScanResult = (
+let handleScanResult = async (
   tableConfig: tableConfig,
   scanResult: Belt.Result.t<AwsSdk.DynamoDb.DocumentClient.QueryOutput.t<Js.Dict.t<string>>, 'a>,
 ): Belt.Result.t<int, 'a> => {
@@ -81,7 +80,7 @@ let handleScanResult = (
     if mode == #debug {
       Js.log2("Items in scan-result:", scanResult["_Items"]->Belt.Array.length)
     }
-    scanResult["_Items"]->deleteAllItems(tableConfig)
+    let _ = await scanResult["_Items"]->deleteAllItems(tableConfig)
     Belt.Result.Ok(-1)
   | Belt.Result.Error(error) =>
     if mode == #debug {
@@ -91,7 +90,9 @@ let handleScanResult = (
   }
 }
 
-let scanTableAndClean = (tableConfig: tableConfig): Js.Promise.t<Belt.Result.t<string, string>> => {
+let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
+  Belt.Result.t<string, string>,
+> => {
   if mode == #debug {
     Js.log("Scan " ++ tableConfig["name"])
   }
@@ -105,24 +106,24 @@ let scanTableAndClean = (tableConfig: tableConfig): Js.Promise.t<Belt.Result.t<s
   | None => ("#" ++ idKey, [("#" ++ idKey, idKey)]->Js.Dict.fromArray)
   }
 
-  AwsSdk.DynamoDb.DocumentClient.scan(
+  switch await AwsSdk.DynamoDb.DocumentClient.scan(
     ~params=AwsSdk.DynamoDb.DocumentClient.ScanInput.make(
       ~_TableName=tableConfig["name"],
       ~_ProjectionExpression=projectionExpression,
       ~_ExpressionAttributeNames=expressionAttributeNames,
       (),
     ),
-  )
-  ->promiseToResult
-  ->Js.Promise2.then(res => {
-    let scanResult = handleScanResult(tableConfig, res)
-    let deletedItemsCount = switch scanResult {
-    | Belt.Result.Ok(deletedItemsCount) =>
-      Belt.Result.Ok(tableConfig["name"] ++ (" [" ++ (string_of_int(deletedItemsCount) ++ "]")))
-    | Belt.Result.Error(_err) => Belt.Result.Error(tableConfig["name"] ++ " [ERROR]")
+  )->promiseToResult {
+  | res => {
+      let scanResult = await handleScanResult(tableConfig, res)
+      let deletedItemsCount = switch scanResult {
+      | Belt.Result.Ok(deletedItemsCount) =>
+        Belt.Result.Ok(tableConfig["name"] ++ (" [" ++ (string_of_int(deletedItemsCount) ++ "]")))
+      | Belt.Result.Error(_err) => Belt.Result.Error(tableConfig["name"] ++ " [ERROR]")
+      }
+      deletedItemsCount->Js.Promise.resolve
     }
-    deletedItemsCount->Js.Promise.resolve
-  })
+  }
 }
 
 let toTableConfig: resource => tableConfig = resource => {
@@ -132,34 +133,28 @@ let toTableConfig: resource => tableConfig = resource => {
   {"name": name, "id": id, "sort": sort}
 }
 
-let cleanerFn: array<resource> => eventHandler<event, string> = (tablesToClean, _event, _context) =>
-  tablesToClean
-  ->Belt.Array.map(toTableConfig)
-  ->(
-    x =>
-      switch x {
-      | tableConfigs if tableConfigs->Belt.Array.length == 0 =>
-        Js.Promise.make((~resolve, ~reject as _) => resolve(. "No tables to clean."))
-      | tableConfigs =>
-        tableConfigs
-        ->Belt.Array.map(scanTableAndClean)
-        ->Js.Promise.all
-        ->Js.Promise2.then(arr => {
-          let summary = arr->Belt.Array.reduce("", (state, item) =>
-            state ++
-            (" | " ++
-            item->(
-              x =>
-                switch x {
-                | Belt.Result.Ok(successMsg) => successMsg
-                | Belt.Result.Error(errorMsg) => errorMsg
-                }
-            ))
-          )
-          ("Cleaned tables " ++ summary)->Js.Promise.resolve
-        })
+let cleanerFn: array<resource> => eventHandler<event, string> = async (
+  tablesToClean,
+  _event,
+  _context,
+) =>
+  switch tablesToClean->Belt.Array.map(toTableConfig) {
+  | tableConfigs if tableConfigs->Belt.Array.length == 0 => "No tables to clean."
+  | tableConfigs =>
+    switch await tableConfigs->Belt.Array.map(scanTableAndClean)->Js.Promise.all {
+    | results => {
+        let summary = results->Belt.Array.reduce(Js.Promise.resolve(""), async (state, result) =>
+          (await state) ++
+          (" | " ++
+          switch await result {
+          | Belt.Result.Ok(successMsg) => successMsg
+          | Belt.Result.Error(errorMsg) => errorMsg
+          })
+        )
+        "Cleaned tables " ++ (await summary)
       }
-  )
+    }
+  }
 
 let stackName = prefix =>
   switch prefix {
