@@ -39,7 +39,6 @@ let sendBatch = async (queue, queueService, commandJsons) => {
     await commandJsons
     ->Belt.Array.map(commandJson => makeEntry(queueService, commandJson))
     ->SQS.sendMessageBatch(~queueId=queue["id"]->Pulumi.Output.get)
-    ->Reventless.Message.log("sendMessageBatch result:")
     ->Reventless.Util.Promise.allSettled
   sendResult
   ->Reventless.Util.Promise.filterRejected
