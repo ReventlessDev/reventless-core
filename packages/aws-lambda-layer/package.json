@@ -28,6 +28,7 @@
   "dependencies": {
     "debug": "^4.3.4",
     "ora": "^6.3.1",
+    "rimraf": "^5.0.1",
     "treeverse": "^3.0.0",
     "zip-a-folder": "^1.1.5"
   }

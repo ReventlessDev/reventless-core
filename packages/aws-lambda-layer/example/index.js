@@ -1,9 +1,12 @@
-import { join as joinPath } from 'node:path';
+import { join as joinPath, resolve as resolvePath, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url'
 import { build as buildLayer } from '../lib/index.js';
-const pathToLayerData = './layer/';
-const pathToSavedDependencies = 'nodejs/node_modules';
-const dependenciesPath = joinPath(pathToLayerData, pathToSavedDependencies);
-const precompiledPath = './precompiled'
+import { decco, moment, objectAssign, rescriptDependent, reventless } from './postprocess.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pathToLayerData = resolvePath(__dirname, 'layer/');
+const pathToSavedDependencies = resolvePath(__dirname, 'layer/nodejs/node_modules');
+const dependenciesPath = resolvePath(pathToLayerData, pathToSavedDependencies);
 
 const opt = {
     //pathToSourcePackage: '../reventless-aws',
@@ -14,22 +17,11 @@ const opt = {
     excludeScopes: ['pulumi', 'types', 'opentelemetry'],
     excludeModules: ['aws-sdk'],
     postProcess: {
-        "decco": [
-            //"npx rescript@10.1.4 build",
-            //"rm -r ppx*"
-            "pwd",
-            //`cp -r ${joinPath(precompiledPath, '/decco')} ${joinPath(dependenciesPath, '/decco')}`,
-            "echo 'do something'",
-            // {cmd: 'echo', args: ['do something']},
-            // {cmd: 'pwd', args: []},
-            // {cmd:'echo', args:['do something else']}
-        ],
-        ">rescript": [
-            "rm -r lib",
-            "rm -r **/*.res",
-            "rm -r **/*.resi"
-        ],
-        // TODO: moment
+        "decco": (node, cwd) => decco(node, cwd, dependenciesPath),
+        "@reventless/reventless": reventless,
+        ">rescript": rescriptDependent,
+        "object-assign": objectAssign,
+        "moment": moment
     }
 };
 

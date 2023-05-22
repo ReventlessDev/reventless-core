@@ -12,7 +12,7 @@ import debug from 'debug';
 
 const __filename = fileURLToPath(import.meta.url);
 const spinner = ora();
-const logger = debug(path.basename(__filename));
+const logger = debug('lib');
 const { depth, width } = treeverse;
 
 
@@ -184,17 +184,24 @@ function isRescriptModule(node) {
     return test;
 };
 
-function hasRescriptDependency(node) {
-    const log = logger.extend('hasRescriptDependency');
-    for (const edge of node.edgesOut) {
-        if (edge.name === 'rescript' && edge.type === 'prod') {
+function hasDependency(node, dependencyName) {
+    const log = logger.extend('has-dependency');
+    for (const [key, edge] of node.edgesOut) {
+        const edgeName = key//edge.from.name
+        const isEdgeNameEqualToDependencyName = edgeName === dependencyName;
+        if (isEdgeNameEqualToDependencyName) {
+            /* previously also tested for: && edge.type === 'prod'*/
             return true;
         } else {
-            log('hasRescriptDependency(%s): %O', node.name, edge);
+            log('hasRescriptDependency("%s", "%s")="%s": "%s", %O', node.Name, dependencyName, isEdgeNameEqualToDependencyName, edgeName, edge);
         };
     }
     return false
 };
+
+function hasRescriptDependency(node) {
+    return hasDependency(node, 'rescript');
+}
 
 function flattenChildren(root, children) {
     const log = logger.extend('flattenChildren');
@@ -241,10 +248,30 @@ function stats(node, shouldPrint) {
     return stats;
 }
 
+async function doPostProcessing(node, pathToSavedDependencies, fn, spinner, log) {
+    const cwd = path.resolve(pathToSavedDependencies, '../' + node.location);
+    spinner.start(`postprocess ${node.name}: ${fn.name}`);
+    console.log();
+    try {
+        /*
+        const r = execSync(fn, {
+            cwd: cwd
+        });
+        console.log(`${node.name} postProcess(${cwd}: ${fn.name}):`, r.toString());
+        */
+        await fn(node, cwd);
+        spinner.succeed();
+    } catch (error) {
+        spinner.fail()
+        console.error(`postprocessing of ${node.name} did fail at '${fn.name}':`, error.toString());
+    }
+}
+
 export function build(opt) {
     const { sourcePackageName, sourcePackageVersion, pathToLayerData, pathToSavedDependencies, excludeScopes, excludeModules, postProcess } = opt;
     spinner.start('configure');
     const log = logger.extend('main');
+    const logPostProcessing = logger.extend('post-processing');
     const opts = {
         //path: "./",
         //path: "../../../fidap/wm-raw/plugin",
@@ -258,13 +285,13 @@ export function build(opt) {
         "//gitlab.com/api/v4/packages/npm/:_authToken": process.env.NPM_GITLAB_TOKEN
     }
 
-    const modulePath = path.join(pathToLayerData, pathToSavedDependencies)
-    const rootPath = path.join(modulePath, sourcePackageName)
+    //const modulePath = path.join(pathToLayerData, pathToSavedDependencies)
+    const rootPath = path.resolve(pathToSavedDependencies, sourcePackageName)
     const sourcePackageVersionStr = (sourcePackageVersion) ? sourcePackageVersion : 'latest';
     const sourcePackageSpec = `${sourcePackageName}@${sourcePackageVersionStr}`
 
     log('root module: %s', sourcePackageSpec);
-    log('storing modules in: %s', modulePath);
+    log('storing modules in: %s', pathToSavedDependencies);
     log('storing root module in: %s', rootPath);
 
     var rescriptModule = undefined;
@@ -312,7 +339,8 @@ export function build(opt) {
 
             const logTree = logger.extend('tree');
 
-            spinner.start('extract dependencies');
+            const extractSpinnerMsg = 'extract dependencies';
+            spinner.start(extractSpinnerMsg);
             return depth({
                 tree: tree,
                 visit: node => {
@@ -333,21 +361,40 @@ export function build(opt) {
                         log('extracting necessary node: %s', node.name);
                         const extractOpts = { ...opts, resolved: node.resolved };
                         return pacote.extract(node.name + '@' + node.version,
-                            path.join(modulePath, node.name),
+                            path.resolve(pathToSavedDependencies, node.name),
                             extractOpts)
-                            .then(res => {
+                            .then(async res => {
+                                spinner.suffixText = "";
+                                spinner.succeed(`extracted dependency ${node.name}`);
                                 extractionCount += 1;
-                                if (Object.hasOwn(postProcess, node.name)) {
-                                    const cwd = path.resolve(pathToLayerData, pathToSavedDependencies, '../' + node.location);
-                                    console.log(node.name, 'post-process', postProcess[node.name], node, cwd)
-                                    const results = postProcess[node.name].map(cmd => {
-                                        const r = execSync(cmd, {
-                                            cwd: cwd
-                                        });
-                                        console.log(`${node.name} postProcess(${cmd}):`, r.toString());
+                                const postProcessingNamesForDependencies =  // TODO: move out tree processing
+                                    Object.keys(postProcess)
+                                        .filter(postProcessingName => postProcessingName.startsWith('>'))
+                                        .map(name => name.replace('>', ''));
+                                const shouldPostProcess = Object.hasOwn(postProcess, node.name);
+                                const shouldPostProcessDependendency = postProcessingNamesForDependencies.length > 0;
+                                if (shouldPostProcess || shouldPostProcessDependendency) {
+                                    spinner.start(`postprocess ${node.name}`);
+                                }
+                                if (shouldPostProcess) {
+                                    //console.log(node.name, 'post-process', postProcess[node.name], node, cwd)
+                                    /*
+                                    postProcess[node.name].forEach(cmd => {
+                                        doPostProcessing(node, pathToSavedDependencies, cmd, spinner, logPostProcessing);
                                     });
-                                    //console.log(node.name, 'child_processes (' + cwd + '):', childProcesses);
-
+                                    */
+                                    await doPostProcessing(node, pathToSavedDependencies, postProcess[node.name], spinner, logPostProcessing);
+                                }
+                                //check for matching `>DEPENDENCY` keys in postProcess
+                                for (const dependencyForPostProcessing of postProcessingNamesForDependencies) {
+                                    if (hasDependency(node, dependencyForPostProcessing)) {
+                                        /*
+                                        postProcess['>' + dependencyForPostProcessing].forEach(cmd => {
+                                            doPostProcessing(node, pathToSavedDependencies, cmd, spinner, logPostProcessing);
+                                        });
+                                        */
+                                        await doPostProcessing(node, pathToSavedDependencies, postProcess['>' + dependencyForPostProcessing], spinner, logPostProcessing);
+                                    }
                                 }
                             });
                     } else {
@@ -375,13 +422,6 @@ export function build(opt) {
         .then(res => {
             spinner.suffixText = "";
             spinner.succeed()
-
-            //------ collect & log data about rescript ------//
-            log('depth done: %o', res);
-            log('RESCRIPT MODULE: %O', rescriptModule);
-            log('RESCRIPT STD MODULE: %O', rescriptStdModule);
-            log('SKIPPED EXTRACTIONS: %d', skippedExtractionCount);
-            log('EXTRACTIONS: %d', extractionCount);
             return { rescript: rescriptModule, rescriptStd: rescriptStdModule }
         })
         .then(({ rescript, rescriptStd }) => {
@@ -397,9 +437,15 @@ export function build(opt) {
                 log("rescript dependent: %s - %s - %s", rescriptDependent.name, rescriptEdge.type, isEdgeNecessary(rescriptDependent));
             }
         })
-        /*.then(_ => {
-            zip(path.join(pathToLayerData, '..'), path.join(pathToLayerData, 'reventless-layer.zip'));
-        })*/;
+        .then(_ => {
+            spinner.start(`zip layer to ${pathToLayerData}`);
+            zip(pathToLayerData, path.join(pathToLayerData, '../reventless-layer.zip'))
+                .then(_ => spinner.succeed())
+                .catch(err => {
+                    console.error(err);
+                    spinner.fail(err.toString());
+                });
+        });
 
     // TODO: build all rescript dependencies to ensure up-to-date and existing js artifacts
     // maybe only build packages defined in config?
