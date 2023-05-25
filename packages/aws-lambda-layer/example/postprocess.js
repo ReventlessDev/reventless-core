@@ -6,11 +6,11 @@ import { rimraf } from 'rimraf';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const precompiledPath = resolvePath(__dirname, './precompiled');
 
-export async function decco(node, cwd, dependenciesPath) {
-    await new Promise((resolve, reject) =>
+function copyPrecompiled(source, target, dependenciesPath) {
+    return new Promise((resolve, reject) =>
         cp(
-            resolvePath(precompiledPath, 'decco@1.6.0'),
-            resolvePath(dependenciesPath, 'decco'),
+            resolvePath(precompiledPath, source),
+            resolvePath(dependenciesPath, target),
             { recursive: true },
             (err) => {
                 if (err) {
@@ -19,15 +19,31 @@ export async function decco(node, cwd, dependenciesPath) {
                     resolve()
                 }
             }
-        )
-    );
-    return rimraf('ppx*', { glob: { cwd } });
+        ));
+}
+
+export async function decco(node, cwd, dependenciesPath) {
+    return Promise.all([
+        copyPrecompiled('decco@1.6.0', node.name, dependenciesPath),
+        rimraf('ppx*', { glob: { cwd } })
+    ]);
+}
+
+export async function bsMoment(node, cwd, dependenciesPath) {
+    return copyPrecompiled('bs-moment@0.8.0', node.name, dependenciesPath);
 }
 
 export async function rescriptDependent(node, cwd) {
     const rmRes = rimraf('**/*.res', { glob: { cwd } });
     const rmResi = rimraf('**/*.resi', { glob: { cwd } });
     return Promise.all([rmRes, rmResi]);
+}
+
+export async function bsPlatformDependent(node, cwd) {
+    const rmRes = rimraf('**/*.re', { glob: { cwd } });
+    const rmResi = rimraf('**/*.rei', { glob: { cwd } });
+    const rmLib = rimraf('lib', { glob: { cwd } });
+    return Promise.all([rmRes, rmResi, rmLib]);
 }
 
 export async function reventless(node, cwd) {

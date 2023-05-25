@@ -1,7 +1,7 @@
 import { join as joinPath, resolve as resolvePath, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url'
 import { build as buildLayer } from '../lib/index.js';
-import { decco, moment, objectAssign, rescriptDependent, reventless } from './postprocess.js';
+import { decco, moment, bsMoment, objectAssign, rescriptDependent, reventless, bsPlatformDependent } from './postprocess.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pathToLayerData = resolvePath(__dirname, 'layer/');
@@ -20,8 +20,10 @@ const opt = {
         "decco": (node, cwd) => decco(node, cwd, dependenciesPath),
         "@reventless/reventless": reventless,
         ">rescript": rescriptDependent,
+        ">bs-platform": bsPlatformDependent,//FIXME: does this work?
         "object-assign": objectAssign,
-        "moment": moment
+        "moment": moment,
+        "bs-moment": (node, cwd) => bsMoment(node, cwd, dependenciesPath),
     }
 };
 
