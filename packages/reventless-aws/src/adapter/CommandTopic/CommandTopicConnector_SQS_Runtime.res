@@ -23,7 +23,7 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
     })
 
   switch await handleCommands(. topicItems) {
-  | exception err =>
+  | exception Js.Exn.Error(err) =>
     Js.log3(__MODULE__ ++ ".handleQueueEvent error:", err, err->Js.Json.stringifyAny)
     Js.Exn.raiseError(
       __MODULE__ ++ ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!",

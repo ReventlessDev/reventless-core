@@ -38,8 +38,12 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent error:", err, JSON.stringify(err));
-    return Js_exn.raiseError("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!");
+    if (err.RE_EXN_ID === Js_exn.$$Error) {
+      var err$1 = err._1;
+      console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent error:", err$1, JSON.stringify(err$1));
+      return Js_exn.raiseError("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!");
+    }
+    throw err;
   }
   try {
     return await SQS$AwsSdk.deleteMessageBatch(queue.id.get(), Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (idx, result) {
@@ -57,8 +61,8 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
                     })));
   }
   catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", err$1);
+    var err$2 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", err$2);
     return ;
   }
 }

@@ -6,6 +6,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
@@ -65,8 +66,13 @@ function Make(Spec, Connector) {
       try {
         res = await commandsHandler(topicItems);
       }
-      catch (exn){
-        return Js_exn.raiseError("CommandTopic.handleCommand: Error: Couldn't handle commands");
+      catch (raw_e){
+        var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+        if (e.RE_EXN_ID === Js_exn.$$Error) {
+          console.log("CommandTopic.handleCommand: Error: Couldn't handle commands", e._1);
+          return Js_exn.raiseError("CommandTopic.handleCommand: Error: Couldn't handle commands");
+        }
+        throw e;
       }
       console.log("finished CommandTopic.handleCommands");
       return res;

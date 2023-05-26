@@ -182,7 +182,8 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     | res =>
       Js.log("finished CommandTopic.handleCommands")
       res
-    | exception _ =>
+    | exception Js.Exn.Error(e) =>
+      Js.log2("CommandTopic.handleCommand: Error: Couldn't handle commands", e)
       Js.Exn.raiseError(`CommandTopic.handleCommand: Error: Couldn't handle commands`) // TODO: exception details
     }
   }

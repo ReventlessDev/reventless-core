@@ -283,15 +283,18 @@ module Make = (
           let eventCollectorName = eventCollector->AWS.arn2Name
           let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
 
+          Js.log(
+            `Trying to ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
+          )
           switch await SNS.subscribeQueueToTopic(eventCollector, eventTopic) {
           | _ =>
             Js.log(
-              `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
+              `Successful ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
             )
-          | exception err =>
+          | exception Js.Exn.Error(e) =>
             Js.log2(
               `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
-              err,
+              e,
             )
           }
         }
@@ -307,15 +310,18 @@ module Make = (
           let eventCollectorName = eventCollector->AWS.arn2Name
           let _sid = (extensionPointName ++ ("-" ++ pluginId))->AWS.validateName
 
+          Js.log(
+            `Trying to ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
+          )
           switch await SNS.unsubscribeQueueFromTopic(eventCollector, eventTopic) {
           | _ =>
             Js.log(
-              `${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
+              `Success: ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName})`,
             )
-          | exception err =>
+          | exception Js.Exn.Error(e) =>
             Js.log2(
               `Could not ${action}: ${extensionPointName}->${pluginId} (${eventTopicName}->${eventCollectorName}):`,
-              err,
+              e,
             )
           }
         }
@@ -335,9 +341,11 @@ module Make = (
              * - if the newly deployed (received) plugin contains extensions the current plugin holds an extensionpoint for:
              *    connect received extensions to current plugin's extension point
              */
-            let _connectToExtensionPoints =
-              await otherPluginExtensionPoints
-              ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
+            let connectToExtensionPoints =
+              otherPluginExtensionPoints->Belt.Array.keepMap(({
+                name: extensionPointName,
+                eventTopic,
+              }) =>
                 extensionsOutputs
                 ->Belt.Array.keep(
                   extension => extension["extensionPointName"] == extensionPointName,
@@ -354,11 +362,9 @@ module Make = (
                     )
                   : None
               )
-              ->Js.Promise.all
 
-            let _connectToExtensions =
-              await extensionPointsOutputs
-              ->Belt.Array.keepMap(extensionPoint =>
+            let connectToExtensions =
+              extensionPointsOutputs->Belt.Array.keepMap(extensionPoint =>
                 otherPluginExtensions
                 ->Belt.Array.keep(
                   ({extensionPointName}) => extensionPoint["name"] == extensionPointName,
@@ -375,7 +381,11 @@ module Make = (
                     )
                   : None
               )
-              ->Js.Promise.all
+
+            await connectToExtensionPoints
+            ->Belt.Array.concat(connectToExtensions)
+            ->Js.Promise.all
+            ->Util.Promise.toUnit
 
           | DoDisconnectPlugin({
               id: pluginId,
@@ -383,9 +393,8 @@ module Make = (
               extensions: pluginExtensions,
               eventCollector: pluginEventCollector,
             }) =>
-            let _disconnectFromExtensionPoints =
-              await pluginExtensionPoints
-              ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
+            let disconnectFromExtensionPoints =
+              pluginExtensionPoints->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
                 extensionsOutputs
                 ->Belt.Array.keep(
                   extension => extension["extensionPointName"] == extensionPointName,
@@ -402,11 +411,9 @@ module Make = (
                     )
                   : None
               )
-              ->Js.Promise.all
 
-            let _disconnectFromExtensions =
-              await extensionPointsOutputs
-              ->Belt.Array.keepMap(extensionPoint =>
+            let disconnectFromExtensions =
+              extensionPointsOutputs->Belt.Array.keepMap(extensionPoint =>
                 pluginExtensions
                 ->Belt.Array.keep(
                   ({extensionPointName}) => extensionPoint["name"] == extensionPointName,
@@ -423,7 +430,11 @@ module Make = (
                     )
                   : None
               )
-              ->Js.Promise.all
+
+            await disconnectFromExtensionPoints
+            ->Belt.Array.concat(disconnectFromExtensions)
+            ->Js.Promise.all
+            ->Util.Promise.toUnit
 
           | _ => ()
           }
@@ -608,58 +619,50 @@ module Make = (
         let detectUnhandledEvent = event'Json =>
           event'Json
           ->Message.serviceNameOfMsg
-          ->Belt.Option.flatMap(serviceName =>
+          ->Belt.Option.mapWithDefault((), serviceName =>
             switch (
               serviceNameToExtensionPointsMapping->Js.Dict.get(serviceName),
               incomingServiceNameToExtensionsMapping->Js.Dict.get(serviceName),
               outgoingServiceNameToExtensionsMapping->Js.Dict.get(serviceName),
             ) {
-            | (None, None, None) => None
-            | _ => Some()
+            | (None, None, None) => Js.log("No mapping matches service name")
+            | _ => ()
             }
           )
-          ->(
-            x =>
-              switch x {
-              | None => Js.log("No mapping matches service name")
-              | _ => ()
-              }
-          )
 
-        let eventsHandler = async (. events'Json) => {
+        let eventsHandler = (. events'Json) => {
           let count = events'Json->Belt.Array.size
-          let x =
-            events'Json
-            ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
-              let idx = idx + 1
-              event'Json->Message.logEvent'Json(
-                `Plugin ${id} eventsHandler: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
-              )
-              detectUnhandledEvent(event'Json)
-              switch await handleEvent(
-                event'Json,
-                incomingServiceNameToPluginConnectExtensionsMapping,
-                extension => extension["incomingEventHandler"],
-              ) {
-              | _ =>
-                [
-                  event'Json->handleEvent(
-                    serviceNameToExtensionPointsMapping,
-                    extensionPoint => extensionPoint["outgoingEventHandler"],
-                  ),
-                  event'Json->handleEvent(
-                    outgoingServiceNameToExtensionsMapping,
-                    extension => extension["outgoingEventHandler"],
-                  ),
-                  event'Json->handleEvent(
-                    incomingServiceNameToExtensionsMapping,
-                    extension => extension["incomingEventHandler"],
-                  ),
-                ]->Js.Promise.all
-              }
-            })
-            ->Js.Promise.all
-            ->Util.Promise.toUnit
+          events'Json
+          ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
+            let idx = idx + 1
+            event'Json->Message.logEvent'Json(
+              `Plugin ${id} eventsHandler: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
+            )
+            detectUnhandledEvent(event'Json)
+            switch await handleEvent(
+              event'Json,
+              incomingServiceNameToPluginConnectExtensionsMapping,
+              extension => extension["incomingEventHandler"],
+            ) {
+            | _ =>
+              [
+                event'Json->handleEvent(
+                  serviceNameToExtensionPointsMapping,
+                  extensionPoint => extensionPoint["outgoingEventHandler"],
+                ),
+                event'Json->handleEvent(
+                  outgoingServiceNameToExtensionsMapping,
+                  extension => extension["outgoingEventHandler"],
+                ),
+                event'Json->handleEvent(
+                  incomingServiceNameToExtensionsMapping,
+                  extension => extension["incomingEventHandler"],
+                ),
+              ]->Js.Promise.all
+            }
+          })
+          ->Js.Promise.all
+          ->Util.Promise.toUnit
         }
 
         module EventCollector = EventCollector.Make(EventCollectorConnector)
