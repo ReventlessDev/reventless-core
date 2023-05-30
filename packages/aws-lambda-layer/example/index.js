@@ -1,7 +1,7 @@
-import { join as joinPath, resolve as resolvePath, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url'
-import { build as buildLayer } from '../lib/index.js';
-import { decco, moment, bsMoment, objectAssign, rescriptDependent, reventless, bsPlatformDependent } from './postprocess.js';
+import {join as joinPath, resolve as resolvePath, dirname} from 'node:path';
+import {fileURLToPath} from 'node:url'
+import {build as buildLayer} from '../lib/index.js';
+import {decco, moment, bsMoment, objectAssign, rescriptDependent, reventless, bsPlatformDependent} from './postprocess.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pathToLayerData = resolvePath(__dirname, 'layer/');
@@ -11,7 +11,7 @@ const dependenciesPath = resolvePath(pathToLayerData, pathToSavedDependencies);
 const opt = {
     //pathToSourcePackage: '../reventless-aws',
     sourcePackageName: '@reventless/reventless-aws',
-    sourcePackageVersion: '1.3.0-rescript.72',
+    sourcePackageVersion: '1.3.0-rescript.74',
     pathToLayerData,
     pathToSavedDependencies,
     excludeScopes: ['pulumi', 'types', 'opentelemetry'],
