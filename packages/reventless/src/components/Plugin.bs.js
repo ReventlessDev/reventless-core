@@ -146,19 +146,19 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                   var otherPluginEventCollector = match.eventCollector;
                   var otherPluginExtensions = match.extensions;
                   var otherPluginId = match.id;
-                  var connectToExtensionPoints = Belt_Array.keepMap(match.extensionPoints, (function (param) {
+                  var connectToExtensionPoints = Belt_Array.keepMap(Message$Reventless.log(match.extensionPoints, "otherPluginExtensionPoints:"), (function (param) {
                           var extensionPointName = param.name;
-                          if (Belt_Array.keep(extensionsOutputs, (function (extension) {
-                                    return extension.extensionPointName === extensionPointName;
-                                  })).length !== 0) {
+                          if (Message$Reventless.log(Belt_Array.keep(extensionsOutputs, (function (extension) {
+                                        return extension.extensionPointName === extensionPointName;
+                                      })), "matching Extensions:").length !== 0) {
                             return Caml_option.some(subscribe("connectToExtensionPoints", extensionPointName, param.eventTopic, id, eventCollectorUrn.get()));
                           }
                           
                         }));
-                  var connectToExtensions = Belt_Array.keepMap(extensionPointsOutputs, (function (extensionPoint) {
-                          if (Belt_Array.keep(otherPluginExtensions, (function (param) {
-                                    return extensionPoint.name === param.extensionPointName;
-                                  })).length !== 0) {
+                  var connectToExtensions = Belt_Array.keepMap(Message$Reventless.log(extensionPointsOutputs, "extensionPoints:"), (function (extensionPoint) {
+                          if (Message$Reventless.log(Belt_Array.keep(otherPluginExtensions, (function (param) {
+                                        return extensionPoint.name === param.extensionPointName;
+                                      })), "matching otherPluginExtensions:").length !== 0) {
                             return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, Caml_array.get(extensionPoint.eventTopic.resources, 0).id.get(), otherPluginId, otherPluginEventCollector));
                           }
                           

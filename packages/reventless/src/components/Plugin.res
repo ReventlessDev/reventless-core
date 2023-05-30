@@ -342,14 +342,14 @@ module Make = (
              *    connect received extensions to current plugin's extension point
              */
             let connectToExtensionPoints =
-              otherPluginExtensionPoints->Belt.Array.keepMap(({
-                name: extensionPointName,
-                eventTopic,
-              }) =>
+              otherPluginExtensionPoints
+              ->Message.log("otherPluginExtensionPoints:")
+              ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
                 extensionsOutputs
                 ->Belt.Array.keep(
                   extension => extension["extensionPointName"] == extensionPointName,
                 )
+                ->Message.log("matching Extensions:")
                 ->Belt.Array.length > 0
                   ? Some(
                       subscribe(
@@ -364,11 +364,14 @@ module Make = (
               )
 
             let connectToExtensions =
-              extensionPointsOutputs->Belt.Array.keepMap(extensionPoint =>
+              extensionPointsOutputs
+              ->Message.log("extensionPoints:")
+              ->Belt.Array.keepMap(extensionPoint =>
                 otherPluginExtensions
                 ->Belt.Array.keep(
                   ({extensionPointName}) => extensionPoint["name"] == extensionPointName,
                 )
+                ->Message.log("matching otherPluginExtensions:")
                 ->Belt.Array.length > 0
                   ? Some(
                       subscribe(
