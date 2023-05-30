@@ -1,7 +1,7 @@
 let id = "id"
 let meta = {
   Message.service: "service",
-  user: "ViewTest",
+  user: "ProjectionTest",
   ip: "ip",
   time: "time",
   msgId: "msgId",

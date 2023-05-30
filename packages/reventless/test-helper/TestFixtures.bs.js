@@ -8,7 +8,7 @@ var meta = {
   service: "service",
   time: "time",
   ip: "ip",
-  user: "ViewTest",
+  user: "ProjectionTest",
   msgId: "msgId",
   correlationId: "correlationId"
 };
@@ -20,7 +20,7 @@ var context = {
 
 var statusChange = {
   at: "time",
-  by: "ViewTest"
+  by: "ProjectionTest"
 };
 
 exports.id = id;
