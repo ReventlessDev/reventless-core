@@ -118,6 +118,7 @@ async function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendi
     tmp.FilterExpression = filterExpression;
   }
   var params = tmp;
+  console.log("QueryEngine_DynamoDb.queryByTableName params:", params);
   var result;
   try {
     result = await Curry._1(DynamoDb_DocumentClient$AwsSdk.queryRecursive(params)(undefined), undefined);
@@ -149,6 +150,7 @@ async function scanByTableName(tableName, filterConfigs, limit) {
     tmp.FilterExpression = filterExpression;
   }
   var params = tmp;
+  console.log("QueryEngine_DynamoDb.scanByTableName params:", params);
   var result;
   try {
     result = await Curry._1(DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined), undefined);
@@ -156,7 +158,7 @@ async function scanByTableName(tableName, filterConfigs, limit) {
   catch (raw_e){
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
-      console.log("Task.query error:", e._1);
+      console.log("Task.scan error:", e._1);
       return [];
     }
     throw e;

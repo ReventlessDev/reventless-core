@@ -70,6 +70,7 @@ let queryByTableName = async (
     ~_Limit=limit,
     (),
   )
+  Js.log2("QueryEngine_DynamoDb.queryByTableName params:", params)
   switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params, ()) {
   | result => result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception err =>
@@ -98,10 +99,11 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
     ~_Limit=limit,
     (),
   )
+  Js.log2("QueryEngine_DynamoDb.scanByTableName params:", params)
   switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params, ()) {
   | result => result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception Js.Exn.Error(e) =>
-    Js.log2("Task.query error:", e)
+    Js.log2("Task.scan error:", e)
     []
   }
 }
