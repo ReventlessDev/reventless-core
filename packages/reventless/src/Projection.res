@@ -155,6 +155,7 @@ let handleAction = async (
     | Error(err) => Error(err)
     }
   | UpdateWithDefault(id, default, update) =>
+    Js.log(`UpdateWithDefault(${id}, loading ...`)
     switch await load(. id) {
     | Ok(states) =>
       switch states {

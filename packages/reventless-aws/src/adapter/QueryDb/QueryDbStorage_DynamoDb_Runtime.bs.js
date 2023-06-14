@@ -75,7 +75,7 @@ function save(table) {
       var e$2 = Caml_js_exceptions.internalToOCamlException(raw_e$1);
       if (e$2.RE_EXN_ID === Js_exn.$$Error) {
         var tableName$1 = table.name.get();
-        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: Error: Stale State in " + tableName$1 + ""));
+        console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: Error: Stale State in " + tableName$1 + " when trying to save: " + stateStr + ". error:"), e$2._1);
         return {
                 TAG: /* Error */1,
                 _0: /* StaleState */0

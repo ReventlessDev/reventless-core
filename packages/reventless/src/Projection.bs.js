@@ -163,6 +163,7 @@ async function handleAction(action, primitives, subIdConfig) {
     case /* UpdateWithDefault */4 :
         var $$default = action._1;
         var id$2 = action._0;
+        console.log("UpdateWithDefault(" + id$2 + ", loading ...");
         var states$2 = await load(id$2);
         if (states$2.TAG === /* Ok */0) {
           var states$3 = states$2._0;

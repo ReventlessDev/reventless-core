@@ -35,7 +35,11 @@ let save = table => async (. _id, json, saveMode: ReventlessSpec.QueryDb.saveMod
       let err = e->PutError.ofJsExn
       switch err.code {
       | #ConditionalCheckFailedException =>
-        Js.log(__MODULE__ ++ `.save: Error: Stale State in ${tableName}`)
+        Js.log2(
+          __MODULE__ ++
+          `.save: Error: Stale State in ${tableName} when trying to save: ${stateStr}. error:`,
+          err,
+        )
         Error(ReventlessSpec.QueryDb.StaleState)
       | _ =>
         Js.log2(__MODULE__ ++ `.save: Error: Couldn't save Init state to ${tableName}`, e)
