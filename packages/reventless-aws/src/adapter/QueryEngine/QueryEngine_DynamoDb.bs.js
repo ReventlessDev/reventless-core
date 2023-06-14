@@ -5,6 +5,7 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.bs.js");
@@ -136,18 +137,31 @@ async function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendi
 async function scanByTableName(tableName, filterConfigs, limit) {
   var match = createFilters(filterConfigs);
   var filterExpressions = match[0];
-  var filterExpression = filterExpressions.length !== 0 ? filterExpressions.join(" AND ") : undefined;
   var match$1 = Belt_Array.unzip(match[1]);
-  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromArray(match$1[1])));
-  var attributeNames = Js_dict.fromArray(match$1[0]);
+  var match$2 = filterExpressions.length !== 0 ? [
+      filterExpressions.join(" AND "),
+      Caml_option.some(Js_dict.fromArray(match$1[0])),
+      Caml_option.some(JSON.parse(JSON.stringify(Js_dict.fromArray(match$1[1]))))
+    ] : [
+      undefined,
+      undefined,
+      undefined
+    ];
   var tmp = {
     TableName: tableName,
-    ExpressionAttributeNames: attributeNames,
-    ExpressionAttributeValues: attributeValues,
     Limit: limit
   };
-  if (filterExpression !== undefined) {
-    tmp.FilterExpression = filterExpression;
+  var tmp$1 = match$2[0];
+  if (tmp$1 !== undefined) {
+    tmp.FilterExpression = tmp$1;
+  }
+  var tmp$2 = match$2[1];
+  if (tmp$2 !== undefined) {
+    tmp.ExpressionAttributeNames = Caml_option.valFromOption(tmp$2);
+  }
+  var tmp$3 = match$2[2];
+  if (tmp$3 !== undefined) {
+    tmp.ExpressionAttributeValues = Caml_option.valFromOption(tmp$3);
   }
   var params = tmp;
   console.log("QueryEngine_DynamoDb.scanByTableName params:", params);

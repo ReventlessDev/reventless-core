@@ -81,21 +81,21 @@ let queryByTableName = async (
 
 let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilters
-  let filterExpression = switch filterExpressions {
-  | [] => None
-  | filterExpressions => Some(filterExpressions->Js.Array2.joinWith(" AND "))
-  }
-
   let (filterNames, filterValues) = filterNamesValues->Belt.Array.unzip
-  let attributeValues = filterValues->Js.Dict.fromArray->Js.Json.object_->Js.Json.stringify->parseJs
-
-  let attributeNames = filterNames->Js.Dict.fromArray
+  let (filterExpression, attributeNames, attributeValues) = switch filterExpressions {
+  | [] => (None, None, None)
+  | filterExpressions => (
+      Some(filterExpressions->Js.Array2.joinWith(" AND ")),
+      Some(filterNames->Js.Dict.fromArray),
+      Some(filterValues->Js.Dict.fromArray->Js.Json.object_->Js.Json.stringify->parseJs),
+    )
+  }
 
   let params = AwsSdk.DynamoDb.DocumentClient.ScanInput.make(
     ~_TableName=tableName,
     ~_FilterExpression=?filterExpression,
-    ~_ExpressionAttributeNames=attributeNames,
-    ~_ExpressionAttributeValues=attributeValues,
+    ~_ExpressionAttributeNames=?attributeNames,
+    ~_ExpressionAttributeValues=?attributeValues,
     ~_Limit=limit,
     (),
   )
