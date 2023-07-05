@@ -6,14 +6,12 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Message$Reventless = require("../Message.bs.js");
 
 function Make(Spec, Config) {
-  var batch = {
-    contents: []
-  };
+  var buffer = [];
   var promises = [];
   var send = function (param) {
-    var batchCount = promises.length;
-    console.log("sending batch " + String(batchCount) + ":");
-    var commandJsons = Belt_Array.mapWithIndex(batch.contents, (function (idx, param) {
+    var sentChunksCount = promises.length;
+    console.log("sending chunk " + String(sentChunksCount) + ":");
+    var commandJsons = Belt_Array.mapWithIndex(buffer, (function (idx, param) {
             var id = param[0];
             var commandJson = Curry._1(Spec.command_encode, param[1]);
             console.log("  " + String(idx) + ": " + id + ": " + JSON.stringify(commandJson) + "");
@@ -24,16 +22,16 @@ function Make(Spec, Config) {
                     delay: undefined
                   };
           }));
-    var p = Config.publishCommands(Spec.name, commandJsons);
-    promises.push(p);
-    batch.contents = [];
+    promises.push(Config.publishCommands(Spec.name, commandJsons));
+    buffer.splice(0);
   };
   var publish = function (id, command) {
-    batch.contents = Belt_Array.concat(batch.contents, [[
-            id,
-            command
-          ]]);
-    if (batch.contents.length >= 10) {
+    buffer.push([
+          id,
+          command
+        ]);
+    var chunkSize = Config.mode;
+    if (chunkSize && buffer.length >= chunkSize._0) {
       return send(undefined);
     }
     
@@ -42,17 +40,18 @@ function Make(Spec, Config) {
     send(undefined);
     await Promise.allSettled(promises.splice(0));
   };
+  var clear = function (param) {
+    buffer.splice(0);
+  };
   return {
-          batch: batch,
+          buffer: buffer,
           promises: promises,
           send: send,
           publish: publish,
-          flush: flush
+          flush: flush,
+          clear: clear
         };
 }
 
-var batchSize = 10;
-
-exports.batchSize = batchSize;
 exports.Make = Make;
 /* Message-Reventless Not a pure module */

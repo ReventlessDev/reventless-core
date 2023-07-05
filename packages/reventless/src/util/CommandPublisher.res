@@ -5,21 +5,22 @@ module type Spec = {
   type command
 }
 
+type mode = SendChunks(int) | SendAllInOneChunk
+
 module type Config = {
   let user: string
   let publishCommands: Task.publishCommands
+  let mode: mode
 }
 
-let batchSize = 10
-
 module Make = (Spec: Spec, Config: Config) => {
-  let batch = ref([])
+  let buffer = []
   let promises = []
 
   let send = () => {
-    let batchCount = promises->Belt.Array.size
-    Js.log(`sending batch ${batchCount->Belt.Int.toString}:`)
-    let commandJsons = batch.contents->Belt.Array.mapWithIndex((idx, (id, command)) => {
+    let sentChunksCount = promises->Belt.Array.size
+    Js.log(`sending chunk ${sentChunksCount->Belt.Int.toString}:`)
+    let commandJsons = buffer->Belt.Array.mapWithIndex((idx, (id, command)) => {
       let commandJson = command->Spec.command_encode
       Js.log(`  ${idx->Belt.Int.toString}: ${id}: ${commandJson->Js.Json.stringify}`)
       {
@@ -29,15 +30,18 @@ module Make = (Spec: Spec, Config: Config) => {
         delay: None,
       }
     })
-    let p = Config.publishCommands(. Spec.name, commandJsons)
-    let _ = promises->Js.Array2.push(p)
-    batch := []
+    promises->Js.Array2.push(Config.publishCommands(. Spec.name, commandJsons))->ignore
+    buffer->Js.Array2.removeFromInPlace(~pos=0)->ignore
   }
 
   let publish = (id: string, command: Spec.command) => {
-    batch := batch.contents->Belt.Array.concat([(id, command)])
-    if batch.contents->Belt.Array.size >= batchSize {
-      send()
+    buffer->Js.Array2.push((id, command))->ignore
+    switch Config.mode {
+    | SendChunks(chunkSize) =>
+      if buffer->Belt.Array.size >= chunkSize {
+        send()
+      }
+    | SendAllInOneChunk => ()
     }
   }
 
@@ -45,4 +49,6 @@ module Make = (Spec: Spec, Config: Config) => {
     send()
     let _results = await promises->Js.Array2.removeFromInPlace(~pos=0)->Util.Promise.allSettled
   }
+
+  let clear = () => buffer->Js.Array2.removeFromInPlace(~pos=0)->ignore
 }
