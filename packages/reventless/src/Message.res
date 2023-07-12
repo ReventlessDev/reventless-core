@@ -92,7 +92,7 @@ let logEvent'Json = (event'Json, description) => {
       ->Belt.Option.getWithDefault("{ERROR (" ++ __LOC__ ++ "): Could not get id!}")
     let eventName =
       event'->Js.Dict.unsafeGet("event")->Util.Decco.Json.variantName->Belt.Option.getExn
-    Js.log(`${description} ${eventName}(${id}) complete event: $eventStr`)
+    Js.log(`${description} ${eventName}(${id}) complete event: ${eventStr}`)
   } catch {
   | _ => Js.log2("Couldn't log event:", eventStr)
   }
