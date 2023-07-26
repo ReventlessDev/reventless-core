@@ -85,7 +85,7 @@ function logEvent$pJson(event$pJson, description) {
     var event$p = Belt_Option.getExn(Js_json.decodeObject(event$pJson));
     var id = Belt_Option.getWithDefault(Js_json.decodeString(event$p["id"]), "{ERROR (" + "File \"Message.res\", line 92, characters 49-56" + "): Could not get id!}");
     var eventName = Belt_Option.getExn(Util_Decco$Reventless.Json.variantName(event$p["event"]));
-    console.log("" + description + " " + eventName + "(" + id + ") complete event: $eventStr");
+    console.log("" + description + " " + eventName + "(" + id + ") complete event: " + eventStr + "");
     return ;
   }
   catch (exn){

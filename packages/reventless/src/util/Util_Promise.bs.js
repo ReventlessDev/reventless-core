@@ -2,6 +2,7 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
+var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -54,9 +55,54 @@ function toUnit(p) {
               }));
 }
 
+function make(param) {
+  var res = {
+    contents: (function (_result) {
+        
+      })
+  };
+  var rej = {
+    contents: (function (_exn) {
+        
+      })
+  };
+  var promise = new Promise((function (resolve, reject) {
+          res.contents = resolve;
+          rej.contents = reject;
+        }));
+  return [
+          promise,
+          res.contents,
+          rej.contents
+        ];
+}
+
+async function onEndHandler(flush, resolve) {
+  var exit = 0;
+  var _res;
+  try {
+    _res = await Curry._1(flush, undefined);
+    exit = 1;
+  }
+  catch (raw_e){
+    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+    if (e.RE_EXN_ID === Js_exn.$$Error) {
+      console.log("File \"Util_Promise.res\", line 53, characters 41-48", e._1);
+    } else {
+      throw e;
+    }
+  }
+  if (exit === 1) {
+    resolve(undefined);
+  }
+  
+}
+
 exports.filterRejected = filterRejected;
 exports.map = map;
 exports.mapOk = mapOk;
 exports.mapExn = mapExn;
 exports.toUnit = toUnit;
+exports.make = make;
+exports.onEndHandler = onEndHandler;
 /* No side effect */
