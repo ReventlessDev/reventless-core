@@ -3,6 +3,9 @@
 
 var SSH2 = require("@reventless/bs-ssh2/src/SSH2.bs.js");
 var Belt_Int = require("@rescript/std/lib/js/belt_Int.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
+var Util_Promise$Reventless = require("./Util_Promise.bs.js");
 
 function parseUrl(url) {
   var colonI = url.indexOf(":");
@@ -41,6 +44,45 @@ function parseUrl(url) {
         ];
 }
 
+var CouldNotEstablishSftpConnection = /* @__PURE__ */Caml_exceptions.create("FTP-Reventless.CouldNotEstablishSftpConnection");
+
+function make(client) {
+  var match = Util_Promise$Reventless.make(undefined);
+  var reject = match[2];
+  var resolve = match[1];
+  client.sftp(function (readdirError, entities) {
+        if (readdirError !== undefined) {
+          return reject({
+                      RE_EXN_ID: CouldNotEstablishSftpConnection,
+                      _1: Caml_option.valFromOption(readdirError)
+                    });
+        } else {
+          return resolve(entities);
+        }
+      });
+  return match[0];
+}
+
+var CouldNotReadDirectory = /* @__PURE__ */Caml_exceptions.create("FTP-Reventless.CouldNotReadDirectory");
+
+function readdir(client, dirName) {
+  var match = Util_Promise$Reventless.make(undefined);
+  var reject = match[2];
+  var resolve = match[1];
+  client.readdir(dirName, (function (readdirError, entities) {
+          if (readdirError !== undefined) {
+            return reject({
+                        RE_EXN_ID: CouldNotReadDirectory,
+                        _1: dirName,
+                        _2: Caml_option.valFromOption(readdirError)
+                      });
+          } else {
+            return resolve(entities);
+          }
+        }));
+  return match[0];
+}
+
 var Client = SSH2.Client;
 
 var ReadStreamOptions = SSH2.ReadStreamOptions;
@@ -57,4 +99,8 @@ exports.FastOptions = FastOptions;
 exports.WriteStreamOptions = WriteStreamOptions;
 exports.extendedError = extendedError;
 exports.parseUrl = parseUrl;
+exports.CouldNotEstablishSftpConnection = CouldNotEstablishSftpConnection;
+exports.make = make;
+exports.CouldNotReadDirectory = CouldNotReadDirectory;
+exports.readdir = readdir;
 /* No side effect */

@@ -34,3 +34,33 @@ let parseUrl: string => (
   | (false, false) => (url, None, "")
   }
 }
+
+exception CouldNotEstablishSftpConnection(error)
+
+let make: Client.t => promise<t> = client => {
+  let (promise, resolve, reject) = Util.Promise.make()
+  client
+  ->make((readdirError, entities) =>
+    switch readdirError {
+    | None => resolve(. entities)
+    | Some(err) => reject(. CouldNotEstablishSftpConnection(err->toSftpError))
+    }
+  )
+  ->ignore // ignore bool return value, which states to listen for continue event before sending more data
+  promise
+}
+
+exception CouldNotReadDirectory(string, error)
+
+let readdir: (t, string) => promise<array<entity>> = (client, dirName) => {
+  let (promise, resolve, reject) = Util.Promise.make()
+  client
+  ->readdir(~dirName, (readdirError, entities) =>
+    switch readdirError {
+    | None => resolve(. entities)
+    | Some(err) => reject(. CouldNotReadDirectory(dirName, err))
+    }
+  )
+  ->ignore // ignore bool return value, which states to listen for continue event before sending more data
+  promise
+}
