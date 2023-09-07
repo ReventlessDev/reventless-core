@@ -9,14 +9,18 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var FTP$Reventless = require("./FTP.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
+var Util_Error$Reventless = require("./Util_Error.bs.js");
 var Util_Promise$Reventless = require("./Util_Promise.bs.js");
 
 function ftp(connectionParams, ftpAction) {
   var path = connectionParams.path;
   var match = Util_Promise$Reventless.make(undefined);
   var resolve = match[1];
-  var isDone = {
-    contents: false
+  var result = {
+    contents: {
+      TAG: /* Error */1,
+      _0: "Stream ended before action handling!"
+    }
   };
   var client = new Ssh2.Client();
   var tmp = {
@@ -32,13 +36,7 @@ function ftp(connectionParams, ftpAction) {
   }
   SSH2.Client.onReady(client.on("end", (function (param) {
                     console.log("Client.onEnd");
-                    resolve(isDone.contents ? ({
-                              TAG: /* Ok */0,
-                              _0: true
-                            }) : ({
-                              TAG: /* Error */1,
-                              _0: "Stream ended before action handling!"
-                            }));
+                    resolve(result.contents);
                   })).on("error", (function (err) {
                   resolve({
                         TAG: /* Error */1,
@@ -87,17 +85,28 @@ function ftp(connectionParams, ftpAction) {
                         catch (raw_e){
                           var e = Caml_js_exceptions.internalToOCamlException(raw_e);
                           if (e.RE_EXN_ID === Js_exn.$$Error) {
+                            result.contents = {
+                              TAG: /* Error */1,
+                              _0: Util_Error$Reventless.message(undefined, e._1)
+                            };
                             return ;
                           }
                           throw e;
                         }
                         if (exit$1 === 2) {
-                          return await Curry._5(ftpAction._0, connectionParams, entities, sftp, fail, endFtp);
+                          result.contents = {
+                            TAG: /* Ok */0,
+                            _0: await Curry._5(ftpAction._0, connectionParams, entities, sftp, fail, endFtp)
+                          };
+                          return ;
                         }
                         
                       } else {
                         ftpAction._0.pipe(sftp.createWriteStream(Message$Reventless.log(path + ("/" + ftpAction._1), "path for write stream"), undefined).on("finish", (function (param) {
-                                        isDone.contents = true;
+                                        result.contents = {
+                                          TAG: /* Ok */0,
+                                          _0: true
+                                        };
                                         console.log("writable ended");
                                       })).on("close", (function (param) {
                                       console.log("writable closed");
@@ -112,7 +121,10 @@ function ftp(connectionParams, ftpAction) {
                     }
                     
                   }), (function (param) {
-                    isDone.contents = true;
+                    result.contents = {
+                      TAG: /* Ok */0,
+                      _0: true
+                    };
                   }));
           })).connect(tmp);
   return match[0];

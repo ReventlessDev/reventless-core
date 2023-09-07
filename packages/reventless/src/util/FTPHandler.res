@@ -27,7 +27,7 @@ type downloadAction = (
   ~sftp: FTP.t,
   ~fail: failFn,
   ~endFtp: endFtpFn,
-) => promise<unit>
+) => promise<bool>
 
 type ftpAction =
   | Download(downloadAction)
@@ -36,17 +36,13 @@ type ftpAction =
 let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
   let {host, port, userName, password, path, readyTimeout} = connectionParams
   let (promise, resolve, _reject) = Util.Promise.make()
-  let isDone = ref(false)
+  let result: ref<Belt.Result.t<bool, string>> = ref(Error("Stream ended before action handling!"))
   let client = FTP.Client.make()
 
   client
   ->FTP.Client.onEnd(() => {
     Js.log("Client.onEnd")
-    resolve(.
-      isDone.contents
-        ? Belt.Result.Ok(true)
-        : Belt.Result.Error("Stream ended before action handling!"),
-    )
+    resolve(. result.contents)
   })
   ->FTP.Client.onError(err => {
     resolve(.
@@ -85,8 +81,12 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
           switch ftpAction {
           | Download(downloadAction) =>
             switch await sftp->FTP.readdir(path) {
-            | entities => await downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp)
-            | exception Js.Exn.Error(e) => ()
+            | entities =>
+              result :=
+                (
+                  await downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp)
+                )->Belt.Result.Ok
+            | exception Js.Exn.Error(e) => result := e->Reventless.Util.Error.message->Error
             }
           | Upload(readableStream, filename) =>
             readableStream
@@ -95,7 +95,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
               ->Message.log("path for write stream")
               ->FTP.createWriteStream(sftp, ~path=_, ())
               ->NodeStreams.Writable.onFinish(() => {
-                isDone := true
+                result := Ok(true)
                 Js.log("writable ended")
               })
               ->NodeStreams.Writable.onClose(() => {
@@ -116,7 +116,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
           )
           ->ignore
         },
-      (. _) => isDone := true,
+      (. _) => result := Ok(true),
     )
   })
   ->FTP.Client.connect(
