@@ -1,11 +1,16 @@
 // open FTP
+type password = string
+type privateKey = string
+type passphrase = string
+
+type secret = Password(password) | Key(privateKey, passphrase)
 
 type connectionParams = {
   host: string,
   port: option<int>,
   path: string,
   userName: string,
-  password: string,
+  secret: secret,
   readyTimeout: option<int>,
   retryCount: int,
   retryInterval: int,
@@ -18,8 +23,6 @@ type getFile = (
 ) => promise<unit>
 type failFn = Js.Exn.t => unit
 type endFtpFn = unit => unit
-
-type recordDownload = string => Js.Promise.t<unit>
 
 type downloadAction = (
   ~connectionParams: connectionParams,
@@ -34,7 +37,7 @@ type ftpAction =
   | Upload(NodeStreams.Readable.t, /* filename on ftp */ string)
 
 let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
-  let {host, port, userName, password, path, readyTimeout} = connectionParams
+  let {host, port, userName, secret, path, readyTimeout} = connectionParams
   let (promise, resolve, _reject) = Util.Promise.make()
   let result: ref<Belt.Result.t<bool, string>> = ref(Error("Stream ended before action handling!"))
   let client = FTP.Client.make()
@@ -120,7 +123,20 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
     )
   })
   ->FTP.Client.connect(
-    FTP.Client.Config.make(~host, ~port?, ~username=userName, ~password, ~readyTimeout?, ()),
+    switch secret {
+    | Password(password) =>
+      FTP.Client.Config.make(~host, ~port?, ~username=userName, ~password, ~readyTimeout?, ())
+    | Key(privateKey, passphrase) =>
+      FTP.Client.Config.make(
+        ~host,
+        ~port?,
+        ~username=userName,
+        ~privateKey,
+        ~passphrase,
+        ~readyTimeout?,
+        (),
+      )
+    },
   )
 
   promise

@@ -13,7 +13,12 @@ var Util_Error$Reventless = require("./Util_Error.bs.js");
 var Util_Promise$Reventless = require("./Util_Promise.bs.js");
 
 function ftp(connectionParams, ftpAction) {
+  var readyTimeout = connectionParams.readyTimeout;
+  var secret = connectionParams.secret;
+  var userName = connectionParams.userName;
   var path = connectionParams.path;
+  var port = connectionParams.port;
+  var host = connectionParams.host;
   var match = Util_Promise$Reventless.make(undefined);
   var resolve = match[1];
   var result = {
@@ -23,16 +28,34 @@ function ftp(connectionParams, ftpAction) {
     }
   };
   var client = new Ssh2.Client();
-  var tmp = {
-    host: connectionParams.host,
-    username: connectionParams.userName,
-    password: connectionParams.password
-  };
-  if (connectionParams.port !== undefined) {
-    tmp.port = connectionParams.port;
-  }
-  if (connectionParams.readyTimeout !== undefined) {
-    tmp.readyTimeout = connectionParams.readyTimeout;
+  var tmp;
+  if (secret.TAG === /* Password */0) {
+    var tmp$1 = {
+      host: host,
+      username: userName,
+      password: secret._0
+    };
+    if (port !== undefined) {
+      tmp$1.port = port;
+    }
+    if (readyTimeout !== undefined) {
+      tmp$1.readyTimeout = readyTimeout;
+    }
+    tmp = tmp$1;
+  } else {
+    var tmp$2 = {
+      host: host,
+      username: userName,
+      privateKey: secret._0,
+      passphrase: secret._1
+    };
+    if (port !== undefined) {
+      tmp$2.port = port;
+    }
+    if (readyTimeout !== undefined) {
+      tmp$2.readyTimeout = readyTimeout;
+    }
+    tmp = tmp$2;
   }
   SSH2.Client.onReady(client.on("end", (function (param) {
                     console.log("Client.onEnd");
