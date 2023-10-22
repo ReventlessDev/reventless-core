@@ -46,11 +46,13 @@ function ftp(connectionParams, ftpAction) {
     var tmp$2 = {
       host: host,
       username: userName,
-      privateKey: secret._0,
-      passphrase: secret._1
+      privateKey: secret._0
     };
     if (port !== undefined) {
       tmp$2.port = port;
+    }
+    if (secret._1 !== undefined) {
+      tmp$2.passphrase = secret._1;
     }
     if (readyTimeout !== undefined) {
       tmp$2.readyTimeout = readyTimeout;

@@ -1,7 +1,7 @@
 // open FTP
 type password = string
 type privateKey = string
-type passphrase = string
+type passphrase = option<string>
 
 type secret = Password(password) | Key(privateKey, passphrase)
 
@@ -132,7 +132,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
         ~port?,
         ~username=userName,
         ~privateKey,
-        ~passphrase,
+        ~passphrase?,
         ~readyTimeout?,
         (),
       )
