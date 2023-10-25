@@ -250,7 +250,7 @@ module Make = (
       await counterEventsHandler(.
         counts->Belt.Array.keepMap(state =>
           switch state->CountsSpec.state_decode {
-          | Ok({id, count}) if count == 0 =>
+          | Ok({id, count}) if count <= 0 =>
             let (counterId, _) = id->unmakeId
             Js.log(
               __MODULE__ ++
