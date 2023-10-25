@@ -10,13 +10,13 @@ function Make(Spec, Config) {
   var promises = [];
   var send = function (param) {
     var sentChunksCount = promises.length;
-    console.log("sending chunk " + String(sentChunksCount) + ":");
-    var commandJsons = Belt_Array.mapWithIndex(buffer, (function (idx, param) {
-            var id = param[0];
+    if (Config.mode) {
+      console.log("sending chunk " + String(sentChunksCount) + ":");
+    }
+    var commandJsons = Belt_Array.map(buffer, (function (param) {
             var commandJson = Curry._1(Spec.command_encode, param[1]);
-            console.log("  " + String(idx) + ": " + id + ": " + JSON.stringify(commandJson) + "");
             return {
-                    id: id,
+                    id: param[0],
                     meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user, undefined),
                     commandJson: commandJson,
                     delay: undefined

@@ -19,10 +19,12 @@ module Make = (Spec: Spec, Config: Config) => {
 
   let send = () => {
     let sentChunksCount = promises->Belt.Array.size
-    Js.log(`sending chunk ${sentChunksCount->Belt.Int.toString}:`)
-    let commandJsons = buffer->Belt.Array.mapWithIndex((idx, (id, command)) => {
+    switch Config.mode {
+    | SendChunks(_) => Js.log(`sending chunk ${sentChunksCount->Belt.Int.toString}:`)
+    | SendAllInOneChunk => ()
+    }
+    let commandJsons = buffer->Belt.Array.map(((id, command)) => {
       let commandJson = command->Spec.command_encode
-      Js.log(`  ${idx->Belt.Int.toString}: ${id}: ${commandJson->Js.Json.stringify}`)
       {
         ReventlessSpec.Message.id,
         meta: Reventless.Message.generateMeta(~service=Spec.name, ~user=Config.user, ()),
