@@ -45,11 +45,11 @@ function makeEntry(queueService, commandJson) {
 }
 
 async function sendBatch(queue, queueService, commandJsons) {
-  var sendResult = await Promise.allSettled(SQS$AwsSdk.sendMessageBatch(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
+  var sendResult = await Promise.allSettled(SQS$AwsSdk.sendMessagesParallel(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
                   return makeEntry(queueService, commandJson);
                 }))));
   return Belt_Array.forEach(Util_Promise$Reventless.filterRejected(sendResult), (function (param) {
-                console.log("SQS.sendMessageBatch request " + String(param[0]) + " failed: " + param[1] + "");
+                console.log("Util.SQS_Runtime.sendBatch: Error: request " + String(param[0]) + " failed: " + param[1] + "");
               }));
 }
 
