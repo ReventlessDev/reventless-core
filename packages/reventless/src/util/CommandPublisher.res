@@ -13,44 +13,85 @@ module type Config = {
   let mode: mode
 }
 
+let commandsToJsons = (buffer, size, service, user, command_encode) =>
+  buffer
+  ->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
+  ->Belt.Array.map(((id, command)) => {
+    let commandJson = command->command_encode
+    {
+      ReventlessSpec.Message.id,
+      meta: Reventless.Message.generateMeta(~service, ~user, ()),
+      commandJson,
+      delay: None,
+    }
+  })
+
 module Make = (Spec: Spec, Config: Config) => {
   let buffer = []
-  let promises = []
+  let running = ref(None)
 
-  let send = () => {
-    let sentChunksCount = promises->Belt.Array.size
-    switch Config.mode {
-    | SendChunks(_) => Js.log(`sending chunk ${sentChunksCount->Belt.Int.toString}:`)
-    | SendAllInOneChunk => ()
-    }
-    let commandJsons = buffer->Belt.Array.map(((id, command)) => {
-      let commandJson = command->Spec.command_encode
-      {
-        ReventlessSpec.Message.id,
-        meta: Reventless.Message.generateMeta(~service=Spec.name, ~user=Config.user, ()),
-        commandJson,
-        delay: None,
+  let rec send = async flush => {
+    await (
+      switch running.contents {
+      | None =>
+        let promise = Js.Promise.resolve()
+        running := Some(promise)
+        promise
+      | Some(promise) => promise
       }
-    })
-    promises->Js.Array2.push(Config.publishCommands(. Spec.name, commandJsons))->ignore
-    buffer->Js.Array2.removeFromInPlace(~pos=0)->ignore
+    )
+
+    switch Config.mode {
+    | SendChunks(chunkSize) =>
+      if buffer->Belt.Array.size >= chunkSize || flush {
+        let size = Js.Math.min_int(chunkSize, buffer->Belt.Array.size)
+        switch await Config.publishCommands(.
+          Spec.name,
+          commandsToJsons(buffer, size, Spec.name, Config.user, Spec.command_encode),
+        ) {
+        | () =>
+          Logger.log(~loc=__LOC__, ~level=Logger.Level.Info, "published commands:", size)
+          await send(flush)
+        | exception Js.Exn.Error(e) =>
+          Logger.log(~loc=__LOC__, ~level=Logger.Level.Error, "Couldn't publish commands", e)
+        }
+      } else {
+        running := None
+      }
+    | SendAllInOneChunk =>
+      let size = buffer->Belt.Array.size
+      switch await Config.publishCommands(.
+        Spec.name,
+        commandsToJsons(buffer, size, Spec.name, Config.user, Spec.command_encode),
+      ) {
+      | () => Logger.log(~loc=__LOC__, ~level=Logger.Level.Info, "published commands:", size)
+      | exception Js.Exn.Error(e) =>
+        Logger.log(~loc=__LOC__, ~level=Logger.Level.Error, "Couldn't publish commands", e)
+      }
+      running := None
+    }
   }
 
   let publish = (id: string, command: Spec.command) => {
-    buffer->Js.Array2.push((id, command))->ignore
-    switch Config.mode {
-    | SendChunks(chunkSize) =>
-      if buffer->Belt.Array.size >= chunkSize {
-        send()
-      }
-    | SendAllInOneChunk => ()
-    }
+    let _ = buffer->Js.Array2.push((id, command))
+    let _ = send(false)
   }
 
   let flush = async () => {
-    send()
-    let _results = await promises->Js.Array2.removeFromInPlace(~pos=0)->Util.Promise.allSettled
+    await (
+      switch running.contents {
+      | None =>
+        let promise = Js.Promise.resolve()
+        running := Some(promise)
+        promise
+      | Some(promise) => promise
+      }
+    )
+
+    await send(true)
   }
 
-  let clear = () => buffer->Js.Array2.removeFromInPlace(~pos=0)->ignore
+  let clear = () => {
+    let _ = buffer->Js.Array2.removeFromInPlace(~pos=0)
+  }
 }
