@@ -5,7 +5,6 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Logger$Reventless = require("./Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 
@@ -52,11 +51,12 @@ function Make(Spec, Config) {
       catch (raw_e){
         var e = Caml_js_exceptions.internalToOCamlException(raw_e);
         if (e.RE_EXN_ID === Js_exn.$$Error) {
-          return Logger$Reventless.log("File \"CommandPublisher.res\", line 56, characters 26-33", undefined, undefined, /* Error */3, "Couldn't publish commands", e._1);
+          console.log("CommandPublisher: Error: Couldn't publish commands", e._1);
+          return ;
         }
         throw e;
       }
-      Logger$Reventless.log("File \"CommandPublisher.res\", line 53, characters 26-33", undefined, undefined, /* Info */1, "published commands:", size);
+      console.log("CommandPublisher: published commands:", size);
       return await send(flush);
     }
     var size$1 = buffer.length;
@@ -69,13 +69,13 @@ function Make(Spec, Config) {
     catch (raw_e$1){
       var e$1 = Caml_js_exceptions.internalToOCamlException(raw_e$1);
       if (e$1.RE_EXN_ID === Js_exn.$$Error) {
-        Logger$Reventless.log("File \"CommandPublisher.res\", line 69, characters 24-31", undefined, undefined, /* Error */3, "Couldn't publish commands", e$1._1);
+        console.log("CommandPublisher: Error: Couldn't publish commands", e$1._1);
       } else {
         throw e$1;
       }
     }
     if (exit === 1) {
-      Logger$Reventless.log("File \"CommandPublisher.res\", line 67, characters 30-37", undefined, undefined, /* Info */1, "published commands:", size$1);
+      console.log("CommandPublisher: published commands:", size$1);
     }
     running.contents = undefined;
   };
@@ -114,4 +114,4 @@ function Make(Spec, Config) {
 
 exports.commandsToJsons = commandsToJsons;
 exports.Make = Make;
-/* Logger-Reventless Not a pure module */
+/* Message-Reventless Not a pure module */

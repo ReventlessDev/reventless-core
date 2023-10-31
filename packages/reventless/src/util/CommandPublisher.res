@@ -50,10 +50,10 @@ module Make = (Spec: Spec, Config: Config) => {
           commandsToJsons(buffer, size, Spec.name, Config.user, Spec.command_encode),
         ) {
         | () =>
-          Logger.log(~loc=__LOC__, ~level=Logger.Level.Info, "published commands:", size)
+          Js.log2("CommandPublisher: published commands:", size)
           await send(flush)
         | exception Js.Exn.Error(e) =>
-          Logger.log(~loc=__LOC__, ~level=Logger.Level.Error, "Couldn't publish commands", e)
+          Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
         }
       } else {
         running := None
@@ -64,9 +64,9 @@ module Make = (Spec: Spec, Config: Config) => {
         Spec.name,
         commandsToJsons(buffer, size, Spec.name, Config.user, Spec.command_encode),
       ) {
-      | () => Logger.log(~loc=__LOC__, ~level=Logger.Level.Info, "published commands:", size)
+      | () => Js.log2("CommandPublisher: published commands:", size)
       | exception Js.Exn.Error(e) =>
-        Logger.log(~loc=__LOC__, ~level=Logger.Level.Error, "Couldn't publish commands", e)
+        Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
       }
       running := None
     }
