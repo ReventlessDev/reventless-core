@@ -50,6 +50,9 @@ function Make(Spec, Config) {
     if (chunkSize) {
       var chunkSize$1 = chunkSize._0;
       var size = Math.min(chunkSize$1, buffer.length);
+      if (size <= 0) {
+        return ;
+      }
       console.log("send: buffer:", buffer.length, "size:", size);
       var val;
       try {
@@ -63,33 +66,30 @@ function Make(Spec, Config) {
         }
         throw e;
       }
-      console.log("CommandPublisher: published commands:", size, flush ? "flush" : "");
+      console.log("CommandPublisher: SendChunks:", size, flush ? "flush" : "");
       if (buffer.length >= chunkSize$1 || flush) {
         return await send(flush);
       } else {
-        running.contents = undefined;
         return ;
       }
     }
     var size$1 = buffer.length;
-    var exit = 0;
+    if (size$1 <= 0) {
+      return ;
+    }
     var val$1;
     try {
       val$1 = await Config.publishCommands(Spec.name, commandsToJsons(size$1));
-      exit = 1;
     }
     catch (raw_e$1){
       var e$1 = Caml_js_exceptions.internalToOCamlException(raw_e$1);
       if (e$1.RE_EXN_ID === Js_exn.$$Error) {
         console.log("CommandPublisher: Error: Couldn't publish commands", e$1._1);
-      } else {
-        throw e$1;
+        return ;
       }
+      throw e$1;
     }
-    if (exit === 1) {
-      console.log("CommandPublisher: published commands:", size$1, flush ? "flush" : "");
-    }
-    running.contents = undefined;
+    console.log("CommandPublisher: SendAllInOneChunk:", size$1, flush ? "flush" : "");
   };
   var publish = function (id, command) {
     buffer.push([

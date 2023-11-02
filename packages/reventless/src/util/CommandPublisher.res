@@ -51,26 +51,27 @@ module Make = (Spec: Spec, Config: Config) => {
     switch Config.mode {
     | SendChunks(chunkSize) =>
       let size = Js.Math.min_int(chunkSize, buffer->Belt.Array.size)
-      Js.log4("send: buffer:", buffer->Belt.Array.size, "size:", size)
-      switch await Config.publishCommands(. Spec.name, commandsToJsons(size)) {
-      | () =>
-        Js.log3("CommandPublisher: published commands:", size, flush ? "flush" : "")
-        if buffer->Belt.Array.size >= chunkSize || flush {
-          await send(flush)
-        } else {
-          running := None
+      if size > 0 {
+        Js.log4("send: buffer:", buffer->Belt.Array.size, "size:", size)
+        switch await Config.publishCommands(. Spec.name, commandsToJsons(size)) {
+        | () =>
+          Js.log3("CommandPublisher: SendChunks:", size, flush ? "flush" : "")
+          if buffer->Belt.Array.size >= chunkSize || flush {
+            await send(flush)
+          }
+        | exception Js.Exn.Error(e) =>
+          Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
         }
-      | exception Js.Exn.Error(e) =>
-        Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
       }
     | SendAllInOneChunk =>
       let size = buffer->Belt.Array.size
-      switch await Config.publishCommands(. Spec.name, commandsToJsons(size)) {
-      | () => Js.log3("CommandPublisher: published commands:", size, flush ? "flush" : "")
-      | exception Js.Exn.Error(e) =>
-        Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
+      if size > 0 {
+        switch await Config.publishCommands(. Spec.name, commandsToJsons(size)) {
+        | () => Js.log3("CommandPublisher: SendAllInOneChunk:", size, flush ? "flush" : "")
+        | exception Js.Exn.Error(e) =>
+          Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
+        }
       }
-      running := None
     }
   }
 
