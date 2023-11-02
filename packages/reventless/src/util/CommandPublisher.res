@@ -51,14 +51,14 @@ module Make = (Spec: Spec, Config: Config) => {
     switch Config.mode {
     | SendChunks(chunkSize) =>
       let size = Js.Math.min_int(chunkSize, buffer->Belt.Array.size)
-      if size >= chunkSize || flush {
+      if size >= chunkSize || (size > 0 && flush) {
         Js.log4("send: buffer:", buffer->Belt.Array.size, "size:", size)
         let promise = Config.publishCommands(. Spec.name, commandsToJsons(size))
         running := Some(promise)
         switch await promise {
         | () =>
           Js.log3("CommandPublisher: finished SendChunk:", size, flush ? "flush" : "")
-          if buffer->Belt.Array.size >= chunkSize || flush {
+          if buffer->Belt.Array.size >= chunkSize || (size > 0 && flush) {
             await send(flush)
           }
         | exception Js.Exn.Error(e) =>
@@ -72,7 +72,7 @@ module Make = (Spec: Spec, Config: Config) => {
         let promise = Config.publishCommands(. Spec.name, commandsToJsons(size))
         running := Some(promise)
         switch await promise {
-        | () => Js.log3("CommandPublisher: SendAllInOneChunk:", size, flush ? "flush" : "")
+        | () => Js.log3("CommandPublisher: finished SendAllInOneChunk:", size, flush ? "flush" : "")
         | exception Js.Exn.Error(e) =>
           Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
         }

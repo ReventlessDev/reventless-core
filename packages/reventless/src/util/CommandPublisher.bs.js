@@ -50,7 +50,7 @@ function Make(Spec, Config) {
     if (chunkSize) {
       var chunkSize$1 = chunkSize._0;
       var size = Math.min(chunkSize$1, buffer.length);
-      if (!(size >= chunkSize$1 || flush)) {
+      if (!(size >= chunkSize$1 || size > 0 && flush)) {
         return ;
       }
       console.log("send: buffer:", buffer.length, "size:", size);
@@ -72,7 +72,7 @@ function Make(Spec, Config) {
       }
       if (exit === 1) {
         console.log("CommandPublisher: finished SendChunk:", size, flush ? "flush" : "");
-        if (buffer.length >= chunkSize$1 || flush) {
+        if (buffer.length >= chunkSize$1 || size > 0 && flush) {
           await send(flush);
         }
         
@@ -101,7 +101,7 @@ function Make(Spec, Config) {
       }
     }
     if (exit$1 === 1) {
-      console.log("CommandPublisher: SendAllInOneChunk:", size$1, flush ? "flush" : "");
+      console.log("CommandPublisher: finished SendAllInOneChunk:", size$1, flush ? "flush" : "");
     }
     running.contents = undefined;
   };
