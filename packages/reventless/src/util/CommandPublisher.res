@@ -76,10 +76,8 @@ module Make = (Spec: Spec, Config: Config) => {
 
   let publish = (id: string, command: Spec.command) => {
     let _ = buffer->Js.Array2.push((id, command))
-    Js.log2("CommandPublisher.publish: added to buffer, size now:", buffer->Belt.Array.size)
     switch (running.contents, Config.mode) {
     | (None, SendChunks(chunkSize)) if buffer->Belt.Array.size >= chunkSize =>
-      Js.log2("CommandPublisher.publish: going to send, buffer size now:", buffer->Belt.Array.size)
       let _ = send(false)
     | _ => ()
     }

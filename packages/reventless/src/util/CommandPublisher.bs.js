@@ -96,13 +96,11 @@ function Make(Spec, Config) {
           id,
           command
         ]);
-    console.log("CommandPublisher.publish: added to buffer, size now:", buffer.length);
     var match = running.contents;
     var match$1 = Config.mode;
     if (match !== undefined || !(match$1 && buffer.length >= match$1._0)) {
       return ;
     } else {
-      console.log("CommandPublisher.publish: going to send, buffer size now:", buffer.length);
       send(false);
       return ;
     }
