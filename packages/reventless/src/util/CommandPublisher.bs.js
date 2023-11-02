@@ -9,7 +9,9 @@ var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 
 function commandsToJsons(buffer, size, service, user, command_encode) {
-  return Belt_Array.map(buffer.splice(0, size), (function (param) {
+  var commandsToSend = buffer.splice(0, size);
+  console.log("commandsToJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
+  return Belt_Array.map(commandsToSend, (function (param) {
                 var commandJson = Curry._1(command_encode, param[1]);
                 return {
                         id: param[0],
@@ -25,25 +27,31 @@ function Make(Spec, Config) {
   var running = {
     contents: undefined
   };
-  var send = async function (flush) {
+  var finishRunning = async function (param) {
     var promise = running.contents;
-    var tmp;
-    if (promise !== undefined) {
-      tmp = Caml_option.valFromOption(promise);
-    } else {
-      var promise$1 = Promise.resolve(undefined);
-      running.contents = Caml_option.some(promise$1);
-      tmp = promise$1;
+    if (promise === undefined) {
+      return ;
     }
-    await tmp;
+    try {
+      await Caml_option.valFromOption(promise);
+    }
+    catch (raw_e){
+      var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+      if (e.RE_EXN_ID === Js_exn.$$Error) {
+        console.log("CommandPublisher: Error: Couldn't publish commands", e._1);
+      } else {
+        throw e;
+      }
+    }
+    running.contents = undefined;
+  };
+  var send = async function (flush) {
+    await finishRunning(undefined);
     var chunkSize = Config.mode;
     if (chunkSize) {
       var chunkSize$1 = chunkSize._0;
-      if (!(buffer.length >= chunkSize$1 || flush)) {
-        running.contents = undefined;
-        return ;
-      }
       var size = Math.min(chunkSize$1, buffer.length);
+      console.log("send: buffer:", buffer.length, "size:", size);
       var val;
       try {
         val = await Config.publishCommands(Spec.name, commandsToJsons(buffer, size, Spec.name, Config.user, Spec.command_encode));
@@ -56,8 +64,13 @@ function Make(Spec, Config) {
         }
         throw e;
       }
-      console.log("CommandPublisher: published commands:", size);
-      return await send(flush);
+      console.log("CommandPublisher: published commands:", size, flush ? "flush" : "");
+      if (buffer.length >= chunkSize$1 || flush) {
+        return await send(flush);
+      } else {
+        running.contents = undefined;
+        return ;
+      }
     }
     var size$1 = buffer.length;
     var exit = 0;
@@ -75,7 +88,7 @@ function Make(Spec, Config) {
       }
     }
     if (exit === 1) {
-      console.log("CommandPublisher: published commands:", size$1);
+      console.log("CommandPublisher: published commands:", size$1, flush ? "flush" : "");
     }
     running.contents = undefined;
   };
@@ -84,19 +97,17 @@ function Make(Spec, Config) {
           id,
           command
         ]);
-    send(false);
+    var match = running.contents;
+    var match$1 = Config.mode;
+    if (match !== undefined || !(match$1 && buffer.length >= match$1._0)) {
+      return ;
+    } else {
+      send(false);
+      return ;
+    }
   };
   var flush = async function (param) {
-    var promise = running.contents;
-    var tmp;
-    if (promise !== undefined) {
-      tmp = Caml_option.valFromOption(promise);
-    } else {
-      var promise$1 = Promise.resolve(undefined);
-      running.contents = Caml_option.some(promise$1);
-      tmp = promise$1;
-    }
-    await tmp;
+    await finishRunning(undefined);
     return await send(true);
   };
   var clear = function (param) {
@@ -105,6 +116,7 @@ function Make(Spec, Config) {
   return {
           buffer: buffer,
           running: running,
+          finishRunning: finishRunning,
           send: send,
           publish: publish,
           flush: flush,
