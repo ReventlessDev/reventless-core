@@ -8,20 +8,6 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 
-function commandsToJsons(buffer, size, service, user, command_encode) {
-  var commandsToSend = buffer.splice(0, size);
-  console.log("commandsToJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
-  return Belt_Array.map(commandsToSend, (function (param) {
-                var commandJson = Curry._1(command_encode, param[1]);
-                return {
-                        id: param[0],
-                        meta: Message$Reventless.generateMeta(service, undefined, user, undefined),
-                        commandJson: commandJson,
-                        delay: undefined
-                      };
-              }));
-}
-
 function Make(Spec, Config) {
   var buffer = [];
   var running = {
@@ -45,6 +31,19 @@ function Make(Spec, Config) {
     }
     running.contents = undefined;
   };
+  var commandsToJsons = function (size) {
+    var commandsToSend = buffer.splice(0, size);
+    console.log("commandsToJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
+    return Belt_Array.map(commandsToSend, (function (param) {
+                  var commandJson = Curry._1(Spec.command_encode, param[1]);
+                  return {
+                          id: param[0],
+                          meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user, undefined),
+                          commandJson: commandJson,
+                          delay: undefined
+                        };
+                }));
+  };
   var send = async function (flush) {
     await finishRunning(undefined);
     var chunkSize = Config.mode;
@@ -54,7 +53,7 @@ function Make(Spec, Config) {
       console.log("send: buffer:", buffer.length, "size:", size);
       var val;
       try {
-        val = await Config.publishCommands(Spec.name, commandsToJsons(buffer, size, Spec.name, Config.user, Spec.command_encode));
+        val = await Config.publishCommands(Spec.name, commandsToJsons(size));
       }
       catch (raw_e){
         var e = Caml_js_exceptions.internalToOCamlException(raw_e);
@@ -76,7 +75,7 @@ function Make(Spec, Config) {
     var exit = 0;
     var val$1;
     try {
-      val$1 = await Config.publishCommands(Spec.name, commandsToJsons(buffer, size$1, Spec.name, Config.user, Spec.command_encode));
+      val$1 = await Config.publishCommands(Spec.name, commandsToJsons(size$1));
       exit = 1;
     }
     catch (raw_e$1){
@@ -97,11 +96,13 @@ function Make(Spec, Config) {
           id,
           command
         ]);
+    console.log("CommandPublisher.publish: added to buffer, size now:", buffer.length);
     var match = running.contents;
     var match$1 = Config.mode;
     if (match !== undefined || !(match$1 && buffer.length >= match$1._0)) {
       return ;
     } else {
+      console.log("CommandPublisher.publish: going to send, buffer size now:", buffer.length);
       send(false);
       return ;
     }
@@ -117,6 +118,7 @@ function Make(Spec, Config) {
           buffer: buffer,
           running: running,
           finishRunning: finishRunning,
+          commandsToJsons: commandsToJsons,
           send: send,
           publish: publish,
           flush: flush,
@@ -124,6 +126,5 @@ function Make(Spec, Config) {
         };
 }
 
-exports.commandsToJsons = commandsToJsons;
 exports.Make = Make;
 /* Message-Reventless Not a pure module */
