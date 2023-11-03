@@ -66,7 +66,7 @@ let appendFn = (
   }
 }
 
-let decodeEvent = (specEventDecode, json) =>
+let decodeEvent = (id, specEventDecode, json) =>
   Js.Json.decodeObject(json)
   ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
   ->Belt.Option.map(json => (json, specEventDecode(json)))
@@ -76,7 +76,7 @@ let decodeEvent = (specEventDecode, json) =>
     | (json, Error(err: Decco.decodeError)) =>
       let eventStr = json->Js.Json.stringify
       let message = err.message
-      Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decode ${eventStr}: ${message}`)
+      Js.Exn.raiseError(`EventLog.replay: Error: id:${id}: Couldn't decode ${eventStr}: ${message}`)
     }
   )
   ->(
@@ -85,13 +85,14 @@ let decodeEvent = (specEventDecode, json) =>
       | Some(event) => event
       | None =>
         let eventStr = json->Js.Json.stringify
-        Js.Exn.raiseError(`EventLog.replay: Error: Couldn't decodeObject ${eventStr}`)
+        Js.Exn.raiseError(`EventLog.replay: Error: id:${id}: Couldn't decodeObject ${eventStr}`)
       }
   )
 
-let decodeEvents = (jsons, specEventDecode) => jsons->Belt.Array.map(decodeEvent(specEventDecode))
+let decodeEvents = (jsons, id, specEventDecode) =>
+  jsons->Belt.Array.map(decodeEvent(id, specEventDecode))
 
 let replayFn = (storageReplay, specIdToString, specEventDecode) => async (. id) => {
   let jsonEvents = await storageReplay(. id->specIdToString)
-  jsonEvents->decodeEvents(specEventDecode)
+  jsonEvents->decodeEvents(id->specIdToString, specEventDecode)
 }

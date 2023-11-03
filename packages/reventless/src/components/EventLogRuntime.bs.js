@@ -97,6 +97,7 @@ function appendFn(storageAppend, specIdToString, specIdEncode, specEventEncode, 
 function replayFn(storageReplay, specIdToString, specEventDecode) {
   return async function (id) {
     var jsonEvents = await storageReplay(Curry._1(specIdToString, id));
+    var id$1 = Curry._1(specIdToString, id);
     return Belt_Array.map(jsonEvents, (function (param) {
                   var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(param), (function (dict) {
                                   return Js_dict.get(dict, "event");
@@ -112,13 +113,13 @@ function replayFn(storageReplay, specIdToString, specEventDecode) {
                           }
                           var eventStr = JSON.stringify(x[0]);
                           var message = $$event._0.message;
-                          return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message + "");
+                          return Js_exn.raiseError("EventLog.replay: Error: id:" + id$1 + ": Couldn't decode " + eventStr + ": " + message + "");
                         }));
                   if (x !== undefined) {
                     return Caml_option.valFromOption(x);
                   }
                   var eventStr = JSON.stringify(param);
-                  return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr + "");
+                  return Js_exn.raiseError("EventLog.replay: Error: id:" + id$1 + ": Couldn't decodeObject " + eventStr + "");
                 }));
   };
 }
