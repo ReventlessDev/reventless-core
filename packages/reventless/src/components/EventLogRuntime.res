@@ -91,9 +91,7 @@ let decodeEvent = (specEventDecode, json) =>
 
 let decodeEvents = (jsons, specEventDecode) => jsons->Belt.Array.map(decodeEvent(specEventDecode))
 
-let decodeEventsToPromise = async (specEventDecode, jsons) => decodeEvents(jsons, specEventDecode)
-
 let replayFn = (storageReplay, specIdToString, specEventDecode) => async (. id) => {
   let jsonEvents = await storageReplay(. id->specIdToString)
-  await decodeEventsToPromise(specEventDecode, jsonEvents)
+  jsonEvents->decodeEvents(specEventDecode)
 }

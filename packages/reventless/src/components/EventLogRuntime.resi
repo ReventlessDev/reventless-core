@@ -41,18 +41,6 @@ let appendFn: (
   array<ReventlessSpec.Message.event'<'specId, 'specEvent>>,
 ) => promise<Belt.Result.t<unit, string>>
 
-let decodeEvent: (Js.Json.t => Belt.Result.t<'a, Decco.decodeError>, Js.Json.t) => 'a
-
-let decodeEvents: (
-  Belt.Array.t<Js.Json.t>,
-  Js.Json.t => Belt.Result.t<'a, Decco.decodeError>,
-) => array<'a>
-
-let decodeEventsToPromise: (
-  Js.Json.t => result<'a, Decco.decodeError>,
-  array<Js.Json.t>,
-) => promise<array<'a>>
-
 let replayFn: (
   EventLogCommon.replay<string, Js.Json.t>,
   'specId => string,

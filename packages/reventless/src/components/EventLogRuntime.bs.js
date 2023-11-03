@@ -94,46 +94,32 @@ function appendFn(storageAppend, specIdToString, specIdEncode, specEventEncode, 
   };
 }
 
-function decodeEvent(specEventDecode, json) {
-  var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
-                  return Js_dict.get(dict, "event");
-                })), (function (json) {
-              return [
-                      json,
-                      Curry._1(specEventDecode, json)
-                    ];
-            })), (function (x) {
-          var $$event = x[1];
-          if ($$event.TAG === /* Ok */0) {
-            return $$event._0;
-          }
-          var eventStr = JSON.stringify(x[0]);
-          var message = $$event._0.message;
-          return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message + "");
-        }));
-  if (x !== undefined) {
-    return Caml_option.valFromOption(x);
-  }
-  var eventStr = JSON.stringify(json);
-  return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr + "");
-}
-
-function decodeEvents(jsons, specEventDecode) {
-  return Belt_Array.map(jsons, (function (param) {
-                return decodeEvent(specEventDecode, param);
-              }));
-}
-
-async function decodeEventsToPromise(specEventDecode, jsons) {
-  return Belt_Array.map(jsons, (function (param) {
-                return decodeEvent(specEventDecode, param);
-              }));
-}
-
 function replayFn(storageReplay, specIdToString, specEventDecode) {
   return async function (id) {
     var jsonEvents = await storageReplay(Curry._1(specIdToString, id));
-    return await decodeEventsToPromise(specEventDecode, jsonEvents);
+    return Belt_Array.map(jsonEvents, (function (param) {
+                  var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(param), (function (dict) {
+                                  return Js_dict.get(dict, "event");
+                                })), (function (json) {
+                              return [
+                                      json,
+                                      Curry._1(specEventDecode, json)
+                                    ];
+                            })), (function (x) {
+                          var $$event = x[1];
+                          if ($$event.TAG === /* Ok */0) {
+                            return $$event._0;
+                          }
+                          var eventStr = JSON.stringify(x[0]);
+                          var message = $$event._0.message;
+                          return Js_exn.raiseError("EventLog.replay: Error: Couldn't decode " + eventStr + ": " + message + "");
+                        }));
+                  if (x !== undefined) {
+                    return Caml_option.valFromOption(x);
+                  }
+                  var eventStr = JSON.stringify(param);
+                  return Js_exn.raiseError("EventLog.replay: Error: Couldn't decodeObject " + eventStr + "");
+                }));
   };
 }
 
@@ -143,8 +129,5 @@ exports.storageAppendErrorHandler = storageAppendErrorHandler;
 exports.publishToEventTopic = publishToEventTopic;
 exports.catchErrorHandler = catchErrorHandler;
 exports.appendFn = appendFn;
-exports.decodeEvent = decodeEvent;
-exports.decodeEvents = decodeEvents;
-exports.decodeEventsToPromise = decodeEventsToPromise;
 exports.replayFn = replayFn;
 /* Message-Reventless Not a pure module */
