@@ -120,10 +120,12 @@ function Make(Spec, Config) {
     }
   };
   var flush = async function (param) {
+    console.log("CommandPublisher.flush");
     await finishRunning(undefined);
     return await send(true);
   };
   var clear = function (param) {
+    console.log("CommandPublisher.clear");
     buffer.splice(0);
   };
   return {

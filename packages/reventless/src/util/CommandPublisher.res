@@ -91,11 +91,13 @@ module Make = (Spec: Spec, Config: Config) => {
   }
 
   let flush = async () => {
+    Js.log("CommandPublisher.flush")
     await finishRunning()
     await send(true)
   }
 
   let clear = () => {
+    Js.log("CommandPublisher.clear")
     let _ = buffer->Js.Array2.removeFromInPlace(~pos=0)
   }
 }
