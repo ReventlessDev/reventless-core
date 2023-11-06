@@ -40,13 +40,16 @@ let sendBatch = async (queue, queueService, commandJsons) => {
     ->Belt.Array.map(commandJson => makeEntry(queueService, commandJson))
     ->SQS.sendMessagesParallel(~queueId=queue["id"]->Pulumi.Output.get)
     ->Reventless.Util.Promise.allSettled
-  sendResult
-  ->Reventless.Util.Promise.filterRejected
-  ->Belt.Array.forEach(((idx, reason)) =>
-    Js.log(`Util.SQS_Runtime.sendBatch: Error: request ${idx->Belt.Int.toString} failed: ${reason}`)
-  )
-  // TODO: error handling
+  switch sendResult->Reventless.Util.Promise.filterRejected {
+  | [] => ()
+  | rejected =>
+    rejected->Belt.Array.forEach(((idx, reason)) =>
+      Js.log(`Util.SQS_Runtime.sendBatch: Error: batch ${idx->Belt.Int.toString} failed: ${reason}`)
+    )
+    Js.Exn.raiseError(`${rejected->Belt.Array.size->Js.Int.toString} batch(es) failed`)
+  }
 }
+
 let deleteMessage = (queue, receiptHandle) =>
   SQS.deleteMessage(~queueId=queue["id"]->Pulumi.Output.get, ~receiptHandle)
 
