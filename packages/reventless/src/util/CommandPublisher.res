@@ -16,6 +16,7 @@ module type Config = {
 module Make = (Spec: Spec, Config: Config) => {
   let buffer = []
   let running = ref(None)
+  let chunkCount = ref(0)
 
   let finishRunning = async () =>
     switch running.contents {
@@ -27,8 +28,14 @@ module Make = (Spec: Spec, Config: Config) => {
       running := None
     }
 
-  let commandsToJsons = size => {
-    let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
+  let timeout = 5000
+  let finishTimeout = () => {
+    let (promise, resolve, _reject) = Util.Promise.make()
+    let _ = Js.Global.setTimeout(() => resolve(. ()), timeout)
+    promise
+  }
+
+  let toJsons = commandsToSend => {
     Js.log4(
       "commandsToJsons: commandsToSend:",
       commandsToSend->Belt.Array.size,
@@ -52,27 +59,46 @@ module Make = (Spec: Spec, Config: Config) => {
     | SendChunks(chunkSize) =>
       let size = Js.Math.min_int(chunkSize, buffer->Belt.Array.size)
       if size >= chunkSize || (size > 0 && flush) {
-        Js.log4("send: buffer:", buffer->Belt.Array.size, "size:", size)
-        let promise = Config.publishCommands(. Spec.name, commandsToJsons(size))
+        let bufferSizeStr = buffer->Belt.Array.size->Js.Int.toString
+        chunkCount := chunkCount.contents + 1
+        let chunkCountStr = chunkCount.contents->Js.Int.toString
+        let sizeStr = size->Js.Int.toString
+        Js.log(`send: buffer: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`)
+        let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
+        let promise = Config.publishCommands(. Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
         | () =>
-          Js.log3("CommandPublisher: finished SendChunk:", size, flush ? "flush" : "")
+          Js.log3(
+            "CommandPublisher.send: finished chunk ${chunkCountStr}:",
+            size,
+            flush ? "flush" : "",
+          )
           if buffer->Belt.Array.size >= chunkSize || (size > 0 && flush) {
             await send(flush)
           }
         | exception Js.Exn.Error(e) =>
-          Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
+          let errorMessage = e->Js.Exn.message->Belt.Option.getWithDefault("unknown Error")
+          Js.log(
+            `CommandPublisher.send: Error: Couldn't publish chunk ${chunkCountStr}: ${errorMessage}`,
+          )
+          await finishTimeout()
+          Js.log(`Retry sending after ${timeout->Js.Int.toString} ms ...`)
+          chunkCount := chunkCount.contents - 1
+          let _ = buffer->Js.Array2.unshiftMany(commandsToSend)
+          await send(flush)
         }
         running := None
       }
     | SendAllInOneChunk =>
       let size = buffer->Belt.Array.size
       if size > 0 {
-        let promise = Config.publishCommands(. Spec.name, commandsToJsons(size))
+        let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
+        let promise = Config.publishCommands(. Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () => Js.log3("CommandPublisher: finished SendAllInOneChunk:", size, flush ? "flush" : "")
+        | () =>
+          Js.log3("CommandPublisher.send: finished SendAllInOneChunk:", size, flush ? "flush" : "")
         | exception Js.Exn.Error(e) =>
           Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
         }

@@ -4,14 +4,20 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Caml_splice_call = require("@rescript/std/lib/js/caml_splice_call.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
+var Util_Promise$Reventless = require("./Util_Promise.bs.js");
 
 function Make(Spec, Config) {
   var buffer = [];
   var running = {
     contents: undefined
+  };
+  var chunkCount = {
+    contents: 0
   };
   var finishRunning = async function (param) {
     var promise = running.contents;
@@ -31,8 +37,15 @@ function Make(Spec, Config) {
     }
     running.contents = undefined;
   };
-  var commandsToJsons = function (size) {
-    var commandsToSend = buffer.splice(0, size);
+  var finishTimeout = function (param) {
+    var match = Util_Promise$Reventless.make(undefined);
+    var resolve = match[1];
+    setTimeout((function (param) {
+            resolve(undefined);
+          }), 5000);
+    return match[0];
+  };
+  var toJsons = function (commandsToSend) {
     console.log("commandsToJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
     return Belt_Array.map(commandsToSend, (function (param) {
                   var commandJson = Curry._1(Spec.command_encode, param[1]);
@@ -53,8 +66,13 @@ function Make(Spec, Config) {
       if (!(size >= chunkSize$1 || size > 0 && flush)) {
         return ;
       }
-      console.log("send: buffer:", buffer.length, "size:", size);
-      var promise = Config.publishCommands(Spec.name, commandsToJsons(size));
+      var bufferSizeStr = buffer.length.toString();
+      chunkCount.contents = chunkCount.contents + 1 | 0;
+      var chunkCountStr = chunkCount.contents.toString();
+      var sizeStr = size.toString();
+      console.log("send: buffer: " + bufferSizeStr + ", chunk: " + chunkCountStr + ", size: " + sizeStr + "");
+      var commandsToSend = buffer.splice(0, size);
+      var promise = Config.publishCommands(Spec.name, toJsons(commandsToSend));
       running.contents = Caml_option.some(promise);
       var exit = 0;
       var val;
@@ -65,13 +83,19 @@ function Make(Spec, Config) {
       catch (raw_e){
         var e = Caml_js_exceptions.internalToOCamlException(raw_e);
         if (e.RE_EXN_ID === Js_exn.$$Error) {
-          console.log("CommandPublisher: Error: Couldn't publish commands", e._1);
+          var errorMessage = Belt_Option.getWithDefault(e._1.message, "unknown Error");
+          console.log("CommandPublisher.send: Error: Couldn't publish chunk " + chunkCountStr + ": " + errorMessage + "");
+          await finishTimeout(undefined);
+          console.log("Retry sending after " + (5000).toString() + " ms ...");
+          chunkCount.contents = chunkCount.contents - 1 | 0;
+          Caml_splice_call.spliceObjApply(buffer, "unshift", [commandsToSend]);
+          await send(flush);
         } else {
           throw e;
         }
       }
       if (exit === 1) {
-        console.log("CommandPublisher: finished SendChunk:", size, flush ? "flush" : "");
+        console.log("CommandPublisher.send: finished chunk ${chunkCountStr}:", size, flush ? "flush" : "");
         if (buffer.length >= chunkSize$1 || size > 0 && flush) {
           await send(flush);
         }
@@ -84,7 +108,8 @@ function Make(Spec, Config) {
     if (size$1 <= 0) {
       return ;
     }
-    var promise$1 = Config.publishCommands(Spec.name, commandsToJsons(size$1));
+    var commandsToSend$1 = buffer.splice(0, size$1);
+    var promise$1 = Config.publishCommands(Spec.name, toJsons(commandsToSend$1));
     running.contents = Caml_option.some(promise$1);
     var exit$1 = 0;
     var val$1;
@@ -101,7 +126,7 @@ function Make(Spec, Config) {
       }
     }
     if (exit$1 === 1) {
-      console.log("CommandPublisher: finished SendAllInOneChunk:", size$1, flush ? "flush" : "");
+      console.log("CommandPublisher.send: finished SendAllInOneChunk:", size$1, flush ? "flush" : "");
     }
     running.contents = undefined;
   };
@@ -131,8 +156,11 @@ function Make(Spec, Config) {
   return {
           buffer: buffer,
           running: running,
+          chunkCount: chunkCount,
           finishRunning: finishRunning,
-          commandsToJsons: commandsToJsons,
+          timeout: 5000,
+          finishTimeout: finishTimeout,
+          toJsons: toJsons,
           send: send,
           publish: publish,
           flush: flush,
