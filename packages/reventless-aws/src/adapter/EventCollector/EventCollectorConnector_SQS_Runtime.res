@@ -45,8 +45,7 @@ let handleCallbackEvent = async (handleEvents, queue, callbackEvent, _) => {
       )
     switch entries {
     | [] => ()
-    | entries =>
-      await AwsSdk.SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get, entries)
+    | entries => await Util.SQS_Runtime.deleteMessages(entries, queue)
     }
   }
 }

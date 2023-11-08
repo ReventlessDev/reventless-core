@@ -4,7 +4,6 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
-var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
@@ -32,9 +31,11 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
                   reference: param[0]
                 };
         }));
+  var exit = 0;
   var results;
   try {
     results = await handleCommands(topicItems);
+    exit = 1;
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -45,26 +46,38 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
     }
     throw err;
   }
-  try {
-    return await SQS$AwsSdk.deleteMessageBatch(queue.id.get(), Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (idx, result) {
-                          if (result.TAG === /* Ok */0) {
-                            var reference = result._0;
-                            console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Delete command with ReceiptHandle:", reference);
-                            return {
-                                    Id: String(idx),
-                                    ReceiptHandle: reference
-                                  };
-                          }
-                          console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
-                        })), (function (x) {
-                      return x;
-                    })));
+  if (exit === 1) {
+    var exit$1 = 0;
+    var val;
+    try {
+      val = await Util_SQS_Runtime$ReventlessAws.deleteMessages(Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (idx, result) {
+                      if (result.TAG === /* Ok */0) {
+                        return {
+                                Id: String(idx),
+                                ReceiptHandle: result._0
+                              };
+                      }
+                      console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
+                    })), (function (x) {
+                  return x;
+                })), queue);
+      exit$1 = 2;
+    }
+    catch (raw_e){
+      var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+      if (e.RE_EXN_ID === Js_exn.$$Error) {
+        console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", e._1.message);
+        return ;
+      }
+      throw e;
+    }
+    if (exit$1 === 2) {
+      console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Delete all commands from queue");
+      return ;
+    }
+    
   }
-  catch (raw_err$1){
-    var err$2 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", err$2);
-    return ;
-  }
+  
 }
 
 function publish(queue, queueService) {
@@ -72,7 +85,7 @@ function publish(queue, queueService) {
     var match = jsons.length;
     if (match !== 0) {
       if (match !== 1) {
-        return Util_SQS_Runtime$ReventlessAws.sendBatch(queue, queueService, jsons);
+        return Util_SQS_Runtime$ReventlessAws.sendMessages(queue, queueService, jsons);
       } else {
         return Util_SQS_Runtime$ReventlessAws.send(queue, queueService, Caml_array.get(jsons, 0));
       }
@@ -84,4 +97,4 @@ function publish(queue, queueService) {
 
 exports.handleQueueEvent = handleQueueEvent;
 exports.publish = publish;
-/* SQS-AwsSdk Not a pure module */
+/* Util_SQS_Runtime-ReventlessAws Not a pure module */

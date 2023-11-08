@@ -29,11 +29,10 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
       __MODULE__ ++ ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!",
     )
   | results =>
-    try await results
+    switch await results
     ->Belt.Array.mapWithIndex((idx, result) =>
       switch result {
       | Belt.Result.Ok(reference) =>
-        Js.log2(__MODULE__ ++ ".handleQueueEvent: Delete command with ReceiptHandle:", reference)
         AwsSdk.SQS.DeleteMessageBatchEntry.make(
           ~_Id=idx->string_of_int,
           ~_ReceiptHandle=reference,
@@ -47,8 +46,13 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
       }
     )
     ->Belt.Array.keepMap(x => x)
-    ->AwsSdk.SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get) catch {
-    | err => Js.log2(__MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", err)
+    ->Util.SQS_Runtime.deleteMessages(queue) {
+    | () => Js.log(__MODULE__ ++ ".handleQueueEvent: Delete all commands from queue")
+    | exception Js.Exn.Error(e) =>
+      Js.log2(
+        __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:",
+        e->Js.Exn.message,
+      )
     }
   }
 }
@@ -57,5 +61,5 @@ let publish = (queue, queueService) => (. jsons) =>
   switch jsons->Belt.Array.length {
   | 0 => Js.log(__MODULE__ ++ ".publish: No commands to send")->Js.Promise.resolve
   | 1 => queue->Util_SQS_Runtime.send(queueService, jsons[0])
-  | _ => queue->Util_SQS_Runtime.sendBatch(queueService, jsons)
+  | _ => queue->Util_SQS_Runtime.sendMessages(queueService, jsons)
   }

@@ -2,7 +2,6 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
@@ -53,7 +52,7 @@ async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
                 };
         }));
   if (entries.length !== 0) {
-    return await SQS$AwsSdk.deleteMessageBatch(queue.id.get(), entries);
+    return await Util_SQS_Runtime$ReventlessAws.deleteMessages(entries, queue);
   }
   
 }
@@ -78,4 +77,4 @@ exports.Record = Record;
 exports.handleCallbackEvent = handleCallbackEvent;
 exports.enqueueEvent = enqueueEvent;
 exports.enqueueFifoEvent = enqueueFifoEvent;
-/* SQS-AwsSdk Not a pure module */
+/* Util_SQS_Runtime-ReventlessAws Not a pure module */

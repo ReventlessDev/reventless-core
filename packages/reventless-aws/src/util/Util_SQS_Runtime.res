@@ -15,12 +15,19 @@ let sendFifoMessage = (queue: PulumiAws.SQS.Queue.t, ~delay=?, ~messageGroupId, 
     (),
   )
 
-let send = (queue, queueService, {id, delay} as commandJson) => {
+let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
-  if queueService == Util_SQS_FIFO.service {
-    queue->sendFifoMessage(~messageGroupId=id, ~delay?, messageBody)
-  } else {
-    queue->sendMessage(~delay?, messageBody)
+  try await (
+    if queueService == Util_SQS_FIFO.service {
+      queue->sendFifoMessage(~messageGroupId=id, ~delay?, messageBody)
+    } else {
+      queue->sendMessage(~delay?, messageBody)
+    }
+  ) catch {
+  | Js.Exn.Error(e) =>
+    Js.log3("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e->Js.Exn.message)
+    await Reventless.Util.Promise.finishRandomTimeout(3000, 7000)
+    await send(queue, queueService, commandJson)
   }
 }
 
@@ -34,27 +41,54 @@ let makeEntry = (queueService, {id, meta: {msgId: messageId, service}, delay} as
   }
 }
 
-let sendBatch = async (queue, queueService, commandJsons) => {
-  let sendResult =
-    await commandJsons
-    ->Belt.Array.map(commandJson => makeEntry(queueService, commandJson))
-    ->SQS.sendMessagesParallel(~queueId=queue["id"]->Pulumi.Output.get)
-    ->Reventless.Util.Promise.allSettled
-  switch sendResult->Reventless.Util.Promise.filterRejected {
-  | [] => ()
-  | rejected =>
-    rejected->Belt.Array.forEach(((idx, reason)) =>
-      Js.log(`Util.SQS_Runtime.sendBatch: Error: batch ${idx->Belt.Int.toString} failed: ${reason}`)
-    )
-    Js.Exn.raiseError(`${rejected->Belt.Array.size->Js.Int.toString} batch(es) failed`)
+let rec sendMessages = async (queue, queueService, commandJsons) => {
+  switch await commandJsons
+  ->Belt.Array.map(commandJson => makeEntry(queueService, commandJson))
+  ->SQS.sendMessagesParallel(~queueId=queue["id"]->Pulumi.Output.get) {
+  | Ok() => ()
+  | Error(failedIds) =>
+    Js.log2("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds)
+    let commandJsonsToRetry = commandJsons->Belt.Array.keepWithIndex((_, idx) => {
+      let id = idx->Js.Int.toString
+      failedIds->Belt.Array.some(failedId => failedId == id)
+    })
+    await Reventless.Util.Promise.finishRandomTimeout(3000, 7000)
+    await sendMessages(queue, queueService, commandJsonsToRetry)
   }
 }
 
-let deleteMessage = (queue, receiptHandle) =>
-  SQS.deleteMessage(~queueId=queue["id"]->Pulumi.Output.get, ~receiptHandle)
+let rec deleteMessage = async (queue, receiptHandle) =>
+  try await SQS.deleteMessage(~queueId=queue["id"]->Pulumi.Output.get, ~receiptHandle) catch {
+  | Js.Exn.Error(e) =>
+    Js.log3(
+      "Util.SQS_Runtime.deleteMessage: Error: failed receiptHandle:",
+      receiptHandle,
+      e->Js.Exn.message,
+    )
+    await Reventless.Util.Promise.finishRandomTimeout(3000, 7000)
+    await deleteMessage(queue, receiptHandle)
+  }
 
-let deleteMessageBatch = (queue, entries) =>
-  SQS.deleteMessageBatch(~queueId=queue["id"]->Pulumi.Output.get, entries)
+let rec deleteMessages = async (entries, queue) =>
+  switch await SQS.deleteMessagesParallel(~queueId=queue["id"]->Pulumi.Output.get, entries) {
+  | Ok() => ()
+  | Error(failedIds) =>
+    Js.log2("Util.SQS_Runtime.deleteMessages: Error: failed ids:", failedIds)
+    let entriesToRetry =
+      entries
+      ->Belt.Array.keepWithIndex((_, idx) => {
+        let id = idx->Js.Int.toString
+        failedIds->Belt.Array.some(failedId => failedId == id)
+      })
+      ->Belt.Array.mapWithIndex((idx, entry) =>
+        AwsSdk.SQS.DeleteMessageBatchEntry.make(
+          ~_Id=idx->Js.Int.toString,
+          ~_ReceiptHandle=entry["_ReceiptHandle"],
+        )
+      )
+    await Reventless.Util.Promise.finishRandomTimeout(3000, 7000)
+    await deleteMessages(entriesToRetry, queue)
+  }
 
 let parseSqsRecord = record => {
   let eventStr = record["body"]

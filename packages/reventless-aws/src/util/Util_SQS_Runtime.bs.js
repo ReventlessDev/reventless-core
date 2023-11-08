@@ -21,13 +21,22 @@ function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
   return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, messageGroupId, undefined, delay, undefined);
 }
 
-function send(queue, queueService, commandJson) {
+async function send(queue, queueService, commandJson) {
   var delay = commandJson.delay;
   var messageBody = Message$Reventless.toMessageBody(commandJson);
-  if (queueService === Util_SQS_FIFO$ReventlessAws.service) {
-    return sendFifoMessage(queue, delay, commandJson.id, messageBody);
-  } else {
-    return sendMessage(queue, delay, messageBody);
+  try {
+    return await (
+            queueService === Util_SQS_FIFO$ReventlessAws.service ? sendFifoMessage(queue, delay, commandJson.id, messageBody) : sendMessage(queue, delay, messageBody)
+          );
+  }
+  catch (raw_e){
+    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+    if (e.RE_EXN_ID === Js_exn.$$Error) {
+      console.log("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e._1.message);
+      await Util_Promise$Reventless.finishRandomTimeout(3000, 7000);
+      return await send(queue, queueService, commandJson);
+    }
+    throw e;
   }
 }
 
@@ -45,26 +54,60 @@ function makeEntry(queueService, commandJson) {
   }
 }
 
-async function sendBatch(queue, queueService, commandJsons) {
-  var sendResult = await Promise.allSettled(SQS$AwsSdk.sendMessagesParallel(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
-                  return makeEntry(queueService, commandJson);
-                }))));
-  var rejected = Util_Promise$Reventless.filterRejected(sendResult);
-  if (rejected.length !== 0) {
-    Belt_Array.forEach(rejected, (function (param) {
-            console.log("Util.SQS_Runtime.sendBatch: Error: batch " + String(param[0]) + " failed: " + param[1] + "");
-          }));
-    return Js_exn.raiseError("" + rejected.length.toString() + " batch(es) failed");
+async function sendMessages(queue, queueService, commandJsons) {
+  var failedIds = await SQS$AwsSdk.sendMessagesParallel(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
+              return makeEntry(queueService, commandJson);
+            })));
+  if (failedIds.TAG === /* Ok */0) {
+    return ;
   }
-  
+  var failedIds$1 = failedIds._0;
+  console.log("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds$1);
+  var commandJsonsToRetry = Belt_Array.keepWithIndex(commandJsons, (function (param, idx) {
+          var id = idx.toString();
+          return Belt_Array.some(failedIds$1, (function (failedId) {
+                        return failedId === id;
+                      }));
+        }));
+  await Util_Promise$Reventless.finishRandomTimeout(3000, 7000);
+  return await sendMessages(queue, queueService, commandJsonsToRetry);
 }
 
-function deleteMessage(queue, receiptHandle) {
-  return SQS$AwsSdk.deleteMessage(queue.id.get(), receiptHandle);
+async function deleteMessage(queue, receiptHandle) {
+  try {
+    return await SQS$AwsSdk.deleteMessage(queue.id.get(), receiptHandle);
+  }
+  catch (raw_e){
+    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+    if (e.RE_EXN_ID === Js_exn.$$Error) {
+      console.log("Util.SQS_Runtime.deleteMessage: Error: failed receiptHandle:", receiptHandle, e._1.message);
+      await Util_Promise$Reventless.finishRandomTimeout(3000, 7000);
+      return await deleteMessage(queue, receiptHandle);
+    }
+    throw e;
+  }
 }
 
-function deleteMessageBatch(queue, entries) {
-  return SQS$AwsSdk.deleteMessageBatch(queue.id.get(), entries);
+async function deleteMessages(entries, queue) {
+  var failedIds = await SQS$AwsSdk.deleteMessagesParallel(queue.id.get(), entries);
+  if (failedIds.TAG === /* Ok */0) {
+    return ;
+  }
+  var failedIds$1 = failedIds._0;
+  console.log("Util.SQS_Runtime.deleteMessages: Error: failed ids:", failedIds$1);
+  var entriesToRetry = Belt_Array.mapWithIndex(Belt_Array.keepWithIndex(entries, (function (param, idx) {
+              var id = idx.toString();
+              return Belt_Array.some(failedIds$1, (function (failedId) {
+                            return failedId === id;
+                          }));
+            })), (function (idx, entry) {
+          return {
+                  Id: idx.toString(),
+                  ReceiptHandle: entry.ReceiptHandle
+                };
+        }));
+  await Util_Promise$Reventless.finishRandomTimeout(3000, 7000);
+  return await deleteMessages(entriesToRetry, queue);
 }
 
 function parseSqsRecord(record) {
@@ -102,9 +145,9 @@ exports.sendMessage = sendMessage;
 exports.sendFifoMessage = sendFifoMessage;
 exports.send = send;
 exports.makeEntry = makeEntry;
-exports.sendBatch = sendBatch;
+exports.sendMessages = sendMessages;
 exports.deleteMessage = deleteMessage;
-exports.deleteMessageBatch = deleteMessageBatch;
+exports.deleteMessages = deleteMessages;
 exports.parseSqsRecord = parseSqsRecord;
 exports.fromResource = fromResource;
 exports.findResource = findResource;
