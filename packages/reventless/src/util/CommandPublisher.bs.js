@@ -3,6 +3,7 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -36,14 +37,6 @@ function Make(Spec, Config) {
       }
     }
     running.contents = undefined;
-  };
-  var finishTimeout = function (param) {
-    var match = Util_Promise$Reventless.make(undefined);
-    var resolve = match[1];
-    setTimeout((function (param) {
-            resolve(undefined);
-          }), 5000);
-    return match[0];
   };
   var toJsons = function (commandsToSend) {
     console.log("commandsToJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
@@ -85,8 +78,9 @@ function Make(Spec, Config) {
         if (e.RE_EXN_ID === Js_exn.$$Error) {
           var errorMessage = Belt_Option.getWithDefault(e._1.message, "unknown Error");
           console.log("CommandPublisher.send: Error: Couldn't publish chunk " + chunkCountStr + ": " + errorMessage + "");
-          await finishTimeout(undefined);
-          console.log("Retry sending after " + (5000).toString() + " ms ...");
+          var timeout = Js_math.random_int(3000, 7000);
+          await Util_Promise$Reventless.finishTimeout(timeout);
+          console.log("Retry sending after " + timeout.toString() + " ms ...");
           chunkCount.contents = chunkCount.contents - 1 | 0;
           Caml_splice_call.spliceObjApply(buffer, "unshift", [commandsToSend]);
           await send(flush);
@@ -95,7 +89,7 @@ function Make(Spec, Config) {
         }
       }
       if (exit === 1) {
-        console.log("CommandPublisher.send: finished chunk ${chunkCountStr}:", size, flush ? "flush" : "");
+        console.log("CommandPublisher.send: finished chunk " + chunkCountStr + ":", size, flush ? "flush" : "");
         if (buffer.length >= chunkSize$1 || size > 0 && flush) {
           await send(flush);
         }
@@ -158,8 +152,6 @@ function Make(Spec, Config) {
           running: running,
           chunkCount: chunkCount,
           finishRunning: finishRunning,
-          timeout: 5000,
-          finishTimeout: finishTimeout,
           toJsons: toJsons,
           send: send,
           publish: publish,

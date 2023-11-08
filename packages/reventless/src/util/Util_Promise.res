@@ -53,3 +53,13 @@ let onEndHandler = async (flush, resolve) => {
   | exception Js.Exn.Error(e) => Js.log2(__LOC__, e)
   }
 }
+
+let finishTimeout = timeout => {
+  let (promise, resolve, _reject) = make()
+  let _ = Js.Global.setTimeout(() => resolve(. ()), timeout)
+  promise
+}
+
+let finishRandomTimeout = (min, max) => {
+  Js.Math.random_int(min, max)->finishTimeout
+}

@@ -3,6 +3,7 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -98,6 +99,19 @@ async function onEndHandler(flush, resolve) {
   
 }
 
+function finishTimeout(timeout) {
+  var match = make(undefined);
+  var resolve = match[1];
+  setTimeout((function (param) {
+          resolve(undefined);
+        }), timeout);
+  return match[0];
+}
+
+function finishRandomTimeout(min, max) {
+  return finishTimeout(Js_math.random_int(min, max));
+}
+
 exports.filterRejected = filterRejected;
 exports.map = map;
 exports.mapOk = mapOk;
@@ -105,4 +119,6 @@ exports.mapExn = mapExn;
 exports.toUnit = toUnit;
 exports.make = make;
 exports.onEndHandler = onEndHandler;
+exports.finishTimeout = finishTimeout;
+exports.finishRandomTimeout = finishRandomTimeout;
 /* No side effect */

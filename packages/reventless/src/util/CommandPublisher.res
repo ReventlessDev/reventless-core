@@ -28,13 +28,6 @@ module Make = (Spec: Spec, Config: Config) => {
       running := None
     }
 
-  let timeout = 5000
-  let finishTimeout = () => {
-    let (promise, resolve, _reject) = Util.Promise.make()
-    let _ = Js.Global.setTimeout(() => resolve(. ()), timeout)
-    promise
-  }
-
   let toJsons = commandsToSend => {
     Js.log4(
       "commandsToJsons: commandsToSend:",
@@ -70,7 +63,7 @@ module Make = (Spec: Spec, Config: Config) => {
         switch await promise {
         | () =>
           Js.log3(
-            "CommandPublisher.send: finished chunk ${chunkCountStr}:",
+            `CommandPublisher.send: finished chunk ${chunkCountStr}:`,
             size,
             flush ? "flush" : "",
           )
@@ -82,7 +75,8 @@ module Make = (Spec: Spec, Config: Config) => {
           Js.log(
             `CommandPublisher.send: Error: Couldn't publish chunk ${chunkCountStr}: ${errorMessage}`,
           )
-          await finishTimeout()
+          let timeout = Js.Math.random_int(3000, 7000)
+          await Util.Promise.finishTimeout(timeout)
           Js.log(`Retry sending after ${timeout->Js.Int.toString} ms ...`)
           chunkCount := chunkCount.contents - 1
           let _ = buffer->Js.Array2.unshiftMany(commandsToSend)
