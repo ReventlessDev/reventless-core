@@ -26,20 +26,19 @@ function Make(Spec, Config) {
       return ;
     }
     try {
-      await Caml_option.valFromOption(promise);
+      return await Caml_option.valFromOption(promise);
     }
     catch (raw_e){
       var e = Caml_js_exceptions.internalToOCamlException(raw_e);
       if (e.RE_EXN_ID === Js_exn.$$Error) {
         console.log("CommandPublisher: Error: Couldn't publish commands", e._1);
-      } else {
-        throw e;
+        return ;
       }
+      throw e;
     }
-    running.contents = undefined;
   };
   var toJsons = function (commandsToSend) {
-    console.log("commandsToJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
+    console.log("toJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
     return Belt_Array.map(commandsToSend, (function (param) {
                   var commandJson = Curry._1(Spec.command_encode, param[1]);
                   return {
@@ -57,6 +56,7 @@ function Make(Spec, Config) {
       var chunkSize$1 = chunkSize._0;
       var size = Math.min(chunkSize$1, buffer.length);
       if (!(size >= chunkSize$1 || size > 0 && flush)) {
+        running.contents = undefined;
         return ;
       }
       var bufferSizeStr = buffer.length.toString();
@@ -83,20 +83,14 @@ function Make(Spec, Config) {
           console.log("Retry sending after " + timeout.toString() + " ms ...");
           chunkCount.contents = chunkCount.contents - 1 | 0;
           Caml_splice_call.spliceObjApply(buffer, "unshift", [commandsToSend]);
-          await send(flush);
         } else {
           throw e;
         }
       }
       if (exit === 1) {
         console.log("CommandPublisher.send: finished chunk " + chunkCountStr + ":", size, flush ? "flush" : "");
-        if (buffer.length >= chunkSize$1 || size > 0 && flush) {
-          await send(flush);
-        }
-        
       }
-      running.contents = undefined;
-      return ;
+      return await send(flush);
     }
     var size$1 = buffer.length;
     if (size$1 <= 0) {
@@ -134,6 +128,7 @@ function Make(Spec, Config) {
     if (match !== undefined || !(match$1 && buffer.length >= match$1._0)) {
       return ;
     } else {
+      running.contents = Caml_option.some(Promise.resolve(undefined));
       send(false);
       return ;
     }
