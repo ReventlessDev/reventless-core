@@ -47,7 +47,7 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
     )
     ->Belt.Array.keepMap(x => x)
     ->Util.SQS_Runtime.deleteMessages(queue) {
-    | () => Js.log(__MODULE__ ++ ".handleQueueEvent: Delete all commands from queue")
+    | () => Js.log(__MODULE__ ++ ".handleQueueEvent: Deleted all commands from queue")
     | exception Js.Exn.Error(e) =>
       Js.log2(
         __MODULE__ ++ ".handleQueueEvent: Error: Couldn't deleteMessageBatch:",

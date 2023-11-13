@@ -72,7 +72,7 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
       throw e;
     }
     if (exit$1 === 2) {
-      console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Delete all commands from queue");
+      console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Deleted all commands from queue");
       return ;
     }
     

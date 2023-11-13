@@ -2,6 +2,7 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -33,7 +34,9 @@ async function send(queue, queueService, commandJson) {
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
       console.log("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e._1.message);
-      await Util_Promise$Reventless.finishRandomTimeout(3000, 7000);
+      var timeout = Js_math.random_int(3000, 7000);
+      await Util_Promise$Reventless.finishTimeout(timeout);
+      console.log("Retry send after " + timeout.toString() + " ms ...");
       return await send(queue, queueService, commandJson);
     }
     throw e;
@@ -69,7 +72,9 @@ async function sendMessages(queue, queueService, commandJsons) {
                         return failedId === id;
                       }));
         }));
-  await Util_Promise$Reventless.finishRandomTimeout(3000, 7000);
+  var timeout = Js_math.random_int(3000, 7000);
+  await Util_Promise$Reventless.finishTimeout(timeout);
+  console.log("Retry sendMessages after " + timeout.toString() + " ms ...");
   return await sendMessages(queue, queueService, commandJsonsToRetry);
 }
 
@@ -81,7 +86,9 @@ async function deleteMessage(queue, receiptHandle) {
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
       console.log("Util.SQS_Runtime.deleteMessage: Error: failed receiptHandle:", receiptHandle, e._1.message);
-      await Util_Promise$Reventless.finishRandomTimeout(3000, 7000);
+      var timeout = Js_math.random_int(3000, 7000);
+      await Util_Promise$Reventless.finishTimeout(timeout);
+      console.log("Retry deleteMessage after " + timeout.toString() + " ms ...");
       return await deleteMessage(queue, receiptHandle);
     }
     throw e;
@@ -106,7 +113,9 @@ async function deleteMessages(entries, queue) {
                   ReceiptHandle: entry.ReceiptHandle
                 };
         }));
-  await Util_Promise$Reventless.finishRandomTimeout(3000, 7000);
+  var timeout = Js_math.random_int(3000, 7000);
+  await Util_Promise$Reventless.finishTimeout(timeout);
+  console.log("Retry deleteMessages after " + timeout.toString() + " ms:", entriesToRetry);
   return await deleteMessages(entriesToRetry, queue);
 }
 

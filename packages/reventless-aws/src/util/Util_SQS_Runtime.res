@@ -26,7 +26,9 @@ let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   ) catch {
   | Js.Exn.Error(e) =>
     Js.log3("Util.SQS_Runtime.send: Error: failed commandJson:", commandJson, e->Js.Exn.message)
-    await Reventless.Util.Promise.finishRandomTimeout(3000, 7000)
+    let timeout = Js.Math.random_int(3000, 7000)
+    await Reventless.Util.Promise.finishTimeout(timeout)
+    Js.log(`Retry send after ${timeout->Js.Int.toString} ms ...`)
     await send(queue, queueService, commandJson)
   }
 }
@@ -52,7 +54,9 @@ let rec sendMessages = async (queue, queueService, commandJsons) => {
       let id = idx->Js.Int.toString
       failedIds->Belt.Array.some(failedId => failedId == id)
     })
-    await Reventless.Util.Promise.finishRandomTimeout(3000, 7000)
+    let timeout = Js.Math.random_int(3000, 7000)
+    await Reventless.Util.Promise.finishTimeout(timeout)
+    Js.log(`Retry sendMessages after ${timeout->Js.Int.toString} ms ...`)
     await sendMessages(queue, queueService, commandJsonsToRetry)
   }
 }
@@ -65,7 +69,9 @@ let rec deleteMessage = async (queue, receiptHandle) =>
       receiptHandle,
       e->Js.Exn.message,
     )
-    await Reventless.Util.Promise.finishRandomTimeout(3000, 7000)
+    let timeout = Js.Math.random_int(3000, 7000)
+    await Reventless.Util.Promise.finishTimeout(timeout)
+    Js.log(`Retry deleteMessage after ${timeout->Js.Int.toString} ms ...`)
     await deleteMessage(queue, receiptHandle)
   }
 
@@ -86,7 +92,9 @@ let rec deleteMessages = async (entries, queue) =>
           ~_ReceiptHandle=entry["_ReceiptHandle"],
         )
       )
-    await Reventless.Util.Promise.finishRandomTimeout(3000, 7000)
+    let timeout = Js.Math.random_int(3000, 7000)
+    await Reventless.Util.Promise.finishTimeout(timeout)
+    Js.log2(`Retry deleteMessages after ${timeout->Js.Int.toString} ms:`, entriesToRetry)
     await deleteMessages(entriesToRetry, queue)
   }
 
