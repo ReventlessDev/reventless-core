@@ -16,6 +16,7 @@ module type Config = {
 module Make = (Spec: Spec, Config: Config) => {
   let buffer = []
   let running = ref(None)
+  let flush = ref(false)
   let chunkCount = ref(0)
 
   let finishRunning = async () =>
@@ -45,12 +46,12 @@ module Make = (Spec: Spec, Config: Config) => {
     })
   }
 
-  let rec send = async flush => {
+  let rec send = async () => {
     await finishRunning()
     switch Config.mode {
     | SendChunks(chunkSize) =>
       let size = Js.Math.min_int(chunkSize, buffer->Belt.Array.size)
-      if size >= chunkSize || (size > 0 && flush) {
+      if size >= chunkSize || (size > 0 && flush.contents) {
         let bufferSizeStr = buffer->Belt.Array.size->Js.Int.toString
         chunkCount := chunkCount.contents + 1
         let chunkCountStr = chunkCount.contents->Js.Int.toString
@@ -60,12 +61,7 @@ module Make = (Spec: Spec, Config: Config) => {
         let promise = Config.publishCommands(. Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () =>
-          Js.log3(
-            `CommandPublisher.send: finished chunk ${chunkCountStr}:`,
-            size,
-            flush ? "flush" : "",
-          )
+        | () => Js.log2(`CommandPublisher.send: finished chunk ${chunkCountStr}:`, size)
         | exception Js.Exn.Error(e) =>
           let errorMessage = e->Js.Exn.message->Belt.Option.getWithDefault("unknown Error")
           Js.log(
@@ -77,7 +73,7 @@ module Make = (Spec: Spec, Config: Config) => {
           chunkCount := chunkCount.contents - 1
           let _ = buffer->Js.Array2.unshiftMany(commandsToSend)
         }
-        await send(flush)
+        await send()
       } else {
         running := None
       }
@@ -88,8 +84,7 @@ module Make = (Spec: Spec, Config: Config) => {
         let promise = Config.publishCommands(. Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () =>
-          Js.log3("CommandPublisher.send: finished SendAllInOneChunk:", size, flush ? "flush" : "")
+        | () => Js.log2("CommandPublisher.send: finished SendAllInOneChunk:", size)
         | exception Js.Exn.Error(e) =>
           Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
         }
@@ -103,19 +98,23 @@ module Make = (Spec: Spec, Config: Config) => {
     switch (running.contents, Config.mode) {
     | (None, SendChunks(chunkSize)) if buffer->Belt.Array.size >= chunkSize =>
       running := Some(Js.Promise.resolve())
-      let _ = send(false)
+      let _ = send()
     | _ => ()
     }
-  }
-
-  let flush = async () => {
-    Js.log("CommandPublisher.flush")
-    await finishRunning()
-    await send(true)
   }
 
   let clear = () => {
     Js.log("CommandPublisher.clear")
     let _ = buffer->Js.Array2.removeFromInPlace(~pos=0)
+    flush := false
+  }
+
+  let flush = async () => {
+    Js.log("CommandPublisher.flush")
+    flush := true
+    switch running.contents {
+    | None => await send()
+    | _ => ()
+    }
   }
 }

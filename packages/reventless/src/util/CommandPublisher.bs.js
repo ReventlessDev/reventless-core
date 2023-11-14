@@ -17,6 +17,9 @@ function Make(Spec, Config) {
   var running = {
     contents: undefined
   };
+  var flush = {
+    contents: false
+  };
   var chunkCount = {
     contents: 0
   };
@@ -49,13 +52,13 @@ function Make(Spec, Config) {
                         };
                 }));
   };
-  var send = async function (flush) {
+  var send = async function (param) {
     await finishRunning(undefined);
     var chunkSize = Config.mode;
     if (chunkSize) {
       var chunkSize$1 = chunkSize._0;
       var size = Math.min(chunkSize$1, buffer.length);
-      if (!(size >= chunkSize$1 || size > 0 && flush)) {
+      if (!(size >= chunkSize$1 || size > 0 && flush.contents)) {
         running.contents = undefined;
         return ;
       }
@@ -88,9 +91,9 @@ function Make(Spec, Config) {
         }
       }
       if (exit === 1) {
-        console.log("CommandPublisher.send: finished chunk " + chunkCountStr + ":", size, flush ? "flush" : "");
+        console.log("CommandPublisher.send: finished chunk " + chunkCountStr + ":", size);
       }
-      return await send(flush);
+      return await send(undefined);
     }
     var size$1 = buffer.length;
     if (size$1 <= 0) {
@@ -114,7 +117,7 @@ function Make(Spec, Config) {
       }
     }
     if (exit$1 === 1) {
-      console.log("CommandPublisher.send: finished SendAllInOneChunk:", size$1, flush ? "flush" : "");
+      console.log("CommandPublisher.send: finished SendAllInOneChunk:", size$1);
     }
     running.contents = undefined;
   };
@@ -129,18 +132,24 @@ function Make(Spec, Config) {
       return ;
     } else {
       running.contents = Caml_option.some(Promise.resolve(undefined));
-      send(false);
+      send(undefined);
       return ;
     }
-  };
-  var flush = async function (param) {
-    console.log("CommandPublisher.flush");
-    await finishRunning(undefined);
-    return await send(true);
   };
   var clear = function (param) {
     console.log("CommandPublisher.clear");
     buffer.splice(0);
+    flush.contents = false;
+  };
+  var flush$1 = async function (param) {
+    console.log("CommandPublisher.flush");
+    flush.contents = true;
+    var match = running.contents;
+    if (match !== undefined) {
+      return ;
+    } else {
+      return await send(undefined);
+    }
   };
   return {
           buffer: buffer,
@@ -150,8 +159,8 @@ function Make(Spec, Config) {
           toJsons: toJsons,
           send: send,
           publish: publish,
-          flush: flush,
-          clear: clear
+          clear: clear,
+          flush: flush$1
         };
 }
 
