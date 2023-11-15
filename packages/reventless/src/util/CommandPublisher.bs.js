@@ -146,7 +146,7 @@ function Make(Spec, Config) {
     flush.contents = true;
     var match = running.contents;
     if (match !== undefined) {
-      return await Promise.resolve(undefined);
+      return await Util_Promise$Reventless.finishTimeout(100);
     } else {
       return await send(undefined);
     }
