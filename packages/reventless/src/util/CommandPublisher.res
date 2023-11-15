@@ -114,7 +114,7 @@ module Make = (Spec: Spec, Config: Config) => {
     flush := true
     switch running.contents {
     | None => await send()
-    | _ => ()
+    | _ => await Js.Promise.resolve()
     }
   }
 }

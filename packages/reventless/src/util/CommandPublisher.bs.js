@@ -146,7 +146,7 @@ function Make(Spec, Config) {
     flush.contents = true;
     var match = running.contents;
     if (match !== undefined) {
-      return ;
+      return await Promise.resolve(undefined);
     } else {
       return await send(undefined);
     }
