@@ -56,7 +56,7 @@ let rec sendMessages = async (queue, queueService, commandJsons) => {
       )
     let timeout = Js.Math.random_int(3000, 7000)
     await Reventless.Util.Promise.finishTimeout(timeout)
-    Js.log(`Retry sendMessages after ${timeout->Js.Int.toString} ms ...`)
+    Js.log2(`Retry sendMessages after ${timeout->Js.Int.toString} ms:`, commandJsonsToRetry)
     await sendMessages(queue, queueService, commandJsonsToRetry)
   }
 }

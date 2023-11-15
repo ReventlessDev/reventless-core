@@ -74,7 +74,7 @@ async function sendMessages(queue, queueService, commandJsons) {
         }));
   var timeout = Js_math.random_int(3000, 7000);
   await Util_Promise$Reventless.finishTimeout(timeout);
-  console.log("Retry sendMessages after " + timeout.toString() + " ms ...");
+  console.log("Retry sendMessages after " + timeout.toString() + " ms:", commandJsonsToRetry);
   return await sendMessages(queue, queueService, commandJsonsToRetry);
 }
 
