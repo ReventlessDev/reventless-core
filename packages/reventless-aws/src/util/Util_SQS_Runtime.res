@@ -50,10 +50,10 @@ let rec sendMessages = async (queue, queueService, commandJsons) => {
   | Ok() => ()
   | Error(failedIds) =>
     Js.log2("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds)
-    let commandJsonsToRetry = commandJsons->Belt.Array.keepWithIndex((_, idx) => {
-      let id = idx->Js.Int.toString
-      failedIds->Belt.Array.some(failedId => failedId == id)
-    })
+    let commandJsonsToRetry =
+      commandJsons->Belt.Array.keep(({meta: {msgId}}) =>
+        failedIds->Belt.Array.some(failedId => failedId == msgId)
+      )
     let timeout = Js.Math.random_int(3000, 7000)
     await Reventless.Util.Promise.finishTimeout(timeout)
     Js.log(`Retry sendMessages after ${timeout->Js.Int.toString} ms ...`)

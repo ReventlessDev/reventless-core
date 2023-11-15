@@ -66,10 +66,10 @@ async function sendMessages(queue, queueService, commandJsons) {
   }
   var failedIds$1 = failedIds._0;
   console.log("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds$1);
-  var commandJsonsToRetry = Belt_Array.keepWithIndex(commandJsons, (function (param, idx) {
-          var id = idx.toString();
+  var commandJsonsToRetry = Belt_Array.keep(commandJsons, (function (param) {
+          var msgId = param.meta.msgId;
           return Belt_Array.some(failedIds$1, (function (failedId) {
-                        return failedId === id;
+                        return failedId === msgId;
                       }));
         }));
   var timeout = Js_math.random_int(3000, 7000);
