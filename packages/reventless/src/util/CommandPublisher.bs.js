@@ -145,11 +145,12 @@ function Make(Spec, Config) {
     console.log("CommandPublisher.flush");
     flush.contents = true;
     var match = running.contents;
-    if (match !== undefined) {
-      return await Util_Promise$Reventless.finishTimeout(100);
-    } else {
+    if (match === undefined) {
       return await send(undefined);
     }
+    while(Belt_Option.isSome(running.contents)) {
+      await finishRunning(undefined);
+    };
   };
   return {
           buffer: buffer,

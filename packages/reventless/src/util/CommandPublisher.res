@@ -114,7 +114,10 @@ module Make = (Spec: Spec, Config: Config) => {
     flush := true
     switch running.contents {
     | None => await send()
-    | _ => await Util.Promise.finishTimeout(100)
+    | _ =>
+      while running.contents->Belt.Option.isSome {
+        await finishRunning()
+      }
     }
   }
 }
