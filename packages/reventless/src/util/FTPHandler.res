@@ -72,11 +72,12 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
 
           sftp
           ->FTP.onEnd(() => {
-            Js.log("end sftp stream")
+            Js.log("FTPHandler: end sftp stream")
             client->FTP.Client.end_
           })
           ->FTP.onError(err => {
-            client->FTP.Client.error(err->Message.log("SFTP.onError")->FTP.toJsError)->ignore
+            Js.log2("FTPHandler: Error:", err)
+            client->FTP.Client.error(err->FTP.toJsError)->ignore
             endFtp()
           })
           ->ignore
@@ -95,19 +96,19 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             readableStream
             ->NodeStreams.Readable.pipe(
               (path ++ ("/" ++ filename))
-              ->Message.log("path for write stream")
+              ->Message.log("FTPHandler: path for write stream")
               ->FTP.createWriteStream(sftp, ~path=_, ())
               ->NodeStreams.Writable.onFinish(() => {
                 result := Ok(true)
-                Js.log("writable ended")
+                Js.log("FTPHandler: writable ended")
               })
               ->NodeStreams.Writable.onClose(() => {
-                Js.log("writable closed")
+                Js.log("FTPHandler: writable closed")
                 sftp->FTP.end_
               })
               ->NodeStreams.Writable.onError(err => {
-                Js.Console.error2("Error in Write Stream:", err)
-                FTP.makeError("Error in Write Stream")->fail
+                Js.Console.error2("FTPHandler: FTPHandler: Error in Write Stream:", err)
+                FTP.makeError("FTPHandler: Error in Write Stream")->fail
               }),
             )
             ->ignore

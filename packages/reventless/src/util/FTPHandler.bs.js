@@ -94,10 +94,11 @@ function ftp(connectionParams, ftpAction) {
                         sftp.end();
                       };
                       sftp.on("end", (function (param) {
-                                console.log("end sftp stream");
+                                console.log("FTPHandler: end sftp stream");
                                 client.end();
                               })).on("error", (function (err) {
-                              client.emit("error", Message$Reventless.log(err, "SFTP.onError"));
+                              console.log("FTPHandler: Error:", err);
+                              client.emit("error", err);
                               sftp.end();
                             }));
                       if (ftpAction.TAG === /* Download */0) {
@@ -127,18 +128,18 @@ function ftp(connectionParams, ftpAction) {
                         }
                         
                       } else {
-                        ftpAction._0.pipe(sftp.createWriteStream(Message$Reventless.log(path + ("/" + ftpAction._1), "path for write stream"), undefined).on("finish", (function (param) {
+                        ftpAction._0.pipe(sftp.createWriteStream(Message$Reventless.log(path + ("/" + ftpAction._1), "FTPHandler: path for write stream"), undefined).on("finish", (function (param) {
                                         result.contents = {
                                           TAG: /* Ok */0,
                                           _0: true
                                         };
-                                        console.log("writable ended");
+                                        console.log("FTPHandler: writable ended");
                                       })).on("close", (function (param) {
-                                      console.log("writable closed");
+                                      console.log("FTPHandler: writable closed");
                                       sftp.end();
                                     })).on("error", (function (err) {
-                                    console.error("Error in Write Stream:", err);
-                                    var err$1 = new Error("Error in Write Stream");
+                                    console.error("FTPHandler: FTPHandler: Error in Write Stream:", err);
+                                    var err$1 = new Error("FTPHandler: Error in Write Stream");
                                     sftp.emit("error", err$1);
                                   })));
                         return ;
