@@ -95,7 +95,6 @@ function ftp(connectionParams, ftpAction) {
                       };
                       sftp.on("end", (function (param) {
                                 console.log("FTPHandler: end sftp stream");
-                                client.end();
                               })).on("error", (function (err) {
                               console.log("FTPHandler: Error:", err);
                               client.emit("error", err);
@@ -151,6 +150,7 @@ function ftp(connectionParams, ftpAction) {
                       TAG: /* Ok */0,
                       _0: true
                     };
+                    client.end();
                   }));
           })).connect(tmp);
   return match[0];

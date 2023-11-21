@@ -73,7 +73,6 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
           sftp
           ->FTP.onEnd(() => {
             Js.log("FTPHandler: end sftp stream")
-            client->FTP.Client.end_
           })
           ->FTP.onError(err => {
             Js.log2("FTPHandler: Error:", err)
@@ -120,7 +119,10 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
           )
           ->ignore
         },
-      (. _) => result := Ok(true),
+      (. _) => {
+        result := Ok(true)
+        client->FTP.Client.end_
+      },
     )
   })
   ->FTP.Client.connect(
