@@ -197,6 +197,21 @@ module Make = (
     (publisherEntries, counterActions)
   }
 
+  let rec doCount = async (count, countActions) =>
+    switch countActions->Belt.Array.size {
+    | 0 => ()
+    | _ =>
+      switch await count(countActions) {
+      | exception e =>
+        Js.log2(__MODULE__ ++ ".doCount: count error", e)
+        let timeout = Js.Math.random_int(1000, 3000)
+        await Reventless.Util.Promise.finishTimeout(timeout)
+        Js.log(`Retry count after ${timeout->Js.Int.toString} ms`)
+        await doCount(count, countActions)
+      | _ => ()
+      }
+    }
+
   let eventCollectorEventsHandler = (
     publishJsons,
     mappings,
@@ -216,24 +231,14 @@ module Make = (
       }
     )
 
-    let countActions = countActions->Belt.Array.keepMap(x =>
-      switch x {
+    let countActions = countActions->Belt.Array.keepMap(countAction =>
+      switch countAction {
       | Count(countItem) => Some(countItem)
       | _ => None
       }
     )
     Js.log2("EventMapper.eventCollectorEventsHandler: countActions:", countActions->Belt.Array.size)
-    switch countActions->Belt.Array.size {
-    | 0 => ()
-    | _ =>
-      switch await count(countActions) {
-      | exception e =>
-        let error = __MODULE__ ++ ".eventCollectorEventsHandler: count error"
-        Js.log2(error, e)
-        Js.Exn.raiseError(error)
-      | _ => ()
-      }
-    }
+    await doCount(count, countActions)
 
     Js.log2(
       "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
