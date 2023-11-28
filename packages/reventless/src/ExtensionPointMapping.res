@@ -152,6 +152,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, msg))
         }
       )
-    | Error(_) => Js.Exn.raiseError("ExtensionPointMapping.Make.mapOutgoing: Decode failure: ") // TODO improve message
+    | Error(err) =>
+      Js.log2("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err)
+      []
     }
 }

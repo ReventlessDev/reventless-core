@@ -205,6 +205,8 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
           AbstractCall(() => handler(callCommand))
         }
       )
-    | Error(_) => Js.Exn.raiseError("ExtensionPointMapping.Make.mapOutgoing: Decode failure: ") // TODO improve message
+    | Error(err) =>
+      Js.log2("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err)
+      []
     }
 }
