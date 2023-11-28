@@ -105,42 +105,36 @@ module Make = (
           correlationId: msgId,
         }
       }
-      let params =
+      let decoded =
         payload["arguments"]
         ->Js.Json.stringifyAny // FIXME: find another way to transform a Js.t into Js.Json.t
         ->Belt.Option.flatMap(jsonString => jsonString->Js.Json.parseExn->Js.Json.decodeObject)
-        ->(
-          x =>
-            switch x {
-            | Some(obj) => obj->Js.Dict.values
-            | None =>
-              Js.Exn.raiseError(
-                "Couldn't decode:" ++
-                payload["arguments"]
-                ->Js.Json.stringifyAny
-                ->Belt.Option.getWithDefault("<payload.arguments>"),
-              )
-            }
+      let params = switch decoded {
+      | Some(obj) => obj->Js.Dict.values
+      | None =>
+        Js.Exn.raiseError(
+          "Couldn't decode:" ++
+          payload["arguments"]
+          ->Js.Json.stringifyAny
+          ->Belt.Option.getWithDefault("<payload.arguments>"),
         )
+      }
       params[0] = Js.Json.string(payload["command"])
-      let command =
+      let decoded =
         params
         ->Js.Json.array
         ->Behaviour.resolverConfig.commandDecoder
-        ->(
-          x =>
-            switch x {
-            | Belt.Result.Ok(command) => command
-            | Error(err) =>
-              Js.Exn.raiseError(
-                `Couldn't decode ${params
-                  ->Belt.Array.map(Js.Json.stringify)
-                  ->Js.Array2.joinWith(", ")}->Message.stringify: ${err
-                  ->Js.Json.stringifyAny
-                  ->Belt.Option.getExn}`,
-              )
-            }
+      let command = switch decoded {
+      | Belt.Result.Ok(command) => command
+      | Error(err) =>
+        Js.Exn.raiseError(
+          `Error: Couldn't decode ${params
+            ->Belt.Array.map(Js.Json.stringify)
+            ->Js.Array2.joinWith(", ")}->Message.stringify: ${err
+            ->Js.Json.stringifyAny
+            ->Belt.Option.getExn}`,
         )
+      }
       let command' = {
         open Message
         {id, meta, command}

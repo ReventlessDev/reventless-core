@@ -32,16 +32,16 @@ function Make(Config, Spec, Behaviour, Resolvers) {
         msgId: msgId,
         correlationId: msgId
       };
-      var x = Belt_Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
+      var decoded = Belt_Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
               return Js_json.decodeObject(JSON.parse(jsonString));
             }));
-      var params = x !== undefined ? Js_dict.values(Caml_option.valFromOption(x)) : Js_exn.raiseError("Couldn't decode:" + Belt_Option.getWithDefault(JSON.stringify(payload.arguments), "<payload.arguments>"));
+      var params = decoded !== undefined ? Js_dict.values(Caml_option.valFromOption(decoded)) : Js_exn.raiseError("Couldn't decode:" + Belt_Option.getWithDefault(JSON.stringify(payload.arguments), "<payload.arguments>"));
       Caml_array.set(params, 0, payload.command);
-      var x$1 = Curry._1(Behaviour.resolverConfig.commandDecoder, params);
+      var decoded$1 = Curry._1(Behaviour.resolverConfig.commandDecoder, params);
       var command;
-      command = x$1.TAG === /* Ok */0 ? x$1._0 : Js_exn.raiseError("Couldn't decode " + Belt_Array.map(params, (function (prim) {
+      command = decoded$1.TAG === /* Ok */0 ? decoded$1._0 : Js_exn.raiseError("Error: Couldn't decode " + Belt_Array.map(params, (function (prim) {
                       return JSON.stringify(prim);
-                    })).join(", ") + "->Message.stringify: " + Belt_Option.getExn(JSON.stringify(x$1._0)) + "");
+                    })).join(", ") + "->Message.stringify: " + Belt_Option.getExn(JSON.stringify(decoded$1._0)) + "");
       var command$p = {
         id: id,
         meta: meta,

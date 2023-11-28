@@ -14,7 +14,7 @@ function makeGenericMap(decode, map, json) {
     return Curry._1(map, msg._0);
   }
   var jsonStr = JSON.stringify(json);
-  return Js_exn.raiseError("Couldn't decode source message: " + Belt_Option.getExn(JSON.stringify(msg._0)) + ", " + jsonStr + "");
+  return Js_exn.raiseError("Error: Couldn't decode source message: " + Belt_Option.getExn(JSON.stringify(msg._0)) + ", " + jsonStr + "");
 }
 
 function Mapper(Spec, Target, Mappings) {
