@@ -24,6 +24,31 @@ function minutesFromNow(minutes) {
         };
 }
 
+function nextTime(h, m) {
+  var now = Moment();
+  var today = MomentRe.Moment.setMinute(m, MomentRe.Moment.setHour(h, now));
+  var tomorrow = MomentRe.Moment.add(Moment.duration(1.0, "days"), today);
+  if (today.isBefore(now)) {
+    return {
+            TAG: /* Single */0,
+            _0: tomorrow.year(),
+            _1: tomorrow.month(),
+            _2: tomorrow.date(),
+            _3: tomorrow.hour(),
+            _4: tomorrow.minute()
+          };
+  } else {
+    return {
+            TAG: /* Single */0,
+            _0: today.year(),
+            _1: today.month(),
+            _2: today.date(),
+            _3: today.hour(),
+            _4: today.minute()
+          };
+  }
+}
+
 var ScheduleNotCreated = /* @__PURE__ */Caml_exceptions.create("Schedule-Reventless.ScheduleNotCreated");
 
 var ScheduleNotDeleted = /* @__PURE__ */Caml_exceptions.create("Schedule-Reventless.ScheduleNotDeleted");
@@ -79,6 +104,7 @@ function $$delete(scheduler, queueResources) {
 
 exports.forQueue = forQueue;
 exports.minutesFromNow = minutesFromNow;
+exports.nextTime = nextTime;
 exports.ScheduleNotCreated = ScheduleNotCreated;
 exports.ScheduleNotDeleted = ScheduleNotDeleted;
 exports.create = create;

@@ -1,14 +1,23 @@
 open ReventlessSpec.Schedule
 open ReventlessSpec.Adapter
+open MomentRe
+open Moment
 
 let forQueue = (name, queueId) =>
   name->AWS.validateName ++ ("-" ++ (queueId->Js.String2.split("-"))[1])
 
 let minutesFromNow = minutes => {
-  open MomentRe
-  open Moment
-  let m = momentNow()->Moment.add(~duration=duration(minutes->float_of_int, #minutes))
+  let m = momentNow()->add(~duration=duration(minutes->float_of_int, #minutes))
   Single(m->year, m->month + 1, m->date, m->hour, m->minute)
+}
+
+let nextTime = (h: hour, m: minute) => {
+  let now = momentNow()
+  let today = now |> setHour(h) |> setMinute(m)
+  let tomorrow = today->add(~duration=duration(1.0, #days))
+  today->isBefore(now)
+    ? Single(tomorrow->year, tomorrow->month, tomorrow->date, tomorrow->hour, tomorrow->minute)
+    : Single(today->year, today->month, today->date, today->hour, today->minute)
 }
 
 exception ScheduleNotCreated(schedule)
