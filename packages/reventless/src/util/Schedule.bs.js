@@ -26,11 +26,8 @@ function minutesFromNow(minutes) {
 
 function nextTime(h, m) {
   var now = Moment();
-  console.log("now:", now);
-  var today = MomentRe.Moment.setMinute(m, MomentRe.Moment.setHour(h, now));
-  console.log("today:", today);
+  var today = MomentRe.Moment.setSecond(0, MomentRe.Moment.setMinute(m, MomentRe.Moment.setHour(h, now)));
   var tomorrow = MomentRe.Moment.add(Moment.duration(1.0, "days"), today);
-  console.log("tomorrow:", tomorrow);
   if (today.isBefore(now)) {
     return {
             TAG: /* Single */0,

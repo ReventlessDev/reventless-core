@@ -13,11 +13,8 @@ let minutesFromNow = minutes => {
 
 let nextTime = (h: hour, m: minute) => {
   let now = momentNow()
-  Js.log2("now:", now)
-  let today = now |> setHour(h) |> setMinute(m)
-  Js.log2("today:", today)
+  let today = now |> setHour(h) |> setMinute(m) |> setSecond(0)
   let tomorrow = today->add(~duration=duration(1.0, #days))
-  Js.log2("tomorrow:", tomorrow)
   today->isBefore(now)
     ? Single(tomorrow->year, tomorrow->month + 1, tomorrow->date, tomorrow->hour, tomorrow->minute)
     : Single(today->year, today->month + 1, today->date, today->hour, today->minute)
