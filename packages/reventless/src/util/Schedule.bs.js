@@ -26,13 +26,16 @@ function minutesFromNow(minutes) {
 
 function nextTime(h, m) {
   var now = Moment();
+  console.log("now:", now);
   var today = MomentRe.Moment.setMinute(m, MomentRe.Moment.setHour(h, now));
+  console.log("today:", today);
   var tomorrow = MomentRe.Moment.add(Moment.duration(1.0, "days"), today);
+  console.log("tomorrow:", tomorrow);
   if (today.isBefore(now)) {
     return {
             TAG: /* Single */0,
             _0: tomorrow.year(),
-            _1: tomorrow.month(),
+            _1: tomorrow.month() + 1 | 0,
             _2: tomorrow.date(),
             _3: tomorrow.hour(),
             _4: tomorrow.minute()
@@ -41,7 +44,7 @@ function nextTime(h, m) {
     return {
             TAG: /* Single */0,
             _0: today.year(),
-            _1: today.month(),
+            _1: today.month() + 1 | 0,
             _2: today.date(),
             _3: today.hour(),
             _4: today.minute()
