@@ -344,7 +344,7 @@ function Make(Config, QueryDbStorage, Handler) {
                           var match$1 = match._0;
                           var count = match$1.count;
                           var id = match$1.id;
-                          if (count <= 0) {
+                          if (count === 0) {
                             var match$2 = unmakeId(id);
                             console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + String(count) + ""));
                             var meta = Message$Reventless.generateMeta(name, undefined, "Counter", undefined);
