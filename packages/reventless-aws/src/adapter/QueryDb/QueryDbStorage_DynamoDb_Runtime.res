@@ -64,19 +64,16 @@ let save = table => async (. _id, json, saveMode: ReventlessSpec.QueryDb.saveMod
 
 @ocaml.doc(" writeChunk: max. batch size is 25 ")
 let writeChunk = async (writeRequests, maxRetries) => {
-  let unprocessedWriteRequests = switch await writeRequests->batchWriteWithRetries(maxRetries) {
-  | (batchWriteItemOutput, _) =>
-    batchWriteItemOutput["_UnprocessedItems"]->Js.Dict.values->Belt.Array.get(0)
-  }
-  switch unprocessedWriteRequests {
-  | Some(writeRequests) =>
-    let count = writeRequests->Belt.Array.length
+  switch await writeRequests->batchWriteWithRetries(maxRetries) {
+  | Error(failedRequests) =>
+    let count = failedRequests->Js.Dict.keys->Belt.Array.length
     `${count->Belt.Int.toString} request(s) failed after ${maxRetries->Belt.Int.toString}`->Error
-  | None => Ok()
+  | Ok() => Ok()
   }
 }
 
 let writeBatch = async (writeRequests, table, maxRetries) => {
+  let tableName = table["name"]->Pulumi.Output.get
   let batchSize = writeRequests->Belt.Array.size
   let chunks = (batchSize->float_of_int /. maxBatchSize->Js.Int.toFloat)->Js.Math.ceil_int
   if chunks > 1 {
@@ -84,13 +81,12 @@ let writeBatch = async (writeRequests, table, maxRetries) => {
       `writeBatch: splitting up batch of size ${batchSize->Belt.Int.toString} into ${chunks->Belt.Int.toString} chunks`,
     )
   }
-  let results =
-    await Belt.Array.makeBy(chunks, chunkNr =>
-      writeRequests
-      ->Belt.Array.slice(~offset=chunkNr * maxBatchSize, ~len=maxBatchSize)
-      ->toTable(table["name"]->Pulumi.Output.get)
-      ->writeChunk(maxRetries)
-    )->Reventless.Util.Promise.allSettled
+  let results = await Belt.Array.makeBy(chunks, chunkNr =>
+    writeRequests
+    ->Belt.Array.slice(~offset=chunkNr * maxBatchSize, ~len=maxBatchSize)
+    ->toTable(tableName)
+    ->writeChunk(maxRetries)
+  )->Reventless.Util.Promise.allSettled
   let errors =
     results
     ->Belt.Array.mapWithIndex((batchNr, result) =>

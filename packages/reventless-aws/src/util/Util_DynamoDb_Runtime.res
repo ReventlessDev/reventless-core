@@ -62,26 +62,43 @@ let batchWrite' = itemRequestMap =>
     ),
   )
 
-let wrapWithCount = async (promise, count) => (await promise, count)
-
 let hasUnprocessedItems = writeOutput =>
   writeOutput["_UnprocessedItems"]->Js.Dict.keys->Belt.Array.size > 0
 
-let rec retryIfNecessary: (
-  Js.Promise.t<(BatchWriteItemOutput.t, /* numberOfRetries */ int)>,
-  int,
-) => Js.Promise.t<(BatchWriteItemOutput.t, /* numberOfRetries */ int)> = async (p, maxRetries) => {
-  let originalPromiseContent = await p
-  let (writeOutput, numberOfRetries) = originalPromiseContent
-  let unprocessedItems = writeOutput["_UnprocessedItems"]
-  let unprocessedItemsPresent = hasUnprocessedItems(writeOutput)
-  let numberOfRetriesReached = numberOfRetries >= maxRetries
-  if unprocessedItemsPresent && !numberOfRetriesReached {
-    await batchWrite'(unprocessedItems)
-    ->wrapWithCount(numberOfRetries + 1)
-    ->retryIfNecessary(maxRetries)
-  } else {
-    originalPromiseContent
+let rec retryBatchWriteIfNecessary = async (p, allItems, numberOfRetries, maxRetries) => {
+  let retry = numberOfRetries->Js.Int.toString
+  switch await p {
+  | writeOutput =>
+    if writeOutput->hasUnprocessedItems {
+      let unprocessedItems = writeOutput["_UnprocessedItems"]
+      let unprocessedItemsCount = unprocessedItems->Js.Dict.keys->Belt.Array.size->Js.Int.toString
+      Js.log(
+        `Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry ${retry}: ${unprocessedItemsCount} unprocessed items`,
+      )
+      if numberOfRetries < maxRetries {
+        await batchWrite'(unprocessedItems)->retryBatchWriteIfNecessary(
+          unprocessedItems,
+          numberOfRetries + 1,
+          maxRetries,
+        )
+      } else {
+        Error(unprocessedItems)
+      }
+    } else {
+      Ok()
+    }
+
+  | exception Js.Exn.Error(e) =>
+    Js.log2(`Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry ${retry}: Error:`, e)
+    if numberOfRetries < maxRetries {
+      await batchWrite'(allItems)->retryBatchWriteIfNecessary(
+        allItems,
+        numberOfRetries + 1,
+        maxRetries,
+      )
+    } else {
+      Error(allItems)
+    }
   }
 }
 
@@ -94,6 +111,10 @@ let toDeleteRequest = keys =>
 let toTable = (writeRequests, tableName) => Js.Dict.fromArray([(tableName, writeRequests)])
 
 let batchWriteWithRetries = (batchWriteItemRequestMap, maxRetries) =>
-  batchWrite'(batchWriteItemRequestMap)->wrapWithCount(0)->retryIfNecessary(maxRetries)
+  batchWrite'(batchWriteItemRequestMap)->retryBatchWriteIfNecessary(
+    batchWriteItemRequestMap,
+    0,
+    maxRetries,
+  )
 
 let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)

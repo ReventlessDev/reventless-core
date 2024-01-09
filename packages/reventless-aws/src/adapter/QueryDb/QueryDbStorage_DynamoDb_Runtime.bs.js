@@ -92,15 +92,14 @@ function save(table) {
 }
 
 async function writeChunk(writeRequests, maxRetries) {
-  var match = await Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(writeRequests, maxRetries);
-  var unprocessedWriteRequests = Belt_Array.get(Js_dict.values(match[0].UnprocessedItems), 0);
-  if (unprocessedWriteRequests === undefined) {
+  var failedRequests = await Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(writeRequests, maxRetries);
+  if (failedRequests.TAG === /* Ok */0) {
     return {
             TAG: /* Ok */0,
             _0: undefined
           };
   }
-  var count = unprocessedWriteRequests.length;
+  var count = Object.keys(failedRequests._0).length;
   return {
           TAG: /* Error */1,
           _0: "" + String(count) + " request(s) failed after " + String(maxRetries) + ""
@@ -108,13 +107,14 @@ async function writeChunk(writeRequests, maxRetries) {
 }
 
 async function writeBatch(writeRequests, table, maxRetries) {
+  var tableName = table.name.get();
   var batchSize = writeRequests.length;
   var chunks = Js_math.ceil_int(batchSize / DynamoDb_DocumentClient$AwsSdk.maxBatchSize);
   if (chunks > 1) {
     console.log("writeBatch: splitting up batch of size " + String(batchSize) + " into " + String(chunks) + " chunks");
   }
   var results = await Promise.allSettled(Belt_Array.makeBy(chunks, (function (chunkNr) {
-              return writeChunk(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.slice(writeRequests, Math.imul(chunkNr, DynamoDb_DocumentClient$AwsSdk.maxBatchSize), DynamoDb_DocumentClient$AwsSdk.maxBatchSize), table.name.get()), maxRetries);
+              return writeChunk(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.slice(writeRequests, Math.imul(chunkNr, DynamoDb_DocumentClient$AwsSdk.maxBatchSize), DynamoDb_DocumentClient$AwsSdk.maxBatchSize), tableName), maxRetries);
             })));
   var errors = Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (batchNr, result) {
               var match = result.value;

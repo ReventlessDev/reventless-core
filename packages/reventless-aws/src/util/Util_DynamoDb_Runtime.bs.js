@@ -8,6 +8,7 @@ var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.bs.js");
@@ -90,28 +91,47 @@ function batchWrite$p(itemRequestMap) {
             });
 }
 
-async function wrapWithCount(promise, count) {
-  return [
-          await promise,
-          count
-        ];
-}
-
 function hasUnprocessedItems(writeOutput) {
   return Object.keys(writeOutput.UnprocessedItems).length !== 0;
 }
 
-async function retryIfNecessary(p, maxRetries) {
-  var originalPromiseContent = await p;
-  var numberOfRetries = originalPromiseContent[1];
-  var writeOutput = originalPromiseContent[0];
+async function retryBatchWriteIfNecessary(p, allItems, numberOfRetries, maxRetries) {
+  var retry = numberOfRetries.toString();
+  var writeOutput;
+  try {
+    writeOutput = await p;
+  }
+  catch (raw_e){
+    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+    if (e.RE_EXN_ID === Js_exn.$$Error) {
+      console.log("Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry " + retry + ": Error:", e._1);
+      if (numberOfRetries < maxRetries) {
+        return await retryBatchWriteIfNecessary(batchWrite$p(allItems), allItems, numberOfRetries + 1 | 0, maxRetries);
+      } else {
+        return {
+                TAG: /* Error */1,
+                _0: allItems
+              };
+      }
+    }
+    throw e;
+  }
+  if (!hasUnprocessedItems(writeOutput)) {
+    return {
+            TAG: /* Ok */0,
+            _0: undefined
+          };
+  }
   var unprocessedItems = writeOutput.UnprocessedItems;
-  var unprocessedItemsPresent = hasUnprocessedItems(writeOutput);
-  var numberOfRetriesReached = numberOfRetries >= maxRetries;
-  if (unprocessedItemsPresent && !numberOfRetriesReached) {
-    return await retryIfNecessary(wrapWithCount(batchWrite$p(unprocessedItems), numberOfRetries + 1 | 0), maxRetries);
+  var unprocessedItemsCount = Object.keys(unprocessedItems).length.toString();
+  console.log("Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry " + retry + ": " + unprocessedItemsCount + " unprocessed items");
+  if (numberOfRetries < maxRetries) {
+    return await retryBatchWriteIfNecessary(batchWrite$p(unprocessedItems), unprocessedItems, numberOfRetries + 1 | 0, maxRetries);
   } else {
-    return originalPromiseContent;
+    return {
+            TAG: /* Error */1,
+            _0: unprocessedItems
+          };
   }
 }
 
@@ -139,7 +159,7 @@ function toTable(writeRequests, tableName) {
 }
 
 function batchWriteWithRetries(batchWriteItemRequestMap, maxRetries) {
-  return retryIfNecessary(wrapWithCount(batchWrite$p(batchWriteItemRequestMap), 0), maxRetries);
+  return retryBatchWriteIfNecessary(batchWrite$p(batchWriteItemRequestMap), batchWriteItemRequestMap, 0, maxRetries);
 }
 
 function findResource(resources) {
@@ -156,9 +176,8 @@ exports.calcPurgeTime = calcPurgeTime;
 exports.insertTtl = insertTtl;
 exports.batchWrite = batchWrite;
 exports.batchWrite$p = batchWrite$p;
-exports.wrapWithCount = wrapWithCount;
 exports.hasUnprocessedItems = hasUnprocessedItems;
-exports.retryIfNecessary = retryIfNecessary;
+exports.retryBatchWriteIfNecessary = retryBatchWriteIfNecessary;
 exports.toPutRequest = toPutRequest;
 exports.toDeleteRequest = toDeleteRequest;
 exports.toTable = toTable;
