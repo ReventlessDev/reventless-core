@@ -254,7 +254,7 @@ module Make = (
             Js.log(`finished eventLogAppend for id ${id->Spec.Id.toString}`)
             references->Belt.Array.map(reference => Ok(reference))
           | Error(_) =>
-            Js.log(`failed eventLogAppend for id ${id->Spec.Id.toString}`)
+            Js.log(`Error: failed eventLogAppend for id ${id->Spec.Id.toString}`)
             references->Belt.Array.map(reference => Error(reference))
           }
         }

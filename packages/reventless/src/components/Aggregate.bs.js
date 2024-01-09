@@ -207,7 +207,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                     };
                                             }));
                               }
-                              console.log("failed eventLogAppend for id " + Curry._1(Spec.Id.toString, id) + "");
+                              console.log("Error: failed eventLogAppend for id " + Curry._1(Spec.Id.toString, id) + "");
                               return Belt_Array.map(references, (function (reference) {
                                             return {
                                                     TAG: /* Error */1,
