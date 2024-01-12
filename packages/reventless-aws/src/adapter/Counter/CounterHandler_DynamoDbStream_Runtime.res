@@ -11,8 +11,8 @@ let addToCounterTarget = async (table, {counterId, target, targetRef}) => {
       ~_TableName=tableName,
       ~_Key={"id": counterId},
       ~_UpdateExpression="ADD #count :inc, #total :inc " ++
-      ("SET #targets = list_append(if_not_exists(#targets, :empty), :target), " ++
-      "    #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRef)"),
+      ("SET #targets = list_append(if_not_exists(#targets, :empty), :targetSingle), " ++
+      "    #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRefSingle)"),
       ~_ExpressionAttributeNames=[
         ("#count", countFieldName),
         ("#total", "total"),
@@ -21,8 +21,9 @@ let addToCounterTarget = async (table, {counterId, target, targetRef}) => {
       ]->Js.Dict.fromArray,
       ~_ExpressionAttributeValues={
         ":inc": target,
-        ":target": [target],
-        ":targetRef": [targetRef],
+        ":targetSingle": [target],
+        ":targetRefSingle": [targetRef],
+        ":targetRef": targetRef,
         ":empty": [],
       },
       ~_ReturnValues=#UPDATED_NEW,

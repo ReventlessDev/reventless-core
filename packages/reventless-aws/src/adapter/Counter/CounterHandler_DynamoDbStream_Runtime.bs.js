@@ -13,6 +13,7 @@ var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoD
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.bs.js");
 
 async function addToCounterTarget(table, param) {
+  var targetRef = param.targetRef;
   var target = param.target;
   var counterId = param.counterId;
   console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ".addToCounterTarget:", counterId, target);
@@ -24,7 +25,7 @@ async function addToCounterTarget(table, param) {
           Key: {
             id: counterId
           },
-          UpdateExpression: "ADD #count :inc, #total :inc SET #targets = list_append(if_not_exists(#targets, :empty), :target),     #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRef)",
+          UpdateExpression: "ADD #count :inc, #total :inc SET #targets = list_append(if_not_exists(#targets, :empty), :targetSingle),     #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRefSingle)",
           ExpressionAttributeNames: Js_dict.fromArray([
                 [
                   "#count",
@@ -45,8 +46,9 @@ async function addToCounterTarget(table, param) {
               ]),
           ExpressionAttributeValues: {
             ":inc": target,
-            ":target": [target],
-            ":targetRef": [param.targetRef],
+            ":targetSingle": [target],
+            ":targetRefSingle": [targetRef],
+            ":targetRef": targetRef,
             ":empty": []
           },
           ConditionExpression: "NOT contains(#targetRefs, :targetRef)",
