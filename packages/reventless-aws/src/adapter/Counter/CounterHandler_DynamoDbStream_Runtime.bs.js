@@ -139,30 +139,33 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
         }));
   var references = Belt_Array.keepMap(match$1[0], (function (record) {
           var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
-          if (typeof match !== "number" && match.TAG === /* NewImage */0) {
-            var match$1 = referencesView_decode(match._1);
-            var inc;
-            inc = match$1.TAG === /* Ok */0 ? match$1._0.inc : 1;
-            return [
-                    match._0,
-                    inc
-                  ];
+          if (typeof match === "number") {
+            return ;
           }
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + " (references): ignoring record:", JSON.stringify(record));
+          if (match.TAG !== /* NewImage */0) {
+            return ;
+          }
+          var match$1 = referencesView_decode(match._1);
+          var inc;
+          inc = match$1.TAG === /* Ok */0 ? match$1._0.inc : 1;
+          return [
+                  match._0,
+                  inc
+                ];
         }));
   var counts = Belt_Array.keepMap(match$1[1], (function (record) {
           var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
-          if (typeof match !== "number") {
-            switch (match.TAG | 0) {
-              case /* OldImage */1 :
-                  break;
-              case /* NewImage */0 :
-              case /* NewAndOldImage */2 :
-                  return Caml_option.some(match._1);
-              
-            }
+          if (typeof match === "number") {
+            return ;
           }
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + " (counts): ignoring record:", JSON.stringify(record));
+          switch (match.TAG | 0) {
+            case /* OldImage */1 :
+                return ;
+            case /* NewImage */0 :
+            case /* NewAndOldImage */2 :
+                return Caml_option.some(match._1);
+            
+          }
         }));
   return Curry._2(counterHandler, references, counts);
 }

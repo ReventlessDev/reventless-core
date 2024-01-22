@@ -85,7 +85,7 @@ let handleStreamEvent = (
       }
       Some((id, inc))
     | _ =>
-      Js.log2(__MODULE__ ++ " (references): ignoring record:", record->Js.Json.stringifyAny)
+      // Js.log2(__MODULE__ ++ " (references): ignoring record:", record->Js.Json.stringifyAny)
       None
     }
   )
@@ -96,7 +96,7 @@ let handleStreamEvent = (
     | NewAndOldImage(_, newImage, _) =>
       Some(newImage)
     | _ =>
-      Js.log2(__MODULE__ ++ " (counts): ignoring record:", record->Js.Json.stringifyAny)
+      // Js.log2(__MODULE__ ++ " (counts): ignoring record:", record->Js.Json.stringifyAny)
       None
     }
   )
