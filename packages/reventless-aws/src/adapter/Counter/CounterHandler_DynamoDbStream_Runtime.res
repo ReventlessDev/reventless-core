@@ -84,6 +84,9 @@ let handleStreamEvent = (
       | _ => 1
       }
       Some((id, inc))
+    | NewAndOldImage(id, _, _) =>
+      Js.log2(__MODULE__ ++ " (references): ignoring duplicate id:", id)
+      None
     | _ =>
       // Js.log2(__MODULE__ ++ " (references): ignoring record:", record->Js.Json.stringifyAny)
       None

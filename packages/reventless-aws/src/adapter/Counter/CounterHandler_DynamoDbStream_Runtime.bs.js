@@ -142,16 +142,22 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
           if (typeof match === "number") {
             return ;
           }
-          if (match.TAG !== /* NewImage */0) {
-            return ;
+          switch (match.TAG | 0) {
+            case /* NewImage */0 :
+                var match$1 = referencesView_decode(match._1);
+                var inc;
+                inc = match$1.TAG === /* Ok */0 ? match$1._0.inc : 1;
+                return [
+                        match._0,
+                        inc
+                      ];
+            case /* OldImage */1 :
+                return ;
+            case /* NewAndOldImage */2 :
+                console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + " (references): ignoring duplicate id:", match._0);
+                return ;
+            
           }
-          var match$1 = referencesView_decode(match._1);
-          var inc;
-          inc = match$1.TAG === /* Ok */0 ? match$1._0.inc : 1;
-          return [
-                  match._0,
-                  inc
-                ];
         }));
   var counts = Belt_Array.keepMap(match$1[1], (function (record) {
           var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordState(record);
