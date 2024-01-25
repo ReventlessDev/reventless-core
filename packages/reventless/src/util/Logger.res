@@ -15,7 +15,7 @@ module Level = {
     | Custom(x) => x
     }
 
-  let default = Debug
+  let default = Info
 }
 
 type logItem
@@ -60,25 +60,3 @@ let log: (
   | Debug => Js.Console.log3(tag, descStringified, itemStringified)
   }
 }
-
-let logOutput: (
-  ~loc: string=?,
-  ~map: 'a => 'b=?,
-  ~stringify: bool=?,
-  ~level: Level.t=?,
-  string,
-  Pulumi.Output.t<'a>,
-) => unit = (~loc=?, ~map=?, ~stringify=?, ~level=?, desc, output) =>
-  if output->Pulumi.Output.isOutput {
-    output->Pulumi.Output.apply(item => log(~loc?, ~map?, ~stringify?, ~level?, desc, item))->ignore
-  } else {
-    let itemType = output->Js.typeof
-    log(
-      ~loc?,
-      ~map?,
-      ~stringify?,
-      ~level=Level.Error,
-      desc ++ (" ~}> was expected to be a Pulumi.Output.t, but is " ++ (itemType ++ "!")),
-      output->Pulumi.Output.unwrap,
-    )
-  }

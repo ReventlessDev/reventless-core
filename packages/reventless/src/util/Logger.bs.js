@@ -3,7 +3,6 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Pulumi = require("@pulumi/pulumi");
 
 function toString(level) {
   if (typeof level !== "number") {
@@ -24,7 +23,7 @@ function toString(level) {
 
 var Level = {
   toString: toString,
-  $$default: /* Debug */0
+  $$default: /* Info */1
 };
 
 function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
@@ -32,7 +31,7 @@ function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
         return prim;
       });
   var stringify = stringifyOpt !== undefined ? stringifyOpt : false;
-  var level = levelOpt !== undefined ? levelOpt : /* Debug */0;
+  var level = levelOpt !== undefined ? levelOpt : /* Info */1;
   var tag = toString(level) + Belt_Option.mapWithDefault(loc, ":", (function (loc) {
           return "(" + (loc + "):");
         }));
@@ -80,18 +79,6 @@ function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
   }
 }
 
-function logOutput(loc, map, stringify, level, desc, output) {
-  if (Pulumi.Output.isInstance(output)) {
-    output.apply(function (item) {
-          log(loc, map, stringify, level, desc, item);
-        });
-    return ;
-  }
-  var itemType = typeof output;
-  log(loc, map, stringify, /* Error */3, desc + (" ~}> was expected to be a Pulumi.Output.t, but is " + (itemType + "!")), output);
-}
-
 exports.Level = Level;
 exports.log = log;
-exports.logOutput = logOutput;
-/* @pulumi/pulumi Not a pure module */
+/* No side effect */
