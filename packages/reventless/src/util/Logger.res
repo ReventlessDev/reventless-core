@@ -22,6 +22,14 @@ type logItem
 external logItem: 'a => logItem = "%identity"
 external identity: 'a => 'a = "%identity"
 
+module Json = {
+  let variantName: Js.Json.t => option<string> = json =>
+    json
+    ->Js.Json.decodeArray
+    ->Belt.Option.flatMap(evtArr => evtArr->Belt.Array.get(0))
+    ->Belt.Option.flatMap(evt => evt->Js.Json.decodeString)
+}
+
 let log: (
   ~loc: string=?,
   ~map: 'a => 'b=?,
@@ -58,5 +66,32 @@ let log: (
     Js.Console.info3(tag, descStringified, itemStringified)
 
   | Debug => Js.Console.log3(tag, descStringified, itemStringified)
+  }
+}
+
+let logCmdJsons = (cmdJsons, desc) => {
+  let count = cmdJsons->Belt.Array.size
+  cmdJsons->Belt.Array.forEachWithIndex((idx, {Message.id: id, commandJson}) => {
+    let idx = idx + 1
+    let messageBody = commandJson->Js.Json.stringify
+    Js.log(
+      `${desc} ${idx->Belt.Int.toString}/${count->Belt.Int.toString}: id=${id}, ${messageBody}`,
+    )
+  })
+}
+
+let logEvent'Json = (event'Json, description) => {
+  let eventStr = event'Json->Js.Json.stringify
+  try {
+    let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn
+    let id =
+      event'
+      ->Js.Dict.unsafeGet("id")
+      ->Js.Json.decodeString
+      ->Belt.Option.getWithDefault("{ERROR (" ++ __LOC__ ++ "): Could not get id!}")
+    let eventName = event'->Js.Dict.unsafeGet("event")->Json.variantName->Belt.Option.getExn
+    Js.log(`${description} ${eventName}(${id}) complete event: ${eventStr}`)
+  } catch {
+  | _ => Js.log2("Couldn't log event:", eventStr)
   }
 }

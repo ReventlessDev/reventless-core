@@ -67,14 +67,6 @@ let construct = (
   let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
 
   let publishCommands: publishCommands = (. aggregateName, cmdJsons) => {
-    let count = cmdJsons->Belt.Array.size
-    cmdJsons->Belt.Array.forEachWithIndex((idx, {Message.id: id, commandJson}) => {
-      let idx = idx + 1
-      let messageBody = commandJson->Js.Json.stringify
-      Js.log(
-        `Task.publishCommands ${idx->Belt.Int.toString}/${count->Belt.Int.toString}: id=${id}, ${messageBody}`,
-      )
-    })
     (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(. cmdJsons)
   }
 

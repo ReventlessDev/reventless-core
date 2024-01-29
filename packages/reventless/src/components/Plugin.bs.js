@@ -14,6 +14,7 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var AWS$Reventless = require("../util/AWS.bs.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Component$Reventless = require("./Component.bs.js");
@@ -405,7 +406,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             var count = events$pJson.length;
             return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
                                   var idx$1 = idx + 1 | 0;
-                                  Message$Reventless.logEvent$pJson(event$pJson, "Plugin " + id + " eventsHandler: incoming event " + String(idx$1) + "/" + String(count) + ":");
+                                  Logger$Reventless.logEvent$pJson(event$pJson, "Plugin " + id + " eventsHandler: incoming event " + String(idx$1) + "/" + String(count) + ":");
                                   detectUnhandledEvent(event$pJson);
                                   await handleEvent(event$pJson, incomingServiceNameToPluginConnectExtensionsMapping, (function (extension) {
                                           return extension.incomingEventHandler;

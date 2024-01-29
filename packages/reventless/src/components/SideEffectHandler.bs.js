@@ -9,6 +9,7 @@ var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
@@ -54,7 +55,7 @@ function Make(EventCollector) {
                             var sideEffect = match[2];
                             var eventObj = match[0];
                             var sourceName = sideEffect.Source.name;
-                            Message$Reventless.logEvent$pJson(event$pJson, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
+                            Logger$Reventless.logEvent$pJson(event$pJson, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
                             var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
                             var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
                             if (idDecoded !== undefined) {

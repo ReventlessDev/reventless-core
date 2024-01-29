@@ -35,7 +35,8 @@ let rec send = async (queue, queueService, {id, delay} as commandJson) => {
 
 let makeEntry = (queueService, {id, meta: {msgId: messageId, service}, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
-  Js.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${id}`)
+
+  // Js.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${CommandTopic: Published commands:id}`)
   if queueService == Util_SQS_FIFO.service {
     SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay)
   } else {

@@ -2,6 +2,8 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
+var Js_json = require("@rescript/std/lib/js/js_json.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 
 function toString(level) {
@@ -24,6 +26,16 @@ function toString(level) {
 var Level = {
   toString: toString,
   $$default: /* Info */1
+};
+
+function variantName(json) {
+  return Belt_Option.flatMap(Belt_Option.flatMap(Js_json.decodeArray(json), (function (evtArr) {
+                    return Belt_Array.get(evtArr, 0);
+                  })), Js_json.decodeString);
+}
+
+var Json = {
+  variantName: variantName
 };
 
 function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
@@ -79,6 +91,33 @@ function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
   }
 }
 
+function logCmdJsons(cmdJsons, desc) {
+  var count = cmdJsons.length;
+  Belt_Array.forEachWithIndex(cmdJsons, (function (idx, param) {
+          var idx$1 = idx + 1 | 0;
+          var messageBody = JSON.stringify(param.commandJson);
+          console.log("" + desc + " " + String(idx$1) + "/" + String(count) + ": id=" + param.id + ", " + messageBody + "");
+        }));
+}
+
+function logEvent$pJson(event$pJson, description) {
+  var eventStr = JSON.stringify(event$pJson);
+  try {
+    var event$p = Belt_Option.getExn(Js_json.decodeObject(event$pJson));
+    var id = Belt_Option.getWithDefault(Js_json.decodeString(event$p["id"]), "{ERROR (" + "File \"Logger.res\", line 91, characters 49-56" + "): Could not get id!}");
+    var eventName = Belt_Option.getExn(variantName(event$p["event"]));
+    console.log("" + description + " " + eventName + "(" + id + ") complete event: " + eventStr + "");
+    return ;
+  }
+  catch (exn){
+    console.log("Couldn't log event:", eventStr);
+    return ;
+  }
+}
+
 exports.Level = Level;
+exports.Json = Json;
 exports.log = log;
+exports.logCmdJsons = logCmdJsons;
+exports.logEvent$pJson = logEvent$pJson;
 /* No side effect */

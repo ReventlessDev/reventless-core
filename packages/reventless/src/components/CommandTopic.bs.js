@@ -6,6 +6,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
@@ -16,20 +17,18 @@ var Adapter = {};
 
 function Make(Spec, Connector) {
   var publishJsonsFn = function (connector) {
-    return async function (jsons) {
+    return async function (cmdJsons) {
       var val;
       try {
-        val = await connector.publish(jsons);
+        val = await connector.publish(cmdJsons);
       }
       catch (e){
-        console.log("CommandTopic: Couldn't publish commands:", Belt_Array.map(jsons, (function (commandJson) {
+        console.log("CommandTopic: Couldn't publish commands:", Belt_Array.map(cmdJsons, (function (commandJson) {
                     return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
                   })));
         throw e;
       }
-      console.log("CommandTopic: Published commands:", Belt_Array.map(jsons, (function (commandJson) {
-                  return JSON.stringify(Message$Reventless.commandJson_encode(commandJson));
-                })));
+      return Logger$Reventless.logCmdJsons(cmdJsons, "CommandTopic: Published commands:");
     };
   };
   var publishFn = function (connector) {

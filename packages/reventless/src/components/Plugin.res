@@ -396,24 +396,24 @@ module Make = (
               extensions: pluginExtensions,
               eventCollector: pluginEventCollector,
             }) =>
-            let disconnectFromExtensionPoints =
-              pluginExtensionPoints->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
-                extensionsOutputs
-                ->Belt.Array.keep(
-                  extension => extension["extensionPointName"] == extensionPointName,
-                )
-                ->Belt.Array.length > 0
-                  ? Some(
-                      unsubscribe(
-                        "disconnectFromExtensionPoints",
-                        extensionPointName,
-                        eventTopic,
-                        id,
-                        eventCollectorUrn->Pulumi.Output.get,
-                      ),
-                    )
-                  : None
-              )
+            let disconnectFromExtensionPoints = pluginExtensionPoints->Belt.Array.keepMap(({
+              name: extensionPointName,
+              eventTopic,
+            }) =>
+              extensionsOutputs
+              ->Belt.Array.keep(extension => extension["extensionPointName"] == extensionPointName)
+              ->Belt.Array.length > 0
+                ? Some(
+                    unsubscribe(
+                      "disconnectFromExtensionPoints",
+                      extensionPointName,
+                      eventTopic,
+                      id,
+                      eventCollectorUrn->Pulumi.Output.get,
+                    ),
+                  )
+                : None
+            )
 
             let disconnectFromExtensions =
               extensionPointsOutputs->Belt.Array.keepMap(extensionPoint =>
@@ -638,7 +638,7 @@ module Make = (
           events'Json
           ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
             let idx = idx + 1
-            event'Json->Message.logEvent'Json(
+            event'Json->Logger.logEvent'Json(
               `Plugin ${id} eventsHandler: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
             )
             detectUnhandledEvent(event'Json)

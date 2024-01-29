@@ -8,7 +8,7 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Cloner$Reventless = require("../components/Cloner.bs.js");
-var Message$Reventless = require("../Message.bs.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Component$Reventless = require("../components/Component.bs.js");
 var Component = require("../components/Component").default;
 var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
@@ -86,7 +86,7 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
       var count = events$pJson.length;
       return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
                             var idx$1 = idx + 1 | 0;
-                            Message$Reventless.logEvent$pJson(event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
+                            Logger$Reventless.logEvent$pJson(event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
                             return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
                                                   var handle = extensionPoint.outgoingEventHandler;
                                                   return handle(event$pJson, fakePluginDefinition);

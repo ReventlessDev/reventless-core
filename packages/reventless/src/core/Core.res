@@ -138,7 +138,7 @@ module Make = (
       events'Json
       ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
         let idx = idx + 1
-        event'Json->Message.logEvent'Json(
+        event'Json->Logger.logEvent'Json(
           `Core eventHandler: outgoing event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
         )
         extensionPointsOutputs

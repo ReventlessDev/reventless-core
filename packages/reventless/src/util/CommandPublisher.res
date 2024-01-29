@@ -52,16 +52,16 @@ module Make = (Spec: Spec, Config: Config) => {
     | SendChunks(chunkSize) =>
       let size = Js.Math.min_int(chunkSize, buffer->Belt.Array.size)
       if size >= chunkSize || (size > 0 && flush.contents) {
-        let bufferSizeStr = buffer->Belt.Array.size->Js.Int.toString
+        // let bufferSizeStr = buffer->Belt.Array.size->Js.Int.toString
         chunkCount := chunkCount.contents + 1
         let chunkCountStr = chunkCount.contents->Js.Int.toString
         let sizeStr = size->Js.Int.toString
-        Js.log(`send: buffer: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`)
+        // Js.log(`send: buffer: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`)
         let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
         let promise = Config.publishCommands(. Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () => Js.log2(`CommandPublisher.send: finished chunk ${chunkCountStr}:`, size)
+        | () => () // Js.log2(`CommandPublisher.send: finished chunk ${chunkCountStr}:`, size)
         | exception Js.Exn.Error(e) =>
           let errorMessage = e->Js.Exn.message->Belt.Option.getWithDefault("unknown Error")
           Js.log(

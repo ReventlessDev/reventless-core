@@ -12,6 +12,7 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Counter$Reventless = require("./Counter.bs.js");
 var Message$Reventless = require("../Message.bs.js");
@@ -133,7 +134,7 @@ function Make(Target, EventCollector, Mappings) {
     var eventsCount = events$pJson.length;
     var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(events$pJson, (function (idx, event$pJson) {
                         var idx$1 = idx + 1 | 0;
-                        Message$Reventless.logEvent$pJson(event$pJson, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
+                        Logger$Reventless.logEvent$pJson(event$pJson, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
                         var event$p = Js_json.decodeObject(event$pJson);
                         var match = findMapping(mappings, event$p);
                         if (match === undefined) {

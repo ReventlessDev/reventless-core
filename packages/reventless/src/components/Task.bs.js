@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
@@ -18,12 +17,6 @@ function construct(setup, queryBucketName, scheduler, publishToAggregates, query
     parent: self
   };
   var publishCommands = function (aggregateName, cmdJsons) {
-    var count = cmdJsons.length;
-    Belt_Array.forEachWithIndex(cmdJsons, (function (idx, param) {
-            var idx$1 = idx + 1 | 0;
-            var messageBody = JSON.stringify(param.commandJson);
-            console.log("Task.publishCommands " + String(idx$1) + "/" + String(count) + ": id=" + param.id + ", " + messageBody + "");
-          }));
     return Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName))(cmdJsons);
   };
   return setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, Util_Aggregate$Reventless.allEventTopics(allAggregates), opts));

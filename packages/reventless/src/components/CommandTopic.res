@@ -133,23 +133,17 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     ReventlessSpec.CommandTopic.outputs,
   > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
-  let publishJsonsFn = connector => async (. jsons) =>
-    switch await connector.Adapter.publish(. jsons) {
+  let publishJsonsFn = connector => async (. cmdJsons) =>
+    switch await connector.Adapter.publish(. cmdJsons) {
     | exception e =>
       Js.log2(
         "CommandTopic: Couldn't publish commands:",
-        jsons->Belt.Array.map(commandJson =>
+        cmdJsons->Belt.Array.map(commandJson =>
           commandJson->Message.commandJson_encode->Js.Json.stringify
         ),
       )
       raise(e)
-    | _ =>
-      Js.log2(
-        "CommandTopic: Published commands:",
-        jsons->Belt.Array.map(commandJson =>
-          commandJson->Message.commandJson_encode->Js.Json.stringify
-        ),
-      )
+    | _ => cmdJsons->Logger.logCmdJsons("CommandTopic: Published commands:")
     }
 
   let publishFn: Adapter.connector => (

@@ -142,7 +142,7 @@ module Make = (
       events'Json
       ->Belt.Array.mapWithIndex((idx, event'Json) => {
         let idx = idx + 1
-        event'Json->Message.logEvent'Json(
+        event'Json->Logger.logEvent'Json(
           `EventMapper.eventsHandler: incoming event ${idx->Belt.Int.toString}/${eventsCount->Belt.Int.toString}:`,
         )
         let event' = event'Json->Js.Json.decodeObject

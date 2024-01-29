@@ -45,13 +45,10 @@ async function send(queue, queueService, commandJson) {
 
 function makeEntry(queueService, commandJson) {
   var delay = commandJson.delay;
-  var match = commandJson.meta;
-  var messageId = match.msgId;
-  var id = commandJson.id;
+  var messageId = commandJson.meta.msgId;
   var messageBody = Message$Reventless.toMessageBody(commandJson);
-  console.log("Publishing command to Aggregate " + match.service + ": " + messageBody + " id: " + id + "");
   if (queueService === Util_SQS_FIFO$ReventlessAws.service) {
-    return SQS$AwsSdk.makeBatchEntryFifo(id, messageBody, messageId, delay);
+    return SQS$AwsSdk.makeBatchEntryFifo(commandJson.id, messageBody, messageId, delay);
   } else {
     return SQS$AwsSdk.makeBatchEntry(messageBody, messageId, delay);
   }

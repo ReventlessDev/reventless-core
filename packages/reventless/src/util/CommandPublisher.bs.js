@@ -62,19 +62,14 @@ function Make(Spec, Config) {
         running.contents = undefined;
         return ;
       }
-      var bufferSizeStr = buffer.length.toString();
       chunkCount.contents = chunkCount.contents + 1 | 0;
       var chunkCountStr = chunkCount.contents.toString();
-      var sizeStr = size.toString();
-      console.log("send: buffer: " + bufferSizeStr + ", chunk: " + chunkCountStr + ", size: " + sizeStr + "");
+      size.toString();
       var commandsToSend = buffer.splice(0, size);
       var promise = Config.publishCommands(Spec.name, toJsons(commandsToSend));
       running.contents = Caml_option.some(promise);
-      var exit = 0;
-      var val;
       try {
-        val = await promise;
-        exit = 1;
+        await promise;
       }
       catch (raw_e){
         var e = Caml_js_exceptions.internalToOCamlException(raw_e);
@@ -90,9 +85,6 @@ function Make(Spec, Config) {
           throw e;
         }
       }
-      if (exit === 1) {
-        console.log("CommandPublisher.send: finished chunk " + chunkCountStr + ":", size);
-      }
       return await send(undefined);
     }
     var size$1 = buffer.length;
@@ -102,11 +94,11 @@ function Make(Spec, Config) {
     var commandsToSend$1 = buffer.splice(0, size$1);
     var promise$1 = Config.publishCommands(Spec.name, toJsons(commandsToSend$1));
     running.contents = Caml_option.some(promise$1);
-    var exit$1 = 0;
-    var val$1;
+    var exit = 0;
+    var val;
     try {
-      val$1 = await promise$1;
-      exit$1 = 1;
+      val = await promise$1;
+      exit = 1;
     }
     catch (raw_e$1){
       var e$1 = Caml_js_exceptions.internalToOCamlException(raw_e$1);
@@ -116,7 +108,7 @@ function Make(Spec, Config) {
         throw e$1;
       }
     }
-    if (exit$1 === 1) {
+    if (exit === 1) {
       console.log("CommandPublisher.send: finished SendAllInOneChunk:", size$1);
     }
     running.contents = undefined;

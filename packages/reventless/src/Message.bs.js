@@ -10,7 +10,6 @@ var Js_option = require("@rescript/std/lib/js/js_option.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
-var Util_Decco$Reventless = require("./util/Util_Decco.bs.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.bs.js");
 
 function now(param) {
@@ -77,21 +76,6 @@ var InvalidCommand = /* @__PURE__ */Caml_exceptions.create("Message-Reventless.I
 function log(value, str) {
   console.log(str, value);
   return value;
-}
-
-function logEvent$pJson(event$pJson, description) {
-  var eventStr = JSON.stringify(event$pJson);
-  try {
-    var event$p = Belt_Option.getExn(Js_json.decodeObject(event$pJson));
-    var id = Belt_Option.getWithDefault(Js_json.decodeString(event$p["id"]), "{ERROR (" + "File \"Message.res\", line 92, characters 49-56" + "): Could not get id!}");
-    var eventName = Belt_Option.getExn(Util_Decco$Reventless.Json.variantName(event$p["event"]));
-    console.log("" + description + " " + eventName + "(" + id + ") complete event: " + eventStr + "");
-    return ;
-  }
-  catch (exn){
-    console.log("Couldn't log event:", eventStr);
-    return ;
-  }
 }
 
 function hrtimeToString(hrtime, now) {
@@ -214,7 +198,6 @@ exports.serviceNameOfMsg = serviceNameOfMsg;
 exports.InvalidEvent = InvalidEvent;
 exports.InvalidCommand = InvalidCommand;
 exports.log = log;
-exports.logEvent$pJson = logEvent$pJson;
 exports.hrtimeToString = hrtimeToString;
 exports.generateMeta = generateMeta;
 exports.decomposeMeta = decomposeMeta;

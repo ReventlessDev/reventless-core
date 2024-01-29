@@ -81,23 +81,6 @@ let log: ('a, string) => 'a = (value, str) => {
   value
 }
 
-let logEvent'Json = (event'Json, description) => {
-  let eventStr = event'Json->Js.Json.stringify
-  try {
-    let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn
-    let id =
-      event'
-      ->Js.Dict.unsafeGet("id")
-      ->Js.Json.decodeString
-      ->Belt.Option.getWithDefault("{ERROR (" ++ __LOC__ ++ "): Could not get id!}")
-    let eventName =
-      event'->Js.Dict.unsafeGet("event")->Util.Decco.Json.variantName->Belt.Option.getExn
-    Js.log(`${description} ${eventName}(${id}) complete event: ${eventStr}`)
-  } catch {
-  | _ => Js.log2("Couldn't log event:", eventStr)
-  }
-}
-
 type hrtime = (int, int)
 @val @scope("process") external hrtime: unit => hrtime = "hrtime"
 
