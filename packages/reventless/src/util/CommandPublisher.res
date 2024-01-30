@@ -24,7 +24,7 @@ module Make = (Spec: Spec, Config: Config) => {
     | None => ()
     | Some(promise) =>
       try await promise catch {
-      | Js.Exn.Error(e) => Js.log2("CommandPublisher: Error: Couldn't publish commands", e)
+      | Js.Exn.Error(e) => Logger.error(~loc=__LOC__, "Couldn't publish commands", e)
       }
     }
 
@@ -53,17 +53,19 @@ module Make = (Spec: Spec, Config: Config) => {
       let size = Js.Math.min_int(chunkSize, buffer->Belt.Array.size)
       if size >= chunkSize || (size > 0 && flush.contents) {
         chunkCount := chunkCount.contents + 1
+        let sizeStr = size->Belt.Int.toString
+        let bufferSizeStr = buffer->Belt.Array.size->Belt.Int.toString
         let chunkCountStr = chunkCount.contents->Js.Int.toString
         Logger.debug(
           ~loc=__LOC__,
           "send",
-          `buffer: ${buffer->Belt.Array.size->Belt.Int.toString}, chunk: ${chunkCountStr}, size: ${size->Belt.Int.toString}`,
+          `bufferSize: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`,
         )
         let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
         let promise = Config.publishCommands(. Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
-        | () => () // Js.log2(`CommandPublisher.send: finished chunk ${chunkCountStr}:`, size)
+        | () => Logger.debug(~loc=__LOC__, "send", `finished chunk ${chunkCountStr}: ${sizeStr}`)
         | exception Js.Exn.Error(e) =>
           let errorMessage = e->Js.Exn.message->Belt.Option.getWithDefault("unknown Error")
           Js.log(

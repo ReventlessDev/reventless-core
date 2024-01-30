@@ -35,8 +35,7 @@ function Make(Spec, Config) {
     catch (raw_e){
       var e = Caml_js_exceptions.internalToOCamlException(raw_e);
       if (e.RE_EXN_ID === Js_exn.$$Error) {
-        console.log("CommandPublisher: Error: Couldn't publish commands", e._1);
-        return ;
+        return Logger$Reventless.error("File \"CommandPublisher.res\", line 27, characters 45-52", undefined, undefined)("Couldn't publish commands", e._1);
       }
       throw e;
     }
@@ -64,13 +63,18 @@ function Make(Spec, Config) {
         return ;
       }
       chunkCount.contents = chunkCount.contents + 1 | 0;
+      var sizeStr = String(size);
+      var bufferSizeStr = String(buffer.length);
       var chunkCountStr = chunkCount.contents.toString();
-      Logger$Reventless.debug("File \"CommandPublisher.res\", line 58, characters 15-22", undefined, undefined)("send", "buffer: " + String(buffer.length) + ", chunk: " + chunkCountStr + ", size: " + String(size) + "");
+      Logger$Reventless.debug("File \"CommandPublisher.res\", line 60, characters 15-22", undefined, undefined)("send", "bufferSize: " + bufferSizeStr + ", chunk: " + chunkCountStr + ", size: " + sizeStr + "");
       var commandsToSend = buffer.splice(0, size);
       var promise = Config.publishCommands(Spec.name, toJsons(commandsToSend));
       running.contents = Caml_option.some(promise);
+      var exit = 0;
+      var val;
       try {
-        await promise;
+        val = await promise;
+        exit = 1;
       }
       catch (raw_e){
         var e = Caml_js_exceptions.internalToOCamlException(raw_e);
@@ -86,6 +90,9 @@ function Make(Spec, Config) {
           throw e;
         }
       }
+      if (exit === 1) {
+        Logger$Reventless.debug("File \"CommandPublisher.res\", line 68, characters 34-41", undefined, undefined)("send", "finished chunk " + chunkCountStr + ": " + sizeStr + "");
+      }
       return await send(undefined);
     }
     var size$1 = buffer.length;
@@ -95,11 +102,11 @@ function Make(Spec, Config) {
     var commandsToSend$1 = buffer.splice(0, size$1);
     var promise$1 = Config.publishCommands(Spec.name, toJsons(commandsToSend$1));
     running.contents = Caml_option.some(promise$1);
-    var exit = 0;
-    var val;
+    var exit$1 = 0;
+    var val$1;
     try {
-      val = await promise$1;
-      exit = 1;
+      val$1 = await promise$1;
+      exit$1 = 1;
     }
     catch (raw_e$1){
       var e$1 = Caml_js_exceptions.internalToOCamlException(raw_e$1);
@@ -109,7 +116,7 @@ function Make(Spec, Config) {
         throw e$1;
       }
     }
-    if (exit === 1) {
+    if (exit$1 === 1) {
       console.log("CommandPublisher.send: finished SendAllInOneChunk:", size$1);
     }
     running.contents = undefined;
