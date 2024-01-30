@@ -133,18 +133,19 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     ReventlessSpec.CommandTopic.outputs,
   > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
-  let publishJsonsFn = connector => async (. cmdJsons) =>
-    switch await connector.Adapter.publish(. cmdJsons) {
-    | exception e =>
-      Js.log2(
-        "CommandTopic: Couldn't publish commands:",
-        cmdJsons->Belt.Array.map(commandJson =>
-          commandJson->Message.commandJson_encode->Js.Json.stringify
-        ),
-      )
-      raise(e)
-    | _ => cmdJsons->Logger.logCmdJsons("CommandTopic: Published commands:")
-    }
+  let publishJsonsFn = connector =>
+    async (. cmdJsons) =>
+      switch await connector.Adapter.publish(. cmdJsons) {
+      | exception e =>
+        Logger.logCmdJsons(
+          ~level=Logger.Level.Error,
+          ~loc=__LOC__,
+          cmdJsons,
+          "Couldn't publish commands",
+        )
+        raise(e)
+      | _ => cmdJsons->Logger.logCmdJsons("CommandTopic: Published commands:")
+      }
 
   let publishFn: Adapter.connector => (
     . Message.command'<Spec.Id.t, Spec.command>,
@@ -160,27 +161,31 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     }
   }
 
-  let handleCommands = commandsHandler => async (. jsonItems) => {
-    Js.log2("starting CommandTopic.handleCommands. Command count:", jsonItems->Belt.Array.size)
-    let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
-      switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
-      | Belt_Result.Ok(command') => Some({reference, command: command'})
-      | Belt_Result.Error(err) =>
-        let commandStr = json->Js.Json.stringify
-        let message = err.message
-        Js.log(`CommandTopic: Error: Couldn't decode command ${commandStr}: ${message}`)
-        None
+  let handleCommands = commandsHandler =>
+    async (. jsonItems) => {
+      Logger.debug(
+        ~loc=__LOC__,
+        "starting handleCommands. Command count",
+        jsonItems->Belt.Array.size,
+      )
+      let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
+        switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
+        | Belt_Result.Ok(command') => Some({reference, command: command'})
+        | Belt_Result.Error(err) =>
+          let commandStr = json->Js.Json.stringify
+          Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}`, err.message)
+          None
+        }
+      )
+      switch await commandsHandler(. topicItems) {
+      | res =>
+        Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
+        res
+      | exception Js.Exn.Error(e) =>
+        Logger.error(~loc=__LOC__, "Couldn't handle commands", e)
+        Js.Exn.raiseError(__LOC__ ++ `Error: Couldn't handle commands`) // TODO: exception details
       }
-    )
-    switch await commandsHandler(. topicItems) {
-    | res =>
-      Js.log("finished CommandTopic.handleCommands")
-      res
-    | exception Js.Exn.Error(e) =>
-      Js.log2("CommandTopic.handleCommand: Error: Couldn't handle commands", e)
-      Js.Exn.raiseError(`CommandTopic.handleCommand: Error: Couldn't handle commands`) // TODO: exception details
     }
-  }
 
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
