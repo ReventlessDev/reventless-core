@@ -8,6 +8,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_splice_call = require("@rescript/std/lib/js/caml_splice_call.js");
+var Logger$Reventless = require("./Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Util_Promise$Reventless = require("./Util_Promise.bs.js");
@@ -64,7 +65,7 @@ function Make(Spec, Config) {
       }
       chunkCount.contents = chunkCount.contents + 1 | 0;
       var chunkCountStr = chunkCount.contents.toString();
-      size.toString();
+      Logger$Reventless.debug("File \"CommandPublisher.res\", line 58, characters 15-22", undefined, undefined)("send", "buffer: " + String(buffer.length) + ", chunk: " + chunkCountStr + ", size: " + String(size) + "");
       var commandsToSend = buffer.splice(0, size);
       var promise = Config.publishCommands(Spec.name, toJsons(commandsToSend));
       running.contents = Caml_option.some(promise);
@@ -158,4 +159,4 @@ function Make(Spec, Config) {
 }
 
 exports.Make = Make;
-/* Message-Reventless Not a pure module */
+/* Logger-Reventless Not a pure module */

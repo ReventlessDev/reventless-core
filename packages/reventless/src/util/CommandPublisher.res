@@ -52,11 +52,13 @@ module Make = (Spec: Spec, Config: Config) => {
     | SendChunks(chunkSize) =>
       let size = Js.Math.min_int(chunkSize, buffer->Belt.Array.size)
       if size >= chunkSize || (size > 0 && flush.contents) {
-        // let bufferSizeStr = buffer->Belt.Array.size->Js.Int.toString
         chunkCount := chunkCount.contents + 1
         let chunkCountStr = chunkCount.contents->Js.Int.toString
-        let sizeStr = size->Js.Int.toString
-        // Js.log(`send: buffer: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`)
+        Logger.debug(
+          ~loc=__LOC__,
+          "send",
+          `buffer: ${buffer->Belt.Array.size->Belt.Int.toString}, chunk: ${chunkCountStr}, size: ${size->Belt.Int.toString}`,
+        )
         let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
         let promise = Config.publishCommands(. Spec.name, commandsToSend->toJsons)
         running := Some(promise)
