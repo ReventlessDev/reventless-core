@@ -62,7 +62,6 @@ function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
   if (typeof level === "number") {
     switch (level) {
       case /* Debug */0 :
-          console.log(tag, descStringified$1, itemStringified$1);
           return ;
       case /* Info */1 :
           console.info(tag, descStringified$1, itemStringified$1);

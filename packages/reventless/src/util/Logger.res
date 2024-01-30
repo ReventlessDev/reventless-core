@@ -56,8 +56,11 @@ let log: (
   | Info
   | Custom(_) =>
     Js.Console.info3(tag, descStringified, itemStringified)
-
-  | Debug => Js.Console.log3(tag, descStringified, itemStringified)
+  | Debug => /*
+        TODO: use js `console.debug`, when lambda FunctionLoggingConf setting has been incorporated into reventless-aws
+        previously: Js.Console.info3(tag, descStringified, itemStringified)
+ */
+    () // NOTE: noop for the time being to prevent consumption into CloudWatch logs
   }
 }
 
