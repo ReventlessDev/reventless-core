@@ -1,7 +1,6 @@
 open ReventlessSpec.Projection.Spec // FIXME: open locally
 open ReventlessSpec.ReadModel.Spec // FIXME: open locally
 open Belt.Result // FIXME: open locally
-open QueryDb // FIXME: open locally
 
 module Set = Belt.Set.String
 
