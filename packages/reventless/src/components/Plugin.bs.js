@@ -406,7 +406,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             var count = events$pJson.length;
             return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
                                   var idx$1 = idx + 1 | 0;
-                                  Logger$Reventless.logEvent$pJson(event$pJson, "Plugin " + id + " eventsHandler: incoming event " + String(idx$1) + "/" + String(count) + ":");
+                                  Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "Plugin " + id + " eventsHandler: incoming event " + String(idx$1) + "/" + String(count) + ":");
                                   detectUnhandledEvent(event$pJson);
                                   await handleEvent(event$pJson, incomingServiceNameToPluginConnectExtensionsMapping, (function (extension) {
                                           return extension.incomingEventHandler;

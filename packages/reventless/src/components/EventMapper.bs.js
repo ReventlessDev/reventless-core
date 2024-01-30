@@ -134,7 +134,7 @@ function Make(Target, EventCollector, Mappings) {
     var eventsCount = events$pJson.length;
     var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(events$pJson, (function (idx, event$pJson) {
                         var idx$1 = idx + 1 | 0;
-                        Logger$Reventless.logEvent$pJson(event$pJson, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
+                        Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
                         var event$p = Js_json.decodeObject(event$pJson);
                         var match = findMapping(mappings, event$p);
                         if (match === undefined) {

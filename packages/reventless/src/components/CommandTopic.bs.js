@@ -28,7 +28,7 @@ function Make(Spec, Connector) {
                   })));
         throw e;
       }
-      return Logger$Reventless.logCmdJsons(cmdJsons, "CommandTopic: Published commands:");
+      return Logger$Reventless.logCmdJsons(undefined, undefined, cmdJsons, "CommandTopic: Published commands:");
     };
   };
   var publishFn = function (connector) {

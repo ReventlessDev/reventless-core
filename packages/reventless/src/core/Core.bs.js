@@ -86,7 +86,7 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
       var count = events$pJson.length;
       return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
                             var idx$1 = idx + 1 | 0;
-                            Logger$Reventless.logEvent$pJson(event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
+                            Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
                             return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
                                                   var handle = extensionPoint.outgoingEventHandler;
                                                   return handle(event$pJson, fakePluginDefinition);
