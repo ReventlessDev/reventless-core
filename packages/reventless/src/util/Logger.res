@@ -24,7 +24,7 @@ external identity: 'a => 'a = "%identity"
 
 let log: (
   ~loc: string=?,
-  ~map: 'a => 'b=?,
+  ~map: 'a => 'b=?, // NOTE: potentially remove this arg
   ~stringify: bool=?,
   ~level: Level.t=?,
   string,
@@ -60,6 +60,11 @@ let log: (
   | Debug => Js.Console.log3(tag, descStringified, itemStringified)
   }
 }
+
+let warn = log(~level=Level.Warning)
+let error = log(~level=Level.Error)
+let info = log(~level=Level.Info)
+let debug = log(~level=Level.Debug)
 
 let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmds => {
   let count = cmds->Belt.Array.size->Belt.Int.toString

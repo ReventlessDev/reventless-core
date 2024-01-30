@@ -81,6 +81,34 @@ function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
   }
 }
 
+function warn(param, param$1, param$2) {
+  var partial_arg = /* Warning */2;
+  return function (param$3, param$4) {
+    return log(param, param$1, param$2, partial_arg, param$3, param$4);
+  };
+}
+
+function error(param, param$1, param$2) {
+  var partial_arg = /* Error */3;
+  return function (param$3, param$4) {
+    return log(param, param$1, param$2, partial_arg, param$3, param$4);
+  };
+}
+
+function info(param, param$1, param$2) {
+  var partial_arg = /* Info */1;
+  return function (param$3, param$4) {
+    return log(param, param$1, param$2, partial_arg, param$3, param$4);
+  };
+}
+
+function debug(param, param$1, param$2) {
+  var partial_arg = /* Debug */0;
+  return function (param$3, param$4) {
+    return log(param, param$1, param$2, partial_arg, param$3, param$4);
+  };
+}
+
 function commandJsonsToLogMessages(cmds) {
   var count = String(cmds.length);
   return Belt_Array.mapWithIndex(cmds, (function (idx, param) {
@@ -115,6 +143,10 @@ function logEvent$pJson(loc, levelOpt, event$pJson, desc) {
 
 exports.Level = Level;
 exports.log = log;
+exports.warn = warn;
+exports.error = error;
+exports.info = info;
+exports.debug = debug;
 exports.commandJsonsToLogMessages = commandJsonsToLogMessages;
 exports.logCmdJsons = logCmdJsons;
 exports.event$pJsonToLogMessage = event$pJsonToLogMessage;
