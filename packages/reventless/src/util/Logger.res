@@ -22,14 +22,6 @@ type logItem
 external logItem: 'a => logItem = "%identity"
 external identity: 'a => 'a = "%identity"
 
-module Json = {
-  let variantName: Js.Json.t => option<string> = json =>
-    json
-    ->Js.Json.decodeArray
-    ->Belt.Option.flatMap(evtArr => evtArr->Belt.Array.get(0))
-    ->Belt.Option.flatMap(evt => evt->Js.Json.decodeString)
-}
-
 let log: (
   ~loc: string=?,
   ~map: 'a => 'b=?,
@@ -69,29 +61,38 @@ let log: (
   }
 }
 
-let logCmdJsons = (cmdJsons, desc) => {
-  let count = cmdJsons->Belt.Array.size
-  cmdJsons->Belt.Array.forEachWithIndex((idx, {Message.id: id, commandJson}) => {
-    let idx = idx + 1
-    let messageBody = commandJson->Js.Json.stringify
-    Js.log(
-      `${desc} ${idx->Belt.Int.toString}/${count->Belt.Int.toString}: id=${id}, ${messageBody}`,
-    )
+let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmds => {
+  let count = cmds->Belt.Array.size->Belt.Int.toString
+  cmds->Belt.Array.mapWithIndex((idx, {id, commandJson}) => {
+    let idx = (idx + 1)->Belt.Int.toString
+    let commandStringified = commandJson->Js.Json.stringify
+    `${idx}/${count}: id=${id}, ${commandStringified}`
   })
 }
 
-let logEvent'Json = (event'Json, description) => {
-  let eventStr = event'Json->Js.Json.stringify
-  try {
-    let event' = event'Json->Js.Json.decodeObject->Belt.Option.getExn
-    let id =
-      event'
-      ->Js.Dict.unsafeGet("id")
-      ->Js.Json.decodeString
-      ->Belt.Option.getWithDefault("{ERROR (" ++ __LOC__ ++ "): Could not get id!}")
-    let eventName = event'->Js.Dict.unsafeGet("event")->Json.variantName->Belt.Option.getExn
-    Js.log(`${description} ${eventName}(${id}) complete event: ${eventStr}`)
-  } catch {
-  | _ => Js.log2("Couldn't log event:", eventStr)
+// NOTE: maybe decompose this into 2 functions
+//  - locCmdJson: single
+//  - locCmdJsons: array
+let logCmdJsons = (~loc=?, ~level=Level.Info, cmdJsons, desc) => {
+  cmdJsons
+  ->commandJsonsToLogMessages
+  ->Belt.Array.forEach(msg => {
+    log(~loc?, ~level, desc, msg)
+  })
+}
+
+let event'JsonToLogMessage: Js.Json.t => option<string> = event'Json => {
+  let id = event'Json->Message.idOfEvent'Json
+  let eventName = event'Json->Message.eventNameOfEvent'Json
+  let eventStringified = event'Json->Js.Json.stringify
+  switch (id, eventName) {
+  | (Some(id), Some(eventName)) => Some(`${eventName}(${id}) complete event: ${eventStringified}`)
+  | _ => None
   }
+}
+
+let logEvent'Json = (~loc=?, ~level=Level.Info, event'Json, desc) => {
+  event'JsonToLogMessage(event'Json)
+  ->Belt.Option.getWithDefault(`Couldn't log event: ${event'Json->Js.Json.stringify}`)
+  ->log(~loc?, ~level, desc, _)
 }

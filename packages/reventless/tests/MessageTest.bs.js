@@ -2,7 +2,10 @@
 'use strict';
 
 var Jest = require("@glennsl/rescript-jest/src/jest.bs.js");
+var Decco = require("decco/src/Decco.bs.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Message$Reventless = require("../src/Message.bs.js");
+var PluginSpec$Reventless = require("../src/core/Aggregates/Plugin/PluginSpec.bs.js");
 
 Jest.describe("Message should", (function (param) {
         Jest.test("create a valid sequenceNr", (function (param) {
@@ -10,6 +13,65 @@ Jest.describe("Message should", (function (param) {
                                     1,
                                     1
                                   ], 123456789)), "123456789-000000001");
+              }));
+        Jest.test("get variant name of json without payload", (function (param) {
+                var variantJson = PluginSpec$Reventless.command_encode(/* Heartbeat */0);
+                var variantName = Belt_Option.getExn(Message$Reventless.variantNameOfJson(variantJson));
+                return Jest.Expect.toBe(Jest.Expect.expect(variantName), "Heartbeat");
+              }));
+        Jest.test("get variant name of json with payload", (function (param) {
+                var variant = /* Connect */{
+                  _0: {
+                    id: "id",
+                    name: "testName",
+                    version: "testVersion",
+                    extensionPoints: [{
+                        name: "testExtensionPoint",
+                        commandTopic: "testCommandTopic",
+                        eventTopic: "testEventTopic"
+                      }],
+                    extensions: [{
+                        name: "testExtension",
+                        extensionPointName: "testExtensionPoint"
+                      }],
+                    eventCollector: "testEventCollector"
+                  }
+                };
+                var variantJson = PluginSpec$Reventless.command_encode(variant);
+                var variantName = Belt_Option.getExn(Message$Reventless.variantNameOfJson(variantJson));
+                return Jest.Expect.toBe(Jest.Expect.expect(variantName), "Connect");
+              }));
+        Jest.test("get event name of event'Json", (function (param) {
+                var event$pJson = Message$Reventless.event$p_encode(Decco.stringToJson, PluginSpec$Reventless.event_encode, {
+                      id: "testId",
+                      meta: {
+                        service: "testService",
+                        time: "testTime",
+                        ip: "testIp",
+                        user: "testUser",
+                        msgId: "testMsgId",
+                        correlationId: "testCorrelationId"
+                      },
+                      event: /* UnknownPluginDetected */0
+                    });
+                var eventName = Belt_Option.getExn(Message$Reventless.eventNameOfEvent$pJson(event$pJson));
+                return Jest.Expect.toBe(Jest.Expect.expect(eventName), "UnknownPluginDetected");
+              }));
+        Jest.test("get id of event'Json", (function (param) {
+                var event$pJson = Message$Reventless.event$p_encode(Decco.stringToJson, PluginSpec$Reventless.event_encode, {
+                      id: "testId",
+                      meta: {
+                        service: "testService",
+                        time: "testTime",
+                        ip: "testIp",
+                        user: "testUser",
+                        msgId: "testMsgId",
+                        correlationId: "testCorrelationId"
+                      },
+                      event: /* UnknownPluginDetected */0
+                    });
+                var eventId = Belt_Option.getExn(Message$Reventless.idOfEvent$pJson(event$pJson));
+                return Jest.Expect.toBe(Jest.Expect.expect(eventId), "testId");
               }));
       }));
 

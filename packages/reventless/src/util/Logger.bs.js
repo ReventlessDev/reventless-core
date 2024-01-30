@@ -2,9 +2,9 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
-var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Message$Reventless = require("../Message.bs.js");
 
 function toString(level) {
   if (typeof level !== "number") {
@@ -26,16 +26,6 @@ function toString(level) {
 var Level = {
   toString: toString,
   $$default: /* Info */1
-};
-
-function variantName(json) {
-  return Belt_Option.flatMap(Belt_Option.flatMap(Js_json.decodeArray(json), (function (evtArr) {
-                    return Belt_Array.get(evtArr, 0);
-                  })), Js_json.decodeString);
-}
-
-var Json = {
-  variantName: variantName
 };
 
 function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
@@ -91,33 +81,42 @@ function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
   }
 }
 
-function logCmdJsons(cmdJsons, desc) {
-  var count = cmdJsons.length;
-  Belt_Array.forEachWithIndex(cmdJsons, (function (idx, param) {
-          var idx$1 = idx + 1 | 0;
-          var messageBody = JSON.stringify(param.commandJson);
-          console.log("" + desc + " " + String(idx$1) + "/" + String(count) + ": id=" + param.id + ", " + messageBody + "");
+function commandJsonsToLogMessages(cmds) {
+  var count = String(cmds.length);
+  return Belt_Array.mapWithIndex(cmds, (function (idx, param) {
+                var idx$1 = String(idx + 1 | 0);
+                var commandStringified = JSON.stringify(param.commandJson);
+                return "" + idx$1 + "/" + count + ": id=" + param.id + ", " + commandStringified + "";
+              }));
+}
+
+function logCmdJsons(loc, levelOpt, cmdJsons, desc) {
+  var level = levelOpt !== undefined ? levelOpt : /* Info */1;
+  Belt_Array.forEach(commandJsonsToLogMessages(cmdJsons), (function (msg) {
+          log(loc, undefined, undefined, level, desc, msg);
         }));
 }
 
-function logEvent$pJson(event$pJson, description) {
-  var eventStr = JSON.stringify(event$pJson);
-  try {
-    var event$p = Belt_Option.getExn(Js_json.decodeObject(event$pJson));
-    var id = Belt_Option.getWithDefault(Js_json.decodeString(event$p["id"]), "{ERROR (" + "File \"Logger.res\", line 91, characters 49-56" + "): Could not get id!}");
-    var eventName = Belt_Option.getExn(variantName(event$p["event"]));
-    console.log("" + description + " " + eventName + "(" + id + ") complete event: " + eventStr + "");
-    return ;
+function event$pJsonToLogMessage(event$pJson) {
+  var id = Message$Reventless.idOfEvent$pJson(event$pJson);
+  var eventName = Message$Reventless.eventNameOfEvent$pJson(event$pJson);
+  var eventStringified = JSON.stringify(event$pJson);
+  if (id !== undefined && eventName !== undefined) {
+    return "" + eventName + "(" + id + ") complete event: " + eventStringified + "";
   }
-  catch (exn){
-    console.log("Couldn't log event:", eventStr);
-    return ;
-  }
+  
+}
+
+function logEvent$pJson(loc, levelOpt, event$pJson, desc) {
+  var level = levelOpt !== undefined ? levelOpt : /* Info */1;
+  var __x = Belt_Option.getWithDefault(event$pJsonToLogMessage(event$pJson), "Couldn't log event: " + JSON.stringify(event$pJson) + "");
+  log(loc, undefined, undefined, level, desc, __x);
 }
 
 exports.Level = Level;
-exports.Json = Json;
 exports.log = log;
+exports.commandJsonsToLogMessages = commandJsonsToLogMessages;
 exports.logCmdJsons = logCmdJsons;
+exports.event$pJsonToLogMessage = event$pJsonToLogMessage;
 exports.logEvent$pJson = logEvent$pJson;
-/* No side effect */
+/* Message-Reventless Not a pure module */

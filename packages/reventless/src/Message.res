@@ -60,6 +60,26 @@ let serviceNameOfMsg = msgJson =>
     None
   }
 
+let variantNameOfJson: Js.Json.t => option<string> = json =>
+  json
+  ->Js.Json.decodeArray
+  ->Belt.Option.flatMap(evtArr => evtArr->Belt.Array.get(0))
+  ->Belt.Option.flatMap(evt => evt->Js.Json.decodeString)
+
+// TODO: group all functions on event`Json into submodule with the according type
+
+let eventNameOfEvent'Json: Js.Json.t => option<string> = json => {
+  json
+  ->Js.Json.decodeObject
+  ->Belt.Option.flatMap(event' => event'->Js.Dict.unsafeGet("event")->variantNameOfJson)
+}
+
+let idOfEvent'Json: Js.Json.t => option<string> = json => {
+  json
+  ->Js.Json.decodeObject
+  ->Belt.Option.flatMap(event' => event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString)
+}
+
 type eventsHandler<'id, 'event> = (
   . 'id,
   array<ReventlessSpec.Message.event'<'id, 'event>>,
