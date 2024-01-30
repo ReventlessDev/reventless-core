@@ -194,7 +194,7 @@ let construct: construct = (self, name, availabilityZone) => {
   )
 
   let region = PulumiAws.Aws.getRegion()
-  let service = async serviceName => `com.amazonaws.{(await region)["name"]}.${serviceName}`
+  let service = async serviceName => `com.amazonaws.${(await region)["name"]}.${serviceName}`
 
   let routeTableIds = [
     publicSubnetRouteTable["id"]->Pulumi.Output.asInput,

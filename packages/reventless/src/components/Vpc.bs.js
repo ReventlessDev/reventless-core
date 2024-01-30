@@ -83,9 +83,9 @@ function construct(self, name, availabilityZone) {
         routeTableId: privateSubnetRouteTable.id,
         subnetId: privateSubnet.id
       }, Caml_option.some(opts), undefined);
-  Aws.getRegion(undefined, undefined);
+  var region = Aws.getRegion(undefined, undefined);
   var service = async function (serviceName) {
-    return "com.amazonaws.{(await region)[\"name\"]}." + serviceName + "";
+    return "com.amazonaws." + (await region).name + "." + serviceName + "";
   };
   var routeTableIds = [
     publicSubnetRouteTable.id,
