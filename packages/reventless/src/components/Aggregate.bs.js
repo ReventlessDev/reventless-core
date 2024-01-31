@@ -10,11 +10,11 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var EventLog$Reventless = require("./EventLog.bs.js");
 var Component$Reventless = require("./Component.bs.js");
-var Util_Decco$Reventless = require("../util/Util_Decco.bs.js");
 var EventMapper$Reventless = require("./EventMapper.bs.js");
 var CommandTopic$Reventless = require("./CommandTopic.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
@@ -56,9 +56,9 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
   var EventLog = partial_arg$6(EventLogStorage, EventTopicPublisher);
   var errorHandler = function (error, command, context) {
     var errorJson = JSON.stringify(Curry._1(Spec.error_encode, error));
-    var commandJson = JSON.stringify(Curry._1(Spec.command_encode, command));
+    var commandJsonStr = JSON.stringify(Curry._1(Spec.command_encode, command));
     var id = context.id;
-    console.log("Behaviour error " + errorJson + " in " + Spec.name + "(" + id + "): Command: " + commandJson + "");
+    Logger$Reventless.error("File \"Aggregate.res\", line 102, characters 11-18", undefined, undefined)("Behaviour error " + errorJson + " in " + Spec.name + "(" + id + "): Command: ", commandJsonStr);
     return [];
   };
   var groupTopicItemsById = function (topicItems) {
@@ -98,7 +98,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                 correlationId: init.correlationId
               };
       };
-      console.log("starting Aggregate.execCommands");
+      Logger$Reventless.debug("File \"Aggregate.res\", line 153, characters 24-31", undefined, undefined)("starting", "Aggregate.execCommands");
       return Belt_Array.concatMany(await Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (async function (param) {
                             var topicItems = param[1];
                             var id = param[0];
@@ -118,7 +118,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                   catch (raw_event){
                                     var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
                                     if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-                                      console.log("Aggregate.processCommand: InvalidEvent", JSON.stringify($$event._1));
+                                      Logger$Reventless.error("File \"Aggregate.res\", line 177, characters 25-32", undefined, undefined)("Aggregate.processCommand: InvalidEvent", JSON.stringify($$event._1));
                                       generatedEvents = [];
                                     } else {
                                       throw $$event;
@@ -157,16 +157,10 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                 return acc;
                               }
                             };
-                            console.log("finished eventLogReplay for id " + Curry._1(Spec.Id.toString, id) + "");
-                            Belt_Array.mapWithIndex(topicItems, (function (idx, param) {
-                                    var command = param.command;
-                                    var count = topicItems.length;
-                                    var id = command.id;
-                                    var commandName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.command_encode, command.command)), "Could not get command-name");
-                                    var commandStr = JSON.stringify(Message$Reventless.command$p_encode(Spec.Id.t_encode, Spec.command_encode, command));
-                                    var idx$1 = idx + 1 | 0;
-                                    console.log("CommandTopic: handling command " + String(idx$1) + "/" + String(count) + ": " + commandName + "(" + Curry._1(Spec.Id.toString, id) + ") ref: " + param.reference + ", complete command: " + commandStr + "");
-                                  }));
+                            Logger$Reventless.debug("File \"Aggregate.res\", line 208, characters 28-35", undefined, undefined)("finished eventLogReplay for id", Curry._1(Spec.Id.toString, id));
+                            Logger$Reventless.logCmdJsons("File \"Aggregate.res\", line 214, characters 17-24", /* Info */1, Belt_Array.map(topicItems, (function (param) {
+                                        return Message$Reventless.commandJsonOfCommand$p(Spec.Id.toString, Spec.command_encode, param.command);
+                                      })), "handling command");
                             var match = Belt_Array.unzip(Belt_Array.map(topicItems, (function (param) {
                                         return [
                                                 param.reference,
@@ -194,12 +188,12 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                         }))) : Js_exn.raiseError(result._0);
                             if (events.length !== 0) {
                               var eventCount = events.length;
-                              console.log("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + "): " + String(eventCount) + " Event(s) generated:", Belt_Array.map(events, (function (event$p) {
-                                          return Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
+                              Logger$Reventless.info(undefined, undefined, undefined)("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + "): " + String(eventCount) + " Event(s) generated:", Belt_Array.map(events, (function (event$p) {
+                                          return Belt_Option.getWithDefault(Message$Reventless.variantNameOfJson(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
                                         })));
                               var match$1 = await eventLogAppend(history.length, id, events);
                               if (match$1.TAG === /* Ok */0) {
-                                console.log("finished eventLogAppend for id " + Curry._1(Spec.Id.toString, id) + "");
+                                Logger$Reventless.debug("File \"Aggregate.res\", line 262, characters 32-39", undefined, undefined)("finished eventLogAppend for id", Curry._1(Spec.Id.toString, id));
                                 return Belt_Array.map(references, (function (reference) {
                                               return {
                                                       TAG: /* Ok */0,
@@ -207,7 +201,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                     };
                                             }));
                               }
-                              console.log("Error: failed eventLogAppend for id " + Curry._1(Spec.Id.toString, id) + "");
+                              Logger$Reventless.error("File \"Aggregate.res\", line 265, characters 32-39", undefined, undefined)("failed eventLogAppend for id", Curry._1(Spec.Id.toString, id));
                               return Belt_Array.map(references, (function (reference) {
                                             return {
                                                     TAG: /* Error */1,
@@ -215,7 +209,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                   };
                                           }));
                             }
-                            console.log("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + "): no Event generated");
+                            Logger$Reventless.debug("File \"Aggregate.res\", line 247, characters 21-28", undefined, undefined)("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + ")", "no Event generated");
                             return Belt_Array.map(references, (function (reference) {
                                           return {
                                                   TAG: /* Ok */0,

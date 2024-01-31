@@ -146,3 +146,16 @@ let composeMeta = (dict: Js.Dict.t<Js.Json.t>) =>
 
 type decoder<'a> = Js.Json.t => Belt.Result.t<'a, Decco.decodeError>
 type encoder<'a> = 'a => Js.Json.t
+
+let commandJsonOfCommand': (
+  ~idToString: 'id => string,
+  ~commandEncode: 'command => Js.Json.t,
+  command'<'id, 'command>,
+) => commandJson = (~idToString, ~commandEncode, cmd) => {
+  {
+    id: cmd.id->idToString,
+    meta: cmd.meta,
+    commandJson: cmd.command->commandEncode,
+    delay: None,
+  }
+}

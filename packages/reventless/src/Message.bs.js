@@ -2,6 +2,7 @@
 'use strict';
 
 var Uuid = require("@reventless/bs-uuid/src/Uuid.bs.js");
+var Curry = require("@rescript/std/lib/js/curry.js");
 var $$String = require("@rescript/std/lib/js/string.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
@@ -162,6 +163,15 @@ function composeMeta(dict) {
             ]);
 }
 
+function commandJsonOfCommand$p(idToString, commandEncode, cmd) {
+  return {
+          id: Curry._1(idToString, cmd.id),
+          meta: cmd.meta,
+          commandJson: Curry._1(commandEncode, cmd.command),
+          delay: undefined
+        };
+}
+
 var service_encode = Message$ReventlessSpec.service_encode;
 
 var service_decode = Message$ReventlessSpec.service_decode;
@@ -225,4 +235,5 @@ exports.generateMeta = generateMeta;
 exports.decomposeMeta = decomposeMeta;
 exports.string = string;
 exports.composeMeta = composeMeta;
+exports.commandJsonOfCommand$p = commandJsonOfCommand$p;
 /* Uuid Not a pure module */
