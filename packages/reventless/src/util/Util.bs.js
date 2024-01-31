@@ -10,8 +10,6 @@ var Aggregate;
 
 var $$Array;
 
-var Decco;
-
 var $$Error;
 
 var EventTopic;
@@ -32,7 +30,6 @@ exports.Adapter = Adapter;
 exports.AdapterRuntime = AdapterRuntime;
 exports.Aggregate = Aggregate;
 exports.$$Array = $$Array;
-exports.Decco = Decco;
 exports.$$Error = $$Error;
 exports.EventTopic = EventTopic;
 exports.Logger = Logger;

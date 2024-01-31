@@ -7,7 +7,6 @@ var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
-var Util_Decco$Reventless = require("../util/Util_Decco.bs.js");
 var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
 
@@ -22,7 +21,7 @@ function Make(Spec, Publisher) {
       return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$p, (async function (idx, event$p) {
                             var json = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
                             var id = event$p.id;
-                            var eventName = Belt_Option.getWithDefault(Util_Decco$Reventless.Json.variantName(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
+                            var eventName = Belt_Option.getWithDefault(Message$Reventless.variantNameOfJson(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
                             var idx$1 = idx + 1 | 0;
                             var val;
                             try {

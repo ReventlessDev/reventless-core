@@ -106,7 +106,7 @@ module Make = (
   let eventName: Message.event'<Spec.Id.t, Spec.event> => string = event' =>
     event'.event
     ->Spec.event_encode
-    ->Util.Decco.Json.variantName
+    ->Message.variantNameOfJson
     ->Belt.Option.getWithDefault("Could not get event-name!")
 
   /* TODO: delete me
