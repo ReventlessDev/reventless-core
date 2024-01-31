@@ -19,6 +19,8 @@ function make(name, handleCommands, memorySize, timeout, opts) {
               return Curry._2(SQS_Queue$PulumiAws.Args.RedrivePolicy.make, dlqArn, 5);
             }),
         visibilityTimeoutSeconds: Math.imul(6, timeout),
+        deduplicationScope: "messageGroup",
+        fifoThroughputLimit: "perMessageGroupId",
         sqsManagedSseEnabled: false
       }, opts);
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], Caml_option.some(opts), undefined);

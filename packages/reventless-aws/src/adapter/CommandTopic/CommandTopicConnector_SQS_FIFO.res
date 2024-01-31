@@ -19,6 +19,8 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker = (
       )
       ->Pulumi.Output.asInput,
       ~sqsManagedSseEnabled=false->Pulumi.Input.make,
+      ~deduplicationScope=#messageGroup,
+      ~fifoThroughputLimit=#perMessageGroupId,
       (),
     ),
     ~opts,
