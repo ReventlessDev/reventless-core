@@ -26,7 +26,7 @@ function Make(Spec, Connector) {
         Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 142, characters 15-22", /* Error */3, cmdJsons, "Couldn't publish commands");
         throw e;
       }
-      return Logger$Reventless.logCmdJsons(undefined, undefined, cmdJsons, "CommandTopic: Published commands:");
+      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 147, characters 47-54", undefined, cmdJsons, "Published commands");
     };
   };
   var publishFn = function (connector) {

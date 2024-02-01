@@ -144,7 +144,7 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
           "Couldn't publish commands",
         )
         raise(e)
-      | _ => cmdJsons->Logger.logCmdJsons("CommandTopic: Published commands:")
+      | _ => cmdJsons->Logger.logCmdJsons(~loc=__LOC__, "Published commands")
       }
 
   let publishFn: Adapter.connector => (
