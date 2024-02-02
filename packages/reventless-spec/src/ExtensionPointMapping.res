@@ -51,9 +51,7 @@ module type Impl = {
     ExtensionPoint.callCommand,
   >
 
-  let mapOutgoingEvent: mapOutgoingEvent<
-    Aggregate.event,
-    ExtensionPoint.event,
-    ExtensionPoint.callCommand,
+  let mapOutgoingEvent: option<
+    mapOutgoingEvent<Aggregate.event, ExtensionPoint.event, ExtensionPoint.callCommand>,
   >
 }

@@ -53,7 +53,7 @@ module type Spec = {
   type callCommand
 }
 
-module type Mapping = {
+module type Impl = {
   module ExtensionPoint: Spec
   module Aggregate: AggregateSpec.T
 
@@ -64,10 +64,8 @@ module type Mapping = {
     ExtensionPoint.callCommand,
   >
 
-  let mapOutgoingEvent: mapOutgoingEvent<
-    Aggregate.event,
-    ExtensionPoint.command,
-    ExtensionPoint.callCommand,
+  let mapOutgoingEvent: option<
+    mapOutgoingEvent<Aggregate.event, ExtensionPoint.command, ExtensionPoint.callCommand>,
   >
 }
 
