@@ -111,17 +111,19 @@ module Impl = {
     | ForwardCommand(forwardCommand) => [Call(callHandler, ForwardCommand(forwardCommand))]
     }
 
-  let mapOutgoingEvent = (id, event, _meta, _queryEngine) =>
-    switch event {
-    | Aggregate.UnknownPluginDetected => [
-        PublishEvent(id, ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected),
-      ]
-    | Connected(pluginDefinition) => [PublishEvent(id, PluginConnected(pluginDefinition))]
-    | Reconnected(pluginDefinition) => [PublishEvent(id, PluginReconnected(pluginDefinition))]
-    | Disconnected(pluginDefinition) => [PublishEvent(id, PluginDisconnected(pluginDefinition))]
-    | Deactivated(pluginDefinition) => [PublishEvent(id, PluginDeactivated(pluginDefinition))]
-    | Activated(pluginDefinition) => [PublishEvent(id, PluginActivated(pluginDefinition))]
-    }
+  let mapOutgoingEvent = Some(
+    (id, event, _meta, _queryEngine) =>
+      switch event {
+      | Aggregate.UnknownPluginDetected => [
+          PublishEvent(id, ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected),
+        ]
+      | Connected(pluginDefinition) => [PublishEvent(id, PluginConnected(pluginDefinition))]
+      | Reconnected(pluginDefinition) => [PublishEvent(id, PluginReconnected(pluginDefinition))]
+      | Disconnected(pluginDefinition) => [PublishEvent(id, PluginDisconnected(pluginDefinition))]
+      | Deactivated(pluginDefinition) => [PublishEvent(id, PluginDeactivated(pluginDefinition))]
+      | Activated(pluginDefinition) => [PublishEvent(id, PluginActivated(pluginDefinition))]
+      },
+  )
 }
 
 module Mapping = ExtensionPointMapping.Make(ReventlessSpec.PluginExtensionPointSpec, Impl)

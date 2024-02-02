@@ -147,63 +147,63 @@ function mapIncomingCommand(id, cmd, _meta) {
   }
 }
 
-function mapOutgoingEvent(id, $$event, _meta, _queryEngine) {
-  if (typeof $$event === "number") {
-    return [{
-              TAG: /* PublishEvent */0,
-              _0: id,
-              _1: /* UnknownPluginDetected */0
-            }];
-  }
-  switch ($$event.TAG | 0) {
-    case /* Connected */0 :
-        return [{
-                  TAG: /* PublishEvent */0,
-                  _0: id,
-                  _1: {
-                    TAG: /* PluginConnected */0,
-                    _0: $$event._0
-                  }
-                }];
-    case /* Reconnected */1 :
-        return [{
-                  TAG: /* PublishEvent */0,
-                  _0: id,
-                  _1: {
-                    TAG: /* PluginReconnected */1,
-                    _0: $$event._0
-                  }
-                }];
-    case /* Disconnected */2 :
-        return [{
-                  TAG: /* PublishEvent */0,
-                  _0: id,
-                  _1: {
-                    TAG: /* PluginDisconnected */2,
-                    _0: $$event._0
-                  }
-                }];
-    case /* Activated */3 :
-        return [{
-                  TAG: /* PublishEvent */0,
-                  _0: id,
-                  _1: {
-                    TAG: /* PluginActivated */4,
-                    _0: $$event._0
-                  }
-                }];
-    case /* Deactivated */4 :
-        return [{
-                  TAG: /* PublishEvent */0,
-                  _0: id,
-                  _1: {
-                    TAG: /* PluginDeactivated */3,
-                    _0: $$event._0
-                  }
-                }];
-    
-  }
-}
+var mapOutgoingEvent = (function (id, $$event, _meta, _queryEngine) {
+    if (typeof $$event === "number") {
+      return [{
+                TAG: /* PublishEvent */0,
+                _0: id,
+                _1: /* UnknownPluginDetected */0
+              }];
+    }
+    switch ($$event.TAG | 0) {
+      case /* Connected */0 :
+          return [{
+                    TAG: /* PublishEvent */0,
+                    _0: id,
+                    _1: {
+                      TAG: /* PluginConnected */0,
+                      _0: $$event._0
+                    }
+                  }];
+      case /* Reconnected */1 :
+          return [{
+                    TAG: /* PublishEvent */0,
+                    _0: id,
+                    _1: {
+                      TAG: /* PluginReconnected */1,
+                      _0: $$event._0
+                    }
+                  }];
+      case /* Disconnected */2 :
+          return [{
+                    TAG: /* PublishEvent */0,
+                    _0: id,
+                    _1: {
+                      TAG: /* PluginDisconnected */2,
+                      _0: $$event._0
+                    }
+                  }];
+      case /* Activated */3 :
+          return [{
+                    TAG: /* PublishEvent */0,
+                    _0: id,
+                    _1: {
+                      TAG: /* PluginActivated */4,
+                      _0: $$event._0
+                    }
+                  }];
+      case /* Deactivated */4 :
+          return [{
+                    TAG: /* PublishEvent */0,
+                    _0: id,
+                    _1: {
+                      TAG: /* PluginDeactivated */3,
+                      _0: $$event._0
+                    }
+                  }];
+      
+    }
+  });
 
 var Impl = {
   Aggregate: undefined,

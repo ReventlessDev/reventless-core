@@ -30,10 +30,12 @@ module type T = {
     ReventlessSpec.QueryEngine.t,
   ) => array<abstractIncomingCommandAction>
 
-  let mapOutgoingEvent: (Js.Json.t, pluginDefinition) => array<abstractOutgoingCommandAction>
+  let mapOutgoingEvent: option<
+    (Js.Json.t, pluginDefinition) => array<abstractOutgoingCommandAction>,
+  >
 }
 
-module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Spec): (
+module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec): (
   T with module ExtensionPoint := Spec
 ) => {
   module Aggregate = MappingImpl.Aggregate
@@ -136,7 +138,11 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
     )
   }
 
-  let mapOutgoingEvent = (aggregateEvent'Json, pluginDef) =>
+  let mapOutgoingEvent = MappingImpl.mapOutgoingEvent->Belt.Option.map((
+    mappingImplMapOutgoingEvent,
+    aggregateEvent'Json,
+    pluginDef,
+  ) =>
     switch Message.event'_decode(
       Aggregate.Id.t_decode,
       Aggregate.event_decode,
@@ -161,7 +167,7 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
         ->Spec.command_encode
         ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
 
-      MappingImpl.mapOutgoingEvent(
+      mappingImplMapOutgoingEvent(
         id->Aggregate.Id.toString,
         event,
         meta,
@@ -209,4 +215,5 @@ module Make = (Spec: Spec, MappingImpl: Mapping with module ExtensionPoint := Sp
       Js.log2("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err)
       []
     }
+  )
 }

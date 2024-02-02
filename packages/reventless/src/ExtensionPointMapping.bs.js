@@ -3,6 +3,7 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Message$Reventless = require("./Message.bs.js");
 
@@ -53,74 +54,74 @@ function Make(Spec, MappingImpl) {
                                   }));
                     })));
   };
-  var mapOutgoingEvent = function (aggregateEvent$pJson, createSchedule, deleteSchedule, _pluginDef, queryEngine) {
-    var err = Message$Reventless.event$p_decode(Aggregate.Id.t_decode, Aggregate.event_decode, aggregateEvent$pJson);
-    if (err.TAG === /* Ok */0) {
-      var match = err._0;
-      var meta = match.meta;
-      return Belt_Array.map(Curry._4(MappingImpl.mapOutgoingEvent, Curry._1(Aggregate.Id.toString, match.id), match.event, meta, queryEngine), (function (x) {
-                    switch (x.TAG | 0) {
-                      case /* PublishEvent */0 :
-                          var $$event = x._1;
-                          var id = x._0;
-                          var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
-                          console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id + "");
-                          return {
-                                  TAG: /* AbstractPublishEvent */0,
-                                  _0: {
-                                    id: Id$ReventlessSpec.$$String.makeFromString(id),
-                                    meta: {
-                                      service: Spec.name,
-                                      time: meta.time,
-                                      ip: meta.ip,
-                                      user: meta.user,
-                                      msgId: Message$Reventless.uuid(undefined),
-                                      correlationId: meta.correlationId
-                                    },
-                                    event: $$event
-                                  }
+  var mapOutgoingEvent = Belt_Option.map(MappingImpl.mapOutgoingEvent, (function (mappingImplMapOutgoingEvent, aggregateEvent$pJson, createSchedule, deleteSchedule, _pluginDef, queryEngine) {
+          var err = Message$Reventless.event$p_decode(Aggregate.Id.t_decode, Aggregate.event_decode, aggregateEvent$pJson);
+          if (err.TAG === /* Ok */0) {
+            var match = err._0;
+            var meta = match.meta;
+            return Belt_Array.map(Curry._4(mappingImplMapOutgoingEvent, Curry._1(Aggregate.Id.toString, match.id), match.event, meta, queryEngine), (function (x) {
+                          switch (x.TAG | 0) {
+                            case /* PublishEvent */0 :
+                                var $$event = x._1;
+                                var id = x._0;
+                                var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
+                                console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id + "");
+                                return {
+                                        TAG: /* AbstractPublishEvent */0,
+                                        _0: {
+                                          id: Id$ReventlessSpec.$$String.makeFromString(id),
+                                          meta: {
+                                            service: Spec.name,
+                                            time: meta.time,
+                                            ip: meta.ip,
+                                            user: meta.user,
+                                            msgId: Message$Reventless.uuid(undefined),
+                                            correlationId: meta.correlationId
+                                          },
+                                          event: $$event
+                                        }
+                                      };
+                            case /* PublishEventAsync */1 :
+                                var toEvent$p = async function (promise) {
+                                  var match = await promise;
+                                  var $$event = match[1];
+                                  var id = match[0];
+                                  var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
+                                  console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id + "");
+                                  return {
+                                          id: Id$ReventlessSpec.$$String.makeFromString(id),
+                                          meta: {
+                                            service: Spec.name,
+                                            time: meta.time,
+                                            ip: meta.ip,
+                                            user: meta.user,
+                                            msgId: Message$Reventless.uuid(undefined),
+                                            correlationId: meta.correlationId
+                                          },
+                                          event: $$event
+                                        };
                                 };
-                      case /* PublishEventAsync */1 :
-                          var toEvent$p = async function (promise) {
-                            var match = await promise;
-                            var $$event = match[1];
-                            var id = match[0];
-                            var eventStr = JSON.stringify(Curry._1(Spec.event_encode, $$event));
-                            console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id + "");
-                            return {
-                                    id: Id$ReventlessSpec.$$String.makeFromString(id),
-                                    meta: {
-                                      service: Spec.name,
-                                      time: meta.time,
-                                      ip: meta.ip,
-                                      user: meta.user,
-                                      msgId: Message$Reventless.uuid(undefined),
-                                      correlationId: meta.correlationId
-                                    },
-                                    event: $$event
-                                  };
-                          };
-                          return {
-                                  TAG: /* AbstractPublishEventAsync */1,
-                                  _0: toEvent$p(x._0)
-                                };
-                      case /* Call */2 :
-                          var msg = x._1;
-                          var handler = x._0;
-                          console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + ": Handling call command", JSON.stringify(Curry._1(Spec.callCommand_encode, msg)));
-                          return {
-                                  TAG: /* AbstractCall */2,
-                                  _0: (function (param) {
-                                      return Curry._4(handler, createSchedule, deleteSchedule, queryEngine, msg);
-                                    })
-                                };
-                      
-                    }
-                  }));
-    }
-    console.log("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err._0);
-    return [];
-  };
+                                return {
+                                        TAG: /* AbstractPublishEventAsync */1,
+                                        _0: toEvent$p(x._0)
+                                      };
+                            case /* Call */2 :
+                                var msg = x._1;
+                                var handler = x._0;
+                                console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + ": Handling call command", JSON.stringify(Curry._1(Spec.callCommand_encode, msg)));
+                                return {
+                                        TAG: /* AbstractCall */2,
+                                        _0: (function (param) {
+                                            return Curry._4(handler, createSchedule, deleteSchedule, queryEngine, msg);
+                                          })
+                                      };
+                            
+                          }
+                        }));
+          }
+          console.log("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err._0);
+          return [];
+        }));
   return {
           aggregateName: aggregateName,
           mapIncomingCommands: mapIncomingCommands,

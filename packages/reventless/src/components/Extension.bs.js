@@ -8,6 +8,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
@@ -30,10 +31,17 @@ function Make(Spec, Mappings) {
   };
   var mapOutgoingEvent = function (event$pJson) {
     var Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(event$pJson), Mappings.mappings);
-    if (Mapping !== undefined) {
-      return Curry._1(Mapping.mapOutgoingEvent, event$pJson);
-    } else {
+    if (Mapping === undefined) {
       return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$pJson));
+    }
+    var mapOutgoingEvent$1 = Mapping.mapOutgoingEvent;
+    if (mapOutgoingEvent$1 !== undefined) {
+      return Curry._1(mapOutgoingEvent$1, event$pJson);
+    } else {
+      Logger$Reventless.error("File \"Extension.res\", line 96, characters 15-22", undefined, undefined)("mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      return function (param) {
+        return [];
+      };
     }
   };
   var construct = function (publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, self, name) {
@@ -154,7 +162,7 @@ function Make(Spec, Mappings) {
       name: name,
       extensionPointName: Spec.name,
       aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
-              if (Mapping.aggregateName === ExtensionMapping$ReventlessSpec.NoAggregate.name) {
+              if (Mapping.aggregateName === ExtensionMapping$ReventlessSpec.NoAggregate.name || Belt_Option.isNone(Mapping.mapOutgoingEvent)) {
                 return ;
               } else {
                 return Mapping.aggregateName;

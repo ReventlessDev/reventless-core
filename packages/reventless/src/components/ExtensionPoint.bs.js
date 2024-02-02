@@ -9,6 +9,7 @@ var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.bs.js");
 var Schedule$Reventless = require("../util/Schedule.bs.js");
@@ -57,10 +58,17 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
   };
   var mapOutgoingEvent = function (event$pJson, mappings, scheduler, queue) {
     var Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(event$pJson), mappings);
-    if (Mapping !== undefined) {
-      return Curry._3(Mapping.mapOutgoingEvent, event$pJson, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue));
-    } else {
+    if (Mapping === undefined) {
       return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$pJson));
+    }
+    var mapOutgoingEvent$1 = Mapping.mapOutgoingEvent;
+    if (mapOutgoingEvent$1 !== undefined) {
+      return Curry._3(mapOutgoingEvent$1, event$pJson, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue));
+    } else {
+      Logger$Reventless.error("File \"ExtensionPoint.res\", line 109, characters 17-24", undefined, undefined)("mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      return function (param, param$1) {
+        return [];
+      };
     }
   };
   var construct = function (publishToAggregates, scheduler, queryEngine, self, name) {
@@ -169,8 +177,10 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     commandTopic.contents = Caml_option.some(Curry._6(CommandTopic.make, childName, incomingCommandsHandler, undefined, undefined, Caml_option.some(opts), undefined));
     var outputs = {
       name: name,
-      aggregateNames: Belt_Array.map(Mappings.mappings, (function (Mapping) {
-              return Mapping.aggregateName;
+      aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
+              return Belt_Option.map(Mapping.mapOutgoingEvent, (function (param) {
+                            return Mapping.aggregateName;
+                          }));
             })),
       outgoingEventHandler: outgoingEventHandler,
       commandTopic: Component$Reventless.extractOutputs(Belt_Option.getExn(commandTopic.contents)),

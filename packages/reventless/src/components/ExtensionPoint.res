@@ -97,11 +97,21 @@ module Make = (
     let mapOutgoingEvent = (event'Json, mappings, scheduler, queue) =>
       switch event'Json->Message.serviceNameOfMsg->findOutgoingMapping(mappings) {
       | Some(module(Mapping)) =>
-        Mapping.mapOutgoingEvent(
-          event'Json,
-          Schedule.create(scheduler, queue),
-          Schedule.delete(scheduler, queue),
-        )
+        switch Mapping.mapOutgoingEvent {
+        | Some(mapOutgoingEvent) =>
+          mapOutgoingEvent(
+            event'Json,
+            Schedule.create(scheduler, queue),
+            Schedule.delete(scheduler, queue),
+          )
+        | None =>
+          Logger.error(
+            ~loc=__LOC__,
+            "mapOutgoingEvent",
+            "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
+          )
+          (_, _) => []
+        }
       | None =>
         Js.Exn.raiseError(
           "ExtensionPoint.Mapping: Missing mapping for " ++ event'Json->Js.Json.stringify,
@@ -206,8 +216,8 @@ module Make = (
     self->setOutputs(
       makeOutputs(
         ~name,
-        ~aggregateNames=Mappings.mappings->Belt.Array.map((module(Mapping)) =>
-          Mapping.aggregateName
+        ~aggregateNames=Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
+          Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
         ),
         ~outgoingEventHandler,
         ~commandTopic=commandTopic.contents->Belt.Option.getExn->Component.extractOutputs,

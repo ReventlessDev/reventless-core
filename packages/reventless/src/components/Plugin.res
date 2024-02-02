@@ -510,7 +510,7 @@ module Make = (
               | _ => []
               }
 
-            let mapOutgoingEvent = (_id, _event, _meta, _pluginDef) => []
+            let mapOutgoingEvent = None
           },
         )
 

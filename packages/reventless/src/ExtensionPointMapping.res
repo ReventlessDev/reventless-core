@@ -26,13 +26,15 @@ module type T = {
     ReventlessSpec.QueryEngine.t,
   ) => array<abstractCommandAction>
 
-  let mapOutgoingEvent: (
-    Js.Json.t,
-    ReventlessSpec.Schedule.create,
-    ReventlessSpec.Schedule.delete,
-    ReventlessSpec.Plugin.pluginDefinition,
-    ReventlessSpec.QueryEngine.t,
-  ) => array<abstractEventAction<ExtensionPoint.event>>
+  let mapOutgoingEvent: option<
+    (
+      Js.Json.t,
+      ReventlessSpec.Schedule.create,
+      ReventlessSpec.Schedule.delete,
+      ReventlessSpec.Plugin.pluginDefinition,
+      ReventlessSpec.QueryEngine.t,
+    ) => array<abstractEventAction<ExtensionPoint.event>>,
+  >
 }
 
 module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec): (
@@ -89,7 +91,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     )
     ->Belt.Array.concatMany
 
-  let mapOutgoingEvent = (
+  let mapOutgoingEvent = MappingImpl.mapOutgoingEvent->Belt.Option.map((
+    mappingImplMapOutgoingEvent,
     aggregateEvent'Json,
     createSchedule,
     deleteSchedule,
@@ -102,7 +105,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       aggregateEvent'Json,
     ) {
     | Ok({id, meta, event}) =>
-      MappingImpl.mapOutgoingEvent(
+      mappingImplMapOutgoingEvent(
         id->Aggregate.Id.toString,
         event,
         meta,
@@ -156,4 +159,5 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       Js.log2("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err)
       []
     }
+  )
 }

@@ -283,9 +283,6 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
               return [];
             }
           };
-          var mapOutgoingEvent = function (_id, _event, _meta, _pluginDef) {
-            return [];
-          };
           var $$let = ExtensionMapping$ReventlessSpec.NoAggregate.Id;
           var ConnectPluginMapping = (function (param) {
                 return partial_arg$1(partial_arg, param);
@@ -314,7 +311,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                   error_decode: ExtensionMapping$ReventlessSpec.NoAggregate.error_decode
                 },
                 mapIncomingEvent: mapIncomingEvent,
-                mapOutgoingEvent: mapOutgoingEvent
+                mapOutgoingEvent: undefined
               });
           var mappings = [ConnectPluginMapping];
           var partial_arg$2 = {
