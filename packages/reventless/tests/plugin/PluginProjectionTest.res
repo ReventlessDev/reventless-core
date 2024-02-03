@@ -18,8 +18,20 @@ describe("PluginProjection:", () => {
     ->thenState({...state, status: Connected})
   )
 
+  test("Connected (not detected before)", () =>
+    givenEvents([])
+    ->whenEvent(Connected(pluginDefinition))
+    ->thenState({...state, status: Connected})
+  )
+
   test("Disconnected", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition)])
+    ->whenEvent(Disconnected(pluginDefinition))
+    ->thenState({...state, status: Disconnected})
+  )
+
+  test("Disconnected (not connected before)", () =>
+    givenEvents([])
     ->whenEvent(Disconnected(pluginDefinition))
     ->thenState({...state, status: Disconnected})
   )
@@ -30,8 +42,20 @@ describe("PluginProjection:", () => {
     ->thenState({...state, status: Inactive})
   )
 
+  test("Deactivated (not connected before)", () =>
+    givenEvents([])
+    ->whenEvent(Deactivated(pluginDefinition))
+    ->thenState({...state, status: Inactive})
+  )
+
   test("Activated", () =>
     givenEvents([UnknownPluginDetected, Connected(pluginDefinition), Deactivated(pluginDefinition)])
+    ->whenEvent(Activated(pluginDefinition))
+    ->thenState({...state, status: Disconnected})
+  )
+
+  test("Activated (not deactivated before)", () =>
+    givenEvents([])
     ->whenEvent(Activated(pluginDefinition))
     ->thenState({...state, status: Disconnected})
   )
@@ -43,6 +67,12 @@ describe("PluginProjection:", () => {
       Deactivated(pluginDefinition),
       Activated(pluginDefinition),
     ])
+    ->whenEvent(Reconnected(pluginDefinition))
+    ->thenState({...state, status: Connected})
+  )
+
+  test("Reconnected (not disconnected before)", () =>
+    givenEvents([])
     ->whenEvent(Reconnected(pluginDefinition))
     ->thenState({...state, status: Connected})
   )

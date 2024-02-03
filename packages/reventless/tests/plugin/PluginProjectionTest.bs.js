@@ -31,6 +31,22 @@ Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
                             statusChange: PluginFixtures$Reventless.state.statusChange
                           });
               }));
+        Curry._3(PluginProjectionTest.test, "Connected (not detected before)", undefined, (function (param) {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, []), {
+                                TAG: /* Connected */0,
+                                _0: PluginFixtures$Reventless.pluginDefinition
+                              }), {
+                            name: PluginFixtures$Reventless.state.name,
+                            version: PluginFixtures$Reventless.state.version,
+                            eventCollector: PluginFixtures$Reventless.state.eventCollector,
+                            extensionPoints: PluginFixtures$Reventless.state.extensionPoints,
+                            extensionPointNames: PluginFixtures$Reventless.state.extensionPointNames,
+                            extensionNames: PluginFixtures$Reventless.state.extensionNames,
+                            extensions: PluginFixtures$Reventless.state.extensions,
+                            status: /* Connected */0,
+                            statusChange: PluginFixtures$Reventless.state.statusChange
+                          });
+              }));
         Curry._3(PluginProjectionTest.test, "Disconnected", undefined, (function (param) {
                 return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, [
                                     /* UnknownPluginDetected */0,
@@ -53,6 +69,22 @@ Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
                             statusChange: PluginFixtures$Reventless.state.statusChange
                           });
               }));
+        Curry._3(PluginProjectionTest.test, "Disconnected (not connected before)", undefined, (function (param) {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, []), {
+                                TAG: /* Disconnected */2,
+                                _0: PluginFixtures$Reventless.pluginDefinition
+                              }), {
+                            name: PluginFixtures$Reventless.state.name,
+                            version: PluginFixtures$Reventless.state.version,
+                            eventCollector: PluginFixtures$Reventless.state.eventCollector,
+                            extensionPoints: PluginFixtures$Reventless.state.extensionPoints,
+                            extensionPointNames: PluginFixtures$Reventless.state.extensionPointNames,
+                            extensionNames: PluginFixtures$Reventless.state.extensionNames,
+                            extensions: PluginFixtures$Reventless.state.extensions,
+                            status: /* Disconnected */1,
+                            statusChange: PluginFixtures$Reventless.state.statusChange
+                          });
+              }));
         Curry._3(PluginProjectionTest.test, "Deactivated", undefined, (function (param) {
                 return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, [
                                     /* UnknownPluginDetected */0,
@@ -61,6 +93,22 @@ Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
                                       _0: PluginFixtures$Reventless.pluginDefinition
                                     }
                                   ]), {
+                                TAG: /* Deactivated */4,
+                                _0: PluginFixtures$Reventless.pluginDefinition
+                              }), {
+                            name: PluginFixtures$Reventless.state.name,
+                            version: PluginFixtures$Reventless.state.version,
+                            eventCollector: PluginFixtures$Reventless.state.eventCollector,
+                            extensionPoints: PluginFixtures$Reventless.state.extensionPoints,
+                            extensionPointNames: PluginFixtures$Reventless.state.extensionPointNames,
+                            extensionNames: PluginFixtures$Reventless.state.extensionNames,
+                            extensions: PluginFixtures$Reventless.state.extensions,
+                            status: /* Inactive */2,
+                            statusChange: PluginFixtures$Reventless.state.statusChange
+                          });
+              }));
+        Curry._3(PluginProjectionTest.test, "Deactivated (not connected before)", undefined, (function (param) {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, []), {
                                 TAG: /* Deactivated */4,
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), {
@@ -101,6 +149,22 @@ Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
                             statusChange: PluginFixtures$Reventless.state.statusChange
                           });
               }));
+        Curry._3(PluginProjectionTest.test, "Activated (not deactivated before)", undefined, (function (param) {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, []), {
+                                TAG: /* Activated */3,
+                                _0: PluginFixtures$Reventless.pluginDefinition
+                              }), {
+                            name: PluginFixtures$Reventless.state.name,
+                            version: PluginFixtures$Reventless.state.version,
+                            eventCollector: PluginFixtures$Reventless.state.eventCollector,
+                            extensionPoints: PluginFixtures$Reventless.state.extensionPoints,
+                            extensionPointNames: PluginFixtures$Reventless.state.extensionPointNames,
+                            extensionNames: PluginFixtures$Reventless.state.extensionNames,
+                            extensions: PluginFixtures$Reventless.state.extensions,
+                            status: /* Disconnected */1,
+                            statusChange: PluginFixtures$Reventless.state.statusChange
+                          });
+              }));
         Curry._3(PluginProjectionTest.test, "Reconnected (after activated)", undefined, (function (param) {
                 return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, [
                                     /* UnknownPluginDetected */0,
@@ -117,6 +181,22 @@ Curry._2(PluginProjectionTest.describe, "PluginProjection:", (function (param) {
                                       _0: PluginFixtures$Reventless.pluginDefinition
                                     }
                                   ]), {
+                                TAG: /* Reconnected */1,
+                                _0: PluginFixtures$Reventless.pluginDefinition
+                              }), {
+                            name: PluginFixtures$Reventless.state.name,
+                            version: PluginFixtures$Reventless.state.version,
+                            eventCollector: PluginFixtures$Reventless.state.eventCollector,
+                            extensionPoints: PluginFixtures$Reventless.state.extensionPoints,
+                            extensionPointNames: PluginFixtures$Reventless.state.extensionPointNames,
+                            extensionNames: PluginFixtures$Reventless.state.extensionNames,
+                            extensions: PluginFixtures$Reventless.state.extensions,
+                            status: /* Connected */0,
+                            statusChange: PluginFixtures$Reventless.state.statusChange
+                          });
+              }));
+        Curry._3(PluginProjectionTest.test, "Reconnected (not disconnected before)", undefined, (function (param) {
+                return Curry._2(PluginProjectionTest.thenState, Curry._2(PluginProjectionTest.whenEvent, Curry._1(PluginProjectionTest.givenEvents, []), {
                                 TAG: /* Reconnected */1,
                                 _0: PluginFixtures$Reventless.pluginDefinition
                               }), {

@@ -44,9 +44,13 @@ var partial_arg$2 = Projection$Reventless.Mapping.Make;
 function map(param) {
   var $$event = param.event;
   var match = param.meta;
-  var user = match.user;
-  var time = match.time;
   var id = param.id;
+  var statusChange_at = match.time;
+  var statusChange_by = match.user;
+  var statusChange = {
+    at: statusChange_at,
+    by: statusChange_by
+  };
   if (typeof $$event === "number") {
     return /* Ignore */0;
   }
@@ -71,17 +75,32 @@ function map(param) {
                         })),
                   extensions: extensions,
                   status: /* Connected */0,
-                  statusChange: {
-                    at: time,
-                    by: user
-                  }
+                  statusChange: statusChange
                 }
               };
     case /* Reconnected */1 :
+        var match$2 = $$event._0;
+        var extensions$1 = match$2.extensions;
+        var extensionPoints$1 = match$2.extensionPoints;
         return {
-                TAG: /* Update */2,
+                TAG: /* UpdateWithDefault */4,
                 _0: id,
-                _1: (function (state) {
+                _1: {
+                  name: match$2.name,
+                  version: match$2.version,
+                  eventCollector: match$2.eventCollector,
+                  extensionPoints: extensionPoints$1,
+                  extensionPointNames: Belt_Array.map(extensionPoints$1, (function (extensionPoint) {
+                          return extensionPoint.name;
+                        })),
+                  extensionNames: Belt_Array.map(extensions$1, (function (extension) {
+                          return extension.extensionPointName;
+                        })),
+                  extensions: extensions$1,
+                  status: /* Connected */0,
+                  statusChange: statusChange
+                },
+                _2: (function (state) {
                     return {
                             name: state.name,
                             version: state.version,
@@ -91,10 +110,7 @@ function map(param) {
                             extensionNames: state.extensionNames,
                             extensions: state.extensions,
                             status: /* Connected */0,
-                            statusChange: {
-                              at: time,
-                              by: user
-                            }
+                            statusChange: statusChange
                           };
                   })
               };
@@ -102,10 +118,28 @@ function map(param) {
     case /* Activated */3 :
         break;
     case /* Deactivated */4 :
+        var match$3 = $$event._0;
+        var extensions$2 = match$3.extensions;
+        var extensionPoints$2 = match$3.extensionPoints;
         return {
-                TAG: /* Update */2,
+                TAG: /* UpdateWithDefault */4,
                 _0: id,
-                _1: (function (state) {
+                _1: {
+                  name: match$3.name,
+                  version: match$3.version,
+                  eventCollector: match$3.eventCollector,
+                  extensionPoints: extensionPoints$2,
+                  extensionPointNames: Belt_Array.map(extensionPoints$2, (function (extensionPoint) {
+                          return extensionPoint.name;
+                        })),
+                  extensionNames: Belt_Array.map(extensions$2, (function (extension) {
+                          return extension.extensionPointName;
+                        })),
+                  extensions: extensions$2,
+                  status: /* Inactive */2,
+                  statusChange: statusChange
+                },
+                _2: (function (state) {
                     return {
                             name: state.name,
                             version: state.version,
@@ -115,19 +149,34 @@ function map(param) {
                             extensionNames: state.extensionNames,
                             extensions: state.extensions,
                             status: /* Inactive */2,
-                            statusChange: {
-                              at: time,
-                              by: user
-                            }
+                            statusChange: statusChange
                           };
                   })
               };
     
   }
+  var match$4 = $$event._0;
+  var extensions$3 = match$4.extensions;
+  var extensionPoints$3 = match$4.extensionPoints;
   return {
-          TAG: /* Update */2,
+          TAG: /* UpdateWithDefault */4,
           _0: id,
-          _1: (function (state) {
+          _1: {
+            name: match$4.name,
+            version: match$4.version,
+            eventCollector: match$4.eventCollector,
+            extensionPoints: extensionPoints$3,
+            extensionPointNames: Belt_Array.map(extensionPoints$3, (function (extensionPoint) {
+                    return extensionPoint.name;
+                  })),
+            extensionNames: Belt_Array.map(extensions$3, (function (extension) {
+                    return extension.extensionPointName;
+                  })),
+            extensions: extensions$3,
+            status: /* Disconnected */1,
+            statusChange: statusChange
+          },
+          _2: (function (state) {
               return {
                       name: state.name,
                       version: state.version,
@@ -137,10 +186,7 @@ function map(param) {
                       extensionNames: state.extensionNames,
                       extensions: state.extensions,
                       status: /* Disconnected */1,
-                      statusChange: {
-                        at: time,
-                        by: user
-                      }
+                      statusChange: statusChange
                     };
             })
         };
