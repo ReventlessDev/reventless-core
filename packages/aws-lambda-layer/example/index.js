@@ -11,7 +11,7 @@ const dependenciesPath = resolvePath(pathToLayerData, pathToSavedDependencies);
 const opt = {
     //pathToSourcePackage: '../reventless-aws',
     sourcePackageName: '@reventless/reventless-aws',
-    sourcePackageVersion: '1.4.1',
+    sourcePackageVersion: '1.4.2',
     pathToLayerData,
     pathToSavedDependencies,
     excludeScopes: ['pulumi', 'types', 'opentelemetry'],
