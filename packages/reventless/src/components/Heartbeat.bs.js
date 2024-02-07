@@ -54,6 +54,7 @@ function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
             undefined,
             undefined,
             undefined,
+            undefined,
             undefined
           ]), opts);
   var cloudwatchEventTarget = new (Aws.cloudwatch.EventTarget)(childName, {

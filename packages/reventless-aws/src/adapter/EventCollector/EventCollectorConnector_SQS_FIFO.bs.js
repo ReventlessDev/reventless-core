@@ -3,6 +3,7 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -27,6 +28,16 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply(function (dlqArn) {
               return Curry._2(SQS_Queue$PulumiAws.Args.RedrivePolicy.make, dlqArn, 5);
             }),
+        tags: Js_dict.fromArray([
+              [
+                "Name",
+                name
+              ],
+              [
+                "Type",
+                "EventCollector"
+              ]
+            ]),
         visibilityTimeoutSeconds: timeout,
         deduplicationScope: "messageGroup",
         fifoThroughputLimit: "perMessageGroupId",
@@ -50,6 +61,16 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                         undefined,
                         undefined,
                         undefined,
+                        Caml_option.some(Js_dict.fromArray([
+                                  [
+                                    "Name",
+                                    name
+                                  ],
+                                  [
+                                    "Type",
+                                    "EventCollector"
+                                  ]
+                                ])),
                         undefined
                       ]), opts);
       });

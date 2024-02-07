@@ -2,6 +2,7 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
+var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
@@ -17,6 +18,16 @@ function make(name, handleCommands, memorySize, timeout, opts) {
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
               return Curry._2(SQS_Queue$PulumiAws.Args.RedrivePolicy.make, dlqArn, 5);
             }),
+        tags: Js_dict.fromArray([
+              [
+                "Name",
+                name
+              ],
+              [
+                "Type",
+                "CommandTopic"
+              ]
+            ]),
         visibilityTimeoutSeconds: Math.imul(6, timeout),
         sqsManagedSseEnabled: false
       }, opts);
@@ -34,6 +45,16 @@ function make(name, handleCommands, memorySize, timeout, opts) {
             undefined,
             undefined,
             undefined,
+            Caml_option.some(Js_dict.fromArray([
+                      [
+                        "Name",
+                        name
+                      ],
+                      [
+                        "Type",
+                        "CommandTopic"
+                      ]
+                    ])),
             undefined
           ]), opts);
   queue.onEvent(name, handler, undefined, opts);

@@ -99,6 +99,7 @@ let makeTable = (
   ~ttl: option<int>=?,
   ~rangeKey=?,
   ~streamViewType,
+  ~tags=?,
   ~opts,
   name,
 ) => {
@@ -119,6 +120,7 @@ let makeTable = (
       ~restoreSourceName?,
       ~streamEnabled=true,
       ~streamViewType,
+      ~tags?,
       (),
     ),
     ~opts=opts->Js.Obj.assign({

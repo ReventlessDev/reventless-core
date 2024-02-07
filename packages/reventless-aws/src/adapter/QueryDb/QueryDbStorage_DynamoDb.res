@@ -84,6 +84,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
     ~rangeKey=?subIdField,
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
+    ~tags=[("Name", name), ("Type", "QueryDb")]->Js.Dict.fromArray->Pulumi.Input.make,
     ~opts,
   )
 

@@ -38,6 +38,7 @@ var handler = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws
           undefined,
           undefined,
           undefined,
+          undefined,
           undefined
         ]), {
       parent: queue

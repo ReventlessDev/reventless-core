@@ -21,6 +21,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
       )
       ->Pulumi.Output.asInput,
       ~sqsManagedSseEnabled=false->Pulumi.Input.make,
+      ~tags=[("Name", name), ("Type", "EventCollector")]->Js.Dict.fromArray->Pulumi.Input.make,
       (),
     ),
     ~opts,
@@ -50,6 +51,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
         ~policies,
         ~memorySize=memorySize->Pulumi.Input.make,
         ~timeout=timeout->Pulumi.Input.make,
+        ~tags=[("Name", name), ("Type", "EventCollector")]->Js.Dict.fromArray->Pulumi.Input.make,
         (),
       ),
       ~opts,
@@ -68,32 +70,30 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
     ->Pulumi.Output.apply(((supportedResources, errorResources)) => {
       let (snsResources, otherResources) =
         supportedResources->partitionUnwrappedResourcesByService(Util.SNS.service)
-      let _snsTopicSubscriptions =
-        snsResources->Belt.Array.map(((sourceName, resources)) =>
-          Util.SQS.subscribeToSnsTopic(
-            ~queue,
-            ~targetName=name,
-            ~sourceName,
-            ~topic=resources
-            ->Util.SNS.findUnwrappedResource
-            ->Reventless.AdapterDeploytime.unwrappedToResource,
-            ~opts,
-          )
+      let _snsTopicSubscriptions = snsResources->Belt.Array.map(((sourceName, resources)) =>
+        Util.SQS.subscribeToSnsTopic(
+          ~queue,
+          ~targetName=name,
+          ~sourceName,
+          ~topic=resources
+          ->Util.SNS.findUnwrappedResource
+          ->Reventless.AdapterDeploytime.unwrappedToResource,
+          ~opts,
         )
+      )
 
-      let _eventSourceMappings =
-        otherResources->Belt.Array.map(((sourceName, source)) =>
-          Util.EventSourceMapping.subscribe(
-            ~lambda=eventHandlerLambda,
-            ~targetName=name,
-            ~sourceName,
-            ~source=source
-            ->Util.DynamoDbStream.findUnwrappedResource
-            ->Reventless.AdapterDeploytime.unwrappedToResource,
-            ~opts,
-            (),
-          )
+      let _eventSourceMappings = otherResources->Belt.Array.map(((sourceName, source)) =>
+        Util.EventSourceMapping.subscribe(
+          ~lambda=eventHandlerLambda,
+          ~targetName=name,
+          ~sourceName,
+          ~source=source
+          ->Util.DynamoDbStream.findUnwrappedResource
+          ->Reventless.AdapterDeploytime.unwrappedToResource,
+          ~opts,
+          (),
         )
+      )
 
       if errorResources->Belt.Array.length > 0 {
         let eventTopicNames = errorResources->Js.Array2.joinWith(",")

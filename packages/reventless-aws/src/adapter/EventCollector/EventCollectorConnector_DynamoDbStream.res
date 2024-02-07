@@ -21,6 +21,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
           ~policies,
           ~memorySize=memorySize->Pulumi.Input.make,
           ~timeout=timeout->Pulumi.Input.make,
+          ~tags=[("Name", name), ("Type", "EventCollector")]->Js.Dict.fromArray->Pulumi.Input.make,
           (),
         ),
         ~opts,

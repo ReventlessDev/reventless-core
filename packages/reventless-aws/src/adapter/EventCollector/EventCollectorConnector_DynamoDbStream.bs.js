@@ -3,6 +3,7 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Aws = require("@pulumi/aws");
@@ -31,6 +32,16 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                         undefined,
                         undefined,
                         undefined,
+                        Caml_option.some(Js_dict.fromArray([
+                                  [
+                                    "Name",
+                                    name
+                                  ],
+                                  [
+                                    "Type",
+                                    "EventCollector"
+                                  ]
+                                ])),
                         undefined
                       ]), opts);
       });

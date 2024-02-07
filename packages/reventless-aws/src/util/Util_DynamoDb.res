@@ -145,6 +145,7 @@ let makeTable = (
   ~globalSecondaryIndexes=?,
   ~ttl: option<int>=?,
   ~rangeKey=?,
+  ~tags=?,
   ~opts,
   name,
 ) => {
@@ -163,6 +164,7 @@ let makeTable = (
       ~ttl?,
       ~rangeKey?,
       ~restoreSourceName?,
+      ~tags?,
       (),
     ),
     ~opts=opts->Js.Obj.assign({

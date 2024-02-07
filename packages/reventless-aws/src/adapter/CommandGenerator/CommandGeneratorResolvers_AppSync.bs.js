@@ -29,6 +29,7 @@ function make(name, api, fields, commandGenerator, opts) {
             undefined,
             undefined,
             undefined,
+            undefined,
             undefined
           ]), opts);
   var commandGeneratorArn = commandGeneratorLambda.arn;

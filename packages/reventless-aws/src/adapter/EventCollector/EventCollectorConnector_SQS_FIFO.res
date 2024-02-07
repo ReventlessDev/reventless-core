@@ -24,6 +24,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
       )
       ->Pulumi.Output.asInput,
       ~sqsManagedSseEnabled=false->Pulumi.Input.make,
+      ~tags=[("Name", name), ("Type", "EventCollector")]->Js.Dict.fromArray->Pulumi.Input.make,
       (),
     ),
     ~opts,
@@ -53,6 +54,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
         ~policies,
         ~memorySize=memorySize->Pulumi.Input.make,
         ~timeout=timeout->Pulumi.Input.make,
+        ~tags=[("Name", name), ("Type", "EventCollector")]->Js.Dict.fromArray->Pulumi.Input.make,
         (),
       ),
       ~opts,
@@ -77,32 +79,30 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
           Util_SNS_FIFO.service,
         )
 
-      let _snsFifoTopicSubscriptions =
-        snsFifoResources->Belt.Array.map(((sourceName, topic)) =>
-          Util_SQS.subscribeToSnsTopic(
-            ~queue,
-            ~targetName=name,
-            ~sourceName,
-            ~topic=topic
-            ->Util.SNS_FIFO.findTopicInUnwrappedResources
-            ->Reventless.AdapterDeploytime.unwrappedToResource,
-            ~opts,
-          )
+      let _snsFifoTopicSubscriptions = snsFifoResources->Belt.Array.map(((sourceName, topic)) =>
+        Util_SQS.subscribeToSnsTopic(
+          ~queue,
+          ~targetName=name,
+          ~sourceName,
+          ~topic=topic
+          ->Util.SNS_FIFO.findTopicInUnwrappedResources
+          ->Reventless.AdapterDeploytime.unwrappedToResource,
+          ~opts,
         )
+      )
 
-      let _eventSourceMappings =
-        otherResources->Belt.Array.map(((sourceName, resources)) =>
-          Util_EventSourceMapping.subscribe(
-            ~lambda=eventHandlerLambda,
-            ~targetName=name,
-            ~sourceName,
-            ~source=resources
-            ->Util.DynamoDbStream.findUnwrappedResource
-            ->Reventless.AdapterDeploytime.unwrappedToResource,
-            ~opts,
-            (),
-          )
+      let _eventSourceMappings = otherResources->Belt.Array.map(((sourceName, resources)) =>
+        Util_EventSourceMapping.subscribe(
+          ~lambda=eventHandlerLambda,
+          ~targetName=name,
+          ~sourceName,
+          ~source=resources
+          ->Util.DynamoDbStream.findUnwrappedResource
+          ->Reventless.AdapterDeploytime.unwrappedToResource,
+          ~opts,
+          (),
         )
+      )
 
       if errorResources->Belt.Array.length > 0 {
         let eventTopicNames = errorResources->Js.Array2.joinWith(",")

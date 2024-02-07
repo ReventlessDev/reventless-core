@@ -170,6 +170,7 @@ function make(prefix, tablesToClean) {
                   undefined,
                   undefined,
                   undefined,
+                  undefined,
                   undefined
                 ]), undefined);
 }

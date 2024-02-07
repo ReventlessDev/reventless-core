@@ -17,6 +17,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker = (
       )
       ->Pulumi.Output.asInput,
       ~sqsManagedSseEnabled=false->Pulumi.Input.make,
+      ~tags=[("Name", name), ("Type", "CommandTopic")]->Js.Dict.fromArray->Pulumi.Input.make,
       (),
     ),
     ~opts,
@@ -37,6 +38,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker = (
         ~policies=Lambda.Policy.defaultPolicies,
         ~memorySize=memorySize->Pulumi.Input.make,
         ~timeout=timeout->Pulumi.Input.make,
+        ~tags=[("Name", name), ("Type", "CommandTopic")]->Js.Dict.fromArray->Pulumi.Input.make,
         (),
       ),
       ~opts,

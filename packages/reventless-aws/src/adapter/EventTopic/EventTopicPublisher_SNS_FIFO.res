@@ -6,6 +6,7 @@ let make: Reventless.EventTopic.Adapter.publisherMaker = (~name, ~storageResourc
     ~args=SNS.Topic.Args.make(
       ~fifoTopic=true->Pulumi.Input.make,
       ~contentBasedDeduplication=true->Pulumi.Input.make,
+      ~tags=[("Name", name), ("Type", "EventTopic")]->Js.Dict.fromArray->Pulumi.Input.make,
       (),
     ),
     ~opts,

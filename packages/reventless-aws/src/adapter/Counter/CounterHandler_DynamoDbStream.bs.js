@@ -27,6 +27,7 @@ function make(name, referencesName, referencesDb, countsName, countsDb, counterH
             undefined,
             undefined,
             undefined,
+            undefined,
             undefined
           ]), opts);
   var subscribe = function (sourceName, source) {

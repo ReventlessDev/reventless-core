@@ -114,6 +114,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                   undefined,
                   undefined,
                   undefined,
+                  undefined,
                   undefined
                 ]), opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
         new (Aws.lambda.Permission)(name, {
