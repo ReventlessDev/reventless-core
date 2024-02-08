@@ -2,8 +2,8 @@ open PulumiAws
 open DynamoDb.Table
 open ReventlessSpec.ReadModel.Spec
 
-type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
-type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
+type api = Pulumi.Output.t<AppSync.GraphQLApi.t>
+type role = Pulumi.Output.t<IAM.Role.t>
 
 let globalSecondaryIndexes = indexes =>
   indexes
@@ -84,7 +84,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
     ~rangeKey=?subIdField,
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
-    ~tags=[("Name", name), ("Type", "QueryDb")]->Js.Dict.fromArray->Pulumi.Input.make,
+    ~tags=AWS.tags(~name, Reventless.QueryDb.componentType),
     ~opts,
   )
 

@@ -19,7 +19,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
     ~streamViewType=#NEW_AND_OLD_IMAGES,
-    ~tags=[("Name", name), ("Type", "QueryDb")]->Js.Dict.fromArray->Pulumi.Input.make,
+    ~tags=AWS.tags(~name, Reventless.QueryDb.componentType),
     ~opts,
   )
   open QueryDbStorage_DynamoDb_Runtime

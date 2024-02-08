@@ -4,7 +4,7 @@ let make: Reventless.EventLog.Adapter.storageMaker = (~name, ~opts) => {
     ~attributes=[{"name": "id", "type": "S"}, {"name": "sequenceNr", "type": "S"}],
     ~rangeKey="sequenceNr",
     ~streamViewType=#NEW_IMAGE,
-    ~tags=[("Name", name), ("Type", "EventLog")]->Js.Dict.fromArray->Pulumi.Input.make,
+    ~tags=AWS.tags(~name, Reventless.EventLog.componentType),
     ~opts,
   )
 

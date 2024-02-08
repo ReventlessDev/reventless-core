@@ -2,12 +2,13 @@
 'use strict';
 
 var Curry = require("@rescript/std/lib/js/curry.js");
-var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
+var AWS$ReventlessAws = require("../AWS.bs.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
+var CommandTopic$Reventless = require("@reventless/reventless/src/components/CommandTopic.bs.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.bs.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.bs.js");
@@ -18,16 +19,7 @@ function make(name, handleCommands, memorySize, timeout, opts) {
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
               return Curry._2(SQS_Queue$PulumiAws.Args.RedrivePolicy.make, dlqArn, 5);
             }),
-        tags: Js_dict.fromArray([
-              [
-                "Name",
-                name
-              ],
-              [
-                "Type",
-                "CommandTopic"
-              ]
-            ]),
+        tags: AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType),
         visibilityTimeoutSeconds: Math.imul(6, timeout),
         sqsManagedSseEnabled: false
       }, opts);
@@ -45,16 +37,7 @@ function make(name, handleCommands, memorySize, timeout, opts) {
             undefined,
             undefined,
             undefined,
-            Caml_option.some(Js_dict.fromArray([
-                      [
-                        "Name",
-                        name
-                      ],
-                      [
-                        "Type",
-                        "CommandTopic"
-                      ]
-                    ])),
+            Caml_option.some(AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType)),
             undefined
           ]), opts);
   queue.onEvent(name, handler, undefined, opts);

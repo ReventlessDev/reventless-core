@@ -3,15 +3,16 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.bs.js");
+var AWS$ReventlessAws = require("../AWS.bs.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.bs.js");
 var Util_SNS$ReventlessAws = require("../../util/Util_SNS.bs.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.bs.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.bs.js");
+var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector.bs.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.bs.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.bs.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.bs.js");
@@ -25,16 +26,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
               return Curry._2(SQS_Queue$PulumiAws.Args.RedrivePolicy.make, dlqArn, 5);
             }),
-        tags: Js_dict.fromArray([
-              [
-                "Name",
-                name
-              ],
-              [
-                "Type",
-                "EventCollector"
-              ]
-            ]),
+        tags: AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType),
         visibilityTimeoutSeconds: timeout,
         sqsManagedSseEnabled: false
       }, opts);
@@ -56,16 +48,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                         undefined,
                         undefined,
                         undefined,
-                        Caml_option.some(Js_dict.fromArray([
-                                  [
-                                    "Name",
-                                    name
-                                  ],
-                                  [
-                                    "Type",
-                                    "EventCollector"
-                                  ]
-                                ])),
+                        Caml_option.some(AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType)),
                         undefined
                       ]), opts);
       });

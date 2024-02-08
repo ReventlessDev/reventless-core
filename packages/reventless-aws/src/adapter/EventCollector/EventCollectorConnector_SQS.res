@@ -21,7 +21,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
       )
       ->Pulumi.Output.asInput,
       ~sqsManagedSseEnabled=false->Pulumi.Input.make,
-      ~tags=[("Name", name), ("Type", "EventCollector")]->Js.Dict.fromArray->Pulumi.Input.make,
+      ~tags=AWS.tags(~name, Reventless.EventCollector.componentType),
       (),
     ),
     ~opts,
@@ -39,7 +39,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
     )
   }
 
-  let eventHandlerLambda = PulumiAws.Lambda.Policy.customPolicies(
+  let eventHandlerLambda = Lambda.Policy.customPolicies(
     policy1,
     policy2,
   )->Pulumi.Output.apply(policies =>
@@ -51,7 +51,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
         ~policies,
         ~memorySize=memorySize->Pulumi.Input.make,
         ~timeout=timeout->Pulumi.Input.make,
-        ~tags=[("Name", name), ("Type", "EventCollector")]->Js.Dict.fromArray->Pulumi.Input.make,
+        ~tags=AWS.tags(~name, Reventless.EventCollector.componentType),
         (),
       ),
       ~opts,
