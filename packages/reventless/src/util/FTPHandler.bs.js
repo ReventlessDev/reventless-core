@@ -67,7 +67,6 @@ function ftp(connectionParams, ftpAction) {
                         TAG: /* Error */1,
                         _0: Belt_Option.getWithDefault(err.message, "Error contains no message.")
                       });
-                  client.end();
                 })).on("timeout", (function (param) {
                 client.emit("error", Message$Reventless.log(new Error("SSH-Client Error: Connection timed out"), "Client.onTimeout"));
               })), (function (client) {
@@ -91,15 +90,14 @@ function ftp(connectionParams, ftpAction) {
                         sftp.emit("error", err);
                       };
                       var endFtp = function (param) {
-                        sftp.end();
+                        client.end();
                       };
                       sftp.on("end", (function (param) {
                                 console.log("FTPHandler: end sftp stream");
-                                client.end();
                               })).on("error", (function (err) {
                               console.log("FTPHandler: Error:", err);
                               client.emit("error", err);
-                              sftp.end();
+                              client.end();
                             }));
                       if (ftpAction.TAG === /* Download */0) {
                         var exit$1 = 0;

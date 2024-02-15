@@ -53,7 +53,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
         err->Js.Exn.message->Belt.Option.getWithDefault("Error contains no message."),
       ),
     )
-    client->FTP.Client.end_
+    // client->FTP.Client.end_
   })
   ->FTP.Client.onTimeout(() =>
     client
@@ -68,12 +68,12 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
         switch await client->FTP.make {
         | sftp =>
           let fail: failFn = err => sftp->FTP.error(err->FTP.toSftpError)->ignore
-          let endFtp: endFtpFn = () => sftp->FTP.end_
+          let endFtp: endFtpFn = () => client->FTP.Client.end_
 
           sftp
           ->FTP.onEnd(() => {
             Js.log("FTPHandler: end sftp stream")
-            client->FTP.Client.end_
+            // client->FTP.Client.end_
           })
           ->FTP.onError(err => {
             Js.log2("FTPHandler: Error:", err)
