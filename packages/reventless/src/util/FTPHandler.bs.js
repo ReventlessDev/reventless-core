@@ -134,7 +134,7 @@ function ftp(connectionParams, ftpAction) {
                                         console.log("FTPHandler: writable ended");
                                       })).on("close", (function (param) {
                                       console.log("FTPHandler: writable closed");
-                                      sftp.end();
+                                      client.end();
                                     })).on("error", (function (err) {
                                     console.error("FTPHandler: FTPHandler: Error in Write Stream:", err);
                                     var err$1 = new Error("FTPHandler: Error in Write Stream");

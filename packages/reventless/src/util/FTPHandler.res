@@ -104,7 +104,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
               })
               ->NodeStreams.Writable.onClose(() => {
                 Js.log("FTPHandler: writable closed")
-                sftp->FTP.end_
+                endFtp()
               })
               ->NodeStreams.Writable.onError(err => {
                 Js.Console.error2("FTPHandler: FTPHandler: Error in Write Stream:", err)
