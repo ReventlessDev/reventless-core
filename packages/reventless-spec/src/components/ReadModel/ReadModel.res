@@ -17,4 +17,8 @@ module type T = {
     ~opts: Pulumi.ComponentResource.Options.t=?,
     unit,
   ) => Component.t<t, outputs>
+
+  let enqueueEvent: component => EventCollector.enqueueEvent
+
+  let sourceNames: array<string>
 }
