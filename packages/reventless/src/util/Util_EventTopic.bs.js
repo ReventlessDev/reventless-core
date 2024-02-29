@@ -6,18 +6,14 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 
-function filterEventTopics(allEventTopics, aggregateNames) {
-  return Js_dict.fromArray(Belt_Array.map(Belt_SetString.toArray(aggregateNames), (function (aggregateName) {
-                    try {
-                      return [
-                              aggregateName,
-                              Belt_Option.getExn(Js_dict.get(allEventTopics, aggregateName))
-                            ];
-                    }
-                    catch (exn){
-                      console.log("Util_EventTopic.filterEventTopics: Couldn't find Aggregate " + aggregateName + " in", allEventTopics);
-                      throw exn;
-                    }
+function filterEventTopics(allEventTopics, sourceNames) {
+  return Js_dict.fromArray(Belt_Array.keepMap(Belt_SetString.toArray(sourceNames), (function (sourceName) {
+                    return Belt_Option.map(Js_dict.get(allEventTopics, sourceName), (function (eventTopic) {
+                                  return [
+                                          sourceName,
+                                          eventTopic
+                                        ];
+                                }));
                   })));
 }
 

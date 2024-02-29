@@ -1,12 +1,7 @@
 open ReventlessSpec.Adapter
+open ReventlessSpec.EventCollector
 
 let componentType = ComponentType.EventCollector
-
-type enqueueEvent = (
-  . /* ~delay: */ int,
-  /* ~id: */ string,
-  /* ~message: */ string,
-) => Js.Promise.t<unit>
 
 type eventsHandler = (. array<Js.Json.t>) => Js.Promise.t<unit>
 
@@ -27,13 +22,13 @@ module type T = {
   let enqueueEvent: ReventlessSpec.Component.t<
     t,
     ReventlessSpec.EventCollector.outputs,
-  > => enqueueEvent
+  > => ReventlessSpec.EventCollector.enqueueEvent
 }
 
 module Adapter = {
   type connector = {
     resources: array<resource>,
-    enqueueEvent: enqueueEvent,
+    enqueueEvent: ReventlessSpec.EventCollector.enqueueEvent,
   }
   type connectorMaker = (
     ~name: string,

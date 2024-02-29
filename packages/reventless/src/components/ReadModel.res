@@ -45,6 +45,17 @@ module Make = (
     self->registerOutputs(outputs)
   }
 
+  @set
+  external setEnqueueEvent: (
+    ReventlessSpec.ReadModel.component,
+    ReventlessSpec.EventCollector.enqueueEvent,
+  ) => unit = "enqueueEvent"
+  @get
+  external enqueueEvent: ReventlessSpec.ReadModel.component => ReventlessSpec.EventCollector.enqueueEvent =
+    "enqueueEvent"
+
+  let sourceNames = Mappings.mappings->Belt.Array.map((module(Mapping)) => Mapping.sourceName)
+
   let construct = (~allEventTopics, self, name) => {
     let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
 
@@ -96,7 +107,7 @@ module Make = (
     }
 
     module Set = Belt.Set.String
-    let aggregateNames =
+    let sourceNames =
       Mappings.mappings
       ->Belt.Array.map((module(Mapping: Mappings.Mapping)) => Mapping.sourceName)
       ->Set.fromArray
@@ -104,7 +115,7 @@ module Make = (
     module EventCollector = EventCollector.Make(EventCollectorConnector)
     let eventCollector = EventCollector.make(
       ~name=name->ComponentType.name(componentType),
-      ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
+      ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
       ~eventsHandler,
       ~policy1=Pulumi.Output.make(None),
       ~policy2=Pulumi.Output.make(None),
@@ -112,6 +123,7 @@ module Make = (
       (),
     )
 
+    self->setEnqueueEvent(eventCollector->EventCollector.enqueueEvent)
     self->setOutputs(
       makeOutputs(
         ~name,

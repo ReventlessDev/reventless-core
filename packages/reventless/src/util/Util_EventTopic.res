@@ -1,14 +1,7 @@
-let filterEventTopics = (allEventTopics, aggregateNames) =>
-  aggregateNames
+let filterEventTopics = (allEventTopics, sourceNames) =>
+  sourceNames
   ->Belt.Set.String.toArray
-  ->Belt.Array.map(aggregateName =>
-    try (aggregateName, allEventTopics->Js.Dict.get(aggregateName)->Belt.Option.getExn) catch {
-    | exn =>
-      Js.log2(
-        `Util_EventTopic.filterEventTopics: Couldn't find Aggregate ${aggregateName} in`,
-        allEventTopics,
-      )
-      raise(exn)
-    }
+  ->Belt.Array.keepMap(sourceName =>
+    allEventTopics->Js.Dict.get(sourceName)->Belt.Option.map(eventTopic => (sourceName, eventTopic))
   )
   ->Js.Dict.fromArray

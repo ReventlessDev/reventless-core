@@ -20,6 +20,7 @@ type outputs = {
   >,
   "outgoingServiceNameToExtensionsMapping": Pulumi.Output.t<Js.Dict.t<array<Extension.outputs>>>,
   "incomingServiceNameToExtensionsMapping": Pulumi.Output.t<Js.Dict.t<array<Extension.outputs>>>,
+  "readModelNamesForSourceName": Pulumi.Output.t<Js.Dict.t<array<string>>>,
 }
 
 type t
@@ -79,6 +80,7 @@ module Make = (
     >,
     ~outgoingServiceNameToExtensionsMapping: Pulumi.Output.t<Js.Dict.t<array<Extension.outputs>>>,
     ~incomingServiceNameToExtensionsMapping: Pulumi.Output.t<Js.Dict.t<array<Extension.outputs>>>,
+    ~readModelNamesForSourceName: Pulumi.Output.t<Js.Dict.t<array<string>>>,
   ) => outputs = ""
 
   // TODO: find better naming
@@ -97,6 +99,7 @@ module Make = (
     serviceNameToExtensionPointsMapping: Js.Dict.t<array<ReventlessSpec.ExtensionPoint.outputs>>,
     outgoingServiceNameToExtensionsMapping: Js.Dict.t<array<Extension.outputs>>,
     incomingServiceNameToExtensionsMapping: Js.Dict.t<array<Extension.outputs>>,
+    readModelNamesForSourceName: Js.Dict.t<array<string>>,
   }
 
   @send
@@ -143,8 +146,24 @@ module Make = (
 
     let allEventTopics = Util.Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
+    let readModelNamesForSourceName = Js.Dict.empty()
+    let publishToReadModels = Js.Dict.empty()
+
     let readModels = readModels->Belt.Array.map((module(ReadModel: ReventlessSpec.ReadModel.T)) => {
       let readModel = ReadModel.make(~allEventTopics, ~opts, ())
+      ReadModel.sourceNames->Belt.Array.forEach(sourceName =>
+        switch readModelNamesForSourceName->Js.Dict.get(sourceName) {
+        | Some(readModelNames) =>
+          Js.Dict.set(
+            readModelNamesForSourceName,
+            sourceName,
+            readModelNames->Belt.Array.concat([ReadModel.Spec.name]),
+          )
+        | None => Js.Dict.set(readModelNamesForSourceName, sourceName, [ReadModel.Spec.name])
+        }
+      )
+      publishToReadModels->Js.Dict.set(ReadModel.Spec.name, readModel->ReadModel.enqueueEvent)
+
       (ReadModel.Spec.name, {module_: module(ReadModel), readModel})
     })
     let readModelsOutputs =
@@ -212,6 +231,8 @@ module Make = (
             Extension.make(
               ~publishToCorePluginExtensionPoint,
               ~publishToAggregates,
+              ~readModelNamesForSourceName,
+              ~publishToReadModels,
               ~queryEngine,
               ~opts=Some(opts),
               (),
@@ -529,6 +550,8 @@ module Make = (
         let connectPluginExtension = ConnectPluginExtension.make(
           ~publishToCorePluginExtensionPoint,
           ~publishToAggregates,
+          ~readModelNamesForSourceName,
+          ~publishToReadModels,
           ~queryEngine,
           ~opts=Some(opts),
           (),
@@ -570,35 +593,40 @@ module Make = (
 
         let extensionPointAggregateNames = extensionPointsOutputs->collectAggregateNames
 
-        let serviceNameToEx = (exs, getServiceNames) => {
+        let serviceNameToComponent = (components, getServiceNames) => {
           let dict = Js.Dict.empty()
-          exs->Belt.Array.forEachU((. ex) =>
-            ex
+          components->Belt.Array.forEach(component =>
+            component
             ->getServiceNames
-            ->Belt.Array.forEachU(
-              (. serviceName) =>
+            ->Belt.Array.forEach(
+              serviceName =>
                 switch dict->Js.Dict.get(serviceName) {
                 | Some(mappedExtensionPoints) =>
-                  Js.Dict.set(dict, serviceName, mappedExtensionPoints->Belt.Array.concat([ex]))
-                | None => Js.Dict.set(dict, serviceName, [ex])
+                  Js.Dict.set(
+                    dict,
+                    serviceName,
+                    mappedExtensionPoints->Belt.Array.concat([component]),
+                  )
+                | None => Js.Dict.set(dict, serviceName, [component])
                 },
             )
           )
           dict
         }
 
-        let incomingServiceNameToPluginConnectExtensionsMapping = serviceNameToEx(
+        let incomingServiceNameToPluginConnectExtensionsMapping = serviceNameToComponent(
           [connectPluginExtension->Component.extractOutputs],
           extension => [extension["extensionPointName"]],
         )
-        let serviceNameToExtensionPointsMapping = serviceNameToEx(
+        let serviceNameToExtensionPointsMapping = serviceNameToComponent(
           extensionPointsOutputs,
           extensionPoint => extensionPoint["aggregateNames"],
         )
-        let outgoingServiceNameToExtensionsMapping = serviceNameToEx(extensionsOutputs, extension =>
-          extension["aggregateNames"]
+        let outgoingServiceNameToExtensionsMapping = serviceNameToComponent(
+          extensionsOutputs,
+          extension => extension["aggregateNames"],
         )
-        let incomingServiceNameToExtensionsMapping = serviceNameToEx(
+        let incomingServiceNameToExtensionsMapping = serviceNameToComponent(
           extensionsOutputs,
           extension => [extension["extensionPointName"]],
         )
@@ -609,10 +637,11 @@ module Make = (
           await event'Json
           ->Message.serviceNameOfMsg
           ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
-          ->Belt.Option.mapWithDefault(Js.Promise.resolve(), async exs => {
-            await exs
+          ->Belt.Option.mapWithDefault(Js.Promise.resolve(), async components => {
+            await components
             ->Belt.Array.map(
-              ex => getEventHandler(ex)(. event'Json, pluginDefinition->Pulumi.Output.get),
+              component =>
+                getEventHandler(component)(. event'Json, pluginDefinition->Pulumi.Output.get),
             )
             ->Js.Promise.all
             ->Util.Promise.toUnit
@@ -719,6 +748,7 @@ module Make = (
           serviceNameToExtensionPointsMapping,
           outgoingServiceNameToExtensionsMapping,
           incomingServiceNameToExtensionsMapping,
+          readModelNamesForSourceName,
         }
       })
     }
@@ -743,6 +773,9 @@ module Make = (
         ),
         ~incomingServiceNameToExtensionsMapping=pureOutputs->Pulumi.Output.apply(outputs =>
           outputs.incomingServiceNameToExtensionsMapping
+        ),
+        ~readModelNamesForSourceName=pureOutputs->Pulumi.Output.apply(outputs =>
+          outputs.readModelNamesForSourceName
         ),
       ),
     )

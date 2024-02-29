@@ -24,6 +24,8 @@ module type T = {
   let make: (
     ~publishToCorePluginExtensionPoint: ReventlessSpec.CommandTopic.publishJsons,
     ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
+    ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
+    ~publishToReadModels: Js.Dict.t<ReventlessSpec.EventCollector.enqueueEvent>,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
     unit,
@@ -108,6 +110,8 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
   let construct = (
     ~publishToCorePluginExtensionPoint,
     ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
+    ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
+    ~publishToReadModels: Js.Dict.t<ReventlessSpec.EventCollector.enqueueEvent>,
     ~queryEngine,
     self,
     name,
@@ -200,6 +204,25 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
           ->Util.Promise.toUnit
         }
         await commandActions->apply
+
+        switch readModelNamesForSourceName
+        ->Js.Dict.get(event'.meta.service)
+        ->Belt.Option.map(readModelNames =>
+          readModelNames
+          ->Belt.Array.keepMap(readModelName =>
+            publishToReadModels
+            ->Js.Dict.get(readModelName)
+            ->Belt.Option.map(
+              enqueueEvent => enqueueEvent(. 0, event'.id, event'Json->Js.Json.stringify),
+            )
+          ) // FIXME Error handling
+          ->Js.Promise.all
+        ) {
+        | Some(p) =>
+          let _ = await p
+        | None => ()
+        }
+
       | Error(msg) => Js.log2("Could not decode event':", msg)
       }
     }
@@ -230,12 +253,16 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
   let make: (
     ~publishToCorePluginExtensionPoint: ReventlessSpec.CommandTopic.publishJsons,
     ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
+    ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
+    ~publishToReadModels: Js.Dict.t<ReventlessSpec.EventCollector.enqueueEvent>,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
     unit,
   ) => component = (
     ~publishToCorePluginExtensionPoint,
     ~publishToAggregates,
+    ~readModelNamesForSourceName,
+    ~publishToReadModels,
     ~queryEngine,
     ~opts,
     _: unit,
@@ -243,7 +270,13 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name ++ ("." ++ Mappings.name),
-      ~construct=construct(~publishToCorePluginExtensionPoint, ~publishToAggregates, ~queryEngine),
+      ~construct=construct(
+        ~publishToCorePluginExtensionPoint,
+        ~publishToAggregates,
+        ~readModelNamesForSourceName,
+        ~publishToReadModels,
+        ~queryEngine,
+      ),
       ~opts,
     )
 }

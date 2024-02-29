@@ -63,8 +63,19 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                 return Component$Reventless.extractOutputs(aggregate);
               })));
     var allEventTopics = Util_Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
+    var readModelNamesForSourceName = {};
+    var publishToReadModels = {};
     var readModels$1 = Belt_Array.map(readModels, (function (ReadModel) {
             var readModel = Curry._3(ReadModel.make, allEventTopics, Caml_option.some(opts), undefined);
+            Belt_Array.forEach(ReadModel.sourceNames, (function (sourceName) {
+                    var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
+                    if (readModelNames !== undefined) {
+                      readModelNamesForSourceName[sourceName] = Belt_Array.concat(readModelNames, [ReadModel.Spec.name]);
+                    } else {
+                      readModelNamesForSourceName[sourceName] = [ReadModel.Spec.name];
+                    }
+                  }));
+            publishToReadModels[ReadModel.Spec.name] = Curry._1(ReadModel.enqueueEvent, readModel);
             return [
                     ReadModel.Spec.name,
                     {
@@ -97,7 +108,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var corePluginExtensionPointCommandTopicRemoteConnector = Curry._1(CorePluginExtensionPointRemoteConnector.make, corePluginExtensionPoint.commandTopic);
           var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish;
           var extensions$1 = Belt_Array.map(extensions, (function (Extension) {
-                  return Curry._5(Extension.make, publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, Caml_option.some(opts), undefined);
+                  return Curry._7(Extension.make, publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, Caml_option.some(opts), undefined);
                 }));
           var extensionsOutputs = Component$Reventless.extractMultipleOutputs(extensions$1);
           var match = Curry._1(Util_Pulumi$Reventless.Output.Async.make, undefined);
@@ -330,7 +341,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                 name: "Connect",
                 mappings: mappings
               });
-          var connectPluginExtension = Curry._5(ConnectPluginExtension.make, publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, Caml_option.some(opts), undefined);
+          var connectPluginExtension = Curry._7(ConnectPluginExtension.make, publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, Caml_option.some(opts), undefined);
           var tasksOutputs = {
             contents: []
           };
@@ -350,39 +361,39 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                             })), undefined, Belt_SetString.union);
           };
           var extensionPointAggregateNames = collectAggregateNames(extensionPointsOutputs);
-          var serviceNameToEx = function (exs, getServiceNames) {
+          var serviceNameToComponent = function (components, getServiceNames) {
             var dict = {};
-            Belt_Array.forEachU(exs, (function (ex) {
-                    Belt_Array.forEachU(Curry._1(getServiceNames, ex), (function (serviceName) {
+            Belt_Array.forEach(components, (function (component) {
+                    Belt_Array.forEach(Curry._1(getServiceNames, component), (function (serviceName) {
                             var mappedExtensionPoints = Js_dict.get(dict, serviceName);
                             if (mappedExtensionPoints !== undefined) {
-                              dict[serviceName] = Belt_Array.concat(mappedExtensionPoints, [ex]);
+                              dict[serviceName] = Belt_Array.concat(mappedExtensionPoints, [component]);
                             } else {
-                              dict[serviceName] = [ex];
+                              dict[serviceName] = [component];
                             }
                           }));
                   }));
             return dict;
           };
-          var incomingServiceNameToPluginConnectExtensionsMapping = serviceNameToEx([Component$Reventless.extractOutputs(connectPluginExtension)], (function (extension) {
+          var incomingServiceNameToPluginConnectExtensionsMapping = serviceNameToComponent([Component$Reventless.extractOutputs(connectPluginExtension)], (function (extension) {
                   return [extension.extensionPointName];
                 }));
-          var serviceNameToExtensionPointsMapping = serviceNameToEx(extensionPointsOutputs, (function (extensionPoint) {
+          var serviceNameToExtensionPointsMapping = serviceNameToComponent(extensionPointsOutputs, (function (extensionPoint) {
                   return extensionPoint.aggregateNames;
                 }));
-          var outgoingServiceNameToExtensionsMapping = serviceNameToEx(extensionsOutputs, (function (extension) {
+          var outgoingServiceNameToExtensionsMapping = serviceNameToComponent(extensionsOutputs, (function (extension) {
                   return extension.aggregateNames;
                 }));
-          var incomingServiceNameToExtensionsMapping = serviceNameToEx(extensionsOutputs, (function (extension) {
+          var incomingServiceNameToExtensionsMapping = serviceNameToComponent(extensionsOutputs, (function (extension) {
                   return [extension.extensionPointName];
                 }));
           var extensionAggregateNames = collectAggregateNames(extensionsOutputs);
           var handleEvent = async function (event$pJson, dict, getEventHandler) {
             return await Belt_Option.mapWithDefault(Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(event$pJson), (function (serviceName) {
                               return Js_dict.get(dict, serviceName);
-                            })), Promise.resolve(undefined), (async function (exs) {
-                          return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(exs, (function (ex) {
-                                                return Curry._1(getEventHandler, ex)(event$pJson, pluginDefinition.get());
+                            })), Promise.resolve(undefined), (async function (components) {
+                          return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(components, (function (component) {
+                                                return Curry._1(getEventHandler, component)(event$pJson, pluginDefinition.get());
                                               }))));
                         }));
           };
@@ -454,7 +465,8 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                   heartbeat: Component$Reventless.extractOutputs(heartbeat),
                   serviceNameToExtensionPointsMapping: serviceNameToExtensionPointsMapping,
                   outgoingServiceNameToExtensionsMapping: outgoingServiceNameToExtensionsMapping,
-                  incomingServiceNameToExtensionsMapping: incomingServiceNameToExtensionsMapping
+                  incomingServiceNameToExtensionsMapping: incomingServiceNameToExtensionsMapping,
+                  readModelNamesForSourceName: readModelNamesForSourceName
                 };
         });
     var outputs = {
@@ -499,6 +511,9 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           }),
       incomingServiceNameToExtensionsMapping: pureOutputs.apply(function (outputs) {
             return outputs.incomingServiceNameToExtensionsMapping;
+          }),
+      readModelNamesForSourceName: pureOutputs.apply(function (outputs) {
+            return outputs.readModelNamesForSourceName;
           })
     };
     self.setOutputs(outputs);

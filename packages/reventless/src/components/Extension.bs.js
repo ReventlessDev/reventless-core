@@ -7,6 +7,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Logger$Reventless = require("../util/Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -38,13 +39,13 @@ function Make(Spec, Mappings) {
     if (mapOutgoingEvent$1 !== undefined) {
       return Curry._1(mapOutgoingEvent$1, event$pJson);
     } else {
-      Logger$Reventless.error("File \"Extension.res\", line 96, characters 15-22", undefined, undefined)("mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      Logger$Reventless.error("File \"Extension.res\", line 98, characters 15-22", undefined, undefined)("mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return function (param) {
         return [];
       };
     }
   };
-  var construct = function (publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, self, name) {
+  var construct = function (publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, self, name) {
     var publishAggregateCommand = async function (aggregateName, cmdJson) {
       var pub = Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName));
       try {
@@ -146,11 +147,25 @@ function Make(Spec, Mappings) {
     var incomingEventHandler = async function (event$pJson, pluginDef) {
       var event$p = Message$Reventless.event$p_decode(Id$ReventlessSpec.StringPure.t_decode, Spec.event_decode, event$pJson);
       if (event$p.TAG === /* Ok */0) {
-        var commandActions = mapIncomingEvent(event$p._0, pluginDef, queryEngine);
+        var event$p$1 = event$p._0;
+        var commandActions = mapIncomingEvent(event$p$1, pluginDef, queryEngine);
         var apply = async function (commandActions) {
           return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction)));
         };
-        return await apply(commandActions);
+        await apply(commandActions);
+        var p = Belt_Option.map(Js_dict.get(readModelNamesForSourceName, event$p$1.meta.service), (function (readModelNames) {
+                return Promise.all(Belt_Array.keepMap(readModelNames, (function (readModelName) {
+                                  return Belt_Option.map(Js_dict.get(publishToReadModels, readModelName), (function (enqueueEvent) {
+                                                return enqueueEvent(0, event$p$1.id, JSON.stringify(event$pJson));
+                                              }));
+                                })));
+              }));
+        if (p !== undefined) {
+          await Caml_option.valFromOption(p);
+          return ;
+        } else {
+          return ;
+        }
       }
       console.log("Could not decode event':", event$p._0);
     };
@@ -174,11 +189,11 @@ function Make(Spec, Mappings) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, opts, param) {
+  var make = function (publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts, param) {
     var prim0 = ComponentType$Reventless.toString(/* Extension */10);
     var prim1 = Spec.name + ("." + Mappings.name);
     var prim2 = function (param, param$1) {
-      return construct(publishToCorePluginExtensionPoint, publishToAggregates, queryEngine, param, param$1);
+      return construct(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, param, param$1);
     };
     return new Component(prim0, prim1, prim2, opts);
   };

@@ -18,6 +18,9 @@ var Util_EventTopic$Reventless = require("../util/Util_EventTopic.bs.js");
 var ProjectionMapper$Reventless = require("../ProjectionMapper.bs.js");
 
 function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCollectorConnector) {
+  var sourceNames = Belt_Array.map(Mappings.mappings, (function (Mapping) {
+          return Mapping.sourceName;
+        }));
   var construct = function (allEventTopics, self, name) {
     var opts = {
       parent: self
@@ -88,13 +91,13 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                             return Curry._2(EventProjector.map, sourceName, json);
                           }))), primitives, Spec.subIdConfig);
     };
-    var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(Mappings.mappings, (function (Mapping) {
+    var sourceNames = Belt_SetString.fromArray(Belt_Array.map(Mappings.mappings, (function (Mapping) {
                 return Mapping.sourceName;
               })));
     var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
     var eventCollector = Curry.app(EventCollector.make, [
           ComponentType$Reventless.name(name, /* ReadModel */12),
-          Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames),
+          Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames),
           eventsHandler,
           undefined,
           undefined,
@@ -103,6 +106,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
           Caml_option.some(opts),
           undefined
         ]);
+    self.enqueueEvent = Curry._1(EventCollector.enqueueEvent, eventCollector);
     var outputs = {
       name: name,
       queryDb: Component$Reventless.extractOutputs(queryDb),
@@ -121,7 +125,11 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
   };
   return {
           Spec: Spec,
-          make: make
+          make: make,
+          enqueueEvent: (function (prim) {
+              return prim.enqueueEvent;
+            }),
+          sourceNames: sourceNames
         };
 }
 

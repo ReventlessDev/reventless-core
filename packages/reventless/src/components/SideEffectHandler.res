@@ -24,7 +24,7 @@ module type T = {
     unit,
   ) => component
 
-  let enqueueEvent: component => EventCollector.enqueueEvent
+  let enqueueEvent: component => ReventlessSpec.EventCollector.enqueueEvent
   let createSchedule: component => ReventlessSpec.Schedule.create
   let deleteSchedule: component => ReventlessSpec.Schedule.delete
 }
@@ -55,10 +55,10 @@ module Make = (EventCollector: EventCollector.T): T => {
   }
 
   @set
-  external setEnqueueEvent: (component, ReventlessEventCollector.enqueueEvent) => unit =
+  external setEnqueueEvent: (component, ReventlessSpec.EventCollector.enqueueEvent) => unit =
     "enqueueEvent"
   @get
-  external enqueueEvent: component => ReventlessEventCollector.enqueueEvent = "enqueueEvent"
+  external enqueueEvent: component => ReventlessSpec.EventCollector.enqueueEvent = "enqueueEvent"
 
   @set
   external setCreateSchedule: (component, ReventlessSpec.Schedule.create) => unit = "createSchedule"
