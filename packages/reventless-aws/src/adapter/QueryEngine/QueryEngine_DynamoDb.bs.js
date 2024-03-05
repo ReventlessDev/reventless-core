@@ -5,6 +5,7 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
@@ -23,44 +24,88 @@ function toJson(x) {
   }
 }
 
-function createFilters(filters) {
-  return Belt_Array.unzip(Belt_Array.mapWithIndex(filters, (function (idx, param) {
-                    var key = param[0];
-                    var valueName = "" + key + "" + String(idx) + "";
+function createSubIdExprNamesValues(subIdConfig) {
+  return Belt_Option.map(subIdConfig, (function (param) {
+                var subIdName = param[0];
+                var tmp;
+                switch (param[1]) {
+                  case /* Equal */0 :
+                      tmp = "#" + subIdName + " = :" + subIdName + "";
+                      break;
+                  case /* Unequal */1 :
+                      tmp = "#" + subIdName + " <> :" + subIdName + "";
+                      break;
+                  case /* LessOrEqual */2 :
+                      tmp = "#" + subIdName + " <= :" + subIdName + "";
+                      break;
+                  case /* Less */3 :
+                      tmp = "#" + subIdName + " < :" + subIdName + "";
+                      break;
+                  case /* GreaterOrEqual */4 :
+                      tmp = "#" + subIdName + " >= :" + subIdName + "";
+                      break;
+                  case /* Greater */5 :
+                      tmp = "#" + subIdName + " > :" + subIdName + "";
+                      break;
+                  case /* BeginsWith */6 :
+                      tmp = "begins_with( #" + subIdName + ", :" + subIdName + " )";
+                      break;
+                  
+                }
+                return [
+                        [tmp],
+                        [[
+                            [
+                              "#" + subIdName + "",
+                              subIdName
+                            ],
+                            [
+                              ":" + subIdName + "",
+                              toJson(param[2])
+                            ]
+                          ]]
+                      ];
+              }));
+}
+
+function createFilterExprNamesValues(filterConfigs) {
+  return Belt_Array.unzip(Belt_Array.mapWithIndex(filterConfigs, (function (idx, param) {
+                    var fieldName = param[0];
+                    var valueName = "" + fieldName + "" + String(idx) + "";
                     var tmp;
                     switch (param[1]) {
                       case /* Equal */0 :
-                          tmp = "#" + key + " = :" + valueName + "";
+                          tmp = "#" + fieldName + " = :" + valueName + "";
                           break;
                       case /* Unequal */1 :
-                          tmp = "#" + key + " <> :" + valueName + "";
+                          tmp = "#" + fieldName + " <> :" + valueName + "";
                           break;
                       case /* LessOrEqual */2 :
-                          tmp = "#" + key + " <= :" + valueName + "";
+                          tmp = "#" + fieldName + " <= :" + valueName + "";
                           break;
                       case /* Less */3 :
-                          tmp = "#" + key + " < :" + valueName + "";
+                          tmp = "#" + fieldName + " < :" + valueName + "";
                           break;
                       case /* GreaterOrEqual */4 :
-                          tmp = "#" + key + " >= :" + valueName + "";
+                          tmp = "#" + fieldName + " >= :" + valueName + "";
                           break;
                       case /* Greater */5 :
-                          tmp = "#" + key + " > :" + valueName + "";
+                          tmp = "#" + fieldName + " > :" + valueName + "";
                           break;
                       case /* Exists */6 :
-                          tmp = "attribute_exists( #" + key + " )";
+                          tmp = "attribute_exists( #" + fieldName + " )";
                           break;
                       case /* NotExists */7 :
-                          tmp = "attribute_not_exists( #" + key + " )";
+                          tmp = "attribute_not_exists( #" + fieldName + " )";
                           break;
                       case /* Contains */8 :
-                          tmp = "contains( #" + key + ", :" + valueName + " )";
+                          tmp = "contains( #" + fieldName + ", :" + valueName + " )";
                           break;
                       case /* NotContains */9 :
-                          tmp = "NOT contains( #" + key + ", :" + valueName + " )";
+                          tmp = "NOT contains( #" + fieldName + ", :" + valueName + " )";
                           break;
                       case /* BeginsWith */10 :
-                          tmp = "begins_with( #" + key + ", :" + valueName + " )";
+                          tmp = "begins_with( #" + fieldName + ", :" + valueName + " )";
                           break;
                       
                     }
@@ -68,8 +113,8 @@ function createFilters(filters) {
                             tmp,
                             [
                               [
-                                "#" + key + "",
-                                key
+                                "#" + fieldName + "",
+                                fieldName
                               ],
                               [
                                 ":" + valueName + "",
@@ -80,32 +125,37 @@ function createFilters(filters) {
                   })));
 }
 
-async function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendingOpt, limitOpt, param) {
+async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, ascendingOpt, limitOpt, param) {
   var key = keyOpt !== undefined ? keyOpt : "id";
   var filterConfigs = filterConfigsOpt !== undefined ? filterConfigsOpt : [];
   var ascending = ascendingOpt !== undefined ? ascendingOpt : true;
   var limit = limitOpt !== undefined ? limitOpt : 1;
-  var match = createFilters(filterConfigs);
-  var filterExpressions = match[0];
+  var match = Belt_Option.getWithDefault(createSubIdExprNamesValues(subIdConfig), [
+        [],
+        []
+      ]);
+  var match$1 = createFilterExprNamesValues(filterConfigs);
+  var filterExpressions = match$1[0];
+  var keyConditionExpression = Belt_Array.concat(["#key = :value"], match[0]).join(" AND ");
   var filterExpression = filterExpressions.length !== 0 ? filterExpressions.join(" AND ") : undefined;
-  var match$1 = Belt_Array.unzip(match[1]);
+  var match$2 = Belt_Array.unzip(Belt_Array.concat(match[1], match$1[1]));
   var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromArray(Belt_Array.concatMany([
                     [[
                         ":value",
                         toJson(id)
                       ]],
-                    match$1[1]
+                    match$2[1]
                   ]))));
   var attributeNames = Js_dict.fromArray(Belt_Array.concatMany([
             [[
                 "#key",
                 key
               ]],
-            match$1[0]
+            match$2[0]
           ]));
   var tmp = {
     TableName: tableName,
-    KeyConditionExpression: "#key = :value",
+    KeyConditionExpression: keyConditionExpression,
     ExpressionAttributeNames: attributeNames,
     ExpressionAttributeValues: attributeValues,
     ScanIndexForward: ascending,
@@ -135,7 +185,7 @@ async function queryByTableName(tableName, keyOpt, id, filterConfigsOpt, ascendi
 }
 
 async function scanByTableName(tableName, filterConfigs, limit) {
-  var match = createFilters(filterConfigs);
+  var match = createFilterExprNamesValues(filterConfigs);
   var filterExpressions = match[0];
   var match$1 = Belt_Array.unzip(match[1]);
   var match$2 = filterExpressions.length !== 0 ? [
@@ -183,27 +233,28 @@ async function scanByTableName(tableName, filterConfigs, limit) {
 }
 
 function make(allQueryDbs) {
-  var tableName = function (viewName) {
-    return OutputFailsafeRuntime$Reventless.get(Util_DynamoDb_Runtime$ReventlessAws.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, viewName)).name);
+  var tableName = function (readModelName) {
+    return OutputFailsafeRuntime$Reventless.get(Util_DynamoDb_Runtime$ReventlessAws.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, readModelName)).name);
   };
   return {
-          scan: (function (viewName) {
-              var partial_arg = tableName(viewName);
+          scan: (function (readModelName) {
+              var partial_arg = tableName(readModelName);
               return function (param, param$1) {
                 return scanByTableName(partial_arg, param, param$1);
               };
             }),
-          query: (function (viewName) {
-              var partial_arg = tableName(viewName);
-              return function (param, param$1, param$2, param$3, param$4, param$5) {
-                return queryByTableName(partial_arg, param, param$1, param$2, param$3, param$4, param$5);
+          query: (function (readModelName) {
+              var partial_arg = tableName(readModelName);
+              return function (param, param$1, param$2, param$3, param$4, param$5, param$6) {
+                return queryByTableName(partial_arg, param, param$1, param$2, param$3, param$4, param$5, param$6);
               };
             })
         };
 }
 
 exports.toJson = toJson;
-exports.createFilters = createFilters;
+exports.createSubIdExprNamesValues = createSubIdExprNamesValues;
+exports.createFilterExprNamesValues = createFilterExprNamesValues;
 exports.queryByTableName = queryByTableName;
 exports.scanByTableName = scanByTableName;
 exports.make = make;
