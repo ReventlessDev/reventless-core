@@ -117,12 +117,13 @@ module Make = (
   let test = Jest.testPromise
 
   let queryEngine: ReventlessSpec.QueryEngine.t = {
-    scan: (~viewName as _, ~filterConfigs as _, ~limit as _) => []->Js.Promise.resolve,
+    scan: (~readModelName as _, ~filterConfigs as _, ~limit as _) => []->Js.Promise.resolve,
     query: (
-      ~viewName as _: string,
+      ~readModelName as _: string,
       ~key as _: option<string>=?,
       ~id as _: ReventlessSpec.QueryEngine.value,
-      ~filterConfigs as _: option<array<ReventlessSpec.QueryEngine.filterConfig>>=?,
+      ~subIdConfig as _: option<ReventlessSpec.QueryEngine.SubId.config>=?,
+      ~filterConfigs as _: option<array<ReventlessSpec.QueryEngine.Filter.config>>=?,
       ~ascending as _: option<bool>=?,
       ~limit as _: option<int>=?,
       _: unit,

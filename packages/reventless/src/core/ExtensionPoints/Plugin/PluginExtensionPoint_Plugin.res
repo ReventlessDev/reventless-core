@@ -8,7 +8,7 @@ let forwardCommand = async (
   queryEngine: ReventlessSpec.QueryEngine.t,
 ) =>
   switch await queryEngine.scan(
-    ~viewName=PluginSpec.name,
+    ~readModelName=PluginSpec.name,
     ~filterConfigs=[
       ("extensionPointNames", Contains, String(extensionPointName)),
       ("status", Contains, String("Connected")),

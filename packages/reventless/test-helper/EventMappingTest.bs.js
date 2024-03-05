@@ -138,7 +138,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
   var queryEngine_scan = function (param, param$1, param$2) {
     return Promise.resolve([]);
   };
-  var queryEngine_query = function (param, param$1, param$2, param$3, param$4, param$5, param$6) {
+  var queryEngine_query = function (param, param$1, param$2, param$3, param$4, param$5, param$6, param$7) {
     return Promise.resolve([]);
   };
   var queryEngine = {
