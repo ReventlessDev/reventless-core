@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 
 function getVpcConfig(stackName, outputName) {
@@ -16,7 +15,7 @@ function getVpcConfig(stackName, outputName) {
                 return {
                         securityGroupIds: [match],
                         subnetIds: [match$1],
-                        vpcId: Caml_option.valFromOption(match$2)
+                        vpcId: undefined
                       };
               } else {
                 return Js_exn.raiseError("Output is not a Reventless Vpc Component");
