@@ -3,7 +3,6 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Decco = require("decco/src/Decco.bs.js");
-var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
@@ -262,8 +261,8 @@ function event$p_decode(decoder_id, decoder_event, v) {
         };
 }
 
-function invalidEvent(param) {
-  return Js_exn.raiseError("Invalid Event");
+function invalidEvent(reason, $$event) {
+  console.log("Invalid Event (", reason, "), Event:", $$event);
 }
 
 function statusChange_encode(v) {

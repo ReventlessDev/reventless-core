@@ -24,7 +24,7 @@ type event'<'id, 'event> = {
   event: 'event,
 }
 
-let invalidEvent = () => Js.Exn.raiseError("Invalid Event")
+let invalidEvent = (reason, event) => Js.log4("Invalid Event (", reason, "), Event:", event)
 
 @decco
 type statusChange = {
