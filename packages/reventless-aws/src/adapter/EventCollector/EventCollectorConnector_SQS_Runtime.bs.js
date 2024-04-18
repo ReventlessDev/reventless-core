@@ -33,7 +33,7 @@ async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
             case "aws:sqs" :
                 return Util_SQS_Runtime$ReventlessAws.parseSqsRecord(record);
             default:
-              console.log("EventCollectorConnector_SQS_Runtime: ignoring record from eventSource:", eventSource);
+              console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: ignoring record from eventSource:", eventSource);
               return ;
           }
         }));
@@ -60,7 +60,7 @@ async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
 function enqueueEvent(queue) {
   return function (delay, _id, messageBody) {
     var queueName = OutputFailsafeRuntime$Reventless.get(queue.name);
-    console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueMessage:", delay, messageBody, queueName);
+    console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueEvent:", delay, messageBody, queueName);
     return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody);
   };
 }
@@ -68,7 +68,7 @@ function enqueueEvent(queue) {
 function enqueueFifoEvent(queue) {
   return function (delay, id, messageBody) {
     var queueName = OutputFailsafeRuntime$Reventless.get(queue.name);
-    console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueMessage:", delay, messageBody, queueName);
+    console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueFifoEvent:", delay, messageBody, queueName);
     return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, id, messageBody);
   };
 }

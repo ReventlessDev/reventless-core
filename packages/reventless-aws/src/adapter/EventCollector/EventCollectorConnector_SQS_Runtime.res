@@ -22,7 +22,7 @@ let handleCallbackEvent = async (handleEvents, queue, callbackEvent, _) => {
         None
       }
     | eventSource =>
-      Js.log2("EventCollectorConnector_SQS_Runtime: ignoring record from eventSource:", eventSource)
+      Js.log2(__MODULE__ ++ ".handleCallbackEvent: ignoring record from eventSource:", eventSource)
       None
     }
   )
@@ -52,12 +52,12 @@ let handleCallbackEvent = async (handleEvents, queue, callbackEvent, _) => {
 
 let enqueueEvent = queue => (. delay, _id, messageBody) => {
   let queueName = queue["name"]->Reventless.OutputFailsafeRuntime.get
-  Js.log4(__MODULE__ ++ ".enqueueMessage:", delay, messageBody, queueName)
+  Js.log4(__MODULE__ ++ ".enqueueEvent:", delay, messageBody, queueName)
   queue->Util_SQS_Runtime.sendMessage(~delay, messageBody)
 }
 
 let enqueueFifoEvent = queue => (. delay, id, messageBody) => {
   let queueName = queue["name"]->Reventless.OutputFailsafeRuntime.get
-  Js.log4(__MODULE__ ++ ".enqueueMessage:", delay, messageBody, queueName)
+  Js.log4(__MODULE__ ++ ".enqueueFifoEvent:", delay, messageBody, queueName)
   queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=id, messageBody)
 }

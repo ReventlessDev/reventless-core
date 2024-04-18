@@ -3,7 +3,9 @@
 
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Message$Reventless = require("../Message.bs.js");
 
 function toString(level) {
@@ -28,15 +30,31 @@ var Level = {
   $$default: /* Info */1
 };
 
+function createTag(param, loc) {
+  var re = /File \"(.*).res\", line (.*), characters (.*)-(.*)/;
+  var result = re.exec(Belt_Option.getWithDefault(loc, ""));
+  if (result === null) {
+    return "";
+  }
+  var captures = Belt_Array.map(Belt_Array.map(result, (function (prim) {
+              if (prim == null) {
+                return ;
+              } else {
+                return Caml_option.some(prim);
+              }
+            })), (function (__x) {
+          return Belt_Option.getWithDefault(__x, "");
+        }));
+  return "" + Caml_array.get(captures, 1) + ":" + Caml_array.get(captures, 2) + "";
+}
+
 function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
   var map = mapOpt !== undefined ? mapOpt : (function (prim) {
         return prim;
       });
   var stringify = stringifyOpt !== undefined ? stringifyOpt : false;
   var level = levelOpt !== undefined ? levelOpt : /* Info */1;
-  var tag = toString(level) + Belt_Option.mapWithDefault(loc, ":", (function (loc) {
-          return "(" + (loc + "):");
-        }));
+  var tag = createTag(level, loc);
   var itemMapped = Curry._1(map, item);
   var match;
   if (stringify) {
@@ -108,13 +126,23 @@ function debug(param, param$1, param$2) {
   };
 }
 
+function commandJsonToLogMessage(param) {
+  var commandJson = param.commandJson;
+  var commandName = Belt_Option.getWithDefault(Message$Reventless.variantNameOfJson(commandJson), "Unknown");
+  return "" + commandName + "(" + param.id + "): " + JSON.stringify(commandJson) + "";
+}
+
 function commandJsonsToLogMessages(cmds) {
   var count = String(cmds.length);
-  return Belt_Array.mapWithIndex(cmds, (function (idx, param) {
+  return Belt_Array.mapWithIndex(cmds, (function (idx, cmd) {
                 var idx$1 = String(idx + 1 | 0);
-                var commandStringified = JSON.stringify(param.commandJson);
-                return "" + idx$1 + "/" + count + ": id=" + param.id + ", " + commandStringified + "";
+                return "" + idx$1 + "/" + count + ": " + commandJsonToLogMessage(cmd) + "";
               }));
+}
+
+function logCmdJson(loc, levelOpt, cmdJson, desc) {
+  var level = levelOpt !== undefined ? levelOpt : /* Info */1;
+  log(loc, undefined, undefined, level, desc, commandJsonToLogMessage(cmdJson));
 }
 
 function logCmdJsons(loc, levelOpt, cmdJsons, desc) {
@@ -129,7 +157,7 @@ function event$pJsonToLogMessage(event$pJson) {
   var eventName = Message$Reventless.eventNameOfEvent$pJson(event$pJson);
   var eventStringified = JSON.stringify(event$pJson);
   if (id !== undefined && eventName !== undefined) {
-    return "" + eventName + "(" + id + ") complete event: " + eventStringified + "";
+    return "" + eventName + "(" + id + "): " + eventStringified + "";
   }
   
 }
@@ -141,12 +169,15 @@ function logEvent$pJson(loc, levelOpt, event$pJson, desc) {
 }
 
 exports.Level = Level;
+exports.createTag = createTag;
 exports.log = log;
 exports.warn = warn;
 exports.error = error;
 exports.info = info;
 exports.debug = debug;
+exports.commandJsonToLogMessage = commandJsonToLogMessage;
 exports.commandJsonsToLogMessages = commandJsonsToLogMessages;
+exports.logCmdJson = logCmdJson;
 exports.logCmdJsons = logCmdJsons;
 exports.event$pJsonToLogMessage = event$pJsonToLogMessage;
 exports.logEvent$pJson = logEvent$pJson;

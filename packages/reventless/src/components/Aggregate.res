@@ -134,142 +134,131 @@ module Make = (
   let handleCommands = ((
     eventLogAppend: EventLogCommon.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
     eventLogReplay,
-  )) =>
-    async (. allTopicItems) => {
-      let apply' = (stateOpt, event) =>
-        switch stateOpt {
-        | Some(state) => Some(Behaviour.apply(. state, event))
-        | None => Some(Behaviour.init(. event))
-        }
-
-      let updateState = (stateOpt, events) => events->Belt.Array.reduce(stateOpt, apply')
-
-      let updateMeta = (command': Message.command'<Spec.Id.t, Spec.command>) => {
-        ...command'.meta,
-        time: Message.nowAsISOString(),
-        msgId: Message.uuid(),
+  )) => async (. allTopicItems) => {
+    let apply' = (stateOpt, event) =>
+      switch stateOpt {
+      | Some(state) => Some(Behaviour.apply(. state, event))
+      | None => Some(Behaviour.init(. event))
       }
 
-      Logger.debug(~loc=__LOC__, "starting", "Aggregate.execCommands")
-      let results =
-        await allTopicItems
-        ->groupTopicItemsById
-        ->Belt.Array.map(async ((id, topicItems)) => {
-          let history = await eventLogReplay(. id)
-          let processCommand = async (
-            accP,
-            command': Message.command'<Spec.Id.t, Spec.command>,
-          ) => {
-            let runBehaviour = ((stateO, events)) =>
-              switch stateO {
-              | Some(state) =>
-                let generatedEvents = try Behaviour.execute(.
-                  state,
-                  command'.command,
-                  {
-                    id: command'.id->Spec.Id.toString,
-                    meta: command'.meta,
-                  },
-                  errorHandler,
-                ) catch {
-                | Message.InvalidEvent(event) =>
-                  Logger.error(
-                    ~loc=__LOC__,
-                    "Aggregate.processCommand: InvalidEvent",
-                    event->Js.Json.stringify,
-                  )
-                  []
-                }
-                Ok((
-                  updateState(stateO, generatedEvents),
-                  Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
-                ))->Js.Promise.resolve
-              | None =>
-                let generatedEvents = Behaviour.create(.
-                  command'.command,
-                  {
-                    id: command'.id->Spec.Id.toString,
-                    meta: command'.meta,
-                  },
-                  errorHandler,
-                )
-                Ok((
-                  updateState(None, generatedEvents),
-                  Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
-                ))->Js.Promise.resolve
-              }
+    let updateState = (stateOpt, events) => events->Belt.Array.reduce(stateOpt, apply')
 
-            switch await accP {
-            | Ok(acc) => await runBehaviour(acc)
-            | Error(_) as error => error
-            }
-          }
-
-          Logger.debug(~loc=__LOC__, "finished eventLogReplay for id", id->Spec.Id.toString)
-
-          // TOREVIEW: should we use Logger.debug or just some minimal data here?
-          //    also: do we need the additional info of Message.command'
-          //            (compared to Spec.command)
-          Logger.logCmdJsons(
-            ~loc=__LOC__,
-            ~level=Logger.Level.Info,
-            topicItems->Belt.Array.map(({command}) =>
-              command->Message.commandJsonOfCommand'(
-                ~idToString=Spec.Id.toString,
-                ~commandEncode=Spec.command_encode,
-              )
-            ),
-            "handling command",
-          )
-
-          let (references, commands') =
-            // TODO: handle finer granular references
-            topicItems
-            ->Belt.Array.map(({reference, command}) => (reference, command))
-            ->Belt.Array.unzip
-          let result =
-            await commands'->Belt.Array.reduce(
-              Ok((updateState(None, history), []))->Js.Promise.resolve,
-              processCommand,
-            )
-          let events = switch result {
-          | Ok((_, generatedEventsWithMeta)) =>
-            generatedEventsWithMeta
-            ->Belt.Array.map(((events, meta)) =>
-              events->Belt.Array.map(event => {Message.id, meta, event})
-            )
-            ->Belt.Array.concatMany
-          | Error(error) => Js.Exn.raiseError(error)
-          }
-          switch events {
-          | [] => {
-              Logger.debug(
-                ~loc=__LOC__,
-                `Aggregate.handleCommands(${id->Spec.Id.toString})`,
-                "no Event generated",
-              )
-              references->Belt.Array.map(reference => Ok(reference))
-            }
-          | generatedEvents' =>
-            let eventCount = generatedEvents'->Belt.Array.length
-            // TOREVIEW: should we use Logger.debug here?
-            Logger.info(
-              `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount->Belt.Int.toString} Event(s) generated:`,
-              generatedEvents'->Belt.Array.map(event' => event'->eventName),
-            )
-            switch await eventLogAppend(. history->Belt.Array.length, id, generatedEvents') {
-            | Ok(_) =>
-              Logger.debug(~loc=__LOC__, "finished eventLogAppend for id", id->Spec.Id.toString)
-              references->Belt.Array.map(reference => Ok(reference))
-            | Error(_) =>
-              Logger.error(~loc=__LOC__, "failed eventLogAppend for id", id->Spec.Id.toString)
-              references->Belt.Array.map(reference => Error(reference))
-            }
-          }
-        })
-        ->Js.Promise.all
-      results->Belt.Array.concatMany
+    let updateMeta = (command': Message.command'<Spec.Id.t, Spec.command>) => {
+      ...command'.meta,
+      time: Message.nowAsISOString(),
+      msgId: Message.uuid(),
     }
+
+    Logger.debug(~loc=__LOC__, "starting", "Aggregate.execCommands")
+    let results =
+      await allTopicItems
+      ->groupTopicItemsById
+      ->Belt.Array.map(async ((id, topicItems)) => {
+        let history = await eventLogReplay(. id)
+        let processCommand = async (accP, command': Message.command'<Spec.Id.t, Spec.command>) => {
+          let runBehaviour = ((stateO, events)) =>
+            switch stateO {
+            | Some(state) =>
+              let generatedEvents = try Behaviour.execute(.
+                state,
+                command'.command,
+                {
+                  id: command'.id->Spec.Id.toString,
+                  meta: command'.meta,
+                },
+                errorHandler,
+              ) catch {
+              | Message.InvalidEvent(event) =>
+                Logger.error(~loc=__LOC__, "Behaviour.execute: InvalidEvent", event)
+                []
+              }
+              Ok((
+                updateState(stateO, generatedEvents),
+                Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
+              ))->Js.Promise.resolve
+            | None =>
+              let generatedEvents = Behaviour.create(.
+                command'.command,
+                {
+                  id: command'.id->Spec.Id.toString,
+                  meta: command'.meta,
+                },
+                errorHandler,
+              )
+              Ok((
+                updateState(None, generatedEvents),
+                Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
+              ))->Js.Promise.resolve
+            }
+
+          switch await accP {
+          | Ok(acc) => await runBehaviour(acc)
+          | Error(_) as error => error
+          }
+        }
+
+        Logger.debug(~loc=__LOC__, "finished eventLogReplay for id", id)
+
+        // TOREVIEW: should we use Logger.debug or just some minimal data here?
+        //    also: do we need the additional info of Message.command'
+        //            (compared to Spec.command)
+        topicItems
+        ->Belt.Array.map(({command}) =>
+          command->Message.commandJsonOfCommand'(
+            ~idToString=Spec.Id.toString,
+            ~commandEncode=Spec.command_encode,
+          )
+        )
+        ->Logger.logCmdJsons(~loc=__LOC__, "handling command")
+
+        let (references, commands') =
+          // TODO: handle finer granular references
+          topicItems
+          ->Belt.Array.map(({reference, command}) => (reference, command))
+          ->Belt.Array.unzip
+        let result =
+          await commands'->Belt.Array.reduce(
+            Ok((updateState(None, history), []))->Js.Promise.resolve,
+            processCommand,
+          )
+        let events = switch result {
+        | Ok((_, generatedEventsWithMeta)) =>
+          generatedEventsWithMeta
+          ->Belt.Array.map(((events, meta)) =>
+            events->Belt.Array.map(event => {Message.id, meta, event})
+          )
+          ->Belt.Array.concatMany
+        | Error(error) => Js.Exn.raiseError(error)
+        }
+        switch events {
+        | [] => {
+            Logger.debug(
+              ~loc=__LOC__,
+              `handleCommands(${id->Spec.Id.toString})`,
+              "no Event generated",
+            )
+            references->Belt.Array.map(reference => Ok(reference))
+          }
+        | generatedEvents' =>
+          let eventCount = generatedEvents'->Belt.Array.length->Belt.Int.toString
+          // TOREVIEW: should we use Logger.debug here?
+          Logger.info(
+            `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated:`,
+            generatedEvents'->Belt.Array.map(event' => event'->eventName),
+          )
+          switch await eventLogAppend(. history->Belt.Array.length, id, generatedEvents') {
+          | Ok(_) =>
+            Logger.debug(~loc=__LOC__, "finished eventLogAppend for id", id->Spec.Id.toString)
+            references->Belt.Array.map(reference => Ok(reference))
+          | Error(_) =>
+            Logger.error(~loc=__LOC__, "failed eventLogAppend for id", id->Spec.Id.toString)
+            references->Belt.Array.map(reference => Error(reference))
+          }
+        }
+      })
+      ->Js.Promise.all
+    results->Belt.Array.concatMany
+  }
 
   let addEventMapperFn = (component, allEventTopics, queryEngine, ~opts) => {
     module EventCollector = EventCollector.Make(EventCollectorConnector)

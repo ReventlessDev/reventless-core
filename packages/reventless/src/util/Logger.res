@@ -22,6 +22,20 @@ type logItem
 external logItem: 'a => logItem = "%identity"
 external identity: 'a => 'a = "%identity"
 
+let createTag = (~level as _, ~loc) => {
+  let re = %re("/File \"(.*).res\", line (.*), characters (.*)-(.*)/")
+  switch Js.Re.exec_(re, loc->Belt.Option.getWithDefault("")) {
+  | Some(result) =>
+    let captures =
+      result
+      ->Js.Re.captures
+      ->Belt.Array.map(Js.Nullable.toOption)
+      ->Belt.Array.map(Belt.Option.getWithDefault(_, ""))
+    `${captures[1]}:${captures[2]}`
+  | _ => ""
+  }
+}
+
 let log: (
   ~loc: string=?,
   ~map: 'a => 'b=?, // NOTE: potentially remove this arg
@@ -30,8 +44,7 @@ let log: (
   string,
   'a,
 ) => unit = (~loc=?, ~map=identity, ~stringify=false, ~level=Level.default, desc, item) => {
-  let tag =
-    level->Level.toString ++ loc->Belt.Option.mapWithDefault(":", loc => "(" ++ (loc ++ "):"))
+  let tag = createTag(~level, ~loc)
 
   let itemMapped = item->map
 
@@ -69,18 +82,21 @@ let error = log(~level=Level.Error)
 let info = log(~level=Level.Info)
 let debug = log(~level=Level.Debug)
 
+let commandJsonToLogMessage: Message.commandJson => string = ({id, commandJson}) => {
+  let commandName = commandJson->Message.variantNameOfJson->Belt.Option.getWithDefault("Unknown")
+  `${commandName}(${id}): ${commandJson->Js.Json.stringify}`
+}
 let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmds => {
   let count = cmds->Belt.Array.size->Belt.Int.toString
-  cmds->Belt.Array.mapWithIndex((idx, {id, commandJson}) => {
+  cmds->Belt.Array.mapWithIndex((idx, cmd) => {
     let idx = (idx + 1)->Belt.Int.toString
-    let commandStringified = commandJson->Js.Json.stringify
-    `${idx}/${count}: id=${id}, ${commandStringified}`
+    `${idx}/${count}: ${cmd->commandJsonToLogMessage}`
   })
 }
 
-// NOTE: maybe decompose this into 2 functions
-//  - locCmdJson: single
-//  - locCmdJsons: array
+let logCmdJson = (~loc=?, ~level=Level.Info, cmdJson, desc) =>
+  log(~loc?, ~level, desc, cmdJson->commandJsonToLogMessage)
+
 let logCmdJsons = (~loc=?, ~level=Level.Info, cmdJsons, desc) => {
   cmdJsons
   ->commandJsonsToLogMessages
@@ -94,7 +110,7 @@ let event'JsonToLogMessage: Js.Json.t => option<string> = event'Json => {
   let eventName = event'Json->Message.eventNameOfEvent'Json
   let eventStringified = event'Json->Js.Json.stringify
   switch (id, eventName) {
-  | (Some(id), Some(eventName)) => Some(`${eventName}(${id}) complete event: ${eventStringified}`)
+  | (Some(id), Some(eventName)) => Some(`${eventName}(${id}): ${eventStringified}`)
   | _ => None
   }
 }

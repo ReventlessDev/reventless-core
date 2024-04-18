@@ -98,7 +98,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                 correlationId: init.correlationId
               };
       };
-      Logger$Reventless.debug("File \"Aggregate.res\", line 153, characters 24-31", undefined, undefined)("starting", "Aggregate.execCommands");
+      Logger$Reventless.debug("File \"Aggregate.res\", line 152, characters 22-29", undefined, undefined)("starting", "Aggregate.execCommands");
       return Belt_Array.concatMany(await Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (async function (param) {
                             var topicItems = param[1];
                             var id = param[0];
@@ -118,7 +118,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                   catch (raw_event){
                                     var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
                                     if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-                                      Logger$Reventless.error("File \"Aggregate.res\", line 177, characters 25-32", undefined, undefined)("Aggregate.processCommand: InvalidEvent", JSON.stringify($$event._1));
+                                      Logger$Reventless.error("File \"Aggregate.res\", line 172, characters 34-41", undefined, undefined)("Behaviour.execute: InvalidEvent", $$event._1);
                                       generatedEvents = [];
                                     } else {
                                       throw $$event;
@@ -157,8 +157,8 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                 return acc;
                               }
                             };
-                            Logger$Reventless.debug("File \"Aggregate.res\", line 208, characters 28-35", undefined, undefined)("finished eventLogReplay for id", Curry._1(Spec.Id.toString, id));
-                            Logger$Reventless.logCmdJsons("File \"Aggregate.res\", line 214, characters 17-24", /* Info */1, Belt_Array.map(topicItems, (function (param) {
+                            Logger$Reventless.debug("File \"Aggregate.res\", line 200, characters 26-33", undefined, undefined)("finished eventLogReplay for id", id);
+                            Logger$Reventless.logCmdJsons("File \"Aggregate.res\", line 212, characters 34-41", undefined, Belt_Array.map(topicItems, (function (param) {
                                         return Message$Reventless.commandJsonOfCommand$p(Spec.Id.toString, Spec.command_encode, param.command);
                                       })), "handling command");
                             var match = Belt_Array.unzip(Belt_Array.map(topicItems, (function (param) {
@@ -187,13 +187,13 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                       }));
                                         }))) : Js_exn.raiseError(result._0);
                             if (events.length !== 0) {
-                              var eventCount = events.length;
-                              Logger$Reventless.info(undefined, undefined, undefined)("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + "): " + String(eventCount) + " Event(s) generated:", Belt_Array.map(events, (function (event$p) {
+                              var eventCount = String(events.length);
+                              Logger$Reventless.info(undefined, undefined, undefined)("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + "): " + eventCount + " Event(s) generated:", Belt_Array.map(events, (function (event$p) {
                                           return Belt_Option.getWithDefault(Message$Reventless.variantNameOfJson(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
                                         })));
                               var match$1 = await eventLogAppend(history.length, id, events);
                               if (match$1.TAG === /* Ok */0) {
-                                Logger$Reventless.debug("File \"Aggregate.res\", line 262, characters 32-39", undefined, undefined)("finished eventLogAppend for id", Curry._1(Spec.Id.toString, id));
+                                Logger$Reventless.debug("File \"Aggregate.res\", line 251, characters 30-37", undefined, undefined)("finished eventLogAppend for id", Curry._1(Spec.Id.toString, id));
                                 return Belt_Array.map(references, (function (reference) {
                                               return {
                                                       TAG: /* Ok */0,
@@ -201,7 +201,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                     };
                                             }));
                               }
-                              Logger$Reventless.error("File \"Aggregate.res\", line 265, characters 32-39", undefined, undefined)("failed eventLogAppend for id", Curry._1(Spec.Id.toString, id));
+                              Logger$Reventless.error("File \"Aggregate.res\", line 254, characters 30-37", undefined, undefined)("failed eventLogAppend for id", Curry._1(Spec.Id.toString, id));
                               return Belt_Array.map(references, (function (reference) {
                                             return {
                                                     TAG: /* Error */1,
@@ -209,7 +209,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                   };
                                           }));
                             }
-                            Logger$Reventless.debug("File \"Aggregate.res\", line 247, characters 21-28", undefined, undefined)("Aggregate.handleCommands(" + Curry._1(Spec.Id.toString, id) + ")", "no Event generated");
+                            Logger$Reventless.debug("File \"Aggregate.res\", line 236, characters 19-26", undefined, undefined)("handleCommands(" + Curry._1(Spec.Id.toString, id) + ")", "no Event generated");
                             return Belt_Array.map(references, (function (reference) {
                                           return {
                                                   TAG: /* Ok */0,
