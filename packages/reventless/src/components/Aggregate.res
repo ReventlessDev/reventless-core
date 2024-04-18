@@ -111,7 +111,6 @@ module Make = (
     event'.event
     ->Spec.event_encode
     ->Message.variantNameOfJson
-    ->Belt.Option.getWithDefault("Could not get event-name!")
 
   /* TODO: delete me
      [@inline]
@@ -209,7 +208,7 @@ module Make = (
             ~commandEncode=Spec.command_encode,
           )
         )
-        ->Logger.logCmdJsons(~loc=__LOC__, "handling command")
+        ->Logger.logCmdJsons(~loc=__LOC__, "Handling command")
 
         let (references, commands') =
           // TODO: handle finer granular references
@@ -241,8 +240,7 @@ module Make = (
           }
         | generatedEvents' =>
           let eventCount = generatedEvents'->Belt.Array.length->Belt.Int.toString
-          // TOREVIEW: should we use Logger.debug here?
-          Logger.info(
+          Logger.debug(
             `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated:`,
             generatedEvents'->Belt.Array.map(event' => event'->eventName),
           )

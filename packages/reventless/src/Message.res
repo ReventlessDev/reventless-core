@@ -60,24 +60,45 @@ let serviceNameOfMsg = msgJson =>
     None
   }
 
-let variantNameOfJson: Js.Json.t => option<string> = json =>
+let variantNameOfJson = json =>
   json
   ->Js.Json.decodeArray
   ->Belt.Option.flatMap(evtArr => evtArr->Belt.Array.get(0))
   ->Belt.Option.flatMap(evt => evt->Js.Json.decodeString)
+  ->Belt.Option.getWithDefault("unknown")
 
 // TODO: group all functions on event`Json into submodule with the according type
 
-let eventNameOfEvent'Json: Js.Json.t => option<string> = json => {
-  json
-  ->Js.Json.decodeObject
-  ->Belt.Option.flatMap(event' => event'->Js.Dict.unsafeGet("event")->variantNameOfJson)
+let eventNameOfEvent'Json = json => {
+  switch json->Js.Json.decodeObject {
+  | Some(dict) => dict->Js.Dict.unsafeGet("event")->variantNameOfJson
+  | _ => "unknown"
+  }
 }
 
-let idOfEvent'Json: Js.Json.t => option<string> = json => {
+let idOfEvent'Json = json => {
   json
   ->Js.Json.decodeObject
   ->Belt.Option.flatMap(event' => event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString)
+}
+
+let idMetaEventOfEvent'Json = json => {
+  let dict = json->Js.Json.decodeObject
+  let id =
+    dict
+    ->Belt.Option.map(dict =>
+      dict->Js.Dict.unsafeGet("id")->Js.Json.decodeString->Belt.Option.getWithDefault("unknown")
+    )
+    ->Belt.Option.getWithDefault("")
+  let meta =
+    dict
+    ->Belt.Option.map(dict => dict->Js.Dict.unsafeGet("meta")->Js.Json.stringify)
+    ->Belt.Option.getWithDefault("")
+  let event =
+    dict
+    ->Belt.Option.map(dict => dict->Js.Dict.unsafeGet("event")->Js.Json.stringify)
+    ->Belt.Option.getWithDefault("")
+  (id, meta, event)
 }
 
 type eventsHandler<'id, 'event> = (

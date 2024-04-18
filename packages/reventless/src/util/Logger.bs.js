@@ -7,6 +7,7 @@ var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Message$Reventless = require("../Message.bs.js");
+var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.bs.js");
 
 function toString(level) {
   if (typeof level !== "number") {
@@ -45,7 +46,7 @@ function createTag(param, loc) {
             })), (function (__x) {
           return Belt_Option.getWithDefault(__x, "");
         }));
-  return "" + Caml_array.get(captures, 1) + ":" + Caml_array.get(captures, 2) + "";
+  return "" + Caml_array.get(captures, 1) + "#" + Caml_array.get(captures, 2) + ":";
 }
 
 function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
@@ -58,16 +59,16 @@ function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
   var itemMapped = Curry._1(map, item);
   var match;
   if (stringify) {
-    var itemStringified = JSON.stringify(itemMapped);
-    var descStringified = Belt_Option.mapWithDefault(itemStringified, desc + " [ERROR: Couldn't stringify, displaying raw value!]", (function (param) {
+    var itemStr = JSON.stringify(itemMapped);
+    var descStringified = Belt_Option.mapWithDefault(itemStr, desc + " [ERROR: Couldn't stringify, displaying raw value!]", (function (param) {
             return desc;
           }));
-    var itemStringifiedWithDefault = Belt_Option.mapWithDefault(itemStringified, itemMapped, (function (i) {
+    var itemStrWithDefault = Belt_Option.mapWithDefault(itemStr, itemMapped, (function (i) {
             return i;
           }));
     match = [
       descStringified,
-      itemStringifiedWithDefault
+      itemStrWithDefault
     ];
   } else {
     match = [
@@ -75,25 +76,25 @@ function log(loc, mapOpt, stringifyOpt, levelOpt, desc, item) {
       itemMapped
     ];
   }
-  var itemStringified$1 = match[1];
-  var descStringified$1 = match[0];
+  var itemStr$1 = match[1];
+  var descStr = match[0];
   if (typeof level === "number") {
     switch (level) {
       case /* Debug */0 :
           return ;
       case /* Info */1 :
-          console.info(tag, descStringified$1, itemStringified$1);
+          console.info(tag, descStr, itemStr$1);
           return ;
       case /* Warning */2 :
-          console.warn(tag, descStringified$1, itemStringified$1);
+          console.warn(tag, descStr, itemStr$1);
           return ;
       case /* Error */3 :
-          console.error(tag, descStringified$1, itemStringified$1);
+          console.error(tag, descStr, itemStr$1);
           return ;
       
     }
   } else {
-    console.info(tag, descStringified$1, itemStringified$1);
+    console.info(tag, descStr, itemStr$1);
     return ;
   }
 }
@@ -128,8 +129,11 @@ function debug(param, param$1, param$2) {
 
 function commandJsonToLogMessage(param) {
   var commandJson = param.commandJson;
-  var commandName = Belt_Option.getWithDefault(Message$Reventless.variantNameOfJson(commandJson), "Unknown");
-  return "" + commandName + "(" + param.id + "): " + JSON.stringify(commandJson) + "";
+  var id = param.id;
+  var commandName = Message$Reventless.variantNameOfJson(commandJson);
+  var commandStr = JSON.stringify(commandJson);
+  var metaStr = JSON.stringify(Message$ReventlessSpec.meta_encode(param.meta));
+  return "" + commandName + "(" + id + "): {\"command\":" + commandStr + ",\"meta\":" + metaStr + ",\"id\":" + id + "}";
 }
 
 function commandJsonsToLogMessages(cmds) {
@@ -153,18 +157,16 @@ function logCmdJsons(loc, levelOpt, cmdJsons, desc) {
 }
 
 function event$pJsonToLogMessage(event$pJson) {
-  var id = Message$Reventless.idOfEvent$pJson(event$pJson);
   var eventName = Message$Reventless.eventNameOfEvent$pJson(event$pJson);
-  var eventStringified = JSON.stringify(event$pJson);
-  if (id !== undefined && eventName !== undefined) {
-    return "" + eventName + "(" + id + "): " + eventStringified + "";
-  }
-  
+  var match = Message$Reventless.idMetaEventOfEvent$pJson(event$pJson);
+  var id = match[0];
+  var event$pStr = "{\"event\":" + match[2] + ",\"meta\":" + match[1] + ",\"id\":\"" + id + "\"}";
+  return "" + eventName + "(" + id + "): " + event$pStr + "";
 }
 
 function logEvent$pJson(loc, levelOpt, event$pJson, desc) {
   var level = levelOpt !== undefined ? levelOpt : /* Info */1;
-  var __x = Belt_Option.getWithDefault(event$pJsonToLogMessage(event$pJson), "Couldn't log event: " + JSON.stringify(event$pJson) + "");
+  var __x = event$pJsonToLogMessage(event$pJson);
   log(loc, undefined, undefined, level, desc, __x);
 }
 

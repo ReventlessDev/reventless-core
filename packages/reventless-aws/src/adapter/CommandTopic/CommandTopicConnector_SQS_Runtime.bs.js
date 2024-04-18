@@ -5,6 +5,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Logger$Reventless = require("@reventless/reventless/src/util/Logger.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.bs.js");
 
@@ -72,8 +73,7 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
       throw e;
     }
     if (exit$1 === 2) {
-      console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Deleted all commands from queue");
-      return ;
+      return Logger$Reventless.debug("File \"CommandTopicConnector_SQS_Runtime.res\", line 51, characters 35-42", undefined, undefined)("handleQueueEvent:", "Deleted all commands from queue");
     }
     
   }
@@ -97,4 +97,4 @@ function publish(queue, queueService) {
 
 exports.handleQueueEvent = handleQueueEvent;
 exports.publish = publish;
-/* Util_SQS_Runtime-ReventlessAws Not a pure module */
+/* Logger-Reventless Not a pure module */

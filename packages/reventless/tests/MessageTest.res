@@ -12,7 +12,7 @@ describe("Message should", () => {
   test("get variant name of json without payload", () => {
     let variant = PluginSpec.Heartbeat
     let variantJson = variant->PluginSpec.command_encode
-    let variantName = variantNameOfJson(variantJson)->Belt.Option.getExn
+    let variantName = variantNameOfJson(variantJson)
 
     expect(variantName)->toBe("Heartbeat")
   })
@@ -33,7 +33,7 @@ describe("Message should", () => {
       eventCollector: "testEventCollector",
     })
     let variantJson = variant->PluginSpec.command_encode
-    let variantName = variantNameOfJson(variantJson)->Belt.Option.getExn
+    let variantName = variantNameOfJson(variantJson)
 
     let expected = "Connect"
 
@@ -55,7 +55,7 @@ describe("Message should", () => {
       event: UnknownPluginDetected,
     }
     let event'Json: Js.Json.t = event'->event'_encode(Decco.stringToJson, event_encode, _)
-    let eventName = eventNameOfEvent'Json(event'Json)->Belt.Option.getExn
+    let eventName = event'Json->eventNameOfEvent'Json
 
     expect(eventName)->toBe("UnknownPluginDetected")
   })

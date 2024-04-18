@@ -4,7 +4,6 @@
 var Jest = require("@glennsl/rescript-jest/src/jest.bs.js");
 var Decco = require("decco/src/Decco.bs.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Logger$Reventless = require("../src/util/Logger.bs.js");
 var Message$Reventless = require("../src/Message.bs.js");
 var PluginSpec$Reventless = require("../src/core/Aggregates/Plugin/PluginSpec.bs.js");
@@ -12,7 +11,7 @@ var PluginSpec$Reventless = require("../src/core/Aggregates/Plugin/PluginSpec.bs
 Jest.describe("Logger", (function (param) {
         Jest.describe("commandJsonsToLogMessage", (function (param) {
                 Jest.test("createTag", (function (param) {
-                        return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.createTag(/* Info */1, "File \"Aggregate.res\", line 214, characters 17-24")), "Aggregate:214");
+                        return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.createTag(/* Info */1, "File \"Aggregate.res\", line 214, characters 17-24")), "Aggregate#214:");
                       }));
               }));
         Jest.describe("commandJsonsToLogMessage", (function (param) {
@@ -22,22 +21,25 @@ Jest.describe("Logger", (function (param) {
                       }));
                 Jest.test("simple", (function (param) {
                         var commands = [/* Heartbeat */0];
+                        var meta = {
+                          service: "testService",
+                          time: "testTime",
+                          ip: "testIp",
+                          user: "testUser",
+                          msgId: "testMsgId",
+                          correlationId: "testCorrelationId"
+                        };
+                        var metaStr = JSON.stringify(Message$Reventless.meta_encode(meta));
                         var arr = Belt_Array.mapWithIndex(commands, (function (id, command) {
                                 return {
                                         id: String(id),
-                                        meta: {
-                                          service: "testService",
-                                          time: "testTime",
-                                          ip: "testIp",
-                                          user: "testUser",
-                                          msgId: "testMsgId",
-                                          correlationId: "testCorrelationId"
-                                        },
+                                        meta: meta,
                                         commandJson: PluginSpec$Reventless.command_encode(command),
                                         delay: undefined
                                       };
                               }));
-                        return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.commandJsonsToLogMessages(arr)), ["1/1: Heartbeat(0): [\"Heartbeat\"]"]);
+                        var expected = "1/1: Heartbeat(0): {\"command\":[\"Heartbeat\"],\"meta\":" + metaStr + ",\"id\":0}";
+                        return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.commandJsonsToLogMessages(arr)), [expected]);
                       }));
                 Jest.test("complex", (function (param) {
                         var commands = [
@@ -60,24 +62,28 @@ Jest.describe("Logger", (function (param) {
                             }
                           }
                         ];
+                        var meta = {
+                          service: "testService",
+                          time: "testTime",
+                          ip: "testIp",
+                          user: "testUser",
+                          msgId: "testMsgId",
+                          correlationId: "testCorrelationId"
+                        };
+                        var metaStr = JSON.stringify(Message$Reventless.meta_encode(meta));
                         var arr = Belt_Array.mapWithIndex(commands, (function (id, command) {
                                 return {
                                         id: String(id),
-                                        meta: {
-                                          service: "testService",
-                                          time: "testTime",
-                                          ip: "testIp",
-                                          user: "testUser",
-                                          msgId: "testMsgId",
-                                          correlationId: "testCorrelationId"
-                                        },
+                                        meta: meta,
                                         commandJson: PluginSpec$Reventless.command_encode(command),
                                         delay: undefined
                                       };
                               }));
+                        var expected1 = "1/2: Heartbeat(0): {\"command\":[\"Heartbeat\"],\"meta\":" + metaStr + ",\"id\":0}";
+                        var expected2 = "2/2: Connect(1): {\"command\":[\"Connect\",{\"id\":\"id\",\"name\":\"testName\",\"version\":\"testVersion\",\"extensionPoints\":[{\"name\":\"testExtensionPoint\",\"commandTopic\":\"testCommandTopic\",\"eventTopic\":\"testEventTopic\"}],\"extensions\":[{\"name\":\"testExtension\",\"extensionPointName\":\"testExtensionPoint\"}],\"eventCollector\":\"testEventCollector\"}],\"meta\":" + metaStr + ",\"id\":1}";
                         return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.commandJsonsToLogMessages(arr)), [
-                                    "1/2: Heartbeat(0): [\"Heartbeat\"]",
-                                    "2/2: Connect(1): [\"Connect\",{\"id\":\"id\",\"name\":\"testName\",\"version\":\"testVersion\",\"extensionPoints\":[{\"name\":\"testExtensionPoint\",\"commandTopic\":\"testCommandTopic\",\"eventTopic\":\"testEventTopic\"}],\"extensions\":[{\"name\":\"testExtension\",\"extensionPointName\":\"testExtensionPoint\"}],\"eventCollector\":\"testEventCollector\"}]"
+                                    expected1,
+                                    expected2
                                   ]);
                       }));
               }));
@@ -95,8 +101,8 @@ Jest.describe("Logger", (function (param) {
                               },
                               event: /* UnknownPluginDetected */0
                             });
-                        var msg = Belt_Option.getExn(Logger$Reventless.event$pJsonToLogMessage(event$pJson));
-                        return Jest.Expect.toEqual(Jest.Expect.expect(msg), "UnknownPluginDetected(testId): {\"id\":\"testId\",\"meta\":{\"service\":\"testService\",\"time\":\"testTime\",\"ip\":\"testIp\",\"user\":\"testUser\",\"msgId\":\"testMsgId\",\"correlationId\":\"testCorrelationId\"},\"event\":[\"UnknownPluginDetected\"]}");
+                        var msg = Logger$Reventless.event$pJsonToLogMessage(event$pJson);
+                        return Jest.Expect.toEqual(Jest.Expect.expect(msg), "UnknownPluginDetected(testId): {\"event\":[\"UnknownPluginDetected\"],\"meta\":{\"service\":\"testService\",\"time\":\"testTime\",\"ip\":\"testIp\",\"user\":\"testUser\",\"msgId\":\"testMsgId\",\"correlationId\":\"testCorrelationId\"},\"id\":\"testId\"}");
                       }));
               }));
       }));

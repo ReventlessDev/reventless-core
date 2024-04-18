@@ -16,7 +16,7 @@ Jest.describe("Message should", (function (param) {
               }));
         Jest.test("get variant name of json without payload", (function (param) {
                 var variantJson = PluginSpec$Reventless.command_encode(/* Heartbeat */0);
-                var variantName = Belt_Option.getExn(Message$Reventless.variantNameOfJson(variantJson));
+                var variantName = Message$Reventless.variantNameOfJson(variantJson);
                 return Jest.Expect.toBe(Jest.Expect.expect(variantName), "Heartbeat");
               }));
         Jest.test("get variant name of json with payload", (function (param) {
@@ -38,7 +38,7 @@ Jest.describe("Message should", (function (param) {
                   }
                 };
                 var variantJson = PluginSpec$Reventless.command_encode(variant);
-                var variantName = Belt_Option.getExn(Message$Reventless.variantNameOfJson(variantJson));
+                var variantName = Message$Reventless.variantNameOfJson(variantJson);
                 return Jest.Expect.toBe(Jest.Expect.expect(variantName), "Connect");
               }));
         Jest.test("get event name of event'Json", (function (param) {
@@ -54,7 +54,7 @@ Jest.describe("Message should", (function (param) {
                       },
                       event: /* UnknownPluginDetected */0
                     });
-                var eventName = Belt_Option.getExn(Message$Reventless.eventNameOfEvent$pJson(event$pJson));
+                var eventName = Message$Reventless.eventNameOfEvent$pJson(event$pJson);
                 return Jest.Expect.toBe(Jest.Expect.expect(eventName), "UnknownPluginDetected");
               }));
         Jest.test("get id of event'Json", (function (param) {

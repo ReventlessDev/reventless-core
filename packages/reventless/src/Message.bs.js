@@ -72,21 +72,42 @@ function serviceNameOfMsg(msgJson) {
 }
 
 function variantNameOfJson(json) {
-  return Belt_Option.flatMap(Belt_Option.flatMap(Js_json.decodeArray(json), (function (evtArr) {
-                    return Belt_Array.get(evtArr, 0);
-                  })), Js_json.decodeString);
+  return Belt_Option.getWithDefault(Belt_Option.flatMap(Belt_Option.flatMap(Js_json.decodeArray(json), (function (evtArr) {
+                        return Belt_Array.get(evtArr, 0);
+                      })), Js_json.decodeString), "unknown");
 }
 
 function eventNameOfEvent$pJson(json) {
-  return Belt_Option.flatMap(Js_json.decodeObject(json), (function (event$p) {
-                return variantNameOfJson(event$p["event"]);
-              }));
+  var dict = Js_json.decodeObject(json);
+  if (dict !== undefined) {
+    return variantNameOfJson(Caml_option.valFromOption(dict)["event"]);
+  } else {
+    return "unknown";
+  }
 }
 
 function idOfEvent$pJson(json) {
   return Belt_Option.flatMap(Js_json.decodeObject(json), (function (event$p) {
                 return Js_json.decodeString(event$p["id"]);
               }));
+}
+
+function idMetaEventOfEvent$pJson(json) {
+  var dict = Js_json.decodeObject(json);
+  var id = Belt_Option.getWithDefault(Belt_Option.map(dict, (function (dict) {
+              return Belt_Option.getWithDefault(Js_json.decodeString(dict["id"]), "unknown");
+            })), "");
+  var meta = Belt_Option.getWithDefault(Belt_Option.map(dict, (function (dict) {
+              return JSON.stringify(dict["meta"]);
+            })), "");
+  var $$event = Belt_Option.getWithDefault(Belt_Option.map(dict, (function (dict) {
+              return JSON.stringify(dict["event"]);
+            })), "");
+  return [
+          id,
+          meta,
+          $$event
+        ];
 }
 
 var InvalidEvent = /* @__PURE__ */Caml_exceptions.create("Message-Reventless.InvalidEvent");
@@ -227,6 +248,7 @@ exports.serviceNameOfMsg = serviceNameOfMsg;
 exports.variantNameOfJson = variantNameOfJson;
 exports.eventNameOfEvent$pJson = eventNameOfEvent$pJson;
 exports.idOfEvent$pJson = idOfEvent$pJson;
+exports.idMetaEventOfEvent$pJson = idMetaEventOfEvent$pJson;
 exports.InvalidEvent = InvalidEvent;
 exports.InvalidCommand = InvalidCommand;
 exports.log = log;

@@ -77,37 +77,33 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   @set external setPublish: (component, publish) => unit = "publish"
   @get external publish: component => publish = "publish"
 
-  let publishFn = (publisher: Adapter.publisher, name) =>
-    async (. events') => {
-      let eventCount = events'->Belt.Array.length
-      await events'
-      ->Belt.Array.mapWithIndex(async (idx, event') => {
-        let json = Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event')
+  let publishFn = (publisher: Adapter.publisher, name) => async (. events') => {
+    let eventCount = events'->Belt.Array.length
+    await events'
+    ->Belt.Array.mapWithIndex(async (idx, event') => {
+      let event'Json = Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event')
 
-        let id = event'.id
-        let eventName: string =
-          event'.event
-          ->Spec.event_encode
-          ->Message.variantNameOfJson
-          ->Belt.Option.getWithDefault("Could not get event-name!")
-        let idx = idx + 1
+      let id = event'.id
+      let idx = idx + 1
 
-        switch await publisher.publish(. id->Spec.Id.toString, event'.meta, json) {
-        | exception e =>
-          Js.log(
-            `EventTopic: Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}: ${eventName}(${id->Spec.Id.toString}) to ${name}`,
-          )
-          raise(e)
-        | _ =>
-          let event = json->Js.Json.stringify
-          Js.log(
-            `EventTopic: Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}: ${eventName}(${id->Spec.Id.toString}) to ${name}: ${event}`,
-          )
-        }
-      })
-      ->Js.Promise.all
-      ->Util.Promise.toUnit
-    }
+      switch await publisher.publish(. id->Spec.Id.toString, event'.meta, event'Json) {
+      | exception e =>
+        event'Json->Logger.logEvent'Json(
+          ~loc=__LOC__,
+          ~level=Error,
+          `Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
+        )
+        raise(e)
+      | _ =>
+        event'Json->Logger.logEvent'Json(
+          ~loc=__LOC__,
+          `Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
+        )
+      }
+    })
+    ->Js.Promise.all
+    ->Util.Promise.toUnit
+  }
 
   let construct = (~storageResources, self, name) => {
     let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())

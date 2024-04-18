@@ -4,8 +4,8 @@
 var Curry = require("@rescript/std/lib/js/curry.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
+var Logger$Reventless = require("../util/Logger.bs.js");
 var Message$Reventless = require("../Message.bs.js");
 var Util_Promise$Reventless = require("../util/Util_Promise.bs.js");
 var ComponentType$Reventless = require("../ComponentType.bs.js");
@@ -19,20 +19,18 @@ function Make(Spec, Publisher) {
     return async function (events$p) {
       var eventCount = events$p.length;
       return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$p, (async function (idx, event$p) {
-                            var json = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
+                            var event$pJson = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
                             var id = event$p.id;
-                            var eventName = Belt_Option.getWithDefault(Message$Reventless.variantNameOfJson(Curry._1(Spec.event_encode, event$p.event)), "Could not get event-name!");
                             var idx$1 = idx + 1 | 0;
                             var val;
                             try {
-                              val = await publisher.publish(Curry._1(Spec.Id.toString, id), event$p.meta, json);
+                              val = await publisher.publish(Curry._1(Spec.Id.toString, id), event$p.meta, event$pJson);
                             }
                             catch (e){
-                              console.log("EventTopic: Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + "");
+                              Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 92, characters 15-22", /* Error */3, event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
                               throw e;
                             }
-                            var $$event = JSON.stringify(json);
-                            console.log("EventTopic: Published event " + String(idx$1) + "/" + String(eventCount) + ": " + eventName + "(" + Curry._1(Spec.Id.toString, id) + ") to " + name + ": " + $$event + "");
+                            return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 99, characters 15-22", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
                           }))));
     };
   };

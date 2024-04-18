@@ -31,7 +31,7 @@ let createTag = (~level as _, ~loc) => {
       ->Js.Re.captures
       ->Belt.Array.map(Js.Nullable.toOption)
       ->Belt.Array.map(Belt.Option.getWithDefault(_, ""))
-    `${captures[1]}:${captures[2]}`
+    `${captures[1]}#${captures[2]}:`
   | _ => ""
   }
 }
@@ -49,29 +49,29 @@ let log: (
   let itemMapped = item->map
 
   // try to stringify, use raw value if unsuccessfull
-  let (descStringified, itemStringified) = if stringify {
-    let itemStringified = itemMapped->Js.Json.stringifyAny
+  let (descStr, itemStr) = if stringify {
+    let itemStr = itemMapped->Js.Json.stringifyAny
     let descStringified =
-      itemStringified->Belt.Option.mapWithDefault(
+      itemStr->Belt.Option.mapWithDefault(
         desc ++ " [ERROR: Couldn't stringify, displaying raw value!]",
         _ => desc,
       )
-    let itemStringifiedWithDefault =
-      itemStringified->Belt.Option.mapWithDefault(itemMapped->logItem, i => i->logItem)
-    (descStringified, itemStringifiedWithDefault)
+    let itemStrWithDefault =
+      itemStr->Belt.Option.mapWithDefault(itemMapped->logItem, i => i->logItem)
+    (descStringified, itemStrWithDefault)
   } else {
     (desc, itemMapped->logItem)
   }
 
   switch level {
-  | Warning => Js.Console.warn3(tag, descStringified, itemStringified)
-  | Error => Js.Console.error3(tag, descStringified, itemStringified)
+  | Warning => Js.Console.warn3(tag, descStr, itemStr)
+  | Error => Js.Console.error3(tag, descStr, itemStr)
   | Info
   | Custom(_) =>
-    Js.Console.info3(tag, descStringified, itemStringified)
+    Js.Console.info3(tag, descStr, itemStr)
   | Debug => /*
         TODO: use js `console.debug`, when lambda FunctionLoggingConf setting has been incorporated into reventless-aws
-        previously: Js.Console.info3(tag, descStringified, itemStringified)
+        previously: Js.Console.info3(tag, descStringified, itemStr)
  */
     () // NOTE: noop for the time being to prevent consumption into CloudWatch logs
   }
@@ -82,9 +82,11 @@ let error = log(~level=Level.Error)
 let info = log(~level=Level.Info)
 let debug = log(~level=Level.Debug)
 
-let commandJsonToLogMessage: Message.commandJson => string = ({id, commandJson}) => {
-  let commandName = commandJson->Message.variantNameOfJson->Belt.Option.getWithDefault("Unknown")
-  `${commandName}(${id}): ${commandJson->Js.Json.stringify}`
+let commandJsonToLogMessage: Message.commandJson => string = ({id, meta, commandJson}) => {
+  let commandName = commandJson->Message.variantNameOfJson
+  let commandStr = commandJson->Js.Json.stringify
+  let metaStr = meta->ReventlessSpec.Message.meta_encode->Js.Json.stringify
+  `${commandName}(${id}): {"command":${commandStr},"meta":${metaStr},"id":${id}}`
 }
 let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmds => {
   let count = cmds->Belt.Array.size->Belt.Int.toString
@@ -105,18 +107,13 @@ let logCmdJsons = (~loc=?, ~level=Level.Info, cmdJsons, desc) => {
   })
 }
 
-let event'JsonToLogMessage: Js.Json.t => option<string> = event'Json => {
-  let id = event'Json->Message.idOfEvent'Json
+let event'JsonToLogMessage = event'Json => {
   let eventName = event'Json->Message.eventNameOfEvent'Json
-  let eventStringified = event'Json->Js.Json.stringify
-  switch (id, eventName) {
-  | (Some(id), Some(eventName)) => Some(`${eventName}(${id}): ${eventStringified}`)
-  | _ => None
-  }
+  let (id, metaStr, eventStr) = event'Json->Message.idMetaEventOfEvent'Json
+  let event'Str = `{"event":${eventStr},"meta":${metaStr},"id":"${id}"}`
+  `${eventName}(${id}): ${event'Str}`
 }
 
 let logEvent'Json = (~loc=?, ~level=Level.Info, event'Json, desc) => {
-  event'JsonToLogMessage(event'Json)
-  ->Belt.Option.getWithDefault(`Couldn't log event: ${event'Json->Js.Json.stringify}`)
-  ->log(~loc?, ~level, desc, _)
+  event'JsonToLogMessage(event'Json)->log(~loc?, ~level, desc, _)
 }
