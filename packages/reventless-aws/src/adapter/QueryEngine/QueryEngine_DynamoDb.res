@@ -90,7 +90,6 @@ let queryByTableName = async (
     } else {
       Some(key)
     },
-    ~_ConsistentRead=true,
     ~_KeyConditionExpression=keyConditionExpression,
     ~_FilterExpression=?filterExpression,
     ~_ExpressionAttributeNames=attributeNames,

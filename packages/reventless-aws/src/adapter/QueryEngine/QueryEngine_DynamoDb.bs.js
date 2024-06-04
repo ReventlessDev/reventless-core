@@ -155,7 +155,6 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
           ]));
   var tmp = {
     TableName: tableName,
-    ConsistentRead: true,
     KeyConditionExpression: keyConditionExpression,
     ExpressionAttributeNames: attributeNames,
     ExpressionAttributeValues: attributeValues,
