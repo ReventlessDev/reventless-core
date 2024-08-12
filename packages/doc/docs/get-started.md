@@ -25,7 +25,7 @@ Since `command`s are only a formulated desire for change, they can potentially b
 
 Find an overview of the most important Reventless Components in [reventless-components-overview.md](./reventless-components-overview.md).
 
-## Moest used ReScript features
+## Most used ReScript features
 
 Find an overview of the most used ReScript features in [rescript-syntax.md](./rescript-syntax.md)
 
