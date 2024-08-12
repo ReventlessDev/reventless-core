@@ -172,3 +172,11 @@ let sayHiAdvanced = ({name: personName, age}) =>
     ++ age->Belt.Int.toString
     ++ " years old."
 ```
+
+## Modules
+
+TODO
+
+### Module Types
+
+TODO
