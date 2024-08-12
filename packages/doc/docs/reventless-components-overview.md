@@ -45,7 +45,7 @@ graph LR
 - **in**: `Event`s
 - **out**: -
 
-[Read more about the ReadModel component.](./rEventless-components/readmodel.md)
+[Read more about the ReadModel component.](./reventless-components/readmodel.md)
 
 ### EventMapper
 
@@ -66,7 +66,7 @@ graph LR
 - **in**: `Event`s
 - **out**: `Command`s
 
-[Read more about the EventMapper component.](./rEventless-components/Eventmapper.md)
+[Read more about the EventMapper component.](./reventless-components/eventmapper.md)
 
 ### Task
 
@@ -76,7 +76,7 @@ Another intention of `Task`s is to interface with the outside world (e.g. other 
 
 `Task`s may be implemented provider specific, since it's not possible to provide adapter for any possible scenario.
 
-[Read more about the Task component.](./rEventless-components/task.md)
+[Read more about the Task component.](./reventless-components/task.md)
 
 #### SideEffectHandler
 
@@ -100,19 +100,19 @@ graph LR
 - **in**: `Event`s
 - **out**: -
 
-[Read more about the SideEffectHandler component.](./rEventless-components/sideeffecthanlder.md)
+[Read more about the SideEffectHandler component.](./reventless-components/sideeffecthandler.md)
 
 ### Plugin
 
 A `Plugin` usually corresponds to a [`Bounded Context`](https://www.martinfowler.com/bliki/BoundedContext.html) in `DDD` (Domain Driven Design) as well to a single deployment unit. A `Plugin` is defined by it's configuration (name, version, etc) and it's child-components (`Aggregate`s, `ReadModel`s, `Task`s, etc)
 
-[Read more about the Plugin component.](./rEventless-components/plugin.md)
+[Read more about the Plugin component.](./reventless-components/plugin.md)
 
 ### ExtensionPoint
 
 `ExtensionPoint`s (together with their relatign `Extension`s) are the mechanics to share data between several `Plugin`s. The `ExtensionPoint`'s `Spec` defines the `Event`s, which will be sent and the `Command`s which will be received by it.
 
-[Read more about the ExtensionPoint component.](./rEventless-components/extensionpoint.md)
+[Read more about the ExtensionPoint component.](./reventless-components/extensionpoint.md)
 
 #### ExtensionPointMapping
 An `ExtensionPointMapping` defines a `Plugin`s border. It maps `Event`s from single `Aggregate`s to `Event`s of the `ExtensionPoint`. These are totally different Events (and therefore types), although they may seem similar. This is done to decouple outside dependencies from changes of the plugin and provide a simple interface to interact with.
