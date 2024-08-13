@@ -54,8 +54,7 @@ type command =
   | IncreaseAge(int)
 ```
 
-[See ReScript documentation for more information on Variant types.](https://rescript-lang.org/docs/manual/latest/variant
-)
+[See ReScript documentation for more information on Variant types.](https://rescript-lang.org/docs/manual/latest/variant)
 
 ## Inline Records
 
@@ -127,7 +126,7 @@ let nameIsAlice = switch(name) {
 
 `_` can be used as a case statement with the meaning of "anything else" not matched previously.
 
-If you have a limited (defined) set of possible values the compiler will check if all possible values are presented in the switch statement. The moment you introduce `_`, the compiler will acknowledge that every case is handled. But this also takes the compiler's power away of helping you in future refactorings or code updates.  
+If you have a limited (defined) set of possible values the compiler will check if all possible values are presented in the switch statement. The moment you introduce `_`, the compiler will acknowledge that every case is handled. But this also takes the compiler's power away of helping you in future refactorings or code updates.
 
 **This should be used with care!**
 **Whenever possible (and feasable) enumerate all possible values explicitly!**
@@ -178,5 +177,15 @@ let sayHiAdvanced = ({name: personName, age}) =>
 TODO
 
 ### Module Types
+
+TODO
+
+### First Class Modules
+
+TODO
+
+### Functors (higher order functions)
+
+[Official Rescript documentation on functors.](https://rescript-lang.org/docs/manual/latest/module#module-functions-functors)
 
 TODO
