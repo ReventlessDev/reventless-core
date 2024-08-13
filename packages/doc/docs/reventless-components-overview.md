@@ -1,18 +1,22 @@
 ---
-title: Reventless Components
+title: Reventless Components Overview
 date: 2022-09-27
 draft: true
 ---
 
+:::note[TODO]
+- [ ] overview graphic of components
+:::
+
 ### Aggregate
 
-[*Aggregate*s](https://www.martinfowler.com/bliki/DDD_Aggregate.html) are the entities in your system.  
-An Aggregate receives Commands and outputs Events (or Errors) based on the current State. (`(Command + current State) => (new Event or Error)`). A single Command can result in *any number* of Events.  
+[*Aggregate*s](https://www.martinfowler.com/bliki/DDD_Aggregate.html) are the transactional units in your system.  
+An Aggregate receives Commands and outputs Events based on the current State. A single Command can result in *any number* of Events.  
 Only the Aggregate's Events will be stored. If a new Command gets handled the actual State will be calculated based on the previous Events ([Event-Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)). The current State will never be persisted to storage.
 
 ```mermaid
 graph LR
-    Command((Command)):::Command -->|1| Aggregate:::aggregate -->|*| Events((Events)):::Event
+    Command((Command)):::Command -->|1| Aggregate:::aggregate -->|*| Event((Event)):::Event
 
     classDef Command stroke:#66f,color:#66f,fill:none;
     classDef Event stroke:#fa0,color:#fa0,fill:none;
