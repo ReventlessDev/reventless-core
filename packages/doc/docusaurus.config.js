@@ -4,7 +4,7 @@
 // There are various equivalent ways to declare your Docusaurus config.
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
-import { themes as prismThemes } from "prism-react-renderer";
+import {themes as prismThemes} from "prism-react-renderer";
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -13,10 +13,10 @@ const config = {
   // TODO: favicon: "img/favicon.ico",
 
   // Set the production url of your site here
-  url: "https://gitlab.com/reventless/reventless-universe",
+  url: "https://gitlab.com",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/",
+  baseUrl: "/reventless/reventless-universe",
 
   // TODO:
   // GitHub pages deployment config.
