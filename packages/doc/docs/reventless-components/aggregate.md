@@ -28,7 +28,7 @@ CmdT[Command Topic]
 EvtL[Event Log]
 EvtT[Event Topic]
 EvtT2[Event Topic]
-EvtM[Event Mapper]
+EventMapper[Event Mapper]
 Api[API]
 CmdG[Command Generator]
 Task[Task]
@@ -39,14 +39,14 @@ Api --->|Json| CmdG
 Task --->|command| CmdT
 Ext --->|command| CmdT
 ExtP --->|command| CmdT
-EvtT2 --->|event| EvtM
+EvtT2 --->|event| EventMapper
 
-subgraph Aggregate
+subgraph generic Aggregate
   direction LR
 
   CmdG -->|command| CmdT
 
-  subgraph Params [Aggregate Parameterization]
+  subgraph Params [Aggregate]
       direction TB
       Spec[Aggregate Spec]
       Behaviour[Behaviour]
@@ -56,36 +56,70 @@ subgraph Aggregate
       Behaviour ~~~ Config
   end
 
-  EvtM -->|command| CmdT
+  subgraph EventMapper
+    direction TB
+    EventMappings
+  end
+
+  EventMapper -->|command| CmdT
   CmdT -->|command| Params
   Params <-->|events| EvtL
   EvtL -->|events| EvtT
 end
 ```
 
+TODO: description Aggregate:
+- low level components
+- generic & specific parts
+
 An Aggregate's business logic is defined by it's **Spec** and **Behaviour**.
 
 ## Aggregate Spec
 
-An Aggregate Spec defines the id, name, input and output types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behaviour](#behaviour), [EventMapper](eventmapper.md), [ReadModel Projections](readmodel.md#Projections), [Extensionpoint Mappings](extensionpoint.md#mappings), [Extension Mappings](extension.md#mappings))
+An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behaviour](#behaviour), [EventMapper](eventmapper.md), [ReadModel Projections](readmodel.md#Projections), [Extensionpoint Mappings](extensionpoint.md#mappings), [Extension Mappings](extension.md#mappings))
 
-The Aggregate Spec needs to adhere to the following [module type](../rescript-syntax.md#module-types):
+### Example
 
-```rescript title="reventless-spec/src/AggregateSpec.res"
-module type T = {
-  module Id: Id.T
+```rescript title="Customer.res" showLineNumbers
+open Reventless
 
-  let name: string
+module Id = ReventlessSpec.Id.String
 
-  @decco
-  type command
+@decco
+type id = Id.t
 
-  @decco
-  type event
+let name = "Customer"
 
-  @decco
-  type error
+@decco
+type name = string
+@decco
+type address = string
+
+@decco
+type customer = {
+  name: name,
+  address: address,
 }
+
+@decco
+type command =
+  | Create(customer)
+  | ChangeAddress(address)
+  | ChangeName(name)
+  | Delete
+
+@decco
+type event =
+  | Created(customer)
+  | AddressChanged(address)
+  | NameChanged(name)
+  | Unchanged
+  | Deleted
+
+@decco
+type error =
+  | AlreadyExisting
+  | NotExisting
 ```
 
 ### `@decco` annotation
@@ -123,29 +157,6 @@ Event Variant Constructors should be formulated in past tense.
 The error type declares possible unrecoverable errors of the aggregate.  
 Only values of this type can be passed to the Behaviour's [error function](#errors). The semantic may be chossen by the developer, but usually [variants](../rescript-syntax.md#variant-type) are the ideal choice.
 
-### Example
-
-```rescript title="ExampleAggregate.res"
-  module Id = ReventlessSpec.Id.String
-
-  let name = "ExampleAggregate"
-
-  @decco
-  type command =
-    | DoSomething(int)
-    | DoSomethingElse(string)
-
-  @decco
-  type event =
-    | SomethingHasHappened(int)
-    | AnotherThingHasHappened(string)
-
-  @decco
-  type error =
-    | IllegalState
-    | ArbitaryError(string)
-```
-
 ## Behaviour
 
 The aggregate specific business logic is implemented in a behaviour module.
@@ -155,65 +166,82 @@ It defines:
 - how to calculate the current state out of historic events.
 - how to react to commands based on the current state.
 
-The Behaviour needs to adhere to the following [module type](../rescript-syntax.md#module-types) `T`:
+### Example
 
-```rescript title="reventless/src/Behaviour.res"
-type resolverConfig<'command> = {
-  commandDecoder: Js.Json.t => Belt.Result.t<'command, Decco.decodeError>,
-  fields: array<string>,
+```rescript title="Customer_Behaviour.res" showLineNumbers
+open Reventless
+open Customer
+
+let resolverConfig = {
+  open Behaviour
+  {
+    commandDecoder: command_decode,
+    fields: ["Customer_Create", "Customer_ChangeAddress", "Customer_ChangeName", "Customer_Delete"],
+  }
 }
 
-type init<'state, 'event> = (. 'event) => 'state
-type apply<'state, 'event> = (. 'state, 'event) => 'state
+let atomicCounter = None
 
-type create<'command, 'event, 'error> = (
-  . 'command,
-  Message.context,
-  Message.errorHandler<'error, 'command, 'event>,
-) => array<'event>
+let invalidEvent = event =>
+  Js.Exn.raiseError("InvalidEvent: " ++ event_encode(event)->Js.Json.stringify)
 
-type execute<'state, 'command, 'event, 'error> = (
-  . 'state,
-  'command,
-  Message.context,
-  Message.errorHandler<'error, 'command, 'event>,
-) => array<'event>
-
-// highlight-start
-module type T = {
-  module Spec: Spec
-
-  type state
-
-  let resolverConfig: resolverConfig<Spec.command>
-
-  let init: init<state, Spec.event>
-  let apply: apply<state, Spec.event>
-
-  let create: create<Spec.command, Spec.event, Spec.error>
-  let execute: execute<state, Spec.command, Spec.event, Spec.error>
-}
-// highlight-end
-```
-
-```rescript title="reventless/src/Message.res"
-// more content above
-type errorHandler<'error, 'command, 'event> = (
-  'error,
-  'command,
-  ReventlessSpec.Message.context,
-) => array<'event>
-// more content below
-```
-
-```rescript title="reventless-spec/src/Message.res"
-// more content above
 @decco
-type context = {
-  id: string,
-  meta: meta,
+type state = {
+  address: address,
+  name: name,
+  deleted: bool,
 }
-// more content below
+
+// command => list(event)
+let create: Behaviour.create<command, event, error> = (. command, context, error) =>
+  switch command {
+  | Create(customer) => [Created(customer)]
+  | ChangeAddress(_)
+  | ChangeName(_)
+  | Delete =>
+    error(NotExisting, command, context)
+  }
+
+// (state, command) => list(event)
+let execute: Behaviour.execute<state, command, event, error> = (. state, command, context, error) =>
+  switch (command, state) {
+  | (Create(customer), {deleted: true}) => [Created(customer)]
+  | (Create(_), {deleted: false}) => error(AlreadyExisting, command, context)
+
+  | (ChangeAddress(_), {deleted: true}) => error(NotExisting, command, context)
+  | (ChangeAddress(address), {address: oldAddress}) if address != oldAddress => [
+      AddressChanged(address),
+    ]
+  | (ChangeAddress(_), _) => [Unchanged]
+
+  | (ChangeName(_), {deleted: true}) => error(NotExisting, command, context)
+  | (ChangeName(name), {name: oldName}) if name != oldName => [NameChanged(name)]
+  | (ChangeName(_), _) => [Unchanged]
+
+  | (Delete, {deleted: true}) => [Unchanged]
+  | (Delete, {deleted: false}) => [Deleted]
+  }
+
+// event => state
+let init: Behaviour.init<state, event> = (. event) =>
+  switch event {
+  | Created({Customer.address: address, name}) => {address, name, deleted: false}
+  | AddressChanged(_)
+  | NameChanged(_)
+  | Unchanged
+  | Deleted =>
+    invalidEvent(event)
+  }
+
+// (state, event) => state
+let apply: Behaviour.apply<state, event> = (. state: state, event) =>
+  switch event {
+  | AddressChanged(address) => {...state, address}
+  | NameChanged(name) => {...state, name}
+  | Unchanged => state
+  | Deleted => {...state, deleted: true}
+  | Created(_) => {...state, deleted: false}
+  }
 ```
 
 ### Spec
@@ -334,60 +362,59 @@ Aggregate-)EventTopic: publish(event3)
 deactivate Aggregate
 ```
 
-### Example
-
-```rescript title="ExampleAggregateBehaviour.res"
-module Spec = ExampleAggregate
-
-type state = {count: int}
-
-let resolverConfig = {
-  commandDecoder: Spec.command_decode,
-  fields: ["Example_DoSomething", "Example_DoSomethingElse"]
-  }
-
-let init = (. event) => switch event {
-    | SomethingHasHappened(num) => {count: num}
-    | AnotherThingHasHappened(_txt) => {count: 0}
-  }
-let apply = (. state, event) => switch (state, event) {
-    | ({count: count}, SomethingHasHappened(num)) => {count: count+num}
-    | (state, AnotherThingHasHappened(_txt)) => state
-  }
-
-let create = (. command, context, error) => switch command {
-    | DoSomething(num) if num < 0 =>
-        error(ArbitaryError("value less than 0"), command, context)
-    | DoSomething(num) => SomethingHasHappened(num)
-    | DoSomethingElse(txt) => AnotherThingHasHappened(txt)
-  }
-
-let execute = (.state, command, context, error) => switch (state, command) {
-    | (_state, DoSomething(num)) if num < 0 =>
-        error(ArbitaryError("value less than 0"), command, context)
-    | (_state, DoSomething(num)) => SomethingHasHappened(num)
-    | ({count: count}, DoSomethingElse(txt)) if count < 3 =>
-        error(IllegalState, command, context)
-    | ({count: count}, DoSomethingElse(txt)) => AnotherThingHasHappened(txt)
-}
-```
 
 ## EventMappings
 
-## Initialize Component (AWS Defaults)
+Each `Aggregate` can specify `EventMapping`s from one ore more source Aggregates:
 
-## Initialize Component (Generic)
+```rescript title="Customer_EventMappings.res" showLineNumbers
+open ReventlessSpec
 
+module Target = Customer
+
+module CustomerMapping = {
+  module Source = Customer
+
+  let map = (. customerId, event, _queryEngine) =>
+    switch event {
+    | Customer.Created(customer) => [
+        EventMapping.Publish(customerId, Customer.ChangeAddress(customer.address ++ " Suffix")),
+      ]
+    | _ => []
+    }
+}
+
+module type Mapping = EventMapping.T with module Target := Target
+
+let mappings: array<module(Mapping)> = [module(CustomerMapping)]
+
+let counter = None
 ```
-(
-  Config: Config.T,
-  Spec: ReventlessSpec.AggregateSpec.T,
-  Behaviour: Behaviour.T with module Spec := Spec,
-  EventMappings: EventMapper.Mappings with module Target := Spec,
-  CommandGeneratorResolvers: CommandGenerator.Adapter.Resolvers with type api := Config.api,
-  CommandTopicConnector: CommandTopic.Adapter.Connector,
-  EventLogStorage: EventLog.Adapter.Storage,
-  EventTopicPublisher: EventTopic.Adapter.Publisher,
-  EventCollectorConnector: EventCollector.Adapter.Connector,
-)
+### Target
+Each `EventMapping`s file has to define one `Target` module alias to its `Aggregate Spec` that all mappings are targeting to.
+
+### Mapping module
+For each source Aggregate a separate Mapping module has to be defined.
+
+#### Source
+Module alias to the source `Aggregate Spec`.
+
+#### map
+Mapping function from source `Event` to target `Command`.
+
+### Mapping module type
+For the following array of mappings a Mapping module type has to be defined, which constrains the `Target` to the `Target` module type defined above. This has to be done due to ReScript Functor Syntax (TODO insert link).
+
+### mappings
+This array has to include all mappings for this `Aggregate`.
+
+### counter
+This field has to configure, if for this mapping a counter should be used (see TODO), in this example no counter is needed, so it is `None`.
+
+## Generate Aggregate (AWS Defaults)
+
+Finally the `Aggregate` has to be generated by providing the previously generated Modules:
+
+```rescript title="Customer_EventMappings.res" showLineNumbers
+include ReventlessAws.Aggregate.Make(Config, Customer, Customer_Behaviour, Customer_EventMappings)
 ```

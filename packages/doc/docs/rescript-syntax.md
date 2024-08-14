@@ -8,7 +8,7 @@ Some most commonly used ReScript features and syntax shall be highlighted here. 
 
 ## Types
 
-### Commonly knwon types
+### Commonly known types
 
 `string`, `int`, `float`, `bool` are commonly known types, which are also present in ReScript.
 

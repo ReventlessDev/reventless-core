@@ -12,7 +12,7 @@ draft: true
 
 [*Aggregate*s](https://www.martinfowler.com/bliki/DDD_Aggregate.html) are the transactional units in your system.  
 An Aggregate receives Commands and outputs Events based on the current State. A single Command can result in *any number* of Events.  
-Only the Aggregate's Events will be stored. If a new Command gets handled the actual State will be calculated based on the previous Events ([Event-Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)). The current State will never be persisted to storage.
+Only the Aggregate's Events will be stored. If a new Command gets handled the actual State will be calculated based on the previous Events ([Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)). The current State will never be persisted to storage.
 
 ```mermaid
 graph LR
@@ -31,9 +31,9 @@ graph LR
 
 ### ReadModel
 
-A `ReadModel` is a queryable projection based on Events per `Aggregate` id. It takes `Event`s and persists a State calculated on the previous State and the incoming Event to some storage.
+A `ReadModel` is a queryable projection based on Events from one or more `Aggregate`s. It takes `Event`s and persists a State calculated on the previous State and the incoming Event.
 
-Usually a `ReadModel` doesn't have any outputs, although some infrastructure services may offer "lower level" data, which may be used in some provider specific `adapter`s.
+Usually a `ReadModel` doesn't have any outputs.
 
 ```mermaid
 graph LR
@@ -53,7 +53,7 @@ graph LR
 
 ### EventMapper
 
-One `EventMapper` maps `Event`s of (potentially multiple `Aggregate`s) to `Command`s for a single `Aggregate`. This is always needed if some occurrence in one `Aggregate` needs to trigger a reaction for another.
+An `EventMapper` attached to an `Aggregate` maps `Event`s of (potentially multiple `Aggregate`s) to `Command`s for this `Aggregate`. This is always needed if some `Event` in one `Aggregate` needs to trigger a reaction in another.
 
 ```mermaid
 graph LR
