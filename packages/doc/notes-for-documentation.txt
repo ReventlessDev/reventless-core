@@ -1,0 +1,6 @@
+differentiate between:
+- ! how the system has to be used
+  - what to do to get up and running
+- how the system works
+  - explain cqrs and the implementation / consequences in reventless
+  - explain the single components in reventless and their intercace / usage
