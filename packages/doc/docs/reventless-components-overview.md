@@ -116,6 +116,7 @@ A `Plugin` usually corresponds to a [`Bounded Context`](https://www.martinfowler
 [Read more about the ExtensionPoint component.](./reventless-components/extensionpoint.md)
 
 #### ExtensionPointMapping
+
 An `ExtensionPointMapping` defines a `Plugin`s border. It maps `Event`s from single `Aggregate`s to `Event`s of the `ExtensionPoint`. These are totally different Events (and therefore types), although they may seem similar. This is done to decouple outside dependencies from changes of the plugin and provide a simple interface to interact with.
 A `Command` sent to the `ExtensionPoint` will be mapped to a specific `Command` inside the plugin by this component.
 
