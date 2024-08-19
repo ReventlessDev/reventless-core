@@ -6,8 +6,8 @@ draft: true
 
 :::note[TODO]
 
-- [ ] come up with consistent simple meaningfull demo examples throughout the documentation
-- [ ] explain event log
+- [x] come up with consistent simple meaningfull demo examples throughout the documentation
+- [x] explain event log
 - [ ] add highlighted text about naming convention in Pulumi components
 - [ ] styling of mermaid diagrams
 - [ ] explain @decco annotations
@@ -61,18 +61,15 @@ subgraph generic Aggregate
     EventMappings
   end
 
-  EventMapper -->|command| CmdT
-  CmdT -->|command| Params
+  EventMapper -->|command| Params
   Params <-->|events| EvtL
-  EvtL -->|events| EvtT
 end
 ```
 
-TODO: description Aggregate:
-- low level components
-- generic & specific parts
-
 An Aggregate's business logic is defined by it's **Spec** and **Behaviour**.
+
+Commands are requests for change, which may be accepted (or not). Commands will never be stored. Accepted Commands result in one or more Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.  
+In an event-sourced system Events are the single source of truth. (note: any system based on Reventless is an event-sourced system!)
 
 ## Aggregate Spec
 
