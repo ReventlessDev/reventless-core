@@ -5,22 +5,19 @@ draft: true
 ---
 
 :::note[TODO]
+
 - [ ] overview graphic of components
-:::
+      :::
 
 ### Aggregate
 
 [*Aggregate*s](https://www.martinfowler.com/bliki/DDD_Aggregate.html) are the transactional units in your system.  
-An Aggregate receives Commands and outputs Events based on the current State. A single Command can result in *any number* of Events.  
+An Aggregate receives Commands and outputs Events based on the current State. A single Command can result in _any number_ of Events.  
 Only the Aggregate's Events will be stored. If a new Command gets handled the actual State will be calculated based on the previous Events ([Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)). The current State will never be persisted to storage.
 
 ```mermaid
 graph LR
-    Command((Command)):::Command -->|1| Aggregate:::aggregate -->|*| Event((Event)):::Event
-
-    classDef Command stroke:#66f,color:#66f,fill:none;
-    classDef Event stroke:#fa0,color:#fa0,fill:none;
-    classDef aggregate fill:#ff6,stroke:#333,color:#333;
+    Command((Command)):::command -->|1| Aggregate:::aggregate -->|*| Event((Event)):::event
 ```
 
 - **responsibility**: ensure only valid Commands create Events having the necessary information attached; emit Events

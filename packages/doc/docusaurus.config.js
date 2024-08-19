@@ -163,7 +163,43 @@ const config = {
         options: {
           //maxTextSize: 50,
           // FIXME:
-          themeCSS: "*: background-color: #f99",
+          themeCSS: `
+            .cssClass > rect {
+              fill: #f88;
+              stroke: #f0f;
+              }
+            .cssClass .nodeLabel {
+              color: #0ff;
+              }
+
+            .command > circle {
+              stroke: #66f;
+              fill:none;
+              r: 45px;
+              }
+            .command .nodeLabel {
+              color: #66f;
+              }
+
+            .event > circle {
+              stroke: #fa0;
+              fill:none;
+              }
+            .event .nodeLabel {
+              color: #fa0;
+              }
+
+            .aggregate > rect {
+              fill: #ff6;
+              stroke: #333;
+              }
+            .aggregate .nodeLabel {
+              color:#333;
+            }
+            `,
+
+          /*
+           */
         },
       },
     }),
