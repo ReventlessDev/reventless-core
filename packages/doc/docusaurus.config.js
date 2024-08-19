@@ -196,6 +196,38 @@ const config = {
             .aggregate .nodeLabel {
               color:#333;
             }
+
+            .readmodel > rect {
+              fill: #9c5;
+              stroke: #333;
+              }
+            .readmodel .nodeLabel {
+              color: #333;
+            }
+
+            .eventmapper > rect {
+              fill: #66f;
+              stroke: #fa0;
+              }
+            .eventmapper .nodeLabel {
+              color: #fa0;
+              }
+
+            .task > rect {
+              fill: #f4f;
+              stroke:#333;
+              }
+            .task .nodeLabel {
+              color: #333;
+            }
+
+            .sideeffecthandler > rect {
+              fill: #f4f;
+              stroke: #fa0;
+              }
+            .sideeffecthandler .nodeLabel {
+              color: #fa0;
+            }
             `,
 
           /*

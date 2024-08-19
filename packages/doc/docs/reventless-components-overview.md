@@ -34,12 +34,7 @@ Usually a `ReadModel` doesn't have any outputs.
 
 ```mermaid
 graph LR
-    Event((Event)):::Event -->|*| ReadModel:::readmodel
-
-    classDef Command stroke:#66f,color:#66f,fill:none;
-    classDef Event stroke:#fa0,color:#fa0,fill:none;
-    classDef aggregate fill:#ff6,stroke:#333,color:#333;
-    classDef readmodel fill:#9c5,stroke:#333,color:#333;
+    Event((Event)):::event -->|*| ReadModel:::readmodel
 ```
 
 - **responsibility**: create and persist State to be queried
@@ -54,13 +49,7 @@ An `EventMapper` attached to an `Aggregate` maps `Event`s of (potentially multip
 
 ```mermaid
 graph LR
-    Events((Events)):::Event -->|*| EventMapper{EventMapper}:::Eventmapper -->|*| Commands((Commands)):::Command
-
-    classDef Command stroke:#66f,color:#66f,fill:none;
-    classDef Event stroke:#fa0,color:#fa0,fill:none;
-    classDef aggregate fill:#ff6,stroke:#333,color:#333;
-    classDef readmodel fill:#9c5,stroke:#333,color:#333;
-    classDef Eventmapper fill:#66f,color:#fa0,stroke:#fa0;
+    Events((Events)):::event -->|*| EventMapper{EventMapper}:::eventmapper -->|*| Commands((Commands)):::command
 ```
 
 - **responsibility**: generate `Commands` for a given `aggregate` based on (multiple) other `aggregate`s' `Events`
@@ -86,15 +75,7 @@ It takes `Event`s of (potentially multiple) `Aggregate`s as input and calls func
 
 ```mermaid
 graph LR
-    Events((Events)):::Event -->|*| SideEffect{SideEffect}:::sideeffect -->|calls| Task>Task]:::task
-
-    classDef Command stroke:#66f,color:#66f,fill:none;
-    classDef Event stroke:#fa0,color:#fa0,fill:none;
-    classDef aggregate fill:#ff6,stroke:#333,color:#333;
-    classDef readmodel fill:#9c5,stroke:#333,color:#333;
-    classDef Eventmapper fill:#66f,color:#fa0,stroke:#fa0;
-    classDef sideeffect fill:#f4f,color:#fa0,stroke:#fa0;
-    classDef task fill:#f4f,color:#333,stroke:#333;
+    Events((Events)):::event -->|*| SideEffect{SideEffect}:::sideeffect -->|calls| Task>Task]:::task
 ```
 
 - **responsibility**: execute `functions` of a given `task` based on (multiple) `aggregate`s' `Events`

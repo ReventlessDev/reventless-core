@@ -4,22 +4,6 @@ date: 2021-11-22
 draft: true
 ---
 
-:::note[TODO]
-
-- [x] come up with consistent simple meaningfull demo examples throughout the documentation
-- [x] explain event log
-- [ ] add highlighted text about naming convention in Pulumi components
-- [ ] styling of mermaid diagrams
-- [ ] explain @decco annotations
-
-:::
-
-:::note[notes for later]
-
-- ad aggregate state: Because the State won't be persisted, you should only put data there, you _really_ need for validating incoming Commands.
-
-:::
-
 [For a short summary of an Aggregate, see Reventless Components Overview.](../reventless-components-overview.md)
 
 ```mermaid
@@ -27,16 +11,14 @@ flowchart LR
 EvtL[Event Log]
 EventMapper[Event Mapper]
 
-Cmd((Command))
-Evt((Event))
+Cmd((Command)):::command
+Evt((Event)):::event
 
 Evt ---> EventMapper
 Cmd ---> Params
 
-subgraph generic Aggregate
+subgraph GenericAggregate [Generic Aggregate]
   direction LR
-
-
 
   subgraph Params [Aggregate]
       direction TB
@@ -47,18 +29,21 @@ subgraph generic Aggregate
       Spec ~~~ Behaviour
       Behaviour ~~~ Config
   end
+  Params:::aggregate
 
   subgraph EventMapper
     direction TB
     EventMappings
   end
+  EventMapper:::eventmapper
 
   EventMapper -->|command| Params
   Params <-->|events| EvtL
 end
+GenericAggregate:::aggregate
 ```
 
-An Aggregate's business logic is defined by it's **Spec** and **Behaviour**.
+An Aggregate's business logic is defined by it's [**Spec**](#spec), [**Behaviour**](#behaviour) and [**Config**](./config.md).
 
 Commands are requests for change, which may be accepted (or not). Commands will never be stored. Accepted Commands result in one or more Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.  
 In an event-sourced system Events are the single source of truth. (note: any system based on Reventless is an event-sourced system!)
@@ -113,7 +98,14 @@ type error =
 
 ### `@decco` annotation
 
-TODO
+[Decco](https://github.com/rescript-labs/decco) is the currently used library for de-/serialization using a [PPX](../rescript-syntax.md#ppx).
+
+The library will automatically generate an encoder- and decoder function for annotated types. The functions are named `<typeName>_encode` and `<typeName>_decode`.  
+The framework relies on these functions to exist and uses them internally.
+
+:::warning
+Any type which is referenced from inside an annotated type needs to either be a built in type or another annoted type. The compiler will error otherwise.
+:::
 
 ### Id
 
@@ -393,7 +385,7 @@ Mapping function from source `Event` to target `Command`.
 
 ### Mapping module type
 
-For the following array of mappings a Mapping module type has to be defined, which constrains the `Target` to the `Target` module type defined above. This has to be done due to ReScript Functor Syntax (TODO insert link).
+For the following array of mappings a Mapping module type has to be defined, which constrains the `Target` to the `Target` module type defined above. This has to be done due to [ReScript Functor Syntax](../rescript-syntax.md#functors-higher-order-functions).
 
 ### mappings
 
@@ -401,7 +393,9 @@ This array has to include all mappings for this `Aggregate`.
 
 ### counter
 
-This field has to configure, if for this mapping a counter should be used (see TODO), in this example no counter is needed, so it is `None`.
+`counter` defines if a counter should be used for this mapping. In this example no counter is needed, so it is `None`.
+
+See [Counter](./counter.md#usage-in-eventmappings) component for further details.
 
 ## Generate Aggregate (AWS Defaults)
 

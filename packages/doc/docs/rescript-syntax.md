@@ -189,3 +189,7 @@ TODO
 [Official Rescript documentation on functors.](https://rescript-lang.org/docs/manual/latest/module#module-functions-functors)
 
 TODO
+
+### PPX
+
+TODO
