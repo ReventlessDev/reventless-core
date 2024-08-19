@@ -374,25 +374,33 @@ let mappings: array<module(Mapping)> = [module(CustomerMapping)]
 
 let counter = None
 ```
+
 ### Target
+
 Each `EventMapping`s file has to define one `Target` module alias to its `Aggregate Spec` that all mappings are targeting to.
 
 ### Mapping module
+
 For each source Aggregate a separate Mapping module has to be defined.
 
 #### Source
+
 Module alias to the source `Aggregate Spec`.
 
 #### map
+
 Mapping function from source `Event` to target `Command`.
 
 ### Mapping module type
+
 For the following array of mappings a Mapping module type has to be defined, which constrains the `Target` to the `Target` module type defined above. This has to be done due to ReScript Functor Syntax (TODO insert link).
 
 ### mappings
+
 This array has to include all mappings for this `Aggregate`.
 
 ### counter
+
 This field has to configure, if for this mapping a counter should be used (see TODO), in this example no counter is needed, so it is `None`.
 
 ## Generate Aggregate (AWS Defaults)
