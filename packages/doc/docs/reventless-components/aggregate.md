@@ -4,27 +4,28 @@ date: 2021-11-22
 draft: true
 ---
 
-[For a short summary of an Aggregate, see Reventless Components Overview.](../reventless-components-overview.md)
+[For a short summary of an Aggregate, see Reventless Components Overview.](../reventless-components-overview.md#aggregate)
 
 ```mermaid
 flowchart LR
-EvtL[Event Log]
-EventMapper[Event Mapper]
+CommandSource[Command Source]:::source
+EventLog[(Event Log)]:::eventlog
+EventMapper[Event Mapper]:::eventmapper
+EventTarget[Event Target]:::target
+EventTopicIn[Event Topic]:::eventtopic
+EventTopicOut[Event Topic]:::eventtopic
 
-Cmd((Command)):::command
-Evt((Event)):::event
-
-Evt ---> EventMapper
-Cmd ---> Params
+EventTopicIn --->|event| EventMapper
+CommandSource --->|command| Params
 
 subgraph GenericAggregate [Generic Aggregate]
   direction LR
 
   subgraph Params [Aggregate]
       direction TB
-      Spec[Aggregate Spec]
-      Behaviour[Behaviour]
-      Config[Config]
+      Spec[Aggregate Spec]:::parameter
+      Behaviour[Behaviour]:::parameter
+      Config[Config]:::parameter
 
       Spec ~~~ Behaviour
       Behaviour ~~~ Config
@@ -33,19 +34,21 @@ subgraph GenericAggregate [Generic Aggregate]
 
   subgraph EventMapper
     direction TB
-    EventMappings
+    EventMappings[Event Mappings]:::parameter
   end
   EventMapper:::eventmapper
 
   EventMapper -->|command| Params
-  Params <-->|events| EvtL
+  Params <-->|event| EventLog
+  EventLog -->|event| EventTopicOut
 end
 GenericAggregate:::aggregate
+EventTopicOut --> EventTarget
 ```
 
-An Aggregate's business logic is defined by it's [**Spec**](#spec), [**Behaviour**](#behaviour) and [**Config**](./config.md).
+An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Behaviour**](#behaviour) and [**Config**](./config.md).
 
-Commands are requests for change, which may be accepted (or not). Commands will never be stored. Accepted Commands result in one or more Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.  
+Commands are requests for change, which may be accepted (or not). Several Components can act as a Command Source ([Command Generator](./command_generator.md), [Task](./task.md), [Event Mapper](#eventmappings), [Extension](./extension.md), [Extension Point](./extensionpoint.md) - see [runtime communication](component_relations.md#runtime-communication) for more details). Commands will never be stored. Accepted Commands result in any number of Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.  
 In an event-sourced system Events are the single source of truth. (note: any system based on Reventless is an event-sourced system!)
 
 ## Aggregate Spec
@@ -96,24 +99,15 @@ type error =
   | NotExisting
 ```
 
-### `@decco` annotation
-
-[Decco](https://github.com/rescript-labs/decco) is the currently used library for de-/serialization using a [PPX](../rescript-syntax.md#ppx).
-
-The library will automatically generate an encoder- and decoder function for annotated types. The functions are named `<typeName>_encode` and `<typeName>_decode`.  
-The framework relies on these functions to exist and uses them internally.
-
-:::warning
-Any type which is referenced from inside an annotated type needs to either be a built in type or another annoted type. The compiler will error otherwise.
-:::
+For information about `@decco` see [Decco annotation](../inner-workings/serialization.md#decco-annotation).
 
 ### Id
 
-The `Id` module defines what kind of id will be used and implements interactions with it. For more information see the [Id documentation](Id.md). (For simple scenarios Reventless provides a default string implemenation `ReventlessSpec.Id.String`.)
+See [Id](./Id.md).
 
 ### name
 
-A name is a string which must be unique in the scope of one [plugin](./plugin.md) and should describe the aggregate aptly. The name will also be used "behind the scenes" to e.g. route payload to the right mappings etc.
+A name is a string which must be unique in the scope of Aggregate names in one [plugin](./plugin.md) and should describe the aggregate aptly. The name will also be used "behind the scenes" to e.g. route payload to the right mappings etc.
 
 ### command
 

@@ -33,7 +33,7 @@ subgraph Plugin
   subgraph AggregateSub [Aggregate]
     Aggregate[Aggregate]:::aggregate
     CommandGenerator[Command Generator]
-    CommandTopic[Command Topic]
+    CommandTopic[Command Topic]:::commandtopic
     EventLog[Event Log]
     EventMapper[Event Mapper]:::eventmapper
     EventTopic[Event Topic]
@@ -98,7 +98,7 @@ flowchart TB
 %% AGGREGATE
 Aggregate[Aggregate]:::aggregate
 CommandGenerator[Command Generator]
-CommandTopic[Command Topic]
+CommandTopic[Command Topic]:::commandtopic
 EventLog[Event Log]
 EventMapper[Event Mapper]:::eventmapper
 EventTopic[Event Topic]
@@ -135,7 +135,7 @@ SideEffectHandler --> SideEffectEventCollector
 
 %% ExtensionPoint
 ExtensionPoint[Extension Point]
-ExtensionPointCommandTopic[Command Topic]
+ExtensionPointCommandTopic[Command Topic]:::commandtopic
 ExtensionPointEventTopic[Event Topic]
 
 ExtensionPoint --> ExtensionPointCommandTopic

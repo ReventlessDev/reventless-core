@@ -164,20 +164,15 @@ const config = {
           //maxTextSize: 50,
           // FIXME:
           themeCSS: `
-            .cssClass > rect {
-              fill: #f88;
-              stroke: #f0f;
-              }
-            .cssClass .nodeLabel {
-              color: #0ff;
-              }
-
-            .command > circle {
+            /* MESSAGES */
+            .command > circle,
+            rect[name="CommandSource"] {
               stroke: #66f;
-              fill:none;
+              fill: #fff;
               r: 45px;
               }
-            .command .nodeLabel {
+            .command .nodeLabel,
+            rect[name="CommandSource"] {
               color: #66f;
               }
 
@@ -189,7 +184,9 @@ const config = {
               color: #fa0;
               }
 
-            .aggregate > rect {
+            /* REVENTLESS COMPONENTS */
+            .aggregate > rect,
+            rect[name="Aggregate"] {
               fill: #ff6;
               stroke: #333;
               }
@@ -228,10 +225,35 @@ const config = {
             .sideeffecthandler .nodeLabel {
               color: #fa0;
             }
-            `,
 
-          /*
-           */
+            .commandtopic > rect {
+              fill: #88ccff;
+              /*fill: #fff;*/
+              }
+            .commandtopic .nodeLabel {
+              /*color: #66f;*/
+              }
+            
+            .eventtopic > rect {
+            /* TODO */
+            }
+
+            .client > rect {
+            /* TODO */
+            }
+
+            /* HELPER */
+            .parameter > rect,
+            rect[name="Behaviour"] {
+              fill: #f90;
+              stroke: #f90;
+            }
+            .target > rect,
+            .source > rect {
+              stroke: none;
+              fill: none;
+            }
+            `,
         },
       },
     }),

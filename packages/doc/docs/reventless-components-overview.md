@@ -28,9 +28,7 @@ graph LR
 
 ### ReadModel
 
-A `ReadModel` is a queryable projection based on Events from one or more `Aggregate`s. It takes `Event`s and persists a State calculated on the previous State and the incoming Event.
-
-Usually a `ReadModel` doesn't have any outputs.
+A _ReadModel_ is a queryable persisted state: It takes Events from one or more Aggregates and persists a newly calculated state. The new state is based on the previous state and the incoming Event.
 
 ```mermaid
 graph LR
@@ -38,7 +36,7 @@ graph LR
 ```
 
 - **responsibility**: create and persist State to be queried
-- **in**: `Event`s
+- **in**: Events
 - **out**: -
 
 [Read more about the ReadModel component.](./reventless-components/readmodel.md)
@@ -49,7 +47,7 @@ An `EventMapper` attached to an `Aggregate` maps `Event`s of (potentially multip
 
 ```mermaid
 graph LR
-    Events((Events)):::event -->|*| EventMapper{EventMapper}:::eventmapper -->|*| Commands((Commands)):::command
+    Events((Events)):::event -->|*| EventMapper[EventMapper]:::eventmapper -->|*| Commands((Commands)):::command
 ```
 
 - **responsibility**: generate `Commands` for a given `aggregate` based on (multiple) other `aggregate`s' `Events`
@@ -75,7 +73,7 @@ It takes `Event`s of (potentially multiple) `Aggregate`s as input and calls func
 
 ```mermaid
 graph LR
-    Events((Events)):::event -->|*| SideEffect{SideEffect}:::sideeffect -->|calls| Task>Task]:::task
+    Events((Events)):::event -->|*| SideEffectHandler[SideEffectHandler]:::sideeffecthandler -->|calls| Task[Task]:::task
 ```
 
 - **responsibility**: execute `functions` of a given `task` based on (multiple) `aggregate`s' `Events`
