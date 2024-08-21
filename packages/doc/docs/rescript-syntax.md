@@ -184,7 +184,7 @@ TODO
 
 TODO
 
-### Functors (higher order functions)
+### Functors
 
 [Official Rescript documentation on functors.](https://rescript-lang.org/docs/manual/latest/module#module-functions-functors)
 
