@@ -34,7 +34,7 @@ QueryDb <-->|query| UiClient
 
 A Read Model's business logic is defined by it's [**Spec**](#read-model-spec), [**Projections**](#projections) and [**Config**](./config.md).
 
-Events may trigger updates to the state of a Read Model. A Read Model may act on Events of several different [Aggregates](./aggregate.md). The logic how to react to Events is implemented in a [Projection](#projections) per Aggregate. A Read Model's state is persisted in the Query DB and can be made available to the API. The state is mutable (many events may change the data of the same state - one after another) and [eventual consistent](https://en.wikipedia.org/wiki/Eventual_consistency).
+Events may trigger updates to the state of a Read Model. A Read Model may act on Events of several different [Aggregates](./aggregate.md). The logic how to react to Events is implemented in a [Projection](#projections) per Aggregate. A Read Model's state is persisted in the Query DB and can be made available to the [API](./api.md). The state is mutable (many events may change the data of the same state - one after another) and [eventual consistent](https://en.wikipedia.org/wiki/Eventual_consistency).
 
 ## Read Model Spec
 
@@ -86,6 +86,7 @@ This needs to be a [record type](../rescript-syntax.md#record-type). Other types
 :::
 
 ### subIdConfig
+
 In the Read Model, a sub id field can be used additionally to the id field. If you only provide the (primary) id value, then multiple items may be returned, sorted by the sub id value.
 
 In this example, there is no sub id used, therefore `None` is provided
@@ -106,6 +107,7 @@ In this example, there is no sub id used, therefore `None` is provided
 - other optional configurations see [Advanced Read Model Spec](#advanced-read-model-spec)
 
 ### Advanced Read Model Spec
+
 ### Example
 
 ```rescript title="Customer_ReadModelSpec.res" showLineNumbers
@@ -131,36 +133,40 @@ let config = ReventlessSpec.ReadModel.Spec.config(
   (),
 )
 ```
+
 ### subIdConfig
+
 In this example, there is a sub id field `subId` used, therefore the following fields are provided:
+
 - `subIdField`: name of the sub id field
 - `getSubId`: function to extract the sub id out of the state
 
 ### config
 
-- `idResolvers`: Other Read Models can be referenced by id in the state . If you (additionally to the id) want to provide the data of that referenced Read Model over the API, you have to specify how to resolve those ids here.
-The idResolvers configuration is an array of records with these fields:
+- `idResolvers`: Other Read Models can be referenced by id in the state . If you (additionally to the id) want to provide the data of that referenced Read Model over the [API](./api.md), you have to specify how to resolve those ids here.
+  The idResolvers configuration is an array of records with these fields:
   - `source`: specification, which id has to be resolved, by providing these fields:
     - `idField`: name of the id field to be resolved
-    - `subId`: 
+    - `subId`:
       - `Field(<fieldName>)`: field name for sub id
       - `Argument(<argumentName>)`: argument name (provided by query) to be used as sub id
       - `NoSubId`: no sub id
-    - `resolvedField`: name of the field in the API response data, where the referenced data is provided
+    - `resolvedField`: name of the field in the [API](./api.md) response data, where the referenced data is provided
   - `target`: specification, how to resolve the given source:
-      - `tableName`: name of the table to get the resolved data from
-      - `idField`: field name in the target table to match with source id
-      - `subIdField`: (optional) field name of the target table to match with source sub id
-      - `pluginName`: (optional) name of the plugin to find the given table. If not provided, the same plugin as the source is used
+    - `tableName`: name of the table to get the resolved data from
+    - `idField`: field name in the target table to match with source id
+    - `subIdField`: (optional) field name of the target table to match with source sub id
+    - `pluginName`: (optional) name of the plugin to find the given table. If not provided, the same plugin as the source is used
 - `idsResolvers`: To resolve an array of reference ids (no sub ids supported) you can specify an array of records with these fields:
   - `source`: specification, which id has to be resolved, by providing these fields:
     - `idField`: name of the id field to be resolved
-    - `resolvedField`: name of the field in the API response data, where the referenced data is provided
+    - `resolvedField`: name of the field in the [API](./api.md) response data, where the referenced data is provided
   - `target`: specification, how to resolve the given source:
-      - `tableName`: name of the table to get the resolved data from
-      - `idField`: field name in the target table to match with source id
+    - `tableName`: name of the table to get the resolved data from
+    - `idField`: field name in the target table to match with source id
 
 The following diagram depicts the relations between the Query DB tables for the given example:
+
 ```mermaid
 flowchart LR
   subgraph CustomerTable[Table Customer]
@@ -174,6 +180,7 @@ flowchart LR
 ```
 
 Example result of `customer("1234")` API query:
+
 ```json
 {
   "customer": {
@@ -186,9 +193,11 @@ Example result of `customer("1234")` API query:
   }
 }
 ```
+
 ## Projections
 
 ### Example
+
 ```rescript title="Customer_Projection.res" showLineNumbers
 open ReventlessSpec.Message
 open ReventlessSpec.Projection.Spec
@@ -212,9 +221,11 @@ module Mapping = Reventless.Projection.Mapping.Make(
 
 include Mapping
 ```
-In order to update a Read Model by Events from an Aggregate, a Projection from that Aggregate to the Read Model must be provided. 
+
+In order to update a Read Model by Events from an Aggregate, a Projection from that Aggregate to the Read Model must be provided.
 
 You do so by calling the Reventless.Projection.Mapping.Make [functor](../rescript-syntax.md#functors) with the [Aggregate Spec](aggregate.md#aggregate-spec), the [Read Model Spec](#read-model-spec) and a `map` function to create a `Mapping` module. The `map` function receives the event, the id and the event meta data and returns an `action` that is applied to the Query DB. These actions are supported:
+
 - **Single state**
   - Create:
     - `Create(<id>, <state>)`: Create new state if none exists
@@ -245,6 +256,7 @@ You do so by calling the Reventless.Projection.Mapping.Make [functor](../rescrip
 - `Ignore`: Ignore event
 
 ## Generate Read Model (AWS Defaults)
+
 ```rescript title="Customer_ReadModel.res" showLineNumbers
 module MappingTypes = Reventless.Projection.Mappings.Make(Customer_ReadModelSpec)
 module Mappings = {
