@@ -43,26 +43,26 @@ graph LR
 
 ### EventMapper
 
-An `EventMapper` attached to an `Aggregate` maps `Event`s of (potentially multiple `Aggregate`s) to `Command`s for this `Aggregate`. This is always needed if some `Event` in one `Aggregate` needs to trigger a reaction in another.
+An EventMapper attached to an Aggregate maps Events of (potentially multiple Aggregates) to Commands for this Aggregate. This is always needed if some Event in one Aggregate needs to trigger a reaction in another.
 
 ```mermaid
 graph LR
     Events((Events)):::event -->|*| EventMapper[EventMapper]:::eventmapper -->|*| Commands((Commands)):::command
 ```
 
-- **responsibility**: generate `Commands` for a given `aggregate` based on (multiple) other `aggregate`s' `Events`
-- **in**: `Event`s
-- **out**: `Command`s
+- **responsibility**: generate Commands for a given Aggregate based on (multiple) other Aggregates' Events
+- **in**: Events
+- **out**: Commands
 
-[Read more about the EventMapper component.](./reventless-components/eventmapper.md)
+[Read more about Event Mappings for Aggregates.](./reventless-components/aggregate.md#eventmappings)
 
 ### Task
 
-`Task`s are the "escape-hatch" of the dogmatic Command/Event paradigm. They allow to implement logic loosely coupled to Events (or even not at all). An example would be some calculation, which needs to be done in some specific interval.
+Tasks are the "escape-hatch" of the dogmatic Command/Event paradigm. They allow to implement logic loosely coupled to Events (or even not at all). An example would be some calculation, which needs to be done in some specific interval.
 
-Another intention of `Task`s is to interface with the outside world (e.g. other systems). An example of this would be up-/downloads or calling foreign APIs.
+Another intention of Tasks is to interface with the outside world (e.g. other systems). An example of this would be up-/downloads or calling foreign APIs.
 
-`Task`s may be implemented provider specific, since it's not possible to provide adapter for any possible scenario.
+Tasks may be implemented provider specific, since it's not possible to provide adapter for any possible scenario.
 
 [Read more about the Task component.](./reventless-components/task.md)
 

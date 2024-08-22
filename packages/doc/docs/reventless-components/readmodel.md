@@ -169,10 +169,10 @@ The following diagram depicts the relations between the Query DB tables for the 
 
 ```mermaid
 flowchart LR
-  subgraph CustomerTable[Table Customer]
+  subgraph CustomerTable[Customer Table]
     orderId
   end
-  subgraph Order[Table Order]
+  subgraph Order[Order Table]
     idOrder[id]
     items
   end

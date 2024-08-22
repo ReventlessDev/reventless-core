@@ -18,23 +18,25 @@ EventTopicOut[Event Topic]:::eventtopic
 EventTopicIn --->|event| EventMapper
 CommandSource --->|command| Params
 
-subgraph GenericAggregate [Generic Aggregate]
+subgraph GenericAggregate [Aggregate]
   direction LR
 
-  subgraph Params [Aggregate]
+  subgraph Params [Parameters]
       direction TB
       Spec[Aggregate Spec]:::parameter
       Behaviour[Behaviour]:::parameter
       Config[Config]:::parameter
+      EventMappings[Event Mappings]:::parameter
 
+      Config ~~~ Spec
       Spec ~~~ Behaviour
-      Behaviour ~~~ Config
+      Behaviour ~~~ EventMappings
+
   end
   Params:::aggregate
 
   subgraph EventMapper
     direction TB
-    EventMappings[Event Mappings]:::parameter
   end
   EventMapper:::eventmapper
 
@@ -46,10 +48,12 @@ GenericAggregate:::aggregate
 EventTopicOut --> EventTarget
 ```
 
-An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Behaviour**](#behaviour) and [**Config**](./config.md).
+An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [**Behaviour**](#behaviour), [**Config**](./config.md) and [**Event Mappings**](#eventmappings).
 
 Commands are requests for change, which may be accepted (or not). Several Components can act as a Command Source ([Command Generator](./command_generator.md), [Task](./task.md), [Event Mapper](#eventmappings), [Extension](./extension.md), [Extension Point](./extensionpoint.md) - see [runtime communication](component_relations.md#runtime-communication) for more details). Commands will never be stored. Accepted Commands result in any number of Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.  
 In an event-sourced system Events are the single source of truth. (note: any system based on Reventless is an event-sourced system!)
+
+TODO: explain generic / specific Aggregate
 
 ## Aggregate Spec
 
@@ -334,6 +338,45 @@ deactivate Aggregate
 ```
 
 ## EventMappings
+
+```mermaid
+flowchart LR
+
+subgraph SourceAggregateSub [Source Aggregate Components]
+    direction LR
+    SourceCommandTopic[Command Topic]:::commandtopic
+    SourceEventTopic[Event Topic]:::eventtopic
+
+    subgraph SourceAggregate [Aggregate]
+        SourceSpec[Spec]:::parameter
+    end
+    SourceAggregate:::aggregate
+
+    SourceCommandTopic -->|command| SourceAggregate
+    SourceAggregate -->|event| SourceEventTopic
+end
+
+subgraph TargetAggregateSub [Target Aggregate Components]
+    direction LR
+    TargetCommandTopic[Command Topic]:::commandtopic
+    TargetEventTopic[Event Topic]:::eventtopic
+
+    subgraph TargetEventMapper [Event Mapper]
+        TargetMapping[Event Mappings]:::parameter
+    end
+    TargetEventMapper:::eventmapper
+
+    subgraph TargetAggregate [Aggregate]
+        TargetSpec[Spec]:::parameter
+    end
+    TargetAggregate:::aggregate
+
+    SourceEventTopic -->|event| TargetEventMapper
+    TargetEventMapper -->|command| TargetCommandTopic
+    TargetCommandTopic -->|command| TargetAggregate
+    TargetAggregate -->|event| TargetEventTopic
+end
+```
 
 Each `Aggregate` can specify `EventMapping`s from one ore more source Aggregates:
 
