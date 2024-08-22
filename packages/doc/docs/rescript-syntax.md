@@ -10,9 +10,9 @@ Some most commonly used ReScript features and syntax shall be highlighted here. 
 
 ### Commonly known types
 
-`string`, `int`, `float`, `bool` are commonly known types, which are also present in ReScript.
+[`string`](https://rescript-lang.org/docs/manual/latest/primitive-types#string), [`int`](https://rescript-lang.org/docs/manual/latest/primitive-types#integers), [`float`](https://rescript-lang.org/docs/manual/latest/primitive-types#floats), [`bool`](https://rescript-lang.org/docs/manual/latest/primitive-types#boolean) are commonly known [types](https://rescript-lang.org/docs/manual/latest/type), which are also present in ReScript.
 
-These can be used either directly or aliased to a different type name.
+These can be used either directly or [aliased](https://rescript-lang.org/docs/manual/latest/type#type-alias) to a different type name.
 
 ```rescript
 type name = string
@@ -26,7 +26,7 @@ type hasBlueEyes = bool
 
 ### Record Type
 
-Record types are similar to simple common objects. They provide a way to group properties and label them with meaningfull keys.
+[Record types](https://rescript-lang.org/docs/manual/latest/record) are similar to simple common objects. They provide a way to group properties and label them with meaningfull keys.
 
 ```rescript
 type person = { name: string, age: int }
@@ -34,7 +34,7 @@ type person = { name: string, age: int }
 let person = {name: "John", age: 42}
 ```
 
-Acess a single property by using the variable name (of the record value) and append a dot (`.`) followed by the property name.
+Access a single property by using the variable name (of the record value) and append a dot (`.`) followed by the property name.
 
 ```rescript
 let name = person.name
@@ -44,7 +44,7 @@ let name = person.name
 
 ### Variant Type
 
-Variants define a type which represents `xor` of several predefined cases. Each case can have it's own (different) payload.
+[Variants](https://rescript-lang.org/docs/manual/latest/variant) define a type which represents `xor` of several predefined cases. Each case can have it's own (different) payload.
 
 ```rescript
 type person = { name: string, age: int } // record type as seen above
@@ -58,7 +58,8 @@ type command =
 
 ## Inline Records
 
-If a record type is only used as the payload of a single case in a variant type definition, the record may be inlined.
+If a record type is only used as the payload of a single case in a variant type definition, the [record may be inlined](https://rescript-lang.org/docs/manual/latest/variant#labeled-variant-payloads-inline-record).  
+A value of the record may not be used outside of the variant.
 
 ```rescript
 type command =
@@ -66,14 +67,29 @@ type command =
   | Rename(string)
   | IncreaseAge(int)
   | Forget
+
+let notPossible = { // record cannot be in scope
+  name: "example",
+  age: 42
+}
+
+let notPossibleAsWell = command => {
+  switch command {
+    | Introduce(r) => Some(r) // the record type would escape it's scope
+    | Rename(_) => None
+    | IncreaseAge(_) => None
+    | Forget => None
+  }
+}
 ```
 
 ## Option
 
-The option type is used to explicitly represent a value, which may be present (or not).
+The [option](https://rescript-lang.org/docs/manual/latest/null-undefined-option) type is used to explicitly represent a value, which may be present (or not).
 
 ```rescript
 type person = { name: string, title: option(string) }
+
 let alice = {name: "Alice",  title: Some("Dr.")}
 let bob = {name: "Bob", title: None}
 ```
@@ -82,15 +98,16 @@ let bob = {name: "Bob", title: None}
 
 ### Function
 
-Functions name a block of executable code and it's parameters.
+[Functions](https://rescript-lang.org/docs/manual/latest/function) name a block of executable code and it's parameters.
 
 ```rescript
-let praise = (name) => name ++ " is a genius!"
+let hello = (name) => "Hello " ++ name ++ "!"
+let helloGuest = hello("Guest") // "Hello Guest!"
 ```
 
 ### Switch
 
-Switch statements are similar to `if - else if - else`, but more readable and with super powers (pattern matching / destructuring).
+[Switch](https://rescript-lang.org/docs/manual/latest/pattern-matching-destructuring#switch-based-on-shape-of-data) statements are similar to `if - else if - else`, but more readable and with super powers (pattern matching / [destructuring](#destructuring).
 
 ```rescript
 let command = IncreaseAge(1);
@@ -98,7 +115,7 @@ let command = IncreaseAge(1);
 let increasedAgeAmount = switch(command) {
   | Introduce(_)
   | Rename(_)
-  | Forget => 0 // note: since Rename and Forget use the same number of variables in this case (0), they can be defined together with a single outcome
+  | Forget => 0 // note: since Rename and Forget match on the same number of variables in this case (none), they can be defined together with a single outcome
   | IncreaseAge(amount) => amount
 }
 
@@ -112,7 +129,7 @@ let newName = switch(command) {
 }
 ```
 
-Switch statements can be used for different type than variants as well.
+Switch statements can be used for different types than variants as well.
 
 ```rescript
 let name = "Charlie"
@@ -135,7 +152,7 @@ If you have a limited (defined) set of possible values the compiler will check i
 
 ### Destructuring
 
-Given a "complex" data structure (like a record or a variant) you can destructure it.
+Given a "complex" data structure (like a record or a variant) you can [destructure](https://rescript-lang.org/docs/manual/latest/pattern-matching-destructuring#destructuring) it.
 
 ```rescript
 let john = {name: "John", age: 42}
