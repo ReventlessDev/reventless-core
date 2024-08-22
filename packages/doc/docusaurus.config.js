@@ -203,15 +203,14 @@ const config = {
             }
 
             .eventmapper > rect {
-              fill: #66f;
+              fill: #99f;
               stroke: #fa0;
               }
             .eventmapper .nodeLabel {
-              color: #fa0;
               }
 
             .task > rect {
-              fill: #f4f;
+              fill: #f9f;
               stroke:#333;
               }
             .task .nodeLabel {
@@ -219,11 +218,10 @@ const config = {
             }
 
             .sideeffecthandler > rect {
-              fill: #f4f;
-              stroke: #fa0;
+              fill: #f9f;
+              stroke: #ff0;
               }
             .sideeffecthandler .nodeLabel {
-              color: #fa0;
             }
 
             .commandtopic > rect {
