@@ -39,40 +39,68 @@ let setup = (.
 
 All arguments of the setup function are provided by the framework, when the Task is actually created. The developer is free to use them (or not) as needed.
 
+:::warning
+The setup function is called during deploy time by Pulumi. The functions provided as arguments (`queryEngine`, `scheduler`, `publishCommands`, `queryBucketName`) can only be called during runtime inside of a cloud resource created by the bucket (e.g. Lambda function)
+:::
+
 #### queryEngine
 
-The `queryEngine` provides functions to send requests to the Plugin's [Read Models](./readmodel.md).
+The `queryEngine` provides two functions (`scan` & `query`) to send requests to the Plugin's [Read Models](./readmodel.md) during _runtime_.
 
-```rescript title="reventless-spec/src"
-type query = (
-  ~readModelName: string,
-  ~key: string=?,
-  ~id: value,
-  ~subIdConfig: SubId.config=?,
-  ~filterConfigs: array<Filter.config>=?,
-  ~ascending: bool=?,
-  ~limit: int=?,
-  unit,
-) => Js.Promise.t<array<Js.Json.t>>
+##### query
 
-type scan = (
-  ~readModelName: string,
-  ~filterConfigs: array<Filter.config>,
-  ~limit: int,
-) => Js.Promise.t<array<Js.Json.t>>
+Efficiently retrieve all entries for a single id, which (optionally) satisfy given filter criteria.
 
-type t = {
-  scan: scan,
-  query: query,
-}
-```
+:::note
+You should use query over scan whenever possible, since it's much more performant.
+:::
 
-is a [record](../rescript-syntax.md#record-type) holding two functions
-TODO: write & move this to a central place? since this is used at several locations
+###### example
+
+TODO: example
+
+##### scan
+
+Retrieve all entries in the Read Model, which satisfy the given filter criteria.
 
 #### scheduler
 
 TODO: write & move this to a central place? since this is used at several locations
+
+Provides the functions (`createSchedule` & `deleteSchedule`) of the Scheduler, which is created in the [Config](./config.md).
+
+##### createSchedule
+
+This function takes several [resources](../inner-workings/resources.md#adapter-resources) and a schedule [record](../rescript-syntax.md#record-type).
+
+- The `resources` will be used as the target for the scheduler.
+- The `schedule` defines the Scheduler's name, rate (how often / when to trigger) and payload (json to trigger the resource with - e.g. hardcoded serialized command).
+
+:::warning
+The current AWS Scheduler Adapter (`ReventlessAws.ScheduledPublisher.CloudWatchEvents`) only uses the first element of the resources array and discards all other resources!
+:::
+
+###### example
+
+```rescript
+// inside of a cloud resource in run-time
+let promise = { // promise<unit>
+  open ReventlessSpec.Schedule
+
+  createSchedule(
+    [queue],  // queue was created somewhere else during deploy-time
+    {
+      name: 'example',
+      rate: Daily(8, 0),
+      payload: `{ "id": "0db74314-c3e0-4ef8-bf0e-3b19da3852e2", "event": ["SendDailyUpdateNotification", "2024-08-24"] }`
+    }
+  )
+}
+```
+
+##### deleteSchedule
+
+TODO
 
 #### publishCommands
 
@@ -265,3 +293,14 @@ Task:::task
 TODO
 
 In the ProfilePictureTask example we have seen how external Systems can act as Command or Event Sources in Reventless. But what about the other way around? For this, we can make use of a Side Effect Handler. It registers on an Event Topic and in response to an Event, executes code.
+
+:::warning
+Bear in mind that Read Models and Tasks are eventual consistent.
+TODO
+:::
+
+### createSchedule
+
+TODO:
+
+Provided function to schedule a payload to be sent directly to this Side Effect Handler.
