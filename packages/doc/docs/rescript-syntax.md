@@ -42,6 +42,24 @@ let name = person.name
 
 [See ReScript documentation for more information on Record types.](https://rescript-lang.org/docs/manual/latest/record)
 
+#### scoping
+
+If the record type you want to use is defined in another module you need to bring it's type into scope, before using it.
+
+This can be done by opening the module or adding the scope to the first record field:
+
+```rescript
+module Example = {
+  type person = { name: string, age: int}
+}
+
+let x = {
+  open Example
+  { name: "John", age: 42 }
+}
+let y = { Example.name: "Eric", age: 13 }
+```
+
 ### Variant Type
 
 [Variants](https://rescript-lang.org/docs/manual/latest/variant) define a type which represents `xor` of several predefined cases. Each case can have it's own (different) payload.
