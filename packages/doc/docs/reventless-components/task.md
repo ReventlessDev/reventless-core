@@ -22,7 +22,7 @@ let make: Reventless.Task.maker = Reventless.Task.make(~name, ~setup)
 
 ### Task Setup
 
-The setup function is run during _deploy time_ by the Pulumi runtime. An example why that might be useful is to create external resources. Code that needs to be executed at runtime needs to be deployed as function as a service (e.g. Lambda on AWS) or another cloud resource.
+The setup function is run during _deploy time_ by the Pulumi runtime. An example why that might be useful is to create external resources. Code that needs to be executed at runtime needs to be deployed as a function as a service (e.g. Lambda on AWS) or another cloud resource.
 
 ```rescript
 let setup = (.
@@ -65,8 +65,6 @@ Retrieve all entries in the Read Model, which satisfy the given filter criteria.
 
 #### scheduler
 
-TODO: write & move this to a central place? since this is used at several locations
-
 Provides the functions (`createSchedule` & `deleteSchedule`) of the Scheduler, which is created in the [Config](./config.md).
 
 ##### createSchedule
@@ -100,9 +98,13 @@ let promise = { // promise<unit>
 
 ##### deleteSchedule
 
+Schedulers can be deleted using the deleteSchedule function (TODO: When would this actually be used during deployment? Or is this just a runtime thing?)
+
 TODO
 
 #### publishCommands
+
+Using the publishCommands function, a command can be published to a target Aggregate. The command sent is placed into the Command Topic of the Aggregate. 
 
 TODO
 
@@ -268,6 +270,8 @@ Using a Task to generate and use Cloud resources is not the only way how a Task 
 - etc.
 
 ## Side Effect Handler
+
+TODO: Move to own File?
 
 ```mermaid
 flowchart LR

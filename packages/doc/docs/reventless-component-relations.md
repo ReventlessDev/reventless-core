@@ -1,5 +1,5 @@
 ---
-title: Component Relations
+title: Reventless Component Relations
 date: 2024-08-19
 draft: true
 ---
@@ -7,20 +7,34 @@ draft: true
 :::note[TODO]
 
 - adapt existing diagram to desired representation
+  :::
 
-:::
 
 ## Runtime Communication
 
+The following diagram shows the complete overview of a reventless application during runtime. Each component is introduced briefly in the [overview](reventless-components-overview.md). For a more detailed explanation on each individial, check out the [reventless components](./reventless-components/aggregate.md) documentation.
+
 ```mermaid
 flowchart LR
-subgraph Plugin1 [Plugin 1]
-  Plugin1Extension["Extension (out)"]
-  Plugin1ExtensionPoint["Extension Point (out)"]
-end
 
 subgraph UiRequest [UI]
   UiClientRequest((Client))
+end
+
+subgraph Plugin1 [Plugin 1]
+  Plugin1ExtensionPoint["Extension Point (out)"]
+end
+
+subgraph Plugin4 [Plugin 4]
+  Plugin4ExtensionPoint["Extension Point (in)"]
+end
+
+subgraph Plugin2 [Plugin 2]
+  Plugin2Extension["Extension (in)"]
+end
+
+subgraph Plugin3 [Plugin 3]
+  Plugin3Extension["Extension (out)"]
 end
 
 subgraph Plugin
@@ -69,17 +83,11 @@ subgraph Plugin
   EventTopic -->|event| EventMapper
   ExtensionIn --->|command| CommandTopic
   ExtensionPointIn --->|command| CommandTopic
-  Plugin1Extension -->|command| ExtensionPointIn
+  Plugin3Extension -->|command| ExtensionPointIn
   Plugin1ExtensionPoint -->|event| ExtensionIn
-  UiClientRequest -->|mutation| Api
-end
-
-subgraph Plugin2 [Plugin 2]
-  Plugin2Extension["Extension (in)"]
-  Plugin2ExtensionPoint["Extension Point (in)"]
-
-  ExtensionOut --->|command| Plugin2ExtensionPoint
+  ExtensionOut --->|command| Plugin4ExtensionPoint
   ExtensionPointOut --->|event| Plugin2Extension
+  UiClientRequest -->|mutation| Api
 end
 
 subgraph UiQuery [UI]
@@ -90,6 +98,8 @@ end
 ```
 
 ## Pulumi Component Hierarchy
+
+Reventless strongly relies on Pulumi to create it's cloud resources and infrastructure. This diagram depicts the relations between the individual components from a deployment perspective.
 
 ```mermaid
 flowchart TB
