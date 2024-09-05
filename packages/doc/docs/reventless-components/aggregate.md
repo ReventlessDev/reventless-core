@@ -53,8 +53,6 @@ An Aggregate's business logic is defined by it's [**Spec**](#aggregate-spec), [*
 Commands are requests for change, which may be accepted (or not). Several Components can act as a Command Source ([Command Generator](./command_generator.md), [Task](./task.md), [Event Mapper](#eventmappings), [Extension](./extension.md), [Extension Point](./extensionpoint.md) - see [runtime communication](component_relations.md#runtime-communication) for more details). Commands will never be stored. Accepted Commands result in any number of Events. Events are factual statements of the past, which cannot change. (Only new events may be created.) Events will be persisted in the Event Log. An Event Log is an "append-only" storage.  
 In an event-sourced system Events are the single source of truth. (note: any system based on Reventless is an event-sourced system!)
 
-TODO: explain generic / specific Aggregate
-
 ## Aggregate Spec
 
 An Aggregate Spec defines the id, name, command and event types of an Aggregate in a declarataive manner. The Spec is used at any place, where a programmatic interaction with the aggregate is desired. ([Aggregate Behaviour](#behaviour), [EventMapper](eventmapper.md), [ReadModel Projections](readmodel.md#Projections), [Extensionpoint Mappings](extensionpoint.md#mappings), [Extension Mappings](extension.md#mappings))
@@ -62,7 +60,7 @@ An Aggregate Spec defines the id, name, command and event types of an Aggregate 
 ### Example
 
 ```rescript title="Customer.res" showLineNumbers
-open Reventless
+//open Reventless
 
 module Id = ReventlessSpec.Id.String
 
@@ -107,7 +105,7 @@ For information about `@decco` see [Decco annotation](../inner-workings/serializ
 
 ### Id
 
-See [Id](./Id.md).
+See [Id](../reventless-common-modules/Id.md).
 
 ### name
 
