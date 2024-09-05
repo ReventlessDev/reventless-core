@@ -106,7 +106,7 @@ In this example, there is no sub id used, therefore `None` is provided
     - `#INCLUDE(array<string>)`: all keys and the specified fields will be copied to the index
 - other optional configurations see [Advanced Read Model Spec](#advanced-read-model-spec)
 
-### Advanced Read Model Spec
+## Advanced Read Model Spec
 
 ### Example
 
