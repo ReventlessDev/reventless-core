@@ -99,7 +99,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
           ComponentType$Reventless.name(name, /* ReadModel */12),
           Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames),
           eventsHandler,
-          undefined,
+          2048,
           undefined,
           Pulumi.output(undefined),
           Pulumi.output(undefined),

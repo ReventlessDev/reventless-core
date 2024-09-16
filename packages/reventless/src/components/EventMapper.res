@@ -344,7 +344,7 @@ module Make = (
     ~allEventTopics,
     ~queryEngine,
     ~publishJsons,
-    ~memorySize=128,
+    ~memorySize=2048,
     ~timeout=180,
     ~opts=?,
     _,

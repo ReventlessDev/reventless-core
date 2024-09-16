@@ -117,6 +117,7 @@ module Make = (
       ~name=name->ComponentType.name(componentType),
       ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
       ~eventsHandler,
+      ~memorySize=2048,
       ~policy1=Pulumi.Output.make(None),
       ~policy2=Pulumi.Output.make(None),
       ~opts=Some(opts),

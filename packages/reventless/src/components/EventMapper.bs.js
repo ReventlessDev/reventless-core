@@ -293,7 +293,7 @@ function Make(Target, EventCollector, Mappings) {
     return self.registerOutputs(outputs);
   };
   var make = function (allEventTopics, queryEngine, publishJsons, memorySizeOpt, timeoutOpt, opts, param) {
-    var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 128;
+    var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
     var prim0 = ComponentType$Reventless.toString(/* EventMapper */7);
     var prim1 = Target.name;
