@@ -7,6 +7,7 @@ var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
+var Logger$Reventless = require("./util/Logger.bs.js");
 var QueryDbRuntime$Reventless = require("./components/QueryDbRuntime.bs.js");
 
 function Make(Source, Target, MappingImpl) {
@@ -376,17 +377,250 @@ function groupActionsById(actions) {
               }));
 }
 
+function optimizeActions(actions) {
+  return Belt_Array.reduce(actions, [], (function (optimizedActions, action) {
+                var optimizedActionsCount = optimizedActions.length;
+                if (optimizedActionsCount === 0) {
+                  return [action];
+                }
+                var lastAction = Belt_Array.getExn(optimizedActions, optimizedActionsCount - 1 | 0);
+                var previousActions = optimizedActionsCount === 1 ? [] : Belt_Array.slice(optimizedActions, 0, optimizedActionsCount - 1 | 0);
+                if (typeof lastAction !== "number") {
+                  switch (lastAction.TAG | 0) {
+                    case /* Create */0 :
+                        var state1 = lastAction._1;
+                        var id1 = lastAction._0;
+                        if (typeof action !== "number") {
+                          switch (action.TAG | 0) {
+                            case /* Create */0 :
+                                if (Caml_obj.equal(id1, action._0)) {
+                                  console.warn("optimizing 2 sequential Create actions, therefore ignoring the second one:", JSON.stringify(action._1));
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Create */0,
+                                                _0: id1,
+                                                _1: state1
+                                              }]);
+                                }
+                                break;
+                            case /* Update */2 :
+                                if (Caml_obj.equal(id1, action._0)) {
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Create */0,
+                                                _0: id1,
+                                                _1: Curry._1(action._1, state1)
+                                              }]);
+                                }
+                                break;
+                            case /* UpdateWithDefault */4 :
+                                if (Caml_obj.equal(id1, action._0)) {
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Create */0,
+                                                _0: id1,
+                                                _1: Curry._1(action._2, state1)
+                                              }]);
+                                }
+                                break;
+                            case /* Set */6 :
+                                if (Caml_obj.equal(id1, action._0)) {
+                                  console.warn("optimizing Set after Create, therefore ignoring the Create:", state1);
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Set */6,
+                                                _0: id1,
+                                                _1: action._1
+                                              }]);
+                                }
+                                break;
+                            case /* Delete */8 :
+                                if (Caml_obj.equal(id1, action._0)) {
+                                  console.warn("optimizing Delete after Create, therefore ignoring the Create:", state1);
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Delete */8,
+                                                _0: id1
+                                              }]);
+                                }
+                                break;
+                            default:
+                              
+                          }
+                        }
+                        break;
+                    case /* Update */2 :
+                        var f = lastAction._1;
+                        var id1$1 = lastAction._0;
+                        if (typeof action !== "number") {
+                          switch (action.TAG | 0) {
+                            case /* Update */2 :
+                                if (Caml_obj.equal(id1$1, action._0)) {
+                                  var g = action._1;
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Update */2,
+                                                _0: id1$1,
+                                                _1: (function (state) {
+                                                    return Curry._1(g, Curry._1(f, state));
+                                                  })
+                                              }]);
+                                }
+                                break;
+                            case /* UpdateWithDefault */4 :
+                                if (Caml_obj.equal(id1$1, action._0)) {
+                                  var g$1 = action._2;
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* UpdateWithDefault */4,
+                                                _0: id1$1,
+                                                _1: action._1,
+                                                _2: (function (state) {
+                                                    return Curry._1(g$1, Curry._1(f, state));
+                                                  })
+                                              }]);
+                                }
+                                break;
+                            case /* Set */6 :
+                                if (Caml_obj.equal(id1$1, action._0)) {
+                                  console.warn("optimizing Set after Update, therefore ignoring the Update");
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Set */6,
+                                                _0: id1$1,
+                                                _1: action._1
+                                              }]);
+                                }
+                                break;
+                            case /* Delete */8 :
+                                if (Caml_obj.equal(id1$1, action._0)) {
+                                  console.warn("optimizing Delete after Update, therefore ignoring the Update");
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Delete */8,
+                                                _0: id1$1
+                                              }]);
+                                }
+                                break;
+                            default:
+                              
+                          }
+                        }
+                        break;
+                    case /* UpdateWithDefault */4 :
+                        var f$1 = lastAction._2;
+                        var defaultState1 = lastAction._1;
+                        var id1$2 = lastAction._0;
+                        if (typeof action !== "number") {
+                          switch (action.TAG | 0) {
+                            case /* Create */0 :
+                                if (Caml_obj.equal(id1$2, action._0)) {
+                                  console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create");
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* UpdateWithDefault */4,
+                                                _0: id1$2,
+                                                _1: defaultState1,
+                                                _2: f$1
+                                              }]);
+                                }
+                                break;
+                            case /* Update */2 :
+                                if (Caml_obj.equal(id1$2, action._0)) {
+                                  var g$2 = action._1;
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* UpdateWithDefault */4,
+                                                _0: id1$2,
+                                                _1: Curry._1(g$2, defaultState1),
+                                                _2: (function (state) {
+                                                    return Curry._1(g$2, Curry._1(f$1, state));
+                                                  })
+                                              }]);
+                                }
+                                break;
+                            case /* UpdateWithDefault */4 :
+                                if (Caml_obj.equal(id1$2, action._0)) {
+                                  var g$3 = action._2;
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* UpdateWithDefault */4,
+                                                _0: id1$2,
+                                                _1: Curry._1(g$3, defaultState1),
+                                                _2: (function (state) {
+                                                    return Curry._1(g$3, Curry._1(f$1, state));
+                                                  })
+                                              }]);
+                                }
+                                break;
+                            case /* Set */6 :
+                                if (Caml_obj.equal(id1$2, action._0)) {
+                                  console.warn("optimizing Set after UpdateWithDefault, therefore ignoring the UpdateWithDefault");
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Set */6,
+                                                _0: id1$2,
+                                                _1: action._1
+                                              }]);
+                                }
+                                break;
+                            case /* Delete */8 :
+                                if (Caml_obj.equal(id1$2, action._0)) {
+                                  console.warn("optimizing Delete after UpdateWithDefault, therefore ignoring the UpdateWithDefault");
+                                  return Belt_Array.concat(previousActions, [{
+                                                TAG: /* Delete */8,
+                                                _0: id1$2
+                                              }]);
+                                }
+                                break;
+                            default:
+                              
+                          }
+                        }
+                        break;
+                    case /* Delete */8 :
+                        if (typeof action !== "number" && action.TAG === /* Create */0) {
+                          var id1$3 = lastAction._0;
+                          if (Caml_obj.equal(id1$3, action._0)) {
+                            return Belt_Array.concat(previousActions, [{
+                                          TAG: /* Set */6,
+                                          _0: id1$3,
+                                          _1: action._1
+                                        }]);
+                          }
+                          
+                        }
+                        break;
+                    case /* UpdateMultiState */13 :
+                        if (typeof action !== "number" && action.TAG === /* UpdateMultiState */13) {
+                          var id1$4 = lastAction._0;
+                          if (Caml_obj.equal(id1$4, action._0)) {
+                            var g$4 = action._1;
+                            var f$2 = lastAction._1;
+                            return Belt_Array.concat(previousActions, [{
+                                          TAG: /* UpdateMultiState */13,
+                                          _0: id1$4,
+                                          _1: (function (state) {
+                                              return Curry._1(g$4, Curry._1(f$2, state));
+                                            })
+                                        }]);
+                          }
+                          
+                        }
+                        break;
+                    default:
+                      
+                  }
+                }
+                console.warn("actions not optimized: ", JSON.stringify(lastAction), JSON.stringify(action));
+                return Belt_Array.concat(optimizedActions, [action]);
+              }));
+}
+
 async function handleActions(actions, primitives, subIdConfig) {
   var handleActionsForId = async function (actions, id) {
     var actionCount = actions.length;
     if (actionCount > 1) {
-      console.log("Projection.handleActions: handling " + String(actionCount) + " actions for id=" + id + "");
+      console.log("Projection.handleActions: optimizing " + String(actionCount) + " actions for id=" + id + "");
     }
-    return await Belt_Array.reduce(actions, Promise.resolve({
+    var optimizedActions = optimizeActions(actions);
+    var optimizedActionCount = optimizedActions.length;
+    console.log("Projection.handleActions: handling " + String(optimizedActionCount) + " optimized actions for id=" + id + "");
+    return await Belt_Array.reduce(optimizedActions, Promise.resolve({
                     TAG: /* Ok */0,
                     _0: undefined
                   }), (async function (p, action) {
-                  await p;
+                  var err = await p;
+                  if (err.TAG !== /* Ok */0) {
+                    Logger$Reventless.error("File \"Projection.res\", line 385, characters 15-22", undefined, undefined)("storage error:", "deleteme");
+                  }
                   return await handleAction(action, primitives, subIdConfig);
                 }));
   };
@@ -419,5 +653,6 @@ exports.statesToString = statesToString;
 exports.handleAction = handleAction;
 exports.actionsWithId = actionsWithId;
 exports.groupActionsById = groupActionsById;
+exports.optimizeActions = optimizeActions;
 exports.handleActions = handleActions;
-/* No side effect */
+/* Logger-Reventless Not a pure module */

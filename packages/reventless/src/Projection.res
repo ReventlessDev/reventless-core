@@ -243,16 +243,151 @@ let groupActionsById = actions => {
   ))
 }
 
+let optimizeActions = actions => {
+  // [ UpdateMultiSate(f), UpdateMultiState(g), Create(..)] => [ UpdateMultiState(f(g)), Create(..) ]
+  actions->Belt.Array.reduce([], (optimizedActions, action) => {
+    let optimizedActionsCount = optimizedActions->Belt.Array.size
+    if optimizedActionsCount == 0 {
+      [action]
+    } else {
+      let lastAction = optimizedActions->Belt.Array.getExn(optimizedActionsCount - 1)
+      let previousActions = if optimizedActionsCount == 1 {
+        []
+      } else {
+        optimizedActions->Belt.Array.slice(~offset=0, ~len=optimizedActionsCount - 1)
+      }
+
+      switch (lastAction, action) {
+      // SINGLE STATES
+      | (Create(id1, state1), Update(id2, f)) if id1 == id2 =>
+        previousActions->Belt.Array.concat([Create(id1, f(state1))])
+      | (Create(id1, state1), UpdateWithDefault(id2, _defaultState2, f)) if id1 == id2 =>
+        previousActions->Belt.Array.concat([Create(id1, f(state1))])
+      | (Update(id1, f), Update(id2, g)) if id1 == id2 =>
+        previousActions->Belt.Array.concat([Update(id1, state => g(f(state)))])
+      | (UpdateWithDefault(id1, defaultState1, f), UpdateWithDefault(id2, _defaultState2, g))
+        if id1 == id2 =>
+        previousActions->Belt.Array.concat([
+          UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
+        ])
+      | (Update(id1, f), UpdateWithDefault(id2, defaultState2, g)) if id1 == id2 =>
+        previousActions->Belt.Array.concat([
+          UpdateWithDefault(
+            id1,
+            /* if no state exists before the first upate, it is ignored */
+            defaultState2,
+            state => g(f(state)),
+          ),
+        ])
+      | (UpdateWithDefault(id1, defaultState1, f), Update(id2, g)) if id1 == id2 =>
+        previousActions->Belt.Array.concat([
+          UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
+        ])
+      | (UpdateWithDefault(id1, defaultState1, f), Create(id2, state2)) if id1 == id2 =>
+        Js.Console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create")
+        previousActions->Belt.Array.concat([UpdateWithDefault(id1, defaultState1, f)])
+      | (Create(id1, state1), Create(id2, state2)) if id1 == id2 =>
+        Js.Console.warn2(
+          "optimizing 2 sequential Create actions, therefore ignoring the second one:",
+          state2->Js.Json.stringifyAny,
+        )
+        previousActions->Belt.Array.concat([Create(id1, state1)])
+      | (Create(id1, state1), Delete(id2)) if id1 == id2 =>
+        Js.Console.warn2("optimizing Delete after Create, therefore ignoring the Create:", state1)
+        previousActions->Belt.Array.concat([Delete(id1)])
+      | (Update(id1, _f), Delete(id2)) if id1 == id2 =>
+        Js.Console.warn("optimizing Delete after Update, therefore ignoring the Update")
+        previousActions->Belt.Array.concat([Delete(id1)])
+      | (UpdateWithDefault(id1, _defaultState1, _f), Delete(id2)) if id1 == id2 =>
+        Js.Console.warn(
+          "optimizing Delete after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
+        )
+        previousActions->Belt.Array.concat([Delete(id1)])
+      | (Delete(id1), Create(id2, state2)) if id1 == id2 =>
+        previousActions->Belt.Array.concat([Set(id1, state2)])
+      | (Create(id1, state1), Set(id2, state2)) if id1 == id2 =>
+        Js.Console.warn2("optimizing Set after Create, therefore ignoring the Create:", state1)
+        previousActions->Belt.Array.concat([Set(id1, state2)])
+      | (Update(id1, _f), Set(id2, state2)) if id1 == id2 =>
+        Js.Console.warn("optimizing Set after Update, therefore ignoring the Update")
+        previousActions->Belt.Array.concat([Set(id1, state2)])
+      | (UpdateWithDefault(id1, _defaultState1, _f), Set(id2, state2)) if id1 == id2 =>
+        Js.Console.warn(
+          "optimizing Set after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
+        )
+        previousActions->Belt.Array.concat([Set(id1, state2)])
+      // MULTI STATES
+      /*
+      | (CreateMultiState(id1, states1), UpdateMultiState(id2, f)) if id1 == id2 =>
+        THIS IS FALSE: previousActions->Belt.Array.concat([CreateMultiState(id1, f(states1))])
+        suggestion: UpdateMultiState with following updateFunction:
+            - apply f to states1 and states of UpdateMultiState separately
+            - concat unique states of both results
+ */
+      | (UpdateMultiState(id1, f), UpdateMultiState(id2, g)) if id1 == id2 =>
+        previousActions->Belt.Array.concat([UpdateMultiState(id1, state => g(f(state)))])
+      /*
+      | (UpdateMultiState(id1, _f), CreateMultiState(id2, states2)) if id1 == id2 =>
+        Js.Console.warn(
+          "optimizing CreateMultiState after UpdateMultiState, therefore ignoring the UpdateMultiState",
+        )
+        THIS IS FALSE: previousActions->Belt.Array.concat([CreateMultiState(id1, states2)])
+        suggestion: UpdateMultiState with following updateFunction:
+            - apply f to states of UpdateMultiState 
+            - concat unique states of update results and states2
+            - if duplicates exist, prefer states2
+ */
+      /*
+      | (CreateMultiState(id1, states1), CreateMultiState(id2, states2)) if id1 == id2 =>
+        Js.Console.warn2(
+          "optimizing 2 sequential CreateMultiState actions, therefore ignoring the first one:",
+          states1->Js.Json.stringifyAny,
+        )
+        THIS IS FALSE: previousActions->Belt.Array.concat([CreateMultiState(id1, states2)])
+        suggestion: CreateMultiState with following updateFunction:
+            - concatenate states1 & states2
+            - if duplicates exist, prefer states2
+ */
+      | (lastAction, action) =>
+        // any other action will be just appended
+        Js.Console.warn3(
+          "actions not optimized: ",
+          lastAction->Js.Json.stringifyAny,
+          action->Js.Json.stringifyAny,
+        )
+        optimizedActions->Belt.Array.concat([action])
+      }
+    }
+  })
+}
+
 let handleActions = async (actions, primitives, subIdConfig) => {
   let handleActionsForId = async (actions, id) => {
     let actionCount = actions->Belt.Array.size
     if actionCount > 1 {
       Js.log(
-        `Projection.handleActions: handling ${actionCount->Belt.Int.toString} actions for id=${id}`,
+        `Projection.handleActions: optimizing ${actionCount->Belt.Int.toString} actions for id=${id}`,
       )
     }
-    await actions->Belt.Array.reduce(Ok()->Js.Promise.resolve, async (p, action) => {
-      let _ = await p
+
+    let optimizedActions = optimizeActions(actions)
+    let optimizedActionCount = optimizedActions->Belt.Array.size
+    Js.log(
+      `Projection.handleActions: handling ${optimizedActionCount->Belt.Int.toString} optimized actions for id=${id}`,
+    )
+
+    // FIXME: handle errors!
+    await optimizedActions->Belt.Array.reduce(Ok()->Js.Promise.resolve, async (p, action) => {
+      switch await p {
+      | Ok() => ()
+      | Error(err) =>
+        Logger.error(
+          ~loc=__LOC__,
+          "storage error:",
+                    "deleteme"
+          //err->ReventlessSpec.QueryDb.storageError_encode->Js.Json.stringify,
+        )
+      }
       await action->handleAction(primitives, subIdConfig)
     })
   }
