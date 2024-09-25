@@ -138,7 +138,7 @@ module Make = (
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~allEventTopics),
+      ~construct=construct(~allEventTopics, ...),
       ~opts,
     )
 }

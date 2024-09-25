@@ -26,6 +26,6 @@ type t
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.Options.t>,
-    unit,
+    unit, //TODO remove after rescript 11 update
   ) => ReventlessSpec.Component.t<t, outputs>
 }

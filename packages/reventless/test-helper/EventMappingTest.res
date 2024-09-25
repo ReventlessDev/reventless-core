@@ -72,7 +72,7 @@ module MakeAggregate = (
   let apply' = (state, event) => Behaviour.apply(. state, event)
 
   let currentState = events =>
-    events->Belt.Array.sliceToEnd(1)->Belt.Array.reduce(Behaviour.init(. events[0]), apply')
+    events->Belt.Array.sliceToEnd(1)->Belt.Array.reduce(Behaviour.init(. events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
 
@@ -228,7 +228,7 @@ module Make = (
     ))->toEqual((0, 0, 1, Some((id, [expectedTargetEvent]))))
   }
 
-  let thenNoTargetEvent = thenTargetEvents([])
+  let thenNoTargetEvent = (targetEvents) => thenTargetEvents([], targetEvents)
   // let thenEventWithError = (expectedEvent, expectedError, events) =>
   //   expect((
   //     events->Belt.Array.length,

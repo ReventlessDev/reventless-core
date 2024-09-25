@@ -51,10 +51,7 @@ module Make = (
   external makeOutputs: (
     ~name: string,
     ~aggregateNames: array<string>,
-    ~outgoingEventHandler: (
-      . Js.Json.t,
-      ReventlessSpec.Plugin.pluginDefinition,
-    ) => Js.Promise.t<unit>,
+    ~outgoingEventHandler: Js.Json.t => Js.Promise.t<unit>,
     ~commandTopic: ReventlessSpec.CommandTopic.outputs,
     ~eventTopic: ReventlessSpec.EventTopic.outputs,
   ) => ReventlessSpec.ExtensionPoint.outputs = ""
@@ -94,7 +91,7 @@ module Make = (
       )
       ->Belt.Array.concatMany
 
-    let mapOutgoingEvent = (event'Json, mappings, scheduler, queue) =>
+    let mapOutgoingEvent = (event'Json, mappings, scheduler, queue, queryEngine) =>
       switch event'Json->Message.serviceNameOfMsg->findOutgoingMapping(mappings) {
       | Some(module(Mapping)) =>
         switch Mapping.mapOutgoingEvent {
@@ -103,6 +100,7 @@ module Make = (
             event'Json,
             Schedule.create(scheduler, queue),
             Schedule.delete(scheduler, queue),
+            queryEngine,
           )
         | None =>
           Logger.error(
@@ -110,7 +108,7 @@ module Make = (
             "mapOutgoingEvent",
             "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
           )
-          (_, _) => []
+          []
         }
       | None =>
         Js.Exn.raiseError(
@@ -135,16 +133,19 @@ module Make = (
           publishToAggregates
           ->Js.Dict.get(aggregateName)
           ->Belt.Option.map((publishJsons: ReventlessSpec.CommandTopic.publishJsons) =>
-            publishJsons(. [cmdJson])
+            publishJsons([cmdJson])
           )
-          ->Belt.Option.mapWithDefault(
-            _,
-            () =>
-              Js.Exn.raiseError(
-                `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
-              ),
-            (x, ()) => x,
-          )()
+          ->(
+            Belt.Option.mapWithDefault(
+              _,
+              () =>
+                Js.Exn.raiseError(
+                  `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
+                ),
+              x => () => x,
+            )
+          )
+        ()
         switch result {
         | _ => Belt.Result.Ok(reference)
         | exception err => {
@@ -168,12 +169,12 @@ module Make = (
     let applyEventAction = async action =>
       switch action {
       | ExtensionPointMapping.AbstractPublishEvent(event') =>
-        try await publish(. [event']) catch {
+        try await publish([event']) catch {
         | err => err->Js.log2("ExtensionPoint: Error on publish command:")
         }
       | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
         let publish = async promise =>
-          try await publish(. [await promise]) catch {
+          try await publish([await promise]) catch {
           | err => err->Js.log2("ExtensionPoint: Error on publish command:")
           }
         await promise->publish
@@ -183,21 +184,20 @@ module Make = (
         }
       }
 
-    let outgoingEventHandler = async (. event'Json, pluginDef) => {
+    let outgoingEventHandler = async event'Json => {
       let commandTopic = commandTopic.contents->Belt.Option.getExn
-      let eventActions =
-        event'Json->Mapper.mapOutgoingEvent(
-          Mappings.mappings,
-          scheduler,
-          (commandTopic->Component.extractOutputs)["resources"],
-          pluginDef,
-          queryEngine,
-        )
+      let eventActions = Mapper.mapOutgoingEvent(
+        event'Json,
+        Mappings.mappings,
+        scheduler,
+        (commandTopic->Component.extractOutputs)["resources"],
+        queryEngine,
+      )
 
       await eventActions->Belt.Array.map(applyEventAction)->Js.Promise.all->Util.Promise.toUnit
     }
 
-    let incomingCommandsHandler = (. topicItems) => {
+    let incomingCommandsHandler = topicItems => {
       let commandTopic = commandTopic.contents->Belt.Option.getExn
       let commandActions =
         topicItems->Mapper.mapIncomingCommands(
@@ -230,7 +230,7 @@ module Make = (
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine),
+      ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine, ...),
       ~opts,
     )
 }

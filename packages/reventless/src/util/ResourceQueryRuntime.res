@@ -13,7 +13,7 @@ let eventCollectorConnectorOfAllEventMappers: (
   ->find(eventMapperName)
   ->Belt.Option.flatMap(eventMapper => {
     let resources = eventMapper["eventCollector"]["resources"]
-    resources->Belt.Array.length > 0 ? Some(resources[0]) : None
+    resources->Belt.Array.length > 0 ? Some(resources->Array.getUnsafe(0)) : None
   })
 
 let bucketNameOfAllTasks: (array<Task.outputs>, string) => option<string> = (tasks, taskName) =>

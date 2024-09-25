@@ -62,7 +62,7 @@ module Make: (
       let make: input => t
       let makeFromString: string => t
       let toString: t => string
-      let cmp: (t, t) => int
+      let cmp: (t, t) => Ordering.t
     }
     let name: string
     type command = Spec.command

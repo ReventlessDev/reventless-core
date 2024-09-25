@@ -21,11 +21,11 @@ let outputToResource: t<resource> => resource = resourceOutput =>
 
 let resourcesOutputToResource: t<array<resource>> => option<resource> = resourcesOutput =>
   try resource(
-    ~id=resourcesOutput->flatMap(r => r[0]["id"]),
-    ~name=resourcesOutput->flatMap(r => r[0]["name"]),
-    ~urn=resourcesOutput->flatMap(r => r[0]["urn"]),
-    ~info=resourcesOutput->flatMap(r => r[0]["info"]),
-    ~service=resourcesOutput->flatMap(r => r[0]["service"]),
+    ~id=resourcesOutput->flatMap(r => (r->Array.getUnsafe(0))["id"]),
+    ~name=resourcesOutput->flatMap(r => (r->Array.getUnsafe(0))["name"]),
+    ~urn=resourcesOutput->flatMap(r => (r->Array.getUnsafe(0))["urn"]),
+    ~info=resourcesOutput->flatMap(r => (r->Array.getUnsafe(0))["info"]),
+    ~service=resourcesOutput->flatMap(r => (r->Array.getUnsafe(0))["service"]),
   )->Some catch {
   | _ => None
   }

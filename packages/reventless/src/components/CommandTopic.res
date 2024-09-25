@@ -201,7 +201,7 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~memorySize, ~timeout),
+      ~construct=construct(~memorySize, ~timeout, ...),
       ~opts,
       ~commandsHandler,
     )

@@ -203,7 +203,7 @@ module Make = (
   let loadFn = storage => async (. id) =>
     switch await storage.Adapter.load(. id->Spec.Id.toString) {
     | result =>
-      result->Belt.Result.map(states => states->Belt.Array.map(decode(id))->Belt.Array.concatMany)
+      result->Belt.Result.map(states => states->Belt.Array.map(state => decode(id, state))->Belt.Array.concatMany)
     }
 
   let saveFn = storage => async (. id, state, saveMode, ttl) =>
@@ -294,7 +294,7 @@ module Make = (
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~ttl?),
+      ~construct=construct(~ttl?, ...),
       ~opts,
       ~api=Config.api,
       ~apiRole=Config.apiRole,

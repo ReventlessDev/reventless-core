@@ -123,21 +123,25 @@ module Make = (
   let groupTopicItemsById = (
     topicItems: array<ReventlessCommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>>,
   ) => {
-    let ids = topicItems->Belt.Array.map(({command}) => command.id)
+    // FIXME: rethink usage of Set & Belt structures -> optimize
+    let ids = topicItems->Belt.Array.map(({command}) => command.id->Spec.Id.toString)
     ids
-    ->Belt.Set.fromArray(~id=module(Belt.Id.MakeComparable(Spec.Id)))
-    ->Belt.Set.toArray
-    ->Belt.Array.map(id => (id, topicItems->Belt.Array.keep(({command}) => command.id == id)))
+    ->Belt.Set.String.fromArray
+    ->Belt.Set.String.toArray
+    ->Belt.Array.map(id => (
+      id->Spec.Id.makeFromString,
+      topicItems->Belt.Array.keep(({command}) => command.id == id->Spec.Id.makeFromString),
+    ))
   }
 
   let handleCommands = ((
     eventLogAppend: EventLogCommon.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
     eventLogReplay,
-  )) => async (. allTopicItems) => {
+  )) => async allTopicItems => {
     let apply' = (stateOpt, event) =>
       switch stateOpt {
-      | Some(state) => Some(Behaviour.apply(. state, event))
-      | None => Some(Behaviour.init(. event))
+      | Some(state) => Some(Behaviour.apply(state, event))
+      | None => Some(Behaviour.init(event))
       }
 
     let updateState = (stateOpt, events) => events->Belt.Array.reduce(stateOpt, apply')
@@ -153,12 +157,12 @@ module Make = (
       await allTopicItems
       ->groupTopicItemsById
       ->Belt.Array.map(async ((id, topicItems)) => {
-        let history = await eventLogReplay(. id)
+        let history = await eventLogReplay(id)
         let processCommand = async (accP, command': Message.command'<Spec.Id.t, Spec.command>) => {
           let runBehaviour = ((stateO, events)) =>
             switch stateO {
             | Some(state) =>
-              let generatedEvents = try Behaviour.execute(.
+              let generatedEvents = try Behaviour.execute(
                 state,
                 command'.command,
                 {
@@ -176,7 +180,7 @@ module Make = (
                 Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
               ))->Js.Promise.resolve
             | None =>
-              let generatedEvents = Behaviour.create(.
+              let generatedEvents = Behaviour.create(
                 command'.command,
                 {
                   id: command'.id->Spec.Id.toString,
@@ -244,7 +248,7 @@ module Make = (
             `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated:`,
             generatedEvents'->Belt.Array.map(event' => event'->eventName),
           )
-          switch await eventLogAppend(. history->Belt.Array.length, id, generatedEvents') {
+          switch await eventLogAppend(history->Belt.Array.length, id, generatedEvents') {
           | Ok(_) =>
             Logger.debug(~loc=__LOC__, "finished eventLogAppend for id", id->Spec.Id.toString)
             references->Belt.Array.map(reference => Ok(reference))
@@ -308,7 +312,7 @@ module Make = (
     )
 
     self->setPublishJsons(commandTopic->CommandTopic.publishJsons)
-    self->setAddEventMapper(self->addEventMapperFn(~opts))
+    self->setAddEventMapper(self->addEventMapperFn(~opts, ...))
 
     self->setOutputs(
       makeOutputs(

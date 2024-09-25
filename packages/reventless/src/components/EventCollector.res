@@ -138,7 +138,7 @@ module Make = (Connector: Adapter.Connector): T => {
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~eventTopics, ~eventsHandler, ~memorySize, ~timeout, ~policy1, ~policy2),
+      ~construct=construct(~eventTopics, ~eventsHandler, ~memorySize, ~timeout, ~policy1, ~policy2, ...),
       ~opts,
     )
 }

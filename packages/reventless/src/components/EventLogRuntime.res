@@ -12,7 +12,7 @@ let eventToJson = (specIdEncode, specEventEncode, id, event') =>
   ->Js.Json.object_
 
 let eventsToJson = (events', specIdEncode, specEventEncode, id) =>
-  events'->Belt.Array.map(eventToJson(specIdEncode, specEventEncode, id))
+  events'->Belt.Array.map(event => eventToJson(specIdEncode, specEventEncode, id, event))
 
 let storageAppendErrorHandler = (specName, specIdToString, id, err) => {
   let errMsg =
@@ -90,7 +90,7 @@ let decodeEvent = (id, specEventDecode, json) =>
   )
 
 let decodeEvents = (jsons, id, specEventDecode) =>
-  jsons->Belt.Array.map(decodeEvent(id, specEventDecode))
+  jsons->Belt.Array.map(json => decodeEvent(id, specEventDecode, json))
 
 let replayFn = (storageReplay, specIdToString, specEventDecode) => async (. id) => {
   let jsonEvents = await storageReplay(. id->specIdToString)

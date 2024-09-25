@@ -165,7 +165,7 @@ module Make = (
           switch x {
           | [] => ("", "")
           | [counterId] => (counterId, "")
-          | parts => (parts[0], parts[1])
+          | parts => (parts->Array.getUnsafe(0), parts->Array.getUnsafe(1))
           }
       )
 
@@ -291,7 +291,7 @@ module Make = (
       ~opts=opts2,
     )
 
-    self->setCount(count(referencesDb->ReferencesDb.saveBatch))
+    self->setCount(countItems => count(referencesDb->ReferencesDb.saveBatch, countItems))
     self->setAddToCounterTarget(handler.addToCounterTarget)
 
     self->setOutputs(
@@ -308,7 +308,7 @@ module Make = (
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=name->ComponentType.name(componentType),
-      ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl)),
+      ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl), ...),
       ~opts,
     )
 }

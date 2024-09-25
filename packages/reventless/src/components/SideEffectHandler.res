@@ -203,6 +203,7 @@ module Make = (EventCollector: EventCollector.T): T => {
         ~timeout,
         ~policy1,
         ~policy2,
+        ...
       ),
       ~opts=opts->Belt.Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions),
     )

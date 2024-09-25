@@ -177,7 +177,7 @@ module Make = (
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     let aggregatesOutputs = Js.Dict.map(
-      (. addEventMapperFn) => addEventMapperFn(allEventTopics, queryEngine),
+      addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
       addEventMapperFns,
     )
 
@@ -398,7 +398,9 @@ module Make = (
                       subscribe(
                         "connectToExtensions",
                         extensionPoint["name"],
-                        extensionPoint["eventTopic"]["resources"][0]["id"]->Pulumi.Output.get, // FIXME
+                        (
+                          extensionPoint["eventTopic"]["resources"]->Array.getUnsafe(0)
+                        )["id"]->Pulumi.Output.get, // FIXME
                         otherPluginId,
                         otherPluginEventCollector,
                       ),
@@ -447,7 +449,9 @@ module Make = (
                       unsubscribe(
                         "disconnectFromExtensions",
                         extensionPoint["name"],
-                        extensionPoint["eventTopic"]["resources"][0]["id"]->Pulumi.Output.get, // FIXME
+                        (
+                          extensionPoint["eventTopic"]["resources"]->Array.getUnsafe(0)
+                        )["id"]->Pulumi.Output.get, // FIXME
                         pluginId,
                         pluginEventCollector,
                       ),
@@ -467,8 +471,8 @@ module Make = (
           extensionPointsOutputs
           ->Belt.Array.map(extensionPoint =>
             (
-              extensionPoint["commandTopic"]["resources"][0]["id"], // FIXME
-              extensionPoint["eventTopic"]["resources"][0]["id"],
+              (extensionPoint["commandTopic"]["resources"]->Array.getUnsafe(0))["id"], // FIXME
+              (extensionPoint["eventTopic"]["resources"]->Array.getUnsafe(0))["id"],
             )
             ->Pulumi.Output.all2
             ->Pulumi.Output.apply(
@@ -508,7 +512,7 @@ module Make = (
               Aggregate.command,
               ReventlessSpec.PluginExtensionPointSpec.command,
               ReventlessSpec.PluginExtensionPointSpec.callCommand,
-            > = (pluginId, event, _meta, _pluginDef, _queryEngine) =>
+            > = (pluginId, event, _meta, pluginDef, _queryEngine) =>
               switch event {
               | ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected if pluginId == id => [
                   PublishExtensionPointCommand(
@@ -641,7 +645,7 @@ module Make = (
             await components
             ->Belt.Array.map(
               component =>
-                getEventHandler(component)(. event'Json, pluginDefinition->Pulumi.Output.get),
+                getEventHandler(component)(event'Json, pluginDefinition->Pulumi.Output.get),
             )
             ->Js.Promise.all
             ->Util.Promise.toUnit
@@ -662,7 +666,7 @@ module Make = (
             }
           )
 
-        let eventsHandler = (. events'Json) => {
+        let eventsHandler = events'Json => {
           let count = events'Json->Belt.Array.size
           events'Json
           ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
@@ -722,7 +726,7 @@ module Make = (
           (),
         )
         let eventCollectorOutputs = eventCollector->Component.extractOutputs
-        setEventCollectorUrn(. eventCollectorOutputs["resources"][0]["urn"]) //FIXME
+        setEventCollectorUrn((eventCollectorOutputs["resources"]->Array.getUnsafe(0))["urn"]) //FIXME
 
         let heartbeat = Heartbeat.make(
           ~id,
@@ -806,7 +810,8 @@ module Make = (
         ~readModels,
         ~taskMakers,
         ~scheduler,
+        ...
       ),
-      ~opts,
+      ~opts
     )
 }

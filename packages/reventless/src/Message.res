@@ -129,7 +129,7 @@ let hrtimeToString: (~hrtime: hrtime, ~now: float) => string = (~hrtime, ~now) =
   let (_, mil) = hrtime
   let milString = mil->string_of_int
   let milLength = milString->String.length
-  now->Js.Float.toString ++ ("-" ++ (String.make(9 - milLength, '0') ++ milString))
+  now->Js.Float.toString ++ ("-" ++ (String.repeat("0", 9 - milLength) ++ milString))
 }
 
 type errorHandler<'error, 'command, 'event> = (

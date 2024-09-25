@@ -182,7 +182,7 @@ module Make = (
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name="Core",
-      ~construct=construct(~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler),
+      ~construct=construct(~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler, ...),
       ~opts=None,
     )
 }

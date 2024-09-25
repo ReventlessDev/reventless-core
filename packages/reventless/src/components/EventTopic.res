@@ -77,7 +77,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   @set external setPublish: (component, publish) => unit = "publish"
   @get external publish: component => publish = "publish"
 
-  let publishFn = (publisher: Adapter.publisher, name) => async (. events') => {
+  let publishFn = (publisher: Adapter.publisher, _name) => async (. events') => {
     let eventCount = events'->Belt.Array.length
     await events'
     ->Belt.Array.mapWithIndex(async (idx, event') => {
@@ -123,7 +123,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~storageResources),
+      ~construct=construct(~storageResources, ...),
       ~opts,
     )
 }

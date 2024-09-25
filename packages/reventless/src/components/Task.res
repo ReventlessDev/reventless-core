@@ -102,6 +102,7 @@ let make = (
       ~publishToAggregates,
       ~queryEngine,
       ~allAggregates,
+      ...
     ),
     ~opts,
   )

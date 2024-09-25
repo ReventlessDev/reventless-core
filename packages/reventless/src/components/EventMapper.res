@@ -352,7 +352,7 @@ module Make = (
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Target.name,
-      ~construct=construct(~allEventTopics, ~queryEngine, ~publishJsons, ~memorySize, ~timeout),
+      ~construct=construct(~allEventTopics, ~queryEngine, ~publishJsons, ~memorySize, ~timeout, ...),
       ~opts,
     )
 }

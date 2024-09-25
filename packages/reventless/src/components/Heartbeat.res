@@ -145,6 +145,6 @@ let make = (~id, ~name, ~timeout=10, ~publishToCorePluginExtensionPoint, ~opts=?
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name,
-    ~construct=construct(~id, ~timeout, ~publishToCorePluginExtensionPoint),
+    ~construct=construct(~id, ~timeout, ~publishToCorePluginExtensionPoint, ...),
     ~opts,
   )

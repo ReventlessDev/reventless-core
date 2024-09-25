@@ -54,7 +54,7 @@ module type T = {
   >
 }
 
-let unpack: Jest.Expect.plainPartial<'a> => 'a = p =>
+let unpackPlainPartial: Jest.Expect.plainPartial<'a> => 'a = p =>
   switch p {
   | #Just(unpacked) => unpacked
   }
@@ -88,7 +88,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let addState = (store, id, state) => {
     let (updatedStates, newStates) = switch state->getSubId {
     | Some(subId) =>
-      store->states(id)->Belt.Array.some(hasSubId(subId))
+      store->states(id)->Belt.Array.some(state => hasSubId(subId, state))
         ? (store->updateState(id, subId, state), [])
         : (store->states(id), [state])
     | None => (store->states(id), [state])
@@ -107,8 +107,8 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
 
   open Belt.Result
   //open QueryDb
-  let load = store => (. id) => store->states(id)->Ok->Js.Promise.resolve
-  let save = store => (. id, state, saveMode: ReventlessSpec.QueryDb.saveMode, _ttl) =>
+  let load = store => id => store->states(id)->Ok->Js.Promise.resolve
+  let save = store => (id, state, saveMode: ReventlessSpec.QueryDb.saveMode, _ttl) =>
     switch (store->states(id), saveMode) {
     | (_, Any)
     | ([], Init)
@@ -117,11 +117,11 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       Ok()->Js.Promise.resolve
     | _ => Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
     }
-  let saveBatch = store => (. batch) => {
+  let saveBatch = store => batch => {
     batch->Belt.Array.forEach(((id, state, _ttl)) => store->addState(id, state))
     Ok()->Js.Promise.resolve
   }
-  let delete = store => (. id, subId) =>
+  let delete = store => (id, subId) =>
     switch (subId, Projection.subIdConfig) {
     | (None, _) =>
       store->deleteStates(id)
@@ -131,7 +131,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       Ok()->Js.Promise.resolve
     | _ => Ok()->Js.Promise.resolve
     }
-  let deleteBatch = store => (. ids) => {
+  let deleteBatch = store => ids => {
     ids->Belt.Array.forEach(((id, subId)) =>
       switch (subId, Projection.subIdConfig) {
       | (None, _) => store->deleteStates(id)
@@ -188,7 +188,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     )
 
   let thenStates = async (p, expectedStates) => {
-    let store = await p->unpack()
+    let store = await (p->unpackPlainPartial)()
     expect((
       store->Js.Dict.keys->Belt.Array.length,
       store->Js.Dict.keys->Belt.Array.get(0),
@@ -196,7 +196,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     ))->toEqual((1, Some(testId.contents), expectedStates))
   }
   let thenStatesWithId = async (p, id, expectedStates) => {
-    let store = await p->unpack()
+    let store = await (p->unpackPlainPartial)()
     expect((
       store->Js.Dict.keys->Belt.Array.length,
       store->Js.Dict.keys->Belt.Array.get(0),
@@ -205,29 +205,29 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   }
 
   let thenAllStates = async (p, expectedStore: store) => {
-    let store = await p->unpack()
+    let store = await (p->unpackPlainPartial)()
     expect(store)->toEqual(expectedStore)
   }
   let thenState = async (p, expectedState) => {
-    let store = await p->unpack()
+    let store = await (p->unpackPlainPartial)()
     expect((
       store->Js.Dict.keys->Belt.Array.length,
       store->Js.Dict.keys->Belt.Array.get(0),
       store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Belt.Array.length,
-      (store->Js.Dict.values)[0]->Belt.Array.get(0),
+      store->Js.Dict.values->Array.getUnsafe(0)->Belt.Array.get(0),
     ))->toEqual((1, Some(testId.contents), 1, Some(expectedState)))
   }
   let thenStateWithId = async (p, id, expectedState) => {
-    let store = await p->unpack()
+    let store = await (p->unpackPlainPartial)()
     expect((
       store->Js.Dict.keys->Belt.Array.length,
       store->Js.Dict.keys->Belt.Array.get(0),
       store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Belt.Array.length,
-      (store->Js.Dict.values)[0]->Belt.Array.get(0),
+      store->Js.Dict.values->Array.getUnsafe(0)->Belt.Array.get(0),
     ))->toEqual((1, Some(id), 1, Some(expectedState)))
   }
   let thenNoState = async p => {
-    let store = await p->unpack()
+    let store = await (p->unpackPlainPartial)()
     expect(
       store->Js.Dict.values->Belt.Array.reduce(0, (acc, states) => acc + states->Belt.Array.size),
     )->toEqual(0)
@@ -235,7 +235,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let thenThrow = async p => {p->toThrow}
 
   let thenFail = async p =>
-    switch await p->unpack() {
+    switch await (p->unpackPlainPartial)() {
     | _ => Jest.fail("Expected Failure")
     | exception _ => Jest.pass
     }

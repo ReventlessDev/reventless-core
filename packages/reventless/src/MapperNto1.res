@@ -3,9 +3,8 @@ type mapImpl<'msg, 'action> = 'msg => 'action
 
 let makeGenericMap: (Mapper.decode<'msg>, mapImpl<'msg, 'action>) => mapGeneric<'action> = (
   decode,
-  map,
-  json,
-) =>
+  map
+) => (json) => 
   switch json->decode {
   | Ok(msg) => msg->map
   | Error(err) =>

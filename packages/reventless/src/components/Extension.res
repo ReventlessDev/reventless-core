@@ -88,18 +88,18 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
     )
     ->Belt.Array.concatMany
 
-  let mapOutgoingEvent = event'Json =>
+  let mapOutgoingEvent = (event'Json, pluginDef) =>
     switch event'Json->Message.serviceNameOfMsg->findOutgoingMapping(Mappings.mappings) {
     | Some(module(Mapping)) =>
       switch Mapping.mapOutgoingEvent {
-      | Some(mapOutgoingEvent) => mapOutgoingEvent(event'Json)
+      | Some(mapOutgoingEvent) => mapOutgoingEvent(event'Json, pluginDef)
       | None =>
         Logger.error(
           ~loc=__LOC__,
           "mapOutgoingEvent",
           "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
         )
-        _ => []
+        []
       }
     | None =>
       Js.Exn.raiseError(
@@ -276,6 +276,7 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
         ~readModelNamesForSourceName,
         ~publishToReadModels,
         ~queryEngine,
+        ...
       ),
       ~opts,
     )

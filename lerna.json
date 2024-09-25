@@ -11,5 +11,6 @@
     "publish": {
       "registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
     }
-  }
+  },
+  "useWorkspaces": true
 }

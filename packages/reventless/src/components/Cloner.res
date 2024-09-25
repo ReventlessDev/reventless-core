@@ -71,7 +71,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
     }
     let secretsConfig = Pulumi.Config.make(Some("secrets"))
     let secretUrns =
-      ["aws", "pulumi", "repository"]->Belt.Array.map(secretsConfig->Pulumi.Config.get(_))
+      ["aws", "pulumi", "repository"]->Belt.Array.map(str => Pulumi.Config.get(secretsConfig,str))
     let reventlessCiSecretUrn = secretsConfig->Pulumi.Config.get("reventless-ci")
 
     let runner = switch (secretUrns, reventlessCiSecretUrn) {
@@ -97,7 +97,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=componentType->ComponentType.toString,
-      ~construct=construct(~api=Config.api),
+      ~construct=construct(~api=Config.api, ...),
       ~opts,
     )
 }
