@@ -1,7 +1,7 @@
 open AwsSdk.DynamoDb.DocumentClient
 open Util_DynamoDb_Runtime
 open Belt.Result
-open Reventless.QueryDb
+//open Reventless.QueryDb
 open Reventless.Util.Error
 
 let load = table => async (. id) =>

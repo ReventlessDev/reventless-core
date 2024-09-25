@@ -61,6 +61,6 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
 let publish = (queue, queueService) => (. jsons) =>
   switch jsons->Belt.Array.length {
   | 0 => Js.log(__MODULE__ ++ ".publish: No commands to send")->Js.Promise.resolve
-  | 1 => queue->Util_SQS_Runtime.send(queueService, jsons[0])
+  | 1 => queue->Util_SQS_Runtime.send(queueService, jsons->Array.getUnsafe(0))
   | _ => queue->Util_SQS_Runtime.sendMessages(queueService, jsons)
   }

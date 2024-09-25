@@ -16,7 +16,7 @@ let keysFromResource = (resource: ReventlessSpec.Adapter.resource) =>
   | [] => Js.Exn.raiseError("No id field given for table " ++ resource["name"]->Pulumi.Output.get)
   | [id]
   | [id, ""] => (id, None)
-  | parts => (parts[0], Some(parts[1]))
+  | parts => (parts->Array.getUnsafe(0), parts[1])
   }
 
 let purgeTimeAttributeName = "reventlessPurgeTime"
@@ -40,9 +40,9 @@ let insertTtl = (json, ttl) =>
           Js.log2(__MODULE__ ++ ".insertTtl: Error: Couldn't decode JSON", json->Js.Json.stringify)
           None
         },
-        (obj, _) => {
+        (obj) => {
           obj->Js.Dict.set(purgeTimeAttributeName, ttl->calcPurgeTime->Js.Json.number)
-          obj->Js.Json.object_->Some
+          () => Some(obj->Js.Json.object_)
         },
       )
     )()

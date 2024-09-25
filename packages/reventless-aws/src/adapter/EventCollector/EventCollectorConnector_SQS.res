@@ -47,7 +47,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
     Lambda.CallbackFunction.make(
       ~name,
       ~args=Lambda.CallbackFunction.Args.make(
-        ~callback=EventCollectorConnector_SQS_Runtime.handleCallbackEvent(handleEvents, queue),
+        ~callback=EventCollectorConnector_SQS_Runtime.handleCallbackEvent(handleEvents, queue, ...),
         ~policies,
         ~memorySize=memorySize->Pulumi.Input.make,
         ~timeout=timeout->Pulumi.Input.make,

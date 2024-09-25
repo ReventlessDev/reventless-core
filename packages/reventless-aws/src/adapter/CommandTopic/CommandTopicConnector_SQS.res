@@ -34,7 +34,7 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker = (
     make(
       ~name,
       ~args=Args.make(
-        ~callback=CommandTopicConnector_SQS_Runtime.handleQueueEvent(handleCommands, queue),
+        ~callback=CommandTopicConnector_SQS_Runtime.handleQueueEvent(handleCommands, queue, ...),
         ~policies=Lambda.Policy.defaultPolicies,
         ~memorySize=memorySize->Pulumi.Input.make,
         ~timeout=timeout->Pulumi.Input.make,

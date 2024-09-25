@@ -33,7 +33,7 @@ let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSched
     Js.log(err)
     Js.Exn.raiseError(err)
   | resources =>
-    let resource = resources[0] // FIXME
+    let resource = resources->Array.getUnsafe(0) // FIXME
     let _ = await putRule(
       ~name=schedule.name,
       ~scheduleExpression=schedule.rate->toScheduleExpression,
@@ -56,7 +56,7 @@ let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = async (. queueReso
     Js.log(err)
     Js.Exn.raiseError(err)
   | resources =>
-    let resource = resources[0] // FIXME
+    let resource = resources->Array.getUnsafe(0) // FIXME
     let _ = await removeTarget(~rule=name, ~id=resource["name"]->Pulumi.Output.get)
     let _ = deleteRule(~name)
   }

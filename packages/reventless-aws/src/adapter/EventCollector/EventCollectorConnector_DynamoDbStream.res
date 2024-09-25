@@ -17,7 +17,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
       Lambda.CallbackFunction.make(
         ~name,
         ~args=Lambda.CallbackFunction.Args.make(
-          ~callback=EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(handleEvents),
+          ~callback=EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(handleEvents, ...),
           ~policies,
           ~memorySize=memorySize->Pulumi.Input.make,
           ~timeout=timeout->Pulumi.Input.make,
@@ -43,7 +43,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
             ~lambda=eventHandlerLambda,
             ~targetName=name,
             ~sourceName,
-            ~source=sources[0]->Reventless.AdapterDeploytime.unwrappedToResource,
+            ~source=sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource,
             ~opts,
             (),
           )

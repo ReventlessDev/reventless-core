@@ -46,8 +46,10 @@ let parseDynamoDbStreamRecord = (buildJson, record: Record.t) => {
   }
 }
 
-let parseDynamoDbStreamRecordEvent: Record.t => result = parseDynamoDbStreamRecord(buildEvent'Json)
+let parseDynamoDbStreamRecordEvent: Record.t => result = record =>
+  parseDynamoDbStreamRecord(buildEvent'Json, record)
 
-let parseDynamoDbStreamRecordState: Record.t => result = parseDynamoDbStreamRecord(buildStateJson)
+let parseDynamoDbStreamRecordState: Record.t => result = record =>
+  parseDynamoDbStreamRecord(buildStateJson, record)
 
 let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)

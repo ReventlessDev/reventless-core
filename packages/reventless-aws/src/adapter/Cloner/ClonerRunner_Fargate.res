@@ -72,7 +72,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
       )
     )
     ->Pulumi.Output.all
-    ->Pulumi.Output.apply(Belt.Array.concatMany)
+    ->Pulumi.Output.apply(s => Belt.Array.concatMany(s))
 
   let resources =
     (secretsManagerAccessPolicy["arn"], taskRunnerPolicy["arn"], vpcConfig, secrets)
@@ -152,6 +152,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
             ~cluster=cluster["arn"],
             ~fullQualifiedStackName,
             ~subnets=vpcConfig["subnetIds"],
+            ...
           ),
           (),
         ),

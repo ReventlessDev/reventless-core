@@ -104,6 +104,9 @@ let makeTableArgs = (
   ~ttl: option<int>=?,
   ~rangeKey=?,
   ~restoreSourceName=?,
+  ~tags=?,
+  ~streamEnabled=?,
+      ~streamViewType=?,
 ) => {
   let ttl =
     ttl->Belt.Option.map(_ =>
@@ -120,6 +123,7 @@ let makeTableArgs = (
     ~rangeKey=?rangeKey->Belt.Option.map(Pulumi.Input.make),
     ~billingMode=#PAY_PER_REQUEST,
     ~globalSecondaryIndexes?,
+    ~tags?,
     ~ttl?,
     ~pointInTimeRecovery=PulumiAws.DynamoDb.Table.Args.PointInTimeRecovery.make(
       ~enabled=true,
@@ -131,6 +135,8 @@ let makeTableArgs = (
     ~restoreToLatestTime=?restoreSourceName->Belt.Option.map(_ =>
       restoreDateTime->Belt.Option.isNone->Pulumi.Input.make
     ),
+    ~streamEnabled?,
+    ~streamViewType?,
   )
 }
 
@@ -164,8 +170,7 @@ let makeTable = (
       ~ttl?,
       ~rangeKey?,
       ~restoreSourceName?,
-      ~tags?,
-      (),
+      ~tags?
     ),
     ~opts=opts->Js.Obj.assign({
       "dependsOn": dependencies->Pulumi.Output.asInput,

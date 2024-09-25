@@ -133,7 +133,7 @@ let toTableConfig: resource => tableConfig = resource => {
   {"name": name, "id": id, "sort": sort}
 }
 
-let cleanerFn: array<resource> => eventHandler<event, string> = async (
+let cleanerFn = async (
   tablesToClean,
   _event,
   _context,
@@ -168,7 +168,7 @@ let make = (~prefix: option<string>, ~tablesToClean: array<resource>) => {
   open CallbackFunction
   make(
     ~name="DataCleaner-" ++ stackName(prefix),
-    ~args=Args.make(~callback=cleanerFn(tablesToClean), ~memorySize=1024->Pulumi.Input.make, ()),
+    ~args=Args.make(~callback=cleanerFn(tablesToClean, ...), ~memorySize=1024->Pulumi.Input.make, ()),
     (),
   )
 }

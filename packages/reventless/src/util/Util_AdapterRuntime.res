@@ -23,7 +23,7 @@ let findResource = (resources, service) =>
       ->Js.Array2.joinWith(", ")}`
     Js.log(err)
     Js.Exn.raiseError(err)
-  | matching => matching[0]
+  | matching => matching->Array.getUnsafe(0)
   }
 
 let findUnwrappedResource = (resources, service) =>
@@ -35,5 +35,5 @@ let findUnwrappedResource = (resources, service) =>
     Js.log(err)
     Js.Exn.raiseError(err)
 
-  | resources => resources[0]
+  | resources => resources->Array.getUnsafe(0)
   }

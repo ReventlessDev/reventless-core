@@ -21,8 +21,9 @@ let make: Reventless.Counter.Adapter.handlerMaker = (
         ~referencesStream,
         ~countsStream,
         ~counterHandler,
+        ...
       ),
-      (),
+      ()
     ),
     ~opts,
     (),
@@ -42,6 +43,7 @@ let make: Reventless.Counter.Adapter.handlerMaker = (
   let _ = subscribe(countsName, countsStream)
 
   {
-    addToCounterTarget: countsDbResource->CounterHandler_DynamoDbStream_Runtime.addToCounterTarget,
+    addToCounterTarget: counterTarget =>
+      CounterHandler_DynamoDbStream_Runtime.addToCounterTarget(countsDbResource, counterTarget),
   }
 }

@@ -16,5 +16,5 @@ let findTopicInUnwrappedResources = resources =>
     Js.log(err)
     Js.Exn.raiseError(err)
 
-  | resources => resources[0]
+  | resources => resources->Array.getUnsafe(0)
   }

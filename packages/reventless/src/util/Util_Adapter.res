@@ -50,7 +50,7 @@ let findUnwrappedResource = (resources, service) =>
     Js.log(err)
     Js.Exn.raiseError(err)
 
-  | resources => resources[0]
+  | resources => resources->Array.getUnsafe(0)
   }
 
 let findResourceInOutput = (resourcesOutput, service) =>
