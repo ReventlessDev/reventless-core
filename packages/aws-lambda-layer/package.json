@@ -19,8 +19,7 @@
     "url": "git+ssh://git@gitlab.com/reventless/reventless-universe.git"
   },
   "scripts": {
-    "test": "node ./__tests__/aws-lambda-layer.test.js",
-    "build": "node ./index.js && cd layer && zip -r *"
+    "build": "node ./builder/index.js"
   },
   "type": "module",
   "bugs": {

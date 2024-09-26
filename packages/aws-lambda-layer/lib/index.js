@@ -272,6 +272,7 @@ export function build(opt) {
     spinner.start('configure');
     const log = logger.extend('main');
     const logPostProcessing = logger.extend('post-processing');
+    // FIXME: move this out into build opts
     const opts = {
         //path: "./",
         //path: "../../../fidap/wm-raw/plugin",
@@ -453,8 +454,7 @@ export function build(opt) {
     // maybe use rescript version defined in sourcePackage (dev-/peer-) deps or from config?
     //
     // TODO: remove / replace all references/usage of `rescript` package --> use @rescript/std instead
-    // TODO: remove all res(i), bsconfig, lib files
-    // TODO: zip everything in `pathToLayerData` directory
+    // TODO: introduce preProcess function object (to e.g. precompile js artifacts)
 }
 
 //main()
