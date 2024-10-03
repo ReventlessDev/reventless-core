@@ -18,9 +18,12 @@
     "test": "lerna run test"
   },
   "devDependencies": {
-    "rescript": "^9.1.2",
     "lerna": "^6.1.0",
     "lerna-update-wizard": "^1.1.2",
-    "lerna-wizard": "^1.1.1"
+    "lerna-wizard": "^1.1.1",
+    "rescript": "^9.1.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.662.0"
   }
 }
