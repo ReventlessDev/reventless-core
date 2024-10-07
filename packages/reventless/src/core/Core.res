@@ -40,7 +40,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
   @obj
@@ -75,7 +75,7 @@ module Make = (
     self,
     _,
   ) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     let addEventMapperFns = Js.Dict.empty()
     let publishToAggregates = Js.Dict.empty()
@@ -107,7 +107,7 @@ module Make = (
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     let aggregatesOutputs = Js.Dict.map(
-      (. addEventMapperFn) => addEventMapperFn(allEventTopics, queryEngine),
+      addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
       addEventMapperFns,
     )
 
@@ -133,7 +133,7 @@ module Make = (
       eventCollector: "NOT-SET",
     }
 
-    let eventsHandler = (. events'Json) => {
+    let eventsHandler = events'Json => {
       let count = events'Json->Belt.Array.size
       events'Json
       ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
@@ -144,7 +144,7 @@ module Make = (
         extensionPointsOutputs
         ->Belt.Array.map(extensionPoint => {
           let handle = extensionPoint["outgoingEventHandler"]
-          handle(. event'Json, fakePluginDefinition)
+          handle(event'Json, fakePluginDefinition)
         })
         ->Js.Promise.all
         ->Util.Promise.toUnit
@@ -175,7 +175,7 @@ module Make = (
       ~aggregates=aggregatesOutputs,
       ~readModels=readModelsOutputs,
       ~cloner=cloner->Component.extractOutputs,
-    )->setOutputs(self, _)
+    )->(setOutputs(self, _))
   }
 
   let make: maker = (~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler) =>
@@ -183,6 +183,6 @@ module Make = (
       ~componentType=componentType->ComponentType.toString,
       ~name="Core",
       ~construct=construct(~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler, ...),
-      ~opts=None,
+      ~opts=None
     )
 }

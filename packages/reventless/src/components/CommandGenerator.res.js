@@ -50,8 +50,9 @@ function Make(Config, Spec, Behaviour, Resolvers) {
     };
   };
   var construct = function (self, name, api, commandHandler) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var resolvers = Resolvers.make(ComponentType$Reventless.name(name, "CommandGenerator"), api, Behaviour.resolverConfig.fields, generateCommand(commandHandler), opts);
     var outputs = {

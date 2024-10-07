@@ -247,8 +247,9 @@ function Make(Target, EventCollector, Mappings) {
     };
   };
   var construct = function (allEventTopics, queryEngine, publishJsons, memorySize, timeout, self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var match = Belt_Option.mapWithDefault(Mappings.counter, [
           (function (_items) {
@@ -259,7 +260,7 @@ function Make(Target, EventCollector, Mappings) {
             }),
           undefined
         ], (function (Counter) {
-            var counter = Counter.make(name, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, Caml_option.some(opts), undefined);
+            var counter = Counter.make(name, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, opts, undefined);
             return [
                     Counter.count(counter),
                     Counter.addToCounterTarget(counter),
@@ -272,7 +273,7 @@ function Make(Target, EventCollector, Mappings) {
                 }
                 
               })));
-    var eventCollector = EventCollector.make(ComponentType$Reventless.name(Target.name, "EventMapper"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]), memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), Caml_option.some(opts), undefined);
+    var eventCollector = EventCollector.make(ComponentType$Reventless.name(Target.name, "EventMapper"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]), memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts, undefined);
     var outputs = {
       name: name,
       eventCollector: Component$Reventless.extractOutputs(eventCollector),

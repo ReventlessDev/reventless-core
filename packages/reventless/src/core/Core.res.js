@@ -31,20 +31,21 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
     return self.registerOutputs(outputs);
   };
   var construct = function (version, extensionPoints, aggregates, readModels, scheduler, self, param) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var addEventMapperFns = {};
     var publishToAggregates = {};
     var aggregatesWithoutEventMappers = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
-                var aggregate = Aggregate.make(Caml_option.some(opts), undefined);
+                var aggregate = Aggregate.make(opts, undefined);
                 addEventMapperFns[Aggregate.Spec.name] = Aggregate.addEventMapper(aggregate);
                 publishToAggregates[Aggregate.Spec.name] = Aggregate.publishJsons(aggregate);
                 return Component$Reventless.extractOutputs(aggregate);
               })));
     var allEventTopics = Util_Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
     var readModels$1 = Belt_Array.map(readModels, (function (ReadModel) {
-            var readModel = ReadModel.make(allEventTopics, Caml_option.some(opts), undefined);
+            var readModel = ReadModel.make(allEventTopics, opts, undefined);
             return [
                     ReadModel.Spec.name,
                     {
@@ -65,7 +66,7 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
             return addEventMapperFn(allEventTopics, queryEngine);
           }), addEventMapperFns);
     var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), undefined);
+            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts, undefined);
           }));
     var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
     var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
@@ -93,10 +94,10 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
                           }))));
     };
     var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-    var eventCollector = EventCollector.make(ComponentType$Reventless.toName("Core"), Util_Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), Caml_option.some(opts), undefined);
+    var eventCollector = EventCollector.make(ComponentType$Reventless.toName("Core"), Util_Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts, undefined);
     var partial_arg = Cloner$Reventless.Make;
     var Cloner = partial_arg(Config, ClonerRunner);
-    var cloner = Cloner.make(Caml_option.some(opts), undefined);
+    var cloner = Cloner.make(opts, undefined);
     var __x = {
       version: version,
       eventCollector: Component$Reventless.extractOutputs(eventCollector),

@@ -119,7 +119,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
     ~api: api,
     ~apiRole: role,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> = "default"
@@ -249,7 +249,7 @@ module Make = (
   > => ReventlessSpec.QueryDb.outputs = component => Component.extractOutputs(component)
 
   let construct = (~ttl=?, self, name, api, apiRole) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource}
 
     let subIdField = Spec.subIdConfig->Belt.Option.map(config => config.subIdField)
     let storageName = name->ComponentType.name(componentType)

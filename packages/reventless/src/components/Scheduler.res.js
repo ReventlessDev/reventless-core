@@ -2,6 +2,7 @@
 'use strict';
 
 var Component = require("./Component").default;
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
 var Adapter = {
@@ -10,8 +11,9 @@ var Adapter = {
 
 function Make(ScheduledPublisher) {
   var construct = function (self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var scheduledPublisher = ScheduledPublisher.make(name, opts);
     self.createSchedule = scheduledPublisher.create;

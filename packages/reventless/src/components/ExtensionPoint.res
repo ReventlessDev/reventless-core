@@ -44,7 +44,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs> = "default"
 
   @obj
@@ -118,7 +118,7 @@ module Make = (
   }
 
   let construct = (~publishToAggregates, ~scheduler, ~queryEngine, self, name) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent:self->Component.toPulumiResource}
 
     let childName = name->Js.String2.replace(".", "")->ComponentType.name(componentType)
 
@@ -231,6 +231,6 @@ module Make = (
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine, ...),
-      ~opts,
+      ~opts
     )
 }

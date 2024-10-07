@@ -18,11 +18,12 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
   var partial_arg = EventTopic$Reventless.Make;
   var EventTopic = partial_arg(Spec, EventTopicPublisher);
   var construct = function (self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var storage = $$Storage.make(ComponentType$Reventless.name(name, "EventLog"), opts);
-    var eventTopic = EventTopic.make(name, storage.resources, Caml_option.some(Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts)), undefined);
+    var eventTopic = EventTopic.make(name, storage.resources, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts), undefined);
     self.append = EventLogRuntime$Reventless.appendFn(storage.append, Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, EventTopic.publish(eventTopic), Spec.name);
     self.replay = EventLogRuntime$Reventless.replayFn(storage.replay, Spec.Id.toString, Spec.event_decode);
     var outputs = {

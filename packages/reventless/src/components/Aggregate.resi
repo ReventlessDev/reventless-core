@@ -17,7 +17,7 @@ type addEventMapper = (
 ) => outputs
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component
+  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => component
   let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
   let addEventMapper: component => addEventMapper
 }
@@ -36,7 +36,7 @@ module Make: (
     module type Mapping = {
       module Source: ReventlessSpec.EventMapping.Source
       let map: (
-        . Source.Id.t,
+        Source.Id.t,
         Source.event,
         ReventlessSpec.QueryEngine.t,
       ) => array<ReventlessSpec.EventMapping.action<Spec.Id.t, Spec.command>>
@@ -75,7 +75,7 @@ module Make: (
     let error_encode: error => Js.Json.t
     let error_decode: Js.Json.t => Belt.Result.t<error, Decco.decodeError>
   }
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component
+  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => component
   let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
   let addEventMapper: component => addEventMapper
 }

@@ -3,6 +3,7 @@
 
 var Component = require("./Component").default;
 var Aws = require("@pulumi/aws");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var Message$Reventless = require("../Message.res.js");
@@ -12,8 +13,9 @@ var Cloudwatch_EventTarget$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cl
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
 function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
+  var opts_parent = Caml_option.some(self);
   var opts = {
-    parent: self
+    parent: opts_parent
   };
   var publishHeartbeatCommand = function () {
     var msgId = Message$Reventless.uuid();
@@ -40,21 +42,21 @@ function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
   };
   var cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + childName), {
         description: "Send a heartbeat to the Core Plugin ExtensionPoint",
-        scheduleExpression: Cloudwatch_EventRule$PulumiAws.Args.ScheduleExpression.every({
-              TAG: "Minutes",
-              _0: timeout
-            })
+        scheduleExpression: Caml_option.some(Cloudwatch_EventRule$PulumiAws.ScheduleExpression.every({
+                  TAG: "Minutes",
+                  _0: timeout
+                }))
       }, opts);
-  var heartbeatLambda = new (Aws.lambda.CallbackFunction)(childName, Lambda$PulumiAws.CallbackFunction.Args.make(heartBeatCallback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
+  var heartbeatLambda = new (Aws.lambda.CallbackFunction)(childName, Lambda$PulumiAws.CallbackFunction.Args.make(heartBeatCallback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
   var cloudwatchEventTarget = new (Aws.cloudwatch.EventTarget)(childName, {
-        rule: Cloudwatch_EventTarget$PulumiAws.Args.Rule.ofEventRule(cloudwatchEventRule),
+        rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
         arn: heartbeatLambda.arn
       }, opts);
   var heartbeatLambdaPermission = new (Aws.lambda.Permission)(childName, {
         action: "lambda:InvokeFunction",
-        _function: heartbeatLambda.arn,
+        function: heartbeatLambda.arn,
         principal: "events.amazonaws.com",
-        sourceArn: cloudwatchEventRule.arn
+        sourceArn: Caml_option.some(cloudwatchEventRule.arn)
       }, opts);
   self.setOutputs({
         name: name

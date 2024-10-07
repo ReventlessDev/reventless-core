@@ -18,7 +18,7 @@ module type T = {
     ~publishJsons: ReventlessSpec.CommandTopic.publishJsons,
     ~memorySize: int=?,
     ~timeout: int=?,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
     unit,
   ) => component
 }
@@ -43,7 +43,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
   @obj
@@ -278,7 +278,7 @@ module Make = (
     self,
     name,
   ) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent:self->Component.toPulumiResource}
 
     let (count, setCounterTarget, counterOutputs) = Mappings.counter->Belt.Option.mapWithDefault(
       (

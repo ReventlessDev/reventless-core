@@ -14,8 +14,7 @@ function getVpcConfig(stackName, outputName) {
               if (match !== undefined && match$1 !== undefined && match$2 !== undefined) {
                 return {
                         securityGroupIds: [match],
-                        subnetIds: [match$1],
-                        vpcId: undefined
+                        subnetIds: [match$1]
                       };
               } else {
                 return Js_exn.raiseError("Output is not a Reventless Vpc Component");

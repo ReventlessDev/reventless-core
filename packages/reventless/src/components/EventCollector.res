@@ -15,7 +15,7 @@ module type T = {
     ~timeout: int=?,
     ~policy1: Pulumi.Output.t<option<string>>,
     ~policy2: Pulumi.Output.t<option<string>>,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
     unit,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>
 
@@ -59,7 +59,7 @@ module Make = (Connector: Adapter.Connector): T => {
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs> = "default"
 
   @obj
@@ -106,7 +106,7 @@ module Make = (Connector: Adapter.Connector): T => {
     self,
     name,
   ) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts ={Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource}
 
     let connector = Connector.make(
       ~name=name->ComponentType.name(componentType),

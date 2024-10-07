@@ -18,8 +18,9 @@ var Adapter = {
 
 function Make(Config, Runner) {
   var construct = function (api, self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var fullQualifiedStackName_organization = Belt_Option.getWithDefault(process.env.PULUMI_ORGANIZATION, "NO_ORGANIZATION");
     var fullQualifiedStackName_project = Pulumi.getProject();
@@ -53,7 +54,7 @@ function Make(Config, Runner) {
                   aws,
                   pulumi,
                   repository
-                ], Caml_option.some(opts), undefined);
+                ], opts, undefined);
           } else {
             console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
             runner = noRunner;

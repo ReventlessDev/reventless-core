@@ -16,74 +16,63 @@ var EC2_InternetGateway$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/E
 var EC2_RouteTableAssociation$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_RouteTableAssociation.res.js");
 
 function construct(self, name, availabilityZone) {
+  var opts_parent = Caml_option.some(self);
   var opts = {
-    parent: self
+    parent: opts_parent
   };
   var vpc = EC2_Vpc$PulumiAws.make(name + "VPC", {
         cidrBlock: "172.31.0.0/16",
         enableDnsHostnames: true
-      }, Caml_option.some(opts), undefined);
+      }, opts);
   var securityGroup = EC2_SecurityGroup$PulumiAws.make(name + "SecurityGroup", {
         name: name + "SecurityGroup",
         vpcId: vpc.id,
-        ingress: [EC2_SecurityGroup$PulumiAws.Args.Ingress.allowAll],
-        egress: [EC2_SecurityGroup$PulumiAws.Args.Egress.allowAll]
-      }, Caml_option.some(opts), undefined);
-  var tmp = {
-    cidrBlock: "172.31.0.0/17",
-    vpcId: vpc.id
-  };
-  if (availabilityZone !== undefined) {
-    tmp.availabilityZone = Caml_option.valFromOption(availabilityZone);
-  }
-  var publicSubnet = EC2_Subnet$PulumiAws.make(name + "PublicSubnet", tmp, Caml_option.some(opts), undefined);
-  var tmp$1 = {
-    cidrBlock: "172.31.128.0/17",
-    vpcId: vpc.id
-  };
-  if (availabilityZone !== undefined) {
-    tmp$1.availabilityZone = Caml_option.valFromOption(availabilityZone);
-  }
-  var privateSubnet = EC2_Subnet$PulumiAws.make(name + "PrivateSubnet", tmp$1, Caml_option.some(opts), undefined);
+        ingress: [EC2_SecurityGroup$PulumiAws.Ingress.allowAll],
+        egress: [EC2_SecurityGroup$PulumiAws.Egress.allowAll]
+      }, opts);
+  var publicSubnet = EC2_Subnet$PulumiAws.make(name + "PublicSubnet", {
+        cidrBlock: "172.31.0.0/17",
+        vpcId: vpc.id,
+        availabilityZone: availabilityZone
+      }, opts);
+  var privateSubnet = EC2_Subnet$PulumiAws.make(name + "PrivateSubnet", {
+        cidrBlock: "172.31.128.0/17",
+        vpcId: vpc.id,
+        availabilityZone: availabilityZone
+      }, opts);
   var internetGateway = EC2_InternetGateway$PulumiAws.make(name + "InternetGateway", {
         vpcId: vpc.id
-      }, Caml_option.some(opts), undefined);
+      }, opts);
   var eip = EC2_Eip$PulumiAws.make(name + "Eip", {
         vpc: true
       }, {
         dependsOn: [internetGateway],
-        parent: self
-      }, undefined);
+        parent: Caml_option.some(self)
+      });
   var natGateway = EC2_NatGateway$PulumiAws.make(name + "NatGateway", {
         allocationId: eip.id,
         subnetId: publicSubnet.id
       }, {
         dependsOn: [internetGateway],
-        parent: self
-      }, undefined);
+        parent: Caml_option.some(self)
+      });
   var publicSubnetRouteTable = EC2_RouteTable$PulumiAws.make(name + "PublicSubnetRouteTable", {
         vpcId: vpc.id,
-        routes: [{
-            cidrBlock: "0.0.0.0/0",
-            gatewayId: internetGateway.id
-          }]
-      }, Caml_option.some(opts), undefined);
+        routes: [EC2_RouteTable$PulumiAws.Route.makeInternetGatewayRoute("0.0.0.0/0", internetGateway.id)]
+      }, opts);
   var privateSubnetRouteTable = EC2_RouteTable$PulumiAws.make(name + "PrivateSubnetRouteTable", {
         vpcId: vpc.id,
-        routes: [{
-            cidrBlock: "0.0.0.0/0",
-            natGatewayId: natGateway.id
-          }]
-      }, Caml_option.some(opts), undefined);
+        routes: [EC2_RouteTable$PulumiAws.Route.makeNatGatewayRoute("0.0.0.0/0", natGateway.id)]
+      }, opts);
   var publicSubnetRouteTableAssociation = EC2_RouteTableAssociation$PulumiAws.make(name + "PublicSubnetRouteTableAssociation", {
         routeTableId: publicSubnetRouteTable.id,
         subnetId: publicSubnet.id
-      }, Caml_option.some(opts), undefined);
+      }, opts);
   var privateSubnetRouteTableAssociation = EC2_RouteTableAssociation$PulumiAws.make(name + "PrivateSubnetRouteTableAssociation", {
         routeTableId: privateSubnetRouteTable.id,
         subnetId: privateSubnet.id
-      }, Caml_option.some(opts), undefined);
-  var region = Aws.getRegion(undefined, undefined);
+      }, opts);
+  var region = Aws.getRegion();
   var service = async function (serviceName) {
     return "com.amazonaws." + (await region).name + "." + serviceName;
   };
@@ -95,12 +84,12 @@ function construct(self, name, availabilityZone) {
         routeTableIds: routeTableIds,
         serviceName: service("s3"),
         vpcId: vpc.id
-      }, Caml_option.some(opts), undefined);
+      }, opts);
   var dynamoDbEndpoint = EC2_VpcEndpoint$PulumiAws.make(name + "DynamoDbEndpoint", {
         routeTableIds: routeTableIds,
         serviceName: service("dynamodb"),
         vpcId: vpc.id
-      }, Caml_option.some(opts), undefined);
+      }, opts);
   var self$1 = {
     dynamoDbEndpoint: dynamoDbEndpoint,
     eip: eip,
@@ -120,7 +109,7 @@ function construct(self, name, availabilityZone) {
   return self$1.registerOutputs(self);
 }
 
-function make(name, availabilityZone, opts, param) {
+function make(name, availabilityZone, opts) {
   var prim0 = ComponentType$Reventless.toString("Vpc");
   var prim1 = ComponentType$Reventless.name(name, "Vpc");
   return new Component(prim0, prim1, construct, opts, availabilityZone);

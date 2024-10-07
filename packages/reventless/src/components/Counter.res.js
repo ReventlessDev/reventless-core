@@ -64,11 +64,13 @@ var Adapter = {};
 
 function Make(Config, QueryDbStorage, Handler) {
   var construct = function (counterEventsHandler, ttl, self, name$1) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
+    var opts2_parent = Caml_option.some(self);
     var opts2 = {
-      parent: self
+      parent: opts2_parent
     };
     var name$2 = name$1 + "References";
     var state_encode = function (value) {
@@ -313,8 +315,8 @@ function Make(Config, QueryDbStorage, Handler) {
             Error: new Error()
           };
     };
-    var referencesDb = ReferencesDb.make(ttl, Caml_option.some(opts), undefined);
-    var countsDb = CountsDb.make(ttl, Caml_option.some(opts), undefined);
+    var referencesDb = ReferencesDb.make(ttl, opts, undefined);
+    var countsDb = CountsDb.make(ttl, opts, undefined);
     var groupByCounterId = function (references) {
       var dict = {};
       Belt_Array.forEach(references, (function (param) {

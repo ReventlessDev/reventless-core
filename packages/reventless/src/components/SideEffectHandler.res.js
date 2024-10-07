@@ -101,14 +101,15 @@ function Make(EventCollector) {
     };
   };
   var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(sideEffects, (function (SideEffect) {
                 return SideEffect.Source.name;
               })));
     var eventsHandler$1 = eventsHandler(sideEffects, queryEngine);
-    var eventCollector = EventCollector.make(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventsHandler$1, memorySize, timeout, policy1, policy2, Caml_option.some(opts), undefined);
+    var eventCollector = EventCollector.make(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventsHandler$1, memorySize, timeout, policy1, policy2, opts, undefined);
     var eventCollectorResources = Component$Reventless.extractOutputs(eventCollector).resources;
     self.enqueueEvent = enqueueEventFn(eventCollector);
     self.createSchedule = createScheduleFn(scheduler, eventCollectorResources);

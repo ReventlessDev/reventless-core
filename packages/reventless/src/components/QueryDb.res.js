@@ -6,6 +6,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
@@ -107,8 +108,9 @@ function Make(Config, Spec, $$Storage, Resolvers) {
     return Component$Reventless.extractOutputs(component);
   };
   var construct = function (ttl, self, name, api, apiRole) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var subIdField = Belt_Option.map(Spec.subIdConfig, (function (config) {
             return config.subIdField;

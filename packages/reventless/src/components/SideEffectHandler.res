@@ -38,7 +38,7 @@ module Make = (EventCollector: EventCollector.T): T => {
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
   @obj
@@ -73,7 +73,7 @@ module Make = (EventCollector: EventCollector.T): T => {
   let findSideEffect = (sideEffects, event'Json) =>
     event'Json
     ->Js.Json.decodeObject
-    ->Belt.Option.flatMapU((. eventObj') => {
+    ->Belt.Option.flatMapU(eventObj' => {
       let meta = eventObj'->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
 
       switch meta {
@@ -95,7 +95,7 @@ module Make = (EventCollector: EventCollector.T): T => {
       }
     })
 
-  let eventsHandler = (sideEffects, queryEngine) => (. events'Json) => {
+  let eventsHandler = (sideEffects, queryEngine) => events'Json => {
     events'Json
     ->Belt.Array.map(async event'Json =>
       switch sideEffects->findSideEffect(event'Json) {
@@ -111,7 +111,7 @@ module Make = (EventCollector: EventCollector.T): T => {
 
         switch (idDecoded, eventDecoded) {
         | (Some(Ok(eventId)), Some(Ok(event))) =>
-          try await SideEffect.execute(. eventId, eventMeta, event, queryEngine) catch {
+          try await SideEffect.execute(eventId, eventMeta, event, queryEngine) catch {
           | err => Js.log2("SideEffect: Error while processing:", err)
           }
 
@@ -129,14 +129,14 @@ module Make = (EventCollector: EventCollector.T): T => {
     ->Util.Promise.toUnit
   }
 
-  let createScheduleFn = (scheduler, queueResources) => async (. schedule) =>
-    await Schedule.create(scheduler, queueResources)(. schedule)
+  let createScheduleFn = (scheduler, queueResources) => async schedule =>
+    await Schedule.create(scheduler, queueResources)(schedule)
 
-  let deleteScheduleFn = (scheduler, queueResources) => async (. scheduleName) =>
-    await Schedule.delete(scheduler, queueResources)(. scheduleName)
+  let deleteScheduleFn = (scheduler, queueResources) => async scheduleName =>
+    await Schedule.delete(scheduler, queueResources)(scheduleName)
 
-  let enqueueEventFn = eventCollector => async (. delay, id, message) =>
-    await EventCollector.enqueueEvent(eventCollector)(. delay, id, message)
+  let enqueueEventFn = eventCollector => async (delay, id, message) =>
+    await EventCollector.enqueueEvent(eventCollector)(delay, id, message)
 
   let construct = (
     ~sideEffects,
@@ -150,7 +150,7 @@ module Make = (EventCollector: EventCollector.T): T => {
     self,
     name,
   ) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     let aggregateNames =
       sideEffects
@@ -205,7 +205,7 @@ module Make = (EventCollector: EventCollector.T): T => {
         ~policy2,
         ...
       ),
-      ~opts=opts->Belt.Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions),
+      ~opts=opts->Belt.Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions)
     )
   }
 }

@@ -5,7 +5,7 @@ let componentType = ComponentType.Scheduler
 external toOutputs: ReventlessSpec.Scheduler.t => ReventlessSpec.Scheduler.outputs = "%identity"
 
 module type T = {
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => ReventlessSpec.Scheduler.t
+  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => ReventlessSpec.Scheduler.t
 }
 
 module Adapter = {
@@ -34,7 +34,7 @@ module Make = (ScheduledPublisher: Adapter.ScheduledPublisher): T => {
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => ReventlessSpec.Scheduler.t = "default"
 
   @obj
@@ -65,7 +65,7 @@ module Make = (ScheduledPublisher: Adapter.ScheduledPublisher): T => {
   ) => unit = "deleteSchedule"
 
   let construct = (self, name) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Pulumi.Resource.makeFromJs, ())
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Pulumi.Resource.makeFromJs}
 
     let scheduledPublisher = ScheduledPublisher.make(~name, ~opts)
 
@@ -75,7 +75,7 @@ module Make = (ScheduledPublisher: Adapter.ScheduledPublisher): T => {
     self->setOutputs(makeOutputs(~scheduledPublisher=scheduledPublisher.resource))
   }
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => ReventlessSpec.Scheduler.t = (
+  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => ReventlessSpec.Scheduler.t = (
     ~opts=?,
     _,
   ) =>

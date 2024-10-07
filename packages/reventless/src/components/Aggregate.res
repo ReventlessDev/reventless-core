@@ -26,7 +26,7 @@ type addEventMapper = (
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component
+  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => component
 
   let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
   let addEventMapper: component => addEventMapper
@@ -53,7 +53,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
   @obj
@@ -289,7 +289,7 @@ module Make = (
   }
 
   let construct = (self, name) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     let childName = name->ComponentType.name(componentType)
 
@@ -312,7 +312,7 @@ module Make = (
     )
 
     self->setPublishJsons(commandTopic->CommandTopic.publishJsons)
-    self->setAddEventMapper(self->addEventMapperFn(~opts, ...))
+    self->setAddEventMapper(self->(addEventMapperFn(~opts, ...)))
 
     self->setOutputs(
       makeOutputs(

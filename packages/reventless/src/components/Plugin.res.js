@@ -49,13 +49,14 @@ function makeId(name, version) {
 function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPointRemoteConnector) {
   var construct = function (version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, self, name) {
     var id = makeId(name, version);
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var addEventMapperFns = {};
     var publishToAggregates = {};
     var aggregatesWithoutEventMappers = toDict(Belt_Array.map(aggregates, (function (Aggregate) {
-                var aggregate = Aggregate.make(Caml_option.some(opts), undefined);
+                var aggregate = Aggregate.make(opts, undefined);
                 addEventMapperFns[Aggregate.Spec.name] = Aggregate.addEventMapper(aggregate);
                 publishToAggregates[Aggregate.Spec.name] = Aggregate.publishJsons(aggregate);
                 return Component$Reventless.extractOutputs(aggregate);
@@ -64,7 +65,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
     var readModelNamesForSourceName = {};
     var publishToReadModels = {};
     var readModels$1 = Belt_Array.map(readModels, (function (ReadModel) {
-            var readModel = ReadModel.make(allEventTopics, Caml_option.some(opts), undefined);
+            var readModel = ReadModel.make(allEventTopics, opts, undefined);
             Belt_Array.forEach(ReadModel.sourceNames, (function (sourceName) {
                     var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
                     if (readModelNames !== undefined) {
@@ -94,7 +95,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             return addEventMapperFn(allEventTopics, queryEngine);
           }), addEventMapperFns);
     var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, Caml_option.some(opts), undefined);
+            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts, undefined);
           }));
     var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
     var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
@@ -106,7 +107,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(corePluginExtensionPoint.commandTopic);
           var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish;
           var extensions$1 = Belt_Array.map(extensions, (function (Extension) {
-                  return Extension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, Caml_option.some(opts), undefined);
+                  return Extension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts, undefined);
                 }));
           var extensionsOutputs = Component$Reventless.extractMultipleOutputs(extensions$1);
           var match = Util_Pulumi$Reventless.Output.Async.make();
@@ -339,7 +340,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                 name: "Connect",
                 mappings: mappings
               });
-          var connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, Caml_option.some(opts), undefined);
+          var connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts, undefined);
           var tasksOutputs = {
             contents: []
           };
@@ -347,7 +348,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             return ResourceQueryRuntime$Reventless.bucketNameOfTaskExn(tasksOutputs.contents, taskName);
           };
           tasksOutputs.contents = Belt_Array.map(taskMakers, (function (taskMaker) {
-                  return Component$Reventless.extractOutputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, Caml_option.some(opts)));
+                  return Component$Reventless.extractOutputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
                 }));
           var allQueryDbs = Util_ReadModel$Reventless.allQueryDbs(readModelsOutputs);
           var resolvers = Belt_Array.concatMany(Belt_Array.map(Util_QueryDb$Reventless.allResolversMakers(allQueryDbs), (function (resolverMaker) {
@@ -435,10 +436,10 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
             resources: Belt_Array.map(corePluginExtensionPoint.eventTopic.resources, AdapterDeploytime$Reventless.stackRefResourceToResource)
           };
-          var eventCollector = EventCollector.make(ComponentType$Reventless.name(name, "Plugin"), eventTopics, eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), Caml_option.some(opts), undefined);
+          var eventCollector = EventCollector.make(ComponentType$Reventless.name(name, "Plugin"), eventTopics, eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts, undefined);
           var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
           match[1](eventCollectorOutputs.resources[0].urn);
-          var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName("Plugin"), heartbeatInterval, publishToCorePluginExtensionPoint, Caml_option.some(opts), undefined);
+          var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName("Plugin"), heartbeatInterval, publishToCorePluginExtensionPoint, opts, undefined);
           return {
                   id: id,
                   version: version,

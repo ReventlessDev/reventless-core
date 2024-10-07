@@ -38,7 +38,7 @@ function Make(Spec, Mappings) {
     if (mapOutgoingEvent$1 !== undefined) {
       return mapOutgoingEvent$1(event$pJson, pluginDef);
     } else {
-      Logger$Reventless.error("File \"Extension.res\", line 98, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      Logger$Reventless.error("File \"Extension.res\", line 92, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return [];
     }
   };

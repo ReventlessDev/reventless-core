@@ -16,9 +16,9 @@ type topicItem<'command> = {
   reference: string,
 }
 
-type commandsHandler<'command> = (
-  . array<topicItem<'command>>,
-) => Js.Promise.t<array<Belt.Result.t<string, string>>>
+type commandsHandler<'command> = array<topicItem<'command>> => Js.Promise.t<
+  array<Belt.Result.t<string, string>>,
+>
 
 module type T = {
   module Spec: Spec
@@ -32,7 +32,7 @@ module type T = {
     ~commandsHandler: commandsHandler,
     ~memorySize: int=?,
     ~timeout: int=?,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
     unit,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>
 
@@ -92,7 +92,7 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
     ~commandsHandler: commandsHandler,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs> = "default"
 
@@ -133,8 +133,8 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     ReventlessSpec.CommandTopic.outputs,
   > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
-  let publishJsonsFn = connector => async (. cmdJsons) =>
-    switch await connector.Adapter.publish(. cmdJsons) {
+  let publishJsonsFn = connector => async cmdJsons =>
+    switch await connector.Adapter.publish(cmdJsons) {
     | exception e =>
       cmdJsons->Logger.logCmdJsons(
         ~level=Logger.Level.Error,
@@ -145,24 +145,24 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     | _ => cmdJsons->Logger.logCmdJsons(~loc=__LOC__, "Published commands")
     }
 
-  let publishFn: Adapter.connector => (
-    . Message.command'<Spec.Id.t, Spec.command>,
-  ) => Js.Promise.t<unit> = connector => {
-    (. command') => {
+  let publishFn: Adapter.connector => Message.command'<Spec.Id.t, Spec.command> => Js.Promise.t<
+    unit,
+  > = connector => {
+    command' => {
       let commandJson = {
         Message.id: command'.id->Spec.Id.toString,
         meta: command'.meta,
         commandJson: command'.command->Spec.command_encode,
         delay: None,
       }
-      publishJsonsFn(connector)(. [commandJson])
+      publishJsonsFn(connector)([commandJson])
     }
   }
 
-  let handleCommands = commandsHandler => async (. jsonItems) => {
+  let handleCommands = commandsHandler => async jsonItems => {
     Logger.debug(~loc=__LOC__, "starting handleCommands. Command count", jsonItems->Belt.Array.size)
     let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
-      switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
+      switch json->(Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _)) {
       | Belt_Result.Ok(command') => Some({reference, command: command'})
       | Belt_Result.Error(err) =>
         let commandStr = json->Js.Json.stringify
@@ -170,7 +170,7 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
         None
       }
     )
-    switch await commandsHandler(. topicItems) {
+    switch await commandsHandler(topicItems) {
     | res =>
       Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
       res
@@ -181,7 +181,7 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
   }
 
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let connector = Connector.make(
       ~name=name->ComponentType.name(componentType),
@@ -203,6 +203,6 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
       ~name,
       ~construct=construct(~memorySize, ~timeout, ...),
       ~opts,
-      ~commandsHandler,
+      ~commandsHandler
     )
 }

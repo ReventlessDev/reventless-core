@@ -216,17 +216,18 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
     };
   };
   var construct = function (self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var childName = ComponentType$Reventless.name(name, "Aggregate");
-    var eventLog = EventLog.make(childName, Caml_option.some(opts), undefined);
+    var eventLog = EventLog.make(childName, opts, undefined);
     var handleCommands$1 = handleCommands([
           EventLog.append(eventLog),
           EventLog.replay(eventLog)
         ]);
-    var commandTopic = CommandTopic.make(childName, handleCommands$1, undefined, undefined, Caml_option.some(opts), undefined);
-    var commandGenerator = CommandGenerator.make(childName, CommandTopic.publish(commandTopic), Caml_option.some(opts), undefined);
+    var commandTopic = CommandTopic.make(childName, handleCommands$1, undefined, undefined, opts, undefined);
+    var commandGenerator = CommandGenerator.make(childName, CommandTopic.publish(commandTopic), opts, undefined);
     self.publishJsons = CommandTopic.publishJsons(commandTopic);
     self.addEventMapper = (function (none, none$1) {
         var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
@@ -245,7 +246,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
           return partial_arg$1(partial_arg, param, param$1);
         };
         var EventMapper = partial_arg$2(EventCollector, EventMappings);
-        var eventMapper = EventMappings.mappings.length !== 0 ? Caml_option.some(EventMapper.make(none, none$1, self.publishJsons, undefined, undefined, Caml_option.some(opts), undefined)) : undefined;
+        var eventMapper = EventMappings.mappings.length !== 0 ? Caml_option.some(EventMapper.make(none, none$1, self.publishJsons, undefined, undefined, opts, undefined)) : undefined;
         var outputs = Component$Reventless.extractOutputs(self);
         return {
                 name: outputs.name,

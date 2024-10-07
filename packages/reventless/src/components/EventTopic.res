@@ -5,7 +5,7 @@ let componentType = ComponentType.EventTopic
 type t
 type component = ReventlessSpec.Component.t<t, ReventlessSpec.EventTopic.outputs>
 
-type publish<'id, 'event> = (. array<Message.event'<'id, 'event>>) => Js.Promise.t<unit>
+type publish<'id, 'event> = array<Message.event'<'id, 'event>> => Js.Promise.t<unit>
 
 exception NotPublishedToPublisher(Js.Promise.error)
 
@@ -24,7 +24,7 @@ module type T = {
   let make: (
     ~name: string,
     ~storageResources: array<resource>,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
     unit,
   ) => component
 
@@ -34,7 +34,7 @@ module type T = {
 module Adapter = {
   type publisher = {
     resources: array<resource>,
-    publish: (. string, Message.meta, Js.Json.t) => Js.Promise.t<unit>,
+    publish: (string, Message.meta, Js.Json.t) => Js.Promise.t<unit>,
   }
   type publisherMaker = (
     ~name: string,
@@ -60,7 +60,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
   @obj external makeOutputs: (~resources: array<resource>) => ReventlessSpec.EventTopic.outputs = ""
@@ -77,7 +77,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   @set external setPublish: (component, publish) => unit = "publish"
   @get external publish: component => publish = "publish"
 
-  let publishFn = (publisher: Adapter.publisher, _name) => async (. events') => {
+  let publishFn = (publisher: Adapter.publisher, _name) => async events' => {
     let eventCount = events'->Belt.Array.length
     await events'
     ->Belt.Array.mapWithIndex(async (idx, event') => {
@@ -86,7 +86,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
       let id = event'.id
       let idx = idx + 1
 
-      switch await publisher.publish(. id->Spec.Id.toString, event'.meta, event'Json) {
+      switch await publisher.publish(id->Spec.Id.toString, event'.meta, event'Json) {
       | exception e =>
         event'Json->Logger.logEvent'Json(
           ~loc=__LOC__,
@@ -106,7 +106,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   }
 
   let construct = (~storageResources, self, name) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let publisher = Publisher.make(
       ~name=name->ComponentType.name(componentType),
@@ -124,6 +124,6 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
       ~componentType=componentType->ComponentType.toString,
       ~name,
       ~construct=construct(~storageResources, ...),
-      ~opts,
+      ~opts
     )
 }

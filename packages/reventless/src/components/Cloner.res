@@ -14,7 +14,7 @@ type t
 type component = ReventlessSpec.Component.t<t, outputs>
 
 module type T = {
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component
+  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => component
 }
 
 module Adapter = {
@@ -47,7 +47,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
   @obj
@@ -62,7 +62,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
   }
 
   let construct = (~api, self, name) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource}
 
     let fullQualifiedStackName = {
       organization: Env.pulumiOrganization->Belt.Option.getWithDefault("NO_ORGANIZATION"),

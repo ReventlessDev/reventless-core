@@ -20,7 +20,7 @@ let bucketNameOfAllTasks: (array<Task.outputs>, string) => option<string> = (tas
   tasks
   ->find(taskName)
   ->Belt.Option.flatMap(task => task["bucket"])
-  ->Belt.Option.map(bucket => bucket["bucket"]->Pulumi.Output.get)
+  ->Belt.Option.map(bucket => bucket.bucket->Pulumi.Output.get)
 
 let eventCollectorConnectorOfAllEventMappersExn = (eventMappersRef, eventMapperName) =>
   eventCollectorConnectorOfAllEventMappers(

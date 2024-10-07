@@ -3,6 +3,7 @@
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Logger$Reventless = require("../util/Logger.res.js");
 var Message$Reventless = require("../Message.res.js");
@@ -34,8 +35,9 @@ function Make(Spec, Publisher) {
     };
   };
   var construct = function (storageResources, self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var publisher = Publisher.make(ComponentType$Reventless.name(name, "EventTopic"), storageResources, opts);
     self.publish = publishFn(publisher, name);

@@ -4,6 +4,7 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Logger$Reventless = require("../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -76,8 +77,9 @@ function Make(Spec, Connector) {
     };
   };
   var construct = function (memorySize, timeout, self, name, commandsHandler) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var connector = Connector.make(ComponentType$Reventless.name(name, "CommandTopic"), handleCommands(commandsHandler), memorySize, timeout, opts);
     self.publish = publishFn(connector);

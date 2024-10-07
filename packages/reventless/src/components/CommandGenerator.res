@@ -30,7 +30,7 @@ module type T = {
   let make: (
     ~name: string,
     ~publish: publish,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
     unit,
   ) => component
 }
@@ -79,7 +79,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
     ~api: api,
     ~publish: publish,
   ) => component = "default"
@@ -146,7 +146,7 @@ module Make = (
   }
 
   let construct = (self, name, api, commandHandler) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource }
 
     let resolvers = Resolvers.make(
       ~name=name->ComponentType.name(componentType),

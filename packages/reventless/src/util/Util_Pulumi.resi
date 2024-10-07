@@ -2,7 +2,7 @@ module Output: {
   module Async: {
     @ocaml.doc(" Use an Output before you actually know the value.
      ")
-    type t<'a> = (Pulumi.Output.t<'a>, (. Pulumi.Output.t<'a>) => unit)
+    type t<'a> = (Pulumi.Output.t<'a>, Pulumi.Output.t<'a> => unit)
 
     @ocaml.doc(" create a new async output
      *
@@ -16,5 +16,5 @@ module Output: {
 }
 
 module ComponentResourceOptions: {
-  let ofCustomResourceOptions: Pulumi.CustomResourceOptions.t => Pulumi.ComponentResource.Options.t
+  let ofCustomResourceOptions: Pulumi.CustomResourceOptions.t => Pulumi.ComponentResource.options
 }

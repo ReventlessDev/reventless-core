@@ -37,7 +37,7 @@ module type T = {
     ~readModels: array<module(ReventlessSpec.ReadModel.T)>,
     ~taskMakers: array<Task.maker>,
     ~scheduler: ReventlessSpec.Scheduler.t,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
     unit,
   ) => component
 }
@@ -59,7 +59,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
   @obj
@@ -129,7 +129,7 @@ module Make = (
   ) => {
     let id = makeId(name, version)
 
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     let addEventMapperFns = Js.Dict.empty()
     let publishToAggregates = Js.Dict.empty()

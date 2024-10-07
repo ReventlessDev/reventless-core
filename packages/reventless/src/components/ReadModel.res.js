@@ -21,15 +21,16 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
           return Mapping.sourceName;
         }));
   var construct = function (allEventTopics, self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var partial_arg = QueryDb$Reventless.Make;
     var partial_arg$1 = function (param, param$1) {
       return partial_arg(Config, Spec, param, param$1);
     };
     var QueryDb = partial_arg$1(QueryDbStorage, QueryDbResolvers);
-    var queryDb = QueryDb.make(undefined, Caml_option.some(opts), undefined);
+    var queryDb = QueryDb.make(undefined, opts, undefined);
     var load = function (id) {
       return QueryDb.load(queryDb)(Spec.Id.makeFromString(id));
     };
@@ -94,7 +95,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                 return Mapping.sourceName;
               })));
     var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-    var eventCollector = EventCollector.make(ComponentType$Reventless.name(name, "ReadModel"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), eventsHandler, 2048, undefined, Pulumi.output(undefined), Pulumi.output(undefined), Caml_option.some(opts), undefined);
+    var eventCollector = EventCollector.make(ComponentType$Reventless.name(name, "ReadModel"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), eventsHandler, 2048, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts, undefined);
     self.enqueueEvent = EventCollector.enqueueEvent(eventCollector);
     var outputs = {
       name: name,

@@ -69,8 +69,9 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     }
   };
   var construct = function (publishToAggregates, scheduler, queryEngine, self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var childName = ComponentType$Reventless.name(name.replace(".", ""), "ExtensionPoint");
     var commandTopic = {
@@ -127,7 +128,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
               _0: reference$1
             };
     };
-    var eventTopic = EventTopic.make(childName, [], Caml_option.some(opts), undefined);
+    var eventTopic = EventTopic.make(childName, [], opts, undefined);
     var publish = EventTopic.publish(eventTopic);
     var applyEventAction = async function (action) {
       switch (action.TAG) {
@@ -174,7 +175,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
       var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, scheduler, queryEngine, Component$Reventless.extractOutputs(commandTopic$1).resources);
       return Promise.all(Belt_Array.map(commandActions, applyCommandAction));
     };
-    commandTopic.contents = Caml_option.some(CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, Caml_option.some(opts), undefined));
+    commandTopic.contents = Caml_option.some(CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts, undefined));
     var outputs = {
       name: name,
       aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {

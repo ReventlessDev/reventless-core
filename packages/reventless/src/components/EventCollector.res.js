@@ -2,6 +2,7 @@
 'use strict';
 
 var Component = require("./Component").default;
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
 var Adapter = {};
@@ -13,8 +14,9 @@ function Make(Connector) {
     };
   };
   var construct = function (eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, self, name) {
+    var opts_parent = Caml_option.some(self);
     var opts = {
-      parent: self
+      parent: opts_parent
     };
     var connector = Connector.make(ComponentType$Reventless.name(name, "EventCollector"), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
     self.enqueueEvent = enqueueEventFn(connector);

@@ -44,14 +44,14 @@ module Source = {
   type event = CountFinished
 }
 
-type counterEventsHandler = (. array<Js.Json.t>) => Js.Promise.t<unit>
+type counterEventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
 module type T = {
   let make: (
     ~name: string,
     ~counterEventsHandler: counterEventsHandler,
     ~ttl: int=?,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
     unit,
   ) => component
 
@@ -89,7 +89,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
   @obj
@@ -112,8 +112,8 @@ module Make = (
   external addToCounterTarget: component => addToCounterTarget = "addToCounterTarget"
 
   let construct = (~counterEventsHandler: counterEventsHandler, ~ttl: option<int>, self, name) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
-    let opts2 = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    let opts2 = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     module ReferencesSpec = {
       module Id = ReventlessSpec.Id.StringPure
@@ -190,7 +190,7 @@ module Make = (
       })
 
     let count = async (saveBatch, countItems) => {
-      let result = await saveBatch(.
+      let result = await saveBatch(
         countItems->Belt.Array.map(({counterId, reference, inc}) => {
           let id = makeId((counterId, reference))
           let state: ReferencesSpec.state = {id, inc}
@@ -241,13 +241,13 @@ module Make = (
       await references
       ->groupByCounterId
       ->Belt.Array.map(((counterId, dec)) =>
-        CountsDb.count(countsDb)(. counterId->CountsSpec.Id.makeFromString, countFieldName, -dec)
+        CountsDb.count(countsDb)(counterId->CountsSpec.Id.makeFromString, countFieldName, -dec)
       )
       ->Js.Promise.all
       ->Util.Promise.toUnit
       // TODO error handling
 
-      await counterEventsHandler(.
+      await counterEventsHandler(
         counts->Belt.Array.keepMap(state =>
           switch state->CountsSpec.state_decode {
           | Ok({id, count}) if count == 0 =>
@@ -309,6 +309,6 @@ module Make = (
       ~componentType=componentType->ComponentType.toString,
       ~name=name->ComponentType.name(componentType),
       ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl), ...),
-      ~opts,
+      ~opts
     )
 }
