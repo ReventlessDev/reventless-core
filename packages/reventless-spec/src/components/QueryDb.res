@@ -1,5 +1,5 @@
 type rec resolversResourcesMaker = Js.Dict.t<outputs> => array<Adapter.resource>
-and outputs = {"resources": array<Adapter.resource>, "resolversMaker": resolversResourcesMaker}
+and outputs = {resources: array<Adapter.resource>, resolversMaker: resolversResourcesMaker}
 type allOutputs = Js.Dict.t<outputs>
 
 type saveMode =

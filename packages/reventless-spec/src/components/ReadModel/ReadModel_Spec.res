@@ -30,7 +30,7 @@ type resolveConfig<'source, 'target> = {
   target: 'target,
 }
 
-@ocaml.doc(" resolve single id field ")
+/** resolve single id field */
 type idResolverConfig = resolveConfig<idResolverSourceConfig, idResolverTargetConfig>
 
 type idsResolverSourceConfig = {
@@ -44,7 +44,7 @@ type idsResolverTargetConfig = {
   subIdField?: string,
 }
 
-@ocaml.doc(" resolve id array field ")
+/** resolve id array field */
 type idsResolverConfig = resolveConfig<idsResolverSourceConfig, idsResolverTargetConfig>
 
 type authorization = {

@@ -1,4 +1,4 @@
-@ocaml.doc(" see ReventlessSpec.AggregateSpec.T ")
+/** see ReventlessSpec.AggregateSpec.T */
 module type Source = {
   let name: string
   module Id: Id.T
