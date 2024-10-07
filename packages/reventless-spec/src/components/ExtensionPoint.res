@@ -25,7 +25,7 @@ type t
     ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
     ~scheduler: Scheduler.t,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
     unit, //TODO remove after rescript 11 update
   ) => ReventlessSpec.Component.t<t, outputs>
 }

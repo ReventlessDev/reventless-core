@@ -49,7 +49,7 @@ module type T = {
 
   let make: (
     ~ttl: int=?,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
     unit,
   ) => Component.t<t, outputs>
 

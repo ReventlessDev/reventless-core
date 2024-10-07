@@ -14,7 +14,7 @@ module type T = {
 
   let make: (
     ~allEventTopics: EventTopic.allOutputs,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
     unit,
   ) => Component.t<t, outputs>
 
