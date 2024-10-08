@@ -1,7 +1,7 @@
 type outputs = {
   name: string,
   aggregateNames: array<string>,
-  outgoingEventHandler: (. Js.Json.t, Plugin.pluginDefinition) => Js.Promise.t<unit>,
+  outgoingEventHandler: (Js.Json.t, Plugin.pluginDefinition) => Js.Promise.t<unit>,
   commandTopic: CommandTopic.outputs,
   eventTopic: EventTopic.outputs,
 }

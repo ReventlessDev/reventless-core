@@ -17,7 +17,7 @@ type storageError =
   | StaleState
   | MissingSubIdConfig
 
-type load<'id, 'state> = (. 'id) => Js.Promise.t<Belt.Result.t<array<'state>, storageError>>
+type load<'id, 'state> = 'id => Js.Promise.t<Belt.Result.t<array<'state>, storageError>>
 type save<'id, 'state> = (
   . 'id,
   'state,
@@ -27,7 +27,7 @@ type save<'id, 'state> = (
 type saveBatch<'id, 'state> = (
   . array<('id, 'state, option<int>)>,
 ) => Js.Promise.t<Belt.Result.t<unit, storageError>>
-type count<'id> = (. 'id, string, int) => Js.Promise.t<Belt.Result.t<int, storageError>>
+type count<'id> = ('id, string, int) => Js.Promise.t<Belt.Result.t<int, storageError>>
 type delete<'id> = (
   . 'id,
   option<(string, string)>,
