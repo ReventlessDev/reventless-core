@@ -18,7 +18,7 @@ type connectionParams = {
 type getFile = (
   ~remotePath: string,
   ~localPath: string,
-  ~options: FTP.FastOptions.t=?,
+  ~options: SSH2.fastOptions=?,
   ~callback: Js.Exn.t => unit,
 ) => promise<unit>
 type failFn = Js.Exn.t => unit
@@ -45,10 +45,10 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
   client
   ->FTP.Client.onEnd(() => {
     Js.log("Client.onEnd")
-    resolve(. result.contents)
+    resolve(result.contents)
   })
   ->FTP.Client.onError(err => {
-    resolve(.
+    resolve(
       Belt.Result.Error(
         err->Js.Exn.message->Belt.Option.getWithDefault("Error contains no message."),
       ),
@@ -97,7 +97,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             ->NodeStreams.Readable.pipe(
               (path ++ ("/" ++ filename))
               ->Message.log("FTPHandler: path for write stream")
-              ->FTP.createWriteStream(sftp, ~path=_, ())
+              ->(FTP.createWriteStream(sftp, ~path=_))
               ->NodeStreams.Writable.onFinish(() => {
                 result := Ok(true)
                 Js.log("FTPHandler: writable ended")
@@ -120,23 +120,20 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
           )
           ->ignore
         },
-      (. _) => (),
+      _ => (),
     )
   })
   ->FTP.Client.connect(
     switch secret {
-    | Password(password) =>
-      FTP.Client.Config.make(~host, ~port?, ~username=userName, ~password, ~readyTimeout?, ())
-    | Key(privateKey, passphrase) =>
-      FTP.Client.Config.make(
-        ~host,
-        ~port?,
-        ~username=userName,
-        ~privateKey,
-        ~passphrase?,
-        ~readyTimeout?,
-        (),
-      )
+    | Password(password) => {SSH2.Client.host, ?port, userName, password, ?readyTimeout}
+    | Key(privateKey, passphrase) => {
+        host,
+        ?port,
+        userName,
+        privateKey,
+        ?passphrase,
+        ?readyTimeout,
+      }
     },
   )
 

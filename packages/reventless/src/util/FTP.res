@@ -1,10 +1,10 @@
-@ocaml.doc(" SSH2 (FTPS) bindings with added helper function to parseUrl ")
+/** SSH2 (FTPS) bindings with added helper function to parseUrl */
 include SSH2
 
-@ocaml.doc(" parses the given url into a tuple of two strings: (host, port, path)
- * (ftp://[user[:password]@])
- * actually respects: host[:port]/url-path
- ")
+/** parses the given url into a tuple of two strings: (host, port, path)
+  (ftp://[user[:password]@])
+  actually respects: host[:port]/url-path
+ */
 let parseUrl: string => (
   /* host */ string,
   /* port */ option<int>,
