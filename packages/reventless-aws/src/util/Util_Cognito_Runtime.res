@@ -13,20 +13,21 @@ let signUp = (
   ~userPoolClientId: string,
   ~userName: string,
   ~password: string,
-): Js.Promise.t<CognitoIdentityServiceProvider.SignUpResponse.t> =>
-  CognitoIdentityServiceProvider.signUp(
-    CognitoIdentityServiceProvider.make(
-      CognitoIdentityServiceProvider.Opts.make(
-        ~endpoint=userPoolEndpoint(region, userPoolId),
-        ~region,
-      ),
-    ),
-    ~params=CognitoIdentityServiceProvider.SignUpRequest.make(
-      ~_ClientId=userPoolClientId,
-      ~_Username=userName,
-      ~_Password=password,
-    ),
-  )->Request.promise
+): Js.Promise.t<CognitoIdentityServiceProvider.SignUpCommand.output> =>
+{
+  open CognitoIdentityServiceProvider
+    let client = make(
+        {
+        endpoint:userPoolEndpoint(region, userPoolId),
+        region,
+    })
+    {
+      clientId: userPoolClientId,
+      username: userName,
+      password,
+    }->SignUpCommand.make->
+  signUp(client, _)
+  }
 
 @ocaml.doc(" sign up a user to a given userPool, if the user is not already present
    NOTE: should be called in runtime
@@ -39,6 +40,7 @@ let signUpIfMissing = async (
   ~password: string,
 ) =>
   switch await signUp(~region, ~userPoolId, ~userPoolClientId, ~userName, ~password) {
-  | result => Js.log3("Created User", userName, result["_UserSub"])
+  | result => Js.log3("Created User", userName, result.userSub)
   | exception _ => Js.log2("Didn't create user:", userName)
-  }
+}
+

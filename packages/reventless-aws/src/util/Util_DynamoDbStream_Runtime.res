@@ -20,22 +20,20 @@ let buildEvent'Json = dict =>
 let buildStateJson = dict => dict->Js.Json.object_
 
 let parseDynamoDbStreamRecord = (buildJson, record: Record.t) => {
-  let record = record["dynamodb"]
+  let record = record.dynamodb
   let id =
-    record->Belt.Option.flatMap(record =>
-      AwsSdk.DynamoDb.Converter.output(~data=record["_Keys"]["id"], ())
-    )
+    record->Belt.Option.flatMap(record => AwsSdk.DynamoDb.Util.unmarshall(record.keys.id, ()))
 
   let newImageJson =
     record
-    ->Belt.Option.flatMap(dynamodb => dynamodb["_NewImage"])
-    ->Belt.Option.map(newImage => AwsSdk.DynamoDb.Converter.unmarshall(~data=newImage, ()))
+    ->Belt.Option.flatMap(dynamodb => dynamodb.newImage)
+    ->Belt.Option.map(newImage => AwsSdk.DynamoDb.Util.unmarshallDict(newImage))
     ->Belt.Option.map(buildJson)
 
   let oldImageJson =
     record
-    ->Belt.Option.flatMap(dynamodb => dynamodb["_OldImage"])
-    ->Belt.Option.map(oldImage => AwsSdk.DynamoDb.Converter.unmarshall(~data=oldImage, ()))
+    ->Belt.Option.flatMap(dynamodb => dynamodb.oldImage)
+    ->Belt.Option.map(oldImage => AwsSdk.DynamoDb.Util.unmarshallDict(oldImage))
     ->Belt.Option.map(buildJson)
 
   switch (id, newImageJson, oldImageJson) {

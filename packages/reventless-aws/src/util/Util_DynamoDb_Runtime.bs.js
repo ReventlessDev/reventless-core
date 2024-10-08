@@ -10,17 +10,24 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
+var LibDynamodb = require("@aws-sdk/lib-dynamodb");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.bs.js");
 
 var service = "DynamoDb";
 
 function put(table, item) {
-  return DynamoDb_DocumentClient$AwsSdk.putWithTableName(table.name.get(), item);
+  return DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
+                  Item: item,
+                  TableName: table.name.get()
+                }));
 }
 
 function $$delete(table, id) {
-  return DynamoDb_DocumentClient$AwsSdk.deleteWithTableName(table.name.get(), id, undefined);
+  var arg = table.name.get();
+  return function (param) {
+    return DynamoDb_DocumentClient$AwsSdk.deleteWithTableName(param, arg, id);
+  };
 }
 
 function queryById(table, id) {
@@ -79,20 +86,18 @@ function insertTtl(json, ttl) {
                   })), json);
 }
 
-function batchWrite(params) {
-  return DynamoDb_DocumentClient$AwsSdk.make(undefined).batchWrite(params).promise();
-}
-
-function batchWrite$p(itemRequestMap) {
-  return batchWrite({
-              RequestItems: itemRequestMap,
-              ReturnConsumedCapacity: "NONE",
-              ReturnItemCollectionMetris: "NONE"
-            });
+function batchWrite(itemRequestMap) {
+  return DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.send(new LibDynamodb.BatchWriteCommand({
+                  RequestItems: itemRequestMap,
+                  ReturnConsumedCapacity: /* None */2,
+                  ReturnItemCollectionMetrics: /* None */1
+                }));
 }
 
 function hasUnprocessedItems(writeOutput) {
-  return Object.keys(writeOutput.UnprocessedItems).length !== 0;
+  return Belt_Option.mapWithDefault(writeOutput.UnprocessedItems, 0, (function (items) {
+                return Object.keys(items).length;
+              })) > 0;
 }
 
 async function retryBatchWriteIfNecessary(p, allItems, numberOfRetries, maxRetries) {
@@ -105,14 +110,14 @@ async function retryBatchWriteIfNecessary(p, allItems, numberOfRetries, maxRetri
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
       console.log("Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry " + retry + ": Error:", e._1);
-      if (numberOfRetries < maxRetries) {
-        return await retryBatchWriteIfNecessary(batchWrite$p(allItems), allItems, numberOfRetries + 1 | 0, maxRetries);
-      } else {
+      if (numberOfRetries >= maxRetries) {
         return {
                 TAG: /* Error */1,
-                _0: allItems
+                _0: Caml_option.some(allItems)
               };
       }
+      var p$1 = batchWrite(allItems);
+      return await retryBatchWriteIfNecessary(p$1, allItems, numberOfRetries + 1 | 0, maxRetries);
     }
     throw e;
   }
@@ -123,10 +128,17 @@ async function retryBatchWriteIfNecessary(p, allItems, numberOfRetries, maxRetri
           };
   }
   var unprocessedItems = writeOutput.UnprocessedItems;
-  var unprocessedItemsCount = Object.keys(unprocessedItems).length.toString();
+  var unprocessedItemsCount = Belt_Option.mapWithDefault(unprocessedItems, 0, (function (items) {
+            return Object.keys(items).length;
+          })).toString();
   console.log("Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry " + retry + ": " + unprocessedItemsCount + " unprocessed items");
   if (numberOfRetries < maxRetries) {
-    return await retryBatchWriteIfNecessary(batchWrite$p(unprocessedItems), unprocessedItems, numberOfRetries + 1 | 0, maxRetries);
+    return await Belt_Option.mapWithDefault(unprocessedItems, Promise.resolve({
+                    TAG: /* Ok */0,
+                    _0: undefined
+                  }), (async function (items) {
+                  return await retryBatchWriteIfNecessary(batchWrite(items), items, numberOfRetries + 1 | 0, maxRetries);
+                }));
   } else {
     return {
             TAG: /* Error */1,
@@ -159,7 +171,7 @@ function toTable(writeRequests, tableName) {
 }
 
 function batchWriteWithRetries(batchWriteItemRequestMap, maxRetries) {
-  return retryBatchWriteIfNecessary(batchWrite$p(batchWriteItemRequestMap), batchWriteItemRequestMap, 0, maxRetries);
+  return retryBatchWriteIfNecessary(batchWrite(batchWriteItemRequestMap), batchWriteItemRequestMap, 0, maxRetries);
 }
 
 function findResource(resources) {
@@ -175,7 +187,6 @@ exports.purgeTimeAttributeName = purgeTimeAttributeName;
 exports.calcPurgeTime = calcPurgeTime;
 exports.insertTtl = insertTtl;
 exports.batchWrite = batchWrite;
-exports.batchWrite$p = batchWrite$p;
 exports.hasUnprocessedItems = hasUnprocessedItems;
 exports.retryBatchWriteIfNecessary = retryBatchWriteIfNecessary;
 exports.toPutRequest = toPutRequest;

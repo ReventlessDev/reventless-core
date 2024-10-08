@@ -94,7 +94,9 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               requiresCompatibilities: ["FARGATE"],
               executionRoleArn: taskExecutionRole.arn
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
-        var partial_arg = param[2].subnetIds;
+        var partial_arg = {
+          subnets: param[2].subnetIds
+        };
         var partial_arg$1 = cluster.arn;
         var partial_arg$2 = taskDefinition.arn;
         var lambda = new (Aws.lambda.CallbackFunction)(name, Curry.app(Lambda$PulumiAws.CallbackFunction.Args.make, [

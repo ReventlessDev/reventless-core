@@ -9,18 +9,17 @@ let addUserToGroup = (
   ~userName: string,
   ~groupName: string,
   ~userPoolId: string,
-) =>
-  {
-    open CognitoIdentityServiceProvider
-    addUserToGroup(
-      make(Opts.make(~endpoint=Util_Cognito_Runtime.userPoolEndpoint(region, userPoolId), ~region)),
-      ~params=AddUserToGroupRequest.make(
-        ~_Username=userName,
-        ~_GroupName=groupName,
-        ~_UserPoolId=userPoolId,
-      ),
-    )
-  }->Request.promise
+) => {
+  open CognitoIdentityServiceProvider
+  addUserToGroup(
+    make({endpoint: Util_Cognito_Runtime.userPoolEndpoint(region, userPoolId), region}),
+    AdminAddUserToGroupCommand.make({
+      username: userName,
+      groupName,
+      userPoolId,
+    }),
+  )
+}
 
 @ocaml.doc(" remove a user from a given group of a given userPool
   ")
@@ -29,15 +28,14 @@ let removeUserFromGroup = (
   ~userName: string,
   ~groupName: string,
   ~userPoolId: string,
-) =>
-  {
-    open CognitoIdentityServiceProvider
-    removeUserFromGroup(
-      make(Opts.make(~endpoint=Util_Cognito_Runtime.userPoolEndpoint(region, userPoolId), ~region)),
-      ~params=RemoveUserFromGroupRequest.make(
-        ~_Username=userName,
-        ~_GroupName=groupName,
-        ~_UserPoolId=userPoolId,
-      ),
-    )
-  }->Request.promise
+) => {
+  open CognitoIdentityServiceProvider
+  removeUserFromGroup(
+    make({endpoint: Util_Cognito_Runtime.userPoolEndpoint(region, userPoolId), region}),
+    AdminRemoveUserFromGroupCommand.make({
+      username: userName,
+      groupName,
+      userPoolId,
+    }),
+  )
+}

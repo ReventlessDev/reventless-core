@@ -23,31 +23,29 @@ let toScheduleExpression = x =>
     `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} ? * MON-SAT *)`
   }
 
-let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSchedule = role => async (.
-  queueResources,
-  schedule,
-) =>
-  switch queueResources {
-  | [] =>
-    let err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !"
-    Js.log(err)
-    Js.Exn.raiseError(err)
-  | resources =>
-    let resource = resources[0] // FIXME
-    let _ = await putRule(
-      ~name=schedule.name,
-      ~scheduleExpression=schedule.rate->toScheduleExpression,
-      ~roleArn=role["arn"]->Pulumi.Output.get,
-      ~state="ENABLED",
-      (),
-    )
-    let _ = await putTarget(
-      ~rule=schedule.name,
-      ~arn=resource["urn"]->Pulumi.Output.get,
-      ~id=resource["name"]->Pulumi.Output.get,
-      ~input=schedule.payload,
-    )
-  }
+let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSchedule = role =>
+  async (. queueResources, schedule) =>
+    switch queueResources {
+    | [] =>
+      let err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !"
+      Js.log(err)
+      Js.Exn.raiseError(err)
+    | resources =>
+      let resource = resources[0] // FIXME
+      let _ = await putRule(
+        ~name=schedule.name,
+        ~scheduleExpression=schedule.rate->toScheduleExpression,
+        ~roleArn=role["arn"]->Pulumi.Output.get,
+        ~state="ENABLED",
+        (),
+      )
+      let _ = await putTarget(
+        ~rule=schedule.name,
+        ~arn=resource["urn"]->Pulumi.Output.get,
+        ~id=resource["name"]->Pulumi.Output.get,
+        ~input=schedule.payload,
+      )
+    }
 
 let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = async (. queueResources, name) =>
   switch queueResources {

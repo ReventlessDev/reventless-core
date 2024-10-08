@@ -151,7 +151,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
             ~taskDefinition=taskDefinition["arn"],
             ~cluster=cluster["arn"],
             ~fullQualifiedStackName,
-            ~subnets=vpcConfig["subnetIds"],
+            ~subnets={subnets: vpcConfig["subnetIds"]},
           ),
           (),
         ),

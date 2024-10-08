@@ -33,7 +33,10 @@ let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   }
 }
 
-let makeEntry = (queueService, {id, meta: {msgId: messageId, service}, delay} as commandJson) => {
+let makeEntry = (
+  queueService,
+  {id, meta: {msgId: messageId, service: _}, delay} as commandJson,
+) => {
   let messageBody = commandJson->toMessageBody
 
   // Js.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${CommandTopic: Published commands:id}`)
@@ -87,12 +90,10 @@ let rec deleteMessages = async (entries, queue) =>
         let id = idx->Js.Int.toString
         failedIds->Belt.Array.some(failedId => failedId == id)
       })
-      ->Belt.Array.mapWithIndex((idx, entry) =>
-        AwsSdk.SQS.DeleteMessageBatchEntry.make(
-          ~_Id=idx->Js.Int.toString,
-          ~_ReceiptHandle=entry["_ReceiptHandle"],
-        )
-      )
+      ->Belt.Array.mapWithIndex((idx, entry) => {
+        AwsSdk.SQS.DeleteMessageBatchCommand.id: idx->Js.Int.toString,
+        receiptHandle: entry.receiptHandle,
+      })
     let timeout = Js.Math.random_int(3000, 7000)
     await Reventless.Util.Promise.finishTimeout(timeout)
     Js.log2(`Retry deleteMessages after ${timeout->Js.Int.toString} ms:`, entriesToRetry)

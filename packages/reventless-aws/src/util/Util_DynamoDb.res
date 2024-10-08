@@ -26,16 +26,18 @@ open PulumiAws.DynamoDb.Table
 let enableTtl: string => Js.Promise.t<PulumiAws.DynamoDb.Table.TableTtl.t> = async tableName => {
   Js.log(`${__MODULE__}: enableTimeToLive for ${tableName}`)
 
-  open AwsSdk.DynamoDb_DynamoDb
-  switch await updateTimeToLive(
-    UpdateTimeToLiveInput.make(
-      ~_TableName=tableName,
-      ~_TimeToLiveSpecification=TimeToLiveSpecification.make(
-        ~_Enabled=true,
-        ~_AttributeName=Util_DynamoDb_Runtime.purgeTimeAttributeName,
-      ),
-    ),
-  ) {
+  open AwsSdk.DynamoDb_DynamoDb.UpdateTimeToLiveCommand
+  switch await 
+    
+    {
+      tableName:tableName,
+      timeToLiveSpecification:{
+        enabled:true,
+        attributeName:Util_DynamoDb_Runtime.purgeTimeAttributeName,
+      },
+    }
+    )->make->send
+   {
   | res =>
     TableTtl.make(
       ~enabled=Some(res["_TimeToLiveSpecification"]["_Enabled"]),

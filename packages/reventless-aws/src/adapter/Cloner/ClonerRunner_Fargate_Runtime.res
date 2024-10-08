@@ -10,37 +10,31 @@ let clone = (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, paylo
   let {organization, project, stack} = fullQualifiedStackName
 
   let environment = {
-    open AwsSdk.ECS.KeyValuePair
     [
-      make(~name="REVENTLESS_CORE_STACK", ~value=`${organization}/${project}/${stack}`),
-      make(~name="RESTORE_DATE_TIME", ~value=payload["restoreDateTime"]),
-    ]
+      ("REVENTLESS_CORE_STACK", `${organization}/${project}/${stack}`),
+      ("RESTORE_DATE_TIME", payload["restoreDateTime"]),
+    ]->Js.Dict.fromArray
   }
 
   {
-    open AwsSdk.ECS
-    make()->runTask(
-      ~params=RunTaskRequest.make(
-        ~taskDefinition=taskDefinition->Pulumi.Output.get,
-        ~cluster=cluster->Pulumi.Output.get,
-        ~networkConfiguration=NetworkConfiguration.make(
-          ~awsvpcConfiguration=AwsVpcConfiguration.make(~subnets),
-          (),
-        ),
-        ~launchType=#FARGATE,
-        ~overrides=TaskOverride.make(
-          ~containerOverrides=[
-            ContainerOverride.make(
-              ~name="reventless-ci",
-              ~environment,
-              ~command=["reventless-ci", "clone-environment"],
-              (),
-            ),
+    open AwsSdk.ECS.RunTaskCommand
+      {
+        taskDefinition:taskDefinition->Pulumi.Output.get,
+        cluster:cluster->Pulumi.Output.get,
+        networkConfiguration:{
+          awsvpcConfiguration: {subnets},
+        },
+        launchType:Fargate,
+        overrides: {
+          containerOverrides:[
+            {
+              name:"reventless-ci",
+              environment,
+              command:["reventless-ci", "clone-environment"],
+            },
           ],
-          (),
-        ),
-        (),
-      ),
-    )
-  }->AwsSdk.Request.promise
+        }
+      }
+      ->make->send
+  }
 }

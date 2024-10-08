@@ -83,21 +83,23 @@ let queryByTableName = async (
 
   let attributeNames = Belt.Array.concatMany([[("#key", key)], names])->Js.Dict.fromArray
 
-  let params = AwsSdk.DynamoDb.DocumentClient.QueryInput.make(
-    ~_TableName=tableName,
-    ~_IndexName=?if key == "id" {
+  let params = 
+  { open AwsSdk.DynamoDb.DocumentClient.QueryInput
+{
+    tableName:tableName,
+    indexName:?if key == "id" {
       None
     } else {
       Some(key)
     },
-    ~_KeyConditionExpression=keyConditionExpression,
-    ~_FilterExpression=?filterExpression,
-    ~_ExpressionAttributeNames=attributeNames,
-    ~_ExpressionAttributeValues=attributeValues,
-    ~_ScanIndexForward=ascending,
-    ~_Limit=limit,
-    (),
-  )
+    keyConditionExpression:keyConditionExpression,
+    filterExpression:?filterExpression,
+    expressionAttributeNames:attributeNames,
+    expressionAttributeValues:attributeValues,
+    scanIndexForward:ascending,
+    limit:limit,
+  }
+}
   Js.log2("QueryEngine_DynamoDb.queryByTableName params:", params)
   switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params, ()) {
   | result => result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
