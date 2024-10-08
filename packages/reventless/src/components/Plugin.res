@@ -245,39 +245,36 @@ module Make = (
 
         let addStatement = (policy: IAM.Policy.t, sid, queueArn, topicArn) => {
           let newStatements =
-            policy["_Statement"]
-            ->Belt.Array.keep(statement => statement["_Sid"] != sid)
+            policy.statement
+            ->Belt.Array.keep(statement => statement.sid != sid)
             ->Belt.Array.concat([
-              IAM.Policy.Statement.make(
-                ~_Sid=sid,
-                ~_Effect="Allow",
-                ~_Principal="*",
-                ~_Action="sqs:SendMessage",
-                ~_Resource=queueArn,
-                ~_Condition=IAM.Policy.Statement.Condition.make(topicArn),
-                (),
-              ),
+              {
+                IAM.Policy.sid,
+                effect: "Allow",
+                principal: "*",
+                action: "sqs:SendMessage",
+                resource: queueArn,
+                condition: {IAM.Policy.arnEquals: topicArn},
+              },
             ])
           Js.log(`addStatement: adding 1 statement with Sid ${sid}`)
-          IAM.Policy.make(
-            ~_Version=policy["_Version"],
-            ~_Id=policy["_Id"],
-            ~_Statement=newStatements,
-          )
+        { IAM.Policy.version:policy.version,
+            id:policy.id,
+            statement:newStatements,
+          }
         }
 
-        let removeStatement = (policy, sid) => {
-          let statements = policy["_Statement"]
-          let newStatements = statements->Belt.Array.keep(statement => statement["_Sid"] != sid)
+        let removeStatement: (IAM.Policy.t, string)=> IAM.Policy.t = (policy, sid) => {
+          let statements = policy.statement
+          let newStatements = statements->Belt.Array.keep(statement => statement.sid != sid)
           let removedStatements = statements->Belt.Array.length - newStatements->Belt.Array.length
           Js.log(
             `removeStatement: removing ${removedStatements->Belt.Int.toString} statement(s) with Sid ${sid}`,
           )
-          IAM.Policy.make(
-            ~_Version=policy["_Version"],
-            ~_Id=policy["_Id"],
-            ~_Statement=newStatements,
-          )
+                        {IAM.Policy.version:policy.version,
+            id:policy.id,
+            statement:newStatements,
+          }
         }
 
         let _addPermission = async (sid, eventCollector, eventTopic) =>
@@ -417,24 +414,24 @@ module Make = (
               extensions: pluginExtensions,
               eventCollector: pluginEventCollector,
             }) =>
-            let disconnectFromExtensionPoints = pluginExtensionPoints->Belt.Array.keepMap(({
-              name: extensionPointName,
-              eventTopic,
-            }) =>
-              extensionsOutputs
-              ->Belt.Array.keep(extension => extension["extensionPointName"] == extensionPointName)
-              ->Belt.Array.length > 0
-                ? Some(
-                    unsubscribe(
-                      "disconnectFromExtensionPoints",
-                      extensionPointName,
-                      eventTopic,
-                      id,
-                      eventCollectorUrn->Pulumi.Output.get,
-                    ),
-                  )
-                : None
-            )
+            let disconnectFromExtensionPoints =
+              pluginExtensionPoints->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
+                extensionsOutputs
+                ->Belt.Array.keep(
+                  extension => extension["extensionPointName"] == extensionPointName,
+                )
+                ->Belt.Array.length > 0
+                  ? Some(
+                      unsubscribe(
+                        "disconnectFromExtensionPoints",
+                        extensionPointName,
+                        eventTopic,
+                        id,
+                        eventCollectorUrn->Pulumi.Output.get,
+                      ),
+                    )
+                  : None
+              )
 
             let disconnectFromExtensions =
               extensionPointsOutputs->Belt.Array.keepMap(extensionPoint =>

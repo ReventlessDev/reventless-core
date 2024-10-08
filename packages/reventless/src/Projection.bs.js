@@ -8,6 +8,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Logger$Reventless = require("./util/Logger.bs.js");
+var QueryDb$ReventlessSpec = require("@reventless/reventless-spec/src/components/QueryDb.bs.js");
 var QueryDbRuntime$Reventless = require("./components/QueryDbRuntime.bs.js");
 
 function Make(Source, Target, MappingImpl) {
@@ -619,7 +620,7 @@ async function handleActions(actions, primitives, subIdConfig) {
                   }), (async function (p, action) {
                   var err = await p;
                   if (err.TAG !== /* Ok */0) {
-                    Logger$Reventless.error("File \"Projection.res\", line 385, characters 15-22", undefined, undefined)("storage error:", "deleteme");
+                    Logger$Reventless.error("File \"Projection.res\", line 385, characters 15-22", undefined, undefined)("storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
                   }
                   return await handleAction(action, primitives, subIdConfig);
                 }));

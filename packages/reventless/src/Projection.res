@@ -283,7 +283,7 @@ let optimizeActions = actions => {
         previousActions->Belt.Array.concat([
           UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
         ])
-      | (UpdateWithDefault(id1, defaultState1, f), Create(id2, state2)) if id1 == id2 =>
+      | (UpdateWithDefault(id1, defaultState1, f), Create(id2, _state2)) if id1 == id2 =>
         Js.Console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create")
         previousActions->Belt.Array.concat([UpdateWithDefault(id1, defaultState1, f)])
       | (Create(id1, state1), Create(id2, state2)) if id1 == id2 =>
@@ -384,8 +384,7 @@ let handleActions = async (actions, primitives, subIdConfig) => {
         Logger.error(
           ~loc=__LOC__,
           "storage error:",
-                    "deleteme"
-          //err->ReventlessSpec.QueryDb.storageError_encode->Js.Json.stringify,
+          err->ReventlessSpec.QueryDb.storageError_encode->Js.Json.stringify,
         )
       }
       await action->handleAction(primitives, subIdConfig)

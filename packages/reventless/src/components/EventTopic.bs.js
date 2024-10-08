@@ -15,7 +15,7 @@ var NotPublishedToPublisher = /* @__PURE__ */Caml_exceptions.create("EventTopic-
 var Adapter = {};
 
 function Make(Spec, Publisher) {
-  var publishFn = function (publisher, name) {
+  var publishFn = function (publisher, _name) {
     return async function (events$p) {
       var eventCount = events$p.length;
       return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$p, (async function (idx, event$p) {
@@ -27,10 +27,10 @@ function Make(Spec, Publisher) {
                               val = await publisher.publish(Curry._1(Spec.Id.toString, id), event$p.meta, event$pJson);
                             }
                             catch (e){
-                              Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 92, characters 15-22", /* Error */3, event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
+                              Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 94, characters 17-24", /* Error */3, event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
                               throw e;
                             }
-                            return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 99, characters 15-22", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
+                            return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 101, characters 17-24", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
                           }))));
     };
   };
