@@ -32,18 +32,25 @@ let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSched
       Js.Exn.raiseError(err)
     | resources =>
       let resource = resources[0] // FIXME
-      let _ = await putRule(
-        ~name=schedule.name,
-        ~scheduleExpression=schedule.rate->toScheduleExpression,
-        ~roleArn=role["arn"]->Pulumi.Output.get,
-        ~state="ENABLED",
-        (),
+      let _ = await PutRuleCommand.send(
+        PutRuleCommand.make({
+          name: schedule.name,
+          scheduleExpression: schedule.rate->toScheduleExpression,
+          roleArn: role["arn"]->Pulumi.Output.get,
+          state: "ENABLED",
+        }),
       )
-      let _ = await putTarget(
-        ~rule=schedule.name,
-        ~arn=resource["urn"]->Pulumi.Output.get,
-        ~id=resource["name"]->Pulumi.Output.get,
-        ~input=schedule.payload,
+      let _ = await PutTargetsCommand.send(
+        PutTargetsCommand.make({
+          rule: schedule.name,
+          targets: [
+            {
+              arn: resource["urn"]->Pulumi.Output.get,
+              id: resource["name"]->Pulumi.Output.get,
+              input: schedule.payload,
+            },
+          ],
+        }),
       )
     }
 
@@ -55,6 +62,15 @@ let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = async (. queueReso
     Js.Exn.raiseError(err)
   | resources =>
     let resource = resources[0] // FIXME
-    let _ = await removeTarget(~rule=name, ~id=resource["name"]->Pulumi.Output.get)
-    let _ = deleteRule(~name)
+    let _ = await RemoveTargetsCommand.send(
+      RemoveTargetsCommand.make({
+        rule: name,
+        ids: [resource["name"]->Pulumi.Output.get],
+      }),
+    )
+    let _ = DeleteRuleCommand.send(
+      DeleteRuleCommand.make({
+        name: name,
+      }),
+    )
   }

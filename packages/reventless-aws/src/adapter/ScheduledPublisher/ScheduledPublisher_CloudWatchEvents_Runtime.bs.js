@@ -4,6 +4,7 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_array = require("@rescript/std/lib/js/caml_array.js");
 var CloudWatchEvents$AwsSdk = require("@reventless/bs-aws-sdk/src/CloudWatchEvents.bs.js");
+var ClientCloudwatchEvents = require("@aws-sdk/client-cloudwatch-events");
 
 function plural(count) {
   if (count === 1) {
@@ -43,8 +44,20 @@ function createSchedule(role) {
   return async function (queueResources, schedule) {
     if (queueResources.length !== 0) {
       var resource = Caml_array.get(queueResources, 0);
-      await CloudWatchEvents$AwsSdk.putRule(schedule.name, toScheduleExpression(schedule.rate), role.arn.get(), "ENABLED", undefined);
-      await CloudWatchEvents$AwsSdk.putTarget(schedule.name, resource.name.get(), resource.urn.get(), schedule.payload);
+      await CloudWatchEvents$AwsSdk.PutRuleCommand.send(new ClientCloudwatchEvents.PutRuleCommand({
+                Name: schedule.name,
+                ScheduleExpression: toScheduleExpression(schedule.rate),
+                RoleArn: role.arn.get(),
+                State: "ENABLED"
+              }));
+      await CloudWatchEvents$AwsSdk.PutTargetsCommand.send(new ClientCloudwatchEvents.PutTargetsCommand({
+                Rule: schedule.name,
+                Targets: [{
+                    Arn: resource.urn.get(),
+                    Id: resource.name.get(),
+                    Input: schedule.payload
+                  }]
+              }));
       return ;
     }
     var err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !";
@@ -56,8 +69,13 @@ function createSchedule(role) {
 async function deleteSchedule(queueResources, name) {
   if (queueResources.length !== 0) {
     var resource = Caml_array.get(queueResources, 0);
-    await CloudWatchEvents$AwsSdk.removeTarget(name, resource.name.get());
-    CloudWatchEvents$AwsSdk.deleteRule(name);
+    await CloudWatchEvents$AwsSdk.RemoveTargetsCommand.send(new ClientCloudwatchEvents.RemoveTargetsCommand({
+              Rule: name,
+              Ids: [resource.name.get()]
+            }));
+    CloudWatchEvents$AwsSdk.DeleteRuleCommand.send(new ClientCloudwatchEvents.DeleteRuleCommand({
+              Name: name
+            }));
     return ;
   }
   var err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !";
