@@ -3,7 +3,7 @@ open ReventlessSpec.EventCollector
 
 let componentType = ComponentType.EventCollector
 
-type eventsHandler = (. array<Js.Json.t>) => Js.Promise.t<unit>
+type eventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
 module type T = {
   type t
@@ -93,8 +93,8 @@ module Make = (Connector: Adapter.Connector): T => {
     ReventlessSpec.EventCollector.outputs,
   > => enqueueEvent = "enqueueEvent"
 
-  let enqueueEventFn = connector => (. delay, id, message) =>
-    connector.Adapter.enqueueEvent(. delay, id, message)
+  let enqueueEventFn = (connector, delay, id, message) =>
+    connector.Adapter.enqueueEvent(delay, id, message)
 
   let construct = (
     ~eventTopics,
@@ -106,7 +106,7 @@ module Make = (Connector: Adapter.Connector): T => {
     self,
     name,
   ) => {
-    let opts ={Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource}
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let connector = Connector.make(
       ~name=name->ComponentType.name(componentType),
@@ -119,7 +119,7 @@ module Make = (Connector: Adapter.Connector): T => {
       ~opts,
     )
 
-    self->setEnqueueEvent(connector->enqueueEventFn)
+    self->setEnqueueEvent(enqueueEventFn(connector, ...))
 
     self->setOutputs(makeOutputs(~name, ~resources=connector.resources))
   }
@@ -138,7 +138,15 @@ module Make = (Connector: Adapter.Connector): T => {
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~eventTopics, ~eventsHandler, ~memorySize, ~timeout, ~policy1, ~policy2, ...),
+      ~construct=construct(
+        ~eventTopics,
+        ~eventsHandler,
+        ~memorySize,
+        ~timeout,
+        ~policy1,
+        ~policy2,
+        ...
+      ),
       ~opts,
     )
 }

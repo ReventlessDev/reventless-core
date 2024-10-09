@@ -1,12 +1,12 @@
 let componentType = ComponentType.Core
 
 type outputs = {
-  "version": string,
-  "eventCollector": ReventlessSpec.EventCollector.outputs,
-  "extensionPoints": Js.Dict.t<ReventlessSpec.ExtensionPoint.outputs>,
-  "aggregates": Pulumi.Output.t<Js.Dict.t<Aggregate.outputs>>,
-  "readModels": Pulumi.Output.t<Js.Dict.t<ReventlessSpec.ReadModel.outputs>>,
-  "cloner": Cloner.outputs,
+  version: string,
+  eventCollector: ReventlessSpec.EventCollector.outputs,
+  extensionPoints: Js.Dict.t<ReventlessSpec.ExtensionPoint.outputs>,
+  aggregates: Js.Dict.t<Aggregate.outputs>,
+  readModels: Js.Dict.t<ReventlessSpec.ReadModel.outputs>,
+  cloner: Cloner.outputs,
 }
 
 type t
@@ -24,8 +24,6 @@ module type T = {
   let make: maker
 }
 
-let toDict = els => els->Belt.Array.map(el => (el["name"], el))->Js.Dict.fromArray
-
 module Make = (
   Config: Config.T,
   EventCollectorConnector: EventCollector.Adapter.Connector,
@@ -42,16 +40,6 @@ module Make = (
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
-
-  @obj
-  external makeOutputs: (
-    ~version: string,
-    ~eventCollector: ReventlessSpec.EventCollector.outputs,
-    ~extensionPoints: Js.Dict.t<ReventlessSpec.ExtensionPoint.outputs>,
-    ~aggregates: Js.Dict.t<Aggregate.outputs>,
-    ~readModels: Js.Dict.t<ReventlessSpec.ReadModel.outputs>,
-    ~cloner: Cloner.outputs,
-  ) => outputs = ""
 
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
@@ -83,17 +71,18 @@ module Make = (
     let aggregatesWithoutEventMappers =
       aggregates
       ->Belt.Array.map((module(Aggregate: Aggregate.T)) => {
-        let aggregate = Aggregate.make(~opts, ())
+        let aggregate = Aggregate.make(~opts)
         addEventMapperFns->Js.Dict.set(Aggregate.Spec.name, aggregate->Aggregate.addEventMapper)
         publishToAggregates->Js.Dict.set(Aggregate.Spec.name, aggregate->Aggregate.publishJsons)
         aggregate->Component.extractOutputs
       })
-      ->toDict
+      ->Belt.Array.map(aggregate => {(aggregate.name, aggregate)})
+      ->Js.Dict.fromArray
 
-    let allEventTopics = Util.Aggregate.allEventTopics(aggregatesWithoutEventMappers)
+    let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
     let readModels = readModels->Belt.Array.map((module(ReadModel: ReventlessSpec.ReadModel.T)) => {
-      let readModel = ReadModel.make(~allEventTopics, ~opts, ())
+      let readModel = ReadModel.make(~allEventTopics, ~opts)
       (ReadModel.Spec.name, {module_: module(ReadModel), readModel})
     })
     let readModelsOutputs =
@@ -103,7 +92,7 @@ module Make = (
       ->Belt.Array.map(((name, {readModel})) => (name, readModel->Component.extractOutputs))
       ->Js.Dict.fromArray
 
-    let allQueryDbs = readModelsOutputs->Util.ReadModel.allQueryDbs
+    let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     let aggregatesOutputs = Js.Dict.map(
@@ -119,9 +108,7 @@ module Make = (
 
     let aggregateNames =
       extensionPointsOutputs
-      ->Belt.Array.map(extensionPoint =>
-        extensionPoint["aggregateNames"]->Belt.Set.String.fromArray
-      )
+      ->Belt.Array.map(extensionPoint => extensionPoint.aggregateNames->Belt.Set.String.fromArray)
       ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union)
 
     let fakePluginDefinition: ReventlessSpec.Plugin.pluginDefinition = {
@@ -143,7 +130,7 @@ module Make = (
         )
         extensionPointsOutputs
         ->Belt.Array.map(extensionPoint => {
-          let handle = extensionPoint["outgoingEventHandler"]
+          let handle = extensionPoint.outgoingEventHandler
           handle(event'Json, fakePluginDefinition)
         })
         ->Js.Promise.all
@@ -157,7 +144,7 @@ module Make = (
 
     let eventCollector = EventCollector.make(
       ~name=componentType->ComponentType.toName,
-      ~eventTopics=aggregatesOutputs->Util.Aggregate.filterEventTopics(aggregateNames),
+      ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
       ~eventsHandler,
       ~policy1=Pulumi.Output.make(None),
       ~policy2=Pulumi.Output.make(None),
@@ -168,14 +155,16 @@ module Make = (
     module Cloner = Cloner.Make(Config, ClonerRunner)
     let cloner = Cloner.make(~opts, ())
 
-    makeOutputs(
-      ~version,
-      ~eventCollector=eventCollector->Component.extractOutputs,
-      ~extensionPoints=extensionPointsOutputs->toDict,
-      ~aggregates=aggregatesOutputs,
-      ~readModels=readModelsOutputs,
-      ~cloner=cloner->Component.extractOutputs,
-    )->(setOutputs(self, _))
+    self->setOutputs({
+      version,
+      eventCollector: eventCollector->Component.extractOutputs,
+      extensionPoints: extensionPointsOutputs
+      ->Belt.Array.map(ep => (ep.name, ep))
+      ->Js.Dict.fromArray,
+      aggregates: aggregatesOutputs,
+      readModels: readModelsOutputs,
+      cloner: cloner->Component.extractOutputs,
+    })
   }
 
   let make: maker = (~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler) =>
@@ -183,6 +172,6 @@ module Make = (
       ~componentType=componentType->ComponentType.toString,
       ~name="Core",
       ~construct=construct(~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler, ...),
-      ~opts=None
+      ~opts=None,
     )
 }

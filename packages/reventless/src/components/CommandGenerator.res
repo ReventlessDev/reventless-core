@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.CommandGenerator
 
-type outputs = {"resources": array<resource>}
+type outputs = {resources: array<resource>}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -31,14 +31,15 @@ module type T = {
     ~name: string,
     ~publish: publish,
     ~opts: Pulumi.ComponentResource.options=?,
-    unit,
   ) => component
 }
 
+type arguments = {id: string}
+type meta = {ip: array<string>, user: string}
 type payload = {
-  "command": string,
-  "arguments": {"id": string},
-  "meta": {"ip": array<string>, "user": string},
+  command: string,
+  arguments: arguments,
+  meta: meta,
 }
 type commandGenerator = payload => Js.Promise.t<string>
 
@@ -93,20 +94,19 @@ module Make = (
   let generateCommand: publish => commandGenerator = publish => {
     let fn = async payload => {
       let msgId = Message.uuid()
-      let id = payload["arguments"]["id"]->Spec.Id.makeFromString
+      let id = payload.arguments.id->Spec.Id.makeFromString
       let meta = {
-        open Message
         {
-          service: Spec.name,
-          ip: payload["meta"]["ip"]->Js.Array.shift->Belt.Option.getWithDefault(""),
-          user: payload["meta"]["user"],
+          Message.service: Spec.name,
+          ip: payload.meta.ip->Js.Array.shift->Belt.Option.getWithDefault(""),
+          user: payload.meta.user,
           time: Message.nowAsISOString(),
           msgId,
           correlationId: msgId,
         }
       }
       let decoded =
-        payload["arguments"]
+        payload.arguments
         ->Js.Json.stringifyAny // FIXME: find another way to transform a Js.t into Js.Json.t
         ->Belt.Option.flatMap(jsonString => jsonString->Js.Json.parseExn->Js.Json.decodeObject)
       let params = switch decoded {
@@ -114,12 +114,12 @@ module Make = (
       | None =>
         Js.Exn.raiseError(
           "Couldn't decode:" ++
-          payload["arguments"]
+          payload.arguments
           ->Js.Json.stringifyAny
           ->Belt.Option.getWithDefault("<payload.arguments>"),
         )
       }
-      params[0] = Js.Json.string(payload["command"])
+      params[0] = Js.Json.string(payload.command)
       let decoded =
         params
         ->Js.Json.array
@@ -136,17 +136,16 @@ module Make = (
         )
       }
       let command' = {
-        open Message
-        {id, meta, command}
+        {Message.id, meta, command}
       }
-      await publish(. command')
+      await publish(command')
       meta.msgId
     }
     fn
   }
 
   let construct = (self, name, api, commandHandler) => {
-    let opts = {Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource }
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let resolvers = Resolvers.make(
       ~name=name->ComponentType.name(componentType),
@@ -161,7 +160,7 @@ module Make = (
     self->registerOutputs(outputs)
   }
 
-  let make = (~name, ~publish, ~opts=?, _) =>
+  let make = (~name, ~publish, ~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,

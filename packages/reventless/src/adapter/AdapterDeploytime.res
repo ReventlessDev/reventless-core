@@ -1,16 +1,19 @@
-open ReventlessSpec.Adapter
-open Adapter
+let unwrappedToResource: Adapter.unwrappedResource => ReventlessSpec.Adapter.resource = ({
+  name,
+  id,
+  urn,
+  info,
+  service,
+}) => {
+  name: name->Pulumi.Output.make,
+  id: id->Pulumi.Output.make,
+  urn: urn->Pulumi.Output.make,
+  info: info->Pulumi.Output.make,
+  service: service->Pulumi.Output.make,
+}
 
-let unwrappedToResource: unwrappedResource => resource = unwrappedResource =>
-  resource(
-    ~service=unwrappedResource["service"]->Pulumi.Output.make,
-    ~name=unwrappedResource["name"]->Pulumi.Output.make,
-    ~id=unwrappedResource["id"]->Pulumi.Output.make,
-    ~urn=unwrappedResource["urn"]->Pulumi.Output.make,
-    ~info=unwrappedResource["info"]->Pulumi.Output.make,
-  )
-
-external unsafeUnwrapResource: resource => unwrappedResource = "%identity"
+external unsafeUnwrapResource: ReventlessSpec.Adapter.resource => Adapter.unwrappedResource =
+  "%identity"
 
 let stackRefResourceToResource = stackRefResource =>
   stackRefResource->unsafeUnwrapResource->unwrappedToResource // StackReference outputs are not wrapped in Pulumi.Outputs !

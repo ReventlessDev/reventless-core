@@ -9,8 +9,8 @@ let eventCollectorConnectorOfAllEventMappersExn = (eventMappersRef, eventMapperN
 
 let bucketNameOfAllTasks: (array<Task.outputs>, string) => option<string> = (tasks, taskName) =>
   tasks
-  ->find(taskName)
-  ->Belt.Option.flatMap(task => task["bucket"])
+  ->Belt.Array.getBy(task => task.name == taskName)
+  ->Belt.Option.flatMap(task => task.bucket)
   ->Belt.Option.map(bucket => bucket.bucket->OutputFailsafeRuntime.get)
 
 let bucketNameOfTaskExn = (tasks, taskName) =>

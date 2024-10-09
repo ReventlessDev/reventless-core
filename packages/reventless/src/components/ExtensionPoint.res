@@ -118,7 +118,7 @@ module Make = (
   }
 
   let construct = (~publishToAggregates, ~scheduler, ~queryEngine, self, name) => {
-    let opts = {Pulumi.ComponentResource.parent:self->Component.toPulumiResource}
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     let childName = name->Js.String2.replace(".", "")->ComponentType.name(componentType)
 
@@ -135,18 +135,14 @@ module Make = (
           ->Belt.Option.map((publishJsons: ReventlessSpec.CommandTopic.publishJsons) =>
             publishJsons([cmdJson])
           )
-          ->(
-            Belt.Option.mapWithDefault(
-              _,
-              () =>
-                Js.Exn.raiseError(
-                  `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
-                ),
-              x => () => x,
-            )
+          ->Belt.Option.mapWithDefault(
+            () =>
+              Js.Exn.raiseError(
+                `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
+              ),
+            x => {() => x},
           )
-        ()
-        switch result {
+        switch result() {
         | _ => Belt.Result.Ok(reference)
         | exception err => {
             Js.log2("ExtensionPoint: Error on publish command:", err)
@@ -190,7 +186,7 @@ module Make = (
         event'Json,
         Mappings.mappings,
         scheduler,
-        (commandTopic->Component.extractOutputs)["resources"],
+        (commandTopic->Component.extractOutputs).resources,
         queryEngine,
       )
 
@@ -204,7 +200,7 @@ module Make = (
           Mappings.mappings,
           scheduler,
           queryEngine,
-          (commandTopic->Component.extractOutputs)["resources"],
+          (commandTopic->Component.extractOutputs).resources,
         )
 
       commandActions->Belt.Array.map(applyCommandAction)->Js.Promise.all
@@ -231,6 +227,6 @@ module Make = (
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine, ...),
-      ~opts
+      ~opts,
     )
 }

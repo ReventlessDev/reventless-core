@@ -1,11 +1,11 @@
 let componentType = ComponentType.Extension
 
 type outputs = {
-  "name": string,
-  "extensionPointName": string,
-  "aggregateNames": array<string>,
-  "incomingEventHandler": (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
-  "outgoingEventHandler": (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
+  name: string,
+  extensionPointName: string,
+  aggregateNames: array<string>,
+  incomingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
+  outgoingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
 }
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -22,7 +22,6 @@ module type T = {
     ~publishToReadModels: Js.Dict.t<ReventlessSpec.EventCollector.enqueueEvent>,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.options>,
-    unit,
   ) => component
 }
 
@@ -229,19 +228,17 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       ->Util.Promise.toUnit
     }
 
-    self->setOutputs(
-      makeOutputs(
-        ~name,
-        ~extensionPointName=Spec.name,
-        ~aggregateNames=Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
-          Mapping.aggregateName == NoAggregate.name || Mapping.mapOutgoingEvent->Belt.Option.isNone
-            ? None
-            : Some(Mapping.aggregateName)
-        ),
-        ~incomingEventHandler,
-        ~outgoingEventHandler,
+    self->setOutputs({
+      name,
+      extensionPointName: Spec.name,
+      aggregateNames: Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
+        Mapping.aggregateName == NoAggregate.name || Mapping.mapOutgoingEvent->Belt.Option.isNone
+          ? None
+          : Some(Mapping.aggregateName)
       ),
-    )
+      incomingEventHandler,
+      outgoingEventHandler,
+    })
   }
 
   let make: (
@@ -251,7 +248,6 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
     ~publishToReadModels: Js.Dict.t<ReventlessSpec.EventCollector.enqueueEvent>,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.options>,
-    unit,
   ) => component = (
     ~publishToCorePluginExtensionPoint,
     ~publishToAggregates,
@@ -259,7 +255,6 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
     ~publishToReadModels,
     ~queryEngine,
     ~opts,
-    _: unit,
   ) =>
     make(
       ~componentType=componentType->ComponentType.toString,
@@ -272,6 +267,6 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
         ~queryEngine,
         ...
       ),
-      ~opts
+      ~opts,
     )
 }

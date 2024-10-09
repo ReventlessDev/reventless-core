@@ -16,12 +16,12 @@ let unsafeGetProp: (obj, string) => propValue = %raw(`
     return obj[prop]
   }
 `)
-let unsafeGetProp: (. obj, string) => propValue = (. obj, key) => unsafeGetProp(obj, key)
+let unsafeGetProp: (obj, string) => propValue = (obj, key) => unsafeGetProp(obj, key)
 
 let extractOutputs: t<'component, 'outputs> => 'outputs = component =>
   component
   ->getOutputKeys
-  ->Belt.Array.map(key => (key, unsafeGetProp(. component->toObj, key)))
+  ->Belt.Array.map(key => (key, unsafeGetProp(component->toObj, key)))
   ->objFromEntries
 
 let extractMultipleOutputs: array<t<'component, 'outputs>> => array<'outputs> = components =>

@@ -62,7 +62,7 @@ module Make = (Spec: Spec, Config: Config) => {
           `bufferSize: ${bufferSizeStr}, chunk: ${chunkCountStr}, size: ${sizeStr}`,
         )
         let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
-        let promise = Config.publishCommands(. Spec.name, commandsToSend->toJsons)
+        let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
         | () => Logger.debug(~loc=__LOC__, "send", `finished chunk ${chunkCountStr}: ${sizeStr}`)
@@ -85,7 +85,7 @@ module Make = (Spec: Spec, Config: Config) => {
       let size = buffer->Belt.Array.size
       if size > 0 {
         let commandsToSend = buffer->Js.Array2.removeCountInPlace(~pos=0, ~count=size)
-        let promise = Config.publishCommands(. Spec.name, commandsToSend->toJsons)
+        let promise = Config.publishCommands(Spec.name, commandsToSend->toJsons)
         running := Some(promise)
         switch await promise {
         | () => Js.log2("CommandPublisher.send: finished SendAllInOneChunk:", size)

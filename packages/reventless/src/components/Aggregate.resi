@@ -1,13 +1,22 @@
 module ReventlessCommandTopic = CommandTopic
+
 let componentType: ComponentType.t
+
 type outputs = {
-  "commandGenerator": CommandGenerator.outputs,
-  "commandTopic": ReventlessSpec.CommandTopic.outputs,
-  "eventLog": EventLog.outputs,
-  "eventMapper": option<EventMapper.outputs>,
-  "name": string,
+  name: string,
+  commandGenerator: CommandGenerator.outputs,
+  commandTopic: ReventlessSpec.CommandTopic.outputs,
+  eventLog: EventLog.outputs,
+  eventMapper?: EventMapper.outputs,
 }
 type allOutputs = Js.Dict.t<outputs>
+
+let allEventTopics: Js.Dict.t<outputs> => Js.Dict.t<ReventlessSpec.EventTopic.outputs>
+let filterEventTopics: (
+  Js.Dict.t<outputs>,
+  Belt.Set.String.t,
+) => Js.Dict.t<ReventlessSpec.EventTopic.outputs>
+
 type name = string
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -17,7 +26,7 @@ type addEventMapper = (
 ) => outputs
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T
-  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => component
+  let make: (~opts: Pulumi.ComponentResource.options=?) => component
   let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
   let addEventMapper: component => addEventMapper
 }
@@ -75,7 +84,7 @@ module Make: (
     let error_encode: error => Js.Json.t
     let error_decode: Js.Json.t => Belt.Result.t<error, Decco.decodeError>
   }
-  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => component
+  let make: (~opts: Pulumi.ComponentResource.options=?) => component
   let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
   let addEventMapper: component => addEventMapper
 }

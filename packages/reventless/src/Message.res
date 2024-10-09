@@ -32,9 +32,9 @@ let toMessageBody = ({id, meta, commandJson}) => {
   ->Js.Json.stringify
 }
 
-type commandHandler<'id, 'command> = (. command'<'id, 'command>) => Js.Promise.t<unit>
+type commandHandler<'id, 'command> = command'<'id, 'command> => Js.Promise.t<unit>
 
-type commandsHandler<'id, 'command> = (. 'id, array<command'<'id, 'command>>) => Js.Promise.t<unit>
+type commandsHandler<'id, 'command> = ('id, array<command'<'id, 'command>>) => Js.Promise.t<unit>
 
 let serviceNameOfMsg = msgJson =>
   switch msgJson->Js.Json.decodeObject {

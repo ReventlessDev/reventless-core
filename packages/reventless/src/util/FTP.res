@@ -42,8 +42,8 @@ let make: Client.t => promise<t> = client => {
   client
   ->make((readdirError, entities) =>
     switch readdirError {
-    | None => resolve(. entities)
-    | Some(err) => reject(. CouldNotEstablishSftpConnection(err->toSftpError))
+    | None => resolve(entities)
+    | Some(err) => reject(CouldNotEstablishSftpConnection(err->toSftpError))
     }
   )
   ->ignore // ignore bool return value, which states to listen for continue event before sending more data
@@ -57,8 +57,8 @@ let readdir: (t, string) => promise<array<entity>> = (client, dirName) => {
   client
   ->readdir(~dirName, (readdirError, entities) =>
     switch readdirError {
-    | None => resolve(. entities)
-    | Some(err) => reject(. CouldNotReadDirectory(dirName, err))
+    | None => resolve(entities)
+    | Some(err) => reject(CouldNotReadDirectory(dirName, err))
     }
   )
   ->ignore // ignore bool return value, which states to listen for continue event before sending more data

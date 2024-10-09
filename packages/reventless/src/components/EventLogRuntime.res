@@ -23,7 +23,7 @@ let storageAppendErrorHandler = (specName, specIdToString, id, err) => {
 }
 
 let publishToEventTopic = async (eventTopicPublish, specIdToString, id, events') => {
-  try await eventTopicPublish(. events') catch {
+  try await eventTopicPublish(events') catch {
   | Js.Exn.Error(err) =>
     let msg = `EventLog.appendFn(${id->specIdToString}): EventTopic.publish Error: `
     Js.log2(msg, err)
@@ -55,7 +55,7 @@ let appendFn = (
   try {
     let eventsJson = events'->eventsToJson(specIdEncode, specEventEncode, id)
 
-    switch await storageAppend(. sequenceNr, id->specIdToString, eventsJson) {
+    switch await storageAppend(sequenceNr, id->specIdToString, eventsJson) {
     | appendResult =>
       await publishToEventTopic(eventTopicPublish, specIdToString, id, events')
       appendResult
@@ -92,7 +92,8 @@ let decodeEvent = (id, specEventDecode, json) =>
 let decodeEvents = (jsons, id, specEventDecode) =>
   jsons->Belt.Array.map(json => decodeEvent(id, specEventDecode, json))
 
-let replayFn = (storageReplay, specIdToString, specEventDecode) => async (. id) => {
-  let jsonEvents = await storageReplay(. id->specIdToString)
-  jsonEvents->decodeEvents(id->specIdToString, specEventDecode)
-}
+let replayFn = (storageReplay, specIdToString, specEventDecode) =>
+  async id => {
+    let jsonEvents = await storageReplay(id->specIdToString)
+    jsonEvents->decodeEvents(id->specIdToString, specEventDecode)
+  }

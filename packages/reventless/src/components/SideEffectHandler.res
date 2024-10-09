@@ -95,7 +95,7 @@ module Make = (EventCollector: EventCollector.T): T => {
       }
     })
 
-  let eventsHandler = (sideEffects, queryEngine) => events'Json => {
+  let eventsHandler = (sideEffects, queryEngine, events'Json) => {
     events'Json
     ->Belt.Array.map(async event'Json =>
       switch sideEffects->findSideEffect(event'Json) {
@@ -129,14 +129,15 @@ module Make = (EventCollector: EventCollector.T): T => {
     ->Util.Promise.toUnit
   }
 
-  let createScheduleFn = (scheduler, queueResources) => async schedule =>
-    await Schedule.create(scheduler, queueResources)(schedule)
+  let createScheduleFn = (scheduler, queueResources) =>
+    async schedule => await Schedule.create(scheduler, queueResources)(schedule)
 
-  let deleteScheduleFn = (scheduler, queueResources) => async scheduleName =>
-    await Schedule.delete(scheduler, queueResources)(scheduleName)
+  let deleteScheduleFn = (scheduler, queueResources) =>
+    async scheduleName => await Schedule.delete(scheduler, queueResources)(scheduleName)
 
-  let enqueueEventFn = eventCollector => async (delay, id, message) =>
-    await EventCollector.enqueueEvent(eventCollector)(delay, id, message)
+  let enqueueEventFn = eventCollector =>
+    async (delay, id, message) =>
+      await EventCollector.enqueueEvent(eventCollector)(delay, id, message)
 
   let construct = (
     ~sideEffects,
@@ -157,7 +158,7 @@ module Make = (EventCollector: EventCollector.T): T => {
       ->Belt.Array.map((module(SideEffect: ReventlessSpec.SideEffect.T)) => SideEffect.Source.name)
       ->Belt.Set.String.fromArray
 
-    let eventsHandler = eventsHandler(sideEffects, queryEngine)
+    let eventsHandler = eventsHandler(sideEffects, queryEngine, ...)
     let eventCollector = EventCollector.make(
       ~name,
       ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
@@ -169,7 +170,7 @@ module Make = (EventCollector: EventCollector.T): T => {
       ~opts=Some(opts),
       (),
     )
-    let eventCollectorResources = (eventCollector->Component.extractOutputs)["resources"]
+    let eventCollectorResources = (eventCollector->Component.extractOutputs).resources
 
     self->setEnqueueEvent(enqueueEventFn(eventCollector))
     self->setCreateSchedule(createScheduleFn(scheduler, eventCollectorResources))
@@ -205,7 +206,7 @@ module Make = (EventCollector: EventCollector.T): T => {
         ~policy2,
         ...
       ),
-      ~opts=opts->Belt.Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions)
+      ~opts=opts->Belt.Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions),
     )
   }
 }

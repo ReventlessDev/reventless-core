@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.Cloner
 
-type outputs = {"resources": array<resource>}
+type outputs = {resources: array<resource>}
 
 type fullQualifiedStackName = {
   organization: string,
@@ -18,7 +18,7 @@ module type T = {
 }
 
 module Adapter = {
-  type runner = {resources: Pulumi.Output.t<array<resource>>}
+  type runner = {resources: array<resource>}
   type runnerMaker<'api> = (
     ~name: string,
     ~api: 'api,
@@ -35,7 +35,7 @@ module Adapter = {
     let make: runnerMaker<api>
   }
 
-  let noRunner = {resources: []->Pulumi.Output.make}
+  let noRunner = {resources: []}
 }
 
 module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.api): T => {
@@ -50,9 +50,6 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
-  @obj
-  external makeOutputs: (~resources: Pulumi.Output.t<array<resource>>) => outputs = ""
-
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send external setOutputs: (component, outputs) => unit = "setOutputs"
@@ -62,7 +59,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
   }
 
   let construct = (~api, self, name) => {
-    let opts = {Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource}
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let fullQualifiedStackName = {
       organization: Env.pulumiOrganization->Belt.Option.getWithDefault("NO_ORGANIZATION"),
@@ -71,7 +68,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
     }
     let secretsConfig = Pulumi.Config.make(Some("secrets"))
     let secretUrns =
-      ["aws", "pulumi", "repository"]->Belt.Array.map(str => Pulumi.Config.get(secretsConfig,str))
+      ["aws", "pulumi", "repository"]->Belt.Array.map(str => Pulumi.Config.get(secretsConfig, str))
     let reventlessCiSecretUrn = secretsConfig->Pulumi.Config.get("reventless-ci")
 
     let runner = switch (secretUrns, reventlessCiSecretUrn) {
@@ -90,7 +87,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
       Js.log("No ClonerRunner created because no secrets are configured in Pulumi config !")
       Adapter.noRunner
     }
-    self->setOutputs(makeOutputs(~resources=runner.resources))
+    self->setOutputs({resources: runner.resources})
   }
 
   let make = (~opts=?, _) =>

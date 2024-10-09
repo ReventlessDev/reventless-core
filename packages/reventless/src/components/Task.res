@@ -7,9 +7,9 @@ type publishCommands = (
 ) => Js.Promise.t<unit>
 
 type outputs = {
-  "name": string,
-  "bucket": option<PulumiAws.S3.Bucket.t>,
-  "sideEffectHandler": option<SideEffectHandler.outputs>,
+  name: string,
+  bucket?: PulumiAws.S3.Bucket.t,
+  sideEffectHandler?: SideEffectHandler.outputs,
 }
 
 type t
@@ -64,10 +64,10 @@ let construct = (
   self,
   _name,
 ) => {
-  let opts = {Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource}
+  let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
-  let publishCommands: publishCommands = (. aggregateName, cmdJsons) => {
-    (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(. cmdJsons)
+  let publishCommands: publishCommands = (aggregateName, cmdJsons) => {
+    (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(cmdJsons)
   }
 
   self->setOutputs(
@@ -76,7 +76,7 @@ let construct = (
       scheduler,
       publishCommands,
       queryBucketName,
-      Util.Aggregate.allEventTopics(allAggregates),
+      Aggregate.allEventTopics(allAggregates),
       opts,
     ),
   )

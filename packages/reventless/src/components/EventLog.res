@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.EventLog
 
-type outputs = {"resources": array<resource>, "eventTopic": ReventlessSpec.EventTopic.outputs}
+type outputs = {resources: array<resource>, eventTopic: ReventlessSpec.EventTopic.outputs}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -61,12 +61,6 @@ module Make = (
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
-  @obj
-  external makeOutputs: (
-    ~resources: array<resource>,
-    ~eventTopic: ReventlessSpec.EventTopic.outputs,
-  ) => outputs = ""
-
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send external setOutputs: (component, outputs) => unit = "setOutputs"
@@ -83,7 +77,7 @@ module Make = (
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher)
 
   let construct = (self, name) => {
-    let opts = {Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource}
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let storage = Storage.make(~name=name->ComponentType.name(componentType), ~opts)
 
@@ -108,9 +102,10 @@ module Make = (
       EventLogRuntime.replayFn(storage.Adapter.replay, Spec.Id.toString, Spec.event_decode),
     )
 
-    self->setOutputs(
-      makeOutputs(~resources=storage.resources, ~eventTopic=eventTopic->Component.extractOutputs),
-    )
+    self->setOutputs({
+      resources: storage.resources,
+      eventTopic: eventTopic->Component.extractOutputs,
+    })
   }
 
   let make = (~name, ~opts=?, _) =>

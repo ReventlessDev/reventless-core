@@ -2,6 +2,11 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.QueryDb
 
+let allResolversMakers = allQueryDbs =>
+  allQueryDbs
+  ->Js.Dict.values
+  ->Belt.Array.map((queryDb: ReventlessSpec.QueryDb.outputs) => queryDb.resolversMaker)
+
 module type AggregateSpec = {
   module Id: ReventlessSpec.Id.T
   let name: string
@@ -200,48 +205,54 @@ module Make = (
       []
     }
 
-  let loadFn = storage => async (. id) =>
-    switch await storage.Adapter.load(. id->Spec.Id.toString) {
-    | result =>
-      result->Belt.Result.map(states => states->Belt.Array.map(state => decode(id, state))->Belt.Array.concatMany)
-    }
+  let loadFn = storage =>
+    async id =>
+      switch await storage.Adapter.load(id->Spec.Id.toString) {
+      | result =>
+        result->Belt.Result.map(states =>
+          states->Belt.Array.map(state => decode(id, state))->Belt.Array.concatMany
+        )
+      }
 
-  let saveFn = storage => async (. id, state, saveMode, ttl) =>
-    switch state->Spec.state_encode->Js.Json.decodeObject {
-    | Some(dict) =>
-      dict->Js.Dict.set("id", Spec.Id.t_encode(id))
-      let json = Js.Json.object_(dict)
-      await storage.Adapter.save(. id->Spec.Id.toString, json, saveMode, ttl)
-    | None =>
-      Js.log2("QueryDB.save: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
-      Belt.Result.Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
-    }
-
-  let saveBatchFn = storage => async (. items) => {
-    let batch = items->Belt.Array.keepMap(((id, state, ttl)) =>
+  let saveFn = storage =>
+    async (id, state, saveMode, ttl) =>
       switch state->Spec.state_encode->Js.Json.decodeObject {
       | Some(dict) =>
         dict->Js.Dict.set("id", Spec.Id.t_encode(id))
         let json = Js.Json.object_(dict)
-        Some((id->Spec.Id.toString, json, ttl))
+        await storage.Adapter.save(id->Spec.Id.toString, json, saveMode, ttl)
       | None =>
-        Js.log2("QueryDB.saveBatch: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
-        None
+        Js.log2("QueryDB.save: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+        Belt.Result.Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
       }
-    )
-    await storage.Adapter.saveBatch(. batch)
-  }
 
-  let countFn = storage => async (. id, fieldName, inc) =>
-    await storage.Adapter.count(. id->Spec.Id.toString, fieldName, inc)
+  let saveBatchFn = storage =>
+    async items => {
+      let batch = items->Belt.Array.keepMap(((id, state, ttl)) =>
+        switch state->Spec.state_encode->Js.Json.decodeObject {
+        | Some(dict) =>
+          dict->Js.Dict.set("id", Spec.Id.t_encode(id))
+          let json = Js.Json.object_(dict)
+          Some((id->Spec.Id.toString, json, ttl))
+        | None =>
+          Js.log2("QueryDB.saveBatch: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+          None
+        }
+      )
+      await storage.Adapter.saveBatch(batch)
+    }
 
-  let deleteFn = storage => async (. id, subId) =>
-    await storage.Adapter.delete(. id->Spec.Id.toString, subId)
+  let countFn = storage =>
+    async (id, fieldName, inc) => await storage.Adapter.count(id->Spec.Id.toString, fieldName, inc)
 
-  let deleteBatchFn = storage => async (. ids) => {
-    let ids = ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.toString, sort))
-    await storage.Adapter.deleteBatch(. ids)
-  }
+  let deleteFn = storage =>
+    async (id, subId) => await storage.Adapter.delete(id->Spec.Id.toString, subId)
+
+  let deleteBatchFn = storage =>
+    async ids => {
+      let ids = ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.toString, sort))
+      await storage.Adapter.deleteBatch(ids)
+    }
 
   let outputs: ReventlessSpec.Component.t<
     t,
@@ -249,7 +260,7 @@ module Make = (
   > => ReventlessSpec.QueryDb.outputs = component => Component.extractOutputs(component)
 
   let construct = (~ttl=?, self, name, api, apiRole) => {
-    let opts = {Pulumi.CustomResourceOptions.parent:self->Component.toPulumiResource}
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let subIdField = Spec.subIdConfig->Belt.Option.map(config => config.subIdField)
     let storageName = name->ComponentType.name(componentType)

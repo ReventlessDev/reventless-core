@@ -8,18 +8,15 @@ var ComponentType$Reventless = require("../ComponentType.res.js");
 var Adapter = {};
 
 function Make(Connector) {
-  var enqueueEventFn = function (connector) {
-    return function (delay, id, message) {
-      return connector.enqueueEvent(delay, id, message);
-    };
-  };
   var construct = function (eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, self, name) {
     var opts_parent = Caml_option.some(self);
     var opts = {
       parent: opts_parent
     };
     var connector = Connector.make(ComponentType$Reventless.name(name, "EventCollector"), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
-    self.enqueueEvent = enqueueEventFn(connector);
+    self.enqueueEvent = (function (extra, extra$1, extra$2) {
+        return connector.enqueueEvent(extra, extra$1, extra$2);
+      });
     var outputs = {
       name: name,
       resources: connector.resources

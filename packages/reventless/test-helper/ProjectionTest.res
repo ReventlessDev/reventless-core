@@ -107,8 +107,8 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
 
   open Belt.Result
   //open QueryDb
-  let load = store => id => store->states(id)->Ok->Js.Promise.resolve
-  let save = store => (id, state, saveMode: ReventlessSpec.QueryDb.saveMode, _ttl) =>
+  let load = (store, id) => store->states(id)->Ok->Js.Promise.resolve
+  let save = (store, id, state, saveMode: ReventlessSpec.QueryDb.saveMode, _ttl) =>
     switch (store->states(id), saveMode) {
     | (_, Any)
     | ([], Init)
@@ -117,11 +117,11 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       Ok()->Js.Promise.resolve
     | _ => Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
     }
-  let saveBatch = store => batch => {
+  let saveBatch = (store, batch) => {
     batch->Belt.Array.forEach(((id, state, _ttl)) => store->addState(id, state))
     Ok()->Js.Promise.resolve
   }
-  let delete = store => (id, subId) =>
+  let delete = (store, id, subId) =>
     switch (subId, Projection.subIdConfig) {
     | (None, _) =>
       store->deleteStates(id)
@@ -131,7 +131,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       Ok()->Js.Promise.resolve
     | _ => Ok()->Js.Promise.resolve
     }
-  let deleteBatch = store => ids => {
+  let deleteBatch = (store, ids) => {
     ids->Belt.Array.forEach(((id, subId)) =>
       switch (subId, Projection.subIdConfig) {
       | (None, _) => store->deleteStates(id)
@@ -154,18 +154,18 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
         event->Projection.sourceEvent_encode,
         "\nstore:",
         Js.Dict.map(
-          (. states) => states->Belt.Array.toArray->Belt.Array.map(Projection.targetState_encode),
+          (states) => states->Belt.Array.toArray->Belt.Array.map(Projection.targetState_encode),
           store,
         ),
       )
  */
 
     await [{id, meta, event}->Projection.map]->handleActions({
-      load: load(store),
-      save: save(store),
-      saveBatch: saveBatch(store),
-      delete: delete(store),
-      deleteBatch: deleteBatch(store),
+      load: load(store, ...),
+      save: save(store, ...),
+      saveBatch: saveBatch(store, ...),
+      delete: delete(store, ...),
+      deleteBatch: deleteBatch(store, ...),
     })
     store
   }

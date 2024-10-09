@@ -9,7 +9,7 @@ var Pulumi = require("@pulumi/pulumi");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
 var noRunner = {
-  resources: Pulumi.output([])
+  resources: []
 };
 
 var Adapter = {
@@ -92,4 +92,4 @@ var componentType = "Cloner";
 exports.componentType = componentType;
 exports.Adapter = Adapter;
 exports.Make = Make;
-/* noRunner Not a pure module */
+/* ./Component Not a pure module */

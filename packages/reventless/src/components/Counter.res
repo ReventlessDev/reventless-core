@@ -296,8 +296,8 @@ module Make = (
 
     self->setOutputs(
       makeOutputs(
-        ~referencesDb=(referencesDb->ReferencesDb.outputs)["resources"],
-        ~countsDb=(countsDb->CountsDb.outputs)["resources"],
+        ~referencesDb=(referencesDb->ReferencesDb.outputs).resources,
+        ~countsDb=(countsDb->CountsDb.outputs).resources,
       ),
     )
   }
@@ -309,6 +309,6 @@ module Make = (
       ~componentType=componentType->ComponentType.toString,
       ~name=name->ComponentType.name(componentType),
       ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl), ...),
-      ~opts
+      ~opts,
     )
 }

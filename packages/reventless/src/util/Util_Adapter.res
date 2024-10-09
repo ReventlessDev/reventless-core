@@ -1,12 +1,11 @@
 open ReventlessSpec.Adapter
-open Adapter
 
 let filterSupportedResources: (
   array<resource>,
   array<string>,
 ) => Pulumi.Output.t<array<resource>> = (resources, supportedServices) =>
   resources
-  ->Belt.Array.map(resource => resource["service"])
+  ->Belt.Array.map(resource => resource.service)
   ->Pulumi.Output.all
   ->Pulumi.Output.apply(services =>
     resources
@@ -18,11 +17,11 @@ let filterSupportedResources: (
   )
 
 let filterSupportedUnwrappedResources: (
-  array<unwrappedResource>,
+  array<Adapter.unwrappedResource>,
   array<string>,
-) => array<unwrappedResource> = (resources, supportedServices) =>
+) => array<Adapter.unwrappedResource> = (resources, supportedServices) =>
   resources->Belt.Array.keep(resource =>
-    supportedServices->Belt.Array.some(supportedService => resource["service"] == supportedService)
+    supportedServices->Belt.Array.some(supportedService => resource.service == supportedService)
   )
 
 let findResource = (resources, service) =>
@@ -39,7 +38,6 @@ let findResource = (resources, service) =>
     | matching => matching->Array.getUnsafe(0)
     }
   )
-  ->outputToResource
 
 let findUnwrappedResource = (resources, service) =>
   switch resources->filterSupportedUnwrappedResources([service]) {
@@ -54,9 +52,11 @@ let findUnwrappedResource = (resources, service) =>
   }
 
 let findResourceInOutput = (resourcesOutput, service) =>
-  resourcesOutput
-  ->Pulumi.Output.flatMap(resources => resources->filterSupportedResources([service]))
-  ->resourcesOutputToResource
+  resourcesOutput->Pulumi.Output.flatMap(resources =>
+    resources->filterSupportedResources([service])
+  )
+
+type component = {resources: array<ReventlessSpec.Adapter.resource>}
 
 let partitionSupportedResources = (adapters, supportedServices) => {
   let (names, resourceOutputs) =
@@ -64,7 +64,7 @@ let partitionSupportedResources = (adapters, supportedServices) => {
     ->Js.Dict.entries
     ->Belt.Array.map(((name, adapter)) => (
       name,
-      adapter["resources"]->filterSupportedResources(supportedServices),
+      (adapter :> component).resources->filterSupportedResources(supportedServices),
     ))
     ->Belt.Array.unzip
 
@@ -85,12 +85,12 @@ let partitionSupportedResources = (adapters, supportedServices) => {
   })
 }
 
-type unwrappedResources = array<(string, array<unwrappedResource>)>
+type unwrappedResources = array<(string, array<Adapter.unwrappedResource>)>
 
 let partitionUnwrappedResourcesByService: (
   unwrappedResources,
   string,
 ) => (unwrappedResources, unwrappedResources) = (resources, supportedService) =>
   resources->Belt.Array.partition(((_, resources)) =>
-    resources->Belt.Array.some(resource => resource["service"] == supportedService)
+    resources->Belt.Array.some(resource => resource.service == supportedService)
   )

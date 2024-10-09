@@ -38,8 +38,8 @@ let mapExn: (promise<'a>, 'exn => 'b) => promise<'b> = async (p, mapExn) =>
 let toUnit: promise<'a> => promise<unit> = p => p->mapOk(ignore)
 
 let make = () => {
-  let res = ref((. _result) => ())
-  let rej = ref((. _exn) => ())
+  let res = ref(_result => ())
+  let rej = ref(_exn => ())
   let promise = Js.Promise.make((~resolve, ~reject) => {
     res := resolve
     rej := reject
@@ -49,14 +49,14 @@ let make = () => {
 
 let onEndHandler = async (flush, resolve) => {
   let _ = switch await flush() {
-  | _res => resolve(. ())
+  | _res => resolve()
   | exception Js.Exn.Error(e) => Js.log2(__LOC__, e)
   }
 }
 
 let finishTimeout = timeout => {
   let (promise, resolve, _reject) = make()
-  let _ = Js.Global.setTimeout(() => resolve(. ()), timeout)
+  let _ = Js.Global.setTimeout(() => resolve(), timeout)
   promise
 }
 

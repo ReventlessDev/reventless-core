@@ -1,5 +1,8 @@
 let componentType = ComponentType.ReadModel
 
+let allQueryDbs = allReadModels =>
+  Js.Dict.map((readModel: ReventlessSpec.ReadModel.outputs) => readModel.queryDb, allReadModels)
+
 module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.ReadModel.Spec.T,
@@ -134,11 +137,11 @@ module Make = (
     )
   }
 
-  let make = (~allEventTopics, ~opts=?, _) =>
+  let make = (~allEventTopics, ~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~allEventTopics, ...),
-      ~opts
+      ~opts,
     )
 }

@@ -60,7 +60,7 @@ function Make(Config, Spec, Behaviour, Resolvers) {
     };
     return self.registerOutputs(outputs);
   };
-  var make = function (name, publish, opts, param) {
+  var make = function (name, publish, opts) {
     var prim0 = ComponentType$Reventless.toString("CommandGenerator");
     var prim4 = Config.api;
     return new Component(prim0, name, construct, opts, prim4, publish);

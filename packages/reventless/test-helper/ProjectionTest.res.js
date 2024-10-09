@@ -58,133 +58,6 @@ function Make(Projection) {
                             }));
               })), []);
   };
-  var load = function (store) {
-    return function (id) {
-      return Promise.resolve({
-                  TAG: "Ok",
-                  _0: states(store, id)
-                });
-    };
-  };
-  var save = function (store) {
-    return function (id, state, saveMode, _ttl) {
-      var match = states(store, id);
-      var exit = 0;
-      switch (saveMode) {
-        case "Init" :
-        case "Overwrite" :
-            exit = 2;
-            break;
-        case "Any" :
-            break;
-        
-      }
-      if (exit === 2) {
-        var len = match.length;
-        if (len !== 1) {
-          if (len !== 0) {
-            return Promise.resolve({
-                        TAG: "Error",
-                        _0: "StaleState"
-                      });
-          }
-          if (saveMode !== "Init") {
-            return Promise.resolve({
-                        TAG: "Error",
-                        _0: "StaleState"
-                      });
-          }
-          
-        } else if (saveMode === "Init") {
-          return Promise.resolve({
-                      TAG: "Error",
-                      _0: "StaleState"
-                    });
-        }
-        
-      }
-      setStates(store, id, [state]);
-      return Promise.resolve({
-                  TAG: "Ok",
-                  _0: undefined
-                });
-    };
-  };
-  var saveBatch = function (store) {
-    return function (batch) {
-      Belt_Array.forEach(batch, (function (param) {
-              var id = param[0];
-              var state = param[1];
-              var subId = getSubId(state);
-              var match = subId !== undefined ? (
-                  Belt_Array.some(states(store, id), (function (state) {
-                          return hasSubId(subId, state);
-                        })) ? [
-                      updateState(store, id, subId, state),
-                      []
-                    ] : [
-                      states(store, id),
-                      [state]
-                    ]
-                ) : [
-                  states(store, id),
-                  [state]
-                ];
-              store[id] = Belt_Array.concat(match[0], match[1]);
-            }));
-      return Promise.resolve({
-                  TAG: "Ok",
-                  _0: undefined
-                });
-    };
-  };
-  var $$delete = function (store) {
-    return function (id, subId) {
-      var match = Projection.subIdConfig;
-      if (subId !== undefined) {
-        if (match !== undefined) {
-          deleteSubState(store, id, subId[1], match.getSubId);
-          return Promise.resolve({
-                      TAG: "Ok",
-                      _0: undefined
-                    });
-        } else {
-          return Promise.resolve({
-                      TAG: "Ok",
-                      _0: undefined
-                    });
-        }
-      } else {
-        deleteStates(store, id);
-        return Promise.resolve({
-                    TAG: "Ok",
-                    _0: undefined
-                  });
-      }
-    };
-  };
-  var deleteBatch = function (store) {
-    return function (ids) {
-      Belt_Array.forEach(ids, (function (param) {
-              var subId = param[1];
-              var id = param[0];
-              var match = Projection.subIdConfig;
-              if (subId !== undefined) {
-                if (match !== undefined) {
-                  return deleteSubState(store, id, subId[1], match.getSubId);
-                } else {
-                  return ;
-                }
-              } else {
-                return deleteStates(store, id);
-              }
-            }));
-      return Promise.resolve({
-                  TAG: "Ok",
-                  _0: undefined
-                });
-    };
-  };
   var handleActions = function (actions, primitives) {
     return Projection$Reventless.handleActions(actions, primitives, Projection.subIdConfig);
   };
@@ -194,11 +67,123 @@ function Make(Projection) {
                 meta: meta,
                 event: $$event
               })], {
-          load: load(store),
-          save: save(store),
-          saveBatch: saveBatch(store),
-          delete: $$delete(store),
-          deleteBatch: deleteBatch(store)
+          load: (function (extra) {
+              return Promise.resolve({
+                          TAG: "Ok",
+                          _0: states(store, extra)
+                        });
+            }),
+          save: (function (extra, extra$1, extra$2, extra$3) {
+              var match = states(store, extra);
+              var exit = 0;
+              switch (extra$2) {
+                case "Init" :
+                case "Overwrite" :
+                    exit = 2;
+                    break;
+                case "Any" :
+                    break;
+                
+              }
+              if (exit === 2) {
+                var len = match.length;
+                if (len !== 1) {
+                  if (len !== 0) {
+                    return Promise.resolve({
+                                TAG: "Error",
+                                _0: "StaleState"
+                              });
+                  }
+                  if (extra$2 !== "Init") {
+                    return Promise.resolve({
+                                TAG: "Error",
+                                _0: "StaleState"
+                              });
+                  }
+                  
+                } else if (extra$2 === "Init") {
+                  return Promise.resolve({
+                              TAG: "Error",
+                              _0: "StaleState"
+                            });
+                }
+                
+              }
+              setStates(store, extra, [extra$1]);
+              return Promise.resolve({
+                          TAG: "Ok",
+                          _0: undefined
+                        });
+            }),
+          saveBatch: (function (extra) {
+              Belt_Array.forEach(extra, (function (param) {
+                      var id = param[0];
+                      var state = param[1];
+                      var subId = getSubId(state);
+                      var match = subId !== undefined ? (
+                          Belt_Array.some(states(store, id), (function (state) {
+                                  return hasSubId(subId, state);
+                                })) ? [
+                              updateState(store, id, subId, state),
+                              []
+                            ] : [
+                              states(store, id),
+                              [state]
+                            ]
+                        ) : [
+                          states(store, id),
+                          [state]
+                        ];
+                      store[id] = Belt_Array.concat(match[0], match[1]);
+                    }));
+              return Promise.resolve({
+                          TAG: "Ok",
+                          _0: undefined
+                        });
+            }),
+          delete: (function (extra, extra$1) {
+              var match = Projection.subIdConfig;
+              if (extra$1 !== undefined) {
+                if (match !== undefined) {
+                  deleteSubState(store, extra, extra$1[1], match.getSubId);
+                  return Promise.resolve({
+                              TAG: "Ok",
+                              _0: undefined
+                            });
+                } else {
+                  return Promise.resolve({
+                              TAG: "Ok",
+                              _0: undefined
+                            });
+                }
+              } else {
+                deleteStates(store, extra);
+                return Promise.resolve({
+                            TAG: "Ok",
+                            _0: undefined
+                          });
+              }
+            }),
+          deleteBatch: (function (extra) {
+              Belt_Array.forEach(extra, (function (param) {
+                      var subId = param[1];
+                      var id = param[0];
+                      var match = Projection.subIdConfig;
+                      if (subId !== undefined) {
+                        if (match !== undefined) {
+                          return deleteSubState(store, id, subId[1], match.getSubId);
+                        } else {
+                          return ;
+                        }
+                      } else {
+                        return deleteStates(store, id);
+                      }
+                    }));
+              return Promise.resolve({
+                          TAG: "Ok",
+                          _0: undefined
+                        });
+            })
         });
     return store;
   };
