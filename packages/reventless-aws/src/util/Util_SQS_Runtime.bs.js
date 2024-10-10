@@ -8,6 +8,7 @@ var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
+var ClientSqs = require("@aws-sdk/client-sqs");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.bs.js");
 var Util_SQS_FIFO$ReventlessAws = require("./Util_SQS_FIFO.bs.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.bs.js");
@@ -76,20 +77,10 @@ async function sendMessages(queue, queueService, commandJsons) {
 }
 
 async function deleteMessage(queue, receiptHandle) {
-  try {
-    return await SQS$AwsSdk.deleteMessage(queue.id.get(), receiptHandle);
-  }
-  catch (raw_e){
-    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
-    if (e.RE_EXN_ID === Js_exn.$$Error) {
-      console.log("Util.SQS_Runtime.deleteMessage: Error: failed receiptHandle:", receiptHandle, e._1.message);
-      var timeout = Js_math.random_int(3000, 7000);
-      await Util_Promise$Reventless.finishTimeout(timeout);
-      console.log("Retry deleteMessage after " + timeout.toString() + " ms ...");
-      return await deleteMessage(queue, receiptHandle);
-    }
-    throw e;
-  }
+  return await SQS$AwsSdk.DeleteMessageCommand.send(new ClientSqs.DeleteMessageCommand({
+                  QueueUrl: queue.id.get(),
+                  ReceiptHandle: receiptHandle
+                }));
 }
 
 async function deleteMessages(entries, queue) {

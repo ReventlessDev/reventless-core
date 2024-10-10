@@ -1,4 +1,4 @@
-let mode = #production // opposed to `debug
+/* let mode = #production // opposed to `debug
 open PulumiAws.Lambda
 open ReventlessSpec.Adapter
 
@@ -70,7 +70,7 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
 
 let handleScanResult = async (
   tableConfig: tableConfig,
-  scanResult: Belt.Result.t<AwsSdk.DynamoDb.DocumentClient.QueryOutput.t<Js.Dict.t<string>>, 'a>,
+  scanResult: Belt.Result.t<AwsSdk.DynamoDb.DocumentClient.QueryCommand.output, 'a>,
 ): Belt.Result.t<int, 'a> => {
   if mode == #debug {
     Js.log("Clean table " ++ tableConfig["name"])
@@ -78,9 +78,9 @@ let handleScanResult = async (
   switch scanResult {
   | Belt.Result.Ok(scanResult) =>
     if mode == #debug {
-      Js.log2("Items in scan-result:", scanResult["_Items"]->Belt.Array.length)
+      Js.log2("Items in scan-result:", scanResult.items->Belt.Array.length)
     }
-    let _ = await scanResult["_Items"]->deleteAllItems(tableConfig)
+    let _ = await scanResult.items->deleteAllItems(tableConfig)
     Belt.Result.Ok(-1)
   | Belt.Result.Error(error) =>
     if mode == #debug {
@@ -172,3 +172,4 @@ let make = (~prefix: option<string>, ~tablesToClean: array<resource>) => {
     (),
   )
 }
+*/

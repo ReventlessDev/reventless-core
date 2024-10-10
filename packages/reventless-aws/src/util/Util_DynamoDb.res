@@ -26,22 +26,20 @@ open PulumiAws.DynamoDb.Table
 let enableTtl: string => Js.Promise.t<PulumiAws.DynamoDb.Table.TableTtl.t> = async tableName => {
   Js.log(`${__MODULE__}: enableTimeToLive for ${tableName}`)
 
-  open AwsSdk.DynamoDb_DynamoDb.UpdateTimeToLiveCommand
-  switch await 
-    
-    {
-      tableName:tableName,
-      timeToLiveSpecification:{
-        enabled:true,
-        attributeName:Util_DynamoDb_Runtime.purgeTimeAttributeName,
-      },
-    }
-    )->make->send
-   {
+  //open AwsSdk.DynamoDb_DynamoDb.UpdateTimeToLiveCommand
+  switch await {
+    tableName,
+    timeToLiveSpecification: {
+      enabled: true,
+      attributeName: Util_DynamoDb_Runtime.purgeTimeAttributeName,
+    },
+  }
+  ->AwsSdk.DynamoDb_DynamoDb.UpdateTimeToLiveCommand.make
+  ->AwsSdk.DynamoDb_DynamoDb.UpdateTimeToLiveCommand.send {
   | res =>
     TableTtl.make(
-      ~enabled=Some(res["_TimeToLiveSpecification"]["_Enabled"]),
-      ~attributeName=res["_TimeToLiveSpecification"]["_AttributeName"],
+      ~enabled=Some(res.timeToLiveSpecification.enabled),
+      ~attributeName=res.timeToLiveSpecification.attributeName,
     )
   }
 }
@@ -65,7 +63,20 @@ let enablePointInTimeRecovery = async tableName => {
   Js.log(`${__MODULE__}: enablePointInTimeRecovery for ${tableName}`)
 
   open AwsSdk.DynamoDb_DynamoDb
-  switch await updateContinuousBackups(
+
+  let updateContinuousBackups = UpdateContinuousBackupsCommand.make({
+    tableName,
+    pointInTimeRecoverySpecification: {pointInTimeRecoveryEnabled: true},
+  })
+  switch await updateContinuousBackups->UpdateContinuousBackupsCommand.send {
+  | res =>
+    TablePointInTimeRecovery.make(
+      ~enabled=res.continuousBackupsDescription.continuousBackupsStatus ==
+        UpdateContinuousBackupsCommand.Enabled,
+    )
+  }
+
+  /* switch await updateContinuousBackups(
     UpdateContinuousBackupsInput.make(
       ~_TableName=tableName,
       ~_PointInTimeRecoverySpecification=UpdateContinuousBackupsInput.PointInTimeRecoverySpecification.make(
@@ -77,7 +88,7 @@ let enablePointInTimeRecovery = async tableName => {
     TablePointInTimeRecovery.make(
       ~enabled=res["_ContinuousBackupsDescription"]["_ContinuousBackupsStatus"] == "ENABLED",
     )
-  }
+  }*/
 }
 
 let verifyPointInTimeRecovery = (table: table) =>

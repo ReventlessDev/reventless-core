@@ -65,19 +65,14 @@ let rec sendMessages = async (queue, queueService, commandJsons) => {
   }
 }
 
-let rec deleteMessage = async (queue, receiptHandle) =>
-  try await SQS.deleteMessage(~queueId=queue["id"]->Pulumi.Output.get, ~receiptHandle) catch {
-  | Js.Exn.Error(e) =>
-    Js.log3(
-      "Util.SQS_Runtime.deleteMessage: Error: failed receiptHandle:",
-      receiptHandle,
-      e->Js.Exn.message,
-    )
-    let timeout = Js.Math.random_int(3000, 7000)
-    await Reventless.Util.Promise.finishTimeout(timeout)
-    Js.log(`Retry deleteMessage after ${timeout->Js.Int.toString} ms ...`)
-    await deleteMessage(queue, receiptHandle)
+let deleteMessage = async (queue, receiptHandle) => {
+  await {
+    queueUrl: queue["id"]->Pulumi.Output.get,
+    receiptHandle,
   }
+  ->SQS.DeleteMessageCommand.make
+  ->SQS.DeleteMessageCommand.send
+}
 
 let rec deleteMessages = async (entries, queue) =>
   switch await SQS.deleteMessagesParallel(~queueId=queue["id"]->Pulumi.Output.get, entries) {

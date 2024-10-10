@@ -65,9 +65,7 @@ let queryByTableName = async (
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilterExprNamesValues
 
   let keyConditionExpression =
-    ["#key = :value"]
-    ->Belt.Array.concat(subIdExpressions)
-    ->Js.Array2.joinWith(" AND ")
+    ["#key = :value"]->Belt.Array.concat(subIdExpressions)->Js.Array2.joinWith(" AND ")
   let filterExpression = switch filterExpressions {
   | [] => None
   | filterExpressions => Some(filterExpressions->Js.Array2.joinWith(" AND "))
@@ -83,26 +81,27 @@ let queryByTableName = async (
 
   let attributeNames = Belt.Array.concatMany([[("#key", key)], names])->Js.Dict.fromArray
 
-  let params = 
-  { open AwsSdk.DynamoDb.DocumentClient.QueryInput
-{
-    tableName:tableName,
-    indexName:?if key == "id" {
-      None
-    } else {
-      Some(key)
-    },
-    keyConditionExpression:keyConditionExpression,
-    filterExpression:?filterExpression,
-    expressionAttributeNames:attributeNames,
-    expressionAttributeValues:attributeValues,
-    scanIndexForward:ascending,
-    limit:limit,
+  let params: AwsSdk.DynamoDb.DocumentClient.QueryCommand.input = {
+    {
+      tableName,
+      indexName: ?(
+        if key == "id" {
+          None
+        } else {
+          Some(key)
+        }
+      ),
+      keyConditionExpression,
+      ?filterExpression,
+      expressionAttributeNames: attributeNames,
+      expressionAttributeValues: attributeValues,
+      scanIndexForward: ascending,
+      limit,
+    }
   }
-}
   Js.log2("QueryEngine_DynamoDb.queryByTableName params:", params)
   switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params, ()) {
-  | result => result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
+  | result => result.items->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception err =>
     Js.log2("Task.query error:", err)
     []
@@ -121,17 +120,16 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
     )
   }
 
-  let params = AwsSdk.DynamoDb.DocumentClient.ScanInput.make(
-    ~_TableName=tableName,
-    ~_FilterExpression=?filterExpression,
-    ~_ExpressionAttributeNames=?attributeNames,
-    ~_ExpressionAttributeValues=?attributeValues,
-    ~_Limit=limit,
-    (),
-  )
+  let params: AwsSdk.DynamoDb.DocumentClient.ScanCommand.input = {
+    tableName,
+    ?filterExpression,
+    expressionAttributeNames: ?attributeNames,
+    expressionAttributeValues: ?attributeValues,
+    limit,
+  }
   Js.log2("QueryEngine_DynamoDb.scanByTableName params:", params)
   switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params, ()) {
-  | result => result["_Items"]->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
+  | result => result.items->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception Js.Exn.Error(e) =>
     Js.log2("Task.scan error:", e)
     []

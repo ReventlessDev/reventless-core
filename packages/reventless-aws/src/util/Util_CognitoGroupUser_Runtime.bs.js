@@ -5,25 +5,29 @@ var Util_Cognito_Runtime$ReventlessAws = require("./Util_Cognito_Runtime.bs.js")
 var ClientCognitoIdentityProvider = require("@aws-sdk/client-cognito-identity-provider");
 
 function addUserToGroup(region, userName, groupName, userPoolId) {
-  return new ClientCognitoIdentityProvider.CognitoIdentityProviderClient({
-                endpoint: Util_Cognito_Runtime$ReventlessAws.userPoolEndpoint(region, userPoolId),
-                region: region
-              }).adminAddUserToGroup(new ClientCognitoIdentityProvider.AdminAddUserToGroupCommand({
-                  Username: userName,
-                  GroupName: groupName,
-                  UserPoolId: userPoolId
-                }));
+  var client = new ClientCognitoIdentityProvider.CognitoIdentityProviderClient({
+        endpoint: Util_Cognito_Runtime$ReventlessAws.userPoolEndpoint(region, userPoolId),
+        region: region
+      });
+  var addUserToGroupCommand = new ClientCognitoIdentityProvider.AdminAddUserToGroupCommand({
+        Username: userName,
+        GroupName: groupName,
+        UserPoolId: userPoolId
+      });
+  return client.send(addUserToGroupCommand);
 }
 
 function removeUserFromGroup(region, userName, groupName, userPoolId) {
-  return new ClientCognitoIdentityProvider.CognitoIdentityProviderClient({
-                endpoint: Util_Cognito_Runtime$ReventlessAws.userPoolEndpoint(region, userPoolId),
-                region: region
-              }).send(new ClientCognitoIdentityProvider.AdminRemoveUserFromGroupCommand({
-                  Username: userName,
-                  GroupName: groupName,
-                  UserPoolId: userPoolId
-                }));
+  var client = new ClientCognitoIdentityProvider.CognitoIdentityProviderClient({
+        endpoint: Util_Cognito_Runtime$ReventlessAws.userPoolEndpoint(region, userPoolId),
+        region: region
+      });
+  var removeUserFromGroupCommand = new ClientCognitoIdentityProvider.AdminRemoveUserFromGroupCommand({
+        Username: userName,
+        GroupName: groupName,
+        UserPoolId: userPoolId
+      });
+  return client.send(removeUserFromGroupCommand);
 }
 
 exports.addUserToGroup = addUserToGroup;

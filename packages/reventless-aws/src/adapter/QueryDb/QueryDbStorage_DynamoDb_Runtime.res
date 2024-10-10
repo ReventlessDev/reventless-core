@@ -1,7 +1,7 @@
 open AwsSdk.DynamoDb.DocumentClient
 open Util_DynamoDb_Runtime
 open Belt.Result
-open Reventless.QueryDb
+//open Reventless.QueryDb
 open Reventless.Util.Error
 
 let load = table =>
@@ -151,17 +151,22 @@ let count = table =>
   async (. id, fieldName, inc) => {
     let tableName = table["name"]->Pulumi.Output.get
     Js.log(__MODULE__ ++ `.count: ${tableName}, ${id}, ${fieldName}, ${inc->Belt.Int.toString}`)
-    switch await UpdateCommand.make(
-      {
-        tableName:tableName,
-        key:[("id", id->Js.Json.string)]->Js.Dict.fromArray,
-        updateExpression:"ADD #fieldName :inc",
-        expressionAttributeNames:[("#fieldName", fieldName)]->Js.Dict.fromArray,
-        expressionAttributeValues:[(":inc", inc->Belt.Int.toFloat->Js.Json.number)]->Js.Dict.fromArray,
-        returnValues:UpdatedNew,
-      },
-    )->UpdateCommand.send {
-    | updateOutput => Ok(updateOutput.attributes->Js.Dict.get("count")->Belt.Option.map(c=>c->Js.Json.decodeNumber)
+    switch await UpdateCommand.make({
+      tableName,
+      key: [("id", id->Js.Json.string)]->Js.Dict.fromArray,
+      updateExpression: "ADD #fieldName :inc",
+      expressionAttributeNames: [("#fieldName", fieldName)]->Js.Dict.fromArray,
+      expressionAttributeValues: [
+        (":inc", inc->Belt.Int.toFloat->Js.Json.number),
+      ]->Js.Dict.fromArray,
+      returnValues: UpdatedNew,
+    })->UpdateCommand.send {
+    | updateOutput =>
+      Ok(
+        updateOutput.attributes
+        ->Js.Dict.get("count")
+        ->Belt.Option.map(c => c->Js.Json.decodeNumber),
+      )
     | exception Js.Exn.Error(e) =>
       let message = e->Reventless.Util.Error.message
       Js.log2(__MODULE__ ++ `.count: Error: Couldn't count on ${tableName}`, e)
@@ -178,7 +183,7 @@ let delete = table =>
       id,
       sort,
     )
-    switch await tableName->AwsSdk.DynamoDb.DocumentClient.deleteWithTableName(id, sort) {
+    switch await AwsSdk.DynamoDb.DocumentClient.deleteWithTableName(~tableName, ~id, ~sort?) {
     | _ =>
       Js.log(__MODULE__ ++ `.delete: delete state for ${id} from ${tableName}`)
       Ok()
@@ -205,10 +210,12 @@ let deleteBatch = (~maxRetries=3, table) =>
             __MODULE__ ++
             `.deleteBatch: delete state for ${id} (${sortField}=sortKey) from ${tableName}`,
           )
-          [("id", id), (sortField, sortKey)]->Js.Dict.fromArray->toDeleteRequest
+          [("id", id->Js.Json.string), (sortField, sortKey->Js.Json.string)]
+          ->Js.Dict.fromArray
+          ->toDeleteRequest
         | None =>
           Js.log(__MODULE__ ++ `.deleteBatch: delete state for ${id} from ${tableName}`)
-          [("id", id)]->Js.Dict.fromArray->toDeleteRequest
+          [("id", id->Js.Json.string)]->Js.Dict.fromArray->toDeleteRequest
         }
       )
       ->writeBatch(table, maxRetries)

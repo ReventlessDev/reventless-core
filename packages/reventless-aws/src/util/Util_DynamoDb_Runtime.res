@@ -113,17 +113,15 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, numberOfRetries, maxRet
   }
 }
 
-let toPutRequest: Js.Json.t => BatchWriteCommand.writeRequest = json =>
-  {
+let toPutRequest: Js.Json.t => BatchWriteCommand.writeRequest = json => {
   open BatchWriteCommand
-   {putRequest: {item: json }  }
-  }
+  {putRequest: {item: json}}
+}
 
-let toDeleteRequest: Js.Dict.t<Js.Json.t> => BatchWriteCommand.writeRequest = keys =>
-{
+let toDeleteRequest: Js.Dict.t<Js.Json.t> => BatchWriteCommand.writeRequest = keys => {
   open BatchWriteCommand
-  {deleteRequest:{key:keys}}
-  }
+  {deleteRequest: {key: keys}}
+}
 
 let toTable = (writeRequests, tableName) => Js.Dict.fromArray([(tableName, writeRequests)])
 
