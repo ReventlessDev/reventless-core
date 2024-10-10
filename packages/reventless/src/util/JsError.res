@@ -5,17 +5,17 @@ type t
 @ocaml.doc(" constructor of Error => `new Error(string)` *")
 @deprecated("Create separate binding locally when needed.")
 @new
-external make: string => t = "Error"
+external make: string => Js.Exn.t = "Error"
 
 @ocaml.doc(" convert Js.Exn.t to JsError.t *")
 @deprecated("Create separate binding locally when needed.")
-external ofJsExn: Js.Exn.t => t = "%identity"
+external ofJsExn: Js.Exn.t => Js.Exn.t = "%identity"
 
 @ocaml.doc(" convert JsError.t to Js.Exn.t *")
 @deprecated("Create separate binding locally when needed.")
-external toJsExn: t => Js.Exn.t = "%identity"
+external toJsExn: Js.Exn.t => Js.Exn.t = "%identity"
 
 @ocaml.doc(" get the error's message => `(new Error(string)).getMessage()` ")
 @deprecated("Use Js.Exn.message instead")
 @get
-external getMessage: t => string = "message"
+external getMessage: Js.Exn.t => string = "message"
