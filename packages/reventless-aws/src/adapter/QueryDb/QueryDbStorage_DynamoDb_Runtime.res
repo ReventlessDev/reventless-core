@@ -159,7 +159,7 @@ let count = table =>
       expressionAttributeValues: [
         (":inc", inc->Belt.Int.toFloat->Js.Json.number),
       ]->Js.Dict.fromArray,
-      returnValues: UpdatedNew,
+      returnValues: UPDATED_NEW,
     })->UpdateCommand.send {
     | updateOutput =>
       switch updateOutput.attributes->AwsSdk.DynamoDb.DocumentClient.getIntAttribute("count") {

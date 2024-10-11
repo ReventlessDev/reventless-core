@@ -68,7 +68,7 @@ async function addToCounterTarget(table, param) {
                           []
                         ]
                       ])),
-              ReturnValues: /* UpdatedNew */4,
+              ReturnValues: /* UPDATED_NEW */4,
               UpdateExpression: "ADD #count :inc, #total :inc SET #targets = list_append(if_not_exists(#targets, :empty), :targetSingle),     #targetRefs = list_append(if_not_exists(#targetRefs, :empty), :targetRefSingle)"
             }));
   }

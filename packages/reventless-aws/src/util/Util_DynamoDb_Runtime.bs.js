@@ -89,8 +89,8 @@ function insertTtl(json, ttl) {
 function batchWrite(itemRequestMap) {
   return DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.send(new LibDynamodb.BatchWriteCommand({
                   RequestItems: itemRequestMap,
-                  ReturnConsumedCapacity: /* None */2,
-                  ReturnItemCollectionMetrics: /* None */1
+                  ReturnConsumedCapacity: /* NONE */2,
+                  ReturnItemCollectionMetrics: /* NONE */1
                 }));
 }
 
