@@ -33,10 +33,11 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
     ->Belt.Array.mapWithIndex((idx, result) =>
       switch result {
       | Belt.Result.Ok(reference) =>
-        AwsSdk.SQS.DeleteMessageBatchEntry.make(
-          ~_Id=idx->string_of_int,
-          ~_ReceiptHandle=reference,
-        )->Some
+        let deleteMessageBatchEntry: AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry = {
+          id: idx->string_of_int,
+          receiptHandle: reference,
+        }
+        deleteMessageBatchEntry->Some
       | Error(reference) =>
         Js.log2(
           __MODULE__ ++ ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:",
@@ -58,9 +59,10 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
   }
 }
 
-let publish = (queue, queueService) => (. jsons) =>
-  switch jsons->Belt.Array.length {
-  | 0 => Js.log(__MODULE__ ++ ".publish: No commands to send")->Js.Promise.resolve
-  | 1 => queue->Util_SQS_Runtime.send(queueService, jsons[0])
-  | _ => queue->Util_SQS_Runtime.sendMessages(queueService, jsons)
-  }
+let publish = (queue, queueService) =>
+  (. jsons) =>
+    switch jsons->Belt.Array.length {
+    | 0 => Js.log(__MODULE__ ++ ".publish: No commands to send")->Js.Promise.resolve
+    | 1 => queue->Util_SQS_Runtime.send(queueService, jsons[0])
+    | _ => queue->Util_SQS_Runtime.sendMessages(queueService, jsons)
+    }

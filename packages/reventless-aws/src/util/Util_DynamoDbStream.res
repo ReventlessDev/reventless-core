@@ -42,21 +42,18 @@ open AwsSdk.DynamoDb_DynamoDb
 
 let enableStream = async tableName => {
   Js.log(`${__MODULE__}: enableStream for ${tableName}`)
-  switch await updateTable(
-    UpdateTableInput.make(
-      ~_TableName=tableName,
-      ~_StreamSpecification=StreamSpecification.make(
-        ~_StreamEnabled=true,
-        ~_StreamViewType=#NEW_IMAGE,
-        (),
-      ),
-      (),
-    ),
-  ) {
+
+  switch await UpdateTableCommand.make({
+    tableName,
+    streamSpecification: {
+      streamEnabled: true,
+      streamViewType: NEW_IMAGE,
+    },
+  })->UpdateTableCommand.send {
   | res => (
-      res["_TableDescription"]["_StreamSpecification"]["_StreamEnabled"],
-      Some(res["_TableDescription"]["_LatestStreamArn"]),
-      res["_TableDescription"]["_LatestStreamLabel"],
+      res.tableDescription.streamSpecification.streamEnabled,
+      Some(res.tableDescription.latestStreamArn),
+      res.tableDescription.latestStreamLabel,
     )
   }
 }

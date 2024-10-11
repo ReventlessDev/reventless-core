@@ -3,7 +3,6 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
@@ -229,18 +228,19 @@ function count(table) {
       }
       throw e;
     }
-    var attributes = updateOutput.Attributes;
-    if (attributes !== undefined) {
+    var value = DynamoDb_DocumentClient$AwsSdk.getIntAttribute(updateOutput.Attributes, "count");
+    if (value !== undefined) {
       return {
               TAG: /* Ok */0,
-              _0: Belt_Option.map(Js_dict.get(Caml_option.valFromOption(attributes), "count"), Js_json.decodeNumber)
+              _0: value
             };
     } else {
+      console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".count: Error: Invalid updateOutput in count on " + tableName + ""));
       return {
               TAG: /* Error */1,
               _0: {
                 TAG: /* NotCountedOnStorage */2,
-                _0: "No attributes on updateOutput!"
+                _0: "Invalid updateOutput in count"
               }
             };
     }

@@ -1,7 +1,11 @@
-let handleStreamEvent = async (handleEvents, streamEvent, _) => {
-  let records = streamEvent["_Records"]->Belt.Option.getWithDefault([])
+let handleStreamEvent: (
+  (. array<Js.Json.t>) => promise<unit>,
+  AwsSdk.DynamoDb.Stream.StreamEvent.t,
+  _,
+) => Js.Promise.t<unit> = async (handleEvents, streamEvent, _) => {
+  let records = streamEvent.records->Belt.Option.getWithDefault([])
   let jsons = records->Belt.Array.keepMap(record =>
-    switch record["eventSource"] {
+    switch record.eventSource {
     | "aws:dynamodb" =>
       switch record->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecordEvent {
       | NewImage(_, newImage)

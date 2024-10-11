@@ -162,11 +162,14 @@ let count = table =>
       returnValues: UpdatedNew,
     })->UpdateCommand.send {
     | updateOutput =>
-      Ok(
-        updateOutput.attributes
-        ->Js.Dict.get("count")
-        ->Belt.Option.map(c => c->Js.Json.decodeNumber),
-      )
+      switch updateOutput.attributes->AwsSdk.DynamoDb.DocumentClient.getIntAttribute("count") {
+      | Some(value) => Ok(value)
+      | None => {
+          Js.log(__MODULE__ ++ `.count: Error: Invalid updateOutput in count on ${tableName}`)
+          Error(ReventlessSpec.QueryDb.NotCountedOnStorage("Invalid updateOutput in count"))
+        }
+      }
+
     | exception Js.Exn.Error(e) =>
       let message = e->Reventless.Util.Error.message
       Js.log2(__MODULE__ ++ `.count: Error: Couldn't count on ${tableName}`, e)

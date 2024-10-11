@@ -37,12 +37,13 @@ let handleCallbackEvent = async (handleEvents, queue, callbackEvent, _) => {
         | _ => false
         }
       )
-      ->Belt.Array.mapWithIndex((idx, record) =>
-        AwsSdk.SQS.DeleteMessageBatchEntry.make(
-          ~_Id=idx->string_of_int,
-          ~_ReceiptHandle=(record->Record.toSqsRecord)["receiptHandle"],
-        )
-      )
+      ->Belt.Array.mapWithIndex((
+        idx,
+        record,
+      ): AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry => {
+        id: idx->string_of_int,
+        receiptHandle: (record->Record.toSqsRecord)["receiptHandle"],
+      })
     switch entries {
     | [] => ()
     | entries => await Util.SQS_Runtime.deleteMessages(entries, queue)
@@ -50,14 +51,16 @@ let handleCallbackEvent = async (handleEvents, queue, callbackEvent, _) => {
   }
 }
 
-let enqueueEvent = queue => (. delay, _id, messageBody) => {
-  let queueName = queue["name"]->Reventless.OutputFailsafeRuntime.get
-  Js.log4(__MODULE__ ++ ".enqueueEvent:", delay, messageBody, queueName)
-  queue->Util_SQS_Runtime.sendMessage(~delay, messageBody)
-}
+let enqueueEvent = queue =>
+  (. delay, _id, messageBody) => {
+    let queueName = queue["name"]->Reventless.OutputFailsafeRuntime.get
+    Js.log4(__MODULE__ ++ ".enqueueEvent:", delay, messageBody, queueName)
+    queue->Util_SQS_Runtime.sendMessage(~delay, messageBody)
+  }
 
-let enqueueFifoEvent = queue => (. delay, id, messageBody) => {
-  let queueName = queue["name"]->Reventless.OutputFailsafeRuntime.get
-  Js.log4(__MODULE__ ++ ".enqueueFifoEvent:", delay, messageBody, queueName)
-  queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=id, messageBody)
-}
+let enqueueFifoEvent = queue =>
+  (. delay, id, messageBody) => {
+    let queueName = queue["name"]->Reventless.OutputFailsafeRuntime.get
+    Js.log4(__MODULE__ ++ ".enqueueFifoEvent:", delay, messageBody, queueName)
+    queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=id, messageBody)
+  }
