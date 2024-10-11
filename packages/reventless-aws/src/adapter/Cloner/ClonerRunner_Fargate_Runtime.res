@@ -17,24 +17,24 @@ let clone = (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, paylo
   }
 
   {
-    open AwsSdk.ECS.RunTaskCommand
-      {
-        taskDefinition:taskDefinition->Pulumi.Output.get,
-        cluster:cluster->Pulumi.Output.get,
-        networkConfiguration:{
-          awsvpcConfiguration: {subnets},
-        },
-        launchType:Fargate,
-        overrides: {
-          containerOverrides:[
-            {
-              name:"reventless-ci",
-              environment,
-              command:["reventless-ci", "clone-environment"],
-            },
-          ],
-        }
-      }
-      ->make->send
+    {
+      taskDefinition: taskDefinition->Pulumi.Output.get,
+      cluster: cluster->Pulumi.Output.get,
+      networkConfiguration: {
+        awsvpcConfiguration: {subnets},
+      },
+      launchType: Fargate,
+      overrides: {
+        containerOverrides: [
+          {
+            name: "reventless-ci",
+            environment,
+            command: ["reventless-ci", "clone-environment"],
+          },
+        ],
+      },
+    }
+    ->AwsSdk.ECS.RunTaskCommand.make
+    ->AwsSdk.ECS.RunTaskCommand.send
   }
 }

@@ -3,8 +3,7 @@ open AwsSdk.DynamoDb.DocumentClient
 let service = "DynamoDb"
 
 let put = (table: PulumiAws.DynamoDb.Table.t, item) => {
-  open PutCommand
-  {PutCommand.tableName: table["name"]->Pulumi.Output.get, item}->make->send
+  {PutCommand.tableName: table["name"]->Pulumi.Output.get, item}->PutCommand.make->PutCommand.send
 }
 
 let delete = (table: PulumiAws.DynamoDb.Table.t, id) => {
@@ -53,14 +52,13 @@ let insertTtl: (Js.Json.t, option<int>) => Js.Json.t = (json, ttl) =>
   ->Belt.Option.getWithDefault(json)
 
 let batchWrite = itemRequestMap => {
-  open BatchWriteCommand
   {
     requestItems: itemRequestMap,
-    returnConsumedCapacity: None,
-    returnItemCollectionMetrics: None,
+    returnConsumedCapacity: NONE,
+    returnItemCollectionMetrics: NONE,
   }
-  ->make
-  ->send
+  ->BatchWriteCommand.make
+  ->BatchWriteCommand.send
 }
 
 let hasUnprocessedItems = writeOutput =>
@@ -114,13 +112,11 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, numberOfRetries, maxRet
 }
 
 let toPutRequest: Js.Json.t => BatchWriteCommand.writeRequest = json => {
-  open BatchWriteCommand
-  {putRequest: {item: json}}
+  {putRequest: {BatchWriteCommand.item: json}}
 }
 
 let toDeleteRequest: Js.Dict.t<Js.Json.t> => BatchWriteCommand.writeRequest = keys => {
-  open BatchWriteCommand
-  {deleteRequest: {key: keys}}
+  {deleteRequest: {BatchWriteCommand.key: keys}}
 }
 
 let toTable = (writeRequests, tableName) => Js.Dict.fromArray([(tableName, writeRequests)])
