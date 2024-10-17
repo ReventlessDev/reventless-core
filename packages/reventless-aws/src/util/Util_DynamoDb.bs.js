@@ -92,7 +92,7 @@ async function enablePointInTimeRecovery(tableName) {
       });
   var res = await DynamoDb_DynamoDb$AwsSdk.UpdateContinuousBackupsCommand.send(updateContinuousBackups);
   return {
-          enabled: res.ContinuousBackupsDescription.ContinuousBackupsStatus === /* Enabled */0
+          enabled: res.ContinuousBackupsDescription.ContinuousBackupsStatus === "ENABLED"
         };
 }
 

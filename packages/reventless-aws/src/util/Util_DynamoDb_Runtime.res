@@ -54,8 +54,8 @@ let insertTtl: (Js.Json.t, option<int>) => Js.Json.t = (json, ttl) =>
 let batchWrite = itemRequestMap => {
   {
     requestItems: itemRequestMap,
-    returnConsumedCapacity: NONE,
-    returnItemCollectionMetrics: NONE,
+    returnConsumedCapacity: #NONE,
+    returnItemCollectionMetrics: #NONE,
   }
   ->BatchWriteCommand.make
   ->BatchWriteCommand.send

@@ -20,7 +20,7 @@ function clone(taskDefinition, cluster, fullQualifiedStackName, subnets, payload
       ]);
   return ECS$AwsSdk.RunTaskCommand.send(new ClientEcs.RunTaskCommand({
                   taskDefinition: taskDefinition.get(),
-                  launchType: /* Fargate */1,
+                  launchType: "FARGATE",
                   cluster: cluster.get(),
                   networkConfiguration: {
                     awsvpcConfiguration: subnets

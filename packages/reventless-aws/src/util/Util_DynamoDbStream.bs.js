@@ -73,7 +73,7 @@ async function enableStream(tableName) {
             TableName: tableName,
             StreamSpecification: {
               StreamEnabled: true,
-              StreamViewType: /* NEW_IMAGE */1
+              StreamViewType: "NEW_IMAGE"
             }
           }));
   return [

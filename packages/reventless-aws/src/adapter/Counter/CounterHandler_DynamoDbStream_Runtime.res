@@ -25,7 +25,7 @@ let addToCounterTarget = async (table, {counterId, target, targetRef}) => {
       (":targetRef", targetRef->Js.Json.string),
       (":empty", []->Js.Json.array),
     ]),
-    returnValues: UPDATED_NEW,
+    returnValues: #UPDATED_NEW,
     conditionExpression: "NOT contains(#targetRefs, :targetRef)",
   })->UpdateCommand.send {
   | (updateOutput: UpdateCommand.output) =>

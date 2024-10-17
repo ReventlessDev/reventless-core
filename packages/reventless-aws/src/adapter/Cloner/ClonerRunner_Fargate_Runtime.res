@@ -23,7 +23,7 @@ let clone = (~taskDefinition, ~cluster, ~fullQualifiedStackName, ~subnets, paylo
       networkConfiguration: {
         awsvpcConfiguration: {subnets},
       },
-      launchType: Fargate,
+      launchType: #FARGATE,
       overrides: {
         containerOverrides: [
           {

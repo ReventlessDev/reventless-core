@@ -47,7 +47,7 @@ let enableStream = async tableName => {
     tableName,
     streamSpecification: {
       streamEnabled: true,
-      streamViewType: NEW_IMAGE,
+      streamViewType: #NEW_IMAGE,
     },
   })->UpdateTableCommand.send {
   | res => (

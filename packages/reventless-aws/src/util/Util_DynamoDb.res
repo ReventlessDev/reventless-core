@@ -71,8 +71,7 @@ let enablePointInTimeRecovery = async tableName => {
   switch await updateContinuousBackups->UpdateContinuousBackupsCommand.send {
   | res =>
     TablePointInTimeRecovery.make(
-      ~enabled=res.continuousBackupsDescription.continuousBackupsStatus ==
-        UpdateContinuousBackupsCommand.Enabled,
+      ~enabled=res.continuousBackupsDescription.continuousBackupsStatus == #ENABLED,
     )
   }
 

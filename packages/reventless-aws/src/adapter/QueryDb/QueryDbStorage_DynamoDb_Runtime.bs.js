@@ -208,7 +208,7 @@ function count(table) {
                             ":inc",
                             inc
                           ]])),
-                ReturnValues: /* UPDATED_NEW */4,
+                ReturnValues: "UPDATED_NEW",
                 UpdateExpression: "ADD #fieldName :inc"
               }));
     }
