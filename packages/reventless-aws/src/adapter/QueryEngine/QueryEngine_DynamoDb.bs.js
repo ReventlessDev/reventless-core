@@ -178,7 +178,7 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
     console.log("Task.query error:", err);
     return [];
   }
-  return Belt_Array.map(result.Items, (function (js) {
+  return Belt_Array.map(Belt_Option.getWithDefault(result.Items, []), (function (js) {
                 return JSON.parse(JSON.stringify(js));
               }));
 }
@@ -220,7 +220,7 @@ async function scanByTableName(tableName, filterConfigs, limit) {
     }
     throw e;
   }
-  return Belt_Array.map(result.Items, (function (js) {
+  return Belt_Array.map(Belt_Option.getWithDefault(result.Items, []), (function (js) {
                 return JSON.parse(JSON.stringify(js));
               }));
 }
