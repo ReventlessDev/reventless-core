@@ -27,13 +27,13 @@ let parseDynamoDbStreamRecord = (buildJson, record: Record.t) => {
   let newImageJson =
     record
     ->Belt.Option.flatMap(dynamodb => dynamodb.newImage)
-    ->Belt.Option.map(newImage => AwsSdk.DynamoDb.Util.unmarshallDict(newImage))
+    ->Belt.Option.map(newImage => AwsSdk.DynamoDb.Util.unmarshallDict(newImage, ()))
     ->Belt.Option.map(buildJson)
 
   let oldImageJson =
     record
     ->Belt.Option.flatMap(dynamodb => dynamodb.oldImage)
-    ->Belt.Option.map(oldImage => AwsSdk.DynamoDb.Util.unmarshallDict(oldImage))
+    ->Belt.Option.map(oldImage => AwsSdk.DynamoDb.Util.unmarshallDict(oldImage, ()))
     ->Belt.Option.map(buildJson)
 
   switch (id, newImageJson, oldImageJson) {
