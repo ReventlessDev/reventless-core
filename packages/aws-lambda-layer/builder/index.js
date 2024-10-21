@@ -15,7 +15,7 @@ const opt = {
     pathToLayerData,
     pathToSavedDependencies,
     excludeScopes: ['pulumi', 'types', 'opentelemetry'],
-    excludeModules: ['aws-sdk'],
+    excludeModules: ['aws-sdk', 'wrap-ansi-cjs', 'strip-ansi-cjs', 'string-width-cjs'],
     postProcess: {
         "decco": (node, cwd) => decco(node, cwd, dependenciesPath),
         "@reventless/reventless": reventless,
