@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-spec",
-  "version": "1.5.0-node20.1",
+  "version": "1.5.0-node20.2",
   "description": "Specifications for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@rescript/std": "^10.1.4",
-    "@reventless/bs-pulumi-pulumi": "^1.2.1-node20.0",
+    "@reventless/bs-pulumi-pulumi": "^1.2.1-node20.1",
     "decco": "1.6.0"
   },
   "devDependencies": {
