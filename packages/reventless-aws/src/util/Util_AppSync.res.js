@@ -5,19 +5,20 @@ var Pulumi = require("@pulumi/pulumi");
 
 var service = "AppSync";
 
-function toResource(resolver) {
+function toResource(param) {
+  var id = param.id;
   return {
-          service: resolver.id.apply(function (param) {
-                return service;
-              }),
-          name: resolver.id,
-          id: resolver.id,
-          urn: resolver.arn,
+          name: id,
+          id: id,
+          urn: param.arn,
           info: Pulumi.all([
-                  resolver._type,
-                  resolver.field
+                  param.type_,
+                  param.field
                 ]).apply(function (param) {
                 return param[0] + ("." + param[1]);
+              }),
+          service: id.apply(function (param) {
+                return service;
               })
         };
 }

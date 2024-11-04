@@ -5,41 +5,40 @@ var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 
-function emailIdentity(name, email, opts, _unit) {
+function emailIdentity(name, email, opts) {
   return new (Aws.ses.EmailIdentity)("emailIdentity" + name, {
               email: email
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
 }
 
 function fromCustomResourceOptions(x) {
-  if (x === undefined) {
+  if (x !== undefined) {
+    return {
+            parent: x.parent,
+            provider: x.provider
+          };
+  } else {
     return {};
   }
-  var opts = Caml_option.valFromOption(x);
-  var tmp = {};
-  if (opts.parent !== undefined) {
-    tmp.parent = Caml_option.valFromOption(opts.parent);
-  }
-  if (opts.provider !== undefined) {
-    tmp.provider = Caml_option.valFromOption(opts.provider);
-  }
-  return tmp;
 }
 
-function sesPolicyDocument(identity, opts, _unit) {
+function sesPolicyDocument(identity, opts) {
   return Output$Pulumi.flatMap(identity.arn, (function (identityArn) {
+                var principal_identifiers = ["*"];
                 var principal = {
-                  identifiers: ["*"],
-                  _type: "AWS"
+                  identifiers: principal_identifiers,
+                  type: "AWS"
                 };
                 var actions = [
                   "SES:SendEmail",
                   "SES:SendRawEmail"
                 ];
+                var statement_principals = [principal];
+                var statement_resources = [identityArn];
                 var statement = {
                   actions: actions,
-                  principals: [principal],
-                  resources: [identityArn]
+                  principals: statement_principals,
+                  resources: statement_resources
                 };
                 return Aws.iam.getPolicyDocument({
                             statements: [statement]
@@ -47,11 +46,13 @@ function sesPolicyDocument(identity, opts, _unit) {
               }));
 }
 
-function identityWithPolicy(name, email, opts, _unit) {
-  var identity = emailIdentity(name, email, opts, undefined);
+function identityWithPolicy(name, email, opts) {
+  var identity = new (Aws.ses.EmailIdentity)(name, {
+        email: email
+      }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
   return new (Aws.ses.IdentityPolicy)("identityPolicy" + name, {
               identity: identity.arn,
-              policy: sesPolicyDocument(identity, opts, undefined).apply(function (policyDocument) {
+              policy: sesPolicyDocument(identity, opts).apply(function (policyDocument) {
                     return policyDocument.json;
                   })
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);

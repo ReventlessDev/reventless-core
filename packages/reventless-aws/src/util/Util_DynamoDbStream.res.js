@@ -3,8 +3,10 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
@@ -23,10 +25,10 @@ function toInfo(table) {
             });
 }
 
-function streamArnFromDynamoDbTableResource(table) {
+function streamArnFromDynamoDbTableResource(resource) {
   return Pulumi.all([
-                table.info,
-                table.name
+                resource.info,
+                resource.name
               ]).apply(function (param) {
               var parts = param[0].split(",");
               if (parts.length < 3 || parts[2].trim() === "") {
@@ -39,27 +41,27 @@ function streamArnFromDynamoDbTableResource(table) {
 
 function toResource(table) {
   return {
-          service: table.name.apply(function (param) {
-                return Util_DynamoDbStream_Runtime$ReventlessAws.service;
-              }),
           name: table.name,
           id: table.id,
           urn: table.arn,
-          info: toInfo(table)
+          info: toInfo(table),
+          service: table.name.apply(function (param) {
+                return Util_DynamoDbStream_Runtime$ReventlessAws.service;
+              })
         };
 }
 
 function toStreamResource(table) {
   var streamArn = streamArnFromDynamoDbTableResource(table);
   return {
-          service: table.name.apply(function (param) {
-                return Util_DynamoDbStream_Runtime$ReventlessAws.service;
-              }),
           name: table.name,
           id: streamArn,
           urn: streamArn,
           info: table.name.apply(function (param) {
                 return "";
+              }),
+          service: table.name.apply(function (param) {
+                return Util_DynamoDbStream_Runtime$ReventlessAws.service;
               })
         };
 }
@@ -105,19 +107,24 @@ function updateTable(ttl, table) {
   var streamInfo = verifyStream(table);
   var newTtl = Util_DynamoDb$ReventlessAws.verifyTtl(ttl, table);
   var newPointInTimeRecovery = Util_DynamoDb$ReventlessAws.verifyPointInTimeRecovery(table);
-  return Object.assign(table, {
-              streamEnabled: streamInfo.apply(function (param) {
-                    return param[0];
-                  }),
-              streamArn: streamInfo.apply(function (param) {
-                    return Belt_Option.getWithDefault(param[1], "");
-                  }),
-              streamLabel: streamInfo.apply(function (param) {
-                    return param[2];
-                  }),
-              ttl: newTtl,
-              pointInTimeRecovery: newPointInTimeRecovery
-            });
+  return {
+          arn: table.arn,
+          name: table.name,
+          id: table.id,
+          hashKey: table.hashKey,
+          rangeKey: table.rangeKey,
+          streamEnabled: streamInfo.apply(function (param) {
+                return param[0];
+              }),
+          streamArn: streamInfo.apply(function (param) {
+                return Belt_Option.getWithDefault(param[1], "");
+              }),
+          streamLabel: streamInfo.apply(function (param) {
+                return param[2];
+              }),
+          ttl: newTtl,
+          pointInTimeRecovery: newPointInTimeRecovery
+        };
 }
 
 function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, streamViewType, tags, opts, name) {
@@ -125,9 +132,8 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, streamView
           return Js_dict.get(tables, name);
         }));
   var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies();
-  var table = new (Aws.dynamodb.Table)(name, Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, true, streamViewType), Object.assign(opts, {
-            dependsOn: match[0]
-          }));
+  var newrecord = Caml_obj.obj_dup(opts);
+  var table = new (Aws.dynamodb.Table)(name, Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, true, streamViewType), (newrecord.dependsOn = Caml_option.some(match[0]), newrecord));
   match[1](table);
   if (Belt_Option.isSome(restoreSourceName)) {
     return updateTable(ttl, table);

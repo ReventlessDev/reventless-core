@@ -5,18 +5,15 @@ var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 
-function subscribe(batchSize, lambda, targetName, sourceName, source, opts, param) {
-  var tmp = {
-    functionName: Output$Pulumi.flatMap(lambda, (function (lambda) {
-            return lambda.arn;
-          })),
-    eventSourceArn: source.urn,
-    startingPosition: "LATEST"
-  };
-  if (batchSize !== undefined) {
-    tmp.batchSize = batchSize;
-  }
-  return new (Aws.lambda.EventSourceMapping)(sourceName + ("2" + targetName), tmp, Caml_option.some(opts));
+function subscribe(batchSize, lambda, targetName, sourceName, source, opts) {
+  return new (Aws.lambda.EventSourceMapping)(sourceName + ("2" + targetName), {
+              functionName: Output$Pulumi.flatMap(lambda, (function (lambda) {
+                      return lambda.arn;
+                    })),
+              batchSize: batchSize,
+              eventSourceArn: Caml_option.some(source.urn),
+              startingPosition: "LATEST"
+            }, opts);
 }
 
 exports.subscribe = subscribe;

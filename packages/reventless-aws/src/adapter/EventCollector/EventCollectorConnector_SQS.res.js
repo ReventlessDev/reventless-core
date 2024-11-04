@@ -2,6 +2,7 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -22,26 +23,30 @@ var EventCollectorConnector_SQS_Runtime$ReventlessAws = require("./EventCollecto
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
   var queue = new (Aws.sqs.Queue)(name, {
-        redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
-              return SQS_Queue$PulumiAws.Args.RedrivePolicy.make(dlqArn, 5);
-            }),
-        tags: AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType),
-        visibilityTimeoutSeconds: timeout,
-        sqsManagedSseEnabled: false
+        redrivePolicy: Caml_option.some(Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
+                  return SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5);
+                })),
+        tags: Caml_option.some(AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType)),
+        visibilityTimeoutSeconds: Caml_option.some(timeout),
+        sqsManagedSseEnabled: Caml_option.some(false)
       }, opts);
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [
         Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),
         Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents
-      ], Caml_option.some(opts), undefined);
+      ], opts);
   var eventHandlerLambda = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2).apply(function (policies) {
         return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
                           return EventCollectorConnector_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, queue, extra, extra$1);
-                        }), undefined, policies, undefined, undefined, Caml_option.some(memorySize), Caml_option.some(timeout), undefined, undefined, undefined, Caml_option.some(AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType)), undefined), opts);
+                        }), undefined, policies, undefined, undefined, Caml_option.some(memorySize), Caml_option.some(timeout), undefined, undefined, undefined, Caml_option.some(AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType))), opts);
       });
   eventHandlerLambda.apply(function (eventHandlerLambda) {
         return queue.onEvent(name, eventHandlerLambda, undefined, opts);
       });
-  Util_Adapter$Reventless.partitionSupportedResources(eventTopics, [
+  Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
+              return Js_dict.map((function (eventTopic) {
+                            return eventTopic.resources;
+                          }), __x);
+            })(eventTopics), [
           Util_DynamoDbStream_Runtime$ReventlessAws.service,
           Util_SNS$ReventlessAws.service
         ]).apply(function (param) {
@@ -51,7 +56,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                 return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_SNS$ReventlessAws.findUnwrappedResource(param[1])), opts);
               }));
         Belt_Array.map(match[1], (function (param) {
-                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts, undefined);
+                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts);
               }));
         if (errorResources.length === 0) {
           return ;

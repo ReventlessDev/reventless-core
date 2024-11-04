@@ -58,7 +58,6 @@ let queryByTableName = async (
   ~filterConfigs=[],
   ~ascending=true,
   ~limit=1,
-  (),
 ) => {
   let (subIdExpressions, subIdNamesValues) =
     subIdConfig->createSubIdExprNamesValues->Belt.Option.getWithDefault(([], []))
@@ -142,7 +141,7 @@ let make: Reventless.QueryDb.Adapter.queryEngineMaker = allQueryDbs => {
       allQueryDbs
       ->Reventless.Util_QueryDbRuntime.getLocalStorageResources(readModelName)
       ->Util_DynamoDb_Runtime.findResource
-    )["name"]->Reventless.OutputFailsafeRuntime.get
+    ).name->Reventless.OutputFailsafeRuntime.get
 
   {
     scan: (~readModelName, ~filterConfigs, ~limit) =>
@@ -155,7 +154,6 @@ let make: Reventless.QueryDb.Adapter.queryEngineMaker = allQueryDbs => {
       ~filterConfigs=?,
       ~ascending=?,
       ~limit=?,
-      unit,
     ) =>
       queryByTableName(
         ~tableName=tableName(readModelName),
@@ -165,7 +163,6 @@ let make: Reventless.QueryDb.Adapter.queryEngineMaker = allQueryDbs => {
         ~filterConfigs?,
         ~ascending?,
         ~limit?,
-        unit,
       ),
   }
 }

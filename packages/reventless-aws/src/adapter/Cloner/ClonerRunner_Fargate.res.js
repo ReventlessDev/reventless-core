@@ -17,7 +17,7 @@ var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
 var ClonerRunner_Fargate_Runtime$ReventlessAws = require("./ClonerRunner_Fargate_Runtime.res.js");
 
-function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts, param) {
+function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts) {
   var cluster = new (Aws.ecs.Cluster)(name, undefined, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
   var taskExecutionRole = new (Aws.iam.Role)(name + "TaskExecution", {
         assumeRolePolicy: IAM$PulumiAws.Policy.assumeRolePolicy("ecs-tasks.amazonaws.com"),
@@ -26,7 +26,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                 "logs:CreateLogGroup",
                 "logs:CreateLogStream"
               ])]
-      }, undefined);
+      });
   var secretsManagerAccessPolicy = IAM$PulumiAws.Policy.makeForActions("secretsManagerAccess", [
         "secretsmanager:GetRandomPassword",
         "secretsmanager:GetResourcePolicy",
@@ -68,7 +68,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
             logConfiguration: {
               logDriver: "awslogs",
               options: {
-                "awslogs-create-group": "true",
+                "awslogs-create-group": true,
                 "awslogs-group": "/aws/ecs/reventless-cloner",
                 "awslogs-region": new Pulumi.Config("aws").require("region"),
                 "awslogs-stream-prefix": "reventless-cloner"
@@ -92,7 +92,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               memory: "4096",
               networkMode: "awsvpc",
               requiresCompatibilities: ["FARGATE"],
-              executionRoleArn: taskExecutionRole.arn
+              executionRoleArn: Caml_option.some(taskExecutionRole.arn)
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
         var lambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
                     return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(taskDefinition.arn, cluster.arn, fullQualifiedStackName, vpcConfig.subnetIds, extra, extra$1);
@@ -100,13 +100,13 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                   param[0],
                   param[1],
                   Iam.ManagedPolicy.LambdaFullAccess
-                ], undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
+                ], undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
         new (Aws.lambda.Permission)(name, {
               action: "lambda:InvokeFunction",
-              _function: lambda.arn,
+              function: lambda.arn,
               principal: "appsync.amazonaws.com"
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
-        var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), opts, undefined);
+        var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), opts);
         new (Aws.iam.RolePolicy)(name + "DS", {
               policy: lambda.arn.apply(function (lambdaArn) {
                     return IAM$PulumiAws.RolePolicy.generatePolicy([lambdaArn], "lambda:InvokeFunction");
@@ -114,17 +114,17 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               role: dataSourceRole.id
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
         var dataSource = new (Aws.appsync.DataSource)(name, {
-              _type: "AWS_LAMBDA",
+              type: "AWS_LAMBDA",
               apiId: Output$Pulumi.flatMap(api, (function (api) {
                       return api.id;
                     })),
               lambdaConfig: {
                 functionArn: lambda.arn
               },
-              serviceRoleArn: dataSourceRole.arn
+              serviceRoleArn: Caml_option.some(dataSourceRole.arn)
             }, opts);
         var field = "clone";
-        var resolver = AppSync_Resolver$PulumiAws.makeUnitResolver(field, api, dataSource.name, "Mutation", field, "{\n            \"version\": \"2017-02-28\",\n            \"operation\": \"Invoke\",\n            \"payload\": {\n                \"restoreDateTime\": $utils.toJson($context.arguments.restoreDateTime),\n                \"meta\": {\n                  \"ip\": $util.toJson($context.identity.sourceIp),\n                  \"user\": $util.toJson($context.identity.username)\n                }\n            }\n          }\n          ", AppSync_Resolver_Templates$PulumiAws.result, opts, undefined);
+        var resolver = AppSync_Resolver$PulumiAws.makeUnitResolver(field, api, dataSource.name, "Mutation", field, "{\n            \"version\": \"2017-02-28\",\n            \"operation\": \"Invoke\",\n            \"payload\": {\n                \"restoreDateTime\": $utils.toJson($context.arguments.restoreDateTime),\n                \"meta\": {\n                  \"ip\": $util.toJson($context.identity.sourceIp),\n                  \"user\": $util.toJson($context.identity.username)\n                }\n            }\n          }\n          ", AppSync_Resolver_Templates$PulumiAws.result, opts);
         return [Util_AppSync$ReventlessAws.toResource(resolver)];
       });
   return {

@@ -2,20 +2,19 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var Util_SQS_Runtime$ReventlessAws = require("./Util_SQS_Runtime.res.js");
 
 function toResource(queue) {
   return {
-          service: queue.name.apply(function (param) {
-                return Util_SQS_Runtime$ReventlessAws.service;
-              }),
           name: queue.name,
           id: queue.id,
           urn: queue.arn,
           info: queue.name.apply(function (param) {
                 return "";
+              }),
+          service: queue.name.apply(function (param) {
+                return Util_SQS_Runtime$ReventlessAws.service;
               })
         };
 }
@@ -35,7 +34,7 @@ function subscribeToSnsTopic(queue, targetName, sourceName, topic, opts) {
               topic: topic.urn,
               protocol: "sqs",
               rawMessageDelivery: true
-            }, Caml_option.some(opts));
+            }, opts);
 }
 
 function findResourceInOutput(resourcesOutput) {

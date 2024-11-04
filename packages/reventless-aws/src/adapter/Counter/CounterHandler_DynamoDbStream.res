@@ -9,9 +9,9 @@ let make: Reventless.Counter.Adapter.handlerMaker = (
   ~counterHandler,
   ~opts,
 ) => {
-  let referencesDbResource = referencesDb["resources"]->Util.DynamoDbStream.findResource
+  let referencesDbResource = referencesDb.resources->Util.DynamoDbStream.findResource
   let referencesStream = referencesDbResource->Util.DynamoDbStream.toStreamResource
-  let countsDbResource = countsDb["resources"]->Util.DynamoDbStream.findResource
+  let countsDbResource = countsDb.resources->Util.DynamoDbStream.findResource
   let countsStream = countsDbResource->Util.DynamoDbStream.toStreamResource
 
   let eventHandlerLambda = Lambda.CallbackFunction.make(
@@ -23,10 +23,8 @@ let make: Reventless.Counter.Adapter.handlerMaker = (
         ~counterHandler,
         ...
       ),
-      ()
     ),
     ~opts,
-    (),
   )
 
   let subscribe = (sourceName, source) =>
@@ -36,7 +34,6 @@ let make: Reventless.Counter.Adapter.handlerMaker = (
       ~sourceName,
       ~source,
       ~opts,
-      (),
     )
 
   let _ = subscribe(referencesName, referencesStream)

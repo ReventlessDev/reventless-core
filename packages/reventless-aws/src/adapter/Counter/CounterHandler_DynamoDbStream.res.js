@@ -15,9 +15,9 @@ function make(name, referencesName, referencesDb, countsName, countsDb, counterH
   var countsStream = Util_DynamoDbStream$ReventlessAws.toStreamResource(countsDbResource);
   var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
               return CounterHandler_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(referencesStream, countsStream, counterHandler, extra, extra$1);
-            }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
+            }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
   var subscribe = function (sourceName, source) {
-    return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(eventHandlerLambda), name, sourceName, source, opts, undefined);
+    return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(eventHandlerLambda), name, sourceName, source, opts);
   };
   subscribe(referencesName, referencesStream);
   subscribe(countsName, countsStream);

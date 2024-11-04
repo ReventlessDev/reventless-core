@@ -2,6 +2,7 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var EventTopic$Reventless = require("@reventless/reventless/src/components/EventTopic.res.js");
 var Util_SNS$ReventlessAws = require("../../util/Util_SNS.res.js");
@@ -9,8 +10,8 @@ var EventTopicPublisher_SNS_Runtime$ReventlessAws = require("./EventTopicPublish
 
 function make(name, param, opts) {
   var topic = new (Aws.sns.Topic)(name, {
-        tags: AWS$ReventlessAws.tags(name, EventTopic$Reventless.componentType)
-      }, opts);
+        tags: Caml_option.some(AWS$ReventlessAws.tags(name, EventTopic$Reventless.componentType))
+      });
   return {
           resources: [Util_SNS$ReventlessAws.toResource(topic)],
           publish: EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(topic)

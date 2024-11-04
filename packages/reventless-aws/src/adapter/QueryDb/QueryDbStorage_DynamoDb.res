@@ -7,40 +7,32 @@ type role = Pulumi.Output.t<IAM.Role.t>
 
 let globalSecondaryIndexes = indexes =>
   indexes
-  ->Belt.Array.map(({index, projectionType} as indexConfig) =>
-    switch projectionType {
-    | #ALL as projectionType
-    | #KEYS_ONLY as projectionType =>
-      GlobalSecondaryIndex.make(
-        ~name=index,
-        ~hashKey=indexConfig.idField->Belt.Option.getWithDefault(index),
-        ~rangeKey=?indexConfig.subIdField,
-        ~projectionType,
-        (),
-      )
-    | #INCLUDE(includes) =>
-      GlobalSecondaryIndex.make(
-        ~name=index,
-        ~hashKey=indexConfig.idField->Belt.Option.getWithDefault(index),
-        ~rangeKey=?indexConfig.subIdField,
-        ~projectionType=#INCLUDE,
-        ~nonKeyAttributes=includes,
-        (),
-      )
+  ->Belt.Array.map(({index, projectionType} as indexConfig) => {
+    let (projectionType, includes) = switch projectionType {
+    | ALL as projection => (PulumiAws.DynamoDb.Table.ALL, None)
+    | KEYS_ONLY as projection => (KEYS_ONLY, None)
+    | INCLUDE(includes) => (INCLUDE, Some(includes))
+    }
+    {
+      name: index,
+      hashKey: indexConfig.idField->Belt.Option.getWithDefault(index),
+      rangeKey: ?indexConfig.subIdField,
+      projectionType,
+      nonKeyAttributes: ?includes,
     }->Pulumi.Input.make
-  )
+  })
   ->Pulumi.Input.make
 
 let attributes = (sortField, indexes) =>
   [
-    [{"name": "id", "type": "S"}],
-    sortField->Belt.Option.mapWithDefault([], sortField => [{"name": sortField, "type": "S"}]),
+    [{name: "id", type_: "S"}],
+    sortField->Belt.Option.mapWithDefault([], sortField => [{name: sortField, type_: "S"}]),
     indexes
-    ->Belt.Array.map(({index, _type} as indexConfig) =>
+    ->Belt.Array.map(({index, type_} as indexConfig) =>
       [
-        [{"name": index, "type": _type}],
+        [{name: index, type_}],
         indexConfig.subIdField->Belt.Option.mapWithDefault([], sortField => [
-          {"name": sortField, "type": "S"},
+          {name: sortField, type_: "S"},
         ]),
       ]->Belt.Array.concatMany
     )
@@ -49,24 +41,23 @@ let attributes = (sortField, indexes) =>
 
 let dataSource = (name, table, api, apiRole, opts) => {
   let _dataSourceRolePolicy = {
-    open IAM
-    RolePolicy.make(
+    IAM.RolePolicy.make(
       ~name,
-      ~args=RolePolicy.Args.make(
-        ~policy=table["arn"]
+      ~args={
+        IAM.RolePolicy.policy: table.arn
         ->Pulumi.Output.apply(tableArn =>
-          RolePolicy.generatePolicy([tableArn ++ "*"], "dynamodb:*")
+          IAM.RolePolicy.generatePolicy([tableArn ++ "*"], "dynamodb:*")
         )
         ->Pulumi.Output.asInput,
-        ~role=apiRole->Pulumi.Output.flatMap(role => role["id"])->Pulumi.Output.asInput,
-        (),
-      ),
+        role: apiRole
+        ->Pulumi.Output.flatMap((role: PulumiAws.IAM.Role.t) => role.id)
+        ->Pulumi.Output.asInput,
+      },
       ~opts,
-      (),
     )
   }
 
-  AppSync.DataSource.makeDynamoDBDataSource(~name, ~api, ~table, ~serviceRole=apiRole, ~opts, ())
+  AppSync.DataSource.makeDynamoDBDataSource(~name, ~api, ~table, ~serviceRole=apiRole, ~opts)
 }
 
 let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
@@ -91,7 +82,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
   open QueryDbStorage_DynamoDb_Runtime
   {
     resources: [table->Util_DynamoDb.toResource],
-    dataSourceName: dataSource(name, table, api, apiRole, opts)["name"],
+    dataSourceName: dataSource(name, table, api, apiRole, opts).name,
     load: table->load,
     save: table->save,
     saveBatch: table->saveBatch,

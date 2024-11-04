@@ -1,8 +1,8 @@
 // NOTE: following functions combine pulumi & aws-sdk -> should stay separated in reventless
 
-@ocaml.doc(" sign up a user to a given userPool
+/** sign up a user to a given userPool
    NOTE: should be called in runtime
-   ")
+*/
 open AwsSdk
 
 let userPoolEndpoint = (region, userPoolId) => `cognito-idp.${region}.amazonaws.com/${userPoolId}`
@@ -28,9 +28,9 @@ let signUp = (
     ),
   )->Request.promise
 
-@ocaml.doc(" sign up a user to a given userPool, if the user is not already present
+/** sign up a user to a given userPool, if the user is not already present
    NOTE: should be called in runtime
-   ")
+*/
 let signUpIfMissing = async (
   ~region: string,
   ~userPoolId: string,

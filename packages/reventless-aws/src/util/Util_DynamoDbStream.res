@@ -1,12 +1,12 @@
 let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
-  (table["hashKey"], table["rangeKey"], table["streamArn"])
+  (table.hashKey, table.rangeKey, table.streamArn)
   ->Pulumi.Output.all3
   ->Pulumi.Output.apply(((hashKey, rangeKey, streamArn)) =>
     hashKey ++ ("," ++ (rangeKey->Belt.Option.getWithDefault("") ++ ("," ++ streamArn)))
   )
 
-let streamArnFromDynamoDbTableResource = table =>
-  (table["info"], table["name"])
+let streamArnFromDynamoDbTableResource = (resource: ReventlessSpec.Adapter.resource) =>
+  (resource.info, resource.name)
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((tableInfo, tableName)) =>
     switch tableInfo->Js.String2.split(",") {
@@ -16,25 +16,28 @@ let streamArnFromDynamoDbTableResource = table =>
     }
   )
 
-let toResource = (table: PulumiAws.DynamoDb.Table.t) =>
-  Reventless.Adapter.resource(
-    ~service=table["name"]->Pulumi.Output.apply(_ => Util_DynamoDbStream_Runtime.service),
-    ~name=table["name"],
-    ~id=table["id"],
-    ~urn=table["arn"],
-    ~info=table->toInfo,
-  )
+let toResource = (table: PulumiAws.DynamoDb.Table.t) => {
+  ReventlessSpec.Adapter.service: table.name->Pulumi.Output.apply(_ =>
+    Util_DynamoDbStream_Runtime.service
+  ),
+  name: table.name,
+  id: table.id,
+  urn: table.arn,
+  info: table->toInfo,
+}
 
 let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
   let streamArn = table->streamArnFromDynamoDbTableResource
 
-  Reventless.Adapter.resource(
-    ~service=table["name"]->Pulumi.Output.apply(_ => Util_DynamoDbStream_Runtime.service),
-    ~name=table["name"],
-    ~id=streamArn,
-    ~urn=streamArn,
-    ~info=table["name"]->Pulumi.Output.apply(_ => ""),
-  )
+  {
+    ReventlessSpec.Adapter.service: table.name->Pulumi.Output.apply(_ =>
+      Util_DynamoDbStream_Runtime.service
+    ),
+    name: table.name,
+    id: streamArn,
+    urn: streamArn,
+    info: table.name->Pulumi.Output.apply(_ => ""),
+  }
 }
 
 // Workaround when restore enabled: turn on stream, ttl & pointInTimeRecovery again
@@ -61,8 +64,8 @@ let enableStream = async tableName => {
   }
 }
 
-let verifyStream = table =>
-  (table["name"], table["streamEnabled"], table["streamArn"], table["streamLabel"])
+let verifyStream = (table: PulumiAws.DynamoDb.Table.t) =>
+  (table.name, table.streamEnabled, table.streamArn, table.streamLabel)
   ->Pulumi.Output.all4
   ->Pulumi.Output.flatMap(((tableName, streamEnabled, streamArn, streamLabel)) =>
     switch streamEnabled {
@@ -82,15 +85,16 @@ let updateTable: (~ttl: int=?, PulumiAws.DynamoDb.Table.table) => PulumiAws.Dyna
   let newTtl = Util_DynamoDb.verifyTtl(~expectedTtl=?ttl, table)
   let newPointInTimeRecovery = Util_DynamoDb.verifyPointInTimeRecovery(table)
 
-  table->Js.Obj.assign({
-    "streamEnabled": streamInfo->Pulumi.Output.apply(((enabled, _, _)) => enabled),
-    "streamArn": streamInfo->Pulumi.Output.apply(((_, streamArn, _)) =>
+  {
+    ...table,
+    streamEnabled: streamInfo->Pulumi.Output.apply(((enabled, _, _)) => Some(enabled)),
+    streamArn: streamInfo->Pulumi.Output.apply(((_, streamArn, _)) =>
       streamArn->Belt.Option.getWithDefault("")
     ),
-    "streamLabel": streamInfo->Pulumi.Output.apply(((_, _, streamLabel)) => streamLabel),
-    "ttl": newTtl,
-    "pointInTimeRecovery": newPointInTimeRecovery,
-  })
+    streamLabel: streamInfo->Pulumi.Output.apply(((_, _, streamLabel)) => streamLabel),
+    ttl: newTtl,
+    pointInTimeRecovery: newPointInTimeRecovery,
+  }
 }
 
 let makeTable = (
@@ -120,15 +124,13 @@ let makeTable = (
       ~restoreSourceName?,
       ~streamEnabled=true,
       ~streamViewType,
-      ~tags?
+      ~tags?,
     ),
-    ~opts=opts->Js.Obj.assign({
-      "dependsOn": dependencies->Pulumi.Output.asInput,
-    }),
-    (),
+    ~opts={
+      ...opts,
+      dependsOn: dependencies->Pulumi.Output.asInput,
+    },
   )
-
-  ()
 
   registerResource(. table->Pulumi.Resource.makeFromJs)
 

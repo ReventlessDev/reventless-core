@@ -6,16 +6,17 @@ var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adap
 
 var service = "SNS_FIFO";
 
-function toResource(topic) {
+function toResource(param) {
+  var name = param.name;
   return {
-          service: topic.name.apply(function (param) {
-                return service;
-              }),
-          name: topic.name,
-          id: topic.id,
-          urn: topic.arn,
-          info: topic.name.apply(function (param) {
+          name: name,
+          id: param.id,
+          urn: param.arn,
+          info: name.apply(function (param) {
                 return "";
+              }),
+          service: name.apply(function (param) {
+                return service;
               })
         };
 }

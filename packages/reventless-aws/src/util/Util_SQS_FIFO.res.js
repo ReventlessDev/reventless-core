@@ -4,16 +4,17 @@
 
 var service = "SQS_FIFO";
 
-function toResource(queue) {
+function toResource(param) {
+  var name = param.name;
   return {
-          service: queue.name.apply(function (param) {
-                return service;
-              }),
-          name: queue.name,
-          id: queue.id,
-          urn: queue.arn,
-          info: queue.name.apply(function (param) {
+          name: name,
+          id: param.id,
+          urn: param.arn,
+          info: name.apply(function (param) {
                 return "";
+              }),
+          service: name.apply(function (param) {
+                return service;
               })
         };
 }

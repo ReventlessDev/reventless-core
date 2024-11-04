@@ -2,59 +2,30 @@
 'use strict';
 
 
-var Destination = {};
-
-var Subject = {};
-
-var $$Text = {};
-
-var Body = {
-  $$Text: $$Text
-};
-
-var Message = {
-  Subject: Subject,
-  Body: Body
-};
-
-var SendEmailRequest = {
-  Destination: Destination,
-  Message: Message
-};
-
-var SendEmailResponse = {};
+var SendEmailRequest = {};
 
 function sendTextEmail(t, source, destination, subject, message) {
   return t.sendEmail({
-                _Source: source,
-                _Destination: destination,
-                _Message: {
-                  _Subject: {
-                    _Data: subject
+                Source: source,
+                Destination: destination,
+                Message: {
+                  Subject: {
+                    Data: subject
                   },
-                  _Body: {
-                    _Text: {
-                      _Data: message
+                  Body: {
+                    Text: {
+                      Data: message
                     }
                   }
                 }
               }).promise();
 }
 
-var Args = {};
+var EmailIdentity = {};
 
-var EmailIdentity = {
-  Args: Args
-};
-
-var Args$1 = {};
-
-var IdentityPolicy = {
-  Args: Args$1
-};
+var IdentityPolicy = {};
 
 exports.SendEmailRequest = SendEmailRequest;
-exports.SendEmailResponse = SendEmailResponse;
 exports.sendTextEmail = sendTextEmail;
 exports.EmailIdentity = EmailIdentity;
 exports.IdentityPolicy = IdentityPolicy;

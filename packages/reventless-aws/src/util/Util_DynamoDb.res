@@ -1,18 +1,20 @@
-let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
-  (table["hashKey"], table["rangeKey"])
+open PulumiAws.DynamoDb.Table
+open ReventlessSpec.Adapter
+
+let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
+  (hashKey, rangeKey)
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((hashKey, rangeKey)) =>
     hashKey ++ ("," ++ rangeKey->Belt.Option.getWithDefault(""))
   )
 
-let toResource = (table: PulumiAws.DynamoDb.Table.t) =>
-  Reventless.Adapter.resource(
-    ~service=table["name"]->Pulumi.Output.apply(_ => Util_DynamoDb_Runtime.service),
-    ~name=table["name"],
-    ~id=table["id"],
-    ~urn=table["arn"],
-    ~info=table->toInfo,
-  )
+let toResource: table => resource = ({id, name, arn} as table) => {
+  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => Util_DynamoDb_Runtime.service),
+  name,
+  id,
+  urn: arn,
+  info: table->toInfo,
+}
 
 let arn2tableName = arn =>
   switch arn->Js.String2.split(":") {
@@ -21,9 +23,7 @@ let arn2tableName = arn =>
   }
 
 // Workaround when restore enabled: turn on ttl & pointInTimeRecovery again
-open PulumiAws.DynamoDb.Table
-
-let enableTtl: string => Js.Promise.t<PulumiAws.DynamoDb.Table.TableTtl.t> = async tableName => {
+let enableTtl: string => Js.Promise.t<ttl> = async tableName => {
   Js.log(`${__MODULE__}: enableTimeToLive for ${tableName}`)
 
   open AwsSdk.DynamoDb_DynamoDb
@@ -36,22 +36,21 @@ let enableTtl: string => Js.Promise.t<PulumiAws.DynamoDb.Table.TableTtl.t> = asy
       ),
     ),
   ) {
-  | res =>
-    TableTtl.make(
-      ~enabled=Some(res["_TimeToLiveSpecification"]["_Enabled"]),
-      ~attributeName=res["_TimeToLiveSpecification"]["_AttributeName"],
-    )
+  | res => {
+      enabled: res["_TimeToLiveSpecification"]["_Enabled"],
+      attributeName: res["_TimeToLiveSpecification"]["_AttributeName"],
+    }
   }
 }
 
-let verifyTtl: (
-  ~expectedTtl: int=?,
-  table,
-) => Pulumi.Output.t<PulumiAws.DynamoDb.Table.TableTtl.t> = (~expectedTtl=?, table) =>
-  (table["name"], table["ttl"])
+let verifyTtl: (~expectedTtl: int=?, table) => Pulumi.Output.t<ttl> = (
+  ~expectedTtl=?,
+  {name, ttl},
+) =>
+  (name, ttl)
   ->Pulumi.Output.all2
   ->Pulumi.Output.flatMap(((tableName, ttl)) =>
-    switch (ttl["enabled"], expectedTtl) {
+    switch (ttl.enabled, expectedTtl) {
     | (None, Some(_))
     | (Some(false), Some(_)) =>
       enableTtl(tableName)
@@ -71,18 +70,15 @@ let enablePointInTimeRecovery = async tableName => {
       ),
     ),
   ) {
-  | res =>
-    TablePointInTimeRecovery.make(
-      ~enabled=res["_ContinuousBackupsDescription"]["_ContinuousBackupsStatus"] == "ENABLED",
-    )
+  | res => {enabled: res["_ContinuousBackupsDescription"]["_ContinuousBackupsStatus"] == "ENABLED"}
   }
 }
 
 let verifyPointInTimeRecovery = (table: table) =>
-  (table["name"], table["pointInTimeRecovery"])
+  (table.name, table.pointInTimeRecovery)
   ->Pulumi.Output.all2
   ->Pulumi.Output.flatMap(((tableName, pointInTimeRecovery)) =>
-    switch pointInTimeRecovery["enabled"] {
+    switch pointInTimeRecovery.enabled {
     | false => enablePointInTimeRecovery(tableName)
     | true => pointInTimeRecovery->Js.Promise.resolve
     }->Pulumi.Output.fromPromise
@@ -92,10 +88,11 @@ let updateTable: (~ttl: int=?, table) => table = (~ttl=?, table) => {
   let newTtl = verifyTtl(~expectedTtl=?ttl, table)
   let newPointInTimeRecovery = verifyPointInTimeRecovery(table)
 
-  table->Js.Obj.assign({
-    "ttl": newTtl,
-    "pointInTimeRecovery": newPointInTimeRecovery,
-  })
+  {
+    ...table,
+    ttl: newTtl,
+    pointInTimeRecovery: newPointInTimeRecovery,
+  }
 }
 
 let makeTableArgs = (
@@ -106,38 +103,38 @@ let makeTableArgs = (
   ~restoreSourceName=?,
   ~tags=?,
   ~streamEnabled=?,
-      ~streamViewType=?,
+  ~streamViewType=?,
 ) => {
-  let ttl =
-    ttl->Belt.Option.map(_ =>
-      PulumiAws.DynamoDb.Table.Args.TableTtl.make(
-        ~enabled=true,
-        ~attributeName=Util_DynamoDb_Runtime.purgeTimeAttributeName,
-      )->Pulumi.Input.make
-    )
+  let ttl = ttl->Belt.Option.map(_ =>
+    {
+      PulumiAws.DynamoDb.Table.enabled: true,
+      attributeName: Util_DynamoDb_Runtime.purgeTimeAttributeName,
+    }->Pulumi.Input.make
+  )
+
   let restoreDateTime = Reventless.Env.restoreDateTime
 
-  PulumiAws.DynamoDb.Table.Args.make(
-    ~attributes=attributes->Pulumi.Input.make,
-    ~hashKey="id"->Pulumi.Input.make,
-    ~rangeKey=?rangeKey->Belt.Option.map(Pulumi.Input.make),
-    ~billingMode=#PAY_PER_REQUEST,
-    ~globalSecondaryIndexes?,
-    ~tags?,
-    ~ttl?,
-    ~pointInTimeRecovery=PulumiAws.DynamoDb.Table.Args.PointInTimeRecovery.make(
-      ~enabled=true,
-    )->Pulumi.Input.make,
-    ~restoreSourceName=?restoreSourceName->Belt.Option.map(Pulumi.Input.make),
-    ~restoreDateTime=?restoreSourceName->Belt.Option.flatMap(_ =>
+  {
+    PulumiAws.DynamoDb.Table.attributes: attributes->Pulumi.Input.make,
+    hashKey: "id"->Pulumi.Input.make,
+    rangeKey: ?rangeKey->Belt.Option.map(Pulumi.Input.make),
+    billingMode: PAY_PER_REQUEST,
+    ?globalSecondaryIndexes,
+    ?tags,
+    ?ttl,
+    pointInTimeRecovery: {
+      enabled: true,
+    }->Pulumi.Input.make,
+    restoreSourceName: ?restoreSourceName->Belt.Option.map(Pulumi.Input.make),
+    restoreDateTime: ?restoreSourceName->Belt.Option.flatMap(_ =>
       restoreDateTime->Belt.Option.map(Pulumi.Input.make)
     ),
-    ~restoreToLatestTime=?restoreSourceName->Belt.Option.map(_ =>
+    restoreToLatestTime: ?restoreSourceName->Belt.Option.map(_ =>
       restoreDateTime->Belt.Option.isNone->Pulumi.Input.make
     ),
-    ~streamEnabled?,
-    ~streamViewType?,
-  )
+    ?streamEnabled,
+    ?streamViewType,
+  }
 }
 
 let option2Str = opt =>
@@ -170,12 +167,12 @@ let makeTable = (
       ~ttl?,
       ~rangeKey?,
       ~restoreSourceName?,
-      ~tags?
+      ~tags?,
     ),
-    ~opts=opts->Js.Obj.assign({
-      "dependsOn": dependencies->Pulumi.Output.asInput,
-    }),
-    (),
+    ~opts={
+      ...opts,
+      dependsOn: dependencies->Pulumi.Output.asInput,
+    },
   )
 
   registerResource(. table->Pulumi.Resource.makeFromJs)

@@ -43,10 +43,10 @@ function allowResourcesSendMessage(queue, resources) {
 
 var allowCloudWatchEvents = Pulumi.output("{\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": [\"events.amazonaws.com\",\"sqs.amazonaws.com\"]\n      },\n      \"Action\": \"sqs:SendMessage\",\n      \"Resource\": \"*\"\n    }");
 
-function make(name, queue, statements, opts, param) {
+function make(name, queue, statements, opts) {
   var policy = Pulumi.all(statements).apply(function (statementStrs) {
         var statementStr = statementStrs.join(",");
-        return "{\n              \"Version\": \"2012-10-17\",\n              \"Id\": \"" + name + "\",\n              \"Statement\": [\n                " + statementStr + "\n              ]\n            }";
+        return "{\n        \"Version\": \"2012-10-17\",\n        \"Id\": \"" + name + "\",\n        \"Statement\": [\n          " + statementStr + "\n        ]\n      }";
       });
   return new (Aws.sqs.QueuePolicy)(name, {
               policy: policy,

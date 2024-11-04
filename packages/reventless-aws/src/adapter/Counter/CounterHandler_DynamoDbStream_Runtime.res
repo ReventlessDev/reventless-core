@@ -3,9 +3,12 @@ open Reventless.Counter
 open AwsSdk.DynamoDb.DocumentClient
 open Util.DynamoDbStream_Runtime
 
-let addToCounterTarget = async (table, {counterId, target, targetRef}) => {
+let addToCounterTarget = async (
+  table: ReventlessSpec.Adapter.resource,
+  {counterId, target, targetRef},
+) => {
   Js.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target)
-  let tableName = table["name"]->Pulumi.Output.get
+  let tableName = table.name->Pulumi.Output.get
   switch await update(
     UpdateInput.make(
       ~_TableName=tableName,
@@ -54,8 +57,8 @@ let handleStreamEvent = (
   streamEvent,
   _,
 ) => {
-  let referencesARN = referencesStream["urn"]->Pulumi.Output.get
-  let countsARN = countsStream["urn"]->Pulumi.Output.get
+  let referencesARN = referencesStream.urn->Pulumi.Output.get
+  let countsARN = countsStream.urn->Pulumi.Output.get
 
   let records = streamEvent["_Records"]->Belt.Option.getWithDefault([])
   let (dynamoDbRecords, ignoredRecords) =

@@ -1,7 +1,12 @@
-let handleQueueEvent = async (handleCommands, queue, event, _) => {
-  let records = event["_Records"]
+let handleQueueEvent = async (
+  handleCommands,
+  queue,
+  event: PulumiAws.SQS.Queue.callbackEvent,
+  _,
+) => {
+  let records = event.records
   let jsons = records->Belt.Array.keepMap(record => {
-    let commandStr = record["body"]
+    let commandStr = record.body
     switch Js.Json.parseExn(commandStr) {
     | json => Some(json)
     | exception err =>
@@ -15,7 +20,7 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
   })
   let topicItems =
     records
-    ->Belt.Array.map(record => record["receiptHandle"])
+    ->Belt.Array.map(record => record.receiptHandle)
     ->Belt.Array.zip(jsons)
     ->Belt.Array.map(((reference, command)) => {
       Reventless.CommandTopic.reference,

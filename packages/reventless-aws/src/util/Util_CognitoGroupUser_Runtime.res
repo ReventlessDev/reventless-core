@@ -2,7 +2,7 @@
 
 open AwsSdk
 
-@ocaml.doc(" add a user to a given group of a given userPool
+/* add a user to a given group of a given userPool
   ")
 let addUserToGroup = (
   ~region: string,
@@ -21,9 +21,10 @@ let addUserToGroup = (
       ),
     )
   }->Request.promise
+*/
 
-@ocaml.doc(" remove a user from a given group of a given userPool
-  ")
+/** remove a user from a given group of a given userPool
+*/
 let removeUserFromGroup = (
   ~region: string,
   ~userName: string,

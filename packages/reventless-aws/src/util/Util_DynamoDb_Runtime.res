@@ -3,17 +3,17 @@ open AwsSdk.DynamoDb.DocumentClient
 let service = "DynamoDb"
 
 let put = (table: PulumiAws.DynamoDb.Table.t, item) =>
-  putWithTableName(table["name"]->Pulumi.Output.get, item)
+  putWithTableName(table.name->Pulumi.Output.get, item)
 
 let delete = (table: PulumiAws.DynamoDb.Table.t, id) =>
-  deleteWithTableName(table["name"]->Pulumi.Output.get, id, None)
+  deleteWithTableName(table.name->Pulumi.Output.get, id, None)
 
 let queryById = (table: PulumiAws.DynamoDb.Table.t, id) =>
-  queryByIdWithTableName(table["name"]->Pulumi.Output.get, id)
+  queryByIdWithTableName(table.name->Pulumi.Output.get, id)
 
 let keysFromResource = (resource: ReventlessSpec.Adapter.resource) =>
-  switch resource["info"]->Pulumi.Output.get->Js.String2.split(",") {
-  | [] => Js.Exn.raiseError("No id field given for table " ++ resource["name"]->Pulumi.Output.get)
+  switch resource.info->Pulumi.Output.get->Js.String2.split(",") {
+  | [] => Js.Exn.raiseError("No id field given for table " ++ resource.name->Pulumi.Output.get)
   | [id]
   | [id, ""] => (id, None)
   | parts => (parts->Array.getUnsafe(0), parts[1])
@@ -40,7 +40,7 @@ let insertTtl = (json, ttl) =>
           Js.log2(__MODULE__ ++ ".insertTtl: Error: Couldn't decode JSON", json->Js.Json.stringify)
           None
         },
-        (obj) => {
+        obj => {
           obj->Js.Dict.set(purgeTimeAttributeName, ttl->calcPurgeTime->Js.Json.number)
           () => Some(obj->Js.Json.object_)
         },
@@ -49,7 +49,7 @@ let insertTtl = (json, ttl) =>
   )
   ->Belt.Option.getWithDefault(json)
 
-@ocaml.doc(" batchWrite: max. batch size is 25 ")
+/** batchWrite: max. batch size is 25 */
 let batchWrite = params =>
   make()->AwsSdk.DynamoDb.DocumentClient.batchWrite(~params)->AwsSdk.Request.promise
 

@@ -158,7 +158,7 @@ function stackName(prefix) {
 function make(prefix, tablesToClean) {
   return new (Aws.lambda.CallbackFunction)("DataCleaner-" + stackName(prefix), Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
                     return cleanerFn(tablesToClean, extra, extra$1);
-                  }), undefined, undefined, undefined, undefined, 1024, undefined, undefined, undefined, undefined, undefined, undefined), undefined);
+                  }), undefined, undefined, undefined, undefined, 1024, undefined, undefined, undefined, undefined, undefined));
 }
 
 var mode = "production";

@@ -12,23 +12,21 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
 ) => {
   let queue = SQS.Queue.make(
     ~name,
-    ~args=SQS.Queue.Args.make(
-      ~fifoQueue=true->Pulumi.Input.make,
-      ~deduplicationScope=#messageGroup,
-      ~fifoThroughputLimit=#perMessageGroupId,
-      ~contentBasedDeduplication=true->Pulumi.Input.make,
-      ~visibilityTimeoutSeconds=timeout->Pulumi.Input.make,
-      ~redrivePolicy=Util_DeadLetterQueue.fifoQueue["arn"]
+    ~args={
+      SQS.Queue.fifoQueue: true->Pulumi.Input.make,
+      deduplicationScope: MessageGroup,
+      fifoThroughputLimit: PerMessageGroupId,
+      contentBasedDeduplication: true->Pulumi.Input.make,
+      visibilityTimeoutSeconds: timeout->Pulumi.Input.make,
+      redrivePolicy: Util_DeadLetterQueue.fifoQueue.arn
       ->Pulumi.Output.apply(dlqArn =>
-        SQS.Queue.Args.RedrivePolicy.make(~deadLetterTargetArn=dlqArn, ~maxReceiveCount=5)
+        SQS.Queue.RedrivePolicy.make(~deadLetterTargetArn=dlqArn, ~maxReceiveCount=5)
       )
       ->Pulumi.Output.asInput,
-      ~sqsManagedSseEnabled=false->Pulumi.Input.make,
-      ~tags=AWS.tags(~name, Reventless.EventCollector.componentType),
-      (),
-    ),
+      sqsManagedSseEnabled: false->Pulumi.Input.make,
+      tags: AWS.tags(~name, Reventless.EventCollector.componentType),
+    },
     ~opts,
-    (),
   )
 
   let _queuePolicy = {
@@ -38,7 +36,6 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
       ~queue,
       ~statements=[allowAllSnsTopicsSendMessage(queue), allowCloudWatchEvents],
       ~opts,
-      (),
     )
   }
 
@@ -55,20 +52,19 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
         ~memorySize=memorySize->Pulumi.Input.make,
         ~timeout=timeout->Pulumi.Input.make,
         ~tags=AWS.tags(~name, Reventless.EventCollector.componentType),
-        (),
       ),
       ~opts,
-      (),
     )
   )
 
   let _queueSubscription =
     eventHandlerLambda->Pulumi.Output.apply(eventHandlerLambda =>
-      queue->SQS.Queue.onEvent(~name, ~handler=eventHandlerLambda, ~opts, ())
+      queue->SQS.Queue.onEvent(~name, ~handler=eventHandlerLambda, ~opts)
     )
 
   let _ =
     eventTopics
+    ->Js.Dict.map((eventTopic: ReventlessSpec.EventTopic.outputs) => eventTopic.resources, _)
     ->Reventless.Util.Adapter.partitionSupportedResources([
       Util_DynamoDbStream_Runtime.service,
       Util_SNS_FIFO.service,
@@ -100,7 +96,6 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
           ->Util.DynamoDbStream.findUnwrappedResource
           ->Reventless.AdapterDeploytime.unwrappedToResource,
           ~opts,
-          (),
         )
       )
 

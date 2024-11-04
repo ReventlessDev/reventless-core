@@ -2,6 +2,7 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 
 var name = "DeadLetterQueue";
@@ -10,15 +11,15 @@ var nameFifo = "FIFO" + name;
 
 var queue = new (Aws.sqs.Queue)(name, {
       visibilityTimeoutSeconds: 180,
-      sqsManagedSseEnabled: false
-    }, undefined);
+      sqsManagedSseEnabled: Caml_option.some(false)
+    });
 
 var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
-      contentBasedDeduplication: true,
-      fifoQueue: true,
+      contentBasedDeduplication: Caml_option.some(true),
+      fifoQueue: Caml_option.some(true),
       visibilityTimeoutSeconds: 180,
-      sqsManagedSseEnabled: false
-    }, undefined);
+      sqsManagedSseEnabled: Caml_option.some(false)
+    });
 
 function callback(evt, ctx) {
   return new Promise((function (resolve, param) {
@@ -26,13 +27,13 @@ function callback(evt, ctx) {
               }));
 }
 
-var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(callback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), {
-      parent: queue
+var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(callback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), {
+      parent: Caml_option.some(queue)
     });
 
-var subscription = queue.onEvent(name, handler, undefined, undefined);
+var subscription = queue.onEvent(name, handler);
 
-var fifoSubscription = fifoQueue.onEvent(nameFifo, handler, undefined, undefined);
+var fifoSubscription = fifoQueue.onEvent(nameFifo, handler);
 
 exports.name = name;
 exports.nameFifo = nameFifo;

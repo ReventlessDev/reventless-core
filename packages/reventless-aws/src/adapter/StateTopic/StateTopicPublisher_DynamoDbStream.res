@@ -10,7 +10,7 @@ let make: Reventless.StateTopic.Adapter.publisherMaker = (~name, ~opts as _, ~al
     ->Util.DynamoDbStream.findResource
 
   {
-    resource: queryDbResource["service"]
+    resource: queryDbResource.service
     ->Pulumi.Output.apply(service =>
       if service == Util_DynamoDbStream_Runtime.service {
         queryDbResource->Util_DynamoDbStream.toStreamResource

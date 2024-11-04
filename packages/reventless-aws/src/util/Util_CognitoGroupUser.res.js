@@ -6,12 +6,12 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 
 function addUserGroup(name, userPoolId) {
   return new (Aws.cognito.UserGroup)("UserGroup-" + name, {
-              name: name,
+              name: Caml_option.some(name),
               userPoolId: userPoolId
-            }, undefined);
+            });
 }
 
-function makeAddRemoveUserToGroupPolicy(name, userPoolArn, opts, param) {
+function makeAddRemoveUserToGroupPolicy(name, userPoolArn, opts) {
   return new (Aws.iam.Policy)(name + "AddRemoveUserToGroup", {
               policy: userPoolArn.apply(function (userPoolArn) {
                     return "{\n            \"Version\": \"2012-10-17\",\n            \"Statement\": [\n              {\n                  \"Effect\": \"Allow\",\n                  \"Action\": [\n                      \"cognito-idp:AdminAddUserToGroup\"\n                  ],\n                  \"Resource\": \"" + userPoolArn + "\"\n              },\n              {\n                  \"Effect\": \"Allow\",\n                  \"Action\": \"cognito-idp:AdminRemoveUserFromGroup\",\n                  \"Resource\": \"" + userPoolArn + "\"\n              }\n            ]\n          }";

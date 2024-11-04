@@ -1,5 +1,5 @@
 let make: Reventless.CommandTopic.Adapter.remoteConnectorMaker = commandTopicOutputs => {
-  remotePublish: commandTopicOutputs["resources"]
+  remotePublish: commandTopicOutputs.resources
   ->Belt.Array.map(Reventless.AdapterDeploytime.unsafeUnwrapResource)
   ->Util.SQS_Runtime.findUnwrappedResource
   ->Reventless.Adapter.unwrappedToResource

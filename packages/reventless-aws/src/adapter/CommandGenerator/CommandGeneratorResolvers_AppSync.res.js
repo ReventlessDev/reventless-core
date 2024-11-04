@@ -17,14 +17,14 @@ var CommandGeneratorResolvers_AppSync_Runtime$ReventlessAws = require("./Command
 function make(name, api, fields, commandGenerator, opts) {
   var commandGeneratorLambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
               return CommandGeneratorResolvers_AppSync_Runtime$ReventlessAws.generateCommand(commandGenerator, extra, extra$1);
-            }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
+            }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
   var commandGeneratorArn = commandGeneratorLambda.arn;
   new (Aws.lambda.Permission)(name, {
         action: "lambda:InvokeFunction",
-        _function: commandGeneratorArn,
+        function: commandGeneratorArn,
         principal: "appsync.amazonaws.com"
       }, opts);
-  var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), Caml_option.some(opts), undefined);
+  var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), opts);
   new (Aws.iam.RolePolicy)(name + "DS", {
         policy: commandGeneratorArn.apply(function (commandGeneratorArn) {
               return IAM$PulumiAws.RolePolicy.generatePolicy([commandGeneratorArn], "lambda:InvokeFunction");
@@ -32,22 +32,22 @@ function make(name, api, fields, commandGenerator, opts) {
         role: dataSourceRole.id
       }, opts);
   var dataSource = new (Aws.appsync.DataSource)(name, {
-        _type: "AWS_LAMBDA",
+        type: "AWS_LAMBDA",
         apiId: Output$Pulumi.flatMap(api, (function (api) {
                 return api.id;
               })),
         lambdaConfig: {
           functionArn: commandGeneratorArn
         },
-        serviceRoleArn: dataSourceRole.arn
-      }, Caml_option.some(opts));
+        serviceRoleArn: Caml_option.some(dataSourceRole.arn)
+      }, opts);
   var invokeCommandGenerator = function (command) {
     return "\n      {\n        \"version\": \"2017-02-28\",\n        \"operation\": \"Invoke\",\n        \"payload\": {\n            \"command\": \"" + command + "\",\n            \"arguments\": $utils.toJson($context.arguments),\n            \"meta\": {\n              \"ip\": $util.toJson($context.identity.sourceIp),\n              \"user\": $util.toJson($context.identity.username)\n            }\n        }\n      }\n      ";
   };
   var resolvers = Belt_Array.map(fields, (function (field) {
           var match = field.split("_");
           var commandName = match.length !== 2 ? StringLabels.capitalize_ascii(field) : StringLabels.capitalize_ascii(match[1]);
-          return AppSync_Resolver$PulumiAws.makeUnitResolver(StringLabels.capitalize_ascii(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, Caml_option.some(opts), undefined);
+          return AppSync_Resolver$PulumiAws.makeUnitResolver(StringLabels.capitalize_ascii(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, opts);
         }));
   var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);
   return {

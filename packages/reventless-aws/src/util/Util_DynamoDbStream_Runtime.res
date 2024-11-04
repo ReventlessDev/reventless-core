@@ -19,22 +19,22 @@ let buildEvent'Json = dict =>
 
 let buildStateJson = dict => dict->Js.Json.object_
 
-let parseDynamoDbStreamRecord = (buildJson, record: Record.t) => {
-  let record = record["dynamodb"]
+let parseDynamoDbStreamRecord = (buildJson, record: AwsSdk.DynamoDb.Stream.Record.t) => {
+  let dynamoDb = record["dynamodb"]
   let id =
-    record->Belt.Option.flatMap(record =>
-      AwsSdk.DynamoDb.Converter.output(~data=record["_Keys"]["id"], ())
+    dynamoDb->Belt.Option.flatMap(dynamoDb =>
+      AwsSdk.DynamoDb.Converter.output(~data=dynamoDb["_Keys"]["id"], ())
     )
 
   let newImageJson =
-    record
-    ->Belt.Option.flatMap(dynamodb => dynamodb["_NewImage"])
+    dynamoDb
+    ->Belt.Option.flatMap(dynamoDb => dynamoDb["_NewImage"])
     ->Belt.Option.map(newImage => AwsSdk.DynamoDb.Converter.unmarshall(~data=newImage, ()))
     ->Belt.Option.map(buildJson)
 
   let oldImageJson =
-    record
-    ->Belt.Option.flatMap(dynamodb => dynamodb["_OldImage"])
+    dynamoDb
+    ->Belt.Option.flatMap(dynamoDb => dynamoDb["_OldImage"])
     ->Belt.Option.map(oldImage => AwsSdk.DynamoDb.Converter.unmarshall(~data=oldImage, ()))
     ->Belt.Option.map(buildJson)
 
@@ -46,10 +46,10 @@ let parseDynamoDbStreamRecord = (buildJson, record: Record.t) => {
   }
 }
 
-let parseDynamoDbStreamRecordEvent: Record.t => result = record =>
+let parseDynamoDbStreamRecordEvent: AwsSdk.DynamoDb.Stream.Record.t => result = record =>
   parseDynamoDbStreamRecord(buildEvent'Json, record)
 
-let parseDynamoDbStreamRecordState: Record.t => result = record =>
+let parseDynamoDbStreamRecordState: AwsSdk.DynamoDb.Stream.Record.t => result = record =>
   parseDynamoDbStreamRecord(buildStateJson, record)
 
 let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)

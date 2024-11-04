@@ -1,116 +1,72 @@
 type t
 
-@module("aws-sdk") @new external ses: unit => t = "SES"
+@module("aws-sdk") @new
+external ses: unit => t = "SES"
 
 module SendEmailRequest = {
-  type t
-
-  module Destination = {
-    type t
-
-    @obj
-    external make: (
-      ~_ToAddresses: array<string>=?,
-      ~_CcAddresses: array<string>=?,
-      ~_BccAddresses: array<string>=?,
-      unit,
-    ) => t = ""
+  type destination = {
+    @as("ToAddresses") toAddresses?: array<string>,
+    @as("CcAddresses") ccAddresses?: array<string>,
+    @as("BccAddresses") bccAddresses?: array<string>,
   }
 
-  module Message = {
-    type t
+  type subject = {@as("Data") data: string, @as("Charset") charset?: string}
+  type text = {@as("Data") data: string, @as("Charset") charset?: string}
+  type body = {@as("Text") text: text}
 
-    module Subject = {
-      type t
+  type message = {@as("Subject") subject: subject, @as("Body") body: body}
 
-      @obj
-      external make: (~_Data: string, ~_Charset: string=?, unit) => t = ""
-    }
-
-    module Body = {
-      module Text = {
-        type t
-
-        @obj
-        external make: (~_Data: string, ~_Charset: string=?, unit) => t = ""
-      }
-      type t
-
-      @obj external make: (~_Text: Text.t) => t = ""
-    }
-
-    @obj external make: (~_Subject: Subject.t, ~_Body: Body.t) => t = ""
+  type t = {
+    @as("Source") source: string,
+    @as("Destination") destination: destination,
+    @as("Message") message: message,
   }
-
-  @obj
-  external make: (~_Source: string, ~_Destination: Destination.t, ~_Message: Message.t) => t = ""
 }
 
-module SendEmailResponse = {
-  type t = {"MessageId": string}
-}
+type sendEmailResponse = {@as("MessageId") messageId: string}
 
 @send
-external sendEmail: (t, ~params: SendEmailRequest.t) => AwsSdk.Request.t<SendEmailResponse.t> =
+external sendEmail: (t, ~params: SendEmailRequest.t) => AwsSdk.Request.t<sendEmailResponse> =
   "sendEmail"
 
 let sendTextEmail = (
   t,
   ~source: string,
-  ~destination: SendEmailRequest.Destination.t,
+  ~destination: SendEmailRequest.destination,
   ~subject: string,
   ~message: string,
 ) =>
   sendEmail(
     t,
-    ~params=SendEmailRequest.make(
-      ~_Source=source,
-      ~_Destination=destination,
-      ~_Message=SendEmailRequest.Message.make(
-        ~_Subject=SendEmailRequest.Message.Subject.make(~_Data=subject, ()),
-        ~_Body=SendEmailRequest.Message.Body.make(
-          ~_Text=SendEmailRequest.Message.Body.Text.make(~_Data=message, ()),
-        ),
-      ),
-    ),
+    ~params={
+      source,
+      destination,
+      message: {
+        SendEmailRequest.subject: {SendEmailRequest.data: subject},
+        body: {text: {SendEmailRequest.data: message}},
+      },
+    },
   )->AwsSdk.Request.promise
 
 module EmailIdentity = {
-  type t = {"arn": Pulumi.Output.t<PulumiAws.Aws.arn>, "email": Pulumi.Output.t<string>}
+  type t = {arn: Pulumi.Output.t<PulumiAws.Aws.arn>, email: Pulumi.Output.t<string>}
 
-  module Args = {
-    type t
-
-    @obj external make: (~email: string) => t = ""
-  }
+  type args = {email: string}
 
   @module("@pulumi/aws") @new @scope("ses")
-  external make: (
-    ~name: string,
-    ~args: Args.t,
-    ~opts: Pulumi.CustomResourceOptions.t=?,
-    unit,
-  ) => t = "EmailIdentity"
+  external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
+    "EmailIdentity"
 }
 
 module IdentityPolicy = {
   type t
 
-  module Args = {
-    type t
-
-    @obj
-    external make: (
-      ~identity: Pulumi.Input.t<PulumiAws.Aws.arn>,
-      ~policy: Pulumi.Input.t<Js.Json.t>,
-    ) => t = ""
+  type args = {
+    identity: Pulumi.Input.t<PulumiAws.Aws.arn>,
+    policy: Pulumi.Input.t<Js.Json.t>,
   }
 
   @module("@pulumi/aws") @new @scope("ses")
-  external make: (
-    ~name: string,
-    ~args: Args.t,
-    ~opts: Pulumi.CustomResourceOptions.t=?,
-    unit,
-  ) => t = "IdentityPolicy"
+  external make: (~name: string, ~args: args, ~opts: Pulumi.CustomResourceOptions.t=?) => t =
+    "IdentityPolicy"
 }

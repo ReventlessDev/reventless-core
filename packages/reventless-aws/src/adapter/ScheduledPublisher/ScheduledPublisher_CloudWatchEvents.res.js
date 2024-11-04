@@ -2,25 +2,24 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws = require("./ScheduledPublisher_CloudWatchEvents_Runtime.res.js");
 
 function make(param, opts) {
-  var role = IAM$PulumiAws.Role.makeWithDefaultPolicy("CloudWatchEventsRole", Pulumi.output("events.amazonaws.com"), Caml_option.some(opts), undefined);
+  var role = IAM$PulumiAws.Role.makeWithDefaultPolicy("CloudWatchEventsRole", Pulumi.output("events.amazonaws.com"), opts);
   new (Aws.iam.Policy)("CloudWatchEventsPolicy", {
         policy: role.arn.apply(function (roleArn) {
-              return "{\n                    \"Version\": \"2012-10-17\",\n                    \"Statement\": [{\n                      \"Effect\": \"Allow\",\n                      \"Action\": \"events:*\",\n                      \"Resource\": \"*\"\n                    },{\n                      \"Effect\": \"Allow\",\n                      \"Action\": \"iam:PassRole\",\n                      \"Resource\": \"" + roleArn + "\"\n                  }]\n                  }";
+              return "{\n          \"Version\": \"2012-10-17\",\n          \"Statement\": [{\n            \"Effect\": \"Allow\",\n            \"Action\": \"events:*\",\n            \"Resource\": \"*\"\n          },{\n            \"Effect\": \"Allow\",\n            \"Action\": \"iam:PassRole\",\n            \"Resource\": \"" + roleArn + "\"\n        }]\n        }";
             })
       }, opts);
   return {
           resource: {
-            service: Pulumi.output("CloudWatchEvents"),
             name: Pulumi.output(""),
             id: Pulumi.output(""),
             urn: Pulumi.output(""),
-            info: Pulumi.output("")
+            info: Pulumi.output(""),
+            service: Pulumi.output("CloudWatchEvents")
           },
           create: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(role),
           delete: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule

@@ -3,6 +3,7 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -13,24 +14,25 @@ var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_Dyna
 var Util_DynamoDb_Runtime$ReventlessAws = require("./Util_DynamoDb_Runtime.res.js");
 var Util_DynamoDb_TableManager$ReventlessAws = require("./Util_DynamoDb_TableManager.res.js");
 
-function toInfo(table) {
+function toInfo(param) {
   return Pulumi.all([
-                table.hashKey,
-                table.rangeKey
+                param.hashKey,
+                param.rangeKey
               ]).apply(function (param) {
               return param[0] + ("," + Belt_Option.getWithDefault(param[1], ""));
             });
 }
 
 function toResource(table) {
+  var name = table.name;
   return {
-          service: table.name.apply(function (param) {
-                return Util_DynamoDb_Runtime$ReventlessAws.service;
-              }),
-          name: table.name,
+          name: name,
           id: table.id,
           urn: table.arn,
-          info: toInfo(table)
+          info: toInfo(table),
+          service: name.apply(function (param) {
+                return Util_DynamoDb_Runtime$ReventlessAws.service;
+              })
         };
 }
 
@@ -53,15 +55,15 @@ async function enableTtl(tableName) {
         }
       });
   return {
-          enabled: res._TimeToLiveSpecification._Enabled,
-          attributeName: res._TimeToLiveSpecification._AttributeName
+          attributeName: res._TimeToLiveSpecification._AttributeName,
+          enabled: res._TimeToLiveSpecification._Enabled
         };
 }
 
-function verifyTtl(expectedTtl, table) {
+function verifyTtl(expectedTtl, param) {
   return Output$Pulumi.flatMap(Pulumi.all([
-                  table.name,
-                  table.ttl
+                  param.name,
+                  param.ttl
                 ]), (function (param) {
                 var ttl = param[1];
                 var tableName = param[0];
@@ -110,70 +112,55 @@ function verifyPointInTimeRecovery(table) {
 function updateTable(ttl, table) {
   var newTtl = verifyTtl(ttl, table);
   var newPointInTimeRecovery = verifyPointInTimeRecovery(table);
-  return Object.assign(table, {
-              ttl: newTtl,
-              pointInTimeRecovery: newPointInTimeRecovery
-            });
+  return {
+          arn: table.arn,
+          name: table.name,
+          id: table.id,
+          hashKey: table.hashKey,
+          rangeKey: table.rangeKey,
+          streamEnabled: table.streamEnabled,
+          streamArn: table.streamArn,
+          streamLabel: table.streamLabel,
+          ttl: newTtl,
+          pointInTimeRecovery: newPointInTimeRecovery
+        };
 }
 
 function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, streamEnabled, streamViewType) {
   var ttl$1 = Belt_Option.map(ttl, (function (param) {
           return {
-                  enabled: true,
-                  attributeName: Util_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName
+                  attributeName: Util_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName,
+                  enabled: true
                 };
         }));
   var restoreDateTime = process.env.RESTORE_DATE_TIME;
-  var tmp = {
-    attributes: attributes,
-    hashKey: "id",
-    billingMode: "PAY_PER_REQUEST",
-    pointInTimeRecovery: {
-      enabled: true
-    }
-  };
-  var tmp$1 = Belt_Option.map(rangeKey, (function (prim) {
-          return prim;
-        }));
-  if (tmp$1 !== undefined) {
-    tmp.rangeKey = Caml_option.valFromOption(tmp$1);
-  }
-  if (globalSecondaryIndexes !== undefined) {
-    tmp.globalSecondaryIndexes = Caml_option.valFromOption(globalSecondaryIndexes);
-  }
-  if (tags !== undefined) {
-    tmp.tags = Caml_option.valFromOption(tags);
-  }
-  if (streamEnabled !== undefined) {
-    tmp.streamEnabled = streamEnabled;
-  }
-  if (streamViewType !== undefined) {
-    tmp.streamViewType = Caml_option.valFromOption(streamViewType);
-  }
-  if (ttl$1 !== undefined) {
-    tmp.ttl = Caml_option.valFromOption(ttl$1);
-  }
-  var tmp$2 = Belt_Option.map(restoreSourceName, (function (prim) {
-          return prim;
-        }));
-  if (tmp$2 !== undefined) {
-    tmp.restoreSourceName = Caml_option.valFromOption(tmp$2);
-  }
-  var tmp$3 = Belt_Option.flatMap(restoreSourceName, (function (param) {
-          return Belt_Option.map(restoreDateTime, (function (prim) {
-                        return prim;
-                      }));
-        }));
-  if (tmp$3 !== undefined) {
-    tmp.restoreDateTime = Caml_option.valFromOption(tmp$3);
-  }
-  var tmp$4 = Belt_Option.map(restoreSourceName, (function (param) {
-          return Belt_Option.isNone(restoreDateTime);
-        }));
-  if (tmp$4 !== undefined) {
-    tmp.restoreToLatestTime = Caml_option.valFromOption(tmp$4);
-  }
-  return tmp;
+  return {
+          attributes: attributes,
+          hashKey: "id",
+          billingMode: "PAY_PER_REQUEST",
+          rangeKey: Belt_Option.map(rangeKey, (function (prim) {
+                  return prim;
+                })),
+          globalSecondaryIndexes: globalSecondaryIndexes,
+          tags: tags,
+          streamEnabled: streamEnabled,
+          streamViewType: streamViewType,
+          ttl: ttl$1,
+          pointInTimeRecovery: {
+            enabled: true
+          },
+          restoreSourceName: Belt_Option.map(restoreSourceName, (function (prim) {
+                  return prim;
+                })),
+          restoreDateTime: Belt_Option.flatMap(restoreSourceName, (function (param) {
+                  return Belt_Option.map(restoreDateTime, (function (prim) {
+                                return prim;
+                              }));
+                })),
+          restoreToLatestTime: Belt_Option.map(restoreSourceName, (function (param) {
+                  return Belt_Option.isNone(restoreDateTime);
+                }))
+        };
 }
 
 function option2Str(opt) {
@@ -189,9 +176,8 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, tags, opts
           return Js_dict.get(tables, name);
         }));
   var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies();
-  var table = new (Aws.dynamodb.Table)(name, makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, undefined, undefined), Object.assign(opts, {
-            dependsOn: match[0]
-          }));
+  var newrecord = Caml_obj.obj_dup(opts);
+  var table = new (Aws.dynamodb.Table)(name, makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, undefined, undefined), (newrecord.dependsOn = Caml_option.some(match[0]), newrecord));
   match[1](table);
   if (Belt_Option.isSome(restoreSourceName)) {
     return updateTable(ttl, table);

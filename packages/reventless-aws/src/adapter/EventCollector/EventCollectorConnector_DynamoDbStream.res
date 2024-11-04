@@ -12,41 +12,40 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
 ) => {
   let policies = Lambda.Policy.customPolicies(policy1, policy2) // TODO calculate real policies
 
-  let eventHandlerLambda =
-    policies->Pulumi.Output.apply(policies =>
-      Lambda.CallbackFunction.make(
-        ~name,
-        ~args=Lambda.CallbackFunction.Args.make(
-          ~callback=EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(handleEvents, ...),
-          ~policies,
-          ~memorySize=memorySize->Pulumi.Input.make,
-          ~timeout=timeout->Pulumi.Input.make,
-          ~tags=AWS.tags(~name, Reventless.EventCollector.componentType),
-          (),
+  let _ = policies->Pulumi.Output.apply(policies => {
+    let eventHandlerLambda = Lambda.CallbackFunction.make(
+      ~name,
+      ~args=Lambda.CallbackFunction.Args.make(
+        ~callback=EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(
+          handleEvents,
+          ...
         ),
-        ~opts,
-        (),
-      )
+        ~policies,
+        ~memorySize=memorySize->Pulumi.Input.make,
+        ~timeout=timeout->Pulumi.Input.make,
+        ~tags=AWS.tags(~name, Reventless.EventCollector.componentType),
+      ),
+      ~opts,
     )
 
-  let _ =
     eventTopics
+    ->Js.Dict.map((eventTopic: ReventlessSpec.EventTopic.outputs) => eventTopic.resources, _)
     ->Reventless.Util.Adapter.partitionSupportedResources([
       Util_DynamoDbStream_Runtime.service,
       Util_SNS_FIFO.service,
     ])
     ->Pulumi.Output.apply(((dynamoDbStreamResources, errorResources)) => {
       let _eventSourceMappings: array<EventSourceMapping.t> =
-        dynamoDbStreamResources->Belt.Array.map(((sourceName, sources)) =>
-          Util_EventSourceMapping.subscribe(
-            ~batchSize=25,
-            ~lambda=eventHandlerLambda,
-            ~targetName=name,
-            ~sourceName,
-            ~source=sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource,
-            ~opts,
-            (),
-          )
+        dynamoDbStreamResources->Belt.Array.map(
+          ((sourceName, sources)) =>
+            Util_EventSourceMapping.subscribe(
+              ~batchSize=25,
+              ~lambda=eventHandlerLambda->Pulumi.Output.make,
+              ~targetName=name,
+              ~sourceName,
+              ~source=sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource,
+              ~opts,
+            ),
         )
 
       if errorResources->Belt.Array.length > 0 {
@@ -54,6 +53,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
         Js.Exn.raiseError(__MODULE__ ++ ` cannot connect to EventTopic(s) ${eventTopicNames}`)
       }
     })
+  })
 
   {
     Reventless.EventCollector.Adapter.resources: [],

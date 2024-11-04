@@ -8,7 +8,7 @@ var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 
 async function handleQueueEvent(handleCommands, queue, $$event, param) {
-  var records = $$event._Records;
+  var records = $$event.Records;
   var jsons = Belt_Array.keepMap(records, (function (record) {
           var commandStr = record.body;
           var json;
@@ -71,7 +71,7 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
       throw e;
     }
     if (exit$1 === 2) {
-      return Logger$Reventless.debug("File \"CommandTopicConnector_SQS_Runtime.res\", line 51, characters 35-42", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
+      return Logger$Reventless.debug("File \"CommandTopicConnector_SQS_Runtime.res\", line 56, characters 35-42", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
     }
     
   }

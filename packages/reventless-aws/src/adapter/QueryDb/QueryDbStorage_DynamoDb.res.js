@@ -17,27 +17,26 @@ function globalSecondaryIndexes(indexes) {
   return Belt_Array.map(indexes, (function (indexConfig) {
                 var projectionType = indexConfig.projectionType;
                 var index = indexConfig.index;
-                if (typeof projectionType === "object") {
-                  var tmp = {
-                    hashKey: Belt_Option.getWithDefault(indexConfig.idField, index),
-                    name: index,
-                    projectionType: "INCLUDE",
-                    nonKeyAttributes: projectionType.VAL
-                  };
-                  if (indexConfig.subIdField !== undefined) {
-                    tmp.rangeKey = indexConfig.subIdField;
-                  }
-                  return tmp;
-                }
-                var tmp$1 = {
-                  hashKey: Belt_Option.getWithDefault(indexConfig.idField, index),
-                  name: index,
-                  projectionType: projectionType
-                };
-                if (indexConfig.subIdField !== undefined) {
-                  tmp$1.rangeKey = indexConfig.subIdField;
-                }
-                return tmp$1;
+                var match;
+                match = typeof projectionType !== "object" ? (
+                    projectionType === "KEYS_ONLY" ? [
+                        "KEYS_ONLY",
+                        undefined
+                      ] : [
+                        "ALL",
+                        undefined
+                      ]
+                  ) : [
+                    "INCLUDE",
+                    projectionType._0
+                  ];
+                return {
+                        hashKey: Belt_Option.getWithDefault(indexConfig.idField, index),
+                        name: index,
+                        projectionType: match[0],
+                        nonKeyAttributes: match[1],
+                        rangeKey: indexConfig.subIdField
+                      };
               }));
 }
 
@@ -57,7 +56,7 @@ function attributes(sortField, indexes) {
                           return Belt_Array.concatMany([
                                       [{
                                           name: indexConfig.index,
-                                          type: indexConfig._type
+                                          type: indexConfig.type_
                                         }],
                                       Belt_Option.mapWithDefault(indexConfig.subIdField, [], (function (sortField) {
                                               return [{
@@ -79,7 +78,7 @@ function dataSource(name, table, api, apiRole, opts) {
                 return role.id;
               }))
       }, opts);
-  return AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, Caml_option.some(opts), undefined);
+  return AppSync_DataSource$PulumiAws.makeDynamoDBDataSource(name, api, table, apiRole, opts);
 }
 
 function make(name, indexes, subIdField, ttl, api, apiRole, opts) {

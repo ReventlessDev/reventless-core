@@ -2,9 +2,11 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
@@ -17,24 +19,28 @@ var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./Ev
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
   var policies = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2);
-  var eventHandlerLambda = policies.apply(function (policies) {
-        return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
-                          return EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleEvents, extra, extra$1);
-                        }), undefined, policies, undefined, undefined, Caml_option.some(memorySize), Caml_option.some(timeout), undefined, undefined, undefined, Caml_option.some(AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType)), undefined), opts);
-      });
-  Util_Adapter$Reventless.partitionSupportedResources(eventTopics, [
-          Util_DynamoDbStream_Runtime$ReventlessAws.service,
-          Util_SNS_FIFO$ReventlessAws.service
-        ]).apply(function (param) {
-        var errorResources = param[1];
-        Belt_Array.map(param[0], (function (param) {
-                return Util_EventSourceMapping$ReventlessAws.subscribe(25, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1][0]), opts, undefined);
-              }));
-        if (errorResources.length === 0) {
-          return ;
-        }
-        var eventTopicNames = errorResources.join(",");
-        Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
+  policies.apply(function (policies) {
+        var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
+                    return EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleEvents, extra, extra$1);
+                  }), undefined, policies, undefined, undefined, Caml_option.some(memorySize), Caml_option.some(timeout), undefined, undefined, undefined, Caml_option.some(AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType))), opts);
+        return Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
+                          return Js_dict.map((function (eventTopic) {
+                                        return eventTopic.resources;
+                                      }), __x);
+                        })(eventTopics), [
+                      Util_DynamoDbStream_Runtime$ReventlessAws.service,
+                      Util_SNS_FIFO$ReventlessAws.service
+                    ]).apply(function (param) {
+                    var errorResources = param[1];
+                    Belt_Array.map(param[0], (function (param) {
+                            return Util_EventSourceMapping$ReventlessAws.subscribe(25, Pulumi.output(eventHandlerLambda), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1][0]), opts);
+                          }));
+                    if (errorResources.length === 0) {
+                      return ;
+                    }
+                    var eventTopicNames = errorResources.join(",");
+                    Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
+                  });
       });
   return {
           resources: [],

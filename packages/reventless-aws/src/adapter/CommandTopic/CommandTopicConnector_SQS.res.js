@@ -15,17 +15,17 @@ var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicCon
 
 function make(name, handleCommands, memorySize, timeout, opts) {
   var queue = new (Aws.sqs.Queue)(name, {
-        redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
-              return SQS_Queue$PulumiAws.Args.RedrivePolicy.make(dlqArn, 5);
-            }),
-        tags: AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType),
-        visibilityTimeoutSeconds: Math.imul(6, timeout),
-        sqsManagedSseEnabled: false
+        redrivePolicy: Caml_option.some(Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
+                  return SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5);
+                })),
+        tags: Caml_option.some(AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType)),
+        visibilityTimeoutSeconds: Caml_option.some(Math.imul(6, timeout)),
+        sqsManagedSseEnabled: Caml_option.some(false)
       }, opts);
-  Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], Caml_option.some(opts), undefined);
+  Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], opts);
   var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
               return CommandTopicConnector_SQS_Runtime$ReventlessAws.handleQueueEvent(handleCommands, queue, extra, extra$1);
-            }), undefined, Lambda$PulumiAws.Policy.defaultPolicies, undefined, undefined, Caml_option.some(memorySize), Caml_option.some(timeout), undefined, undefined, undefined, Caml_option.some(AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType)), undefined), opts);
+            }), undefined, Lambda$PulumiAws.Policy.defaultPolicies, undefined, undefined, Caml_option.some(memorySize), Caml_option.some(timeout), undefined, undefined, undefined, Caml_option.some(AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType))), opts);
   queue.onEvent(name, handler, undefined, opts);
   return {
           resources: [Util_SQS$ReventlessAws.toResource(queue)],

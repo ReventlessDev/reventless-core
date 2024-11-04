@@ -2,16 +2,12 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 
-var Record = {};
-
 async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
-  var records = Belt_Option.getWithDefault(callbackEvent._Records, []);
-  var jsons = Belt_Array.keepMap(records, (function (record) {
+  var jsons = Belt_Array.keepMap(callbackEvent.Records, (function (record) {
           var eventSource = record.eventSource;
           switch (eventSource) {
             case "aws:dynamodb" :
@@ -37,7 +33,7 @@ async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
           }
         }));
   await handleEvents(jsons);
-  var entries = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
+  var entries = Belt_Array.mapWithIndex(Belt_Array.keep(callbackEvent.Records, (function (record) {
               var match = record.eventSource;
               if (match === "aws:sqs") {
                 return true;
@@ -72,7 +68,6 @@ function enqueueFifoEvent(queue) {
   };
 }
 
-exports.Record = Record;
 exports.handleCallbackEvent = handleCallbackEvent;
 exports.enqueueEvent = enqueueEvent;
 exports.enqueueFifoEvent = enqueueFifoEvent;

@@ -124,7 +124,7 @@ function createFilterExprNamesValues(filterConfigs) {
                   })));
 }
 
-async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, ascendingOpt, limitOpt, param) {
+async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, ascendingOpt, limitOpt) {
   var key = keyOpt !== undefined ? keyOpt : "id";
   var filterConfigs = filterConfigsOpt !== undefined ? filterConfigsOpt : [];
   var ascending = ascendingOpt !== undefined ? ascendingOpt : true;
@@ -239,8 +239,8 @@ function make(allQueryDbs) {
           scan: (function (readModelName, filterConfigs, limit) {
               return scanByTableName(tableName(readModelName), filterConfigs, limit);
             }),
-          query: (function (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit, unit) {
-              return queryByTableName(tableName(readModelName), key, id, subIdConfig, filterConfigs, ascending, limit, unit);
+          query: (function (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit) {
+              return queryByTableName(tableName(readModelName), key, id, subIdConfig, filterConfigs, ascending, limit);
             })
         };
 }
