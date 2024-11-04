@@ -39,7 +39,6 @@ type query = (
   ~filterConfigs: array<Filter.config>=?,
   ~ascending: bool=?,
   ~limit: int=?,
-  unit,
 ) => Js.Promise.t<array<Js.Json.t>>
 
 type scan = (

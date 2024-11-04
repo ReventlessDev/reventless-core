@@ -47,11 +47,7 @@ module type T = {
   type delete = delete<Spec.Id.t>
   type deleteBatch = deleteBatch<Spec.Id.t>
 
-  let make: (
-    ~ttl: int=?,
-    ~opts: Pulumi.ComponentResource.options=?,
-    unit,
-  ) => Component.t<t, outputs>
+  let make: (~ttl: int=?, ~opts: Pulumi.ComponentResource.options=?) => Component.t<t, outputs>
 
   let load: Component.t<t, outputs> => load
   let save: Component.t<t, outputs> => save

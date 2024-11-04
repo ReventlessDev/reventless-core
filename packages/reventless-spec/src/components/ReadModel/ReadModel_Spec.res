@@ -52,12 +52,14 @@ type authorization = {
   group: string,
 }
 
+type projectionType = KEYS_ONLY | ALL | INCLUDE(array<string>)
+
 type indexConfig = {
   index: string,
-  _type: string,
+  type_: string,
   idField?: string,
   subIdField?: string,
-  projectionType: [#KEYS_ONLY | #ALL | #INCLUDE(array<string>)],
+  projectionType: projectionType,
   authorization?: authorization,
 }
 
