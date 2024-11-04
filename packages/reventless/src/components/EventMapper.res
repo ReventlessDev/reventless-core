@@ -291,7 +291,6 @@ module Make = (
           ~name,
           ~counterEventsHandler=counterEventsHandler(publishJsons, Mappings.mappings, queryEngine),
           ~opts,
-          (),
         )
         (
           counter->Counter.count,
@@ -328,7 +327,6 @@ module Make = (
       ~policy1=Pulumi.Output.make(None),
       ~policy2=Pulumi.Output.make(None),
       ~opts=Some(opts),
-      (),
     )
 
     self->setOutputs({

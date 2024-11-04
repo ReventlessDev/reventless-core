@@ -73,7 +73,7 @@ async function callHandler(createSchedule, deleteSchedule, queryEngine, callComm
                               return Message$Reventless.command$p_encode(Decco.stringToJson, PluginExtensionPointSpec$ReventlessSpec.command_encode, __x);
                             })({
                               id: id,
-                              meta: Message$Reventless.generateMeta("Core.Plugin", undefined, "Scheduler", undefined),
+                              meta: Message$Reventless.generateMeta("Core.Plugin", undefined, "Scheduler"),
                               command: "DisconnectPlugin"
                             }))
                   });

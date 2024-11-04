@@ -21,7 +21,6 @@ module type T = {
     ~policy1: Pulumi.Output.t<option<string>>,
     ~policy2: Pulumi.Output.t<option<string>>,
     ~opts: Pulumi.CustomResourceOptions.t=?,
-    unit,
   ) => component
 
   let enqueueEvent: component => ReventlessSpec.EventCollector.enqueueEvent
@@ -168,7 +167,6 @@ module Make = (EventCollector: EventCollector.T): T => {
       ~policy1,
       ~policy2,
       ~opts=Some(opts),
-      (),
     )
     let eventCollectorResources = (eventCollector->Component.extractOutputs).resources
 
@@ -190,7 +188,6 @@ module Make = (EventCollector: EventCollector.T): T => {
     ~policy1: Pulumi.Output.t<option<string>>,
     ~policy2: Pulumi.Output.t<option<string>>,
     ~opts=?,
-    _unit: unit,
   ) => {
     make(
       ~componentType=componentType->ComponentType.toString,

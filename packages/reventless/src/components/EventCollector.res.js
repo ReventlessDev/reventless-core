@@ -24,7 +24,7 @@ function Make(Connector) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (name, eventTopics, eventsHandler, memorySizeOpt, timeoutOpt, policy1, policy2, opts, param) {
+  var make = function (name, eventTopics, eventsHandler, memorySizeOpt, timeoutOpt, policy1, policy2, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 128;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var prim0 = ComponentType$Reventless.toString("EventCollector");

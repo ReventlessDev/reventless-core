@@ -315,8 +315,8 @@ function Make(Config, QueryDbStorage, Handler) {
             Error: new Error()
           };
     };
-    var referencesDb = ReferencesDb.make(ttl, opts, undefined);
-    var countsDb = CountsDb.make(ttl, opts, undefined);
+    var referencesDb = ReferencesDb.make(ttl, opts);
+    var countsDb = CountsDb.make(ttl, opts);
     var groupByCounterId = function (references) {
       var dict = {};
       Belt_Array.forEach(references, (function (param) {
@@ -341,7 +341,7 @@ function Make(Config, QueryDbStorage, Handler) {
                           if (count === 0) {
                             var match$2 = unmakeId(id);
                             console.log("Counter-Reventless" + (".counterHandler: counted down " + name$1 + "(" + id + ") to " + String(count)));
-                            var meta = Message$Reventless.generateMeta(name, undefined, "Counter", undefined);
+                            var meta = Message$Reventless.generateMeta(name, undefined, "Counter");
                             return Js_dict.fromArray([
                                         [
                                           "id",
@@ -378,7 +378,7 @@ function Make(Config, QueryDbStorage, Handler) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (name, counterEventsHandler, ttlOpt, opts, param) {
+  var make = function (name, counterEventsHandler, ttlOpt, opts) {
     var ttl = ttlOpt !== undefined ? ttlOpt : 604800;
     var prim0 = ComponentType$Reventless.toString("Counter");
     var prim1 = ComponentType$Reventless.name(name, "Counter");

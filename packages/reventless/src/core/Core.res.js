@@ -62,7 +62,7 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
             return addEventMapperFn(allEventTopics, queryEngine);
           }), addEventMapperFns);
     var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts, undefined);
+            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
           }));
     var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
     var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
@@ -90,10 +90,10 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
                           }))));
     };
     var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-    var eventCollector = EventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts, undefined);
+    var eventCollector = EventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
     var partial_arg = Cloner$Reventless.Make;
     var Cloner = partial_arg(Config, ClonerRunner);
-    var cloner = Cloner.make(opts, undefined);
+    var cloner = Cloner.make(opts);
     return setOutputs(self, {
                 version: version,
                 eventCollector: Component$Reventless.extractOutputs(eventCollector),

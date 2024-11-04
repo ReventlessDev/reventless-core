@@ -24,7 +24,7 @@ function Make(ScheduledPublisher) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (opts, param) {
+  var make = function (opts) {
     var prim0 = ComponentType$Reventless.toString("Scheduler");
     var prim1 = ComponentType$Reventless.toName("Scheduler");
     return new Component(prim0, prim1, construct, opts);

@@ -64,7 +64,7 @@ module Make = (
 
     module QueryDb = QueryDb.Make(Config, Spec, QueryDbStorage, QueryDbResolvers)
 
-    let queryDb = QueryDb.make(~opts, ())
+    let queryDb = QueryDb.make(~opts)
 
     let load = id => QueryDb.load(queryDb)(id->Spec.Id.makeFromString)
     let save = (id, state, saveMode, opt) =>
@@ -124,7 +124,6 @@ module Make = (
       ~policy1=Pulumi.Output.make(None),
       ~policy2=Pulumi.Output.make(None),
       ~opts=Some(opts),
-      (),
     )
 
     self->setEnqueueEvent(eventCollector->EventCollector.enqueueEvent)

@@ -117,7 +117,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             return addEventMapperFn(allEventTopics, queryEngine);
           }), addEventMapperFns);
     var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts, undefined);
+            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
           }));
     var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
     var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
@@ -265,7 +265,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
           };
           var partial_arg$1 = ExtensionMapping$Reventless.Make;
-          var mapIncomingEvent = function (pluginId, $$event, _meta, pluginDef, _queryEngine) {
+          var mapIncomingEvent = function (pluginId, $$event, _meta, _pluginDef, _queryEngine) {
             if (typeof $$event !== "object") {
               if (pluginId === id) {
                 return [{
@@ -460,10 +460,10 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
             resources: Belt_Array.map(corePluginExtensionPoint.eventTopic.resources, AdapterDeploytime$Reventless.stackRefResourceToResource)
           };
-          var eventCollector = EventCollector.make(ComponentType$Reventless.name(name, "Plugin"), eventTopics, eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts, undefined);
+          var eventCollector = EventCollector.make(ComponentType$Reventless.name(name, "Plugin"), eventTopics, eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
           var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
           match[1](eventCollectorOutputs.resources[0].urn);
-          var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName("Plugin"), heartbeatInterval, publishToCorePluginExtensionPoint, opts, undefined);
+          var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName("Plugin"), heartbeatInterval, publishToCorePluginExtensionPoint, opts);
           return {
                   id: id,
                   version: version,

@@ -38,6 +38,7 @@ let findResource = (resources, service) =>
     | matching => matching->Array.getUnsafe(0)
     }
   )
+  ->Adapter.outputToResource
 
 let findUnwrappedResource = (resources, service) =>
   switch resources->filterSupportedUnwrappedResources([service]) {
@@ -52,19 +53,15 @@ let findUnwrappedResource = (resources, service) =>
   }
 
 let findResourceInOutput = (resourcesOutput, service) =>
-  resourcesOutput->Pulumi.Output.flatMap(resources =>
-    resources->filterSupportedResources([service])
-  )
+  resourcesOutput->Pulumi.Output.apply(resources => resources->findResource(service))
 
-type component = {resources: array<ReventlessSpec.Adapter.resource>}
-
-let partitionSupportedResources = (adapters, supportedServices) => {
+let partitionSupportedResources = (allResources, supportedServices) => {
   let (names, resourceOutputs) =
-    adapters
+    allResources
     ->Js.Dict.entries
-    ->Belt.Array.map(((name, adapter)) => (
+    ->Belt.Array.map(((name, resources)) => (
       name,
-      (adapter :> component).resources->filterSupportedResources(supportedServices),
+      resources->filterSupportedResources(supportedServices),
     ))
     ->Belt.Array.unzip
 

@@ -301,7 +301,7 @@ module Make = (
     )
   }
 
-  let make = (~ttl=?, ~opts=?, _) =>
+  let make = (~ttl=?, ~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,

@@ -138,7 +138,7 @@ function Make(Config, Spec, $$Storage, Resolvers) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (ttl, opts, param) {
+  var make = function (ttl, opts) {
     var prim0 = ComponentType$Reventless.toString("QueryDb");
     var prim1 = Spec.name;
     var prim2 = function (extra, extra$1, extra$2, extra$3) {

@@ -128,7 +128,6 @@ module Make = (
       ~filterConfigs as _: option<array<ReventlessSpec.QueryEngine.Filter.config>>=?,
       ~ascending as _: option<bool>=?,
       ~limit as _: option<int>=?,
-      _: unit,
     ) => []->Js.Promise.resolve,
   }
 

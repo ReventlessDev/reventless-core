@@ -45,7 +45,7 @@ function Make(Spec, Config) {
                   var commandJson = Spec.command_encode(param[1]);
                   return {
                           id: param[0],
-                          meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user, undefined),
+                          meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user),
                           commandJson: commandJson,
                           delay: undefined
                         };

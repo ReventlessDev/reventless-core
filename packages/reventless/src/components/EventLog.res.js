@@ -23,7 +23,7 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
       parent: opts_parent
     };
     var storage = $$Storage.make(ComponentType$Reventless.name(name, "EventLog"), opts);
-    var eventTopic = EventTopic.make(name, storage.resources, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts), undefined);
+    var eventTopic = EventTopic.make(name, storage.resources, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts));
     self.append = EventLogRuntime$Reventless.appendFn(storage.append, Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, EventTopic.publish(eventTopic), Spec.name);
     self.replay = EventLogRuntime$Reventless.replayFn(storage.replay, Spec.Id.toString, Spec.event_decode);
     var outputs = {
@@ -33,7 +33,7 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (name, opts, param) {
+  var make = function (name, opts) {
     var prim0 = ComponentType$Reventless.toString("EventLog");
     return new Component(prim0, name, construct, opts);
   };

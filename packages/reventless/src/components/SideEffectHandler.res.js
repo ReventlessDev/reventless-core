@@ -106,7 +106,7 @@ function Make(EventCollector) {
                             console.log("SideEffectHandler.eventHandler: Invalid event");
                           }))));
     };
-    var eventCollector = EventCollector.make(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventsHandler, memorySize, timeout, policy1, policy2, opts, undefined);
+    var eventCollector = EventCollector.make(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventsHandler, memorySize, timeout, policy1, policy2, opts);
     var eventCollectorResources = Component$Reventless.extractOutputs(eventCollector).resources;
     self.enqueueEvent = enqueueEventFn(eventCollector);
     self.createSchedule = createScheduleFn(scheduler, eventCollectorResources);
@@ -118,7 +118,7 @@ function Make(EventCollector) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, policy1, policy2, opts, _unit) {
+  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, policy1, policy2, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
     var prim0 = ComponentType$Reventless.toString("SideEffectHandler");

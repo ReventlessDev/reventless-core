@@ -75,7 +75,7 @@ let callHandler = async (
       rate: timeout->Schedule.minutesFromNow,
       payload: {
         Message.id,
-        meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler", ()),
+        meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler"),
         command: ReventlessSpec.PluginExtensionPointSpec.DisconnectPlugin,
       }
       ->Message.command'_encode(

@@ -21,7 +21,7 @@ module type Spec = {
 module type T = {
   module Spec: Spec
 
-  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?, unit) => component
+  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 
   let append: component => EventLogCommon.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: component => EventLogCommon.replay<Spec.Id.t, Spec.event>
@@ -85,7 +85,6 @@ module Make = (
       ~name,
       ~storageResources=storage.resources,
       ~opts=opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
-      (),
     )
 
     self->setAppend(
@@ -108,6 +107,6 @@ module Make = (
     })
   }
 
-  let make = (~name, ~opts=?, _) =>
+  let make = (~name, ~opts=?) =>
     make(~componentType=componentType->ComponentType.toString, ~name, ~construct, ~opts)
 }

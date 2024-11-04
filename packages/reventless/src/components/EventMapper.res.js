@@ -260,7 +260,7 @@ function Make(Target, EventCollector, Mappings) {
             }),
           undefined
         ], (function (Counter) {
-            var counter = Counter.make(name, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, opts, undefined);
+            var counter = Counter.make(name, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, opts);
             return [
                     Counter.count(counter),
                     Counter.addToCounterTarget(counter),
@@ -273,7 +273,7 @@ function Make(Target, EventCollector, Mappings) {
                 }
                 
               })));
-    var eventCollector = EventCollector.make(ComponentType$Reventless.name(Target.name, "EventMapper"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]), memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts, undefined);
+    var eventCollector = EventCollector.make(ComponentType$Reventless.name(Target.name, "EventMapper"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]), memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts);
     var outputs = {
       name: name,
       eventCollector: Component$Reventless.extractOutputs(eventCollector),

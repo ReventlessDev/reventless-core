@@ -52,7 +52,6 @@ module type T = {
     ~counterEventsHandler: counterEventsHandler,
     ~ttl: int=?,
     ~opts: Pulumi.ComponentResource.options=?,
-    unit,
   ) => component
 
   let count: component => count
@@ -219,8 +218,8 @@ module Make = (
       }
     }
 
-    let referencesDb = ReferencesDb.make(~ttl?, ~opts, ())
-    let countsDb = CountsDb.make(~ttl?, ~opts, ())
+    let referencesDb = ReferencesDb.make(~ttl?, ~opts)
+    let countsDb = CountsDb.make(~ttl?, ~opts)
 
     let referencesName = ReferencesSpec.name
     let countsName = CountsSpec.name
@@ -256,7 +255,7 @@ module Make = (
               __MODULE__ ++
               `.counterHandler: counted down ${name}(${id}) to ${count->Belt.Int.toString}`,
             )
-            let meta = Message.generateMeta(~service=Source.name, ~user="Counter", ())
+            let meta = Message.generateMeta(~service=Source.name, ~user="Counter")
             Some(
               [
                 ("id", counterId->Js.Json.string),
@@ -304,7 +303,7 @@ module Make = (
 
   let oneWeek = 60 * 60 * 24 * 7 //604800 sec
 
-  let make = (~name, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?, _) =>
+  let make = (~name, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=name->ComponentType.name(componentType),

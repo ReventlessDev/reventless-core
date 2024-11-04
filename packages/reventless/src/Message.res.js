@@ -128,7 +128,7 @@ function hrtimeToString(hrtime, now) {
   return now.toString() + ("-" + ("0".repeat(9 - milLength | 0) + milString));
 }
 
-function generateMeta(service, ipOpt, userOpt, param) {
+function generateMeta(service, ipOpt, userOpt) {
   var ip = ipOpt !== undefined ? ipOpt : "";
   var user = userOpt !== undefined ? userOpt : "unknown";
   var msgId = Uuid.v4();

@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.Cloner
 
-type outputs = {resources: array<resource>}
+type outputs = {resources: Pulumi.Output.t<array<resource>>}
 
 type fullQualifiedStackName = {
   organization: string,
@@ -14,11 +14,11 @@ type t
 type component = ReventlessSpec.Component.t<t, outputs>
 
 module type T = {
-  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => component
+  let make: (~opts: Pulumi.ComponentResource.options=?) => component
 }
 
 module Adapter = {
-  type runner = {resources: array<resource>}
+  type runner = {resources: Pulumi.Output.t<array<resource>>}
   type runnerMaker<'api> = (
     ~name: string,
     ~api: 'api,
@@ -26,7 +26,6 @@ module Adapter = {
     ~reventlessCiSecretUrn: string,
     ~secretUrns: array<string>,
     ~opts: Pulumi.CustomResourceOptions.t=?,
-    unit,
   ) => runner
 
   module type Runner = {
@@ -35,7 +34,7 @@ module Adapter = {
     let make: runnerMaker<api>
   }
 
-  let noRunner = {resources: []}
+  let noRunner = {resources: []->Pulumi.Output.make}
 }
 
 module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.api): T => {
@@ -80,7 +79,6 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
         ~reventlessCiSecretUrn,
         ~secretUrns=[aws, pulumi, repository],
         ~opts,
-        (),
       )
 
     | _ =>
@@ -90,7 +88,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
     self->setOutputs({resources: runner.resources})
   }
 
-  let make = (~opts=?, _) =>
+  let make = (~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=componentType->ComponentType.toString,

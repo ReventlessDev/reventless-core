@@ -23,29 +23,15 @@ function Make(Spec, Connector) {
         val = await connector.publish(cmdJsons);
       }
       catch (e){
-        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 141, characters 13-20", "Error", cmdJsons, "Couldn't publish commands");
+        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 141, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
         throw e;
       }
-      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 145, characters 45-52", undefined, cmdJsons, "Published commands");
-    };
-  };
-  var publishFn = function (connector) {
-    return function (command$p) {
-      var commandJson_id = Spec.Id.toString(command$p.id);
-      var commandJson_meta = command$p.meta;
-      var commandJson_commandJson = Spec.command_encode(command$p.command);
-      var commandJson = {
-        id: commandJson_id,
-        meta: commandJson_meta,
-        commandJson: commandJson_commandJson,
-        delay: undefined
-      };
-      return publishJsonsFn(connector)([commandJson]);
+      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 145, characters 47-54", undefined, cmdJsons, "Published commands");
     };
   };
   var handleCommands = function (commandsHandler) {
     return async function (jsonItems) {
-      Logger$Reventless.debug("File \"CommandTopic.res\", line 163, characters 22-29", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
+      Logger$Reventless.debug("File \"CommandTopic.res\", line 164, characters 13-20", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
       var topicItems = Belt_Array.keepMap(jsonItems, (function (param) {
               var json = param.command;
               var command$p = (function (__x) {
@@ -58,7 +44,7 @@ function Make(Spec, Connector) {
                       };
               }
               var commandStr = JSON.stringify(json);
-              Logger$Reventless.error("File \"CommandTopic.res\", line 169, characters 26-33", undefined, undefined, "Couldn't decode command " + commandStr, command$p._0.message);
+              Logger$Reventless.error("File \"CommandTopic.res\", line 173, characters 28-35", undefined, undefined, "Couldn't decode command " + commandStr, command$p._0.message);
             }));
       var res;
       try {
@@ -67,12 +53,12 @@ function Make(Spec, Connector) {
       catch (raw_e){
         var e = Caml_js_exceptions.internalToOCamlException(raw_e);
         if (e.RE_EXN_ID === Js_exn.$$Error) {
-          Logger$Reventless.error("File \"CommandTopic.res\", line 178, characters 24-31", undefined, undefined, "Couldn't handle commands", e._1);
-          return Js_exn.raiseError("File \"CommandTopic.res\", line 179, characters 24-31" + "Error: Couldn't handle commands");
+          Logger$Reventless.error("File \"CommandTopic.res\", line 182, characters 26-33", undefined, undefined, "Couldn't handle commands", e._1);
+          return Js_exn.raiseError("File \"CommandTopic.res\", line 183, characters 26-33" + "Error: Couldn't handle commands");
         }
         throw e;
       }
-      Logger$Reventless.debug("File \"CommandTopic.res\", line 175, characters 24-31", undefined, undefined, "finished", "CommandTopic.handleCommands");
+      Logger$Reventless.debug("File \"CommandTopic.res\", line 179, characters 26-33", undefined, undefined, "finished", "CommandTopic.handleCommands");
       return res;
     };
   };
@@ -82,7 +68,18 @@ function Make(Spec, Connector) {
       parent: opts_parent
     };
     var connector = Connector.make(ComponentType$Reventless.name(name, "CommandTopic"), handleCommands(commandsHandler), memorySize, timeout, opts);
-    self.publish = publishFn(connector);
+    self.publish = (function (extra) {
+        var commandJson_id = Spec.Id.toString(extra.id);
+        var commandJson_meta = extra.meta;
+        var commandJson_commandJson = Spec.command_encode(extra.command);
+        var commandJson = {
+          id: commandJson_id,
+          meta: commandJson_meta,
+          commandJson: commandJson_commandJson,
+          delay: undefined
+        };
+        return publishJsonsFn(connector)([commandJson]);
+      });
     self.publishJsons = publishJsonsFn(connector);
     var outputs = {
       resources: connector.resources
@@ -90,7 +87,7 @@ function Make(Spec, Connector) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (name, commandsHandler, memorySizeOpt, timeoutOpt, opts, param) {
+  var make = function (name, commandsHandler, memorySizeOpt, timeoutOpt, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var prim0 = ComponentType$Reventless.toString("CommandTopic");

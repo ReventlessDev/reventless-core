@@ -102,7 +102,7 @@ module Make = (
 
     let extensionPoints =
       extensionPoints->Belt.Array.map((module(ExtensionPoint: ReventlessSpec.ExtensionPoint.T)) =>
-        ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts), ())
+        ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts))
       )
     let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs
 
@@ -149,11 +149,10 @@ module Make = (
       ~policy1=Pulumi.Output.make(None),
       ~policy2=Pulumi.Output.make(None),
       ~opts=Some(opts),
-      (),
     )
 
     module Cloner = Cloner.Make(Config, ClonerRunner)
-    let cloner = Cloner.make(~opts, ())
+    let cloner = Cloner.make(~opts)
 
     self->setOutputs({
       version,

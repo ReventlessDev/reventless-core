@@ -27,10 +27,10 @@ function Make(Spec, Publisher) {
                               val = await publisher.publish(Spec.Id.toString(id), event$p.meta, event$pJson);
                             }
                             catch (e){
-                              Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 92, characters 15-22", "Error", event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
+                              Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 92, characters 17-24", "Error", event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
                               throw e;
                             }
-                            return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 99, characters 15-22", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
+                            return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 99, characters 17-24", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
                           }))));
     };
   };
@@ -47,7 +47,7 @@ function Make(Spec, Publisher) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (name, storageResources, opts, param) {
+  var make = function (name, storageResources, opts) {
     var prim0 = ComponentType$Reventless.toString("EventTopic");
     var prim2 = function (extra, extra$1) {
       return construct(storageResources, extra, extra$1);

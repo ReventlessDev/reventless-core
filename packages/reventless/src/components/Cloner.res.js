@@ -9,7 +9,7 @@ var Pulumi = require("@pulumi/pulumi");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
 var noRunner = {
-  resources: []
+  resources: Pulumi.output([])
 };
 
 var Adapter = {
@@ -54,7 +54,7 @@ function Make(Config, Runner) {
                   aws,
                   pulumi,
                   repository
-                ], opts, undefined);
+                ], opts);
           } else {
             console.log("No ClonerRunner created because no secrets are configured in Pulumi config !");
             runner = noRunner;
@@ -74,7 +74,7 @@ function Make(Config, Runner) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (opts, param) {
+  var make = function (opts) {
     var prim0 = ComponentType$Reventless.toString("Cloner");
     var prim1 = ComponentType$Reventless.toString("Cloner");
     var prim2 = function (extra, extra$1) {
@@ -92,4 +92,4 @@ var componentType = "Cloner";
 exports.componentType = componentType;
 exports.Adapter = Adapter;
 exports.Make = Make;
-/* ./Component Not a pure module */
+/* noRunner Not a pure module */

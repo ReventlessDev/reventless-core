@@ -70,7 +70,7 @@ function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
   return self.registerOutputs(__x);
 }
 
-function make(id, name, timeoutOpt, publishToCorePluginExtensionPoint, opts, param) {
+function make(id, name, timeoutOpt, publishToCorePluginExtensionPoint, opts) {
   var timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
   var prim0 = ComponentType$Reventless.toString("Heartbeat");
   var prim2 = function (extra, extra$1) {

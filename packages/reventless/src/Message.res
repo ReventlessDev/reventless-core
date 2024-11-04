@@ -138,7 +138,7 @@ type errorHandler<'error, 'command, 'event> = (
   ReventlessSpec.Message.context,
 ) => array<'event>
 
-let generateMeta = (~service, ~ip="", ~user="unknown", ()) => {
+let generateMeta = (~service, ~ip="", ~user="unknown") => {
   let msgId = uuid()
   {service, ip, user, time: nowAsISOString(), msgId, correlationId: msgId}
 }

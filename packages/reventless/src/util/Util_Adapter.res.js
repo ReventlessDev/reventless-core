@@ -5,8 +5,8 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
+var Adapter$Reventless = require("../adapter/Adapter.res.js");
 
 function filterSupportedResources(resources, supportedServices) {
   return Pulumi.all(Belt_Array.map(resources, (function (resource) {
@@ -32,16 +32,16 @@ function filterSupportedUnwrappedResources(resources, supportedServices) {
 }
 
 function findResource(resources, service) {
-  return filterSupportedResources(resources, [service]).apply(function (resources) {
-              if (resources.length !== 0) {
-                return resources[0];
-              }
-              var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (resource) {
-                        return Belt_Option.getExn(JSON.stringify(resource));
-                      })).join(", ");
-              console.log(err);
-              return Js_exn.raiseError(err);
-            });
+  return Adapter$Reventless.outputToResource(filterSupportedResources(resources, [service]).apply(function (resources) {
+                  if (resources.length !== 0) {
+                    return resources[0];
+                  }
+                  var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (resource) {
+                            return Belt_Option.getExn(JSON.stringify(resource));
+                          })).join(", ");
+                  console.log(err);
+                  return Js_exn.raiseError(err);
+                }));
 }
 
 function findUnwrappedResource(resources, service) {
@@ -57,16 +57,16 @@ function findUnwrappedResource(resources, service) {
 }
 
 function findResourceInOutput(resourcesOutput, service) {
-  return Output$Pulumi.flatMap(resourcesOutput, (function (resources) {
-                return filterSupportedResources(resources, [service]);
-              }));
+  return resourcesOutput.apply(function (resources) {
+              return findResource(resources, service);
+            });
 }
 
-function partitionSupportedResources(adapters, supportedServices) {
-  var match = Belt_Array.unzip(Belt_Array.map(Js_dict.entries(adapters), (function (param) {
+function partitionSupportedResources(allResources, supportedServices) {
+  var match = Belt_Array.unzip(Belt_Array.map(Js_dict.entries(allResources), (function (param) {
               return [
                       param[0],
-                      filterSupportedResources(param[1].resources, supportedServices)
+                      filterSupportedResources(param[1], supportedServices)
                     ];
             })));
   var names = match[0];

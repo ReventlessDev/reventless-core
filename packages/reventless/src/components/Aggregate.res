@@ -298,16 +298,11 @@ module Make = (
 
     let childName = name->ComponentType.name(componentType)
 
-    let eventLog = EventLog.make(~name=childName, ~opts, ())
+    let eventLog = EventLog.make(~name=childName, ~opts)
 
     let handleCommands = handleCommands((eventLog->EventLog.append, eventLog->EventLog.replay))
 
-    let commandTopic = CommandTopic.make(
-      ~name=childName,
-      ~commandsHandler=handleCommands,
-      ~opts,
-      (),
-    )
+    let commandTopic = CommandTopic.make(~name=childName, ~commandsHandler=handleCommands, ~opts)
 
     let commandGenerator = CommandGenerator.make(
       ~name=childName,

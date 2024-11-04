@@ -159,7 +159,7 @@ module Make = (
         }
       }
 
-    let eventTopic = EventTopic.make(~name=childName, ~storageResources=[], ~opts, ())
+    let eventTopic = EventTopic.make(~name=childName, ~storageResources=[], ~opts)
     let publish = EventTopic.publish(eventTopic)
 
     let applyEventAction = async action =>
@@ -207,7 +207,7 @@ module Make = (
     }
 
     commandTopic :=
-      Some(CommandTopic.make(~name=childName, ~commandsHandler=incomingCommandsHandler, ~opts, ()))
+      Some(CommandTopic.make(~name=childName, ~commandsHandler=incomingCommandsHandler, ~opts))
 
     self->setOutputs(
       makeOutputs(
@@ -222,7 +222,7 @@ module Make = (
     )
   }
 
-  let make = (~publishToAggregates, ~scheduler, ~queryEngine, ~opts, _) =>
+  let make = (~publishToAggregates, ~scheduler, ~queryEngine, ~opts) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,

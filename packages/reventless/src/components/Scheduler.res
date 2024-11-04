@@ -5,7 +5,7 @@ let componentType = ComponentType.Scheduler
 external toOutputs: ReventlessSpec.Scheduler.t => ReventlessSpec.Scheduler.outputs = "%identity"
 
 module type T = {
-  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => ReventlessSpec.Scheduler.t
+  let make: (~opts: Pulumi.ComponentResource.options=?) => ReventlessSpec.Scheduler.t
 }
 
 module Adapter = {
@@ -75,10 +75,7 @@ module Make = (ScheduledPublisher: Adapter.ScheduledPublisher): T => {
     self->setOutputs(makeOutputs(~scheduledPublisher=scheduledPublisher.resource))
   }
 
-  let make: (~opts: Pulumi.ComponentResource.options=?, unit) => ReventlessSpec.Scheduler.t = (
-    ~opts=?,
-    _,
-  ) =>
+  let make: (~opts: Pulumi.ComponentResource.options=?) => ReventlessSpec.Scheduler.t = (~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=componentType->ComponentType.toName,

@@ -23,7 +23,6 @@ module type T = {
     ~name: string,
     ~opts: Pulumi.ComponentResource.options=?,
     ~allQueryDbs: ReventlessSpec.QueryDb.allOutputs,
-    unit,
   ) => component
 }
 
@@ -79,7 +78,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     self->setOutputs(makeOutputs(~publisher=publisherOutputs))
   }
 
-  let make = (~name, ~opts=?, ~allQueryDbs, _) =>
+  let make = (~name, ~opts=?, ~allQueryDbs) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,

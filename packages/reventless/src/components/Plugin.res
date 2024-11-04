@@ -61,7 +61,7 @@ type pureOutputs = {
 }
 
 let getRemoteStorageResources = (pluginName, queryDbName) =>
-  switch Util_StackRefs.get(pluginName)->Belt.Option.map(stackRef =>
+  switch Util_StackRefs.get(pluginName)->Belt.Option.map(stackRef => {
     stackRef
     ->Pulumi.StackReference.requireOutput("plugin"->Pulumi.Input.make)
     ->Pulumi.Output.apply((plugin: pureOutputs) =>
@@ -72,7 +72,7 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
       )
       ->Belt.Option.getWithDefault([])
     )
-  ) {
+  }) {
   | Some(resources) => resources
   | None =>
     Js.log("Util_QueryDbRuntime.getLocalStorageResources: Couldn't find Plugin $pluginName")
@@ -188,7 +188,7 @@ module Make = (
 
     let extensionPoints =
       extensionPoints->Belt.Array.map((module(ExtensionPoint: ReventlessSpec.ExtensionPoint.T)) =>
-        ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts), ())
+        ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts))
       )
     let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs
 
@@ -515,7 +515,7 @@ module Make = (
               Aggregate.command,
               ReventlessSpec.PluginExtensionPointSpec.command,
               ReventlessSpec.PluginExtensionPointSpec.callCommand,
-            > = (pluginId, event, _meta, pluginDef, _queryEngine) =>
+            > = (pluginId, event, _meta, _pluginDef, _queryEngine) =>
               switch event {
               | ReventlessSpec.PluginExtensionPointSpec.UnknownPluginDetected if pluginId == id => [
                   PublishExtensionPointCommand(
@@ -727,7 +727,6 @@ module Make = (
           ~policy1=Pulumi.Output.make(None),
           ~policy2=Pulumi.Output.make(None),
           ~opts=Some(opts),
-          (),
         )
         let eventCollectorOutputs = eventCollector->Component.extractOutputs
         setEventCollectorUrn((eventCollectorOutputs.resources->Array.getUnsafe(0)).urn) //FIXME
@@ -738,7 +737,6 @@ module Make = (
           ~timeout=heartbeatInterval,
           ~publishToCorePluginExtensionPoint,
           ~opts,
-          (),
         )
 
         {

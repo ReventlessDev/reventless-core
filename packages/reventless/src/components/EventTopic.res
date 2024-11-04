@@ -25,7 +25,6 @@ module type T = {
     ~name: string,
     ~storageResources: array<resource>,
     ~opts: Pulumi.ComponentResource.options=?,
-    unit,
   ) => component
 
   let publish: component => publish<Spec.Id.t, Spec.event>
@@ -77,33 +76,34 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   @set external setPublish: (component, publish) => unit = "publish"
   @get external publish: component => publish = "publish"
 
-  let publishFn = (publisher: Adapter.publisher, _name) => async events' => {
-    let eventCount = events'->Belt.Array.length
-    await events'
-    ->Belt.Array.mapWithIndex(async (idx, event') => {
-      let event'Json = Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event')
+  let publishFn = (publisher: Adapter.publisher, _name) =>
+    async events' => {
+      let eventCount = events'->Belt.Array.length
+      await events'
+      ->Belt.Array.mapWithIndex(async (idx, event') => {
+        let event'Json = Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event')
 
-      let id = event'.id
-      let idx = idx + 1
+        let id = event'.id
+        let idx = idx + 1
 
-      switch await publisher.publish(id->Spec.Id.toString, event'.meta, event'Json) {
-      | exception e =>
-        event'Json->Logger.logEvent'Json(
-          ~loc=__LOC__,
-          ~level=Error,
-          `Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
-        )
-        raise(e)
-      | _ =>
-        event'Json->Logger.logEvent'Json(
-          ~loc=__LOC__,
-          `Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
-        )
-      }
-    })
-    ->Js.Promise.all
-    ->Util.Promise.toUnit
-  }
+        switch await publisher.publish(id->Spec.Id.toString, event'.meta, event'Json) {
+        | exception e =>
+          event'Json->Logger.logEvent'Json(
+            ~loc=__LOC__,
+            ~level=Error,
+            `Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
+          )
+          raise(e)
+        | _ =>
+          event'Json->Logger.logEvent'Json(
+            ~loc=__LOC__,
+            `Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
+          )
+        }
+      })
+      ->Js.Promise.all
+      ->Util.Promise.toUnit
+    }
 
   let construct = (~storageResources, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
@@ -119,11 +119,11 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     self->setOutputs(makeOutputs(~resources=publisher.resources))
   }
 
-  let make = (~name, ~storageResources, ~opts=?, _) =>
+  let make = (~name, ~storageResources, ~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
       ~construct=construct(~storageResources, ...),
-      ~opts
+      ~opts,
     )
 }

@@ -239,12 +239,12 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
       parent: opts_parent
     };
     var childName = ComponentType$Reventless.name(name, "Aggregate");
-    var eventLog = EventLog.make(childName, opts, undefined);
+    var eventLog = EventLog.make(childName, opts);
     var handleCommands$1 = handleCommands([
           EventLog.append(eventLog),
           EventLog.replay(eventLog)
         ]);
-    var commandTopic = CommandTopic.make(childName, handleCommands$1, undefined, undefined, opts, undefined);
+    var commandTopic = CommandTopic.make(childName, handleCommands$1, undefined, undefined, opts);
     var commandGenerator = CommandGenerator.make(childName, CommandTopic.publish(commandTopic), opts);
     self.publishJsons = CommandTopic.publishJsons(commandTopic);
     self.addEventMapper = (function (none, none$1) {

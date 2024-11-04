@@ -130,13 +130,13 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
     ~cloudwatchEventRule,
     ~cloudwatchEventTarget,
     ~heartbeatLambdaPermission,
-  )->(registerOutputs(self, _))
+  )->registerOutputs(self, _)
 }
 
-let make = (~id, ~name, ~timeout=10, ~publishToCorePluginExtensionPoint, ~opts=?, _) =>
+let make = (~id, ~name, ~timeout=10, ~publishToCorePluginExtensionPoint, ~opts=?) =>
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name,
     ~construct=construct(~id, ~timeout, ~publishToCorePluginExtensionPoint, ...),
-    ~opts
+    ~opts,
   )

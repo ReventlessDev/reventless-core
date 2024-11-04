@@ -44,21 +44,6 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
-  @obj
-  external makeOutputs: (
-    ~name: string,
-    ~extensionPointName: string,
-    ~aggregateNames: array<string>,
-    ~incomingEventHandler: (
-      Js.Json.t,
-      ReventlessSpec.Plugin.pluginDefinition,
-    ) => Js.Promise.t<unit>,
-    ~outgoingEventHandler: (
-      Js.Json.t,
-      ReventlessSpec.Plugin.pluginDefinition,
-    ) => Js.Promise.t<unit>,
-  ) => outputs = ""
-
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send external setOutputs: (component, outputs) => unit = "setOutputs"

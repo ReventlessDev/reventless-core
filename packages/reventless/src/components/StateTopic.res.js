@@ -21,7 +21,7 @@ function Make(Spec, Publisher) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (name, opts, allQueryDbs, param) {
+  var make = function (name, opts, allQueryDbs) {
     var prim0 = ComponentType$Reventless.toString("EventTopic");
     return new Component(prim0, name, construct, opts, allQueryDbs);
   };

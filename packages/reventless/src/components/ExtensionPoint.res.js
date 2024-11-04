@@ -126,7 +126,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
               _0: reference$1
             };
     };
-    var eventTopic = EventTopic.make(childName, [], opts, undefined);
+    var eventTopic = EventTopic.make(childName, [], opts);
     var publish = EventTopic.publish(eventTopic);
     var applyEventAction = async function (action) {
       switch (action.TAG) {
@@ -173,7 +173,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
       var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, scheduler, queryEngine, Component$Reventless.extractOutputs(commandTopic$1).resources);
       return Promise.all(Belt_Array.map(commandActions, applyCommandAction));
     };
-    commandTopic.contents = CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts, undefined);
+    commandTopic.contents = CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts);
     var outputs = {
       name: name,
       aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
@@ -188,7 +188,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
   };
-  var make = function (publishToAggregates, scheduler, queryEngine, opts, param) {
+  var make = function (publishToAggregates, scheduler, queryEngine, opts) {
     var prim0 = ComponentType$Reventless.toString("ExtensionPoint");
     var prim1 = Spec.name;
     var prim2 = function (extra, extra$1) {

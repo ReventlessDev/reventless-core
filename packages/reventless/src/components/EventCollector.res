@@ -16,7 +16,6 @@ module type T = {
     ~policy1: Pulumi.Output.t<option<string>>,
     ~policy2: Pulumi.Output.t<option<string>>,
     ~opts: option<Pulumi.ComponentResource.options>,
-    unit,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>
 
   let enqueueEvent: ReventlessSpec.Component.t<
@@ -133,7 +132,6 @@ module Make = (Connector: Adapter.Connector): T => {
     ~policy1,
     ~policy2,
     ~opts,
-    _,
   ) =>
     make(
       ~componentType=componentType->ComponentType.toString,
