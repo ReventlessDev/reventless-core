@@ -171,7 +171,7 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
   console.log("QueryEngine_DynamoDb.queryByTableName params:", params);
   var result;
   try {
-    result = await DynamoDb_DocumentClient$AwsSdk.queryRecursive(params)(undefined, undefined);
+    result = await DynamoDb_DocumentClient$AwsSdk.queryRecursive(params);
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -216,7 +216,7 @@ async function scanByTableName(tableName, filterConfigs, limit) {
   console.log("QueryEngine_DynamoDb.scanByTableName params:", params);
   var result;
   try {
-    result = await DynamoDb_DocumentClient$AwsSdk.scanRecursive(params)(undefined, undefined);
+    result = await DynamoDb_DocumentClient$AwsSdk.scanRecursive(params);
   }
   catch (raw_e){
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
