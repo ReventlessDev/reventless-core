@@ -9,10 +9,16 @@ var name = "DeadLetterQueue";
 
 var nameFifo = "FIFO" + name;
 
+console.log("Util_DeadletterQueue: creating queue ...");
+
 var queue = new (Aws.sqs.Queue)(name, {
       visibilityTimeoutSeconds: 180,
       sqsManagedSseEnabled: Caml_option.some(false)
     });
+
+console.log("Util_DeadletterQueue: created queue", queue);
+
+console.log("Util_DeadletterQueue: creating fifoQueue ...");
 
 var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
       contentBasedDeduplication: Caml_option.some(true),
@@ -21,19 +27,33 @@ var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
       sqsManagedSseEnabled: Caml_option.some(false)
     });
 
+console.log("Util_DeadletterQueue: created fifoQueue", fifoQueue);
+
 function callback(evt, ctx) {
   return new Promise((function (resolve, param) {
                 resolve((console.log("DEAD LETTER ITEM:", evt, ctx), undefined));
               }));
 }
 
+console.log("Util_DeadletterQueue: creating handler ...");
+
 var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(callback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), {
       parent: Caml_option.some(queue)
     });
 
+console.log("Util_DeadletterQueue: created handler", handler);
+
+console.log("Util_DeadletterQueue: creating subscription ...");
+
 var subscription = queue.onEvent(name, handler);
 
+console.log("Util_DeadletterQueue: created subscription", subscription);
+
+console.log("Util_DeadletterQueue: creating fifoSubscription ...");
+
 var fifoSubscription = fifoQueue.onEvent(nameFifo, handler);
+
+console.log("Util_DeadletterQueue: created fifoSubscription", fifoSubscription);
 
 exports.name = name;
 exports.nameFifo = nameFifo;
@@ -43,4 +63,4 @@ exports.callback = callback;
 exports.handler = handler;
 exports.subscription = subscription;
 exports.fifoSubscription = fifoSubscription;
-/* queue Not a pure module */
+/*  Not a pure module */
