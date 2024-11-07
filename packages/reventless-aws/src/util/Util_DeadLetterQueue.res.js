@@ -16,7 +16,9 @@ var queue = new (Aws.sqs.Queue)(name, {
       sqsManagedSseEnabled: Caml_option.some(false)
     });
 
-console.log("Util_DeadletterQueue: created queue");
+queue.arn.apply(function (param) {
+      console.log("Util_DeadletterQueue: created queue");
+    });
 
 console.log("Util_DeadletterQueue: creating fifoQueue ...");
 
@@ -27,7 +29,9 @@ var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
       sqsManagedSseEnabled: Caml_option.some(false)
     });
 
-console.log("Util_DeadletterQueue: created fifoQueue");
+fifoQueue.arn.apply(function (param) {
+      console.log("Util_DeadletterQueue: created fifoQueue");
+    });
 
 function callback(evt, ctx) {
   return new Promise((function (resolve, param) {
@@ -41,19 +45,25 @@ var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackF
       parent: Caml_option.some(queue)
     });
 
-console.log("Util_DeadletterQueue: created handler");
+handler.arn.apply(function (param) {
+      console.log("Util_DeadletterQueue: created handler");
+    });
 
 console.log("Util_DeadletterQueue: creating subscription ...");
 
 var subscription = queue.onEvent(name, handler);
 
-console.log("Util_DeadletterQueue: created subscription");
+subscription.name.apply(function (param) {
+      console.log("Util_DeadletterQueue: created subscription");
+    });
 
 console.log("Util_DeadletterQueue: creating fifoSubscription ...");
 
 var fifoSubscription = fifoQueue.onEvent(nameFifo, handler);
 
-console.log("Util_DeadletterQueue: created fifoSubscription");
+fifoSubscription.name.apply(function (param) {
+      console.log("Util_DeadletterQueue: created fifoSubscription");
+    });
 
 exports.name = name;
 exports.nameFifo = nameFifo;

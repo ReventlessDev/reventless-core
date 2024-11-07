@@ -11,7 +11,7 @@ let queue = SQS.Queue.make(
     sqsManagedSseEnabled: false->Pulumi.Input.make,
   },
 )
-Js.log("Util_DeadletterQueue: created queue")
+let _ = queue.arn->Pulumi.Output.apply(_ => Js.log("Util_DeadletterQueue: created queue"))
 
 Js.log("Util_DeadletterQueue: creating fifoQueue ...")
 let fifoQueue = SQS.Queue.make(
@@ -23,7 +23,7 @@ let fifoQueue = SQS.Queue.make(
     sqsManagedSseEnabled: false->Pulumi.Input.make,
   },
 )
-Js.log("Util_DeadletterQueue: created fifoQueue")
+let _ = fifoQueue.arn->Pulumi.Output.apply(_ => Js.log("Util_DeadletterQueue: created fifoQueue"))
 
 // let make: ((~resolve: (. 'a) => unit, ~reject: (. exn) => unit) => unit) => t<'a>
 let callback: Lambda.eventHandlerNoResult<'a> = (evt, ctx) =>
@@ -35,11 +35,15 @@ let handler = PulumiAws.Lambda.CallbackFunction.make(
   ~args=PulumiAws.Lambda.CallbackFunction.Args.make(~callback),
   ~opts={Pulumi.CustomResourceOptions.parent: queue->PulumiAws.SQS.Queue.toResource},
 )
-Js.log("Util_DeadletterQueue: created handler")
+let _ = handler.arn->Pulumi.Output.apply(_ => Js.log("Util_DeadletterQueue: created handler"))
 
 Js.log("Util_DeadletterQueue: creating subscription ...")
 let subscription = queue->SQS.Queue.onEvent(~name, ~handler)
-Js.log("Util_DeadletterQueue: created subscription")
+let _ =
+  subscription.name->Pulumi.Output.apply(_ => Js.log("Util_DeadletterQueue: created subscription"))
 Js.log("Util_DeadletterQueue: creating fifoSubscription ...")
 let fifoSubscription = fifoQueue->SQS.Queue.onEvent(~name=nameFifo, ~handler)
-Js.log("Util_DeadletterQueue: created fifoSubscription")
+let _ =
+  fifoSubscription.name->Pulumi.Output.apply(_ =>
+    Js.log("Util_DeadletterQueue: created fifoSubscription")
+  )
