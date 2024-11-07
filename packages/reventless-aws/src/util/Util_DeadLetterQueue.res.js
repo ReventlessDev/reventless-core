@@ -53,7 +53,7 @@ console.log("Util_DeadletterQueue: creating subscription ...");
 
 var subscription = queue.onEvent(name, handler);
 
-subscription.eventSourceMapping.arn.apply(function (param) {
+subscription.eventSourceMapping.id.apply(function (param) {
       console.log("Util_DeadletterQueue: created subscription");
     });
 
@@ -61,7 +61,7 @@ console.log("Util_DeadletterQueue: creating fifoSubscription ...");
 
 var fifoSubscription = fifoQueue.onEvent(nameFifo, handler);
 
-fifoSubscription.eventSourceMapping.arn.apply(function (param) {
+fifoSubscription.eventSourceMapping.id.apply(function (param) {
       console.log("Util_DeadletterQueue: created fifoSubscription");
     });
 

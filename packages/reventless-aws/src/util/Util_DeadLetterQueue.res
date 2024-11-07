@@ -40,12 +40,12 @@ let _ = handler.arn->Pulumi.Output.apply(_ => Js.log("Util_DeadletterQueue: crea
 Js.log("Util_DeadletterQueue: creating subscription ...")
 let subscription = queue->SQS.Queue.onEvent(~name, ~handler)
 let _ =
-  subscription.eventSourceMapping.arn->Pulumi.Output.apply(_ =>
+  subscription.eventSourceMapping.id->Pulumi.Output.apply(_ =>
     Js.log("Util_DeadletterQueue: created subscription")
   )
 Js.log("Util_DeadletterQueue: creating fifoSubscription ...")
 let fifoSubscription = fifoQueue->SQS.Queue.onEvent(~name=nameFifo, ~handler)
 let _ =
-  fifoSubscription.eventSourceMapping.arn->Pulumi.Output.apply(_ =>
+  fifoSubscription.eventSourceMapping.id->Pulumi.Output.apply(_ =>
     Js.log("Util_DeadletterQueue: created fifoSubscription")
   )
