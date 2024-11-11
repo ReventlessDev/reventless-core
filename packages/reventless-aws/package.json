@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-aws",
-  "version": "1.5.0-node20.14",
+  "version": "1.5.0-node20.15",
   "description": "AWS adapters for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -27,10 +27,10 @@
   },
   "dependencies": {
     "@rescript/std": "^10.1.4",
-    "@reventless/bs-aws-sdk": "^1.4.0-node20.4",
+    "@reventless/bs-aws-sdk": "^1.4.0-node20.5",
     "@reventless/bs-pulumi-aws": "^1.3.0-node20.10",
     "@reventless/bs-pulumi-pulumi": "^1.2.1-node20.3",
-    "@reventless/reventless": "^1.5.0-node20.14",
+    "@reventless/reventless": "^1.5.0-node20.15",
     "@reventless/reventless-spec": "^1.5.0-node20.4",
     "decco": "1.6.0"
   },
