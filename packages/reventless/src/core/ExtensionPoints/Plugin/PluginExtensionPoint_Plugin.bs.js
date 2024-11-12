@@ -5,6 +5,7 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Decco = require("decco/src/Decco.bs.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.bs.js");
+var Pulumi = require("@pulumi/pulumi");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.bs.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../../Message.bs.js");
@@ -74,7 +75,7 @@ async function callHandler(createSchedule, deleteSchedule, queryEngine, callComm
           command: /* DisconnectPlugin */0
         };
         return await createSchedule({
-                    name: id,
+                    name: Pulumi.getStack() + ("-" + id),
                     rate: Schedule$Reventless.minutesFromNow(callCommand._1),
                     payload: JSON.stringify(Message$Reventless.command$p_encode(Decco.stringToJson, PluginExtensionPointSpec$ReventlessSpec.command_encode, __x))
                   });

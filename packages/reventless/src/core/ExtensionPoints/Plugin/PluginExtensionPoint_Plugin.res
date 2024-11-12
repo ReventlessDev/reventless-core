@@ -71,7 +71,7 @@ let callHandler = async (
   switch callCommand {
   | ReventlessSpec.PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
     await createSchedule(. {
-      name: id, // TODO: prefix with Pulumi.Pulumi.getStackName()
+      name: Pulumi.Pulumi.getStackName() ++ ("-" ++ id),
       rate: timeout->Schedule.minutesFromNow,
       payload: {
         Message.id,
