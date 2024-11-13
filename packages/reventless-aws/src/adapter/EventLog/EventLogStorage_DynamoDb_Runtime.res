@@ -5,10 +5,13 @@ let append = table => async (. _sequenceNr, _id, jsons) => {
     jsons
     ->Belt.Array.map(toPutRequest)
     ->toTable(table["name"]->Pulumi.Output.get)
-    ->batchWriteWithRetries(3)
+    ->batchWriteWithRetries(5)
   switch await result {
-  | _ => Belt.Result.Ok()
-  | exception _ => Belt.Result.Error("AwsSdk.DynamoDb.DocumentClient.putMany failed !") // TODO: error message
+  | Ok() => Ok()
+  | Error(unprocessedItems) =>
+    Js.Console.log2("Error: unprocessed items:", unprocessedItems)
+    Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !")
+  | exception _ => Error("AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed !") // TODO: error message
   }
 }
 

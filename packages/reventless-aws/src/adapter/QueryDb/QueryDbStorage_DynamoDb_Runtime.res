@@ -72,10 +72,7 @@ let save = table => async (. _id, json, saveMode: ReventlessSpec.QueryDb.saveMod
 let writeChunk = async (writeRequests, maxRetries) => {
   switch await writeRequests->batchWriteWithRetries(maxRetries) {
   | Error(failedRequests) =>
-    let count =
-      failedRequests->Belt.Option.mapWithDefault(0, requests =>
-        requests->Js.Dict.keys->Belt.Array.length
-      )
+    let count = failedRequests->Js.Dict.keys->Belt.Array.length
     `${count->Belt.Int.toString} request(s) failed after ${maxRetries->Belt.Int.toString}`->Error
   | Ok() => Ok()
   }
@@ -126,7 +123,7 @@ let saveBatch: (
 ) => (
   . array<(string, Js.Json.t, option<int>)>,
 ) => Js.Promise.t<Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>> = (
-  ~maxRetries=3,
+  ~maxRetries=5,
   table,
 ) => async (. items) =>
   switch items {
@@ -185,7 +182,7 @@ let delete = table => async (. id, sort) => {
   }
 }
 
-let deleteBatch = (~maxRetries=3, table) => async (. ids) =>
+let deleteBatch = (~maxRetries=5, table) => async (. ids) =>
   switch ids {
   | [] => Ok()
   | [(id, sort)] => await delete(table)(. id, sort)

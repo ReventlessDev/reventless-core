@@ -68,30 +68,26 @@ let hasUnprocessedItems = writeOutput =>
 
 let rec retryBatchWriteIfNecessary = async (p, allItems, numberOfRetries, maxRetries): result<
   unit,
-  option<Js.Dict.t<array<AwsSdk.DynamoDb.DocumentClient.BatchWriteCommand.writeRequest>>>,
+  Js.Dict.t<array<AwsSdk.DynamoDb.DocumentClient.BatchWriteCommand.writeRequest>>,
 > => {
   let retry = numberOfRetries->Js.Int.toString
   switch await p {
   | writeOutput =>
     if writeOutput->hasUnprocessedItems {
-      let unprocessedItems = writeOutput.BatchWriteCommand.unprocessedItems
+      let unprocessedItems = writeOutput.BatchWriteCommand.unprocessedItems->Belt.Option.getExn
       let unprocessedItemsCount: string =
         unprocessedItems
-        ->Belt.Option.mapWithDefault(0, items => items->Js.Dict.keys->Belt.Array.size)
+        ->Js.Dict.keys
+        ->Belt.Array.size
         ->Js.Int.toString
       Js.log(
         `Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry ${retry}: ${unprocessedItemsCount} unprocessed items`,
       )
       if numberOfRetries < maxRetries {
-        await unprocessedItems->Belt.Option.mapWithDefault(
-          Js.Promise.resolve(Ok()),
-          async items => {
-            await batchWrite(items)->retryBatchWriteIfNecessary(
-              items,
-              numberOfRetries + 1,
-              maxRetries,
-            )
-          },
+        await batchWrite(unprocessedItems)->retryBatchWriteIfNecessary(
+          unprocessedItems,
+          numberOfRetries + 1,
+          maxRetries,
         )
       } else {
         Error(unprocessedItems)
@@ -103,10 +99,13 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, numberOfRetries, maxRet
   | exception Js.Exn.Error(e) =>
     Js.log2(`Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry ${retry}: Error:`, e)
     if numberOfRetries < maxRetries {
-      let p = batchWrite(allItems)
-      await retryBatchWriteIfNecessary(p, allItems, numberOfRetries + 1, maxRetries)
+      await batchWrite(allItems)->retryBatchWriteIfNecessary(
+        allItems,
+        numberOfRetries + 1,
+        maxRetries,
+      )
     } else {
-      Error(Some(allItems))
+      Error(allItems)
     }
   }
 }

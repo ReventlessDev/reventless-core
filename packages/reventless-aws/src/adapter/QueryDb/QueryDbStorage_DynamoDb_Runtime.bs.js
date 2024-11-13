@@ -116,9 +116,7 @@ async function writeChunk(writeRequests, maxRetries) {
             _0: undefined
           };
   }
-  var count = Belt_Option.mapWithDefault(failedRequests._0, 0, (function (requests) {
-          return Object.keys(requests).length;
-        }));
+  var count = Object.keys(failedRequests._0).length;
   return {
           TAG: /* Error */1,
           _0: "" + String(count) + " request(s) failed after " + String(maxRetries) + ""
@@ -165,7 +163,7 @@ async function writeBatch(writeRequests, table, maxRetries) {
 }
 
 function saveBatch(maxRetriesOpt, table) {
-  var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 3;
+  var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
   return async function (items) {
     var len = items.length;
     if (len !== 1) {
@@ -280,7 +278,7 @@ function $$delete(table) {
 }
 
 function deleteBatch(maxRetriesOpt, table) {
-  var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 3;
+  var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
   return async function (ids) {
     var len = ids.length;
     if (len !== 1) {

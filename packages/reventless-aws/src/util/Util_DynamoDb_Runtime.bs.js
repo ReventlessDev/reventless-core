@@ -110,14 +110,14 @@ async function retryBatchWriteIfNecessary(p, allItems, numberOfRetries, maxRetri
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
       console.log("Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry " + retry + ": Error:", e._1);
-      if (numberOfRetries >= maxRetries) {
+      if (numberOfRetries < maxRetries) {
+        return await retryBatchWriteIfNecessary(batchWrite(allItems), allItems, numberOfRetries + 1 | 0, maxRetries);
+      } else {
         return {
                 TAG: /* Error */1,
-                _0: Caml_option.some(allItems)
+                _0: allItems
               };
       }
-      var p$1 = batchWrite(allItems);
-      return await retryBatchWriteIfNecessary(p$1, allItems, numberOfRetries + 1 | 0, maxRetries);
     }
     throw e;
   }
@@ -127,18 +127,11 @@ async function retryBatchWriteIfNecessary(p, allItems, numberOfRetries, maxRetri
             _0: undefined
           };
   }
-  var unprocessedItems = writeOutput.UnprocessedItems;
-  var unprocessedItemsCount = Belt_Option.mapWithDefault(unprocessedItems, 0, (function (items) {
-            return Object.keys(items).length;
-          })).toString();
+  var unprocessedItems = Belt_Option.getExn(writeOutput.UnprocessedItems);
+  var unprocessedItemsCount = Object.keys(unprocessedItems).length.toString();
   console.log("Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry " + retry + ": " + unprocessedItemsCount + " unprocessed items");
   if (numberOfRetries < maxRetries) {
-    return await Belt_Option.mapWithDefault(unprocessedItems, Promise.resolve({
-                    TAG: /* Ok */0,
-                    _0: undefined
-                  }), (async function (items) {
-                  return await retryBatchWriteIfNecessary(batchWrite(items), items, numberOfRetries + 1 | 0, maxRetries);
-                }));
+    return await retryBatchWriteIfNecessary(batchWrite(unprocessedItems), unprocessedItems, numberOfRetries + 1 | 0, maxRetries);
   } else {
     return {
             TAG: /* Error */1,

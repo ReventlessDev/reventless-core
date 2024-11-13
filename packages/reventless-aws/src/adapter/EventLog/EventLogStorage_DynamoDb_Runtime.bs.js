@@ -7,20 +7,28 @@ var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runt
 
 function append(table) {
   return async function (_sequenceNr, _id, jsons) {
-    var result = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(jsons, Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name.get()), 3);
+    var result = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(jsons, Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name.get()), 5);
+    var unprocessedItems;
     try {
-      await result;
+      unprocessedItems = await result;
+    }
+    catch (exn){
+      return {
+              TAG: /* Error */1,
+              _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries failed !"
+            };
+    }
+    if (unprocessedItems.TAG === /* Ok */0) {
       return {
               TAG: /* Ok */0,
               _0: undefined
             };
     }
-    catch (exn){
-      return {
-              TAG: /* Error */1,
-              _0: "AwsSdk.DynamoDb.DocumentClient.putMany failed !"
-            };
-    }
+    console.log("Error: unprocessed items:", unprocessedItems._0);
+    return {
+            TAG: /* Error */1,
+            _0: "AwsSdk.DynamoDb.DocumentClient.batchWriteWithRetries resulted in unprocessed items !"
+          };
   };
 }
 
