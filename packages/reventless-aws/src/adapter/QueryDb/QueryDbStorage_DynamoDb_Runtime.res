@@ -15,7 +15,7 @@ let load = table => async (. id) =>
     }
   }
 
-let save = table => async (. _id, json, saveMode: ReventlessSpec.QueryDb.saveMode, ttl) => {
+let save = table => async (. id, json, saveMode: ReventlessSpec.QueryDb.saveMode, ttl) => {
   let tableName = table["name"]->Pulumi.Output.get
   let stateStr = json->Js.Json.stringify
   let json = json->insertTtl(ttl)
@@ -28,41 +28,34 @@ let save = table => async (. _id, json, saveMode: ReventlessSpec.QueryDb.saveMod
       json,
     ) {
     | _ =>
-      Js.log(__MODULE__ ++ `.save: save Init state to ${tableName}: ${stateStr}`)
+      Js.log(__MODULE__ ++ `.save: saved Init state to ${tableName}: id=${id}`)
       Ok()
     | exception Js.Exn.Error(e) =>
-      let tableName = table["name"]->Pulumi.Output.get
       switch e->PutError.classify {
       | ConditionCheckFailedException(err) =>
-        Js.log2(
-          __MODULE__ ++
-          `.save: Error: Stale State in ${tableName} when trying to save: ${stateStr}. error:`,
-          err,
-        )
+        Js.log2(__MODULE__ ++ `.save: Error: Stale State in ${tableName}, id=${id}:`, err)
         Error(ReventlessSpec.QueryDb.StaleState)
       | _ =>
-        Js.log2(__MODULE__ ++ `.save: Error: Couldn't save Init state to ${tableName}`, e)
-        Error(
-          ReventlessSpec.QueryDb.NotSavedToStorage(
-            e->Js.Exn.message->Belt.Option.getWithDefault("unknown error"),
-          ),
+        let errorMsg = e->Reventless.Util.Error.message
+        Js.log(
+          __MODULE__ ++
+          `.save: Error: Couldn't save Init state to ${tableName}, id=${id}: ${errorMsg}`,
         )
+        Error(ReventlessSpec.QueryDb.NotSavedToStorage(errorMsg))
       }
     }
   | Any
   | Overwrite =>
     switch await PutCommand.make({tableName, item: json})->PutCommand.send {
     | _ =>
-      Js.log(__MODULE__ ++ `.save: save state to ${tableName}: ${stateStr}`)
+      Js.log(__MODULE__ ++ `.save: saved state to ${tableName}: id=${id}`)
       Ok()
-
     | exception Js.Exn.Error(e) => {
-        Js.log2(__MODULE__ ++ `.save: Error: Couldn't save state to ${tableName}:`, e)
-        Error(
-          ReventlessSpec.QueryDb.NotSavedToStorage(
-            e->Js.Exn.message->Belt.Option.getWithDefault("unknown error"),
-          ),
+        let errorMsg = e->Reventless.Util.Error.message
+        Js.log(
+          __MODULE__ ++ `.save: Error: Couldn't save state to ${tableName}, id=${id}: ${errorMsg}`,
         )
+        Error(ReventlessSpec.QueryDb.NotSavedToStorage(errorMsg))
       }
     }
   }
@@ -78,17 +71,18 @@ let writeChunk = async (writeRequests, maxRetries) => {
   }
 }
 
-let writeBatch = async (writeRequests, table, maxRetries) => {
+let writeBatch = async (writeRequests, op, ids, table, maxRetries) => {
   let tableName = table["name"]->Pulumi.Output.get
   let batchSize = writeRequests->Belt.Array.size
   let chunks =
     (batchSize->float_of_int /. BatchWriteCommand.maxBatchSize->Js.Int.toFloat)->Js.Math.ceil_int
   if chunks > 1 {
     Js.log(
+      __MODULE__ ++
       `writeBatch: splitting up batch of size ${batchSize->Belt.Int.toString} into ${chunks->Belt.Int.toString} chunks`,
     )
   }
-  let results = await Belt.Array.makeBy(chunks, chunkNr =>
+  let results = Belt.Array.makeBy(chunks, chunkNr =>
     writeRequests
     ->Belt.Array.slice(
       ~offset=chunkNr * BatchWriteCommand.maxBatchSize,
@@ -97,23 +91,36 @@ let writeBatch = async (writeRequests, table, maxRetries) => {
     ->toTable(tableName)
     ->writeChunk(maxRetries)
   )->Reventless.Util.Promise.allSettled
-  let errors =
-    results
-    ->Belt.Array.mapWithIndex((batchNr, result) =>
-      switch (result.value, result.reason) {
-      | (Some(Error(error)), _) => `Batch ${batchNr->Belt.Int.toString}: ${error}`->Some
-      | (_, Some(reason)) =>
-        `Batch ${batchNr->Belt.Int.toString}: failed after ${maxRetries->Belt.Int.toString}: ${(
-            reason->Reventless.Util.Error.ofPromise
-          ).message}`->Some
-      | _ => None
-      }
-    )
-    ->Belt.Array.keepMap(x => x)
-  switch errors {
-  | [] => Ok()
-  | errors =>
-    errors->Js.Array2.joinWith(",")->ReventlessSpec.QueryDb.BatchNotFullyWrittenToStorage->Error
+  switch await results {
+  | results =>
+    let errors =
+      results
+      ->Belt.Array.mapWithIndex((batchNr, result) =>
+        switch (result.value, result.reason) {
+        | (Some(Error(error)), _) => `Batch ${batchNr->Belt.Int.toString}: ${error}`->Some
+        | (_, Some(reason)) =>
+          `Batch ${batchNr->Belt.Int.toString}: failed after ${maxRetries->Belt.Int.toString}: ${(
+              reason->Reventless.Util.Error.ofPromise
+            ).message}`->Some
+        | _ => None
+        }
+      )
+      ->Belt.Array.keepMap(x => x)
+    switch errors {
+    | [] =>
+      Js.log(__MODULE__ ++ `.writeBatch: ${op} states: ${tableName}, ids=${ids}`)
+      Ok()
+    | errors =>
+      let errorMsg =
+        __MODULE__ ++
+        `.writeBatch: failed: ${tableName}, ids=${ids}: ${errors->Js.Array2.joinWith("; ")}`
+      Js.log(errorMsg)
+      Error(ReventlessSpec.QueryDb.BatchNotFullyWrittenToStorage(errorMsg))
+    }
+  | exception Js.Exn.Error(e) =>
+    let errorMsg = e->Reventless.Util.Error.message
+    Js.log(__MODULE__ ++ `.writeBatch: failed: ${tableName}, ids=${ids}: ${errorMsg}`)
+    Error(ReventlessSpec.QueryDb.BatchNotFullyWrittenToStorage(errorMsg))
   }
 }
 
@@ -128,16 +135,17 @@ let saveBatch: (
 ) => async (. items) =>
   switch items {
   | [] => Ok()
-  | [(id, json, ttl)] => await save(table)(. id, json, Any, ttl)
+  | [(id, json, ttl)] =>
+    let tableName = table["name"]->Pulumi.Output.get
+    await save(table)(. id, json, Any, ttl)
   | items =>
     let tableName = table["name"]->Pulumi.Output.get
+    let ids = items->Belt.Array.map(((id, _, _)) => id)->Js.Array2.joinWith(",")
     await items
     ->Belt.Array.map(((_id, json, ttl)) => {
-      let stateStr = json->Js.Json.stringify
-      Js.log(__MODULE__ ++ `.saveBatch: save state to ${tableName}: ${stateStr}`)
       json->insertTtl(ttl)->toPutRequest
     })
-    ->writeBatch(table, maxRetries)
+    ->writeBatch("put", ids, table, maxRetries)
   }
 
 let count = table => async (. id, fieldName, inc) => {
@@ -169,40 +177,37 @@ let count = table => async (. id, fieldName, inc) => {
 
 let delete = table => async (. id, sort) => {
   let tableName = table["name"]->Pulumi.Output.get
-  Js.log4(__MODULE__ ++ ".delete: tableName, id, sort", table["name"]->Pulumi.Output.get, id, sort)
   switch await AwsSdk.DynamoDb.DocumentClient.deleteWithTableName(~tableName, ~id, ~sort?) {
   | _ =>
-    Js.log(__MODULE__ ++ `.delete: delete state for ${id} from ${tableName}`)
+    Js.log2(__MODULE__ ++ `.delete: deleted state from ${tableName}: id=${id}, sort=`, sort)
     Ok()
-
   | exception Js.Exn.Error(e) =>
-    let message = e->Reventless.Util.Error.message
-    Js.log2(__MODULE__ ++ `.delete: Error: Couldn't delete state for ${id} from ${tableName}`, e)
-    Error(ReventlessSpec.QueryDb.NotDeletedFromStorage(message))
+    let errorMsg = e->Reventless.Util.Error.message
+    Js.log3(
+      __MODULE__ ++ `.delete: Error: Couldn't delete state from ${tableName}, id=${id}, sort=`,
+      sort,
+      errorMsg,
+    )
+    Error(ReventlessSpec.QueryDb.NotDeletedFromStorage(errorMsg))
   }
 }
 
-let deleteBatch = (~maxRetries=5, table) => async (. ids) =>
-  switch ids {
+let deleteBatch = (~maxRetries=5, table) => async (. items) =>
+  switch items {
   | [] => Ok()
   | [(id, sort)] => await delete(table)(. id, sort)
-  | ids =>
+  | items =>
     let tableName = table["name"]->Pulumi.Output.get
-    await ids
+    let ids = items->Belt.Array.map(((id, _)) => id)->Js.Array2.joinWith(",")
+    await items
     ->Belt.Array.map(((id, sort)) =>
       switch sort {
       | Some((sortField, sortKey)) =>
-        Js.log(
-          __MODULE__ ++
-          `.deleteBatch: delete state for ${id} (${sortField}=sortKey) from ${tableName}`,
-        )
         [("id", id->Js.Json.string), (sortField, sortKey->Js.Json.string)]
         ->Js.Dict.fromArray
         ->toDeleteRequest
-      | None =>
-        Js.log(__MODULE__ ++ `.deleteBatch: delete state for ${id} from ${tableName}`)
-        [("id", id->Js.Json.string)]->Js.Dict.fromArray->toDeleteRequest
+      | None => [("id", id->Js.Json.string)]->Js.Dict.fromArray->toDeleteRequest
       }
     )
-    ->writeBatch(table, maxRetries)
+    ->writeBatch("deleted", ids, table, maxRetries)
   }
