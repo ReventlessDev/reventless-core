@@ -5,7 +5,7 @@ let append = table => async (. _sequenceNr, _id, jsons) => {
     jsons
     ->Belt.Array.map(toPutRequest)
     ->toTable(table["name"]->Pulumi.Output.get)
-    ->batchWriteWithRetries(5)
+    ->batchWriteWithRetries
   switch await result {
   | Ok() => Ok()
   | Error(unprocessedItems) =>

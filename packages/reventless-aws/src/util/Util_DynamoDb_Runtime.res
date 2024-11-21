@@ -6,16 +6,22 @@ let put = (table: PulumiAws.DynamoDb.Table.t, item) => {
   {PutCommand.tableName: table["name"]->Pulumi.Output.get, item}->PutCommand.make->PutCommand.send
 }
 
-let rec putWithRetries = async (~retry=0, ~maxRetries=5, table, item) =>
+let rec putWithRetries = async (~retry=0, ~maxRetries=5, table, id, item) =>
   switch await table->put(item) {
   | _ => Ok()
   | exception Js.Exn.Error(e) =>
     let errorMsg = e->Reventless.Util.Error.message
-    Js.log(__MODULE__ ++ `.putWithRetry: retry ${retry->Js.Int.toString} failed: ${errorMsg}`)
+    Js.log(
+      __MODULE__ ++
+      `.putWithRetries: id=${id}: retry ${retry->Js.Int.toString} failed: ${errorMsg}`,
+    )
     if retry < maxRetries {
-      await table->putWithRetries(item, ~retry=retry + 1, ~maxRetries)
+      let timeout = Js.Math.random_int(500, 1500)
+      await Reventless.Util.Promise.finishTimeout(timeout)
+      Js.log(`Retry put after ${timeout->Js.Int.toString} ms`)
+      await table->putWithRetries(id, item, ~retry=retry + 1, ~maxRetries)
     } else {
-      Error(`put failed after ${maxRetries->Js.Int.toString} retries`)
+      Error(`put id=${id} failed after ${maxRetries->Js.Int.toString} retries`)
     }
   }
 
@@ -25,26 +31,34 @@ let rec putIfNotExistsWithRetries = async (
   ~idKey,
   ~sortKey=?,
   table,
+  id,
   item,
 ) =>
   switch await putIfNotExists(table["name"]->Pulumi.Output.get, idKey, sortKey, item) {
   | _ => Ok()
   | exception Js.Exn.Error(e) =>
     switch e->PutError.classify {
-    | ConditionCheckFailedException(err) => Error("Stale State in ${tableName}, id=${id}")
+    | ConditionCheckFailedException(err) => Error(`Stale State: id=${id}`)
     | _ =>
       let errorMsg = e->Reventless.Util.Error.message
-      Js.log(__MODULE__ ++ `.putIfNotExists: retry ${retry->Js.Int.toString} failed: ${errorMsg}`)
+      Js.log(
+        __MODULE__ ++
+        `.putIfNotExistsWithRetries: id=${id}: retry ${retry->Js.Int.toString} failed: ${errorMsg}`,
+      )
       if retry < maxRetries {
+        let timeout = Js.Math.random_int(500, 1500)
+        await Reventless.Util.Promise.finishTimeout(timeout)
+        Js.log(`Retry putIfNotExists after ${timeout->Js.Int.toString} ms`)
         await table->putIfNotExistsWithRetries(
           ~retry=retry + 1,
           ~maxRetries,
           ~idKey,
           ~sortKey?,
+          id,
           item,
         )
       } else {
-        Error(`putIfNotExists failed after ${maxRetries->Js.Int.toString} retries`)
+        Error(`putIfNotExists id=${id} failed after ${maxRetries->Js.Int.toString} retries`)
       }
     }
   }
@@ -58,11 +72,14 @@ let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) 
   | _ => Ok()
   | exception Js.Exn.Error(e) =>
     let errorMsg = e->Reventless.Util.Error.message
-    Js.log(__MODULE__ ++ `.delete: retry ${retry->Js.Int.toString} failed: ${errorMsg}`)
+    Js.log(__MODULE__ ++ `.delete: id=${id}: retry ${retry->Js.Int.toString} failed: ${errorMsg}`)
     if retry < maxRetries {
+      let timeout = Js.Math.random_int(500, 1500)
+      await Reventless.Util.Promise.finishTimeout(timeout)
+      Js.log(`Retry delete after ${timeout->Js.Int.toString} ms`)
       await table->deleteWithRetries(id, ~retry=retry + 1, ~maxRetries)
     } else {
-      Error(`delete failed after ${maxRetries->Js.Int.toString} retries`)
+      Error(`delete id=${id} failed after ${maxRetries->Js.Int.toString} retries`)
     }
   }
 
@@ -107,6 +124,7 @@ let insertTtl: (Js.Json.t, option<int>) => Js.Json.t = (json, ttl) =>
   )
   ->Belt.Option.getWithDefault(json)
 
+/** max. batch size is 25 */
 let batchWrite = itemRequestMap => {
   {
     requestItems: itemRequestMap,
@@ -166,6 +184,59 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): res
   }
 }
 
+let rec batchWriteWithRetries = async (~retry=0, ~maxRetries=5, batchWriteRequests) => {
+  let all =
+    batchWriteRequests->Js.Dict.values->Belt.Array.concatMany->Belt.Array.size->Js.Int.toString
+  switch await batchWrite(batchWriteRequests) {
+  | writeOutput =>
+    if writeOutput->hasUnprocessedItems {
+      let unprocessedRequests = writeOutput.BatchWriteCommand.unprocessedItems->Belt.Option.getExn
+      let unprocessedRequestCount: string =
+        unprocessedRequests
+        ->Js.Dict.keys
+        ->Belt.Array.size
+        ->Js.Int.toString
+      Js.log(
+        __MODULE__ ++
+        `.batchWriteWithRetries: retry ${retry->Js.Int.toString}: ${unprocessedRequestCount} unprocessed items`,
+      )
+      if retry < maxRetries {
+        let timeout = Js.Math.random_int(500, 1500)
+        await Reventless.Util.Promise.finishTimeout(timeout)
+        Js.log(
+          `Retry batchWrite for ${unprocessedRequestCount} unprocessed items after ${timeout->Js.Int.toString} ms`,
+        )
+        await batchWriteWithRetries(~retry=retry + 1, ~maxRetries, unprocessedRequests)
+      } else {
+        let count =
+          batchWriteRequests
+          ->Js.Dict.values
+          ->Belt.Array.concatMany
+          ->Belt.Array.size
+          ->Js.Int.toString
+        Error(
+          `batchWrite failed ${count}/${all} requests after ${maxRetries->Js.Int.toString} retries`,
+        )
+      }
+    } else {
+      Ok()
+    }
+  | exception Js.Exn.Error(e) =>
+    let errorMsg = e->Reventless.Util.Error.message
+    Js.log(
+      __MODULE__ ++ `.batchWriteWithRetries: retry ${retry->Js.Int.toString} failed: ${errorMsg}`,
+    )
+    if retry < maxRetries {
+      let timeout = Js.Math.random_int(500, 1500)
+      await Reventless.Util.Promise.finishTimeout(timeout)
+      Js.log(`Retry batchWrite after ${timeout->Js.Int.toString} ms`)
+      await batchWriteWithRetries(~retry=retry + 1, ~maxRetries, batchWriteRequests)
+    } else {
+      Error(`batchWrite failed all ${all} requests after ${maxRetries->Js.Int.toString} retries`)
+    }
+  }
+}
+
 let toPutRequest: Js.Json.t => BatchWriteCommand.writeRequest = json => {
   {putRequest: {BatchWriteCommand.item: json}}
 }
@@ -175,12 +246,5 @@ let toDeleteRequest: Js.Dict.t<Js.Json.t> => BatchWriteCommand.writeRequest = ke
 }
 
 let toTable = (writeRequests, tableName) => Js.Dict.fromArray([(tableName, writeRequests)])
-
-let batchWriteWithRetries = (batchWriteItemRequestMap, maxRetries) =>
-  batchWrite(batchWriteItemRequestMap)->retryBatchWriteIfNecessary(
-    batchWriteItemRequestMap,
-    0,
-    maxRetries,
-  )
 
 let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)

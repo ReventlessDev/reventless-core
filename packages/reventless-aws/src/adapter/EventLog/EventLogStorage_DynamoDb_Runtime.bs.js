@@ -7,7 +7,7 @@ var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runt
 
 function append(table) {
   return async function (_sequenceNr, _id, jsons) {
-    var result = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(jsons, Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name.get()), 5);
+    var result = Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(Belt_Array.map(jsons, Util_DynamoDb_Runtime$ReventlessAws.toPutRequest), table.name.get()));
     var unprocessedItems;
     try {
       unprocessedItems = await result;

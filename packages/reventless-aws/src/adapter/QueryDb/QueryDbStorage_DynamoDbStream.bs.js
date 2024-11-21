@@ -15,10 +15,10 @@ function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
           dataSourceName: QueryDbStorage_DynamoDb$ReventlessAws.dataSource(name, table, api, apiRole, opts).name,
           load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(table),
           save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table),
-          saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(undefined, table),
+          saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(table),
           count: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(table),
           delete: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table),
-          deleteBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.deleteBatch(undefined, table)
+          deleteBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.deleteBatch(table)
         };
 }
 

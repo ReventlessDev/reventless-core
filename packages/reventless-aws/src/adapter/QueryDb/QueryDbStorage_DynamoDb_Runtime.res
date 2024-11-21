@@ -29,6 +29,7 @@ let save = (table: PulumiAws.DynamoDb.Table.t) => async (.
     switch await table->putIfNotExistsWithRetries(
       ~idKey=table["hashKey"]->Pulumi.Output.get,
       ~sortKey=?table["rangeKey"]->Pulumi.Output.get,
+      id,
       json,
     ) {
     | Ok() =>
@@ -43,7 +44,7 @@ let save = (table: PulumiAws.DynamoDb.Table.t) => async (.
     }
   | Any
   | Overwrite =>
-    switch await table->putWithRetries(json) {
+    switch await table->putWithRetries(id, json) {
     | Ok() =>
       Js.log(__MODULE__ ++ `.save: saved state to ${tableName}: id=${id}`)
       Ok()
@@ -57,74 +58,71 @@ let save = (table: PulumiAws.DynamoDb.Table.t) => async (.
   }
 }
 
-@ocaml.doc(" writeChunk: max. batch size is 25 ")
-let writeChunk = async (writeRequests, maxRetries) => {
-  switch await writeRequests->batchWriteWithRetries(maxRetries) {
-  | Error(failedRequests) =>
-    let count = failedRequests->Js.Dict.keys->Belt.Array.length
-    Error(`${count->Belt.Int.toString} request(s) failed after ${maxRetries->Belt.Int.toString}`)
-  | Ok() => Ok()
-  }
-}
+let sliceBatch = (arr, batchNr) =>
+  arr->Belt.Array.slice(
+    ~offset=batchNr * BatchWriteCommand.maxBatchSize,
+    ~len=BatchWriteCommand.maxBatchSize,
+  )
 
-let writeBatch = async (writeRequests, op, ids, table, maxRetries) => {
+let writeMultiple = async (writeRequests, op, ids, table) => {
   let tableName = table["name"]->Pulumi.Output.get
   let count = ids->Belt.Array.size->Js.Int.toString
-  let idsStr = ids->Js.Array2.joinWith(", ")
-  let batchSize = writeRequests->Belt.Array.size
-  let chunks =
-    (batchSize->float_of_int /. BatchWriteCommand.maxBatchSize->Js.Int.toFloat)->Js.Math.ceil_int
-  if chunks > 1 {
+  let allIdsStr = ids->Js.Array2.joinWith(", ")
+  let size = writeRequests->Belt.Array.size
+  let batches =
+    (size->float_of_int /. BatchWriteCommand.maxBatchSize->Js.Int.toFloat)->Js.Math.ceil_int
+  if batches > 1 {
     Js.log(
       __MODULE__ ++
-      `writeBatch: splitting up batch of size ${batchSize->Belt.Int.toString} into ${chunks->Belt.Int.toString} chunks`,
+      `writeBatch: splitting up batch of size ${size->Belt.Int.toString} into ${batches->Belt.Int.toString} batches`,
     )
   }
-  let results = Belt.Array.makeBy(chunks, chunkNr =>
+  let results = Belt.Array.makeBy(batches, batchNr =>
     writeRequests
-    ->Belt.Array.slice(
-      ~offset=chunkNr * BatchWriteCommand.maxBatchSize,
-      ~len=BatchWriteCommand.maxBatchSize,
-    )
+    ->sliceBatch(batchNr)
     ->toTable(tableName)
-    ->writeChunk(maxRetries)
+    ->batchWriteWithRetries
   )->Reventless.Util.Promise.allSettled
   switch await results {
   | results =>
     let errors =
       results
-      ->Belt.Array.mapWithIndex((batchNr, result) =>
+      ->Belt.Array.mapWithIndex((batchNr, result) => {
+        let batchIds = ids->sliceBatch(batchNr)
+        let count = batchIds->Belt.Array.size->Js.Int.toString
+        let batchIdsStr = batchIds->Js.Array2.joinWith(", ")
         switch (result.value, result.reason) {
-        | (Some(Error(error)), _) => `Batch ${batchNr->Belt.Int.toString}: ${error}`->Some
+        | (Some(Error(error)), _) =>
+          Some(`Batch ${batchNr->Belt.Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
         | (_, Some(reason)) =>
-          `Batch ${batchNr->Belt.Int.toString}: failed after ${maxRetries->Belt.Int.toString}: ${(
-              reason->Reventless.Util.Error.ofPromise
-            ).message}`->Some
+          let error = (reason->Reventless.Util.Error.ofPromise).message
+          Some(`Batch ${batchNr->Belt.Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
         | _ => None
         }
-      )
+      })
       ->Belt.Array.keepMap(x => x)
     switch errors {
     | [] =>
-      Js.log(__MODULE__ ++ `.writeBatch: ${op} ${count} states: ${tableName}, ids:${idsStr}`)
+      Js.log(__MODULE__ ++ `.writeBatch: ${op} ${count} states: ${tableName}, ids:${allIdsStr}`)
       Ok()
     | errors =>
+      let errorsStr = errors->Js.Array2.joinWith("; ")
       let errorMsg =
-        __MODULE__ ++
-        `.writeBatch: failed: ${tableName}, ${count} ids:${idsStr}: ${errors->Js.Array2.joinWith(
-            "; ",
-          )}`
+        __MODULE__ ++ `.writeBatch: Error: Couldn't save states to ${tableName}: ${errorsStr}`
       Js.log(errorMsg)
       Error(ReventlessSpec.QueryDb.BatchNotFullyWrittenToStorage(errorMsg))
     }
   | exception Js.Exn.Error(e) =>
     let errorMsg = e->Reventless.Util.Error.message
-    Js.log(__MODULE__ ++ `.writeBatch: failed: ${tableName}, ${count} ids:${idsStr}: ${errorMsg}`)
+    Js.log(
+      __MODULE__ ++
+      `.writeBatch: Error: Couldn't save states to ${tableName}, ${count} ids:${allIdsStr}: ${errorMsg}`,
+    )
     Error(ReventlessSpec.QueryDb.BatchNotFullyWrittenToStorage(errorMsg))
   }
 }
 
-let saveBatch = (~maxRetries=5, table) => async (. items) =>
+let saveBatch = table => async (. items) =>
   switch items {
   | [] => Ok()
   | [(id, json, ttl)] =>
@@ -137,7 +135,7 @@ let saveBatch = (~maxRetries=5, table) => async (. items) =>
     ->Belt.Array.map(((_id, json, ttl)) => {
       json->insertTtl(ttl)->toPutRequest
     })
-    ->writeBatch("finished put", ids, table, maxRetries)
+    ->writeMultiple("finished put", ids, table)
   }
 
 let count = table => async (. id, fieldName, inc) => {
@@ -183,7 +181,7 @@ let delete = table => async (. id, sort) => {
   }
 }
 
-let deleteBatch = (~maxRetries=5, table) => async (. items) =>
+let deleteBatch = table => async (. items) =>
   switch items {
   | [] => Ok()
   | [(id, sort)] => await delete(table)(. id, sort)
@@ -200,5 +198,5 @@ let deleteBatch = (~maxRetries=5, table) => async (. items) =>
       | None => [("id", id->Js.Json.string)]->Js.Dict.fromArray->toDeleteRequest
       }
     )
-    ->writeBatch("deleted", ids, table, maxRetries)
+    ->writeMultiple("deleted", ids, table)
   }
