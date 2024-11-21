@@ -34,7 +34,7 @@ function append(table) {
 
 function replay(table) {
   return function (id) {
-    return DynamoDb_DocumentClient$AwsSdk.queryByIdWithTableName(table.name.get(), id);
+    return DynamoDb_DocumentClient$AwsSdk.queryById(table.name.get(), id);
   };
 }
 

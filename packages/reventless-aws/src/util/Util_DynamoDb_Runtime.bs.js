@@ -11,6 +11,7 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.bs.js");
 var LibDynamodb = require("@aws-sdk/lib-dynamodb");
+var Util_Error$Reventless = require("@reventless/reventless/src/util/Util_Error.bs.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.bs.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.bs.js");
 
@@ -23,15 +24,104 @@ function put(table, item) {
                 }));
 }
 
-function $$delete(table, id) {
-  var arg = table.name.get();
-  return function (param) {
-    return DynamoDb_DocumentClient$AwsSdk.deleteWithTableName(param, arg, id);
-  };
+async function putWithRetries(retryOpt, maxRetriesOpt, table, item) {
+  var retry = retryOpt !== undefined ? retryOpt : 0;
+  var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
+  try {
+    await put(table, item);
+    return {
+            TAG: /* Ok */0,
+            _0: undefined
+          };
+  }
+  catch (raw_e){
+    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+    if (e.RE_EXN_ID === Js_exn.$$Error) {
+      var errorMsg = Util_Error$Reventless.message(undefined, e._1);
+      console.log("Util_DynamoDb_Runtime-ReventlessAws" + (".putWithRetry: retry " + retry.toString() + " failed: " + errorMsg + ""));
+      if (retry < maxRetries) {
+        return await putWithRetries(retry + 1 | 0, maxRetries, table, item);
+      } else {
+        return {
+                TAG: /* Error */1,
+                _0: "put failed after " + maxRetries.toString() + " retries"
+              };
+      }
+    }
+    throw e;
+  }
+}
+
+async function putIfNotExistsWithRetries(retryOpt, maxRetriesOpt, idKey, sortKey, table, item) {
+  var retry = retryOpt !== undefined ? retryOpt : 0;
+  var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
+  try {
+    await DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name.get(), idKey, sortKey, item);
+    return {
+            TAG: /* Ok */0,
+            _0: undefined
+          };
+  }
+  catch (raw_e){
+    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+    if (e.RE_EXN_ID === Js_exn.$$Error) {
+      var e$1 = e._1;
+      var err = DynamoDb_DocumentClient$AwsSdk.PutError.classify(e$1);
+      if (err.TAG === /* ConditionCheckFailedException */0) {
+        return {
+                TAG: /* Error */1,
+                _0: "Stale State in ${tableName}, id=${id}"
+              };
+      }
+      var errorMsg = Util_Error$Reventless.message(undefined, e$1);
+      console.log("Util_DynamoDb_Runtime-ReventlessAws" + (".putIfNotExists: retry " + retry.toString() + " failed: " + errorMsg + ""));
+      if (retry < maxRetries) {
+        return await putIfNotExistsWithRetries(retry + 1 | 0, maxRetries, idKey, sortKey, table, item);
+      } else {
+        return {
+                TAG: /* Error */1,
+                _0: "putIfNotExists failed after " + maxRetries.toString() + " retries"
+              };
+      }
+    }
+    throw e;
+  }
+}
+
+function $$delete(table, sort, id) {
+  return DynamoDb_DocumentClient$AwsSdk.$$delete(sort, table.name.get(), id);
+}
+
+async function deleteWithRetries(retryOpt, maxRetriesOpt, sort, table, id) {
+  var retry = retryOpt !== undefined ? retryOpt : 0;
+  var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
+  try {
+    await $$delete(table, sort, id);
+    return {
+            TAG: /* Ok */0,
+            _0: undefined
+          };
+  }
+  catch (raw_e){
+    var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+    if (e.RE_EXN_ID === Js_exn.$$Error) {
+      var errorMsg = Util_Error$Reventless.message(undefined, e._1);
+      console.log("Util_DynamoDb_Runtime-ReventlessAws" + (".delete: retry " + retry.toString() + " failed: " + errorMsg + ""));
+      if (retry < maxRetries) {
+        return await deleteWithRetries(retry + 1 | 0, maxRetries, undefined, table, id);
+      } else {
+        return {
+                TAG: /* Error */1,
+                _0: "delete failed after " + maxRetries.toString() + " retries"
+              };
+      }
+    }
+    throw e;
+  }
 }
 
 function queryById(table, id) {
-  return DynamoDb_DocumentClient$AwsSdk.queryByIdWithTableName(table.name.get(), id);
+  return DynamoDb_DocumentClient$AwsSdk.queryById(table.name.get(), id);
 }
 
 function keysFromResource(resource) {
@@ -100,8 +190,7 @@ function hasUnprocessedItems(writeOutput) {
               })) > 0;
 }
 
-async function retryBatchWriteIfNecessary(p, allItems, numberOfRetries, maxRetries) {
-  var retry = numberOfRetries.toString();
+async function retryBatchWriteIfNecessary(p, allItems, retry, maxRetries) {
   var writeOutput;
   try {
     writeOutput = await p;
@@ -109,9 +198,10 @@ async function retryBatchWriteIfNecessary(p, allItems, numberOfRetries, maxRetri
   catch (raw_e){
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
-      console.log("Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry " + retry + ": Error:", e._1);
-      if (numberOfRetries < maxRetries) {
-        return await retryBatchWriteIfNecessary(batchWrite(allItems), allItems, numberOfRetries + 1 | 0, maxRetries);
+      var errorMsg = Util_Error$Reventless.message(undefined, e._1);
+      console.log("Util_DynamoDb_Runtime-ReventlessAws" + (".retryBatchWriteIfNecessary: retry " + retry.toString() + " failed: " + errorMsg + ""));
+      if (retry < maxRetries) {
+        return await retryBatchWriteIfNecessary(batchWrite(allItems), allItems, retry + 1 | 0, maxRetries);
       } else {
         return {
                 TAG: /* Error */1,
@@ -129,9 +219,9 @@ async function retryBatchWriteIfNecessary(p, allItems, numberOfRetries, maxRetri
   }
   var unprocessedItems = Belt_Option.getExn(writeOutput.UnprocessedItems);
   var unprocessedItemsCount = Object.keys(unprocessedItems).length.toString();
-  console.log("Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry " + retry + ": " + unprocessedItemsCount + " unprocessed items");
-  if (numberOfRetries < maxRetries) {
-    return await retryBatchWriteIfNecessary(batchWrite(unprocessedItems), unprocessedItems, numberOfRetries + 1 | 0, maxRetries);
+  console.log("Util_DynamoDb_Runtime-ReventlessAws" + (".retryBatchWriteIfNecessary: retry " + retry.toString() + ": " + unprocessedItemsCount + " unprocessed items"));
+  if (retry < maxRetries) {
+    return await retryBatchWriteIfNecessary(batchWrite(unprocessedItems), unprocessedItems, retry + 1 | 0, maxRetries);
   } else {
     return {
             TAG: /* Error */1,
@@ -173,7 +263,10 @@ function findResource(resources) {
 
 exports.service = service;
 exports.put = put;
+exports.putWithRetries = putWithRetries;
+exports.putIfNotExistsWithRetries = putIfNotExistsWithRetries;
 exports.$$delete = $$delete;
+exports.deleteWithRetries = deleteWithRetries;
 exports.queryById = queryById;
 exports.keysFromResource = keysFromResource;
 exports.purgeTimeAttributeName = purgeTimeAttributeName;

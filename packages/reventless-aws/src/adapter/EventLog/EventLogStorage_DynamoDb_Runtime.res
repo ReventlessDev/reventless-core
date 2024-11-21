@@ -16,4 +16,4 @@ let append = table => async (. _sequenceNr, _id, jsons) => {
 }
 
 let replay = table => (. id) =>
-  table["name"]->Pulumi.Output.get->AwsSdk.DynamoDb.DocumentClient.queryByIdWithTableName(id)
+  AwsSdk.DynamoDb.DocumentClient.queryById(table["name"]->Pulumi.Output.get, id)

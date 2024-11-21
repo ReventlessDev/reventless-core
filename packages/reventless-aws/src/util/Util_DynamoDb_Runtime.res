@@ -6,12 +6,68 @@ let put = (table: PulumiAws.DynamoDb.Table.t, item) => {
   {PutCommand.tableName: table["name"]->Pulumi.Output.get, item}->PutCommand.make->PutCommand.send
 }
 
-let delete = (table: PulumiAws.DynamoDb.Table.t, id) => {
-  deleteWithTableName(~tableName=table["name"]->Pulumi.Output.get, ~id)
+let rec putWithRetries = async (~retry=0, ~maxRetries=5, table, item) =>
+  switch await table->put(item) {
+  | _ => Ok()
+  | exception Js.Exn.Error(e) =>
+    let errorMsg = e->Reventless.Util.Error.message
+    Js.log(__MODULE__ ++ `.putWithRetry: retry ${retry->Js.Int.toString} failed: ${errorMsg}`)
+    if retry < maxRetries {
+      await table->putWithRetries(item, ~retry=retry + 1, ~maxRetries)
+    } else {
+      Error(`put failed after ${maxRetries->Js.Int.toString} retries`)
+    }
+  }
+
+let rec putIfNotExistsWithRetries = async (
+  ~retry=0,
+  ~maxRetries=5,
+  ~idKey,
+  ~sortKey=?,
+  table,
+  item,
+) =>
+  switch await putIfNotExists(table["name"]->Pulumi.Output.get, idKey, sortKey, item) {
+  | _ => Ok()
+  | exception Js.Exn.Error(e) =>
+    switch e->PutError.classify {
+    | ConditionCheckFailedException(err) => Error("Stale State in ${tableName}, id=${id}")
+    | _ =>
+      let errorMsg = e->Reventless.Util.Error.message
+      Js.log(__MODULE__ ++ `.putIfNotExists: retry ${retry->Js.Int.toString} failed: ${errorMsg}`)
+      if retry < maxRetries {
+        await table->putIfNotExistsWithRetries(
+          ~retry=retry + 1,
+          ~maxRetries,
+          ~idKey,
+          ~sortKey?,
+          item,
+        )
+      } else {
+        Error(`putIfNotExists failed after ${maxRetries->Js.Int.toString} retries`)
+      }
+    }
+  }
+
+let delete = (table: PulumiAws.DynamoDb.Table.t, ~sort=?, id) => {
+  delete(~tableName=table["name"]->Pulumi.Output.get, ~sort?, ~id)
 }
 
+let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) =>
+  switch await table->delete(id, ~sort?) {
+  | _ => Ok()
+  | exception Js.Exn.Error(e) =>
+    let errorMsg = e->Reventless.Util.Error.message
+    Js.log(__MODULE__ ++ `.delete: retry ${retry->Js.Int.toString} failed: ${errorMsg}`)
+    if retry < maxRetries {
+      await table->deleteWithRetries(id, ~retry=retry + 1, ~maxRetries)
+    } else {
+      Error(`delete failed after ${maxRetries->Js.Int.toString} retries`)
+    }
+  }
+
 let queryById = (table: PulumiAws.DynamoDb.Table.t, id) =>
-  queryByIdWithTableName(table["name"]->Pulumi.Output.get, id)
+  queryById(table["name"]->Pulumi.Output.get, id)
 
 let keysFromResource: ReventlessSpec.Adapter.resource => (string, option<string>) = resource =>
   switch resource["info"]->Pulumi.Output.get->Js.String2.split(",") {
@@ -66,11 +122,10 @@ let hasUnprocessedItems = writeOutput =>
     items->Js.Dict.keys->Belt.Array.size
   ) > 0
 
-let rec retryBatchWriteIfNecessary = async (p, allItems, numberOfRetries, maxRetries): result<
+let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): result<
   unit,
   Js.Dict.t<array<AwsSdk.DynamoDb.DocumentClient.BatchWriteCommand.writeRequest>>,
 > => {
-  let retry = numberOfRetries->Js.Int.toString
   switch await p {
   | writeOutput =>
     if writeOutput->hasUnprocessedItems {
@@ -81,12 +136,13 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, numberOfRetries, maxRet
         ->Belt.Array.size
         ->Js.Int.toString
       Js.log(
-        `Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry ${retry}: ${unprocessedItemsCount} unprocessed items`,
+        __MODULE__ ++
+        `.retryBatchWriteIfNecessary: retry ${retry->Js.Int.toString}: ${unprocessedItemsCount} unprocessed items`,
       )
-      if numberOfRetries < maxRetries {
+      if retry < maxRetries {
         await batchWrite(unprocessedItems)->retryBatchWriteIfNecessary(
           unprocessedItems,
-          numberOfRetries + 1,
+          retry + 1,
           maxRetries,
         )
       } else {
@@ -97,13 +153,13 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, numberOfRetries, maxRet
     }
 
   | exception Js.Exn.Error(e) =>
-    Js.log2(`Util.DynamoDb_Runtime.retryBatchWriteIfNecessary: retry ${retry}: Error:`, e)
-    if numberOfRetries < maxRetries {
-      await batchWrite(allItems)->retryBatchWriteIfNecessary(
-        allItems,
-        numberOfRetries + 1,
-        maxRetries,
-      )
+    let errorMsg = e->Reventless.Util.Error.message
+    Js.log(
+      __MODULE__ ++
+      `.retryBatchWriteIfNecessary: retry ${retry->Js.Int.toString} failed: ${errorMsg}`,
+    )
+    if retry < maxRetries {
+      await batchWrite(allItems)->retryBatchWriteIfNecessary(allItems, retry + 1, maxRetries)
     } else {
       Error(allItems)
     }
