@@ -2,7 +2,6 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
@@ -14,21 +13,21 @@ var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicCon
 
 function make(name, handleCommands, memorySize, timeout, opts) {
   var queue = new (Aws.sqs.Queue)(name, {
-        contentBasedDeduplication: Caml_option.some(true),
-        fifoQueue: Caml_option.some(true),
-        redrivePolicy: Caml_option.some(Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply(function (dlqArn) {
-                  return SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5);
-                })),
-        tags: Caml_option.some(AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType)),
-        visibilityTimeoutSeconds: Caml_option.some(Math.imul(6, timeout)),
+        contentBasedDeduplication: true,
+        fifoQueue: true,
+        redrivePolicy: Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply(function (dlqArn) {
+              return SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5);
+            }),
+        tags: AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType),
+        visibilityTimeoutSeconds: Math.imul(6, timeout),
         deduplicationScope: "messageGroup",
         fifoThroughputLimit: "perMessageGroupId",
-        sqsManagedSseEnabled: Caml_option.some(false)
+        sqsManagedSseEnabled: false
       }, opts);
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], opts);
   var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
               return CommandTopicConnector_SQS_Runtime$ReventlessAws.handleQueueEvent(handleCommands, queue, extra, extra$1);
-            }), undefined, Lambda$PulumiAws.Policy.defaultPolicies, undefined, undefined, Caml_option.some(memorySize), Caml_option.some(timeout), undefined, undefined, undefined, Caml_option.some(AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType))), opts);
+            }), undefined, Lambda$PulumiAws.Policy.defaultPolicies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType)), opts);
   queue.onEvent(name, handler, undefined, opts);
   return {
           resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],

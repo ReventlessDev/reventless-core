@@ -2,7 +2,6 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 
 function subscribe(batchSize, lambda, targetName, sourceName, source, opts) {
@@ -11,7 +10,7 @@ function subscribe(batchSize, lambda, targetName, sourceName, source, opts) {
                       return lambda.arn;
                     })),
               batchSize: batchSize,
-              eventSourceArn: Caml_option.some(source.urn),
+              eventSourceArn: source.urn,
               startingPosition: "LATEST"
             }, opts);
 }

@@ -44,7 +44,7 @@ function getRemoteStorageResources(pluginName, queryDbName) {
                     });
         }));
   if (resources !== undefined) {
-    return Caml_option.valFromOption(resources);
+    return resources;
   } else {
     console.log("Util_QueryDbRuntime.getLocalStorageResources: Couldn't find Plugin $pluginName");
     return Pulumi.output([]);

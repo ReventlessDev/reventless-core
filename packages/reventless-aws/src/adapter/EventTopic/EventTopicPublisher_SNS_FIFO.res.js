@@ -2,7 +2,6 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var EventTopic$Reventless = require("@reventless/reventless/src/components/EventTopic.res.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.res.js");
@@ -10,9 +9,9 @@ var EventTopicPublisher_SNS_Runtime$ReventlessAws = require("./EventTopicPublish
 
 function make(name, param, opts) {
   var topic = new (Aws.sns.Topic)(name, {
-        contentBasedDeduplication: Caml_option.some(true),
-        fifoTopic: Caml_option.some(true),
-        tags: Caml_option.some(AWS$ReventlessAws.tags(name, EventTopic$Reventless.componentType))
+        contentBasedDeduplication: true,
+        fifoTopic: true,
+        tags: AWS$ReventlessAws.tags(name, EventTopic$Reventless.componentType)
       }, opts);
   return {
           resources: [Util_SNS_FIFO$ReventlessAws.toResource(topic)],

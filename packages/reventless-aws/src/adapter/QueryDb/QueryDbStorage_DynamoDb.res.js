@@ -4,7 +4,6 @@
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
@@ -82,7 +81,7 @@ function dataSource(name, table, api, apiRole, opts) {
 }
 
 function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
-  var table = Util_DynamoDb$ReventlessAws.makeTable(attributes(subIdField, indexes), Caml_option.some(globalSecondaryIndexes(indexes)), ttl, subIdField, Caml_option.some(AWS$ReventlessAws.tags(name, QueryDb$Reventless.componentType)), opts, name);
+  var table = Util_DynamoDb$ReventlessAws.makeTable(attributes(subIdField, indexes), globalSecondaryIndexes(indexes), ttl, subIdField, AWS$ReventlessAws.tags(name, QueryDb$Reventless.componentType), opts, name);
   return {
           resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
           dataSourceName: dataSource(name, table, api, apiRole, opts).name,

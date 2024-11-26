@@ -5,7 +5,6 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
@@ -22,7 +21,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
   policies.apply(function (policies) {
         var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
                     return EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleEvents, extra, extra$1);
-                  }), undefined, policies, undefined, undefined, Caml_option.some(memorySize), Caml_option.some(timeout), undefined, undefined, undefined, Caml_option.some(AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType))), opts);
+                  }), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType)), opts);
         return Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
                           return Js_dict.map((function (eventTopic) {
                                         return eventTopic.resources;

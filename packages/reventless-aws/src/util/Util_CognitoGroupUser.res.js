@@ -6,7 +6,7 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 
 function addUserGroup(name, userPoolId) {
   return new (Aws.cognito.UserGroup)("UserGroup-" + name, {
-              name: Caml_option.some(name),
+              name: name,
               userPoolId: userPoolId
             });
 }

@@ -3,7 +3,6 @@
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
@@ -39,7 +38,7 @@ function make(name, api, fields, commandGenerator, opts) {
         lambdaConfig: {
           functionArn: commandGeneratorArn
         },
-        serviceRoleArn: Caml_option.some(dataSourceRole.arn)
+        serviceRoleArn: dataSourceRole.arn
       }, opts);
   var invokeCommandGenerator = function (command) {
     return "\n      {\n        \"version\": \"2017-02-28\",\n        \"operation\": \"Invoke\",\n        \"payload\": {\n            \"command\": \"" + command + "\",\n            \"arguments\": $utils.toJson($context.arguments),\n            \"meta\": {\n              \"ip\": $util.toJson($context.identity.sourceIp),\n              \"user\": $util.toJson($context.identity.username)\n            }\n        }\n      }\n      ";

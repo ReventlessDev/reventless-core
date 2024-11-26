@@ -6,7 +6,6 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
@@ -133,7 +132,7 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, streamView
         }));
   var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies();
   var newrecord = Caml_obj.obj_dup(opts);
-  var table = new (Aws.dynamodb.Table)(name, Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, true, streamViewType), (newrecord.dependsOn = Caml_option.some(match[0]), newrecord));
+  var table = new (Aws.dynamodb.Table)(name, Util_DynamoDb$ReventlessAws.makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, true, streamViewType), (newrecord.dependsOn = match[0], newrecord));
   match[1](table);
   if (Belt_Option.isSome(restoreSourceName)) {
     return updateTable(ttl, table);

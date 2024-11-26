@@ -56,7 +56,7 @@ function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
         action: "lambda:InvokeFunction",
         function: heartbeatLambda.arn,
         principal: "events.amazonaws.com",
-        sourceArn: Caml_option.some(cloudwatchEventRule.arn)
+        sourceArn: cloudwatchEventRule.arn
       }, opts);
   self.setOutputs({
         name: name

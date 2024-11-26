@@ -92,7 +92,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               memory: "4096",
               networkMode: "awsvpc",
               requiresCompatibilities: ["FARGATE"],
-              executionRoleArn: Caml_option.some(taskExecutionRole.arn)
+              executionRoleArn: taskExecutionRole.arn
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
         var lambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
                     return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(taskDefinition.arn, cluster.arn, fullQualifiedStackName, vpcConfig.subnetIds, extra, extra$1);
@@ -121,7 +121,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               lambdaConfig: {
                 functionArn: lambda.arn
               },
-              serviceRoleArn: Caml_option.some(dataSourceRole.arn)
+              serviceRoleArn: dataSourceRole.arn
             }, opts);
         var field = "clone";
         var resolver = AppSync_Resolver$PulumiAws.makeUnitResolver(field, api, dataSource.name, "Mutation", field, "{\n            \"version\": \"2017-02-28\",\n            \"operation\": \"Invoke\",\n            \"payload\": {\n                \"restoreDateTime\": $utils.toJson($context.arguments.restoreDateTime),\n                \"meta\": {\n                  \"ip\": $util.toJson($context.identity.sourceIp),\n                  \"user\": $util.toJson($context.identity.username)\n                }\n            }\n          }\n          ", AppSync_Resolver_Templates$PulumiAws.result, opts);

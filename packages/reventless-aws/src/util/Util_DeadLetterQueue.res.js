@@ -13,7 +13,7 @@ console.log("Util_DeadletterQueue: creating queue ...");
 
 var queue = new (Aws.sqs.Queue)(name, {
       visibilityTimeoutSeconds: 180,
-      sqsManagedSseEnabled: Caml_option.some(false)
+      sqsManagedSseEnabled: false
     });
 
 queue.arn.apply(function (param) {
@@ -23,10 +23,10 @@ queue.arn.apply(function (param) {
 console.log("Util_DeadletterQueue: creating fifoQueue ...");
 
 var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
-      contentBasedDeduplication: Caml_option.some(true),
-      fifoQueue: Caml_option.some(true),
+      contentBasedDeduplication: true,
+      fifoQueue: true,
       visibilityTimeoutSeconds: 180,
-      sqsManagedSseEnabled: Caml_option.some(false)
+      sqsManagedSseEnabled: false
     });
 
 fifoQueue.arn.apply(function (param) {
