@@ -24,7 +24,8 @@ function copyPrecompiled(source, target, dependenciesPath) {
 
 export async function decco(node, cwd, dependenciesPath) {
     return Promise.all([
-        copyPrecompiled('decco@1.6.0', node.name, dependenciesPath),
+        //copyPrecompiled('decco@1.6.0', node.name, dependenciesPath),
+        copyPrecompiled('@rescript-labs/decco@2.0.4', node.name, dependenciesPath),
         rimraf('ppx*', { glob: { cwd } })
     ]);
 }
