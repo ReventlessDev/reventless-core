@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-spec",
-  "version": "1.5.0-node20.4",
+  "version": "2.0.0-rescript11.3",
   "description": "Specifications for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -18,16 +18,17 @@
     "rebuild": "npm run clean && npm run build -- -with-deps"
   },
   "dependencies": {
-    "@rescript/std": "^10.1.4",
-    "@reventless/bs-pulumi-pulumi": "^1.2.1-node20.3",
-    "decco": "1.6.0"
+    "@rescript-labs/decco": "2.0.4",
+    "@rescript/core": "^1.6.0",
+    "@rescript/std": "^11.1.4",
+    "@reventless/bs-pulumi-pulumi": "^2.0.0-rescript11.3"
   },
   "devDependencies": {
-    "rescript": "^10.1.4"
+    "rescript": "^11.1.4"
   },
   "peerDependencies": {
-    "@rescript/std": "^10.1.4",
-    "rescript": "^10.1.4"
+    "@rescript/std": "^11.1.4",
+    "rescript": "^11.1.4"
   },
   "gitHead": "ff84af8727c17ff34a44afda2e6dcdec0a3ce758"
 }

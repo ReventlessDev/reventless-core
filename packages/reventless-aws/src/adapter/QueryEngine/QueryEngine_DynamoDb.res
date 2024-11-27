@@ -58,7 +58,6 @@ let queryByTableName = async (
   ~filterConfigs=[],
   ~ascending=true,
   ~limit=1,
-  (),
 ) => {
   let (subIdExpressions, subIdNamesValues) =
     subIdConfig->createSubIdExprNamesValues->Belt.Option.getWithDefault(([], []))
@@ -100,7 +99,7 @@ let queryByTableName = async (
     }
   }
   Js.log2("QueryEngine_DynamoDb.queryByTableName params:", params)
-  switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params, ()) {
+  switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params) {
   | result =>
     result.items
     ->Belt.Option.getWithDefault([])
@@ -131,7 +130,7 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
     limit,
   }
   Js.log2("QueryEngine_DynamoDb.scanByTableName params:", params)
-  switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params, ()) {
+  switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params) {
   | result =>
     result.items
     ->Belt.Option.getWithDefault([])
@@ -148,10 +147,28 @@ let make: Reventless.QueryDb.Adapter.queryEngineMaker = allQueryDbs => {
       allQueryDbs
       ->Reventless.Util_QueryDbRuntime.getLocalStorageResources(readModelName)
       ->Util_DynamoDb_Runtime.findResource
-    )["name"]->Reventless.OutputFailsafeRuntime.get
+    ).name->Reventless.OutputFailsafeRuntime.get
 
   {
-    scan: (~readModelName) => scanByTableName(~tableName=tableName(readModelName)),
-    query: (~readModelName) => queryByTableName(~tableName=tableName(readModelName)),
+    scan: (~readModelName, ~filterConfigs, ~limit) =>
+      scanByTableName(~tableName=tableName(readModelName), ~filterConfigs, ~limit),
+    query: (
+      ~readModelName,
+      ~key=?,
+      ~id,
+      ~subIdConfig=?,
+      ~filterConfigs=?,
+      ~ascending=?,
+      ~limit=?,
+    ) =>
+      queryByTableName(
+        ~tableName=tableName(readModelName),
+        ~key?,
+        ~id,
+        ~subIdConfig?,
+        ~filterConfigs?,
+        ~ascending?,
+        ~limit?,
+      ),
   }
 }

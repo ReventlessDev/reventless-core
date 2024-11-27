@@ -1,6 +1,6 @@
 let dependencies: ref<array<Js.Promise.t<Pulumi.Resource.t>>> = ref([])
 
-type registerResource = (. Pulumi.Resource.t) => unit
+type registerResource = Pulumi.Resource.t => unit
 
 let getDependencies = () => {
   let currentLen = dependencies.contents->Belt.Array.length
@@ -14,7 +14,7 @@ let getDependencies = () => {
     ->Js.Promise.all
     ->Pulumi.Output.fromPromise
 
-  let registerResource = ref((. _) => ())
+  let registerResource = ref(_ => ())
   let promise = Js.Promise.make((~resolve, ~reject as _) => registerResource := resolve)
 
   dependencies := dependencies.contents->Belt.Array.concat([promise])

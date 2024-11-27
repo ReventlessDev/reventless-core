@@ -1,7 +1,7 @@
 open Pulumi
 
-let allowAllResourcesSendMessage = queue =>
-  queue["arn"]->Output.apply(queueArn => {
+let allowAllResourcesSendMessage = (queue: PulumiAws.SQS.Queue.t) =>
+  queue.arn->Output.apply(queueArn => {
     let account = queueArn->Util_SQS.arn2Account
     `
         {
@@ -18,8 +18,8 @@ let allowAllResourcesSendMessage = queue =>
         }
       `
   })
-let allowAllSnsTopicsSendMessage = queue =>
-  queue["arn"]->Output.apply(queueArn => {
+let allowAllSnsTopicsSendMessage = (queue: PulumiAws.SQS.Queue.t) =>
+  queue.arn->Output.apply(queueArn => {
     let account = queueArn->Util_SQS.arn2Account
     `
         {
@@ -61,14 +61,14 @@ let allowResourcesSendMessage: (
   ~resources: array<Output.t<ReventlessSpec.Adapter.resource>>,
 ) => Output.t<string> = (~queue, ~resources) =>
   Output.all2((
-    queue["arn"],
+    queue.arn,
     resources
     ->Output.all
-    ->Output.flatMap(resources =>
-      resources->Belt.Array.map(resource => resource["urn"])->Output.all
-    ),
+    ->Output.flatMap(resources => resources->Belt.Array.map(resource => resource.urn)->Output.all),
   ))->Output.apply(((queueArn, topicArns)) =>
-    topicArns->Belt.Array.mapWithIndex(allowResourceSendMessage(queueArn))->Js.Array2.joinWith(",")
+    topicArns
+    ->Belt.Array.mapWithIndex(allowResourceSendMessage(queueArn, ...))
+    ->Js.Array2.joinWith(",")
   )
 
 let allowCloudWatchEvents = `{
@@ -85,26 +85,25 @@ let make: (
   ~queue: PulumiAws.SQS.Queue.t,
   ~statements: array<Output.t<string>>,
   ~opts: CustomResourceOptions.t=?,
-  unit,
-) => PulumiAws.SQS.QueuePolicy.t = (~name, ~queue, ~statements, ~opts=?, _) => {
+) => PulumiAws.SQS.QueuePolicy.t = (~name, ~queue, ~statements, ~opts=?) => {
   let policy =
     statements
     ->Output.all
     ->Output.apply(statementStrs => {
       let statementStr = statementStrs->Js.Array2.joinWith(",")
       `{
-              "Version": "2012-10-17",
-              "Id": "${name}",
-              "Statement": [
-                ${statementStr}
-              ]
-            }`
+        "Version": "2012-10-17",
+        "Id": "${name}",
+        "Statement": [
+          ${statementStr}
+        ]
+      }`
     })
     ->Output.asInput
 
   PulumiAws.SQS.QueuePolicy.make(
     ~name,
-    ~args=PulumiAws.SQS.QueuePolicy.Args.make(~policy, ~queueUrl=queue["id"]->Output.asInput),
+    ~args={PulumiAws.SQS.QueuePolicy.policy, queueUrl: queue.id->Output.asInput},
     ~opts,
   )
 }

@@ -35,10 +35,12 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   let describe = Jest.describe
   let test = Jest.test
 
-  let apply' = (state, event) => Behaviour.apply(. state, event)
+  let apply' = (state, event) => Behaviour.apply(state, event)
 
   let currentState = events =>
-    events->Belt.Array.sliceToEnd(1)->Belt.Array.reduce(Behaviour.init(. events[0]), apply')
+    events
+    ->Belt.Array.sliceToEnd(1)
+    ->Belt.Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
 
@@ -50,9 +52,9 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   let exec = (history, context, command): array<Spec.event> => {
     errors := []
     switch history {
-    | [] => Behaviour.create(. command, context, errorHandler)
+    | [] => Behaviour.create(command, context, errorHandler)
     | history =>
-      try Behaviour.execute(.
+      try Behaviour.execute(
         currentState(history),
         command,
         TestFixtures.context,
@@ -96,7 +98,11 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
       /* NOTE: this process is very fragile!!
               it relies on decco decoding the error-varints to arrays of string
  */
-      (err->Spec.error_encode->Js.Json.decodeArray->Belt.Option.getExn)[0]
+      err
+      ->Spec.error_encode
+      ->Js.Json.decodeArray
+      ->Belt.Option.getExn
+      ->Array.getUnsafe(0)
       ->Js.Json.decodeString
       ->Belt.Option.getExn
     )
@@ -129,7 +135,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
       Jest.fail("thenEvent: No event present to validate")
     }
 
-  let thenNoEvent = thenEvents([])
+  let thenNoEvent = events => thenEvents(events, [])
 
   let thenEventWithError = (events, expectedEvent, expectedError) =>
     expect((

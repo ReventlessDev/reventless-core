@@ -7,9 +7,9 @@ type publishCommands = (
 ) => Js.Promise.t<unit>
 
 type outputs = {
-  "name": string,
-  "bucket": option<PulumiAws.S3.Bucket.bucket>,
-  "sideEffectHandler": option<SideEffectHandler.outputs>,
+  name: string,
+  bucket?: PulumiAws.S3.Bucket.t,
+  sideEffectHandler?: SideEffectHandler.outputs,
 }
 
 type t
@@ -23,7 +23,7 @@ type maker = (
   ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
   ~queryEngine: ReventlessSpec.QueryEngine.t,
   ~allAggregates: Js.Dict.t<Aggregate.outputs>,
-  ~opts: option<Pulumi.ComponentResource.Options.t>,
+  ~opts: option<Pulumi.ComponentResource.options>,
 ) => component
 
 type setup = (
@@ -43,7 +43,7 @@ external make: (
   ~componentType: string,
   ~name: string,
   ~construct: construct,
-  ~opts: option<Pulumi.ComponentResource.Options.t>,
+  ~opts: option<Pulumi.ComponentResource.options>,
 ) => component = "default"
 
 @send
@@ -64,19 +64,19 @@ let construct = (
   self,
   _name,
 ) => {
-  let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+  let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
-  let publishCommands: publishCommands = (. aggregateName, cmdJsons) => {
-    (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(. cmdJsons)
+  let publishCommands: publishCommands = (aggregateName, cmdJsons) => {
+    (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(cmdJsons)
   }
 
   self->setOutputs(
-    setup(.
+    setup(
       queryEngine,
       scheduler,
       publishCommands,
       queryBucketName,
-      Util.Aggregate.allEventTopics(allAggregates),
+      Aggregate.allEventTopics(allAggregates),
       opts,
     ),
   )
@@ -102,6 +102,7 @@ let make = (
       ~publishToAggregates,
       ~queryEngine,
       ~allAggregates,
+      ...
     ),
     ~opts,
   )

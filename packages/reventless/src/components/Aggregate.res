@@ -5,13 +5,26 @@ module ReventlessCommandTopic = CommandTopic
 let componentType = ComponentType.Aggregate
 
 type outputs = {
-  "name": string,
-  "commandGenerator": CommandGenerator.outputs,
-  "commandTopic": ReventlessSpec.CommandTopic.outputs,
-  "eventLog": EventLog.outputs,
-  "eventMapper": option<EventMapper.outputs>,
+  name: string,
+  commandGenerator: CommandGenerator.outputs,
+  commandTopic: ReventlessSpec.CommandTopic.outputs,
+  eventLog: EventLog.outputs,
+  eventMapper?: EventMapper.outputs,
 }
 type allOutputs = Js.Dict.t<outputs>
+
+let allEventTopics = allAggregates =>
+  Js.Dict.map(aggregate => aggregate.eventLog.eventTopic, allAggregates)
+
+let filterEventTopics = (allAggregates, aggregateNames) =>
+  aggregateNames
+  ->Belt.Set.String.toArray
+  ->Belt.Array.keepMap(aggregateName =>
+    allAggregates
+    ->Js.Dict.get(aggregateName)
+    ->Belt.Option.map(aggregateOutput => (aggregateName, aggregateOutput.eventLog.eventTopic))
+  )
+  ->Js.Dict.fromArray
 
 type name = string
 
@@ -26,7 +39,7 @@ type addEventMapper = (
 module type T = {
   module Spec: ReventlessSpec.AggregateSpec.T
 
-  let make: (~opts: Pulumi.ComponentResource.Options.t=?, unit) => component
+  let make: (~opts: Pulumi.ComponentResource.options=?) => component
 
   let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
   let addEventMapper: component => addEventMapper
@@ -53,17 +66,8 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
-
-  @obj
-  external makeOutputs: (
-    ~name: string,
-    ~commandGenerator: CommandGenerator.outputs,
-    ~commandTopic: ReventlessSpec.CommandTopic.outputs,
-    ~eventLog: EventLog.outputs,
-    ~eventMapper: option<EventMapper.outputs>,
-  ) => outputs = ""
 
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
@@ -123,140 +127,148 @@ module Make = (
   let groupTopicItemsById = (
     topicItems: array<ReventlessCommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>>,
   ) => {
-    let ids = topicItems->Belt.Array.map(({command}) => command.id)
+    // FIXME: rethink usage of Set & Belt structures -> optimize
+    let ids = topicItems->Belt.Array.map(({command}) => command.id->Spec.Id.toString)
     ids
-    ->Belt.Set.fromArray(~id=module(Belt.Id.MakeComparable(Spec.Id)))
-    ->Belt.Set.toArray
-    ->Belt.Array.map(id => (id, topicItems->Belt.Array.keep(({command}) => command.id == id)))
+    ->Belt.Set.String.fromArray
+    ->Belt.Set.String.toArray
+    ->Belt.Array.map(id => (
+      id->Spec.Id.makeFromString,
+      topicItems->Belt.Array.keep(({command}) => command.id == id->Spec.Id.makeFromString),
+    ))
   }
 
   let handleCommands = ((
     eventLogAppend: EventLogCommon.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
     eventLogReplay,
-  )) => async (. allTopicItems) => {
-    let apply' = (stateOpt, event) =>
-      switch stateOpt {
-      | Some(state) => Some(Behaviour.apply(. state, event))
-      | None => Some(Behaviour.init(. event))
+  )) =>
+    async allTopicItems => {
+      let apply' = (stateOpt, event) =>
+        switch stateOpt {
+        | Some(state) => Some(Behaviour.apply(state, event))
+        | None => Some(Behaviour.init(event))
+        }
+
+      let updateState = (stateOpt, events) => events->Belt.Array.reduce(stateOpt, apply')
+
+      let updateMeta = (command': Message.command'<Spec.Id.t, Spec.command>) => {
+        ...command'.meta,
+        time: Message.nowAsISOString(),
+        msgId: Message.uuid(),
       }
 
-    let updateState = (stateOpt, events) => events->Belt.Array.reduce(stateOpt, apply')
-
-    let updateMeta = (command': Message.command'<Spec.Id.t, Spec.command>) => {
-      ...command'.meta,
-      time: Message.nowAsISOString(),
-      msgId: Message.uuid(),
-    }
-
-    Logger.debug(~loc=__LOC__, "starting", "Aggregate.execCommands")
-    let results =
-      await allTopicItems
-      ->groupTopicItemsById
-      ->Belt.Array.map(async ((id, topicItems)) => {
-        let history = await eventLogReplay(. id)
-        let processCommand = async (accP, command': Message.command'<Spec.Id.t, Spec.command>) => {
-          let runBehaviour = ((stateO, events)) =>
-            switch stateO {
-            | Some(state) =>
-              let generatedEvents = try Behaviour.execute(.
-                state,
-                command'.command,
-                {
-                  id: command'.id->Spec.Id.toString,
-                  meta: command'.meta,
-                },
-                errorHandler,
-              ) catch {
-              | Message.InvalidEvent(event) =>
-                Logger.error(~loc=__LOC__, "Behaviour.execute: InvalidEvent", event)
-                []
+      Logger.debug(~loc=__LOC__, "starting", "Aggregate.execCommands")
+      let results =
+        await allTopicItems
+        ->groupTopicItemsById
+        ->Belt.Array.map(async ((id, topicItems)) => {
+          let history = await eventLogReplay(id)
+          let processCommand = async (
+            accP,
+            command': Message.command'<Spec.Id.t, Spec.command>,
+          ) => {
+            let runBehaviour = ((stateO, events)) =>
+              switch stateO {
+              | Some(state) =>
+                let generatedEvents = try Behaviour.execute(
+                  state,
+                  command'.command,
+                  {
+                    id: command'.id->Spec.Id.toString,
+                    meta: command'.meta,
+                  },
+                  errorHandler,
+                ) catch {
+                | Message.InvalidEvent(event) =>
+                  Logger.error(~loc=__LOC__, "Behaviour.execute: InvalidEvent", event)
+                  []
+                }
+                Ok((
+                  updateState(stateO, generatedEvents),
+                  Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
+                ))->Js.Promise.resolve
+              | None =>
+                let generatedEvents = Behaviour.create(
+                  command'.command,
+                  {
+                    id: command'.id->Spec.Id.toString,
+                    meta: command'.meta,
+                  },
+                  errorHandler,
+                )
+                Ok((
+                  updateState(None, generatedEvents),
+                  Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
+                ))->Js.Promise.resolve
               }
-              Ok((
-                updateState(stateO, generatedEvents),
-                Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
-              ))->Js.Promise.resolve
-            | None =>
-              let generatedEvents = Behaviour.create(.
-                command'.command,
-                {
-                  id: command'.id->Spec.Id.toString,
-                  meta: command'.meta,
-                },
-                errorHandler,
-              )
-              Ok((
-                updateState(None, generatedEvents),
-                Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
-              ))->Js.Promise.resolve
+
+            switch await accP {
+            | Ok(acc) => await runBehaviour(acc)
+            | Error(_) as error => error
             }
-
-          switch await accP {
-          | Ok(acc) => await runBehaviour(acc)
-          | Error(_) as error => error
           }
-        }
 
-        Logger.debug(~loc=__LOC__, "finished eventLogReplay for id", id)
+          Logger.debug(~loc=__LOC__, "finished eventLogReplay for id", id)
 
-        // TOREVIEW: should we use Logger.debug or just some minimal data here?
-        //    also: do we need the additional info of Message.command'
-        //            (compared to Spec.command)
-        topicItems
-        ->Belt.Array.map(({command}) =>
-          command->Message.commandJsonOfCommand'(
-            ~idToString=Spec.Id.toString,
-            ~commandEncode=Spec.command_encode,
-          )
-        )
-        ->Logger.logCmdJsons(~loc=__LOC__, "Handling command")
-
-        let (references, commands') =
-          // TODO: handle finer granular references
+          // TOREVIEW: should we use Logger.debug or just some minimal data here?
+          //    also: do we need the additional info of Message.command'
+          //            (compared to Spec.command)
           topicItems
-          ->Belt.Array.map(({reference, command}) => (reference, command))
-          ->Belt.Array.unzip
-        let result =
-          await commands'->Belt.Array.reduce(
-            Ok((updateState(None, history), []))->Js.Promise.resolve,
-            processCommand,
-          )
-        let events = switch result {
-        | Ok((_, generatedEventsWithMeta)) =>
-          generatedEventsWithMeta
-          ->Belt.Array.map(((events, meta)) =>
-            events->Belt.Array.map(event => {Message.id, meta, event})
-          )
-          ->Belt.Array.concatMany
-        | Error(error) => Js.Exn.raiseError(error)
-        }
-        switch events {
-        | [] => {
-            Logger.debug(
-              ~loc=__LOC__,
-              `handleCommands(${id->Spec.Id.toString})`,
-              "no Event generated",
+          ->Belt.Array.map(({command}) =>
+            command->Message.commandJsonOfCommand'(
+              ~idToString=Spec.Id.toString,
+              ~commandEncode=Spec.command_encode,
             )
-            references->Belt.Array.map(reference => Ok(reference))
-          }
-        | generatedEvents' =>
-          let eventCount = generatedEvents'->Belt.Array.length->Belt.Int.toString
-          Logger.debug(
-            `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated:`,
-            generatedEvents'->Belt.Array.map(event' => event'->eventName),
           )
-          switch await eventLogAppend(. history->Belt.Array.length, id, generatedEvents') {
-          | Ok(_) =>
-            Logger.debug(~loc=__LOC__, "finished eventLogAppend for id", id->Spec.Id.toString)
-            references->Belt.Array.map(reference => Ok(reference))
-          | Error(_) =>
-            Logger.error(~loc=__LOC__, "failed eventLogAppend for id", id->Spec.Id.toString)
-            references->Belt.Array.map(reference => Error(reference))
+          ->Logger.logCmdJsons(~loc=__LOC__, "Handling command")
+
+          let (references, commands') =
+            // TODO: handle finer granular references
+            topicItems
+            ->Belt.Array.map(({reference, command}) => (reference, command))
+            ->Belt.Array.unzip
+          let result =
+            await commands'->Belt.Array.reduce(
+              Ok((updateState(None, history), []))->Js.Promise.resolve,
+              processCommand,
+            )
+          let events = switch result {
+          | Ok((_, generatedEventsWithMeta)) =>
+            generatedEventsWithMeta
+            ->Belt.Array.map(((events, meta)) =>
+              events->Belt.Array.map(event => {Message.id, meta, event})
+            )
+            ->Belt.Array.concatMany
+          | Error(error) => Js.Exn.raiseError(error)
           }
-        }
-      })
-      ->Js.Promise.all
-    results->Belt.Array.concatMany
-  }
+          switch events {
+          | [] => {
+              Logger.debug(
+                ~loc=__LOC__,
+                `handleCommands(${id->Spec.Id.toString})`,
+                "no Event generated",
+              )
+              references->Belt.Array.map(reference => Ok(reference))
+            }
+          | generatedEvents' =>
+            let eventCount = generatedEvents'->Belt.Array.length->Belt.Int.toString
+            Logger.debug(
+              `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated:`,
+              generatedEvents'->Belt.Array.map(event' => event'->eventName),
+            )
+            switch await eventLogAppend(history->Belt.Array.length, id, generatedEvents') {
+            | Ok(_) =>
+              Logger.debug(~loc=__LOC__, "finished eventLogAppend for id", id->Spec.Id.toString)
+              references->Belt.Array.map(reference => Ok(reference))
+            | Error(_) =>
+              Logger.error(~loc=__LOC__, "failed eventLogAppend for id", id->Spec.Id.toString)
+              references->Belt.Array.map(reference => Error(reference))
+            }
+          }
+        })
+        ->Js.Promise.all
+      results->Belt.Array.concatMany
+    }
 
   let addEventMapperFn = (component, allEventTopics, queryEngine, ~opts) => {
     module EventCollector = EventCollector.Make(EventCollectorConnector)
@@ -270,57 +282,45 @@ module Make = (
               ~queryEngine,
               ~publishJsons=component->publishJsons,
               ~opts,
-              (),
             ),
           )
         : None
-    let outputs = component->Component.extractOutputs
-    makeOutputs(
-      ~name=outputs["name"],
-      ~commandGenerator=outputs["commandGenerator"],
-      ~commandTopic=outputs["commandTopic"],
-      ~eventLog=outputs["eventLog"],
-      ~eventMapper=eventMapper->Belt.Option.map(Component.extractOutputs),
-    )
+    {
+      ...component->Component.extractOutputs,
+      eventMapper: ?eventMapper->Belt.Option.map(eventMapper =>
+        eventMapper->Component.extractOutputs
+      ),
+    }
   }
 
   let construct = (self, name) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     let childName = name->ComponentType.name(componentType)
 
-    let eventLog = EventLog.make(~name=childName, ~opts, ())
+    let eventLog = EventLog.make(~name=childName, ~opts)
 
     let handleCommands = handleCommands((eventLog->EventLog.append, eventLog->EventLog.replay))
 
-    let commandTopic = CommandTopic.make(
-      ~name=childName,
-      ~commandsHandler=handleCommands,
-      ~opts,
-      (),
-    )
+    let commandTopic = CommandTopic.make(~name=childName, ~commandsHandler=handleCommands, ~opts)
 
     let commandGenerator = CommandGenerator.make(
       ~name=childName,
       ~publish=commandTopic->CommandTopic.publish,
       ~opts,
-      (),
     )
 
     self->setPublishJsons(commandTopic->CommandTopic.publishJsons)
-    self->setAddEventMapper(self->addEventMapperFn(~opts))
+    self->setAddEventMapper(self->(addEventMapperFn(~opts, ...)))
 
-    self->setOutputs(
-      makeOutputs(
-        ~name,
-        ~commandGenerator=commandGenerator->Component.extractOutputs,
-        ~commandTopic=commandTopic->Component.extractOutputs,
-        ~eventLog=eventLog->Component.extractOutputs,
-        ~eventMapper=None,
-      ),
-    )
+    self->setOutputs({
+      name,
+      commandGenerator: commandGenerator->Component.extractOutputs,
+      commandTopic: commandTopic->Component.extractOutputs,
+      eventLog: eventLog->Component.extractOutputs,
+    })
   }
 
-  let make = (~opts=?, _) =>
+  let make = (~opts=?) =>
     make(~componentType=componentType->ComponentType.toString, ~name=Spec.name, ~construct, ~opts)
 }

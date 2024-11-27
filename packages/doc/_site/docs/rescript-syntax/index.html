@@ -1,0 +1,115 @@
+<p>Some most commonly used ReScript features and syntax shall be highlighted here. See <a href="https://rescript-lang.org/">https://rescript-lang.org/</a> for the complete documtation of ReScript.</p>
+<h2>Types</h2>
+<h3>Commonly knwon types</h3>
+<p><code>string</code>, <code>int</code>, <code>float</code>, <code>bool</code> are commonly known types, which are also present in ReScript.</p>
+<p>These can be used either directly or aliased to a different type name.</p>
+<pre><code class="language-rescript">type name = string
+type age = int
+type hasBlueEyes = bool
+</code></pre>
+<p><code>unit</code> type has a single value, <code>()</code>. This is similar to <code>void</code> used in other languages.</p>
+<p><a href="https://rescript-lang.org/docs/manual/latest/primitive-types">See ReScript documentation for more information primitive types.</a></p>
+<h3>Record Type</h3>
+<p>Record types are similar to simple common objects. They provide a way to group properties and label them with meaningfull keys.</p>
+<pre><code class="language-rescript">type person = { name: string, age: int }
+
+let person = {name: &quot;John&quot;, age: 42}
+</code></pre>
+<p>Acess a single property by using the variable name (of the record value) and append a dot (<code>.</code>) followed by the property name.</p>
+<pre><code class="language-rescript">let name = person.name
+</code></pre>
+<p><a href="https://rescript-lang.org/docs/manual/latest/record">See ReScript documentation for more information on Record types.</a></p>
+<h3>Variant Type</h3>
+<p>Variants define a type which represents <code>xor</code> of several predefined cases. Each case can have it's own (different) payload.</p>
+<pre><code class="language-rescript">type person = { name: string, age: int } // record type as seen above
+
+type command =
+  | Rename(person)
+  | IncreaseAge(int)
+</code></pre>
+<p><a href="https://rescript-lang.org/docs/manual/latest/variant">See ReScript documentation for more information on Variant types.</a></p>
+<h2>Inline Records</h2>
+<p>If a record type is only used as the payload of a single case in a variant type definition, the record may be inlined.</p>
+<pre><code class="language-rescript">type command =
+  | Introduce({ name: string, age: int })
+  | Rename(string)
+  | IncreaseAge(int)
+  | Forget
+</code></pre>
+<h2>Option</h2>
+<p>The option type is used to explicitly represent a value, which may be present (or not).</p>
+<pre><code class="language-rescript">type person = { name: string, title: option(string) }
+let alice = {name: &quot;Alice&quot;,  title: Some(&quot;Dr.&quot;)}
+let bob = {name: &quot;Bob&quot;, title: None}
+</code></pre>
+<h2>Control Structures</h2>
+<h3>Function</h3>
+<p>Functions name a block of executable code and it's parameters.</p>
+<pre><code class="language-rescript">let praise = (name) =&gt; name ++ &quot; is a genius!&quot;
+</code></pre>
+<h3>Switch</h3>
+<p>Switch statements are similar to <code>if - else if - else</code>, but more readable and with super powers (pattern matching / destructuring).</p>
+<pre><code class="language-rescript">let command = IncreaseAge(1);
+
+let increasedAgeAmount = switch(command) {
+  | Introduce(_)
+  | Rename(_)
+  | Forget =&gt; 0 // note: since Rename and Forget use the same number of variables in this case (0), they can be defined together with a single outcome
+  | IncreaseAge(amount) =&gt; amount
+}
+
+let newName = switch(command) {
+  | Introduce({name: newName})
+  | Rename(newName) =&gt;
+      Some(newName)
+  | Forget
+  | IncreaseAge =&gt;
+      None
+}
+</code></pre>
+<p>Switch statements can be used for different type than variants as well.</p>
+<pre><code class="language-rescript">let name = &quot;Charlie&quot;
+
+let nameIsAlice = switch(name) {
+  | &quot;Alice&quot; =&gt; true
+  | _ =&gt; false // note: _ means anything else
+</code></pre>
+<h3><code>_</code> placeholder in case statements</h3>
+<p><code>_</code> can be used as a case statement with the meaning of &quot;anything else&quot; not matched previously.</p>
+<p>If you have a limited (defined) set of possible values the compiler will check if all possible values are presented in the switch statement. The moment you introduce <code>_</code>, the compiler will acknowledge that every case is handled. But this also takes the compiler's power away of helping you in future refactorings or code updates.</p>
+<p><strong>This should be used with care!</strong>
+<strong>Whenever possible (and feasable) enumerate all possible values explicitly!</strong></p>
+<h2>Utilities</h2>
+<h3>Destructuring</h3>
+<p>Given a &quot;complex&quot; data structure (like a record or a variant) you can destructure it.</p>
+<pre><code class="language-rescript">let john = {name: &quot;John&quot;, age: 42}
+let {name: johnsName} = john
+let {name: johnsName, age: johnsAge} = john
+</code></pre>
+<p>This can also be done in place for function arguments.</p>
+<pre><code class="language-rescript">let sayHi = ({name}) =&gt; &quot;hello &quot; ++ name
+
+// which is shorter and maybe a little better readable than:
+let sayHi = (person) =&gt; &quot;hello &quot; ++ person.name
+</code></pre>
+<p>If you would like to rename properties or still have access to the complete destructured value you can use the keyword <code>as</code>.</p>
+<pre><code class="language-rescript">let sayHiAdvanced = ({name: personName} as person) =&gt;
+    &quot;hello &quot;
+    ++ personName
+    ++ &quot;, you are &quot;
+    ++ person.age-&gt;Belt.Int.toString
+    ++ &quot; years old.&quot;
+
+// in this specific case, age could also be destructured
+// note you are not limited to destructuring a single value!
+let sayHiAdvanced = ({name: personName, age}) =&gt;
+    &quot;hello &quot;
+    ++ personName
+    ++ &quot;, you are &quot;
+    ++ age-&gt;Belt.Int.toString
+    ++ &quot; years old.&quot;
+</code></pre>
+<h2>Modules</h2>
+<p>TODO</p>
+<h3>Module Types</h3>
+<p>TODO</p>

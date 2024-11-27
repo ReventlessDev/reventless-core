@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.EventLog
 
-type outputs = {"resources": array<resource>, "eventTopic": ReventlessSpec.EventTopic.outputs}
+type outputs = {resources: array<resource>, eventTopic: ReventlessSpec.EventTopic.outputs}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -21,7 +21,7 @@ module type Spec = {
 module type T = {
   module Spec: Spec
 
-  let make: (~name: string, ~opts: Pulumi.ComponentResource.Options.t=?, unit) => component
+  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 
   let append: component => EventLogCommon.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
   let replay: component => EventLogCommon.replay<Spec.Id.t, Spec.event>
@@ -58,14 +58,8 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
-
-  @obj
-  external makeOutputs: (
-    ~resources: array<resource>,
-    ~eventTopic: ReventlessSpec.EventTopic.outputs,
-  ) => outputs = ""
 
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
@@ -83,7 +77,7 @@ module Make = (
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher)
 
   let construct = (self, name) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let storage = Storage.make(~name=name->ComponentType.name(componentType), ~opts)
 
@@ -91,7 +85,6 @@ module Make = (
       ~name,
       ~storageResources=storage.resources,
       ~opts=opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
-      (),
     )
 
     self->setAppend(
@@ -108,11 +101,12 @@ module Make = (
       EventLogRuntime.replayFn(storage.Adapter.replay, Spec.Id.toString, Spec.event_decode),
     )
 
-    self->setOutputs(
-      makeOutputs(~resources=storage.resources, ~eventTopic=eventTopic->Component.extractOutputs),
-    )
+    self->setOutputs({
+      resources: storage.resources,
+      eventTopic: eventTopic->Component.extractOutputs,
+    })
   }
 
-  let make = (~name, ~opts=?, _) =>
+  let make = (~name, ~opts=?) =>
     make(~componentType=componentType->ComponentType.toString, ~name, ~construct, ~opts)
 }

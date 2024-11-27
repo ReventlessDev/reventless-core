@@ -30,7 +30,7 @@ type resolveConfig<'source, 'target> = {
   target: 'target,
 }
 
-@ocaml.doc(" resolve single id field ")
+/** resolve single id field */
 type idResolverConfig = resolveConfig<idResolverSourceConfig, idResolverTargetConfig>
 
 type idsResolverSourceConfig = {
@@ -44,7 +44,7 @@ type idsResolverTargetConfig = {
   subIdField?: string,
 }
 
-@ocaml.doc(" resolve id array field ")
+/** resolve id array field */
 type idsResolverConfig = resolveConfig<idsResolverSourceConfig, idsResolverTargetConfig>
 
 type authorization = {
@@ -52,12 +52,14 @@ type authorization = {
   group: string,
 }
 
+type projectionType = KEYS_ONLY | ALL | INCLUDE(array<string>)
+
 type indexConfig = {
   index: string,
-  _type: string,
+  type_: string,
   idField?: string,
   subIdField?: string,
-  projectionType: [#KEYS_ONLY | #ALL | #INCLUDE(array<string>)],
+  projectionType: projectionType,
   authorization?: authorization,
 }
 
@@ -72,7 +74,7 @@ type config = {
   indexes: array<indexConfig>,
 }
 
-let config = (~idResolvers=[], ~idsResolvers=[], ~indexes=[], ()) => {
+let config = (~idResolvers=[], ~idsResolvers=[], ~indexes=[]) => {
   idResolvers,
   idsResolvers,
   indexes,

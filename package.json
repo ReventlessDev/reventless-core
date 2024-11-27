@@ -18,6 +18,7 @@
     "test": "lerna run test"
   },
   "devDependencies": {
+    "rescript": "^11.1.4",
     "lerna": "^6.1.0",
     "lerna-update-wizard": "^1.1.2",
     "lerna-wizard": "^1.1.1",

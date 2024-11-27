@@ -1,7 +1,12 @@
-let handleQueueEvent = async (handleCommands, queue, event, _) => {
-  let records = event["_Records"]
+let handleQueueEvent = async (
+  handleCommands,
+  queue,
+  event: PulumiAws.SQS.Queue.callbackEvent,
+  _,
+) => {
+  let records = event.records
   let jsons = records->Belt.Array.keepMap(record => {
-    let commandStr = record["body"]
+    let commandStr = record.body
     switch Js.Json.parseExn(commandStr) {
     | json => Some(json)
     | exception err =>
@@ -15,14 +20,14 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
   })
   let topicItems =
     records
-    ->Belt.Array.map(record => record["receiptHandle"])
+    ->Belt.Array.map(record => record.receiptHandle)
     ->Belt.Array.zip(jsons)
     ->Belt.Array.map(((reference, command)) => {
       Reventless.CommandTopic.reference,
       command,
     })
 
-  switch await handleCommands(. topicItems) {
+  switch await handleCommands(topicItems) {
   | exception Js.Exn.Error(err) =>
     Js.log3(__MODULE__ ++ ".handleQueueEvent error:", err, err->Js.Json.stringifyAny)
     Js.Exn.raiseError(
@@ -59,10 +64,9 @@ let handleQueueEvent = async (handleCommands, queue, event, _) => {
   }
 }
 
-let publish = (queue, queueService) =>
-  (. jsons) =>
-    switch jsons->Belt.Array.length {
-    | 0 => Js.log(__MODULE__ ++ ".publish: No commands to send")->Js.Promise.resolve
-    | 1 => queue->Util_SQS_Runtime.send(queueService, jsons[0])
-    | _ => queue->Util_SQS_Runtime.sendMessages(queueService, jsons)
-    }
+let publish = (queue, queueService, jsons) =>
+  switch jsons->Belt.Array.length {
+  | 0 => Js.log(__MODULE__ ++ ".publish: No commands to send")->Js.Promise.resolve
+  | 1 => queue->Util_SQS_Runtime.send(queueService, jsons->Array.getUnsafe(0))
+  | _ => queue->Util_SQS_Runtime.sendMessages(queueService, jsons)
+  }

@@ -7,7 +7,7 @@ let make: Reventless.EventTopic.Adapter.publisherMaker = (
 
   {
     resources: [
-      storageResource["service"]
+      storageResource.service
       ->Pulumi.Output.apply(service =>
         if service == Util_DynamoDbStream_Runtime.service {
           storageResource->Util_DynamoDbStream.toStreamResource
@@ -19,6 +19,6 @@ let make: Reventless.EventTopic.Adapter.publisherMaker = (
       )
       ->Reventless.Adapter.outputToResource,
     ],
-    publish: (. _, _, _) => Js.Promise.resolve(), // ignore publish
+    publish: (_, _, _) => Js.Promise.resolve(), // ignore publish
   }
 }

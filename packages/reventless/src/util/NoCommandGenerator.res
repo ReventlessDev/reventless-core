@@ -9,6 +9,6 @@ module Make = (Spec: CommandGenerator.Spec): (CommandGenerator.T with module Spe
 
   external outputsToComponent: CommandGenerator.outputs => CommandGenerator.component = "%identity"
 
-  let make = (~name as _, ~publish as _, ~opts as _=?, _unit) =>
+  let make = (~name as _, ~publish as _, ~opts as _=?) =>
     makeOutputs(~resources=[])->outputsToComponent
 }

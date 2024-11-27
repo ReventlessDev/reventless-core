@@ -1,12 +1,16 @@
 let service = "AppSync"
 
-let toResource = (resolver: PulumiAws.AppSync.Resolver.t) =>
-  Reventless.Adapter.resource(
-    ~service=resolver["id"]->Pulumi.Output.apply(_ => service),
-    ~name=resolver["id"],
-    ~id=resolver["id"],
-    ~urn=resolver["arn"],
-    ~info=(resolver["_type"], resolver["field"])
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((type_, field)) => type_ ++ ("." ++ field)),
-  )
+let toResource: PulumiAws.AppSync.Resolver.t => ReventlessSpec.Adapter.resource = ({
+  id,
+  arn,
+  type_,
+  field,
+}) => {
+  service: id->Pulumi.Output.apply(_ => service),
+  name: id,
+  id,
+  urn: arn,
+  info: (type_, field)
+  ->Pulumi.Output.all2
+  ->Pulumi.Output.apply(((type_, field)) => type_ ++ ("." ++ field)),
+}

@@ -3,9 +3,12 @@ open Reventless.Counter
 open AwsSdk.DynamoDb.DocumentClient
 open Util.DynamoDbStream_Runtime
 
-let addToCounterTarget = async (table, {counterId, target, targetRef}) => {
+let addToCounterTarget = async (
+  table: ReventlessSpec.Adapter.resource,
+  {counterId, target, targetRef},
+) => {
   Js.log3(__MODULE__ ++ ".addToCounterTarget:", counterId, target)
-  let tableName = table["name"]->Pulumi.Output.get
+  let tableName = table.name->Pulumi.Output.get
   switch await UpdateCommand.make({
     tableName,
     key: Js.Dict.fromArray([("id", counterId->Js.Json.string)]),
@@ -18,13 +21,13 @@ let addToCounterTarget = async (table, {counterId, target, targetRef}) => {
       ("#targets", "targets"),
       ("#targetRefs", "targetRefs"),
     ]->Js.Dict.fromArray,
-    expressionAttributeValues: Js.Dict.fromArray([
+    expressionAttributeValues: [
       (":inc", target->Belt.Int.toFloat->Js.Json.number),
       (":targetSingle", [target->Belt.Int.toFloat->Js.Json.number]->Js.Json.array),
       (":targetRefSingle", [targetRef->Js.Json.string]->Js.Json.array),
       (":targetRef", targetRef->Js.Json.string),
       (":empty", []->Js.Json.array),
-    ]),
+    ]->Js.Dict.fromArray,
     returnValues: #UPDATED_NEW,
     conditionExpression: "NOT contains(#targetRefs, :targetRef)",
   })->UpdateCommand.send {
@@ -51,8 +54,8 @@ let handleStreamEvent = (
   streamEvent: AwsSdk.DynamoDb.Stream.StreamEvent.t,
   _,
 ) => {
-  let referencesARN = referencesStream["urn"]->Pulumi.Output.get
-  let countsARN = countsStream["urn"]->Pulumi.Output.get
+  let referencesARN = referencesStream.urn->Pulumi.Output.get
+  let countsARN = countsStream.urn->Pulumi.Output.get
 
   let records = streamEvent.records->Belt.Option.getWithDefault([])
   let (dynamoDbRecords, ignoredRecords) =

@@ -12,7 +12,7 @@ external make: (
   ~componentType: string,
   ~name: string,
   ~construct: construct,
-  ~opts: option<Pulumi.ComponentResource.Options.t>,
+  ~opts: option<Pulumi.ComponentResource.options>,
 ) => ReventlessSpec.Component.t<heartbeat, outputs> = "default"
 
 @obj external makeOutputs: (~name: string) => outputs = ""
@@ -36,14 +36,14 @@ external setOutputs: (ReventlessSpec.Component.t<heartbeat, outputs>, outputs) =
   "setOutputs"
 
 let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) => {
-  let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+  let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
   // Heartbeat + HealthCheck
   // see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/RunLambdaSchedule.html
 
   let publishHeartbeatCommand = () => {
     let msgId = Message.uuid()
-    publishToCorePluginExtensionPoint(. [
+    publishToCorePluginExtensionPoint([
       {
         Message.id,
         meta: {
@@ -72,13 +72,11 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
     open PulumiAws.Cloudwatch
     EventRule.make(
       ~name=Pulumi.Pulumi.getStackName() ++ ("-" ++ childName),
-      ~args=EventRule.Args.make(
-        ~description="Send a heartbeat to the Core Plugin ExtensionPoint"->Pulumi.Input.make,
-        ~scheduleExpression=EventRule.Args.ScheduleExpression.every(timeout->Minutes),
-        (),
-      ),
+      ~args={
+        description: "Send a heartbeat to the Core Plugin ExtensionPoint"->Pulumi.Input.make,
+        scheduleExpression: EventRule.ScheduleExpression.every(timeout->Minutes),
+      },
       ~opts,
-      (),
     )
   }
 
@@ -88,7 +86,6 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
       ~name=childName,
       ~args=CallbackFunction.Args.make(
         ~callback=heartBeatCallback,
-        (),
         /* TODO: add deadLetterConfig after extraction to ReventlessAws:
                ~deadLetterConfig=
                  CallbackFunction.Args.DeadLetterConfig.make(
@@ -97,7 +94,6 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
  */
       ),
       ~opts,
-      (),
     )
   }
 
@@ -105,13 +101,11 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
     open PulumiAws.Cloudwatch
     EventTarget.make(
       ~name=childName,
-      ~args=EventTarget.Args.make(
-        ~rule=EventTarget.Args.Rule.ofEventRule(cloudwatchEventRule),
-        ~arn=heartbeatLambda["arn"]->Pulumi.Output.asInput,
-        (),
-      ),
+      ~args={
+        rule: EventTarget.Rule.ofEventRule(cloudwatchEventRule),
+        arn: heartbeatLambda.arn->Pulumi.Output.asInput,
+      },
       ~opts,
-      (),
     )
   }
 
@@ -119,15 +113,13 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
     open PulumiAws.Lambda
     Permission.make(
       ~name=childName,
-      ~args=Permission.Args.make(
-        ~_function=heartbeatLambda["arn"]->Pulumi.Output.asInput,
-        ~action="lambda:InvokeFunction",
-        ~principal="events.amazonaws.com",
-        ~sourceArn=cloudwatchEventRule["arn"]->Pulumi.Output.asInput,
-        (),
-      ),
+      ~args={
+        function: heartbeatLambda.arn->Pulumi.Output.asInput,
+        action: "lambda:InvokeFunction",
+        principal: "events.amazonaws.com",
+        sourceArn: cloudwatchEventRule.arn->Pulumi.Output.asInput,
+      },
       ~opts,
-      (),
     )
   }
 
@@ -141,10 +133,10 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
   )->registerOutputs(self, _)
 }
 
-let make = (~id, ~name, ~timeout=10, ~publishToCorePluginExtensionPoint, ~opts=?, _) =>
+let make = (~id, ~name, ~timeout=10, ~publishToCorePluginExtensionPoint, ~opts=?) =>
   make(
     ~componentType=componentType->ComponentType.toString,
     ~name,
-    ~construct=construct(~id, ~timeout, ~publishToCorePluginExtensionPoint),
+    ~construct=construct(~id, ~timeout, ~publishToCorePluginExtensionPoint, ...),
     ~opts,
   )

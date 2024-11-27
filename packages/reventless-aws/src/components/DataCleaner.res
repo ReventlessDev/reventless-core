@@ -2,8 +2,8 @@
 open PulumiAws.Lambda
 open ReventlessSpec.Adapter
 
-type tableConfig = {"name": string, "id": string, "sort": option<string>}
-type event = {"tables": Js.nullable<array<tableConfig>>}
+type tableConfig = {name: string, id: string, sort: option<string>}
+type event = {tables: Js.nullable<array<tableConfig>>}
 
 let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<Belt.Result.t<'a, 'b>> = async p =>
   switch await p {
@@ -27,21 +27,21 @@ let handleDeleteResult = result => {
 let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableConfig): unit =>
   switch await items
   ->Belt.Array.map(async (item: Js.Dict.t<string>) => {
-    let id = item->Js.Dict.get(tableConfig["id"])
-    let sort = tableConfig["sort"]->Belt.Option.flatMap(sortField => item->Js.Dict.get(sortField))
+    let id = item->Js.Dict.get(tableConfig.id)
+    let sort = tableConfig.sort->Belt.Option.flatMap(sortField => item->Js.Dict.get(sortField))
     switch (id, sort) {
     | (Some(id), Some(sort)) =>
       switch await AwsSdk.DynamoDb.DocumentClient.deleteByIdSort(
-        ~tableName=tableConfig["name"],
+        ~tableName=tableConfig.name,
         ~id,
-        ~sortField=tableConfig["sort"]->Belt.Option.getExn,
+        ~sortField=tableConfig.sort->Belt.Option.getExn,
         ~sortKey=sort,
       )->promiseToResult {
       | res => res->handleDeleteResult
       }
     | (Some(id), None) =>
       switch await AwsSdk.DynamoDb.DocumentClient.deleteById(
-        ~tableName=tableConfig["name"],
+        ~tableName=tableConfig.name,
         ~id,
       )->promiseToResult {
       | res => res->handleDeleteResult
@@ -64,7 +64,7 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
       _,
       "of " ++
       (result->Belt.Array.length->string_of_int ++
-      (" items in table " ++ tableConfig["name"])),
+      (" items in table " ++ tableConfig.name)),
     )
   }
 
@@ -73,7 +73,7 @@ let handleScanResult = async (
   scanResult: Belt.Result.t<AwsSdk.DynamoDb.DocumentClient.QueryCommand.output, 'a>,
 ): Belt.Result.t<int, 'a> => {
   if mode == #debug {
-    Js.log("Clean table " ++ tableConfig["name"])
+    Js.log("Clean table " ++ tableConfig.name)
   }
   switch scanResult {
   | Belt.Result.Ok(scanResult) =>
@@ -84,7 +84,7 @@ let handleScanResult = async (
     Belt.Result.Ok(-1)
   | Belt.Result.Error(error) =>
     if mode == #debug {
-      Js.log2("Couldn't scan table " ++ (tableConfig["name"] ++ ":"), error)
+      Js.log2("Couldn't scan table " ++ (tableConfig.name ++ ":"), error)
     }
     Belt.Result.Error(error)
   }
@@ -94,11 +94,11 @@ let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
   Belt.Result.t<string, string>,
 > => {
   if mode == #debug {
-    Js.log("Scan " ++ tableConfig["name"])
+    Js.log("Scan " ++ tableConfig.name)
   }
 
-  let idKey = tableConfig["id"]
-  let (projectionExpression, expressionAttributeNames) = switch tableConfig["sort"] {
+  let idKey = tableConfig.id
+  let (projectionExpression, expressionAttributeNames) = switch tableConfig.sort {
   | Some(sortKey) => (
       "#" ++ (idKey ++ (",#" ++ sortKey)),
       [("#" ++ idKey, idKey), ("#" ++ sortKey, sortKey)]->Js.Dict.fromArray,
@@ -108,7 +108,7 @@ let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
 
   switch await AwsSdk.DynamoDb.DocumentClient.scan(
     ~params=AwsSdk.DynamoDb.DocumentClient.ScanInput.make(
-      ~_TableName=tableConfig["name"],
+      ~_TableName=tableConfig.name,
       ~_ProjectionExpression=projectionExpression,
       ~_ExpressionAttributeNames=expressionAttributeNames,
       (),
@@ -118,8 +118,8 @@ let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
       let scanResult = await handleScanResult(tableConfig, res)
       let deletedItemsCount = switch scanResult {
       | Belt.Result.Ok(deletedItemsCount) =>
-        Belt.Result.Ok(tableConfig["name"] ++ (" [" ++ (string_of_int(deletedItemsCount) ++ "]")))
-      | Belt.Result.Error(_err) => Belt.Result.Error(tableConfig["name"] ++ " [ERROR]")
+        Belt.Result.Ok(tableConfig.name ++ (" [" ++ (string_of_int(deletedItemsCount) ++ "]")))
+      | Belt.Result.Error(_err) => Belt.Result.Error(tableConfig.name ++ " [ERROR]")
       }
       deletedItemsCount->Js.Promise.resolve
     }
@@ -127,17 +127,13 @@ let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
 }
 
 let toTableConfig: resource => tableConfig = resource => {
-  let name = resource["name"]->Pulumi.Output.get
+  let name = resource.name->Pulumi.Output.get
   let (id, sort) = resource->Util_DynamoDb_Runtime.keysFromResource
 
-  {"name": name, "id": id, "sort": sort}
+  {name, id, sort}
 }
 
-let cleanerFn: array<resource> => eventHandler<event, string> = async (
-  tablesToClean,
-  _event,
-  _context,
-) =>
+let cleanerFn = async (tablesToClean, _event, _context) =>
   switch tablesToClean->Belt.Array.map(toTableConfig) {
   | tableConfigs if tableConfigs->Belt.Array.length == 0 => "No tables to clean."
   | tableConfigs =>
@@ -168,8 +164,7 @@ let make = (~prefix: option<string>, ~tablesToClean: array<resource>) => {
   open CallbackFunction
   make(
     ~name="DataCleaner-" ++ stackName(prefix),
-    ~args=Args.make(~callback=cleanerFn(tablesToClean), ~memorySize=1024->Pulumi.Input.make, ()),
-    (),
+    ~args=Args.make(~callback=cleanerFn(tablesToClean, ...), ~memorySize=1024->Pulumi.Input.make),
   )
 }
 */

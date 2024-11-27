@@ -5,7 +5,7 @@ module type T = {
   let make: input => t
   let makeFromString: string => t
   let toString: t => string
-  let cmp: (t, t) => int
+  let cmp: (t, t) => Ordering.t
 }
 
 module StringPure = {
@@ -15,7 +15,8 @@ module StringPure = {
   external make: t => t = "%identity"
   external makeFromString: string => t = "%identity"
   external toString: t => t = "%identity"
-  let cmp = String.compare
+  let cmp: (t,t) => Ordering.t = String.compare
+
 }
 
 module String: T = StringPure

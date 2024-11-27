@@ -18,14 +18,14 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
     ~rangeKey=?subIdField,
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
-    ~streamViewType=#NEW_AND_OLD_IMAGES,
+    ~streamViewType=NEW_AND_OLD_IMAGES,
     ~tags=AWS.tags(~name, Reventless.QueryDb.componentType),
     ~opts,
   )
   open QueryDbStorage_DynamoDb_Runtime
   {
     resources: [table->Util_DynamoDbStream.toResource],
-    dataSourceName: dataSource(name, table, api, apiRole, opts)["name"],
+    dataSourceName: dataSource(name, table, api, apiRole, opts).name,
     load: table->load,
     count: table->count,
     save: table->save,

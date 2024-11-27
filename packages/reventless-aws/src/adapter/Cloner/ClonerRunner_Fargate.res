@@ -9,26 +9,25 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
   ~reventlessCiSecretUrn,
   ~secretUrns,
   ~opts=?,
-  (),
 ) => {
   let cluster = {
     open ECS.Cluster
-    make(~name, ~opts?, ())
+    make(~name, ~opts?)
   }
 
   let taskExecutionRole = IAM.Role.make(
     ~name=name ++ "TaskExecution",
-    ~args=IAM.Role.Args.make(
-      ~assumeRolePolicy=IAM.Policy.assumeRolePolicy("ecs-tasks.amazonaws.com")->Pulumi.Input.make,
-      ~inlinePolicies=[
+    ~args={
+      IAM.Role.assumeRolePolicy: IAM.Policy.assumeRolePolicy(
+        "ecs-tasks.amazonaws.com",
+      )->Pulumi.Input.make,
+      inlinePolicies: [
         IAM.InlinePolicy.makeForActions(
           ~name="clonerTask",
           ~actions=["logs:PutLogEvents", "logs:CreateLogGroup", "logs:CreateLogStream"],
         ),
       ]->Pulumi.Input.make,
-      (),
-    ),
-    (),
+    },
   )
 
   let secretsManagerAccessPolicy = IAM.Policy.makeForActions(
@@ -51,10 +50,10 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
     open IAM.RolePolicyAttachment
     make(
       ~name="ClonerTaskExecutionSecretsManagerAccess",
-      ~args=Args.make(
-        ~policyArn=secretsManagerAccessPolicy["arn"]->Pulumi.Output.asInput,
-        ~role=taskExecutionRole["name"]->Pulumi.Output.asInput,
-      ),
+      ~args={
+        policyArn: secretsManagerAccessPolicy.arn->Pulumi.Output.asInput,
+        role: taskExecutionRole.name->Pulumi.Output.asInput,
+      },
       ~opts,
     )
   }
@@ -66,16 +65,14 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
     secretUrns
     ->Belt.Array.map(urn =>
       PulumiAws.GetSecretVersion.getSecretNames(urn)->Pulumi.Output.apply(names =>
-        names->Belt.Array.map(
-          name => ECS.Container.Secret.make(~name, ~valueFrom=`${urn}:${name}::`),
-        )
+        names->Belt.Array.map(name => {ECS.Container.name, valueFrom: `${urn}:${name}::`})
       )
     )
     ->Pulumi.Output.all
-    ->Pulumi.Output.apply(Belt.Array.concatMany)
+    ->Pulumi.Output.apply(s => Belt.Array.concatMany(s))
 
   let resources =
-    (secretsManagerAccessPolicy["arn"], taskRunnerPolicy["arn"], vpcConfig, secrets)
+    (secretsManagerAccessPolicy.arn, taskRunnerPolicy.arn, vpcConfig, secrets)
     ->Pulumi.Output.all4
     ->Pulumi.Output.apply(((
       secretsManagerAccessPolicyArn,
@@ -85,59 +82,47 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
     )) => {
       let containerDefinitions = [
         {
-          open ECS.Container
-          ContainerDefinition.make(
-            ~name="reventless-ci",
-            ~image=Pulumi.Config.make(Some("ci"))->Pulumi.Config.require("image"),
-            ~cpu=1024,
-            ~memory=4096,
-            ~repositoryCredentials=RepositoryCredentials.make(
-              ~credentialsParameter=reventlessCiSecretUrn,
-            ),
-            ~secrets,
-            ~logConfiguration=LogConfiguration.make(
-              ~logDriver="awslogs",
-              ~options={
-                "awslogs-create-group": "true",
-                "awslogs-group": "/aws/ecs/reventless-cloner",
-                "awslogs-region": Pulumi.Config.make(Some("aws"))->Pulumi.Config.require("region"),
-                "awslogs-stream-prefix": "reventless-cloner",
-              },
-              (),
-            ),
-            ~ulimits=[
-              ContainerDefinition.Ulimit.make(
-                ~name=#nofile,
-                ~hardLimit=1048576,
-                ~softLimit=1048576,
-              ),
-            ],
-            (),
-          )
+          ECS.Container.name: "reventless-ci",
+          image: Pulumi.Config.make(Some("ci"))->Pulumi.Config.require("image"),
+          cpu: 1024,
+          memory: 4096,
+          repositoryCredentials: {credentialsParameter: reventlessCiSecretUrn},
+          secrets,
+          logConfiguration: {
+            logDriver: "awslogs",
+            options: {
+              awslogsCreateGroup: true,
+              awslogsGroup: "/aws/ecs/reventless-cloner",
+              awslogsRegion: Pulumi.Config.make(Some("aws"))->Pulumi.Config.require("region"),
+              awslogsStreamPrefix: "reventless-cloner",
+            },
+          },
+          ulimits: [
+            {
+              name: #nofile,
+              hardLimit: 1048576,
+              softLimit: 1048576,
+            },
+          ],
         },
       ]
 
-      let taskDefinition = {
-        open ECS.TaskDefinition
-        make(
-          ~name,
-          ~args=Args.make(
-            ~family=name->Pulumi.Input.make,
-            ~containerDefinitions=containerDefinitions
-            ->Js.Json.stringifyAny
-            ->Belt.Option.getExn
-            ->Pulumi.Input.make,
-            ~executionRoleArn=taskExecutionRole["arn"]->Pulumi.Output.asInput,
-            ~memory="4096"->Pulumi.Input.make,
-            ~cpu="1024"->Pulumi.Input.make,
-            ~requiresCompatibilities=["FARGATE"],
-            ~networkMode=#awsvpc,
-            (),
-          ),
-          ~opts?,
-          (),
-        )
-      }
+      let taskDefinition = ECS.TaskDefinition.make(
+        ~name,
+        ~args={
+          family: name->Pulumi.Input.make,
+          containerDefinitions: containerDefinitions
+          ->Js.Json.stringifyAny
+          ->Belt.Option.getExn
+          ->Pulumi.Input.make,
+          executionRoleArn: taskExecutionRole.arn->Pulumi.Output.asInput,
+          memory: "4096"->Pulumi.Input.make,
+          cpu: "1024"->Pulumi.Input.make,
+          requiresCompatibilities: ["FARGATE"],
+          networkMode: #awsvpc,
+        },
+        ~opts?,
+      )
 
       let lambda = Lambda.CallbackFunction.make(
         ~name,
@@ -148,66 +133,58 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
             PulumiAws.IAM.ManagedPolicies.lambdaFullAccess,
           ],
           ~callback=ClonerRunner_Fargate_Runtime.clone(
-            ~taskDefinition=taskDefinition["arn"],
-            ~cluster=cluster["arn"],
+            ~taskDefinition=taskDefinition.arn,
+            ~cluster=cluster.arn,
             ~fullQualifiedStackName,
-            ~subnets={subnets: vpcConfig["subnetIds"]},
+            ~subnets={subnets: vpcConfig.subnetIds},
+            ...
           ),
-          (),
         ),
         ~opts?,
-        (),
       )
 
       let _lambdaPermission = Lambda.Permission.make(
         ~name,
-        ~args=Lambda.Permission.Args.make(
-          ~action="lambda:InvokeFunction",
-          ~_function=lambda["arn"]->Pulumi.Output.asInput,
-          ~principal="appsync.amazonaws.com",
-          (),
-        ),
+        ~args={
+          Lambda.Permission.action: "lambda:InvokeFunction",
+          function: lambda.arn->Pulumi.Output.asInput,
+          principal: "appsync.amazonaws.com",
+        },
         ~opts?,
-        (),
       )
 
       let dataSourceRole = IAM.Role.makeWithDefaultPolicy(
         ~name=name ++ "DS",
         ~service="appsync.amazonaws.com"->Pulumi.Output.make,
         ~opts?,
-        (),
       )
 
       let _dataSourcePolicy = {
         open IAM
         RolePolicy.make(
           ~name=name ++ "DS",
-          ~args=RolePolicy.Args.make(
-            ~policy=lambda["arn"]
+          ~args={
+            RolePolicy.policy: lambda.arn
             ->Pulumi.Output.apply(lambdaArn =>
               RolePolicy.generatePolicy([lambdaArn], "lambda:InvokeFunction")
             )
             ->Pulumi.Output.asInput,
-            ~role=dataSourceRole["id"]->Pulumi.Output.asInput,
-            (),
-          ),
+            role: dataSourceRole.id->Pulumi.Output.asInput,
+          },
           ~opts?,
-          (),
         )
       }
 
       let dataSource = AppSync.DataSource.make(
         ~name,
-        ~args=AppSync.DataSource.Args.make(
-          ~_type=#AWS_LAMBDA,
-          ~apiId=api->Pulumi.Output.flatMap(api => api["id"])->Pulumi.Output.asInput,
-          ~lambdaConfig=AppSync.DataSource.LambdaConfig.make(
-            ~functionArn=lambda["arn"]->Pulumi.Output.asInput,
-            (),
-          )->Pulumi.Input.make,
-          ~serviceRoleArn=dataSourceRole["arn"]->Pulumi.Output.asInput,
-          (),
-        ),
+        ~args={
+          AppSync.DataSource.type_: AWS_LAMBDA,
+          apiId: api->Pulumi.Output.flatMap(api => api.id)->Pulumi.Output.asInput,
+          lambdaConfig: {
+            AppSync.DataSource.functionArn: lambda.arn->Pulumi.Output.asInput,
+          }->Pulumi.Input.make,
+          serviceRoleArn: dataSourceRole.arn->Pulumi.Output.asInput,
+        },
         ~opts,
       )
 
@@ -228,13 +205,12 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
       let resolver = AppSync.Resolver.makeUnitResolver(
         ~name=field,
         ~api,
-        ~dataSourceName=dataSource["name"]->Pulumi.Output.asInput,
-        ~_type="Mutation"->Pulumi.Input.make,
+        ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
+        ~type_="Mutation"->Pulumi.Input.make,
         ~field=field->Pulumi.Input.make,
         ~requestTemplate=invokeClone->Pulumi.Input.make,
         ~responseTemplate=AppSync.Resolver.Templates.result,
         ~opts?,
-        (),
       )
 
       [resolver->Util_AppSync.toResource]

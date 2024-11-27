@@ -79,7 +79,7 @@ let applyChanges = async (
   logAction(
     `${action}(${id}): beforeStates:${beforeCount->Belt.Int.toString} afterStates:${afterCount->Belt.Int.toString} added:${addedCount->Belt.Int.toString} changed:${changedCount->Belt.Int.toString} deleted:${deletedCount->Belt.Int.toString}`,
   )
-  let result = await [deleteBatch(. batchToDelete), saveBatch(. batchToSave)]->Js.Promise.all
+  let result = await [deleteBatch(batchToDelete), saveBatch(batchToSave)]->Js.Promise.all
   switch result {
   | _ => Ok() // TODO: Error handling
   }
@@ -101,7 +101,7 @@ let handleAction = async (
 
   | Create(id, state) =>
     logAction(`Create(${id}, ${state->stateToString})`)
-    await save(. id, state, Init, None)
+    await save(id, state, Init, None)
   | CreateMultiState(id, states) =>
     logAction(
       `CreateMultiState(${id}, ${states
@@ -110,10 +110,10 @@ let handleAction = async (
     )
     switch states {
     | [] => Ok()
-    | [state] => await save(. id, state, Init, None)
+    | [state] => await save(id, state, Init, None)
     | states =>
       let batch = states->Belt.Array.map(state => (id, state, None))
-      await saveBatch(. batch)
+      await saveBatch(batch)
     }
   | CreateMany(states) =>
     let batch = states->Belt.Array.map(((id, state)) => (id, state, None))
@@ -122,11 +122,11 @@ let handleAction = async (
       ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
       ->Js.Array2.joinWith(", ")
     logAction(`CreateMany(${statesStr})`)
-    await saveBatch(. batch) // TODO: think about using single saves with saveMode Init
+    await saveBatch(batch) // TODO: think about using single saves with saveMode Init
 
   | Set(id, state) =>
     logAction(`Set(${id}, ${state->stateToString})`)
-    await save(. id, state, Any, None)
+    await save(id, state, Any, None)
   | SetMany(ids, set) =>
     let batch = ids->Belt.Array.map(id => (id, set(id), None))
     let statesStr =
@@ -134,10 +134,10 @@ let handleAction = async (
       ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
       ->Js.Array2.joinWith(", ")
     logAction(`SetMany(${statesStr})`)
-    await saveBatch(. batch)
+    await saveBatch(batch)
 
   | Update(id, update) =>
-    switch await load(. id) {
+    switch await load(id) {
     | Ok(states) =>
       switch states {
       | [] =>
@@ -146,7 +146,7 @@ let handleAction = async (
       | [oldState] =>
         let newState = oldState->update
         logAction(`Update(${id}, ${oldState->stateToString} => ${newState->stateToString})`)
-        await save(. id, newState, Overwrite, None)
+        await save(id, newState, Overwrite, None)
       | _ =>
         logAction(`Update Error: Multiple oldStates for ${id})`)
         Error(ReventlessSpec.QueryDb.StaleState)
@@ -155,18 +155,18 @@ let handleAction = async (
     }
   | UpdateWithDefault(id, default, update) =>
     Js.log(`UpdateWithDefault(${id}, loading ...`)
-    switch await load(. id) {
+    switch await load(id) {
     | Ok(states) =>
       switch states {
       | [] =>
         logAction(`UpdateWithDefault(${id}, default: ${default->stateToString})`)
-        await save(. id, default, Init, None)
+        await save(id, default, Init, None)
       | [oldState] =>
         let newState = oldState->update
         logAction(
           `UpdateWithDefault(${id}, ${oldState->stateToString} => ${newState->stateToString})`,
         )
-        await save(. id, newState, Overwrite, None)
+        await save(id, newState, Overwrite, None)
       | _ =>
         logAction(`UpdateWithDefault Error: Multiple oldStates for ${id})`)
         Error(ReventlessSpec.QueryDb.StaleState)
@@ -178,7 +178,7 @@ let handleAction = async (
       Error(err)
     }
   | UpdateMultiState(id, update) =>
-    switch (await load(. id), subIdConfig) {
+    switch (await load(id), subIdConfig) {
     | (Ok(states), Some(subIdConfig)) =>
       let beforeStates = states
       let afterStates = beforeStates->update
@@ -195,10 +195,10 @@ let handleAction = async (
     }
   | Delete(id) =>
     logAction(`Delete(${id})`)
-    await delete(. id, None)
+    await delete(id, None)
   | DeleteMany(ids) =>
     logAction(`DeleteMany(${ids->Js.Array2.joinWith(", ")})`)
-    await deleteBatch(. ids->Belt.Array.map(id => (id, None)))
+    await deleteBatch(ids->Belt.Array.map(id => (id, None)))
 
   // TODO: add missing actions
   | _ =>

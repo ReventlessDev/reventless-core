@@ -1,26 +1,21 @@
 open ReventlessSpec.Adapter
 
-let find: (array<'a>, string) => option<'a> = (resources, name) =>
-  resources->Belt.Array.reduce(None, (result, resource) =>
-    resource["name"] == name ? Some(resource) : result
-  )
-
 let eventCollectorConnectorOfAllEventMappers: (
   array<EventMapper.outputs>,
   string,
 ) => option<resource> = (eventMappers, eventMapperName) =>
   eventMappers
-  ->find(eventMapperName)
+  ->Belt.Array.getBy(eventMapper => eventMapper.name == eventMapperName)
   ->Belt.Option.flatMap(eventMapper => {
-    let resources = eventMapper["eventCollector"]["resources"]
-    resources->Belt.Array.length > 0 ? Some(resources[0]) : None
+    let resources = eventMapper.eventCollector.resources
+    resources->Belt.Array.length > 0 ? Some(resources->Array.getUnsafe(0)) : None
   })
 
 let bucketNameOfAllTasks: (array<Task.outputs>, string) => option<string> = (tasks, taskName) =>
   tasks
-  ->find(taskName)
-  ->Belt.Option.flatMap(task => task["bucket"])
-  ->Belt.Option.map(bucket => bucket["bucket"]->Pulumi.Output.get)
+  ->Belt.Array.getBy(task => task.name == taskName)
+  ->Belt.Option.flatMap(task => task.bucket)
+  ->Belt.Option.map(bucket => bucket.bucket->Pulumi.Output.get)
 
 let eventCollectorConnectorOfAllEventMappersExn = (eventMappersRef, eventMapperName) =>
   eventCollectorConnectorOfAllEventMappers(

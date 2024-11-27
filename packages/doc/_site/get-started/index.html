@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reventless Docs: Get Started</title>
+</head>
+<body>
+    <h2>Get Started</h2>
+    <p>:::note[TODO]</p>
+<ul>
+<li>[ ] fix referenced vs code rescript plugin</li>
+<li>[ ] update node version</li>
+<li>[ ] update referenced dependency versions</li>
+</ul>
+<p>:::</p>
+<h2>Basics</h2>
+<p>When implementing a system based on Reventless you should only think about <code>commands</code> and <code>events</code>. These provide easy to understand reasoning for anything happening.<br>
+Great care should go into naming these according to the <a href="https://www.martinfowler.com/bliki/UbiquitousLanguage.html">ubiquitous language</a> of the project / context.<br>
+<code>Command</code>s are usually named in imperative, while <code>event</code>s are usually named in past tense. (e.g: doSomething vs somethingDone).</p>
+<p>Since <code>command</code>s are only a formulated desire for change, they can potentially be rejected with an <code>error</code>. <code>Event</code>s are absolute facts and the result of <code>command</code>s, which will never change once issued.</p>
+<h2>Reventless Components</h2>
+<p>Find an overview of the most important Reventless Components in <a href="./reventless-components-overview.md">reventless-components-overview.md</a>.</p>
+<h2>Most used ReScript features</h2>
+<p>Find an overview of the most used ReScript features in <a href="./rescript-syntax.md">rescript-syntax.md</a></p>
+<h2>Development Setup</h2>
+<h3>Install VS Code</h3>
+<ul>
+<li>install <a href="https://code.visualstudio.com">Visual Studio Code</a></li>
+<li>install <a href="https://marketplace.visualstudio.com/items?itemName=jaredly.reason-vscode">reason-vscode</a> (extension id: <code>jaredly.reason-vscode</code>)</li>
+</ul>
+<h3>Install Node</h3>
+<ul>
+<li>install <a href="https://nodejs.org/download/release/latest-v12.x/">Node 12.x</a> (as of this writing, this version is the current LTS version in maintainance untill 30.04.2022)</li>
+</ul>
+<h3>Initialize a new Project</h3>
+<p>Run <code>npm init</code> in the directory you want to create the new project and answer all questions.</p>
+<h3>Install Dependencies</h3>
+<p>Run <code>npm i @bs-platform@5.2.1 @pulumi/pulumi @pulumi/aws @reventless/reventless-spec</code> inside your project directory.</p>
+<h3>Choose a Cloud Provider</h3>
+<p>The Reventless-Framework is cloud-provider agnostic. Therefore there is a different package per provider, which contains pre-configured default components and the necessary adapters to configure the components yourself when needed.<br>
+The packages are called <code>@reventless/reventless-&lt;providerName&gt;</code> (e.g. <code>@reventless/reventless-aws</code>)</p>
+<blockquote>
+<p>Currently we support only AWS out of the box, but plan to increase the supported provider in the future.</p>
+</blockquote>
+<p>Choose the according package and install it by running e.g. <code>npm i @reventless/reventless-aws</code> inside your project directory.</p>
+<h3>Core- &amp; API-Stack</h3>
+<p>A <a href="https://www.pulumi.com/docs/intro/concepts/stack/"><code>Stack</code></a> is the actual deployment unit used by our infrastructure as code tool of choice <a href="https://www.pulumi.com">Pulumi</a>.<br>
+The foundation of any platform built using Reventless is a Core-Stack. This is the central piece providing the necessary functionalities for <code>Plugins</code> to interact with each other.</p>
+<blockquote>
+<p><strong>TODO</strong>: complete this area and below!</p>
+</blockquote>
+<h2>Create a new Plugin</h2>
+<h3><code>Plugin</code></h3>
+<p>Deployment-unit</p>
+<h3><code>Aggregate</code></h3>
+<h3><code>ReadModel</code></h3>
+<h4>Update API Schema</h4>
+<h3><code>Aggregate</code> #2</h3>
+<h3><code>EventMapper</code></h3>
+<p>Aggregate1.event &gt;&gt; EventMapper &gt;&gt; Aggregate2.command</p>
+<h3><code>Task</code></h3>
+
+<script type="module" async>import mermaid from "https://unpkg.com/mermaid@10/dist/mermaid.esm.min.mjs";document.addEventListener('DOMContentLoaded', mermaid.initialize({"loadOnSave":true}));</script>
+</body>
+</html>

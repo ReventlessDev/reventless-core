@@ -1,7 +1,7 @@
-import { cp } from 'node:fs';
-import { dirname, resolve as resolvePath } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { rimraf } from 'rimraf';
+import {cp} from 'node:fs';
+import {dirname, resolve as resolvePath} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {rimraf} from 'rimraf';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const precompiledPath = resolvePath(__dirname, './precompiled');
@@ -11,7 +11,7 @@ function copyPrecompiled(source, target, dependenciesPath) {
         cp(
             resolvePath(precompiledPath, source),
             resolvePath(dependenciesPath, target),
-            { recursive: true },
+            {recursive: true},
             (err) => {
                 if (err) {
                     reject(err)
@@ -24,8 +24,9 @@ function copyPrecompiled(source, target, dependenciesPath) {
 
 export async function decco(node, cwd, dependenciesPath) {
     return Promise.all([
-        copyPrecompiled('decco@1.6.0', node.name, dependenciesPath),
-        rimraf('ppx*', { glob: { cwd } })
+        //copyPrecompiled('decco@1.6.0', node.name, dependenciesPath),
+        copyPrecompiled('@rescript-labs/decco@2.0.4', node.name, dependenciesPath),
+        rimraf('ppx*', {glob: {cwd}})
     ]);
 }
 
@@ -34,15 +35,15 @@ export async function bsMoment(node, cwd, dependenciesPath) {
 }
 
 export async function rescriptDependent(node, cwd) {
-    const rmRes = rimraf('**/*.res', { glob: { cwd } });
-    const rmResi = rimraf('**/*.resi', { glob: { cwd } });
+    const rmRes = rimraf('**/*.res', {glob: {cwd}});
+    const rmResi = rimraf('**/*.resi', {glob: {cwd}});
     return Promise.all([rmRes, rmResi]);
 }
 
 export async function bsPlatformDependent(node, cwd) {
-    const rmRes = rimraf('**/*.re', { glob: { cwd } });
-    const rmResi = rimraf('**/*.rei', { glob: { cwd } });
-    const rmLib = rimraf('lib', { glob: { cwd } });
+    const rmRes = rimraf('**/*.re', {glob: {cwd}});
+    const rmResi = rimraf('**/*.rei', {glob: {cwd}});
+    const rmLib = rimraf('lib', {glob: {cwd}});
     return Promise.all([rmRes, rmResi, rmLib]);
 }
 

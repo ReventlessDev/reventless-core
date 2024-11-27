@@ -24,19 +24,19 @@ let toScheduleExpression = x =>
   }
 
 let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSchedule = role =>
-  async (. queueResources, schedule) =>
+  async (queueResources, schedule) =>
     switch queueResources {
     | [] =>
       let err = "ScheduledPublisher_CloudWatchEvents_Runtime: createSchedule not possible: no Queue configured !"
       Js.log(err)
       Js.Exn.raiseError(err)
     | resources =>
-      let resource = resources[0] // FIXME
+      let resource = resources->Array.getUnsafe(0) // FIXME
       let _ = await PutRuleCommand.send(
         PutRuleCommand.make({
           name: schedule.name,
           scheduleExpression: schedule.rate->toScheduleExpression,
-          roleArn: role["arn"]->Pulumi.Output.get,
+          roleArn: role.arn->Pulumi.Output.get,
           state: "ENABLED",
         }),
       )
@@ -45,8 +45,8 @@ let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSched
           rule: schedule.name,
           targets: [
             {
-              arn: resource["urn"]->Pulumi.Output.get,
-              id: resource["name"]->Pulumi.Output.get,
+              arn: resource.urn->Pulumi.Output.get,
+              id: resource.name->Pulumi.Output.get,
               input: schedule.payload,
             },
           ],
@@ -54,18 +54,18 @@ let createSchedule: PulumiAws.IAM.Role.t => ReventlessSpec.Scheduler.createSched
       )
     }
 
-let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = async (. queueResources, name) =>
+let deleteSchedule: ReventlessSpec.Scheduler.deleteSchedule = async (queueResources, name) =>
   switch queueResources {
   | [] =>
     let err = "ScheduledPublisher_CloudWatchEvents_Runtime: deleteSchedule not possible: no Queue configured !"
     Js.log(err)
     Js.Exn.raiseError(err)
   | resources =>
-    let resource = resources[0] // FIXME
+    let resource = resources->Array.getUnsafe(0) // FIXME
     let _ = await RemoveTargetsCommand.send(
       RemoveTargetsCommand.make({
         rule: name,
-        ids: [resource["name"]->Pulumi.Output.get],
+        ids: [resource.name->Pulumi.Output.get],
       }),
     )
     let _ = DeleteRuleCommand.send(

@@ -1,5 +1,8 @@
 let componentType = ComponentType.ReadModel
 
+let allQueryDbs = allReadModels =>
+  Js.Dict.map((readModel: ReventlessSpec.ReadModel.outputs) => readModel.queryDb, allReadModels)
+
 module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.ReadModel.Spec.T,
@@ -21,7 +24,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => ReventlessSpec.ReadModel.component = "default"
 
   @obj
@@ -57,22 +60,22 @@ module Make = (
   let sourceNames = Mappings.mappings->Belt.Array.map((module(Mapping)) => Mapping.sourceName)
 
   let construct = (~allEventTopics, self, name) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     module QueryDb = QueryDb.Make(Config, Spec, QueryDbStorage, QueryDbResolvers)
 
-    let queryDb = QueryDb.make(~opts, ())
+    let queryDb = QueryDb.make(~opts)
 
-    let load = (. id) => QueryDb.load(queryDb)(. id->Spec.Id.makeFromString)
-    let save = (. id, state, saveMode, opt) =>
-      QueryDb.save(queryDb)(. id->Spec.Id.makeFromString, state, saveMode, opt)
-    let saveBatch = (. states) =>
-      QueryDb.saveBatch(queryDb)(.
+    let load = id => QueryDb.load(queryDb)(id->Spec.Id.makeFromString)
+    let save = (id, state, saveMode, opt) =>
+      QueryDb.save(queryDb)(id->Spec.Id.makeFromString, state, saveMode, opt)
+    let saveBatch = states =>
+      QueryDb.saveBatch(queryDb)(
         states->Belt.Array.map(((id, state, ttl)) => (id->Spec.Id.makeFromString, state, ttl)),
       )
-    let delete = (. id, sort) => QueryDb.delete(queryDb)(. id->Spec.Id.makeFromString, sort)
-    let deleteBatch = (. ids) =>
-      QueryDb.deleteBatch(queryDb)(.
+    let delete = (id, sort) => QueryDb.delete(queryDb)(id->Spec.Id.makeFromString, sort)
+    let deleteBatch = ids =>
+      QueryDb.deleteBatch(queryDb)(
         ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.makeFromString, sort)),
       )
 
@@ -86,7 +89,7 @@ module Make = (
 
     module EventProjector = ProjectionMapper.Make(Spec, Mappings)
 
-    let eventsHandler: (. array<Js.Json.t>) => Js.Promise.t<unit> = (. jsons) => {
+    let eventsHandler: array<Js.Json.t> => Js.Promise.t<unit> = jsons => {
       let eventCount = jsons->Belt.Array.length
       jsons
       ->Belt.Array.mapWithIndex((idx, json) => {
@@ -121,7 +124,6 @@ module Make = (
       ~policy1=Pulumi.Output.make(None),
       ~policy2=Pulumi.Output.make(None),
       ~opts=Some(opts),
-      (),
     )
 
     self->setEnqueueEvent(eventCollector->EventCollector.enqueueEvent)
@@ -134,11 +136,11 @@ module Make = (
     )
   }
 
-  let make = (~allEventTopics, ~opts=?, _) =>
+  let make = (~allEventTopics, ~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~allEventTopics),
+      ~construct=construct(~allEventTopics, ...),
       ~opts,
     )
 }

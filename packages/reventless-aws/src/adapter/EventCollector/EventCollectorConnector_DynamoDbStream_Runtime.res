@@ -1,5 +1,5 @@
 let handleStreamEvent: (
-  (. array<Js.Json.t>) => promise<unit>,
+  array<Js.Json.t> => promise<unit>,
   AwsSdk.DynamoDb.Stream.StreamEvent.t,
   _,
 ) => Js.Promise.t<unit> = async (handleEvents, streamEvent, _) => {
@@ -21,7 +21,7 @@ let handleStreamEvent: (
     }
   )
 
-  try await handleEvents(. jsons) catch {
+  try await handleEvents(jsons) catch {
   | err =>
     //  Js.Exn.raiseError(err->Reventless.Util.Error.ofPromise##message)
     Js.log2("handleStreamEvent error:", err)

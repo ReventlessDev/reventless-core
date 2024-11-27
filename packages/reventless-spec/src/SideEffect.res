@@ -1,4 +1,4 @@
-@ocaml.doc(" see ReventlessSpec.AggregateSpec.T ")
+/** see ReventlessSpec.AggregateSpec.T */
 module type Source = {
   let name: string
   module Id: Id.T
@@ -8,5 +8,5 @@ module type Source = {
 
 module type T = {
   module Source: Source
-  let execute: (. Source.Id.t, Message.meta, Source.event, QueryEngine.t) => Js.Promise.t<unit>
+  let execute: (Source.Id.t, Message.meta, Source.event, QueryEngine.t) => Js.Promise.t<unit>
 }

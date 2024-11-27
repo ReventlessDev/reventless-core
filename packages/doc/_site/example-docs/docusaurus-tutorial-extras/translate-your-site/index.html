@@ -1,0 +1,52 @@
+<h1>Translate your site</h1>
+<p>Let's translate <code>docs/intro.md</code> to French.</p>
+<h2>Configure i18n</h2>
+<p>Modify <code>docusaurus.config.js</code> to add support for the <code>fr</code> locale:</p>
+<pre><code class="language-js">export default {
+  i18n: {
+    defaultLocale: 'en',
+    locales: ['en', 'fr'],
+  },
+};
+</code></pre>
+<h2>Translate a doc</h2>
+<p>Copy the <code>docs/intro.md</code> file to the <code>i18n/fr</code> folder:</p>
+<pre><code class="language-bash">mkdir -p i18n/fr/docusaurus-plugin-content-docs/current/
+
+cp docs/intro.md i18n/fr/docusaurus-plugin-content-docs/current/intro.md
+</code></pre>
+<p>Translate <code>i18n/fr/docusaurus-plugin-content-docs/current/intro.md</code> in French.</p>
+<h2>Start your localized site</h2>
+<p>Start your site on the French locale:</p>
+<pre><code class="language-bash">npm run start -- --locale fr
+</code></pre>
+<p>Your localized site is accessible at <a href="http://localhost:3000/fr/">http://localhost:3000/fr/</a> and the <code>Getting Started</code> page is translated.</p>
+<p>:::caution</p>
+<p>In development, you can only use one locale at a time.</p>
+<p>:::</p>
+<h2>Add a Locale Dropdown</h2>
+<p>To navigate seamlessly across languages, add a locale dropdown.</p>
+<p>Modify the <code>docusaurus.config.js</code> file:</p>
+<pre><code class="language-js">export default {
+  themeConfig: {
+    navbar: {
+      items: [
+        // highlight-start
+        {
+          type: 'localeDropdown',
+        },
+        // highlight-end
+      ],
+    },
+  },
+};
+</code></pre>
+<p>The locale dropdown now appears in your navbar:</p>
+<p><img src="./img/localeDropdown.png" alt="Locale Dropdown"></p>
+<h2>Build your localized site</h2>
+<p>Build your site for a specific locale:</p>
+<pre><code class="language-bash">npm run build -- --locale fr
+</code></pre>
+<p>Or build your site to include all the locales at once:</p>
+<pre><code class="language-bash">npm run build
+</code></pre>

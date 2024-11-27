@@ -3,9 +3,9 @@ module ReventlessEventCollector = EventCollector
 let componentType = ComponentType.EventMapper
 
 type outputs = {
-  "name": string,
-  "eventCollector": ReventlessSpec.EventCollector.outputs,
-  "counter": option<Counter.outputs>,
+  name: string,
+  eventCollector: ReventlessSpec.EventCollector.outputs,
+  counter?: Counter.outputs,
 }
 
 type t
@@ -18,8 +18,7 @@ module type T = {
     ~publishJsons: ReventlessSpec.CommandTopic.publishJsons,
     ~memorySize: int=?,
     ~timeout: int=?,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
-    unit,
+    ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }
 
@@ -43,15 +42,9 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
-  @obj
-  external makeOutputs: (
-    ~name: string,
-    ~eventCollector: ReventlessSpec.EventCollector.outputs,
-    ~counter: option<Counter.outputs>,
-  ) => outputs = ""
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send external setOutputs: (component, outputs) => unit = "setOutputs"
@@ -64,7 +57,7 @@ module Make = (
   let target = Target.name
 
   let findMapping = (mappings, eventObj) =>
-    eventObj->Belt.Option.flatMapU((. eventObj') => {
+    eventObj->Belt.Option.flatMapU(eventObj' => {
       let meta = eventObj'->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
 
       switch meta {
@@ -156,7 +149,7 @@ module Make = (
 
           switch (idDecoded, eventDecoded) {
           | (Some(Ok(eventId)), Some(Ok(event))) =>
-            Mapping.map(. eventId, event, queryEngine)->processMappingActions(eventMeta)->Some
+            Mapping.map(eventId, event, queryEngine)->processMappingActions(eventMeta)->Some
           | (None, _)
           | (_, None) =>
             Js.log("EventMapper.map: Invalid event")
@@ -218,56 +211,63 @@ module Make = (
     queryEngine,
     count: Counter.count,
     addToCounterTarget: Counter.addToCounterTarget,
-  ) => async (. events'Json) => {
-    let (publisherEntries, counterActions) = await commonEventsHandler(
-      mappings,
-      queryEngine,
-      events'Json,
-    )
-    let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(x =>
-      switch x {
-      | Counter.Count(_) => true
-      | AddToCounterTarget(_) => false
-      }
-    )
+  ) =>
+    async events'Json => {
+      let (publisherEntries, counterActions) = await commonEventsHandler(
+        mappings,
+        queryEngine,
+        events'Json,
+      )
+      let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(x =>
+        switch x {
+        | Counter.Count(_) => true
+        | AddToCounterTarget(_) => false
+        }
+      )
 
-    let countActions = countActions->Belt.Array.keepMap(countAction =>
-      switch countAction {
-      | Count(countItem) => Some(countItem)
-      | _ => None
-      }
-    )
-    Js.log2("EventMapper.eventCollectorEventsHandler: countActions:", countActions->Belt.Array.size)
-    await doCount(count, countActions)
+      let countActions = countActions->Belt.Array.keepMap(countAction =>
+        switch countAction {
+        | Count(countItem) => Some(countItem)
+        | _ => None
+        }
+      )
+      Js.log2(
+        "EventMapper.eventCollectorEventsHandler: countActions:",
+        countActions->Belt.Array.size,
+      )
+      await doCount(count, countActions)
 
-    Js.log2(
-      "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
-      addToCounterTargetActions->Js.Json.stringifyAny,
-    )
-    await addToCounterTargetActions
-    ->Belt.Array.map(async x =>
-      switch x {
-      | AddToCounterTarget(counterTarget) => await addToCounterTarget(counterTarget)
-      | _ => ()
-      }
-    )
-    ->Js.Promise.all
-    ->Util.Promise.toUnit
+      Js.log2(
+        "EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:",
+        addToCounterTargetActions->Js.Json.stringifyAny,
+      )
+      await addToCounterTargetActions
+      ->Belt.Array.map(async x =>
+        switch x {
+        | AddToCounterTarget(counterTarget) => await addToCounterTarget(counterTarget)
+        | _ => ()
+        }
+      )
+      ->Js.Promise.all
+      ->Util.Promise.toUnit
 
-    await publishJsons(. await publisherEntries)
-  }
-
-  let counterEventsHandler = (publishJsons, mappings, queryEngine) => async (. events'Json) => {
-    let (publisherEntries, countActions) = await commonEventsHandler(
-      mappings,
-      queryEngine,
-      events'Json,
-    )
-    if countActions->Belt.Array.size > 0 {
-      Js.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!")
+      await publishJsons(await publisherEntries)
     }
-    await publishJsons(. await publisherEntries)
-  }
+
+  let counterEventsHandler = (publishJsons, mappings, queryEngine) =>
+    async events'Json => {
+      let (publisherEntries, countActions) = await commonEventsHandler(
+        mappings,
+        queryEngine,
+        events'Json,
+      )
+      if countActions->Belt.Array.size > 0 {
+        Js.log(
+          "EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!",
+        )
+      }
+      await publishJsons(await publisherEntries)
+    }
 
   let construct = (
     ~allEventTopics,
@@ -278,7 +278,7 @@ module Make = (
     self,
     name,
   ) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     let (count, setCounterTarget, counterOutputs) = Mappings.counter->Belt.Option.mapWithDefault(
       (
@@ -291,7 +291,6 @@ module Make = (
           ~name,
           ~counterEventsHandler=counterEventsHandler(publishJsons, Mappings.mappings, queryEngine),
           ~opts,
-          (),
         )
         (
           counter->Counter.count,
@@ -328,16 +327,13 @@ module Make = (
       ~policy1=Pulumi.Output.make(None),
       ~policy2=Pulumi.Output.make(None),
       ~opts=Some(opts),
-      (),
     )
 
-    self->setOutputs(
-      makeOutputs(
-        ~name,
-        ~eventCollector=eventCollector->Component.extractOutputs,
-        ~counter=counterOutputs,
-      ),
-    )
+    self->setOutputs({
+      name,
+      eventCollector: eventCollector->Component.extractOutputs,
+      counter: ?counterOutputs,
+    })
   }
 
   let make = (
@@ -347,12 +343,18 @@ module Make = (
     ~memorySize=2048,
     ~timeout=180,
     ~opts=?,
-    _,
   ) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Target.name,
-      ~construct=construct(~allEventTopics, ~queryEngine, ~publishJsons, ~memorySize, ~timeout),
+      ~construct=construct(
+        ~allEventTopics,
+        ~queryEngine,
+        ~publishJsons,
+        ~memorySize,
+        ~timeout,
+        ...
+      ),
       ~opts,
     )
 }

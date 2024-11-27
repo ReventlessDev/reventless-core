@@ -3,7 +3,7 @@ open AwsSdk.DynamoDb.DocumentClient
 let service = "DynamoDb"
 
 let put = (table: PulumiAws.DynamoDb.Table.t, item) => {
-  {PutCommand.tableName: table["name"]->Pulumi.Output.get, item}->PutCommand.make->PutCommand.send
+  {PutCommand.tableName: table.name->Pulumi.Output.get, item}->PutCommand.make->PutCommand.send
 }
 
 let rec putWithRetries = async (~retry=0, ~maxRetries=5, table, id, item) =>
@@ -30,11 +30,11 @@ let rec putIfNotExistsWithRetries = async (
   ~maxRetries=5,
   ~idKey,
   ~sortKey=?,
-  table,
+  table: PulumiAws.DynamoDb.Table.t,
   id,
   item,
 ) =>
-  switch await putIfNotExists(table["name"]->Pulumi.Output.get, idKey, sortKey, item) {
+  switch await putIfNotExists(table.name->Pulumi.Output.get, idKey, sortKey, item) {
   | _ => Ok()
   | exception Js.Exn.Error(e) =>
     switch e->PutError.classify {
@@ -64,7 +64,7 @@ let rec putIfNotExistsWithRetries = async (
   }
 
 let delete = (table: PulumiAws.DynamoDb.Table.t, ~sort=?, id) => {
-  delete(~tableName=table["name"]->Pulumi.Output.get, ~sort?, ~id)
+  delete(~tableName=table.name->Pulumi.Output.get, ~sort?, ~id)
 }
 
 let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) =>
@@ -84,14 +84,14 @@ let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) 
   }
 
 let queryById = (table: PulumiAws.DynamoDb.Table.t, id) =>
-  queryById(table["name"]->Pulumi.Output.get, id)
+  queryById(table.name->Pulumi.Output.get, id)
 
 let keysFromResource: ReventlessSpec.Adapter.resource => (string, option<string>) = resource =>
-  switch resource["info"]->Pulumi.Output.get->Js.String2.split(",") {
-  | [] => Js.Exn.raiseError("No id field given for table " ++ resource["name"]->Pulumi.Output.get)
+  switch resource.info->Pulumi.Output.get->Js.String2.split(",") {
+  | [] => Js.Exn.raiseError("No id field given for table " ++ resource.name->Pulumi.Output.get)
   | [id]
   | [id, ""] => (id, None)
-  | parts => (parts[0], Some(parts[1]))
+  | parts => (parts->Array.getUnsafe(0), parts[1])
   }
 
 let purgeTimeAttributeName = "reventlessPurgeTime"
@@ -115,9 +115,9 @@ let insertTtl: (Js.Json.t, option<int>) => Js.Json.t = (json, ttl) =>
           Js.log2(__MODULE__ ++ ".insertTtl: Error: Couldn't decode JSON", json->Js.Json.stringify)
           (None: option<Js.Json.t>)
         },
-        (obj, _) => {
+        obj => {
           obj->Js.Dict.set(purgeTimeAttributeName, ttl->calcPurgeTime->Js.Json.number)
-          obj->Js.Json.object_->Some
+          () => Some(obj->Js.Json.object_)
         },
       )
     )()

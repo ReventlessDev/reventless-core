@@ -32,5 +32,5 @@ let mergeMany: (Pulumi.Output.t<array<'a>>, array<'a>) => Pulumi.Output.t<array<
   locals,
 ) => dependencies->Pulumi.Output.apply(dependencies => locals->Belt.Array.concat(dependencies))
 
-let mergeTasks = mergeMany(stackDependenciesTasks)
-let mergeEventMappers = mergeMany(stackDependenciesEventMappers)
+let mergeTasks = mergeMany(stackDependenciesTasks, ...)
+let mergeEventMappers = mergeMany(stackDependenciesEventMappers, ...)

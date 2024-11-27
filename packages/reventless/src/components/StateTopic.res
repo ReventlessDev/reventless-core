@@ -21,9 +21,8 @@ module type T = {
 
   let make: (
     ~name: string,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
+    ~opts: Pulumi.ComponentResource.options=?,
     ~allQueryDbs: ReventlessSpec.QueryDb.allOutputs,
-    unit,
   ) => component
 }
 
@@ -51,7 +50,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
     ~allQueryDbs: ReventlessSpec.QueryDb.allOutputs,
   ) => component = "default"
 
@@ -66,7 +65,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
   }
 
   let construct = (self, name, allQueryDbs) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let publisher = Publisher.make(
       ~name=name->ComponentType.name(componentType),
@@ -79,7 +78,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     self->setOutputs(makeOutputs(~publisher=publisherOutputs))
   }
 
-  let make = (~name, ~opts=?, ~allQueryDbs, _) =>
+  let make = (~name, ~opts=?, ~allQueryDbs) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,

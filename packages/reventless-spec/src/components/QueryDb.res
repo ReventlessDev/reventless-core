@@ -1,5 +1,5 @@
 type rec resolversResourcesMaker = Js.Dict.t<outputs> => array<Adapter.resource>
-and outputs = {"resources": array<Adapter.resource>, "resolversMaker": resolversResourcesMaker}
+and outputs = {resources: array<Adapter.resource>, resolversMaker: resolversResourcesMaker}
 type allOutputs = Js.Dict.t<outputs>
 
 type saveMode =
@@ -17,7 +17,7 @@ type storageError =
   | StaleState
   | MissingSubIdConfig
 
-type load<'id, 'state> = (. 'id) => Js.Promise.t<Belt.Result.t<array<'state>, storageError>>
+type load<'id, 'state> = 'id => Js.Promise.t<Belt.Result.t<array<'state>, storageError>>
 type save<'id, 'state> = (
   . 'id,
   'state,
@@ -27,7 +27,7 @@ type save<'id, 'state> = (
 type saveBatch<'id, 'state> = (
   . array<('id, 'state, option<int>)>,
 ) => Js.Promise.t<Belt.Result.t<unit, storageError>>
-type count<'id> = (. 'id, string, int) => Js.Promise.t<Belt.Result.t<int, storageError>>
+type count<'id> = ('id, string, int) => Js.Promise.t<Belt.Result.t<int, storageError>>
 type delete<'id> = (
   . 'id,
   option<(string, string)>,
@@ -47,11 +47,7 @@ module type T = {
   type delete = delete<Spec.Id.t>
   type deleteBatch = deleteBatch<Spec.Id.t>
 
-  let make: (
-    ~ttl: int=?,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
-    unit,
-  ) => Component.t<t, outputs>
+  let make: (~ttl: int=?, ~opts: Pulumi.ComponentResource.options=?) => Component.t<t, outputs>
 
   let load: Component.t<t, outputs> => load
   let save: Component.t<t, outputs> => save

@@ -26,5 +26,5 @@ type schedule = {
   payload: string,
 }
 
-type create = (. schedule) => Js.Promise.t<unit>
-type delete = (. /* ~name: */ string) => Js.Promise.t<unit>
+type create = schedule => Js.Promise.t<unit>
+type delete = /* ~name: */ string => Js.Promise.t<unit>

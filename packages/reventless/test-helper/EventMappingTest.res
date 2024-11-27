@@ -69,10 +69,12 @@ module MakeAggregate = (
   module Spec = Spec
   module Behaviour = Behaviour
 
-  let apply' = (state, event) => Behaviour.apply(. state, event)
+  let apply' = (state, event) => Behaviour.apply(state, event)
 
   let currentState = events =>
-    events->Belt.Array.sliceToEnd(1)->Belt.Array.reduce(Behaviour.init(. events[0]), apply')
+    events
+    ->Belt.Array.sliceToEnd(1)
+    ->Belt.Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
 
@@ -84,9 +86,9 @@ module MakeAggregate = (
   let exec = (context, command, history): array<Spec.event> => {
     errors := []
     switch history {
-    | [] => Behaviour.create(. command, context, errorHandler)
+    | [] => Behaviour.create(command, context, errorHandler)
     | history =>
-      try Behaviour.execute(.
+      try Behaviour.execute(
         history->currentState,
         command,
         TestFixtures.context,
@@ -126,7 +128,6 @@ module Make = (
       ~filterConfigs as _: option<array<ReventlessSpec.QueryEngine.Filter.config>>=?,
       ~ascending as _: option<bool>=?,
       ~limit as _: option<int>=?,
-      _: unit,
     ) => []->Js.Promise.resolve,
   }
 
@@ -173,7 +174,7 @@ module Make = (
     let targetActions =
       sourceEvents
       ->Belt.Array.map(sourceEvent =>
-        EventMapping.map(. sourceId->Source.Id.makeFromString, sourceEvent, queryEngine)
+        EventMapping.map(sourceId->Source.Id.makeFromString, sourceEvent, queryEngine)
       )
       ->Belt.Array.concatMany
     let targetHistories = targetHistory->Js.Dict.fromArray
@@ -228,7 +229,7 @@ module Make = (
     ))->toEqual((0, 0, 1, Some((id, [expectedTargetEvent]))))
   }
 
-  let thenNoTargetEvent = thenTargetEvents([])
+  let thenNoTargetEvent = targetEvents => thenTargetEvents([], targetEvents)
   // let thenEventWithError = (expectedEvent, expectedError, events) =>
   //   expect((
   //     events->Belt.Array.length,

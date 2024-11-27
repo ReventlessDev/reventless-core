@@ -1,4 +1,4 @@
-import {resolve as resolvePath, dirname} from 'node:path';
+import {join as joinPath, resolve as resolvePath, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url'
 import {build as buildLayer} from '../lib/index.js';
 import {decco, moment, bsMoment, objectAssign, rescriptDependent, reventless, bsPlatformDependent} from './postprocess.js';
@@ -11,13 +11,13 @@ const dependenciesPath = resolvePath(pathToLayerData, pathToSavedDependencies);
 const opt = {
     //pathToSourcePackage: '../reventless-aws',
     sourcePackageName: '@reventless/reventless-aws',
-    sourcePackageVersion: '1.5.0-node20.22',
+    sourcePackageVersion: '2.0.0-rescript11.16',
     pathToLayerData,
     pathToSavedDependencies,
     excludeScopes: ['pulumi', 'types', 'opentelemetry'],
-    excludeModules: ['aws-sdk', 'wrap-ansi-cjs', 'strip-ansi-cjs', 'string-width-cjs'],
+    excludeModules: ['aws-sdk'],
     postProcess: {
-        "decco": (node, cwd) => decco(node, cwd, dependenciesPath),
+        "@rescript-labs/decco": (node, cwd) => decco(node, cwd, dependenciesPath),
         "@reventless/reventless": reventless,
         ">rescript": rescriptDependent,
         ">bs-platform": bsPlatformDependent,//FIXME: does this work?

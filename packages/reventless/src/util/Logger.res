@@ -31,7 +31,7 @@ let createTag = (~level as _, ~loc) => {
       ->Js.Re.captures
       ->Belt.Array.map(Js.Nullable.toOption)
       ->Belt.Array.map(Belt.Option.getWithDefault(_, ""))
-    `${captures[1]}#${captures[2]}:`
+    `${captures->Array.getUnsafe(1)}#${captures->Array.getUnsafe(2)}:`
   | _ => ""
   }
 }
@@ -77,10 +77,10 @@ let log: (
   }
 }
 
-let warn = log(~level=Level.Warning)
-let error = log(~level=Level.Error)
-let info = log(~level=Level.Info)
-let debug = log(~level=Level.Debug)
+let warn = log(~level=Level.Warning, ...)
+let error = log(~level=Level.Error, ...)
+let info = log(~level=Level.Info, ...)
+let debug = log(~level=Level.Debug, ...)
 
 let commandJsonToLogMessage: Message.commandJson => string = ({id, meta, commandJson}) => {
   let commandName = commandJson->Message.variantNameOfJson

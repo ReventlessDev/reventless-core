@@ -1,13 +1,12 @@
 open PulumiAws
 
-let toResource = (queue: PulumiAws.SQS.Queue.t) =>
-  Reventless.Adapter.resource(
-    ~service=queue["name"]->Pulumi.Output.apply(_ => Util_SQS_Runtime.service),
-    ~name=queue["name"],
-    ~id=queue["id"],
-    ~urn=queue["arn"],
-    ~info=queue["name"]->Pulumi.Output.apply(_ => ""),
-  )
+let toResource = (queue: PulumiAws.SQS.Queue.t) => {
+  ReventlessSpec.Adapter.service: queue.name->Pulumi.Output.apply(_ => Util_SQS_Runtime.service),
+  name: queue.name,
+  id: queue.id,
+  urn: queue.arn,
+  info: queue.name->Pulumi.Output.apply(_ => ""),
+}
 
 // Example ARN: arn:aws:sqs:eu-west-1:xxxxxx:MarketplaceServiceExtensionPointCommandTopic-0101023
 let arn2Account = arn =>
@@ -16,16 +15,21 @@ let arn2Account = arn =>
   | _ => ""
   }
 
-let subscribeToSnsTopic = (~queue, ~targetName, ~sourceName, ~topic, ~opts) =>
+let subscribeToSnsTopic = (
+  ~queue: PulumiAws.SQS.Queue.t,
+  ~targetName,
+  ~sourceName,
+  ~topic: ReventlessSpec.Adapter.resource,
+  ~opts,
+) =>
   SNS.TopicSubscription.make(
     ~name=sourceName ++ ("2" ++ targetName),
-    ~args=SNS.TopicSubscription.Args.make(
-      ~endpoint=queue["arn"]->Pulumi.Output.asInput,
-      ~protocol=#sqs,
-      ~topic=topic["urn"]->Pulumi.Output.asInput,
-      ~rawMessageDelivery=true->Pulumi.Input.make,
-      (),
-    ),
+    ~args={
+      endpoint: queue.arn->Pulumi.Output.asInput,
+      protocol: SQS,
+      topic: topic.urn->Pulumi.Output.asInput,
+      rawMessageDelivery: true->Pulumi.Input.make,
+    },
     ~opts=Some(opts),
   )
 

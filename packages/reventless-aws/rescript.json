@@ -1,0 +1,47 @@
+{
+  "name": "@reventless/reventless-aws",
+  "version": "0.1.1",
+  "namespace": "ReventlessAws",
+  "suffix": ".res.js",
+  "ppx-flags": [
+    "@rescript-labs/decco/ppx"
+  ],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    },
+    {
+      "dir": "__tests__",
+      "type": "dev"
+    }
+  ],
+  "bs-dependencies": [
+    "@rescript-labs/decco",
+    "@glennsl/rescript-jest",
+    "@reventless/bs-aws-sdk",
+    "@reventless/bs-pulumi-aws",
+    "@reventless/bs-pulumi-pulumi",
+    "@reventless/reventless-spec",
+    "@reventless/reventless",
+    "@rescript/core"
+  ],
+  "bsc-flags": [
+    "-open RescriptCore"
+  ],
+  "pinned-dependencies": [
+    "@reventless/bs-aws-sdk",
+    "@reventless/bs-pulumi-aws",
+    "@reventless/bs-pulumi-pulumi",
+    "@reventless/reventless-spec",
+    "@reventless/reventless"
+  ],
+  "external-stdlib": "@rescript/std"
+}

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reventless Docs: Extension Point</title>
+</head>
+<body>
+    <h2>Extension Point</h2>
+    <h1>Extension Point</h1>
+<blockquote>
+<p><strong>TODO</strong>: complete this documentation</p>
+</blockquote>
+<p>An <code>ExtensionPoint</code> is specified like this:</p>
+<pre class="re">let name = "<Plugin>.<ExtensionPointName>";
+
+type someRecord = {
+    specialMeaning: int,
+    otherValue: bool,
+    someDescription: string
+};
+[@decco]
+type command =
+    | InformExtensionPoint(bool)
+    | TellExtensionPointSomethingElse(someRecord); // or unit if not used
+
+[@decco]
+type event =
+    | SomethingHappened(bool, string)
+    | SomethingElseHappened(int);
+
+[@decco]
+type callCommand = 
+    | CallSomeSideEffect(int); // or unit if not used
+
+</pre>
+<h2>command</h2>
+<h2>event</h2>
+<h2>callCommand</h2>
+<p>These label side-effects, which can occur in an <code>ExtensionPoint</code> or <code>Extension</code> using this <code>ExtensionPointSpec</code>. The handling of such side-effects gets implemented in the <code>ExtensionPointMapping</code>s and <code>ExtensionMapping</code>s.</p>
+
+<script type="module" async>import mermaid from "https://unpkg.com/mermaid@10/dist/mermaid.esm.min.mjs";document.addEventListener('DOMContentLoaded', mermaid.initialize({"loadOnSave":true}));</script>
+</body>
+</html>

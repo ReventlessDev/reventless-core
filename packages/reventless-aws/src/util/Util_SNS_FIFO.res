@@ -1,13 +1,12 @@
 let service = "SNS_FIFO"
 
-let toResource = (topic: PulumiAws.SNS.Topic.t) =>
-  Reventless.Adapter.resource(
-    ~service=topic["name"]->Pulumi.Output.apply(_ => service),
-    ~name=topic["name"],
-    ~id=topic["id"],
-    ~urn=topic["arn"],
-    ~info=topic["name"]->Pulumi.Output.apply(_ => ""),
-  )
+let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) => {
+  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => service),
+  name,
+  id,
+  urn: arn,
+  info: name->Pulumi.Output.apply(_ => ""),
+}
 
 let findTopicInUnwrappedResources = resources =>
   switch resources->Reventless.Util_Adapter.filterSupportedUnwrappedResources([service]) {
@@ -16,5 +15,5 @@ let findTopicInUnwrappedResources = resources =>
     Js.log(err)
     Js.Exn.raiseError(err)
 
-  | resources => resources[0]
+  | resources => resources->Array.getUnsafe(0)
   }

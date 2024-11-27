@@ -16,9 +16,9 @@ type topicItem<'command> = {
   reference: string,
 }
 
-type commandsHandler<'command> = (
-  . array<topicItem<'command>>,
-) => Js.Promise.t<array<Belt.Result.t<string, string>>>
+type commandsHandler<'command> = array<topicItem<'command>> => Js.Promise.t<
+  array<Belt.Result.t<string, string>>,
+>
 
 module type T = {
   module Spec: Spec
@@ -32,8 +32,7 @@ module type T = {
     ~commandsHandler: commandsHandler,
     ~memorySize: int=?,
     ~timeout: int=?,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
-    unit,
+    ~opts: Pulumi.ComponentResource.options=?,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>
 
   let publish: ReventlessSpec.Component.t<
@@ -92,7 +91,7 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
     ~commandsHandler: commandsHandler,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs> = "default"
 
@@ -133,55 +132,60 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     ReventlessSpec.CommandTopic.outputs,
   > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
-  let publishJsonsFn = connector => async (. cmdJsons) =>
-    switch await connector.Adapter.publish(. cmdJsons) {
-    | exception e =>
-      cmdJsons->Logger.logCmdJsons(
-        ~level=Logger.Level.Error,
+  let publishJsonsFn = connector =>
+    async cmdJsons =>
+      switch await connector.Adapter.publish(cmdJsons) {
+      | exception e =>
+        cmdJsons->Logger.logCmdJsons(
+          ~level=Logger.Level.Error,
+          ~loc=__LOC__,
+          "Couldn't publish commands",
+        )
+        raise(e)
+      | _ => cmdJsons->Logger.logCmdJsons(~loc=__LOC__, "Published commands")
+      }
+
+  let publishFn: (
+    Adapter.connector,
+    Message.command'<Spec.Id.t, Spec.command>,
+  ) => Js.Promise.t<unit> = (connector, command') => {
+    let commandJson = {
+      Message.id: command'.id->Spec.Id.toString,
+      meta: command'.meta,
+      commandJson: command'.command->Spec.command_encode,
+      delay: None,
+    }
+    publishJsonsFn(connector)([commandJson])
+  }
+
+  let handleCommands = commandsHandler =>
+    async jsonItems => {
+      Logger.debug(
         ~loc=__LOC__,
-        "Couldn't publish commands",
+        "starting handleCommands. Command count",
+        jsonItems->Belt.Array.size,
       )
-      raise(e)
-    | _ => cmdJsons->Logger.logCmdJsons(~loc=__LOC__, "Published commands")
-    }
-
-  let publishFn: Adapter.connector => (
-    . Message.command'<Spec.Id.t, Spec.command>,
-  ) => Js.Promise.t<unit> = connector => {
-    (. command') => {
-      let commandJson = {
-        Message.id: command'.id->Spec.Id.toString,
-        meta: command'.meta,
-        commandJson: command'.command->Spec.command_encode,
-        delay: None,
+      let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
+        switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
+        | Belt_Result.Ok(command') => Some({reference, command: command'})
+        | Belt_Result.Error(err) =>
+          let commandStr = json->Js.Json.stringify
+          Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}`, err.message)
+          None
+        }
+      )
+      switch await commandsHandler(topicItems) {
+      | res =>
+        Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
+        res
+      | exception Js.Exn.Error(e) =>
+        Logger.error(~loc=__LOC__, "Couldn't handle commands", e)
+        Js.Exn.raiseError(__LOC__ ++ `Error: Couldn't handle commands`) // TODO: exception details
       }
-      publishJsonsFn(connector)(. [commandJson])
     }
-  }
-
-  let handleCommands = commandsHandler => async (. jsonItems) => {
-    Logger.debug(~loc=__LOC__, "starting handleCommands. Command count", jsonItems->Belt.Array.size)
-    let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
-      switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
-      | Belt_Result.Ok(command') => Some({reference, command: command'})
-      | Belt_Result.Error(err) =>
-        let commandStr = json->Js.Json.stringify
-        Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}`, err.message)
-        None
-      }
-    )
-    switch await commandsHandler(. topicItems) {
-    | res =>
-      Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
-      res
-    | exception Js.Exn.Error(e) =>
-      Logger.error(~loc=__LOC__, "Couldn't handle commands", e)
-      Js.Exn.raiseError(__LOC__ ++ `Error: Couldn't handle commands`) // TODO: exception details
-    }
-  }
 
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
-    let opts = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let connector = Connector.make(
       ~name=name->ComponentType.name(componentType),
@@ -191,17 +195,17 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
       ~opts,
     )
 
-    self->setPublish(connector->publishFn)
-    self->setPublishJsons(connector->publishJsonsFn)
+    self->setPublish(publishFn(connector, ...))
+    self->setPublishJsons(publishJsonsFn(connector, ...))
 
     self->setOutputs(makeOutputs(~resources=connector.resources))
   }
 
-  let make = (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?, _) =>
+  let make = (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~memorySize, ~timeout),
+      ~construct=construct(~memorySize, ~timeout, ...),
       ~opts,
       ~commandsHandler,
     )

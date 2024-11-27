@@ -1,0 +1,33 @@
+{
+  "name": "@reventless/reventless-spec",
+  "namespace": "ReventlessSpec",
+  "suffix": ".res.js",
+  "ppx-flags": [
+    "@rescript-labs/decco/ppx"
+  ],
+  "warnings": {
+    "error": "-44+101"
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    }
+  ],
+  "bs-dependencies": [
+    "@reventless/bs-pulumi-pulumi",
+    "@rescript-labs/decco",
+    "@rescript/core"
+  ],
+  "bsc-flags": [
+    "-open RescriptCore"
+  ],
+  "pinned-dependencies": [
+    "@reventless/bs-pulumi-pulumi"
+  ],
+  "external-stdlib": "@rescript/std"
+}

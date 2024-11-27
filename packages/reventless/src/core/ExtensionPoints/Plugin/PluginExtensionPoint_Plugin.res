@@ -35,7 +35,6 @@ let forwardCommand = async (
                   switch await AwsSdk.SQS.sendMessage(
                     ~queueId=extensionPoint.commandTopic,
                     ~messageBody=command,
-                    (),
                   ) {
                   | _ =>
                     Js.log3(
@@ -70,12 +69,12 @@ let callHandler = async (
 ) =>
   switch callCommand {
   | ReventlessSpec.PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
-    await createSchedule(. {
+    await createSchedule({
       name: Pulumi.Pulumi.getStackName() ++ ("-" ++ id),
       rate: timeout->Schedule.minutesFromNow,
       payload: {
         Message.id,
-        meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler", ()),
+        meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler"),
         command: ReventlessSpec.PluginExtensionPointSpec.DisconnectPlugin,
       }
       ->Message.command'_encode(
@@ -85,7 +84,7 @@ let callHandler = async (
       )
       ->Js.Json.stringify,
     })
-  | DeleteDisconnectSchedule(id) => await deleteSchedule(. id)
+  | DeleteDisconnectSchedule(id) => await deleteSchedule(id)
   | ForwardCommand({id, command, extensionPointName}) =>
     await forwardCommand(id, command, extensionPointName, queryEngine)
   | _ => ()

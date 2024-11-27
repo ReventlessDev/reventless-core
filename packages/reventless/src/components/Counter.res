@@ -44,15 +44,14 @@ module Source = {
   type event = CountFinished
 }
 
-type counterEventsHandler = (. array<Js.Json.t>) => Js.Promise.t<unit>
+type counterEventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
 module type T = {
   let make: (
     ~name: string,
     ~counterEventsHandler: counterEventsHandler,
     ~ttl: int=?,
-    ~opts: Pulumi.ComponentResource.Options.t=?,
-    unit,
+    ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 
   let count: component => count
@@ -89,7 +88,7 @@ module Make = (
     ~componentType: string,
     ~name: string,
     ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.Options.t>,
+    ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
   @obj
@@ -112,8 +111,8 @@ module Make = (
   external addToCounterTarget: component => addToCounterTarget = "addToCounterTarget"
 
   let construct = (~counterEventsHandler: counterEventsHandler, ~ttl: option<int>, self, name) => {
-    let opts = Pulumi.ComponentResource.Options.make(~parent=self->Component.toPulumiResource, ())
-    let opts2 = Pulumi.CustomResourceOptions.make(~parent=self->Component.toPulumiResource, ())
+    let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    let opts2 = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     module ReferencesSpec = {
       module Id = ReventlessSpec.Id.StringPure
@@ -165,7 +164,7 @@ module Make = (
           switch x {
           | [] => ("", "")
           | [counterId] => (counterId, "")
-          | parts => (parts[0], parts[1])
+          | parts => (parts->Array.getUnsafe(0), parts->Array.getUnsafe(1))
           }
       )
 
@@ -190,7 +189,7 @@ module Make = (
       })
 
     let count = async (saveBatch, countItems) => {
-      let result = await saveBatch(.
+      let result = await saveBatch(
         countItems->Belt.Array.map(({counterId, reference, inc}) => {
           let id = makeId((counterId, reference))
           let state: ReferencesSpec.state = {id, inc}
@@ -219,8 +218,8 @@ module Make = (
       }
     }
 
-    let referencesDb = ReferencesDb.make(~ttl?, ~opts, ())
-    let countsDb = CountsDb.make(~ttl?, ~opts, ())
+    let referencesDb = ReferencesDb.make(~ttl?, ~opts)
+    let countsDb = CountsDb.make(~ttl?, ~opts)
 
     let referencesName = ReferencesSpec.name
     let countsName = CountsSpec.name
@@ -241,13 +240,13 @@ module Make = (
       await references
       ->groupByCounterId
       ->Belt.Array.map(((counterId, dec)) =>
-        CountsDb.count(countsDb)(. counterId->CountsSpec.Id.makeFromString, countFieldName, -dec)
+        CountsDb.count(countsDb)(counterId->CountsSpec.Id.makeFromString, countFieldName, -dec)
       )
       ->Js.Promise.all
       ->Util.Promise.toUnit
       // TODO error handling
 
-      await counterEventsHandler(.
+      await counterEventsHandler(
         counts->Belt.Array.keepMap(state =>
           switch state->CountsSpec.state_decode {
           | Ok({id, count}) if count == 0 =>
@@ -256,7 +255,7 @@ module Make = (
               __MODULE__ ++
               `.counterHandler: counted down ${name}(${id}) to ${count->Belt.Int.toString}`,
             )
-            let meta = Message.generateMeta(~service=Source.name, ~user="Counter", ())
+            let meta = Message.generateMeta(~service=Source.name, ~user="Counter")
             Some(
               [
                 ("id", counterId->Js.Json.string),
@@ -291,24 +290,24 @@ module Make = (
       ~opts=opts2,
     )
 
-    self->setCount(count(referencesDb->ReferencesDb.saveBatch))
+    self->setCount(countItems => count(referencesDb->ReferencesDb.saveBatch, countItems))
     self->setAddToCounterTarget(handler.addToCounterTarget)
 
     self->setOutputs(
       makeOutputs(
-        ~referencesDb=(referencesDb->ReferencesDb.outputs)["resources"],
-        ~countsDb=(countsDb->CountsDb.outputs)["resources"],
+        ~referencesDb=(referencesDb->ReferencesDb.outputs).resources,
+        ~countsDb=(countsDb->CountsDb.outputs).resources,
       ),
     )
   }
 
   let oneWeek = 60 * 60 * 24 * 7 //604800 sec
 
-  let make = (~name, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?, _) =>
+  let make = (~name, ~counterEventsHandler, ~ttl=oneWeek, ~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name=name->ComponentType.name(componentType),
-      ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl)),
+      ~construct=construct(~counterEventsHandler, ~ttl=Some(ttl), ...),
       ~opts,
     )
 }

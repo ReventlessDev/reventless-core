@@ -12,7 +12,7 @@ let eventToJson = (specIdEncode, specEventEncode, id, event') =>
   ->Js.Json.object_
 
 let eventsToJson = (events', specIdEncode, specEventEncode, id) =>
-  events'->Belt.Array.map(eventToJson(specIdEncode, specEventEncode, id))
+  events'->Belt.Array.map(event => eventToJson(specIdEncode, specEventEncode, id, event))
 
 let storageAppendErrorHandler = (specName, specIdToString, id, err) => {
   let errMsg =
@@ -23,7 +23,7 @@ let storageAppendErrorHandler = (specName, specIdToString, id, err) => {
 }
 
 let publishToEventTopic = async (eventTopicPublish, specIdToString, id, events') => {
-  try await eventTopicPublish(. events') catch {
+  try await eventTopicPublish(events') catch {
   | Js.Exn.Error(err) =>
     let msg = `EventLog.appendFn(${id->specIdToString}): EventTopic.publish Error: `
     Js.log2(msg, err)
@@ -47,24 +47,25 @@ let appendFn = (
   specEventEncode: 'specEvent => Js.Json.t,
   eventTopicPublish: EventTopic.publish<'specId, 'specEvent>,
   specName: string,
-) => async (.
-  sequenceNr: int,
-  id: 'specId,
-  events': array<Reventless.Message.event'<'specId, 'specEvent>>,
-) => {
-  try {
-    let eventsJson = events'->eventsToJson(specIdEncode, specEventEncode, id)
+) =>
+  async (
+    sequenceNr: int,
+    id: 'specId,
+    events': array<Reventless.Message.event'<'specId, 'specEvent>>,
+  ) => {
+    try {
+      let eventsJson = events'->eventsToJson(specIdEncode, specEventEncode, id)
 
-    switch await storageAppend(. sequenceNr, id->specIdToString, eventsJson) {
-    | appendResult =>
-      await publishToEventTopic(eventTopicPublish, specIdToString, id, events')
-      appendResult
-    | exception Js.Exn.Error(e) => storageAppendErrorHandler(specName, specIdToString, id, e)
+      switch await storageAppend(sequenceNr, id->specIdToString, eventsJson) {
+      | appendResult =>
+        await publishToEventTopic(eventTopicPublish, specIdToString, id, events')
+        appendResult
+      | exception Js.Exn.Error(e) => storageAppendErrorHandler(specName, specIdToString, id, e)
+      }
+    } catch {
+    | exn => catchErrorHandler(exn)
     }
-  } catch {
-  | exn => catchErrorHandler(exn)
   }
-}
 
 let decodeEvent = (id, specEventDecode, json) =>
   Js.Json.decodeObject(json)
@@ -90,9 +91,10 @@ let decodeEvent = (id, specEventDecode, json) =>
   )
 
 let decodeEvents = (jsons, id, specEventDecode) =>
-  jsons->Belt.Array.map(decodeEvent(id, specEventDecode))
+  jsons->Belt.Array.map(json => decodeEvent(id, specEventDecode, json))
 
-let replayFn = (storageReplay, specIdToString, specEventDecode) => async (. id) => {
-  let jsonEvents = await storageReplay(. id->specIdToString)
-  jsonEvents->decodeEvents(id->specIdToString, specEventDecode)
-}
+let replayFn = (storageReplay, specIdToString, specEventDecode) =>
+  async id => {
+    let jsonEvents = await storageReplay(id->specIdToString)
+    jsonEvents->decodeEvents(id->specIdToString, specEventDecode)
+  }

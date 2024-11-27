@@ -3,8 +3,8 @@ type resolverConfig<'command> = {
   fields: array<string>,
 }
 
-type init<'state, 'event> = (. 'event) => 'state
-type apply<'state, 'event> = (. 'state, 'event) => 'state
+type init<'state, 'event> = 'event => 'state
+type apply<'state, 'event> = ('state, 'event) => 'state
 
 type create<'command, 'event, 'error> = (
   . 'command,
