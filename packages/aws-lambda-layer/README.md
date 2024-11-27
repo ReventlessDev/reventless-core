@@ -4,18 +4,18 @@ This tool takes a module specification (e.g. `@reventless/reventless-aws@latest`
 
 **NOTE: This is currently work in progress and may not be finished or contain bugs!**
 
-## Example Usage
+## Usage
 
-The `example` directory holds an application, to create a lambda layer for the `reventless-aws` package and all it's dependencies.
+The `builder` directory holds an application, to create a lambda layer for the `reventless-aws` package and all it's dependencies.
 
 If necessary, update the target version of `reventless-aws` in the `index.js` file and run the node application afterwards:
 
 ```
-cd example
+cd builder
 node index.js
 ```
 
-The application will create/update a zip file called `reventless-layer.zip` inside the `example` directory. To create a (new) Lambda layer:
+The application will create/update a zip file called `reventless-layer.zip` inside the `builder` directory. To create a (new) Lambda layer:
 
 - go to the AWS console
 - go to the AWS Lambda section, and select `Layer`

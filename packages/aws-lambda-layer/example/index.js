@@ -17,7 +17,7 @@ const opt = {
     excludeScopes: ['pulumi', 'types', 'opentelemetry'],
     excludeModules: ['aws-sdk'],
     postProcess: {
-        "decco": (node, cwd) => decco(node, cwd, dependenciesPath),
+        "@rescript-labs/decco": (node, cwd) => decco(node, cwd, dependenciesPath),
         "@reventless/reventless": reventless,
         ">rescript": rescriptDependent,
         ">bs-platform": bsPlatformDependent,//FIXME: does this work?
