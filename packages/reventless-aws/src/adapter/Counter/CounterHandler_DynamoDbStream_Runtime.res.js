@@ -131,8 +131,7 @@ function referencesView_decode(value) {
 function handleStreamEvent(referencesStream, countsStream, counterHandler, streamEvent, param) {
   var referencesARN = referencesStream.urn.get();
   var countsARN = countsStream.urn.get();
-  var records = Belt_Option.getWithDefault(streamEvent.Records, []);
-  var match = Belt_Array.partition(records, (function (record) {
+  var match = Belt_Array.partition(streamEvent.Records, (function (record) {
           if (record.eventSource === "aws:dynamodb") {
             if (record.eventSourceARN === referencesARN) {
               return true;

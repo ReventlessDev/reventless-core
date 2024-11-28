@@ -71,7 +71,7 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
       throw e;
     }
     if (exit$1 === 2) {
-      return Logger$Reventless.debug("File \"CommandTopicConnector_SQS_Runtime.res\", line 57, characters 35-42", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
+      return Logger$Reventless.debug("File \"CommandTopicConnector_SQS_Runtime.res\", line 52, characters 35-42", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
     }
     
   }

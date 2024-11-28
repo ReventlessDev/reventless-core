@@ -1,9 +1,4 @@
-let handleQueueEvent = async (
-  handleCommands,
-  queue,
-  event: PulumiAws.SQS.Queue.callbackEvent,
-  _,
-) => {
+let handleQueueEvent = async (handleCommands, queue, event: PulumiAws.SQS.Queue.event, _) => {
   let records = event.records
   let jsons = records->Belt.Array.keepMap(record => {
     let commandStr = record.body

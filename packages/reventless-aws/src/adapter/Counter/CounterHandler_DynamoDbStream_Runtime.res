@@ -57,9 +57,8 @@ let handleStreamEvent = (
   let referencesARN = referencesStream.urn->Pulumi.Output.get
   let countsARN = countsStream.urn->Pulumi.Output.get
 
-  let records = streamEvent.records->Belt.Option.getWithDefault([])
   let (dynamoDbRecords, ignoredRecords) =
-    records->Belt.Array.partition(record =>
+    streamEvent.records->Belt.Array.partition(record =>
       record.eventSource == "aws:dynamodb" &&
         (record.eventSourceARN == referencesARN || record.eventSourceARN == countsARN)
     )

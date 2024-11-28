@@ -2,13 +2,11 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 
 async function handleStreamEvent(handleEvents, streamEvent, param) {
-  var records = Belt_Option.getWithDefault(streamEvent.Records, []);
-  var jsons = Belt_Array.keepMap(records, (function (record) {
+  var jsons = Belt_Array.keepMap(streamEvent.Records, (function (record) {
           var eventSource = record.eventSource;
           if (eventSource === "aws:dynamodb") {
             var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
