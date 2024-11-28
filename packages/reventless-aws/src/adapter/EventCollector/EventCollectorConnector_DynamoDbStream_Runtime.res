@@ -1,6 +1,6 @@
 let handleStreamEvent: (
   array<Js.Json.t> => promise<unit>,
-  AwsSdk.DynamoDb.Stream.StreamEvent.t,
+  PulumiAws.DynamoDb.Stream.event,
   _,
 ) => Js.Promise.t<unit> = async (handleEvents, streamEvent, _) => {
   let records = streamEvent.records->Belt.Option.getWithDefault([])

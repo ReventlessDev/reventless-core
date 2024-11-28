@@ -1,4 +1,4 @@
-open AwsSdk.DynamoDb.Stream
+open PulumiAws.DynamoDb.Stream
 
 let service = "DynamoDbStream"
 
@@ -19,7 +19,7 @@ let buildEvent'Json = dict =>
 
 let buildStateJson = dict => dict->Js.Json.object_
 
-let parseDynamoDbStreamRecord = (buildJson, record: Record.t) => {
+let parseDynamoDbStreamRecord = (buildJson, record: record) => {
   let record = record.dynamodb
   let id = record->Belt.Option.flatMap(record => AwsSdk.DynamoDb.Util.unmarshall(record.keys.id))
 
@@ -43,10 +43,10 @@ let parseDynamoDbStreamRecord = (buildJson, record: Record.t) => {
   }
 }
 
-let parseDynamoDbStreamRecordEvent: AwsSdk.DynamoDb.Stream.Record.t => result = record =>
+let parseDynamoDbStreamRecordEvent: PulumiAws.DynamoDb.Stream.record => result = record =>
   parseDynamoDbStreamRecord(buildEvent'Json, record)
 
-let parseDynamoDbStreamRecordState: AwsSdk.DynamoDb.Stream.Record.t => result = record =>
+let parseDynamoDbStreamRecordState: PulumiAws.DynamoDb.Stream.record => result = record =>
   parseDynamoDbStreamRecord(buildStateJson, record)
 
 let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)

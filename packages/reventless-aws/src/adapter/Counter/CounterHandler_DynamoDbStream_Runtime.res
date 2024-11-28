@@ -51,7 +51,7 @@ let handleStreamEvent = (
   ~referencesStream: resource,
   ~countsStream: resource,
   ~counterHandler: counterHandler,
-  streamEvent: AwsSdk.DynamoDb.Stream.StreamEvent.t,
+  streamEvent: PulumiAws.DynamoDb.Stream.event,
   _,
 ) => {
   let referencesARN = referencesStream.urn->Pulumi.Output.get

@@ -1,16 +1,15 @@
-type record = {eventSource: string}
-type callbackEvent = {@as("Records") records: array<record>}
-
-external toSqsRecord: record => PulumiAws.SQS.Queue.record = "%identity"
-external toDynamoDbStreamRecord: record => AwsSdk.DynamoDb.Stream.Record.t = "%identity"
-
-let handleCallbackEvent = async (handleEvents, queue, callbackEvent: callbackEvent, _) => {
+let handleCallbackEvent = async (
+  handleEvents,
+  queue,
+  callbackEvent: PulumiAws.Lambda.CallbackFunction.event,
+  _,
+) => {
   let jsons = callbackEvent.records->Belt.Array.keepMap(record =>
     switch record.eventSource {
-    | "aws:sqs" => record->toSqsRecord->Util.SQS_Runtime.parseSqsRecord
+    | "aws:sqs" => record->PulumiAws.SQS.Queue.asRecord->Util.SQS_Runtime.parseSqsRecord
     | "aws:dynamodb" =>
       switch record
-      ->toDynamoDbStreamRecord
+      ->PulumiAws.DynamoDb.Stream.asRecord
       ->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecordEvent {
       | NewImage(_, newImage)
       | NewAndOldImage(_, newImage, _) =>
@@ -40,7 +39,7 @@ let handleCallbackEvent = async (handleEvents, queue, callbackEvent: callbackEve
         record,
       ): AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry => {
         id: idx->string_of_int,
-        receiptHandle: (record->toSqsRecord).receiptHandle,
+        receiptHandle: (record->PulumiAws.SQS.Queue.asRecord).receiptHandle,
       })
     switch entries {
     | [] => ()
