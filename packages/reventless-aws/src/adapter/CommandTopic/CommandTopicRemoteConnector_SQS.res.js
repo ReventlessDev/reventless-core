@@ -2,14 +2,14 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
+var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_Runtime.res.js");
 
 function make(commandTopicOutputs) {
   return {
           remotePublish: (function (extra) {
-              return CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS_Runtime$ReventlessAws.fromResource(Adapter$Reventless.unwrappedToResource(Util_SQS_Runtime$ReventlessAws.findUnwrappedResource(Belt_Array.map(commandTopicOutputs.resources, (function (prim) {
+              return CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS_Runtime$ReventlessAws.fromResource(AdapterDeploytime$Reventless.unwrappedToResource(Util_SQS_Runtime$ReventlessAws.findUnwrappedResource(Belt_Array.map(commandTopicOutputs.resources, (function (prim) {
                                             return prim;
                                           }))))), Util_SQS_Runtime$ReventlessAws.service, extra);
             })
@@ -17,4 +17,4 @@ function make(commandTopicOutputs) {
 }
 
 exports.make = make;
-/* Adapter-Reventless Not a pure module */
+/* AdapterDeploytime-Reventless Not a pure module */

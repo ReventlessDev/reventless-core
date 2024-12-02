@@ -22,4 +22,4 @@ function make(name, param, allQueryDbs) {
 }
 
 exports.make = make;
-/* Adapter-Reventless Not a pure module */
+/* Util_DynamoDbStream-ReventlessAws Not a pure module */
