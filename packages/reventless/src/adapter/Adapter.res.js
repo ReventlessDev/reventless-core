@@ -2,7 +2,6 @@
 'use strict';
 
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
-var Pulumi = require("@pulumi/pulumi");
 
 function outputToResource(resourceOutput) {
   return {
@@ -49,16 +48,6 @@ function resourcesOutputToResource(resourcesOutput) {
   }
 }
 
-function unwrappedToResource(unwrappedResource) {
-  return {
-          name: Pulumi.output(unwrappedResource.name),
-          id: Pulumi.output(unwrappedResource.id),
-          urn: Pulumi.output(unwrappedResource.urn),
-          info: Pulumi.output(unwrappedResource.info),
-          service: Pulumi.output(unwrappedResource.service)
-        };
-}
-
 function unwrappedOutputToResource(unwrappedResource) {
   return {
           name: unwrappedResource.apply(function (r) {
@@ -96,7 +85,6 @@ function logResource(r) {
 
 exports.outputToResource = outputToResource;
 exports.resourcesOutputToResource = resourcesOutputToResource;
-exports.unwrappedToResource = unwrappedToResource;
 exports.unwrappedOutputToResource = unwrappedOutputToResource;
 exports.logResource = logResource;
-/* @pulumi/pulumi Not a pure module */
+/* No side effect */
