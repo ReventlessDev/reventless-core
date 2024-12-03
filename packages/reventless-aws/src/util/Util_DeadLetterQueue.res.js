@@ -9,18 +9,10 @@ var name = "DeadLetterQueue";
 
 var nameFifo = "FIFO" + name;
 
-console.log("Util_DeadletterQueue: creating queue ...");
-
 var queue = new (Aws.sqs.Queue)(name, {
       visibilityTimeoutSeconds: 180,
       sqsManagedSseEnabled: false
     });
-
-queue.arn.apply(function (param) {
-      console.log("Util_DeadletterQueue: created queue");
-    });
-
-console.log("Util_DeadletterQueue: creating fifoQueue ...");
 
 var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
       contentBasedDeduplication: true,
@@ -29,41 +21,19 @@ var fifoQueue = new (Aws.sqs.Queue)(nameFifo, {
       sqsManagedSseEnabled: false
     });
 
-fifoQueue.arn.apply(function (param) {
-      console.log("Util_DeadletterQueue: created fifoQueue");
-    });
-
 function callback(evt, ctx) {
   return new Promise((function (resolve, param) {
                 resolve((console.log("DEAD LETTER ITEM:", evt, ctx), undefined));
               }));
 }
 
-console.log("Util_DeadletterQueue: creating handler ...");
-
 var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(callback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), {
       parent: Caml_option.some(queue)
     });
 
-handler.arn.apply(function (param) {
-      console.log("Util_DeadletterQueue: created handler");
-    });
-
-console.log("Util_DeadletterQueue: creating subscription ...");
-
 var subscription = queue.onEvent(name, handler);
 
-subscription.eventSourceMapping.id.apply(function (param) {
-      console.log("Util_DeadletterQueue: created subscription");
-    });
-
-console.log("Util_DeadletterQueue: creating fifoSubscription ...");
-
 var fifoSubscription = fifoQueue.onEvent(nameFifo, handler);
-
-fifoSubscription.eventSourceMapping.id.apply(function (param) {
-      console.log("Util_DeadletterQueue: created fifoSubscription");
-    });
 
 exports.name = name;
 exports.nameFifo = nameFifo;
@@ -73,4 +43,4 @@ exports.callback = callback;
 exports.handler = handler;
 exports.subscription = subscription;
 exports.fifoSubscription = fifoSubscription;
-/*  Not a pure module */
+/* queue Not a pure module */
