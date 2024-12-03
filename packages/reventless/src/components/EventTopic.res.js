@@ -27,10 +27,10 @@ function Make(Spec, Publisher) {
                               val = await publisher.publish(Spec.Id.toString(id), event$p.meta, event$pJson);
                             }
                             catch (e){
-                              Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 93, characters 17-24", "Error", event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
+                              Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 95, characters 17-24", "Error", event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
                               throw e;
                             }
-                            return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 100, characters 17-24", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
+                            return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 102, characters 17-24", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
                           }))));
     };
   };

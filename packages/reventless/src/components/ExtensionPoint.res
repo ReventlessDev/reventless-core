@@ -5,6 +5,14 @@ let componentType = ComponentType.ExtensionPoint
 
 type name = string
 
+type unwrappedOutputs = {
+  name: string,
+  aggregateNames: array<string>,
+  outgoingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
+  commandTopic: CommandTopic.unwrappedOutputs,
+  eventTopic: EventTopic.unwrappedOutputs,
+}
+
 module type Mappings = {
   module Spec: ReventlessSpec.ExtensionPointMapping.Spec
   module type Mapping = ExtensionPointMapping.T with module ExtensionPoint := Spec

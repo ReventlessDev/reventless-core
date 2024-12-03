@@ -2,6 +2,8 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.CommandTopic
 
+type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
+
 exception NotPublishedToConnector(Js.Promise.error)
 
 module type Spec = {

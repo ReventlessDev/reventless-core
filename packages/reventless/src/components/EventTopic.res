@@ -7,6 +7,8 @@ type component = ReventlessSpec.Component.t<t, ReventlessSpec.EventTopic.outputs
 
 type publish<'id, 'event> = array<Message.event'<'id, 'event>> => Js.Promise.t<unit>
 
+type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
+
 exception NotPublishedToPublisher(Js.Promise.error)
 
 module type Spec = {

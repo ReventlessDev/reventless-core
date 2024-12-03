@@ -23,15 +23,15 @@ function Make(Spec, Connector) {
         val = await connector.publish(cmdJsons);
       }
       catch (e){
-        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 141, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
+        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 143, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
         throw e;
       }
-      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 145, characters 47-54", undefined, cmdJsons, "Published commands");
+      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 147, characters 47-54", undefined, cmdJsons, "Published commands");
     };
   };
   var handleCommands = function (commandsHandler) {
     return async function (jsonItems) {
-      Logger$Reventless.debug("File \"CommandTopic.res\", line 164, characters 13-20", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
+      Logger$Reventless.debug("File \"CommandTopic.res\", line 166, characters 13-20", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
       var topicItems = Belt_Array.keepMap(jsonItems, (function (param) {
               var json = param.command;
               var command$p = (function (__x) {
@@ -44,7 +44,7 @@ function Make(Spec, Connector) {
                       };
               }
               var commandStr = JSON.stringify(json);
-              Logger$Reventless.error("File \"CommandTopic.res\", line 173, characters 28-35", undefined, undefined, "Couldn't decode command " + commandStr, command$p._0.message);
+              Logger$Reventless.error("File \"CommandTopic.res\", line 175, characters 28-35", undefined, undefined, "Couldn't decode command " + commandStr, command$p._0.message);
             }));
       var res;
       try {
@@ -53,12 +53,12 @@ function Make(Spec, Connector) {
       catch (raw_e){
         var e = Caml_js_exceptions.internalToOCamlException(raw_e);
         if (e.RE_EXN_ID === Js_exn.$$Error) {
-          Logger$Reventless.error("File \"CommandTopic.res\", line 182, characters 26-33", undefined, undefined, "Couldn't handle commands", e._1);
-          return Js_exn.raiseError("File \"CommandTopic.res\", line 183, characters 26-33" + "Error: Couldn't handle commands");
+          Logger$Reventless.error("File \"CommandTopic.res\", line 184, characters 26-33", undefined, undefined, "Couldn't handle commands", e._1);
+          return Js_exn.raiseError("File \"CommandTopic.res\", line 185, characters 26-33" + "Error: Couldn't handle commands");
         }
         throw e;
       }
-      Logger$Reventless.debug("File \"CommandTopic.res\", line 179, characters 26-33", undefined, undefined, "finished", "CommandTopic.handleCommands");
+      Logger$Reventless.debug("File \"CommandTopic.res\", line 181, characters 26-33", undefined, undefined, "finished", "CommandTopic.handleCommands");
       return res;
     };
   };
