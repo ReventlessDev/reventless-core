@@ -124,7 +124,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
             return coreStack.getOutput("extensionPoints");
           }));
     var pureOutputs = coreExtensionPoints.apply(function (coreExtensionPoints) {
-          var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? (console.log("Plugin: coreExtensionPoints=", coreExtensionPoints), coreExtensionPoints) : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
+          var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
           var extensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
           var corePluginExtensionPoint_name = extensionPointUnwrapped.name;
           var corePluginExtensionPoint_aggregateNames = extensionPointUnwrapped.aggregateNames;

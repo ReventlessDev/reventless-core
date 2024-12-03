@@ -201,9 +201,7 @@ module Make = (
 
       coreExtensionPoints->Pulumi.Output.apply(coreExtensionPoints => {
         let coreExtensionPoints = switch coreExtensionPoints {
-        | Some(coreExtensionPoints) =>
-          Js.log2("Plugin: coreExtensionPoints=", coreExtensionPoints)
-          coreExtensionPoints
+        | Some(coreExtensionPoints) => coreExtensionPoints
         | None =>
           Js.Exn.raiseError(
             "No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
@@ -214,7 +212,6 @@ module Make = (
             coreExtensionPoints->Pulumi.StackReference.get(
               ReventlessSpec.PluginExtensionPointSpec.name,
             )
-          Js.log2("Plugin: extensionPointUnwrapped=", extensionPointUnwrapped)
           {
             name: extensionPointUnwrapped.name,
             aggregateNames: extensionPointUnwrapped.aggregateNames,
@@ -231,7 +228,6 @@ module Make = (
             },
           }
         }
-        Js.log2("Plugin: corePluginExtensionPoint=", corePluginExtensionPoint)
 
         let corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(
           corePluginExtensionPoint.commandTopic,

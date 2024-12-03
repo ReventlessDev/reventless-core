@@ -4,7 +4,7 @@
 var Decco = require("@rescript-labs/decco/src/Decco.res.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.res.js");
-var Pulumi = require("@pulumi/pulumi");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../../Message.res.js");
@@ -68,7 +68,7 @@ async function callHandler(createSchedule, deleteSchedule, queryEngine, callComm
     case "CreateDisconnectSchedule" :
         var id = callCommand._0;
         return await createSchedule({
-                    name: Pulumi.getStack() + ("-" + id),
+                    name: Belt_Option.getWithDefault(process.env.Environment, "unknownEnv") + ("-" + id),
                     rate: Schedule$Reventless.minutesFromNow(callCommand._1),
                     payload: JSON.stringify((function (__x) {
                               return Message$Reventless.command$p_encode(Decco.stringToJson, PluginExtensionPointSpec$ReventlessSpec.command_encode, __x);

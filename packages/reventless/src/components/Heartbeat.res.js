@@ -47,7 +47,7 @@ function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
                   _0: timeout
                 }))
       }, opts);
-  var heartbeatLambda = new (Aws.lambda.CallbackFunction)(childName, Lambda$PulumiAws.CallbackFunction.Args.make(heartBeatCallback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
+  var heartbeatLambda = new (Aws.lambda.CallbackFunction)(childName, Lambda$PulumiAws.CallbackFunction.Args.make(heartBeatCallback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
   var cloudwatchEventTarget = new (Aws.cloudwatch.EventTarget)(childName, {
         rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
         arn: heartbeatLambda.arn
