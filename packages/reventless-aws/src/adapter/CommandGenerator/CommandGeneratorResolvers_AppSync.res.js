@@ -16,7 +16,7 @@ var CommandGeneratorResolvers_AppSync_Runtime$ReventlessAws = require("./Command
 function make(name, api, fields, commandGenerator, opts) {
   var commandGeneratorLambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
               return CommandGeneratorResolvers_AppSync_Runtime$ReventlessAws.generateCommand(commandGenerator, extra, extra$1);
-            }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
+            }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
   var commandGeneratorArn = commandGeneratorLambda.arn;
   new (Aws.lambda.Permission)(name, {
         action: "lambda:InvokeFunction",

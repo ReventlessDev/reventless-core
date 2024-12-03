@@ -102,7 +102,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                   param[0],
                   param[1],
                   Iam.ManagedPolicy.LambdaFullAccess
-                ], undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
+                ], undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
         new (Aws.lambda.Permission)(name, {
               action: "lambda:InvokeFunction",
               function: lambda.arn,

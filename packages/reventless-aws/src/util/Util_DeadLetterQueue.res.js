@@ -27,7 +27,7 @@ function callback(evt, ctx) {
               }));
 }
 
-var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(callback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), {
+var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(callback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), {
       parent: Caml_option.some(queue)
     });
 

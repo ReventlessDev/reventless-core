@@ -21,7 +21,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
   policies.apply(function (policies) {
         var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
                     return EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleEvents, extra, extra$1);
-                  }), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType)), opts);
+                  }), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType), undefined), opts);
         return Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
                           return Js_dict.map((function (eventTopic) {
                                         return eventTopic.resources;
