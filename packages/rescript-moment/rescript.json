@@ -1,0 +1,27 @@
+{
+  "name": "rescript-moment",
+  "namespace": "MomentRe",
+  "suffix": ".res.js",
+  "bsc-flags": [
+    "-bs-super-errors"
+  ],
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src",
+      "subdirs": true
+    },
+    {
+      "dir": "__tests__",
+      "subdirs": true
+    }
+  ],
+  "bs-dependencies": [
+    "@glennsl/rescript-jest"
+  ],
+  "bs-dev-dependencies": [],
+  "external-stdlib": "@rescript/std"
+}
