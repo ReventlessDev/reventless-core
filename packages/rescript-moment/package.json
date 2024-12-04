@@ -1,8 +1,11 @@
 {
-  "name": "rescript-moment",
+  "name": "@reventless/rescript-moment",
   "version": "0.8.0",
   "description": "ReScript bindings for Moment.js",
   "main": "lib/js/src/MomentRe.res.js",
+  "publishConfig": {
+    "@reventless:registry": "https://gitlab.com/api/v4/projects/24127696/packages/npm/"
+  },
   "scripts": {
     "build": "rescript build",
     "start": "rescript build -w",
@@ -25,5 +28,6 @@
     "husky": "^4.2.5",
     "moment": "^2.26.0",
     "rescript": "^11.1.4"
-  }
+  },
+  "gitHead": "573cef9e63145a7cc7ed1b979c8c7f4f12339a1f"
 }

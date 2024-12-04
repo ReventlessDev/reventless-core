@@ -583,62 +583,48 @@ describe("moment", () => {
   })
 })
 
-describe(
-  "moment duration",
-  {
-    open ExpectJs
-    () => {
-      test("get duration", () => expect(duration(2., #days))->toBeTruthy)
-      test("get duration millis", () => expect(durationMillis(2.0))->toBeTruthy)
-      test("get duration format", () => expect(durationFormat("P2D")->Duration.toJSON)->toBe("P2D"))
-      test("#milliseconds", () =>
-        expect(duration(2., #milliseconds)->Duration.milliseconds)->toBe(2)
-      )
-      test("#seconds", () => expect(duration(2., #seconds)->Duration.seconds)->toBe(2))
-      test("#asSeconds", () => expect(duration(2., #seconds)->Duration.asSeconds)->toBe(2.))
-      test("#minutes", () => expect(duration(2., #minutes)->Duration.minutes)->toBe(2))
-      test("#asMinutes", () => expect(duration(2., #minutes)->Duration.asMinutes)->toBe(2.))
-      test("#hours", () => expect(duration(2., #hours)->Duration.hours)->toBe(2))
-      test("#asHours", () => expect(duration(2., #hours)->Duration.asHours)->toBe(2.))
-      test("#days", () => expect(duration(2., #days)->Duration.days)->toBe(2))
-      test("#asDays", () => expect(duration(2., #days)->Duration.asDays)->toBe(2.))
-      test("#weeks", () => expect(duration(2., #weeks)->Duration.weeks)->toBe(2))
-      test("#asWeeks", () => expect(duration(2., #weeks)->Duration.asWeeks)->toBe(2.))
-      test("#months", () => expect(duration(2., #months)->Duration.months)->toBe(2))
-      test("#asMonths", () => expect(duration(2., #months)->Duration.asMonths)->toBe(2.))
-      test("#years", () => expect(duration(2., #years)->Duration.years)->toBe(2))
-      test("#asYears", () => expect(duration(2., #years)->Duration.asYears)->toBe(2.))
-      test("#as", () => expect(duration(2., #days)->Duration.asUnitOfTime(#days))->toBe(2.))
-      test("#toJSON", () => expect(duration(2., #days)->Duration.toJSON)->toBe("P2D"))
-      test("#toISOString", () => expect(duration(2., #days)->Duration.toJSON)->toBe("P2D"))
-      test("#humanize", () => expect(duration(2., #days)->Duration.humanize)->toBe("2 days"))
-    }
-  },
-)
+describe("moment duration", () => {
+  test("get duration", () => expect(duration(2., #days))->toBeTruthy)
+  test("get duration millis", () => expect(durationMillis(2.0))->toBeTruthy)
+  test("get duration format", () => expect(durationFormat("P2D")->Duration.toJSON)->toBe("P2D"))
+  test("#milliseconds", () => expect(duration(2., #milliseconds)->Duration.milliseconds)->toBe(2))
+  test("#seconds", () => expect(duration(2., #seconds)->Duration.seconds)->toBe(2))
+  test("#asSeconds", () => expect(duration(2., #seconds)->Duration.asSeconds)->toBe(2.))
+  test("#minutes", () => expect(duration(2., #minutes)->Duration.minutes)->toBe(2))
+  test("#asMinutes", () => expect(duration(2., #minutes)->Duration.asMinutes)->toBe(2.))
+  test("#hours", () => expect(duration(2., #hours)->Duration.hours)->toBe(2))
+  test("#asHours", () => expect(duration(2., #hours)->Duration.asHours)->toBe(2.))
+  test("#days", () => expect(duration(2., #days)->Duration.days)->toBe(2))
+  test("#asDays", () => expect(duration(2., #days)->Duration.asDays)->toBe(2.))
+  test("#weeks", () => expect(duration(2., #weeks)->Duration.weeks)->toBe(2))
+  test("#asWeeks", () => expect(duration(2., #weeks)->Duration.asWeeks)->toBe(2.))
+  test("#months", () => expect(duration(2., #months)->Duration.months)->toBe(2))
+  test("#asMonths", () => expect(duration(2., #months)->Duration.asMonths)->toBe(2.))
+  test("#years", () => expect(duration(2., #years)->Duration.years)->toBe(2))
+  test("#asYears", () => expect(duration(2., #years)->Duration.asYears)->toBe(2.))
+  test("#as", () => expect(duration(2., #days)->Duration.asUnitOfTime(#days))->toBe(2.))
+  test("#toJSON", () => expect(duration(2., #days)->Duration.toJSON)->toBe("P2D"))
+  test("#toISOString", () => expect(duration(2., #days)->Duration.toJSON)->toBe("P2D"))
+  test("#humanize", () => expect(duration(2., #days)->Duration.humanize)->toBe("2 days"))
+})
 
-describe(
-  "moment diff",
-  {
-    open ExpectJs
-    () => {
-      test("should return correct difference of moments in days", () =>
-        expect(diff(moment("2017-01-02"), moment("2017-01-01"), #days))->toBe(1.)
-      )
-      test("should return correct difference of moments in hours", () =>
-        expect(
-          diff(moment("2017-01-01 02:00:00.000"), moment("2017-01-01 00:00:00.000"), #hours),
-        )->toBe(2.)
-      )
-      test("should be able to handle negative difference of moments", () =>
-        expect(
-          diff(moment("2017-01-01 00:00:00.000"), moment("2017-01-01 02:00:00.000"), #hours),
-        )->toBe(-2.)
-      )
-      test("should return correct difference of moments in hours", () =>
-        expect(
-          diff(moment("2017-01-01 00:25:05.000"), moment("2017-01-01 00:00:00.000"), #minutes),
-        )->toBe(25.)
-      )
-    }
-  },
-)
+describe("moment diff", () => {
+  test("should return correct difference of moments in days", () =>
+    expect(diff(moment("2017-01-02"), moment("2017-01-01"), #days))->toBe(1.)
+  )
+  test("should return correct difference of moments in hours", () =>
+    expect(
+      diff(moment("2017-01-01 02:00:00.000"), moment("2017-01-01 00:00:00.000"), #hours),
+    )->toBe(2.)
+  )
+  test("should be able to handle negative difference of moments", () =>
+    expect(
+      diff(moment("2017-01-01 00:00:00.000"), moment("2017-01-01 02:00:00.000"), #hours),
+    )->toBe(-2.)
+  )
+  test("should return correct difference of moments in hours", () =>
+    expect(
+      diff(moment("2017-01-01 00:25:05.000"), moment("2017-01-01 00:00:00.000"), #minutes),
+    )->toBe(25.)
+  )
+})

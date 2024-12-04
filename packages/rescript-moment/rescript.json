@@ -1,6 +1,5 @@
 {
-  "name": "rescript-moment",
-  "namespace": "MomentRe",
+  "name": "@reventless/rescript-moment",
   "suffix": ".res.js",
   "bsc-flags": [
     "-bs-super-errors"
