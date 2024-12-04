@@ -97,7 +97,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             ->NodeStreams.Readable.pipe(
               (path ++ ("/" ++ filename))
               ->Message.log("FTPHandler: path for write stream")
-              ->(FTP.createWriteStream(sftp, ~path=_))
+              ->FTP.createWriteStream(sftp, ~path=_)
               ->NodeStreams.Writable.onFinish(() => {
                 result := Ok(true)
                 Js.log("FTPHandler: writable ended")
@@ -125,11 +125,11 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
   })
   ->FTP.Client.connect(
     switch secret {
-    | Password(password) => {SSH2.Client.host, ?port, userName, password, ?readyTimeout}
+    | Password(password) => {SSH2.Client.host, ?port, username: userName, password, ?readyTimeout}
     | Key(privateKey, passphrase) => {
         host,
         ?port,
-        userName,
+        username: userName,
         privateKey,
         ?passphrase,
         ?readyTimeout,

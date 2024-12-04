@@ -31,13 +31,13 @@ function ftp(connectionParams, ftpAction) {
   tmp = secret.TAG === "Password" ? ({
         host: host,
         port: port,
-        userName: userName,
+        username: userName,
         password: secret._0,
         readyTimeout: readyTimeout
       }) : ({
         host: host,
         port: port,
-        userName: userName,
+        username: userName,
         privateKey: secret._0,
         passphrase: secret._1,
         readyTimeout: readyTimeout
