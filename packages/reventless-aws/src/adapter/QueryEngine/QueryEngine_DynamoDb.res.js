@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Logger$Reventless = require("@reventless/reventless/src/util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.res.js");
@@ -168,14 +169,14 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
     Limit: params_Limit,
     ScanIndexForward: params_ScanIndexForward
   };
-  console.log("QueryEngine_DynamoDb.queryByTableName params:", params);
+  Logger$Reventless.debug("File \"QueryEngine_DynamoDb.res\", line 101, characters 31-38", undefined, undefined, "queryByTableName params:", params);
   var result;
   try {
     result = await DynamoDb_DocumentClient$AwsSdk.queryRecursive(undefined, params);
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    console.log("Task.query error:", err);
+    Logger$Reventless.error("File \"QueryEngine_DynamoDb.res\", line 108, characters 33-40", undefined, undefined, "Error:", err);
     return [];
   }
   return Belt_Array.map(Belt_Option.getWithDefault(result.Items, []), (function (js) {
@@ -207,7 +208,7 @@ async function scanByTableName(tableName, filterConfigs, limit) {
     FilterExpression: params_FilterExpression,
     Limit: params_Limit
   };
-  console.log("QueryEngine_DynamoDb.scanByTableName params:", params);
+  Logger$Reventless.debug("File \"QueryEngine_DynamoDb.res\", line 132, characters 31-38", undefined, undefined, "scanByTableName params:", params);
   var result;
   try {
     result = await DynamoDb_DocumentClient$AwsSdk.scanRecursive(undefined, params);
@@ -215,7 +216,7 @@ async function scanByTableName(tableName, filterConfigs, limit) {
   catch (raw_e){
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
-      console.log("Task.scan error:", e._1);
+      Logger$Reventless.error("File \"QueryEngine_DynamoDb.res\", line 139, characters 33-40", undefined, undefined, "Error:", e._1);
       return [];
     }
     throw e;
@@ -245,4 +246,4 @@ exports.createFilterExprNamesValues = createFilterExprNamesValues;
 exports.queryByTableName = queryByTableName;
 exports.scanByTableName = scanByTableName;
 exports.make = make;
-/* DynamoDb_DocumentClient-AwsSdk Not a pure module */
+/* Logger-Reventless Not a pure module */

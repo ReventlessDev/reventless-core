@@ -98,14 +98,14 @@ let queryByTableName = async (
       limit,
     }
   }
-  Js.log2("QueryEngine_DynamoDb.queryByTableName params:", params)
+  Reventless.Logger.debug(~loc=__LOC__, "queryByTableName params:", params)
   switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params) {
   | result =>
     result.items
     ->Belt.Option.getWithDefault([])
     ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception err =>
-    Js.log2("Task.query error:", err)
+    Reventless.Logger.error(~loc=__LOC__, "Error:", err)
     []
   }
 }
@@ -129,14 +129,14 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
     expressionAttributeValues: ?attributeValues,
     limit,
   }
-  Js.log2("QueryEngine_DynamoDb.scanByTableName params:", params)
+  Reventless.Logger.debug(~loc=__LOC__, "scanByTableName params:", params)
   switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params) {
   | result =>
     result.items
     ->Belt.Option.getWithDefault([])
     ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception Js.Exn.Error(e) =>
-    Js.log2("Task.scan error:", e)
+    Reventless.Logger.error(~loc=__LOC__, "Error:", e)
     []
   }
 }
