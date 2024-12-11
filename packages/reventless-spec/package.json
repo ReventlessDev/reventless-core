@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-spec",
-  "version": "2.0.0-rescript11.4",
+  "version": "2.0.0",
   "description": "Specifications for Reventless",
   "author": "Atos",
   "license": "proprietary",
@@ -21,7 +21,7 @@
     "@rescript-labs/decco": "2.0.4",
     "@rescript/core": "^1.6.0",
     "@rescript/std": "^11.1.4",
-    "@reventless/bs-pulumi-pulumi": "^2.0.0-rescript11.4"
+    "@reventless/bs-pulumi-pulumi": "^2.0.0"
   },
   "devDependencies": {
     "rescript": "^11.1.4"
