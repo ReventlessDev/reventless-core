@@ -29,6 +29,5 @@
   "peerDependencies": {
     "@rescript/std": "^11.1.4",
     "rescript": "^11.1.4"
-  },
-  "gitHead": "d8c6be45eb694192a5014b3abe1f2cf10c80ab79"
+  }
 }

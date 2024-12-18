@@ -28,6 +28,5 @@
     "husky": "^4.2.5",
     "moment": "^2.26.0",
     "rescript": "^11.1.4"
-  },
-  "gitHead": "573cef9e63145a7cc7ed1b979c8c7f4f12339a1f"
+  }
 }
