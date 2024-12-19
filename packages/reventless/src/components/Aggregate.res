@@ -186,7 +186,7 @@ module Make = (
                 Ok((
                   updateState(stateO, generatedEvents),
                   Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
-                ))->Js.Promise.resolve
+                ))
               | None =>
                 let generatedEvents = Behaviour.create(
                   command'.command,
@@ -199,11 +199,11 @@ module Make = (
                 Ok((
                   updateState(None, generatedEvents),
                   Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
-                ))->Js.Promise.resolve
+                ))
               }
 
             switch await accP {
-            | Ok(acc) => await runBehaviour(acc)
+            | Ok(acc) => runBehaviour(acc)
             | Error(_) as error => error
             }
           }

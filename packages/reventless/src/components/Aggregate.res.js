@@ -3,6 +3,7 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
@@ -16,6 +17,7 @@ var EventLog$Reventless = require("./EventLog.res.js");
 var Component$Reventless = require("./Component.res.js");
 var EventMapper$Reventless = require("./EventMapper.res.js");
 var CommandTopic$Reventless = require("./CommandTopic.res.js");
+var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var EventCollector$Reventless = require("./EventCollector.res.js");
 var CommandGenerator$Reventless = require("./CommandGenerator.res.js");
@@ -112,13 +114,31 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                 correlationId: init.correlationId
               };
       };
-      Logger$Reventless.debug("File \"Aggregate.res\", line 160, characters 24-31", undefined, undefined, "starting", "Aggregate.execCommands");
+      var replay = async function (retryOpt, id) {
+        var retry = retryOpt !== undefined ? retryOpt : 0;
+        try {
+          return await eventLogReplay(id);
+        }
+        catch (raw_e){
+          var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+          if (e.RE_EXN_ID === Js_exn.$$Error) {
+            Logger$Reventless.warn("File \"Aggregate.res\", line 164, characters 17-24", undefined, undefined, "Couldn't replay events for id " + Spec.Id.toString(id) + ", retry:" + retry.toString(), e._1);
+            var timeout = Math.imul(100, retry) + Js_math.random_int(0, 100) | 0;
+            await Util_Promise$Reventless.finishTimeout(timeout);
+            return await replay(retry + 1 | 0, id);
+          }
+          throw e;
+        }
+      };
+      Logger$Reventless.debug("File \"Aggregate.res\", line 174, characters 24-31", undefined, undefined, "starting", "Aggregate.execCommands");
       return Belt_Array.concatMany(await Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (async function (param) {
                             var topicItems = param[1];
                             var id = param[0];
-                            var history = await eventLogReplay(id);
+                            var history = await replay(undefined, id);
                             var processCommand = async function (accP, command$p) {
-                              var runBehaviour = function (param) {
+                              var acc = await accP;
+                              if (acc.TAG === "Ok") {
+                                var param = acc._0;
                                 var events = param[1];
                                 var stateO = param[0];
                                 if (stateO !== undefined) {
@@ -132,47 +152,43 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                   catch (raw_event){
                                     var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
                                     if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-                                      Logger$Reventless.error("File \"Aggregate.res\", line 183, characters 36-43", undefined, undefined, "Behaviour.execute: InvalidEvent", $$event._1);
+                                      Logger$Reventless.error("File \"Aggregate.res\", line 197, characters 36-43", undefined, undefined, "Behaviour.execute: InvalidEvent", $$event._1);
                                       generatedEvents = [];
                                     } else {
                                       throw $$event;
                                     }
                                   }
-                                  return Promise.resolve({
-                                              TAG: "Ok",
-                                              _0: [
-                                                Belt_Array.reduce(generatedEvents, stateO, apply$p),
-                                                Belt_Array.concat(events, [[
-                                                        generatedEvents,
-                                                        updateMeta(command$p)
-                                                      ]])
-                                              ]
-                                            });
+                                  return {
+                                          TAG: "Ok",
+                                          _0: [
+                                            Belt_Array.reduce(generatedEvents, stateO, apply$p),
+                                            Belt_Array.concat(events, [[
+                                                    generatedEvents,
+                                                    updateMeta(command$p)
+                                                  ]])
+                                          ]
+                                        };
                                 }
                                 var generatedEvents$1 = Behaviour.create(command$p.command, {
                                       id: Spec.Id.toString(command$p.id),
                                       meta: command$p.meta
                                     }, errorHandler);
-                                return Promise.resolve({
-                                            TAG: "Ok",
-                                            _0: [
-                                              Belt_Array.reduce(generatedEvents$1, undefined, apply$p),
-                                              Belt_Array.concat(events, [[
-                                                      generatedEvents$1,
-                                                      updateMeta(command$p)
-                                                    ]])
-                                            ]
-                                          });
-                              };
-                              var acc = await accP;
-                              if (acc.TAG === "Ok") {
-                                return await runBehaviour(acc._0);
+                                return {
+                                        TAG: "Ok",
+                                        _0: [
+                                          Belt_Array.reduce(generatedEvents$1, undefined, apply$p),
+                                          Belt_Array.concat(events, [[
+                                                  generatedEvents$1,
+                                                  updateMeta(command$p)
+                                                ]])
+                                        ]
+                                      };
                               } else {
                                 return acc;
                               }
                             };
-                            Logger$Reventless.debug("File \"Aggregate.res\", line 211, characters 28-35", undefined, undefined, "finished eventLogReplay for id", id);
-                            Logger$Reventless.logCmdJsons("File \"Aggregate.res\", line 223, characters 36-43", undefined, Belt_Array.map(topicItems, (function (param) {
+                            Logger$Reventless.debug("File \"Aggregate.res\", line 225, characters 28-35", undefined, undefined, "finished eventLogReplay for id", id);
+                            Logger$Reventless.logCmdJsons("File \"Aggregate.res\", line 237, characters 36-43", undefined, Belt_Array.map(topicItems, (function (param) {
                                         return Message$Reventless.commandJsonOfCommand$p(Spec.Id.toString, Spec.command_encode, param.command);
                                       })), "Handling command");
                             var match = Belt_Array.unzip(Belt_Array.map(topicItems, (function (param) {
@@ -207,7 +223,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                         })));
                               var match$1 = await eventLogAppend(history.length, id, events);
                               if (match$1.TAG === "Ok") {
-                                Logger$Reventless.debug("File \"Aggregate.res\", line 261, characters 32-39", undefined, undefined, "finished eventLogAppend for id", Spec.Id.toString(id));
+                                Logger$Reventless.debug("File \"Aggregate.res\", line 275, characters 32-39", undefined, undefined, "finished eventLogAppend for id", Spec.Id.toString(id));
                                 return Belt_Array.map(references, (function (reference) {
                                               return {
                                                       TAG: "Ok",
@@ -215,7 +231,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                     };
                                             }));
                               }
-                              Logger$Reventless.error("File \"Aggregate.res\", line 264, characters 32-39", undefined, undefined, "failed eventLogAppend for id", Spec.Id.toString(id));
+                              Logger$Reventless.error("File \"Aggregate.res\", line 278, characters 32-39", undefined, undefined, "failed eventLogAppend for id", Spec.Id.toString(id));
                               return Belt_Array.map(references, (function (reference) {
                                             return {
                                                     TAG: "Error",
@@ -223,7 +239,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                                                   };
                                           }));
                             }
-                            Logger$Reventless.debug("File \"Aggregate.res\", line 247, characters 21-28", undefined, undefined, "handleCommands(" + Spec.Id.toString(id) + ")", "no Event generated");
+                            Logger$Reventless.debug("File \"Aggregate.res\", line 261, characters 21-28", undefined, undefined, "handleCommands(" + Spec.Id.toString(id) + ")", "no Event generated");
                             return Belt_Array.map(references, (function (reference) {
                                           return {
                                                   TAG: "Ok",
