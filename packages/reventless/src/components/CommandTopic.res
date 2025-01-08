@@ -1,4 +1,5 @@
 open ReventlessSpec.Adapter
+open CommandTopic_Runtime
 
 let componentType = ComponentType.CommandTopic
 
@@ -13,21 +14,14 @@ module type Spec = {
   type command
 }
 
-type topicItem<'command> = {
-  command: 'command,
-  reference: string,
-}
-
-type commandsHandler<'command> = array<topicItem<'command>> => Js.Promise.t<
-  array<Belt.Result.t<string, string>>,
->
-
 module type T = {
   module Spec: Spec
 
   type t
 
-  type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
+  type commandsHandler = CommandTopic_Runtime.commandsHandler<
+    Message.command'<Spec.Id.t, Spec.command>,
+  >
 
   let make: (
     ~name: string,
@@ -54,7 +48,7 @@ module Adapter = {
   }
   type connectorMaker = (
     ~name: string,
-    ~handleCommands: commandsHandler<Js.Json.t>,
+    ~handleCommands: CommandTopic_Runtime.commandsHandler<Js.Json.t>,
     ~memorySize: int,
     ~timeout: int,
     ~opts: Pulumi.CustomResourceOptions.t,
@@ -160,38 +154,15 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
     publishJsonsFn(connector)([commandJson])
   }
 
-  let handleCommands = commandsHandler =>
-    async jsonItems => {
-      Logger.debug(
-        ~loc=__LOC__,
-        "starting handleCommands. Command count",
-        jsonItems->Belt.Array.size,
-      )
-      let topicItems = jsonItems->Belt.Array.keepMap(({reference, command: json}) =>
-        switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
-        | Belt_Result.Ok(command') => Some({reference, command: command'})
-        | Belt_Result.Error(err) =>
-          let commandStr = json->Js.Json.stringify
-          Logger.error(~loc=__LOC__, `Couldn't decode command ${commandStr}`, err.message)
-          None
-        }
-      )
-      switch await commandsHandler(topicItems) {
-      | res =>
-        Logger.debug(~loc=__LOC__, "finished", "CommandTopic.handleCommands")
-        res
-      | exception Js.Exn.Error(e) =>
-        Logger.error(~loc=__LOC__, "Couldn't handle commands", e)
-        Js.Exn.raiseError(__LOC__ ++ `Error: Couldn't handle commands`) // TODO: exception details
-      }
-    }
-
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let connector = Connector.make(
       ~name=name->ComponentType.name(componentType),
-      ~handleCommands=commandsHandler->handleCommands,
+      ~handleCommands=commandsHandler->CommandTopic_Runtime.handleCommands(
+        Spec.Id.t_decode,
+        Spec.command_decode,
+      ),
       ~memorySize,
       ~timeout,
       ~opts,

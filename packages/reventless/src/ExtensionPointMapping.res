@@ -19,7 +19,9 @@ module type T = {
 
   let mapIncomingCommands: (
     array<
-      CommandTopic.topicItem<Message.command'<ReventlessSpec.Id.String.t, ExtensionPoint.command>>,
+      CommandTopic_Runtime.topicItem<
+        Message.command'<ReventlessSpec.Id.String.t, ExtensionPoint.command>,
+      >,
     >,
     ReventlessSpec.Schedule.create,
     ReventlessSpec.Schedule.delete,
@@ -46,7 +48,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
   let mapIncomingCommands = (topicItems, createSchedule, deleteSchedule, queryEngine) =>
     topicItems
     ->Belt.Array.map(({
-      CommandTopic.reference: reference,
+      CommandTopic_Runtime.reference: reference,
       command: {Message.id: id, command, meta},
     }) =>
       MappingImpl.mapIncomingCommand(

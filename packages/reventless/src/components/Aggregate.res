@@ -1,7 +1,5 @@
 open Belt.Result
 
-module ReventlessCommandTopic = CommandTopic
-
 let componentType = ComponentType.Aggregate
 
 type outputs = {
@@ -125,7 +123,7 @@ module Make = (
  */
 
   let groupTopicItemsById = (
-    topicItems: array<ReventlessCommandTopic.topicItem<Message.command'<Spec.Id.t, Spec.command>>>,
+    topicItems: array<CommandTopic_Runtime.topicItem<Message.command'<Spec.Id.t, Spec.command>>>,
   ) => {
     // FIXME: rethink usage of Set & Belt structures -> optimize
     let ids = topicItems->Belt.Array.map(({command}) => command.id->Spec.Id.toString)

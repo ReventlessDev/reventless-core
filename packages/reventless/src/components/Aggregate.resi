@@ -1,5 +1,3 @@
-module ReventlessCommandTopic = CommandTopic
-
 let componentType: ComponentType.t
 
 type outputs = {
