@@ -20,10 +20,10 @@ function Make(Spec, Connector) {
         val = await connector.publish(cmdJsons);
       }
       catch (e){
-        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 137, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
+        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 130, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
         throw e;
       }
-      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 141, characters 47-54", undefined, cmdJsons, "Published commands");
+      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 134, characters 47-54", undefined, cmdJsons, "Published commands");
     };
   };
   var construct = function (memorySize, timeout, self, name, commandsHandler) {
@@ -31,7 +31,8 @@ function Make(Spec, Connector) {
     var opts = {
       parent: opts_parent
     };
-    var connector = Connector.make(ComponentType$Reventless.name(name, "CommandTopic"), CommandTopic_Runtime$Reventless.handleCommands(commandsHandler, Spec.Id.t_decode, Spec.command_decode), memorySize, timeout, opts);
+    var Runtime = CommandTopic_Runtime$Reventless.Make(Spec);
+    var connector = Connector.make(ComponentType$Reventless.name(name, "CommandTopic"), Runtime.handleCommands(commandsHandler), memorySize, timeout, opts);
     self.publish = (function (extra) {
         var commandJson_id = Spec.Id.toString(extra.id);
         var commandJson_meta = extra.meta;

@@ -7,39 +7,44 @@ var Logger$Reventless = require("../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.res.js");
 
-function handleCommands(commandsHandler, id_decode, command_decode) {
-  return async function (jsonItems) {
-    Logger$Reventless.debug("File \"CommandTopic_Runtime.res\", line 12, characters 22-29", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
-    var topicItems = Belt_Array.keepMap(jsonItems, (function (param) {
-            var json = param.command;
-            var command$p = (function (__x) {
-                  return Message$Reventless.command$p_decode(id_decode, command_decode, __x);
-                })(json);
-            if (command$p.TAG === "Ok") {
-              return {
-                      command: command$p._0,
-                      reference: param.reference
-                    };
-            }
-            var commandStr = JSON.stringify(json);
-            Logger$Reventless.error("File \"CommandTopic_Runtime.res\", line 18, characters 26-33", undefined, undefined, "Couldn't decode command " + commandStr, command$p._0.message);
-          }));
-    var res;
-    try {
-      res = await commandsHandler(topicItems);
-    }
-    catch (raw_e){
-      var e = Caml_js_exceptions.internalToOCamlException(raw_e);
-      if (e.RE_EXN_ID === Js_exn.$$Error) {
-        Logger$Reventless.error("File \"CommandTopic_Runtime.res\", line 27, characters 24-31", undefined, undefined, "Couldn't handle commands", e._1);
-        return Js_exn.raiseError("File \"CommandTopic_Runtime.res\", line 28, characters 24-31" + "Error: Couldn't handle commands");
+function Make(Spec) {
+  var handleCommands = function (commandsHandler) {
+    return async function (jsonItems) {
+      Logger$Reventless.debug("File \"CommandTopic_Runtime.res\", line 21, characters 13-20", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
+      var topicItems = Belt_Array.keepMap(jsonItems, (function (param) {
+              var json = param.command;
+              var command$p = (function (__x) {
+                    return Message$Reventless.command$p_decode(Spec.Id.t_decode, Spec.command_decode, __x);
+                  })(json);
+              if (command$p.TAG === "Ok") {
+                return {
+                        command: command$p._0,
+                        reference: param.reference
+                      };
+              }
+              var commandStr = JSON.stringify(json);
+              Logger$Reventless.error("File \"CommandTopic_Runtime.res\", line 30, characters 28-35", undefined, undefined, "Couldn't decode command " + commandStr, command$p._0.message);
+            }));
+      var res;
+      try {
+        res = await commandsHandler(topicItems);
       }
-      throw e;
-    }
-    Logger$Reventless.debug("File \"CommandTopic_Runtime.res\", line 24, characters 24-31", undefined, undefined, "finished", "CommandTopic.handleCommands");
-    return res;
+      catch (raw_e){
+        var e = Caml_js_exceptions.internalToOCamlException(raw_e);
+        if (e.RE_EXN_ID === Js_exn.$$Error) {
+          Logger$Reventless.error("File \"CommandTopic_Runtime.res\", line 39, characters 26-33", undefined, undefined, "Couldn't handle commands", e._1);
+          return Js_exn.raiseError("File \"CommandTopic_Runtime.res\", line 40, characters 26-33" + "Error: Couldn't handle commands");
+        }
+        throw e;
+      }
+      Logger$Reventless.debug("File \"CommandTopic_Runtime.res\", line 36, characters 26-33", undefined, undefined, "finished", "CommandTopic.handleCommands");
+      return res;
+    };
   };
+  return {
+          handleCommands: handleCommands
+        };
 }
 
-exports.handleCommands = handleCommands;
+exports.Make = Make;
 /* Logger-Reventless Not a pure module */

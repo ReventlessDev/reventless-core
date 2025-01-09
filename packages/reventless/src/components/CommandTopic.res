@@ -7,13 +7,6 @@ type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 
 exception NotPublishedToConnector(Js.Promise.error)
 
-module type Spec = {
-  module Id: ReventlessSpec.Id.T
-
-  @decco
-  type command
-}
-
 module type T = {
   module Spec: Spec
 
@@ -157,12 +150,11 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
+    module Runtime = CommandTopic_Runtime.Make(Spec)
+
     let connector = Connector.make(
       ~name=name->ComponentType.name(componentType),
-      ~handleCommands=commandsHandler->CommandTopic_Runtime.handleCommands(
-        Spec.Id.t_decode,
-        Spec.command_decode,
-      ),
+      ~handleCommands=commandsHandler->Runtime.handleCommands,
       ~memorySize,
       ~timeout,
       ~opts,
