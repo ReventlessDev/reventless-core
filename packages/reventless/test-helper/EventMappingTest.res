@@ -1,6 +1,6 @@
 module type T = {
-  module Source: ReventlessSpec.AggregateSpec.T
-  module Target: ReventlessSpec.AggregateSpec.T
+  module Source: ReventlessSpec.Aggregate.Spec
+  module Target: ReventlessSpec.Aggregate.Spec
 
   let describe: (string, unit => unit) => unit
   let test: (string, ~timeout: int=?, unit => Js.Promise.t<Jest.assertion>) => unit
@@ -52,7 +52,7 @@ module type T = {
 }
 
 module type Aggregate = {
-  module Spec: ReventlessSpec.AggregateSpec.T
+  module Spec: ReventlessSpec.Aggregate.Spec
   module Behaviour: Reventless.Behaviour.T
 
   let apply': (Behaviour.state, Spec.event) => Behaviour.state
@@ -63,7 +63,7 @@ module type Aggregate = {
 }
 
 module MakeAggregate = (
-  Spec: ReventlessSpec.AggregateSpec.T,
+  Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := Spec,
 ) => {
   module Spec = Spec
@@ -101,9 +101,9 @@ module MakeAggregate = (
 }
 
 module Make = (
-  Source: ReventlessSpec.AggregateSpec.T,
+  Source: ReventlessSpec.Aggregate.Spec,
   SourceBehaviour: Behaviour.T with module Spec = Source,
-  Target: ReventlessSpec.AggregateSpec.T,
+  Target: ReventlessSpec.Aggregate.Spec,
   TargetBehaviour: Behaviour.T with module Spec = Target,
   EventMapping: ReventlessSpec.EventMapping.T
     with module Source = Source

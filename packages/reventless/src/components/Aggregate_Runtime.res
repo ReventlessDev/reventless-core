@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.AggregateSpec.T,
+  Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := Spec,
 ) => {
   let errorHandler = (error, command, context: Message.context) => {

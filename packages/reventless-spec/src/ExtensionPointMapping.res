@@ -43,7 +43,7 @@ type mapOutgoingEvent<'aggregateEvent, 'extensionPointEvent, 'extensionPointCall
 
 module type Impl = {
   module ExtensionPoint: Spec
-  module Aggregate: AggregateSpec.T
+  module Aggregate: Aggregate.Spec
 
   let mapIncomingCommand: mapIncomingCommand<
     ExtensionPoint.command,

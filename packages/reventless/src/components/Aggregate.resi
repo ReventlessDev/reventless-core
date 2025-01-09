@@ -23,14 +23,14 @@ type addEventMapper = (
   ReventlessSpec.QueryEngine.t,
 ) => outputs
 module type T = {
-  module Spec: ReventlessSpec.AggregateSpec.T
+  module Spec: ReventlessSpec.Aggregate.Spec
   let make: (~opts: Pulumi.ComponentResource.options=?) => component
   let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
   let addEventMapper: component => addEventMapper
 }
 module Make: (
   Config: Config.T,
-  Spec: ReventlessSpec.AggregateSpec.T,
+  Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: {
     type state
     let resolverConfig: Behaviour.resolverConfig<Spec.command>

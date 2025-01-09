@@ -55,7 +55,7 @@ module type Spec = {
 
 module type Impl = {
   module ExtensionPoint: Spec
-  module Aggregate: AggregateSpec.T
+  module Aggregate: Aggregate.Spec
 
   let mapIncomingEvent: mapIncomingEvent<
     ExtensionPoint.event,

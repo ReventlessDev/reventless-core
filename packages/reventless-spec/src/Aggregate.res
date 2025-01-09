@@ -1,4 +1,4 @@
-module type T = {
+module type Spec = {
   module Id: Id.T
 
   let name: string

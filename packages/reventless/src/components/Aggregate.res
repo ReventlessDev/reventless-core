@@ -33,7 +33,7 @@ type addEventMapper = (
 ) => outputs
 
 module type T = {
-  module Spec: ReventlessSpec.AggregateSpec.T
+  module Spec: ReventlessSpec.Aggregate.Spec
 
   let make: (~opts: Pulumi.ComponentResource.options=?) => component
 
@@ -43,7 +43,7 @@ module type T = {
 
 module Make = (
   Config: Config.T,
-  Spec: ReventlessSpec.AggregateSpec.T,
+  Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
   CommandGeneratorResolvers: CommandGenerator.Adapter.Resolvers with type api := Config.api,
