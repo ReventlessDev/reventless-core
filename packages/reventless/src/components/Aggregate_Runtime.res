@@ -22,7 +22,7 @@ module Make = (
     ->Message.variantNameOfJson
 
   let groupTopicItemsById = (
-    topicItems: array<CommandTopic_Runtime.topicItem<Message.command'<'id, 'command>>>,
+    topicItems: array<ReventlessSpec.CommandTopic.topicItem<Message.command'<'id, 'command>>>,
   ) => {
     // FIXME: rethink usage of Set & Belt structures -> optimize
     let ids = topicItems->Belt.Array.map(({command}) => command.id->Spec.Id.toString)

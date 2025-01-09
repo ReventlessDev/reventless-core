@@ -1,20 +1,6 @@
-type topicItem<'command> = {
-  command: 'command,
-  reference: string,
-}
+open ReventlessSpec.CommandTopic
 
-type commandsHandler<'command> = array<topicItem<'command>> => Js.Promise.t<
-  array<Belt.Result.t<string, string>>,
->
-
-module type Spec = {
-  module Id: ReventlessSpec.Id.T
-
-  @decco
-  type command
-}
-
-module Make = (Spec: Spec) => {
+module Make = (Spec: ReventlessSpec.CommandTopic.Spec) => {
   let handleCommands = commandsHandler =>
     async jsonItems => {
       Logger.debug(

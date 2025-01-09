@@ -10,7 +10,7 @@ var Message$Reventless = require("../Message.res.js");
 function Make(Spec) {
   var handleCommands = function (commandsHandler) {
     return async function (jsonItems) {
-      Logger$Reventless.debug("File \"CommandTopic_Runtime.res\", line 21, characters 13-20", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
+      Logger$Reventless.debug("File \"CommandTopic_Runtime.res\", line 7, characters 13-20", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
       var topicItems = Belt_Array.keepMap(jsonItems, (function (param) {
               var json = param.command;
               var command$p = (function (__x) {
@@ -23,7 +23,7 @@ function Make(Spec) {
                       };
               }
               var commandStr = JSON.stringify(json);
-              Logger$Reventless.error("File \"CommandTopic_Runtime.res\", line 30, characters 28-35", undefined, undefined, "Couldn't decode command " + commandStr, command$p._0.message);
+              Logger$Reventless.error("File \"CommandTopic_Runtime.res\", line 16, characters 28-35", undefined, undefined, "Couldn't decode command " + commandStr, command$p._0.message);
             }));
       var res;
       try {
@@ -32,12 +32,12 @@ function Make(Spec) {
       catch (raw_e){
         var e = Caml_js_exceptions.internalToOCamlException(raw_e);
         if (e.RE_EXN_ID === Js_exn.$$Error) {
-          Logger$Reventless.error("File \"CommandTopic_Runtime.res\", line 39, characters 26-33", undefined, undefined, "Couldn't handle commands", e._1);
-          return Js_exn.raiseError("File \"CommandTopic_Runtime.res\", line 40, characters 26-33" + "Error: Couldn't handle commands");
+          Logger$Reventless.error("File \"CommandTopic_Runtime.res\", line 25, characters 26-33", undefined, undefined, "Couldn't handle commands", e._1);
+          return Js_exn.raiseError("File \"CommandTopic_Runtime.res\", line 26, characters 26-33" + "Error: Couldn't handle commands");
         }
         throw e;
       }
-      Logger$Reventless.debug("File \"CommandTopic_Runtime.res\", line 36, characters 26-33", undefined, undefined, "finished", "CommandTopic.handleCommands");
+      Logger$Reventless.debug("File \"CommandTopic_Runtime.res\", line 22, characters 26-33", undefined, undefined, "finished", "CommandTopic.handleCommands");
       return res;
     };
   };

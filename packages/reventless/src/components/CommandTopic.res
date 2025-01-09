@@ -1,6 +1,3 @@
-open ReventlessSpec.Adapter
-open CommandTopic_Runtime
-
 let componentType = ComponentType.CommandTopic
 
 type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
@@ -8,11 +5,11 @@ type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 exception NotPublishedToConnector(Js.Promise.error)
 
 module type T = {
-  module Spec: Spec
+  module Spec: ReventlessSpec.CommandTopic.Spec
 
   type t
 
-  type commandsHandler = CommandTopic_Runtime.commandsHandler<
+  type commandsHandler = ReventlessSpec.CommandTopic.commandsHandler<
     Message.command'<Spec.Id.t, Spec.command>,
   >
 
@@ -36,12 +33,12 @@ module type T = {
 
 module Adapter = {
   type connector = {
-    resources: array<resource>,
+    resources: array<ReventlessSpec.Adapter.resource>,
     publish: ReventlessSpec.CommandTopic.publishJsons,
   }
   type connectorMaker = (
     ~name: string,
-    ~handleCommands: CommandTopic_Runtime.commandsHandler<Js.Json.t>,
+    ~handleCommands: ReventlessSpec.CommandTopic.commandsHandler<Js.Json.t>,
     ~memorySize: int,
     ~timeout: int,
     ~opts: Pulumi.CustomResourceOptions.t,
@@ -59,12 +56,16 @@ module Adapter = {
   }
 }
 
-module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = Spec) => {
+module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connector): (
+  T with module Spec = Spec
+) => {
   module Spec = Spec
 
   type t
 
-  type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
+  type commandsHandler = ReventlessSpec.CommandTopic.commandsHandler<
+    Message.command'<Spec.Id.t, Spec.command>,
+  >
 
   type constructed
   type construct = (
@@ -85,7 +86,9 @@ module Make = (Spec: Spec, Connector: Adapter.Connector): (T with module Spec = 
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs> = "default"
 
   @obj
-  external makeOutputs: (~resources: array<resource>) => ReventlessSpec.CommandTopic.outputs = ""
+  external makeOutputs: (
+    ~resources: array<ReventlessSpec.Adapter.resource>,
+  ) => ReventlessSpec.CommandTopic.outputs = ""
 
   @send
   external registerOutputs: (
