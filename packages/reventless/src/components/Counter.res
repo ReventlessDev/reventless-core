@@ -1,48 +1,37 @@
-open ReventlessSpec.Adapter
-open ReventlessSpec.Counter
-open ReventlessSpec.ReadModel.Spec
-
 let componentType = ComponentType.Counter
-@inline
-let countFieldName = "count"
 
-type outputs = {"referencesDb": array<resource>, "countsDb": array<resource>}
+type outputs = {
+  "referencesDb": ReventlessSpec.QueryDb.outputs,
+  "countsDb": ReventlessSpec.QueryDb.outputs,
+}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
+
+type counterTargetRef = {
+  counterId: ReventlessSpec.Counter.counterId,
+  target: int,
+  targetRef: ReventlessSpec.Counter.reference,
+}
 
 type counterHandler = (
   ~references: array<(string, int)>,
   ~counts: array<Js.Json.t>,
 ) => Js.Promise.t<unit>
 
-type countItem = {
-  counterId: counterId,
-  reference: reference,
-  inc: int,
-}
-
-type counterTarget = {
-  counterId: counterId,
-  target: int,
-  targetRef: reference,
-}
-
 type action =
-  | Count(countItem)
-  | AddToCounterTarget(counterTarget)
-
-type count = array<countItem> => Js.Promise.t<unit>
-type addToCounterTarget = counterTarget => Js.Promise.t<unit>
-
-exception NotCounted(string)
+  | Count(Counter_Runtime.countItem)
+  | AddToCounterTarget(counterTargetRef)
 
 module Source = {
   module Id = ReventlessSpec.Id.String
-  let name = componentType->ComponentType.toName
+  let name = ComponentType.Counter->ComponentType.toName
   @decco
-  type event = CountFinished
+  type event = Counter_Runtime.counterEvent
 }
+
+type count = array<Counter_Runtime.countItem> => Js.Promise.t<unit>
+type addToCounterTarget = counterTargetRef => Js.Promise.t<unit>
 
 type counterEventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
@@ -92,7 +81,10 @@ module Make = (
   ) => component = "default"
 
   @obj
-  external makeOutputs: (~referencesDb: array<resource>, ~countsDb: array<resource>) => outputs = ""
+  external makeOutputs: (
+    ~referencesDb: ReventlessSpec.QueryDb.outputs,
+    ~countsDb: ReventlessSpec.QueryDb.outputs,
+  ) => outputs = ""
 
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
@@ -118,13 +110,10 @@ module Make = (
       module Id = ReventlessSpec.Id.StringPure
       let name = name ++ "References"
       @decco
-      type state = {
-        id: string,
-        inc: int,
-      }
+      type state = Counter_Runtime.referencesState
 
       let subIdConfig = None
-      let config = config()
+      let config = ReventlessSpec.ReadModel.Spec.config()
     }
 
     module ReferencesDb = QueryDb.Make(
@@ -138,15 +127,11 @@ module Make = (
       module Id = ReventlessSpec.Id.StringPure
       let name = name ++ "Counts"
       @decco
-      type state = {
-        id: string,
-        count: int,
-      } //TODO: generalize
+      type state = Counter_Runtime.countsState
 
       let subIdConfig = None
-      let config = config()
+      let config = ReventlessSpec.ReadModel.Spec.config()
     }
-
     module CountsDb = QueryDb.Make(
       Config,
       CountsSpec,
@@ -154,149 +139,32 @@ module Make = (
       QueryDb.Adapter.NoResolvers(Config),
     )
 
-    let separator = "#"
-    let makeId = ((counterId, reference)) => counterId ++ (separator ++ reference)
-    let unmakeId = id =>
-      id
-      ->Js.String2.split(separator)
-      ->(
-        x =>
-          switch x {
-          | [] => ("", "")
-          | [counterId] => (counterId, "")
-          | parts => (parts->Array.getUnsafe(0), parts->Array.getUnsafe(1))
-          }
-      )
-
-    let groupCountItemsByCounterId = countItems => {
-      let dict = Js.Dict.empty()
-      countItems->Belt.Array.forEach(({counterId, reference}) => {
-        let currentReferences = dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault([])
-        dict->Js.Dict.set(counterId, currentReferences->Belt.Array.concat([reference]))
-      })
-      dict->Js.Dict.entries
-    }
-
-    let logCountItems = countItems =>
-      countItems
-      ->groupCountItemsByCounterId
-      ->Belt.Array.forEach(((counterId, references)) => {
-        let size = references->Belt.Array.size
-        let referencesStr = references->Js.Array2.joinWith(",")
-        Js.log(
-          `  ${size->Belt.Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`,
-        )
-      })
-
-    let count = async (saveBatch, countItems) => {
-      let result = await saveBatch(
-        countItems->Belt.Array.map(({counterId, reference, inc}) => {
-          let id = makeId((counterId, reference))
-          let state: ReferencesSpec.state = {id, inc}
-          (id, state, ttl)
-        }),
-      )
-      switch result {
-      | Belt.Result.Ok(_) =>
-        let batchSize = countItems->Belt.Array.size
-        Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Belt.Int.toString} reference(s):`)
-        countItems->logCountItems
-      | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) =>
-        let batchSize = countItems->Belt.Array.size
-        Js.log(
-          `Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
-        )
-        countItems->logCountItems
-        raise(NotCounted(err))
-      | Error(_) =>
-        let batchSize = countItems->Belt.Array.size
-        Js.log(
-          `Unknown Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
-        )
-        countItems->logCountItems
-        raise(NotCounted("Unknown error"))
-      }
-    }
-
     let referencesDb = ReferencesDb.make(~ttl?, ~opts)
     let countsDb = CountsDb.make(~ttl?, ~opts)
 
-    let referencesName = ReferencesSpec.name
-    let countsName = CountsSpec.name
-
-    let groupByCounterId = references => {
-      let dict = Js.Dict.empty()
-      references->Belt.Array.forEach(((reference, inc)) => {
-        let counterId = reference->unmakeId->fst
-        let current = dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault(0)
-        dict->Js.Dict.set(counterId, current + inc)
-      })
-      dict->Js.Dict.entries
-    }
-
-    let counterHandler: counterHandler = async (~references, ~counts) => {
-      Js.log2("counterHandler: references:", references->Belt.Array.size)
-      Js.log2("counterHandler: counts:", counts)
-      await references
-      ->groupByCounterId
-      ->Belt.Array.map(((counterId, dec)) =>
-        CountsDb.count(countsDb)(counterId->CountsSpec.Id.makeFromString, countFieldName, -dec)
-      )
-      ->Js.Promise.all
-      ->Util.Promise.toUnit
-      // TODO error handling
-
-      await counterEventsHandler(
-        counts->Belt.Array.keepMap(state =>
-          switch state->CountsSpec.state_decode {
-          | Ok({id, count}) if count == 0 =>
-            let (counterId, _) = id->unmakeId
-            Js.log(
-              __MODULE__ ++
-              `.counterHandler: counted down ${name}(${id}) to ${count->Belt.Int.toString}`,
-            )
-            let meta = Message.generateMeta(~service=Source.name, ~user="Counter")
-            Some(
-              [
-                ("id", counterId->Js.Json.string),
-                ("meta", meta->Message.meta_encode),
-                ("event", CountFinished->Source.event_encode),
-              ]
-              ->Js.Dict.fromArray
-              ->Js.Json.object_,
-            )
-          | Ok({id, count}) =>
-            Js.log(
-              __MODULE__ ++
-              `.counterHandler: counted down ${name}(${id}) to ${count->Belt.Int.toString}`,
-            )
-            None
-          | _ =>
-            let stateStr = state->Js.Json.stringify
-            Js.log(__MODULE__ ++ `.counterHandler: couldn't decode state ${stateStr}`)
-            None
-          }
-        ),
-      )
-    }
-
     let handler = Handler.make(
       ~name,
-      ~referencesName,
+      ~referencesName=ReferencesSpec.name,
       ~referencesDb=referencesDb->Component.extractOutputs,
-      ~countsName,
+      ~countsName=CountsSpec.name,
       ~countsDb=countsDb->Component.extractOutputs,
-      ~counterHandler,
+      ~counterHandler=Counter_Runtime.counterHandler(
+        name,
+        countsDb->CountsDb.count,
+        counterEventsHandler,
+      ),
       ~opts=opts2,
     )
 
-    self->setCount(countItems => count(referencesDb->ReferencesDb.saveBatch, countItems))
+    self->setCount(countItems =>
+      Counter_Runtime.count(ttl)(referencesDb->ReferencesDb.saveBatch, countItems)
+    )
     self->setAddToCounterTarget(handler.addToCounterTarget)
 
     self->setOutputs(
       makeOutputs(
-        ~referencesDb=(referencesDb->ReferencesDb.outputs).resources,
-        ~countsDb=(countsDb->CountsDb.outputs).resources,
+        ~referencesDb=referencesDb->ReferencesDb.outputs,
+        ~countsDb=countsDb->CountsDb.outputs,
       ),
     )
   }
