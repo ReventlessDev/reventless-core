@@ -102,6 +102,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
                 Js.log("FTPHandler: writable ended")
               })
               ->NodeStreams.Writable.onClose(() => {
+                result := Ok(true) // Workaround: since Node 18 there is no call to onFinish() anymore
                 Js.log("FTPHandler: writable closed")
                 endFtp()
               })

@@ -119,6 +119,10 @@ function ftp(connectionParams, ftpAction) {
                                     };
                                     console.log("FTPHandler: writable ended");
                                   })).on("close", (function () {
+                                  result.contents = {
+                                    TAG: "Ok",
+                                    _0: true
+                                  };
                                   console.log("FTPHandler: writable closed");
                                   client.end();
                                 })).on("error", (function (err) {
