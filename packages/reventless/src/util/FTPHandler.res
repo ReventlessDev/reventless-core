@@ -93,8 +93,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             | exception Js.Exn.Error(e) => result := e->Reventless.Util.Error.message->Error
             }
           | Upload(readableStream, filename) =>
-            readableStream
-            ->NodeStreams.Readable.pipe(
+            let ws =
               (path ++ ("/" ++ filename))
               ->Message.log("FTPHandler: path for write stream")
               ->FTP.createWriteStream(sftp, ~path=_)
@@ -109,9 +108,8 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
               ->NodeStreams.Writable.onError(err => {
                 Js.Console.error2("FTPHandler: FTPHandler: Error in Write Stream:", err)
                 FTP.makeError("FTPHandler: Error in Write Stream")->fail
-              }),
-            )
-            ->ignore
+              })
+            await readableStream->NodeStreams.pipeline0(ws)
           }
         | exception FTP.CouldNotEstablishSftpConnection(err) =>
           client
