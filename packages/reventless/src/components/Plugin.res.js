@@ -4,35 +4,28 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var SNS$AwsSdk = require("@reventless/bs-aws-sdk/src/SNS.res.js");
-var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.res.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
-var AWS$Reventless = require("../util/AWS.res.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
-var Logger$Reventless = require("../util/Logger.res.js");
-var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
-var Message$Reventless = require("../Message.res.js");
 var QueryDb$Reventless = require("./QueryDb.res.js");
 var Aggregate$Reventless = require("./Aggregate.res.js");
 var Component$Reventless = require("./Component.res.js");
-var Extension$Reventless = require("./Extension.res.js");
 var Heartbeat$Reventless = require("./Heartbeat.res.js");
 var ReadModel$Reventless = require("./ReadModel.res.js");
 var Interstack$Reventless = require("../util/Interstack.res.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.res.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.res.js");
-var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var EventCollector$Reventless = require("./EventCollector.res.js");
+var Plugin_Runtime$Reventless = require("./Plugin_Runtime.res.js");
 var Util_StackRefs$Reventless = require("../util/Util_StackRefs.res.js");
-var ExtensionMapping$Reventless = require("../ExtensionMapping.res.js");
 var AdapterDeploytime$Reventless = require("../adapter/AdapterDeploytime.res.js");
 var Util_QueryDbRuntime$Reventless = require("../util/Util_QueryDbRuntime.res.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.res.js");
 var ResourceQueryRuntime$Reventless = require("../util/ResourceQueryRuntime.res.js");
+var PluginConnectExtension$Reventless = require("../core/Extensions/Connect/PluginConnectExtension.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
 function getRemoteStorageResources(pluginName, queryDbName) {
@@ -142,97 +135,6 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                 }));
           var extensionsOutputs = Component$Reventless.extractMultipleOutputs(extensions$1);
           var match = Util_Pulumi$Reventless.Output.Async.make();
-          var eventCollectorUrn = match[0];
-          var subscribe = async function (action, extensionPointName, eventTopic, pluginId, eventCollector) {
-            var eventTopicName = AWS$Reventless.arn2Name(eventTopic);
-            var eventCollectorName = AWS$Reventless.arn2Name(eventCollector);
-            AWS$Reventless.validateName(extensionPointName + ("-" + pluginId));
-            console.log("Trying to " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")");
-            var val;
-            try {
-              val = await SNS$AwsSdk.subscribeQueueToTopic(eventCollector, eventTopic);
-            }
-            catch (raw_e){
-              var e = Caml_js_exceptions.internalToOCamlException(raw_e);
-              if (e.RE_EXN_ID === Js_exn.$$Error) {
-                console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", e._1);
-                return ;
-              }
-              throw e;
-            }
-            console.log("Successful " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")");
-          };
-          var unsubscribe = async function (action, extensionPointName, eventTopic, pluginId, eventCollector) {
-            var eventTopicName = AWS$Reventless.arn2Name(eventTopic);
-            var eventCollectorName = AWS$Reventless.arn2Name(eventCollector);
-            AWS$Reventless.validateName(extensionPointName + ("-" + pluginId));
-            console.log("Trying to " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")");
-            var val;
-            try {
-              val = await SNS$AwsSdk.unsubscribeQueueFromTopic(eventCollector, eventTopic);
-            }
-            catch (raw_e){
-              var e = Caml_js_exceptions.internalToOCamlException(raw_e);
-              if (e.RE_EXN_ID === Js_exn.$$Error) {
-                console.log("Could not " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + "):", e._1);
-                return ;
-              }
-              throw e;
-            }
-            console.log("Success: " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")");
-          };
-          var callHandler = async function (command) {
-            switch (command.TAG) {
-              case "DoConnectPlugin" :
-                  var match = command._0;
-                  var otherPluginEventCollector = match.eventCollector;
-                  var otherPluginExtensions = match.extensions;
-                  var otherPluginId = match.id;
-                  var connectToExtensionPoints = Belt_Array.keepMap(Message$Reventless.log(match.extensionPoints, "otherPluginExtensionPoints:"), (function (param) {
-                          var extensionPointName = param.name;
-                          if (Message$Reventless.log(Belt_Array.keep(extensionsOutputs, (function (extension) {
-                                        return extension.extensionPointName === extensionPointName;
-                                      })), "matching Extensions:").length !== 0) {
-                            return Caml_option.some(subscribe("connectToExtensionPoints", extensionPointName, param.eventTopic, id, eventCollectorUrn.get()));
-                          }
-                          
-                        }));
-                  var connectToExtensions = Belt_Array.keepMap(Message$Reventless.log(extensionPointsOutputs, "extensionPoints:"), (function (extensionPoint) {
-                          if (Message$Reventless.log(Belt_Array.keep(otherPluginExtensions, (function (param) {
-                                        return extensionPoint.name === param.extensionPointName;
-                                      })), "matching otherPluginExtensions:").length !== 0) {
-                            return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id.get(), otherPluginId, otherPluginEventCollector));
-                          }
-                          
-                        }));
-                  return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.concat(connectToExtensionPoints, connectToExtensions)));
-              case "DoDisconnectPlugin" :
-                  var match$1 = command._0;
-                  var pluginEventCollector = match$1.eventCollector;
-                  var pluginExtensions = match$1.extensions;
-                  var pluginId = match$1.id;
-                  var disconnectFromExtensionPoints = Belt_Array.keepMap(match$1.extensionPoints, (function (param) {
-                          var extensionPointName = param.name;
-                          if (Belt_Array.keep(extensionsOutputs, (function (extension) {
-                                    return extension.extensionPointName === extensionPointName;
-                                  })).length !== 0) {
-                            return Caml_option.some(unsubscribe("disconnectFromExtensionPoints", extensionPointName, param.eventTopic, id, eventCollectorUrn.get()));
-                          }
-                          
-                        }));
-                  var disconnectFromExtensions = Belt_Array.keepMap(extensionPointsOutputs, (function (extensionPoint) {
-                          if (Belt_Array.keep(pluginExtensions, (function (param) {
-                                    return extensionPoint.name === param.extensionPointName;
-                                  })).length !== 0) {
-                            return Caml_option.some(unsubscribe("disconnectFromExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id.get(), pluginId, pluginEventCollector));
-                          }
-                          
-                        }));
-                  return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.concat(disconnectFromExtensionPoints, disconnectFromExtensions)));
-              default:
-                return ;
-            }
-          };
           var extensionPointsConfig = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
                       return Pulumi.all([
                                     extensionPoint.commandTopic.resources[0].id,
@@ -253,7 +155,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                 }));
           var pluginDefinition = Pulumi.all([
                   extensionPointsConfig,
-                  eventCollectorUrn
+                  match[0]
                 ]).apply(function (param) {
                 return {
                         id: id,
@@ -264,113 +166,12 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                         eventCollector: param[1]
                       };
               });
-          var partial_arg = {
-            name: PluginExtensionPointSpec$ReventlessSpec.name,
-            command_encode: PluginExtensionPointSpec$ReventlessSpec.command_encode,
-            command_decode: PluginExtensionPointSpec$ReventlessSpec.command_decode,
-            event_encode: PluginExtensionPointSpec$ReventlessSpec.event_encode,
-            event_decode: PluginExtensionPointSpec$ReventlessSpec.event_decode,
-            callCommand_encode: PluginExtensionPointSpec$ReventlessSpec.callCommand_encode,
-            callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
+          var PluginConnectExtensionSpec = {
+            pluginDefinition: pluginDefinition,
+            extensionPointsOutputs: extensionPointsOutputs,
+            extensionsOutputs: extensionsOutputs
           };
-          var partial_arg$1 = ExtensionMapping$Reventless.Make;
-          var mapIncomingEvent = function (pluginId, $$event, _meta, _pluginDef, _queryEngine) {
-            if (typeof $$event !== "object") {
-              if (pluginId === id) {
-                return [{
-                          TAG: "PublishExtensionPointCommand",
-                          _0: id,
-                          _1: {
-                            TAG: "ConnectPlugin",
-                            _0: pluginDefinition.get()
-                          }
-                        }];
-              } else {
-                return [];
-              }
-            }
-            switch ($$event.TAG) {
-              case "PluginConnected" :
-              case "PluginReconnected" :
-                  break;
-              case "PluginDeactivated" :
-                  if (pluginId !== id) {
-                    return [{
-                              TAG: "Call",
-                              _0: callHandler,
-                              _1: {
-                                TAG: "DoDisconnectPlugin",
-                                _0: $$event._0
-                              }
-                            }];
-                  } else {
-                    return [];
-                  }
-              case "PluginDisconnected" :
-              case "PluginActivated" :
-                  return [];
-              
-            }
-            if (pluginId !== id) {
-              return [{
-                        TAG: "Call",
-                        _0: callHandler,
-                        _1: {
-                          TAG: "DoConnectPlugin",
-                          _0: $$event._0
-                        }
-                      }];
-            } else {
-              return [];
-            }
-          };
-          var $$let = ExtensionMapping$ReventlessSpec.NoAggregate.Id;
-          var ConnectPluginMapping = (function (param) {
-                return partial_arg$1(partial_arg, param);
-              })({
-                Aggregate: {
-                  Id: {
-                    t_encode: $$let.t_encode,
-                    t_decode: $$let.t_decode,
-                    make: (function (prim) {
-                        return prim;
-                      }),
-                    makeFromString: (function (prim) {
-                        return prim;
-                      }),
-                    toString: (function (prim) {
-                        return prim;
-                      }),
-                    cmp: $$let.cmp
-                  },
-                  name: ExtensionMapping$ReventlessSpec.NoAggregate.name,
-                  command_encode: ExtensionMapping$ReventlessSpec.NoAggregate.command_encode,
-                  command_decode: ExtensionMapping$ReventlessSpec.NoAggregate.command_decode,
-                  event_encode: ExtensionMapping$ReventlessSpec.NoAggregate.event_encode,
-                  event_decode: ExtensionMapping$ReventlessSpec.NoAggregate.event_decode,
-                  error_encode: ExtensionMapping$ReventlessSpec.NoAggregate.error_encode,
-                  error_decode: ExtensionMapping$ReventlessSpec.NoAggregate.error_decode
-                },
-                mapIncomingEvent: mapIncomingEvent,
-                mapOutgoingEvent: undefined
-              });
-          var mappings = [ConnectPluginMapping];
-          var partial_arg$2 = {
-            name: PluginExtensionPointSpec$ReventlessSpec.name,
-            command_encode: PluginExtensionPointSpec$ReventlessSpec.command_encode,
-            command_decode: PluginExtensionPointSpec$ReventlessSpec.command_decode,
-            event_encode: PluginExtensionPointSpec$ReventlessSpec.event_encode,
-            event_decode: PluginExtensionPointSpec$ReventlessSpec.event_decode,
-            callCommand_encode: PluginExtensionPointSpec$ReventlessSpec.callCommand_encode,
-            callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
-          };
-          var partial_arg$3 = Extension$Reventless.Make;
-          var ConnectPluginExtension = (function (param) {
-                return partial_arg$3(partial_arg$2, param);
-              })({
-                name: "Connect",
-                mappings: mappings
-              });
+          var ConnectPluginExtension = PluginConnectExtension$Reventless.Make(PluginConnectExtensionSpec);
           var connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
           var tasksOutputs = {
             contents: []
@@ -391,85 +192,22 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var extensionPointAggregateNames = collectAggregateNames(Belt_Array.flatMap(extensionPointsOutputs, (function (ex) {
                       return ex.aggregateNames;
                     })));
-          var serviceNameToComponent = function (components, getServiceNames) {
-            var dict = {};
-            Belt_Array.forEach(components, (function (component) {
-                    Belt_Array.forEach(getServiceNames(component), (function (serviceName) {
-                            var mappedExtensionPoints = Js_dict.get(dict, serviceName);
-                            if (mappedExtensionPoints !== undefined) {
-                              dict[serviceName] = Belt_Array.concat(mappedExtensionPoints, [component]);
-                            } else {
-                              dict[serviceName] = [component];
-                            }
-                          }));
-                  }));
-            return dict;
-          };
-          var incomingServiceNameToPluginConnectExtensionsMapping = serviceNameToComponent([Component$Reventless.extractOutputs(connectPluginExtension)], (function (extension) {
-                  return [extension.extensionPointName];
-                }));
-          var serviceNameToExtensionPointsMapping = serviceNameToComponent(extensionPointsOutputs, (function (extensionPoint) {
-                  return extensionPoint.aggregateNames;
-                }));
-          var outgoingServiceNameToExtensionsMapping = serviceNameToComponent(extensionsOutputs, (function (extension) {
-                  return extension.aggregateNames;
-                }));
-          var incomingServiceNameToExtensionsMapping = serviceNameToComponent(extensionsOutputs, (function (extension) {
-                  return [extension.extensionPointName];
-                }));
           var extensionAggregateNames = collectAggregateNames(Belt_Array.flatMap(extensionsOutputs, (function (ex) {
                       return ex.aggregateNames;
                     })));
-          var handleEvent = async function (event$pJson, dict, getEventHandler) {
-            return await Belt_Option.mapWithDefault(Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(event$pJson), (function (serviceName) {
-                              return Js_dict.get(dict, serviceName);
-                            })), Promise.resolve(), (async function (components) {
-                          return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(components, (function (component) {
-                                                return getEventHandler(component)(event$pJson, pluginDefinition.get());
-                                              }))));
-                        }));
-          };
-          var detectUnhandledEvent = function (event$pJson) {
-            Belt_Option.mapWithDefault(Message$Reventless.serviceNameOfMsg(event$pJson), undefined, (function (serviceName) {
-                    var match = Js_dict.get(serviceNameToExtensionPointsMapping, serviceName);
-                    var match$1 = Js_dict.get(incomingServiceNameToExtensionsMapping, serviceName);
-                    var match$2 = Js_dict.get(outgoingServiceNameToExtensionsMapping, serviceName);
-                    if (match !== undefined || match$1 !== undefined || match$2 !== undefined) {
-                      return ;
-                    } else {
-                      console.log("No mapping matches service name");
-                      return ;
-                    }
-                  }));
-          };
-          var eventsHandler = function (events$pJson) {
-            var count = events$pJson.length;
-            return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
-                                  var idx$1 = idx + 1 | 0;
-                                  Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "Plugin " + id + " eventsHandler: incoming event " + String(idx$1) + "/" + String(count) + ":");
-                                  detectUnhandledEvent(event$pJson);
-                                  await handleEvent(event$pJson, incomingServiceNameToPluginConnectExtensionsMapping, (function (extension) {
-                                          return extension.incomingEventHandler;
-                                        }));
-                                  return Promise.all([
-                                              handleEvent(event$pJson, serviceNameToExtensionPointsMapping, (function (extensionPoint) {
-                                                      return extensionPoint.outgoingEventHandler;
-                                                    })),
-                                              handleEvent(event$pJson, outgoingServiceNameToExtensionsMapping, (function (extension) {
-                                                      return extension.outgoingEventHandler;
-                                                    })),
-                                              handleEvent(event$pJson, incomingServiceNameToExtensionsMapping, (function (extension) {
-                                                      return extension.incomingEventHandler;
-                                                    }))
-                                            ]);
-                                }))));
-          };
-          var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
           var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
           eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
             resources: Belt_Array.map(corePluginExtensionPoint_eventTopic.resources, AdapterDeploytime$Reventless.stackRefResourceToResource)
           };
-          var eventCollector = EventCollector.make(ComponentType$Reventless.name(name, "Plugin"), eventTopics, eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
+          var RuntimeSpec = {
+            pluginDefinition: pluginDefinition,
+            connectPluginExtension: connectPluginExtension,
+            extensionPointsOutputs: extensionPointsOutputs,
+            extensionsOutputs: extensionsOutputs
+          };
+          var Runtime = Plugin_Runtime$Reventless.Make(RuntimeSpec);
+          var PluginEventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+          var eventCollector = PluginEventCollector.make(ComponentType$Reventless.name(name, "Plugin"), eventTopics, Runtime.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
           var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
           match[1](eventCollectorOutputs.resources[0].urn);
           var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName("Plugin"), heartbeatInterval, publishToCorePluginExtensionPoint, opts);
@@ -499,11 +237,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                                     ];
                             }))),
                   resolvers: resolvers,
-                  heartbeat: Component$Reventless.extractOutputs(heartbeat),
-                  serviceNameToExtensionPointsMapping: serviceNameToExtensionPointsMapping,
-                  outgoingServiceNameToExtensionsMapping: outgoingServiceNameToExtensionsMapping,
-                  incomingServiceNameToExtensionsMapping: incomingServiceNameToExtensionsMapping,
-                  readModelNamesForSourceName: readModelNamesForSourceName
+                  heartbeat: Component$Reventless.extractOutputs(heartbeat)
                 };
         });
     var outputs = {
@@ -539,18 +273,6 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           }),
       heartbeat: pureOutputs.apply(function (outputs) {
             return outputs.heartbeat;
-          }),
-      serviceNameToExtensionPointsMapping: pureOutputs.apply(function (outputs) {
-            return outputs.serviceNameToExtensionPointsMapping;
-          }),
-      outgoingServiceNameToExtensionsMapping: pureOutputs.apply(function (outputs) {
-            return outputs.outgoingServiceNameToExtensionsMapping;
-          }),
-      incomingServiceNameToExtensionsMapping: pureOutputs.apply(function (outputs) {
-            return outputs.incomingServiceNameToExtensionsMapping;
-          }),
-      readModelNamesForSourceName: pureOutputs.apply(function (outputs) {
-            return outputs.readModelNamesForSourceName;
           })
     };
     self.setOutputs(outputs);
@@ -575,4 +297,4 @@ exports.getRemoteStorageResources = getRemoteStorageResources;
 exports.getStorageResources = getStorageResources;
 exports.makeId = makeId;
 exports.Make = Make;
-/* SNS-AwsSdk Not a pure module */
+/* ./Component Not a pure module */
