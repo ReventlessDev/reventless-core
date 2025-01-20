@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-spec",
-  "version": "2.0.0",
+  "version": "2.0.1-runtime.0",
   "description": "Specifications for Reventless",
   "author": "Atos",
   "license": "proprietary",
