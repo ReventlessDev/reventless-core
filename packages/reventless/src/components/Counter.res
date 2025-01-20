@@ -8,20 +8,9 @@ type outputs = {
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
 
-type counterTargetRef = {
-  counterId: ReventlessSpec.Counter.counterId,
-  target: int,
-  targetRef: ReventlessSpec.Counter.reference,
-}
-
-type counterHandler = (
-  ~references: array<(string, int)>,
-  ~counts: array<Js.Json.t>,
-) => Js.Promise.t<unit>
-
 type action =
   | Count(Counter_Runtime.countItem)
-  | AddToCounterTarget(counterTargetRef)
+  | AddToCounterTarget(Counter_Runtime.counterTargetRef)
 
 module Source = {
   module Id = ReventlessSpec.Id.String
@@ -31,7 +20,7 @@ module Source = {
 }
 
 type count = array<Counter_Runtime.countItem> => Js.Promise.t<unit>
-type addToCounterTarget = counterTargetRef => Js.Promise.t<unit>
+type addToCounterTarget = Counter_Runtime.counterTargetRef => Js.Promise.t<unit>
 
 type counterEventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
@@ -55,7 +44,7 @@ module Adapter = {
     ~referencesDb: ReventlessSpec.QueryDb.outputs,
     ~countsName: string,
     ~countsDb: ReventlessSpec.QueryDb.outputs,
-    ~counterHandler: counterHandler,
+    ~counterHandler: Counter_Runtime.counterHandler,
     ~opts: Pulumi.CustomResourceOptions.t,
   ) => handler
 

@@ -16,6 +16,17 @@ type countItem = {
   inc: int,
 }
 
+type counterTargetRef = {
+  counterId: ReventlessSpec.Counter.counterId,
+  target: int,
+  targetRef: ReventlessSpec.Counter.reference,
+}
+
+type counterHandler = (
+  ~references: array<(string, int)>,
+  ~counts: array<Js.Json.t>,
+) => Js.Promise.t<unit>
+
 let separator = "#"
 let makeId = ((counterId, reference)) => counterId ++ (separator ++ reference)
 let unmakeId = id =>
