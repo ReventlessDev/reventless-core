@@ -18,7 +18,7 @@ let handleQueueEvent = async (handleCommands, queue, event: PulumiAws.SQS.Queue.
     ->Belt.Array.map(record => record.receiptHandle)
     ->Belt.Array.zip(jsons)
     ->Belt.Array.map(((reference, command)) => {
-      Reventless.CommandTopic.reference,
+      ReventlessSpec.CommandTopic.reference,
       command,
     })
 

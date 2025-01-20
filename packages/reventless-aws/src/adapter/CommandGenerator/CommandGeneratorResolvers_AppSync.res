@@ -6,7 +6,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker<api> = (
   ~name: string,
   ~api: api,
   ~fields,
-  ~commandGenerator: Reventless.CommandGenerator.commandGenerator,
+  ~commandGenerator: Reventless.CommandGenerator_Runtime.commandGenerator,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => {
   let commandGeneratorLambda = Lambda.CallbackFunction.make(
@@ -91,7 +91,7 @@ let make: Reventless.CommandGenerator.Adapter.resolversMaker<api> = (
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
       ~type_="Mutation"->Pulumi.Input.make,
       ~field=field->Pulumi.Input.make,
-      ~requestTemplate=invokeCommandGenerator(commandName), 
+      ~requestTemplate=invokeCommandGenerator(commandName),
       ~responseTemplate=AppSync.Resolver.Templates.result,
       ~opts,
     )

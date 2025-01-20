@@ -1,5 +1,5 @@
 open ReventlessSpec.Adapter
-open Reventless.Counter
+open Reventless.Counter_Runtime
 open AwsSdk.DynamoDb.DocumentClient
 open Util.DynamoDbStream_Runtime
 
