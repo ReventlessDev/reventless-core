@@ -13,7 +13,7 @@ type commandsHandler<'command> = array<topicItem<'command>> => Js.Promise.t<
 >
 
 module type Spec = {
-  module Id: ReventlessSpec.Id.T
+  module Id: Id.T
 
   @decco
   type command

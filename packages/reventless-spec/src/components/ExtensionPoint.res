@@ -24,8 +24,8 @@ module type T = {
   let make: (
     ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
     ~scheduler: Scheduler.t,
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
+    ~queryEngine: QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => //TODO remove after rescript 11 update
-  ReventlessSpec.Component.t<t, outputs>
+  Component.t<t, outputs>
 }

@@ -1,4 +1,4 @@
-/** see ReventlessSpec.AggregateSpec.T */
+/** see AggregateSpec.T */
 module type Source = {
   module Id: Id.T
   let name: string
