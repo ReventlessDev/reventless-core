@@ -128,7 +128,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var corePluginExtensionPoint_eventTopic = {
             resources: Belt_Array.map(extensionPointUnwrapped.eventTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource)
           };
-          var corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(corePluginExtensionPoint_commandTopic);
+          var corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(corePluginExtensionPoint_commandTopic.resources);
           var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish;
           var extensions$1 = Belt_Array.map(extensions, (function (Extension) {
                   return Extension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);

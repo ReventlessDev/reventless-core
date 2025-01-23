@@ -49,7 +49,7 @@ module Adapter = {
   }
 
   type remoteConnector = {remotePublish: ReventlessSpec.CommandTopic.publishJsons}
-  type remoteConnectorMaker = ReventlessSpec.CommandTopic.outputs => remoteConnector
+  type remoteConnectorMaker = array<ReventlessSpec.Adapter.resource> => remoteConnector
 
   module type RemoteConnector = {
     let make: remoteConnectorMaker

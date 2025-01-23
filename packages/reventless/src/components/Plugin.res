@@ -220,7 +220,7 @@ module Make = (
         }
 
         let corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(
-          corePluginExtensionPoint.commandTopic,
+          corePluginExtensionPoint.commandTopic.resources,
         )
         let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish
 
