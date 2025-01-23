@@ -124,9 +124,9 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
     ReventlessSpec.CommandTopic.outputs,
   > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
-  let publishJsonsFn = connector =>
+  let publishJsonsFn = publish =>
     async cmdJsons =>
-      switch await connector.Adapter.publish(cmdJsons) {
+      switch await publish(cmdJsons) {
       | exception e =>
         cmdJsons->Logger.logCmdJsons(
           ~level=Logger.Level.Error,
@@ -137,17 +137,14 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
       | _ => cmdJsons->Logger.logCmdJsons(~loc=__LOC__, "Published commands")
       }
 
-  let publishFn: (
-    Adapter.connector,
-    Message.command'<Spec.Id.t, Spec.command>,
-  ) => Js.Promise.t<unit> = (connector, command') => {
+  let publishFn = (publish, command': Message.command'<Spec.Id.t, Spec.command>) => {
     let commandJson = {
       Message.id: command'.id->Spec.Id.toString,
       meta: command'.meta,
       commandJson: command'.command->Spec.command_encode,
       delay: None,
     }
-    publishJsonsFn(connector)([commandJson])
+    publishJsonsFn(publish)([commandJson])
   }
 
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
@@ -163,8 +160,8 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
       ~opts,
     )
 
-    self->setPublish(publishFn(connector, ...))
-    self->setPublishJsons(publishJsonsFn(connector, ...))
+    self->setPublish(publishFn(connector.publish, ...))
+    self->setPublishJsons(publishJsonsFn(connector.publish, ...))
 
     self->setOutputs(makeOutputs(~resources=connector.resources))
   }

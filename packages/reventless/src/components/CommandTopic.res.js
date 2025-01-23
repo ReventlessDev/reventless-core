@@ -13,11 +13,11 @@ var NotPublishedToConnector = /* @__PURE__ */Caml_exceptions.create("CommandTopi
 var Adapter = {};
 
 function Make(Spec, Connector) {
-  var publishJsonsFn = function (connector) {
+  var publishJsonsFn = function (publish) {
     return async function (cmdJsons) {
       var val;
       try {
-        val = await connector.publish(cmdJsons);
+        val = await publish(cmdJsons);
       }
       catch (e){
         Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 133, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
@@ -34,6 +34,7 @@ function Make(Spec, Connector) {
     var Runtime = CommandTopic_Runtime$Reventless.Make(Spec);
     var connector = Connector.make(ComponentType$Reventless.name(name, "CommandTopic"), Runtime.handleCommands(commandsHandler), memorySize, timeout, opts);
     self.publish = (function (extra) {
+        var publish = connector.publish;
         var commandJson_id = Spec.Id.toString(extra.id);
         var commandJson_meta = extra.meta;
         var commandJson_commandJson = Spec.command_encode(extra.command);
@@ -43,9 +44,9 @@ function Make(Spec, Connector) {
           commandJson: commandJson_commandJson,
           delay: undefined
         };
-        return publishJsonsFn(connector)([commandJson]);
+        return publishJsonsFn(publish)([commandJson]);
       });
-    self.publishJsons = publishJsonsFn(connector);
+    self.publishJsons = publishJsonsFn(connector.publish);
     var outputs = {
       resources: connector.resources
     };
