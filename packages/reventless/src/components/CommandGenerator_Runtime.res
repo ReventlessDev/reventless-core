@@ -13,8 +13,8 @@ module Make = (
 ) => {
   type publish = ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
 
-  let generateCommand: publish => commandGenerator = publish => {
-    let fn = async payload => {
+  let generateCommand: publish => commandGenerator = publish =>
+    async payload => {
       let msgId = Message.uuid()
       let id = payload.arguments.id->Spec.Id.makeFromString
       let meta = {
@@ -63,6 +63,4 @@ module Make = (
       await publish(command')
       meta.msgId
     }
-    fn
-  }
 }
