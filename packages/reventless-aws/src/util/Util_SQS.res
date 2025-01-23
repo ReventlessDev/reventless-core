@@ -1,5 +1,14 @@
 open PulumiAws
 
+let toRuntimeQueueOutput = ({name, id, arn}: PulumiAws.SQS.Queue.t) =>
+  [name, id, arn]
+  ->Pulumi.Output.all
+  ->Pulumi.Output.apply(([name, id, arn]) => {
+    Util_SQS_Runtime.id,
+    name,
+    arn,
+  })
+
 let toResource = (queue: PulumiAws.SQS.Queue.t) => {
   ReventlessSpec.Adapter.service: queue.name->Pulumi.Output.apply(_ => Util_SQS_Runtime.service),
   name: queue.name,

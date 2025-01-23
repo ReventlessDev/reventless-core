@@ -7,7 +7,7 @@ var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicCon
 function make(resources) {
   return {
           remotePublish: (function (extra) {
-              return CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS_Runtime$ReventlessAws.fromResource(Util_SQS_Runtime$ReventlessAws.findResource(resources)), Util_SQS_Runtime$ReventlessAws.service, extra);
+              return CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(Util_SQS_Runtime$ReventlessAws.fromResource(Util_SQS_Runtime$ReventlessAws.findResource(resources))), Util_SQS_Runtime$ReventlessAws.service, extra);
             })
         };
 }

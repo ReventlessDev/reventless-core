@@ -14,12 +14,20 @@ var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 
 var service = "SQS";
 
+function toRuntimeQueue(queue) {
+  return {
+          id: queue.id.get(),
+          name: queue.name.get(),
+          arn: queue.arn.get()
+        };
+}
+
 function sendMessage(queue, delay, messageBody) {
-  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, undefined, undefined, delay);
+  return SQS$AwsSdk.sendMessage(queue.id, messageBody, undefined, undefined, delay);
 }
 
 function sendFifoMessage(queue, delay, messageGroupId, messageBody) {
-  return SQS$AwsSdk.sendMessage(queue.id.get(), messageBody, messageGroupId, undefined, delay);
+  return SQS$AwsSdk.sendMessage(queue.id, messageBody, messageGroupId, undefined, delay);
 }
 
 async function send(queue, queueService, commandJson) {
@@ -55,7 +63,7 @@ function makeEntry(queueService, commandJson) {
 }
 
 async function sendMessages(queue, queueService, commandJsons) {
-  var failedIds = await SQS$AwsSdk.sendMessagesParallel(queue.id.get(), Belt_Array.map(commandJsons, (function (commandJson) {
+  var failedIds = await SQS$AwsSdk.sendMessagesParallel(queue.id, Belt_Array.map(commandJsons, (function (commandJson) {
               return makeEntry(queueService, commandJson);
             })));
   if (failedIds.TAG === "Ok") {
@@ -77,13 +85,13 @@ async function sendMessages(queue, queueService, commandJsons) {
 
 async function deleteMessage(queue, receiptHandle) {
   return await SQS$AwsSdk.DeleteMessageCommand.send(new ClientSqs.DeleteMessageCommand({
-                  QueueUrl: queue.id.get(),
+                  QueueUrl: queue.id,
                   ReceiptHandle: receiptHandle
                 }));
 }
 
 async function deleteMessages(entries, queue) {
-  var failedIds = await SQS$AwsSdk.deleteMessagesParallel(queue.id.get(), entries);
+  var failedIds = await SQS$AwsSdk.deleteMessagesParallel(queue.id, entries);
   if (failedIds.TAG === "Ok") {
     return ;
   }
@@ -137,6 +145,7 @@ function findUnwrappedResource(resources) {
 }
 
 exports.service = service;
+exports.toRuntimeQueue = toRuntimeQueue;
 exports.sendMessage = sendMessage;
 exports.sendFifoMessage = sendFifoMessage;
 exports.send = send;

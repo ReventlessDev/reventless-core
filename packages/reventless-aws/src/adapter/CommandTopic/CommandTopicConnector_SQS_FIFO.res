@@ -31,25 +31,36 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker = (
     make(~name, ~queue, ~statements=[allowCloudWatchEvents], ~opts)
   }
 
-  let handler = {
-    open Lambda.CallbackFunction
-    make(
-      ~name,
-      ~args=Args.make(
-        ~callback=CommandTopicConnector_SQS_Runtime.handleQueueEvent(handleCommands, queue, ...),
-        ~policies=Lambda.Policy.defaultPolicies,
-        ~memorySize=memorySize->Pulumi.Input.make,
-        ~timeout=timeout->Pulumi.Input.make,
-        ~tags=AWS.tags(~name, Reventless.CommandTopic.componentType),
-      ),
-      ~opts,
-    )
-  }
+  let _ =
+    queue
+    ->Util_SQS.toRuntimeQueueOutput
+    ->Pulumi.Output.apply(runtimeQueue => {
+      let handler = {
+        open Lambda.CallbackFunction
+        make(
+          ~name,
+          ~args=Args.make(
+            ~callback=CommandTopicConnector_SQS_Runtime.handleQueueEvent(
+              handleCommands,
+              runtimeQueue,
+              ...
+            ),
+            ~policies=Lambda.Policy.defaultPolicies,
+            ~memorySize=memorySize->Pulumi.Input.make,
+            ~timeout=timeout->Pulumi.Input.make,
+            ~tags=AWS.tags(~name, Reventless.CommandTopic.componentType),
+          ),
+          ~opts,
+        )
+      }
 
-  let _queueSubscription = queue->SQS.Queue.onEvent(~name, ~handler, ~opts)
+      let _queueSubscription = queue->SQS.Queue.onEvent(~name, ~handler, ~opts)
+    })
 
   {
     resources: [queue->Util_SQS_FIFO.toResource],
-    publish: queue->(CommandTopicConnector_SQS_Runtime.publish(Util_SQS_FIFO.service, ...)),
+    publish: queue
+    ->Util_SQS_Runtime.toRuntimeQueue
+    ->(CommandTopicConnector_SQS_Runtime.publish(Util_SQS_FIFO.service, ...)),
   }
 }

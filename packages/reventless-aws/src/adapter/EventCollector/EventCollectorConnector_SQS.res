@@ -36,34 +36,45 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
     )
   }
 
-  let eventHandlerLambda = Lambda.Policy.customPolicies(
-    policy1,
-    policy2,
-  )->Pulumi.Output.apply(policies =>
-    // TODO calculate real policies
-    Lambda.CallbackFunction.make(
-      ~name,
-      ~args=Lambda.CallbackFunction.Args.make(
-        ~callback=EventCollectorConnector_SQS_Runtime.handleCallbackEvent(handleEvents, queue, ...),
-        ~policies,
-        ~memorySize=memorySize->Pulumi.Input.make,
-        ~timeout=timeout->Pulumi.Input.make,
-        ~tags=AWS.tags(~name, Reventless.EventCollector.componentType),
-      ),
-      ~opts,
-    )
-  )
-
-  let _queueSubscription = // Pulumi.Output cannot be pushed into handler parameter !
-  eventHandlerLambda->Pulumi.Output.apply(eventHandlerLambda =>
-    queue->SQS.Queue.onEvent(~name, ~handler=eventHandlerLambda, ~opts)
-  )
-
   let _ =
-    eventTopics
-    ->Js.Dict.map((eventTopic: ReventlessSpec.EventTopic.outputs) => eventTopic.resources, _)
-    ->partitionSupportedResources([Util.DynamoDbStream_Runtime.service, Util.SNS.service])
-    ->Pulumi.Output.apply(((supportedResources, errorResources)) => {
+    (
+      eventTopics
+      ->Js.Dict.map((eventTopic: ReventlessSpec.EventTopic.outputs) => eventTopic.resources, _)
+      ->Reventless.Util.Adapter.partitionSupportedResources([
+        Util_DynamoDbStream_Runtime.service,
+        Util_SNS_FIFO.service,
+      ]),
+      queue->Util_SQS.toRuntimeQueueOutput,
+    )
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply((((supportedResources, errorResources), runtimeQueue)) => {
+      let eventHandlerLambda = Lambda.Policy.customPolicies(
+        policy1,
+        policy2,
+      )->Pulumi.Output.apply(policies =>
+        // TODO calculate real policies
+        Lambda.CallbackFunction.make(
+          ~name,
+          ~args=Lambda.CallbackFunction.Args.make(
+            ~callback=EventCollectorConnector_SQS_Runtime.handleCallbackEvent(
+              handleEvents,
+              runtimeQueue,
+              ...
+            ),
+            ~policies,
+            ~memorySize=memorySize->Pulumi.Input.make,
+            ~timeout=timeout->Pulumi.Input.make,
+            ~tags=AWS.tags(~name, Reventless.EventCollector.componentType),
+          ),
+          ~opts,
+        )
+      )
+
+      let _queueSubscription = // Pulumi.Output cannot be pushed into handler parameter !
+      eventHandlerLambda->Pulumi.Output.apply(eventHandlerLambda =>
+        queue->SQS.Queue.onEvent(~name, ~handler=eventHandlerLambda, ~opts)
+      )
+
       let (snsResources, otherResources) =
         supportedResources->partitionUnwrappedResourcesByService(Util.SNS.service)
       let _snsTopicSubscriptions = snsResources->Belt.Array.map(((sourceName, resources)) =>
@@ -98,6 +109,9 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
 
   {
     Reventless.EventCollector.Adapter.resources: [queue->Util_SQS.toResource],
-    enqueueEvent: EventCollectorConnector_SQS_Runtime.enqueueEvent(queue, ...),
+    enqueueEvent: (delay, id, messageBody) =>
+      queue
+      ->Util_SQS_Runtime.toRuntimeQueue
+      ->EventCollectorConnector_SQS_Runtime.enqueueEvent(delay, id, messageBody),
   }
 }

@@ -3,11 +3,23 @@ open AwsSdk
 
 let service = "SQS"
 
-let sendMessage = (queue: PulumiAws.SQS.Queue.t, ~delay=?, messageBody) =>
-  SQS.sendMessage(~queueId=queue.id->Pulumi.Output.get, ~messageBody, ~delay?)
+type runtimeQueue = {
+  id: string,
+  name: string,
+  arn: string,
+}
 
-let sendFifoMessage = (queue: PulumiAws.SQS.Queue.t, ~delay=?, ~messageGroupId, messageBody) =>
-  SQS.sendMessage(~queueId=queue.id->Pulumi.Output.get, ~messageBody, ~messageGroupId, ~delay?)
+let toRuntimeQueue = (queue: PulumiAws.SQS.Queue.t) => {
+  id: queue.id->Pulumi.Output.get,
+  name: queue.name->Pulumi.Output.get,
+  arn: queue.arn->Pulumi.Output.get,
+}
+
+let sendMessage = (queue, ~delay=?, messageBody) =>
+  SQS.sendMessage(~queueId=queue.id, ~messageBody, ~delay?)
+
+let sendFifoMessage = (queue, ~delay=?, ~messageGroupId, messageBody) =>
+  SQS.sendMessage(~queueId=queue.id, ~messageBody, ~messageGroupId, ~delay?)
 
 let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
@@ -41,10 +53,10 @@ let makeEntry = (
   }
 }
 
-let rec sendMessages = async (queue: PulumiAws.SQS.Queue.t, queueService, commandJsons) => {
+let rec sendMessages = async (queue, queueService, commandJsons) => {
   switch await commandJsons
   ->Belt.Array.map(commandJson => makeEntry(queueService, commandJson))
-  ->SQS.sendMessagesParallel(~queueId=queue.id->Pulumi.Output.get) {
+  ->SQS.sendMessagesParallel(~queueId=queue.id) {
   | Ok() => ()
   | Error(failedIds) =>
     Js.log2("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds)
@@ -59,17 +71,17 @@ let rec sendMessages = async (queue: PulumiAws.SQS.Queue.t, queueService, comman
   }
 }
 
-let deleteMessage = async (queue: PulumiAws.SQS.Queue.t, receiptHandle) => {
+let deleteMessage = async (queue, receiptHandle) => {
   await {
-    queueUrl: queue.id->Pulumi.Output.get,
+    queueUrl: queue.id,
     receiptHandle,
   }
   ->SQS.DeleteMessageCommand.make
   ->SQS.DeleteMessageCommand.send
 }
 
-let rec deleteMessages = async (entries, queue: PulumiAws.SQS.Queue.t) =>
-  switch await SQS.deleteMessagesParallel(~queueId=queue.id->Pulumi.Output.get, entries) {
+let rec deleteMessages = async (entries, queue) =>
+  switch await SQS.deleteMessagesParallel(~queueId=queue.id, entries) {
   | Ok() => ()
   | Error(failedIds) =>
     Js.log2("Util.SQS_Runtime.deleteMessages: Error: failed ids:", failedIds)

@@ -5,6 +5,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
+var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
@@ -12,7 +13,9 @@ var Util_SNS$ReventlessAws = require("../../util/Util_SNS.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector.res.js");
+var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
+var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
@@ -33,28 +36,33 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
         Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),
         Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents
       ], opts);
-  var eventHandlerLambda = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2).apply(function (policies) {
-        return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
-                          return EventCollectorConnector_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, queue, extra, extra$1);
-                        }), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType), undefined), opts);
-      });
-  eventHandlerLambda.apply(function (eventHandlerLambda) {
-        return queue.onEvent(name, eventHandlerLambda, undefined, opts);
-      });
-  Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
-              return Js_dict.map((function (eventTopic) {
-                            return eventTopic.resources;
-                          }), __x);
-            })(eventTopics), [
-          Util_DynamoDbStream_Runtime$ReventlessAws.service,
-          Util_SNS$ReventlessAws.service
+  Pulumi.all([
+          Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
+                    return Js_dict.map((function (eventTopic) {
+                                  return eventTopic.resources;
+                                }), __x);
+                  })(eventTopics), [
+                Util_DynamoDbStream_Runtime$ReventlessAws.service,
+                Util_SNS_FIFO$ReventlessAws.service
+              ]),
+          Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue)
         ]).apply(function (param) {
-        var errorResources = param[1];
-        var match = Util_Adapter$Reventless.partitionUnwrappedResourcesByService(param[0], Util_SNS$ReventlessAws.service);
-        Belt_Array.map(match[0], (function (param) {
+        var runtimeQueue = param[1];
+        var match = param[0];
+        var errorResources = match[1];
+        var eventHandlerLambda = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2).apply(function (policies) {
+              return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
+                                return EventCollectorConnector_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, runtimeQueue, extra, extra$1);
+                              }), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType), undefined), opts);
+            });
+        eventHandlerLambda.apply(function (eventHandlerLambda) {
+              return queue.onEvent(name, eventHandlerLambda, undefined, opts);
+            });
+        var match$1 = Util_Adapter$Reventless.partitionUnwrappedResourcesByService(match[0], Util_SNS$ReventlessAws.service);
+        Belt_Array.map(match$1[0], (function (param) {
                 return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_SNS$ReventlessAws.findUnwrappedResource(param[1])), opts);
               }));
-        Belt_Array.map(match[1], (function (param) {
+        Belt_Array.map(match$1[1], (function (param) {
                 return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts);
               }));
         if (errorResources.length === 0) {
@@ -65,8 +73,8 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
       });
   return {
           resources: [Util_SQS$ReventlessAws.toResource(queue)],
-          enqueueEvent: (function (extra, extra$1, extra$2) {
-              return EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(queue, extra, extra$1, extra$2);
+          enqueueEvent: (function (delay, id, messageBody) {
+              return EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(queue), delay, id, messageBody);
             })
         };
 }

@@ -48,14 +48,14 @@ let handleCallbackEvent = async (
   }
 }
 
-let enqueueEvent = (queue: PulumiAws.SQS.Queue.t, delay, _id, messageBody) => {
-  let queueName = queue.name->Reventless.OutputFailsafeRuntime.get
+let enqueueEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, _id, messageBody) => {
+  let queueName = queue.name
   Js.log4(__MODULE__ ++ ".enqueueEvent:", delay, messageBody, queueName)
   queue->Util_SQS_Runtime.sendMessage(~delay, messageBody)
 }
 
-let enqueueFifoEvent = (queue: PulumiAws.SQS.Queue.t, delay, id, messageBody) => {
-  let queueName = queue.name->Reventless.OutputFailsafeRuntime.get
+let enqueueFifoEvent = (queue: Util_SQS_Runtime.runtimeQueue, delay, id, messageBody) => {
+  let queueName = queue.name
   Js.log4(__MODULE__ ++ ".enqueueFifoEvent:", delay, messageBody, queueName)
   queue->Util_SQS_Runtime.sendFifoMessage(~delay, ~messageGroupId=id, messageBody)
 }

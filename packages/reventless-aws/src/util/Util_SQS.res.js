@@ -2,8 +2,37 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
+var Pulumi = require("@pulumi/pulumi");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var Util_SQS_Runtime$ReventlessAws = require("./Util_SQS_Runtime.res.js");
+
+function toRuntimeQueueOutput(param) {
+  return Pulumi.all([
+                param.name,
+                param.id,
+                param.arn
+              ]).apply(function (param) {
+              if (param.length !== 3) {
+                throw {
+                      RE_EXN_ID: "Match_failure",
+                      _1: [
+                        "Util_SQS.res",
+                        6,
+                        25
+                      ],
+                      Error: new Error()
+                    };
+              }
+              var name = param[0];
+              var id = param[1];
+              var arn = param[2];
+              return {
+                      id: id,
+                      name: name,
+                      arn: arn
+                    };
+            });
+}
 
 function toResource(queue) {
   return {
@@ -41,6 +70,7 @@ function findResourceInOutput(resourcesOutput) {
   return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, Util_SQS_Runtime$ReventlessAws.service);
 }
 
+exports.toRuntimeQueueOutput = toRuntimeQueueOutput;
 exports.toResource = toResource;
 exports.arn2Account = arn2Account;
 exports.subscribeToSnsTopic = subscribeToSnsTopic;

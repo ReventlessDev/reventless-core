@@ -22,14 +22,16 @@ function make(name, handleCommands, memorySize, timeout, opts) {
         sqsManagedSseEnabled: false
       }, opts);
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], opts);
-  var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
-              return CommandTopicConnector_SQS_Runtime$ReventlessAws.handleQueueEvent(handleCommands, queue, extra, extra$1);
-            }), undefined, Lambda$PulumiAws.Policy.defaultPolicies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType), undefined), opts);
-  queue.onEvent(name, handler, undefined, opts);
+  Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
+        var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
+                    return CommandTopicConnector_SQS_Runtime$ReventlessAws.handleQueueEvent(handleCommands, runtimeQueue, extra, extra$1);
+                  }), undefined, Lambda$PulumiAws.Policy.defaultPolicies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType), undefined), opts);
+        queue.onEvent(name, handler, undefined, opts);
+      });
   return {
           resources: [Util_SQS$ReventlessAws.toResource(queue)],
           publish: (function (extra) {
-              return CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(queue, Util_SQS_Runtime$ReventlessAws.service, extra);
+              return CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(queue), Util_SQS_Runtime$ReventlessAws.service, extra);
             })
         };
 }

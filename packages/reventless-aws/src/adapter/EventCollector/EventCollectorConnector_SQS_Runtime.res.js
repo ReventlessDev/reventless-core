@@ -3,7 +3,6 @@
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
-var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 
 async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
@@ -53,13 +52,13 @@ async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
 }
 
 function enqueueEvent(queue, delay, _id, messageBody) {
-  var queueName = OutputFailsafeRuntime$Reventless.get(queue.name);
+  var queueName = queue.name;
   console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueEvent:", delay, messageBody, queueName);
   return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody);
 }
 
 function enqueueFifoEvent(queue, delay, id, messageBody) {
-  var queueName = OutputFailsafeRuntime$Reventless.get(queue.name);
+  var queueName = queue.name;
   console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueFifoEvent:", delay, messageBody, queueName);
   return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, id, messageBody);
 }
