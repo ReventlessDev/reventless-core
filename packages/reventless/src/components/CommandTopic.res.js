@@ -33,20 +33,21 @@ function Make(Spec, Connector) {
     };
     var Runtime = CommandTopic_Runtime$Reventless.Make(Spec);
     var connector = Connector.make(ComponentType$Reventless.name(name, "CommandTopic"), Runtime.handleCommands(commandsHandler), memorySize, timeout, opts);
-    self.publish = (function (extra) {
-        var publish = connector.publish;
-        var commandJson_id = Spec.Id.toString(extra.id);
-        var commandJson_meta = extra.meta;
-        var commandJson_commandJson = Spec.command_encode(extra.command);
-        var commandJson = {
-          id: commandJson_id,
-          meta: commandJson_meta,
-          commandJson: commandJson_commandJson,
-          delay: undefined
-        };
-        return publishJsonsFn(publish)([commandJson]);
-      });
-    self.publishJsons = publishJsonsFn(connector.publish);
+    connector.publish.apply(function (publish) {
+          self.publish = (function (extra) {
+              var commandJson_id = Spec.Id.toString(extra.id);
+              var commandJson_meta = extra.meta;
+              var commandJson_commandJson = Spec.command_encode(extra.command);
+              var commandJson = {
+                id: commandJson_id,
+                meta: commandJson_meta,
+                commandJson: commandJson_commandJson,
+                delay: undefined
+              };
+              return publishJsonsFn(publish)([commandJson]);
+            });
+          self.publishJsons = publishJsonsFn(publish);
+        });
     var outputs = {
       resources: connector.resources
     };

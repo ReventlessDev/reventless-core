@@ -8,7 +8,6 @@ var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.r
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var CommandTopic$Reventless = require("@reventless/reventless/src/components/CommandTopic.res.js");
 var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.res.js");
-var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
 var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_Runtime.res.js");
@@ -35,9 +34,11 @@ function make(name, handleCommands, memorySize, timeout, opts) {
       });
   return {
           resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
-          publish: (function (extra) {
-              return CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(queue), Util_SQS_FIFO$ReventlessAws.service, extra);
-            })
+          publish: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
+                return function (extra) {
+                  return CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(runtimeQueue, Util_SQS_FIFO$ReventlessAws.service, extra);
+                };
+              })
         };
 }
 

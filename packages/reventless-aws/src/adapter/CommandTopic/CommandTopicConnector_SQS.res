@@ -56,7 +56,9 @@ let make: Reventless.CommandTopic.Adapter.connectorMaker = (
   {
     resources: [queue->Util_SQS.toResource],
     publish: queue
-    ->Util_SQS_Runtime.toRuntimeQueue
-    ->(CommandTopicConnector_SQS_Runtime.publish(Util_SQS_Runtime.service, ...)),
+    ->Util_SQS.toRuntimeQueueOutput
+    ->Pulumi.Output.apply(runtimeQueue =>
+      runtimeQueue->(CommandTopicConnector_SQS_Runtime.publish(Util_SQS_Runtime.service, ...))
+    ),
   }
 }

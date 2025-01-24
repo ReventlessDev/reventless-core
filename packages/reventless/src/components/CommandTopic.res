@@ -34,7 +34,7 @@ module type T = {
 module Adapter = {
   type connector = {
     resources: array<ReventlessSpec.Adapter.resource>,
-    publish: ReventlessSpec.CommandTopic.publishJsons,
+    publish: Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
   }
   type connectorMaker = (
     ~name: string,
@@ -160,8 +160,10 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
       ~opts,
     )
 
-    self->setPublish(publishFn(connector.publish, ...))
-    self->setPublishJsons(publishJsonsFn(connector.publish, ...))
+    let _ = connector.publish->Pulumi.Output.apply(publish => {
+      self->setPublish(publishFn(publish, ...))
+      self->setPublishJsons(publishJsonsFn(publish, ...))
+    })
 
     self->setOutputs(makeOutputs(~resources=connector.resources))
   }
