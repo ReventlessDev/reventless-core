@@ -136,9 +136,9 @@ module Make = (
     )
     let commandTopicOutputs = commandTopic->Component.extractOutputs
 
+    self->setAddEventMapper(self->(addEventMapperFn(~opts, ...)))
     let commandGenerator = commandTopicOutputs.publishJsons->Pulumi.Output.apply(publishJsons => {
       self->setPublishJsons(publishJsons)
-      self->setAddEventMapper(self->(addEventMapperFn(~opts, ...)))
 
       CommandGenerator.make(~name=childName, ~publishJsons, ~opts)->Component.extractOutputs
     })
