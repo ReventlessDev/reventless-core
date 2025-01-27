@@ -123,7 +123,8 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var corePluginExtensionPoint_aggregateNames = extensionPointUnwrapped.aggregateNames;
           var corePluginExtensionPoint_outgoingEventHandler = extensionPointUnwrapped.outgoingEventHandler;
           var corePluginExtensionPoint_commandTopic = {
-            resources: Belt_Array.map(extensionPointUnwrapped.commandTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource)
+            resources: Belt_Array.map(extensionPointUnwrapped.commandTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource),
+            publishJsons: Pulumi.output(extensionPointUnwrapped.commandTopic.publishJsons)
           };
           var corePluginExtensionPoint_eventTopic = {
             resources: Belt_Array.map(extensionPointUnwrapped.eventTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource)

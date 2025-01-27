@@ -10,6 +10,6 @@ module Make = (Spec: ReventlessSpec.Aggregate.Spec): (
 
   external outputsToComponent: CommandGenerator.outputs => CommandGenerator.component = "%identity"
 
-  let make = (~name as _, ~publish as _, ~opts as _=?) =>
+  let make = (~name as _, ~publishJsons as _, ~opts as _=?) =>
     makeOutputs(~resources=[])->outputsToComponent
 }

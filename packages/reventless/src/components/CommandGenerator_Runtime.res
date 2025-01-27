@@ -11,12 +11,12 @@ module Make = (
   Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := Spec,
 ) => {
-  type publish = ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
+  type publishJsons = ReventlessSpec.CommandTopic.publishJsons
 
-  let generateCommand: publish => commandGenerator = publish =>
+  let generateCommand: publishJsons => commandGenerator = publishJsons =>
     async payload => {
       let msgId = Message.uuid()
-      let id = payload.arguments.id->Spec.Id.makeFromString
+      let id = payload.arguments.id
       let meta = {
         {
           Message.service: Spec.name,
@@ -27,11 +27,11 @@ module Make = (
           correlationId: msgId,
         }
       }
-      let decoded =
+      let argumentsJson =
         payload.arguments
         ->Js.Json.stringifyAny // FIXME: find another way to transform a Js.t into Js.Json.t
         ->Belt.Option.flatMap(jsonString => jsonString->Js.Json.parseExn->Js.Json.decodeObject)
-      let params = switch decoded {
+      let params = switch argumentsJson {
       | Some(obj) => obj->Js.Dict.values
       | None =>
         Js.Exn.raiseError(
@@ -42,25 +42,21 @@ module Make = (
         )
       }
       params[0] = Js.Json.string(payload.command)
-      let decoded =
-        params
-        ->Js.Json.array
-        ->Behaviour.resolverConfig.commandDecoder
-      let command = switch decoded {
-      | Belt.Result.Ok(command) => command
+      let commandJson = params->Js.Json.array
+      Js.log2("CommandGenerator: generated command:", commandJson)
+      let decodedCommand = commandJson->Behaviour.resolverConfig.commandDecoder
+      switch decodedCommand {
+      | Belt.Result.Ok(_) =>
+        await publishJsons([{id, meta, commandJson, delay: None}])
+        meta.msgId
       | Error(err) =>
         Js.Exn.raiseError(
           `Error: Couldn't decode ${params
             ->Belt.Array.map(Js.Json.stringify)
-            ->Js.Array2.joinWith(", ")}->Message.stringify: ${err
+            ->Js.Array2.joinWith(", ")}: ${err
             ->Js.Json.stringifyAny
             ->Belt.Option.getExn}`,
         )
       }
-      let command' = {
-        {Message.id, meta, command}
-      }
-      await publish(command')
-      meta.msgId
     }
 }

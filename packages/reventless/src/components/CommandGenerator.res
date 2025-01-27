@@ -10,7 +10,7 @@ module type T = {
 
   let make: (
     ~name: string,
-    ~publish: ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>,
+    ~publishJsons: ReventlessSpec.CommandTopic.publishJsons,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }
@@ -44,7 +44,7 @@ module Make = (
   type api = Config.api
 
   type constructed
-  type construct = (component, string, api, Runtime.publish) => constructed
+  type construct = (component, string, api, Runtime.publishJsons) => constructed
 
   @module("./Component") @new
   external make: (
@@ -53,38 +53,35 @@ module Make = (
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.options>,
     ~api: api,
-    ~publish: Runtime.publish,
+    ~publishJsons: Runtime.publishJsons,
   ) => component = "default"
-
-  @obj external makeOutputs: (~resources: array<ReventlessSpec.Adapter.resource>) => outputs = ""
 
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   //[@send] external setOutputs: (t, outputs) => unit = "setOutputs";
 
-  let construct = (self, name, api, publish) => {
+  let construct = (self, name, api, publishJsons) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let resolvers = Resolvers.make(
       ~name=name->ComponentType.name(componentType),
       ~api,
       ~fields=Behaviour.resolverConfig.fields,
-      ~commandGenerator=Runtime.generateCommand(publish),
+      ~commandGenerator=Runtime.generateCommand(publishJsons),
       ~opts,
     )
 
-    let outputs = makeOutputs(~resources=resolvers.resources)
     //self->setOutputs(outputs); // NOTE: creates circular reference (promise leaks)
-    self->registerOutputs(outputs)
+    self->registerOutputs({resources: resolvers.resources})
   }
 
-  let make = (~name, ~publish, ~opts=?) =>
+  let make = (~name, ~publishJsons, ~opts=?) =>
     make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
       ~construct,
       ~opts,
       ~api=Config.api,
-      ~publish,
+      ~publishJsons,
     )
 }

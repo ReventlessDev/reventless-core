@@ -1,6 +1,9 @@
 let componentType = ComponentType.CommandTopic
 
-type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
+type unwrappedOutputs = {
+  resources: array<Adapter.unwrappedResource>,
+  publishJsons: ReventlessSpec.CommandTopic.publishJsons,
+}
 
 exception NotPublishedToConnector(Js.Promise.error)
 
@@ -34,7 +37,7 @@ module type T = {
 module Adapter = {
   type connector = {
     resources: array<ReventlessSpec.Adapter.resource>,
-    publish: Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
+    publishJsons: Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
   }
   type connectorMaker = (
     ~name: string,
@@ -85,11 +88,6 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
     ~commandsHandler: commandsHandler,
   ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs> = "default"
 
-  @obj
-  external makeOutputs: (
-    ~resources: array<ReventlessSpec.Adapter.resource>,
-  ) => ReventlessSpec.CommandTopic.outputs = ""
-
   @send
   external registerOutputs: (
     ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
@@ -124,9 +122,9 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
     ReventlessSpec.CommandTopic.outputs,
   > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
-  let publishJsonsFn = publish =>
+  let publishJsonsFn = publishJsons =>
     async cmdJsons =>
-      switch await publish(cmdJsons) {
+      switch await publishJsons(cmdJsons) {
       | exception e =>
         cmdJsons->Logger.logCmdJsons(
           ~level=Logger.Level.Error,
@@ -137,14 +135,14 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
       | _ => cmdJsons->Logger.logCmdJsons(~loc=__LOC__, "Published commands")
       }
 
-  let publishFn = (publish, command': Message.command'<Spec.Id.t, Spec.command>) => {
+  let publishFn = (publishJsons, command': Message.command'<Spec.Id.t, Spec.command>) => {
     let commandJson = {
       Message.id: command'.id->Spec.Id.toString,
       meta: command'.meta,
       commandJson: command'.command->Spec.command_encode,
       delay: None,
     }
-    publishJsonsFn(publish)([commandJson])
+    publishJsonsFn(publishJsons)([commandJson])
   }
 
   let construct = (~memorySize, ~timeout, self, name, commandsHandler) => {
@@ -160,12 +158,12 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
       ~opts,
     )
 
-    let _ = connector.publish->Pulumi.Output.apply(publish => {
-      self->setPublish(publishFn(publish, ...))
-      self->setPublishJsons(publishJsonsFn(publish, ...))
+    let _ = connector.publishJsons->Pulumi.Output.apply(publishJsons => {
+      self->setPublish(publishFn(publishJsons, ...))
+      self->setPublishJsons(publishJsonsFn(publishJsons, ...))
     })
 
-    self->setOutputs(makeOutputs(~resources=connector.resources))
+    self->setOutputs({resources: connector.resources, publishJsons: connector.publishJsons})
   }
 
   let make = (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?) =>

@@ -210,6 +210,7 @@ module Make = (
               resources: extensionPointUnwrapped.commandTopic.resources->Belt.Array.map(
                 AdapterDeploytime.unwrappedToResource,
               ),
+              publishJsons: extensionPointUnwrapped.commandTopic.publishJsons->Pulumi.Output.make,
             },
             eventTopic: {
               resources: extensionPointUnwrapped.eventTopic.resources->Belt.Array.map(

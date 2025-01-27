@@ -55,7 +55,7 @@ module Make = (
   module Spec = Spec
 
   type constructed
-  type construct = (component, string) => constructed
+  type construct = (component, string) => Pulumi.Output.t<constructed>
 
   @module("./Component") @new
   external make: (
@@ -134,21 +134,20 @@ module Make = (
       ),
       ~opts,
     )
+    let commandTopicOutputs = commandTopic->Component.extractOutputs
 
-    let commandGenerator = CommandGenerator.make(
-      ~name=childName,
-      ~publish=commandTopic->CommandTopic.publish,
-      ~opts,
-    )
+    commandTopicOutputs.publishJsons->Pulumi.Output.apply(publishJsons => {
+      let commandGenerator = CommandGenerator.make(~name=childName, ~publishJsons, ~opts)
 
-    self->setPublishJsons(commandTopic->CommandTopic.publishJsons)
-    self->setAddEventMapper(self->(addEventMapperFn(~opts, ...)))
+      self->setPublishJsons(publishJsons)
+      self->setAddEventMapper(self->(addEventMapperFn(~opts, ...)))
 
-    self->setOutputs({
-      name,
-      commandGenerator: commandGenerator->Component.extractOutputs,
-      commandTopic: commandTopic->Component.extractOutputs,
-      eventLog: eventLog->Component.extractOutputs,
+      self->setOutputs({
+        name,
+        commandGenerator: commandGenerator->Component.extractOutputs,
+        commandTopic: commandTopicOutputs,
+        eventLog: eventLog->Component.extractOutputs,
+      })
     })
   }
 

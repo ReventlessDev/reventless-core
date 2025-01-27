@@ -11,21 +11,20 @@ var Adapter = {};
 function Make(Config, Spec, Behaviour, Resolvers) {
   var partial_arg = CommandGenerator_Runtime$Reventless.Make;
   var Runtime = partial_arg(Spec, Behaviour);
-  var construct = function (self, name, api, publish) {
+  var construct = function (self, name, api, publishJsons) {
     var opts_parent = Caml_option.some(self);
     var opts = {
       parent: opts_parent
     };
-    var resolvers = Resolvers.make(ComponentType$Reventless.name(name, "CommandGenerator"), api, Behaviour.resolverConfig.fields, Runtime.generateCommand(publish), opts);
-    var outputs = {
-      resources: resolvers.resources
-    };
-    return self.registerOutputs(outputs);
+    var resolvers = Resolvers.make(ComponentType$Reventless.name(name, "CommandGenerator"), api, Behaviour.resolverConfig.fields, Runtime.generateCommand(publishJsons), opts);
+    return self.registerOutputs({
+                resources: resolvers.resources
+              });
   };
-  var make = function (name, publish, opts) {
+  var make = function (name, publishJsons, opts) {
     var prim0 = ComponentType$Reventless.toString("CommandGenerator");
     var prim4 = Config.api;
-    return new Component(prim0, name, construct, opts, prim4, publish);
+    return new Component(prim0, name, construct, opts, prim4, publishJsons);
   };
   return {
           Spec: Spec,

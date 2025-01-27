@@ -13,17 +13,17 @@ var NotPublishedToConnector = /* @__PURE__ */Caml_exceptions.create("CommandTopi
 var Adapter = {};
 
 function Make(Spec, Connector) {
-  var publishJsonsFn = function (publish) {
+  var publishJsonsFn = function (publishJsons) {
     return async function (cmdJsons) {
       var val;
       try {
-        val = await publish(cmdJsons);
+        val = await publishJsons(cmdJsons);
       }
       catch (e){
-        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 133, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
+        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 131, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
         throw e;
       }
-      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 137, characters 47-54", undefined, cmdJsons, "Published commands");
+      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 135, characters 47-54", undefined, cmdJsons, "Published commands");
     };
   };
   var construct = function (memorySize, timeout, self, name, commandsHandler) {
@@ -33,7 +33,7 @@ function Make(Spec, Connector) {
     };
     var Runtime = CommandTopic_Runtime$Reventless.Make(Spec);
     var connector = Connector.make(ComponentType$Reventless.name(name, "CommandTopic"), Runtime.handleCommands(commandsHandler), memorySize, timeout, opts);
-    connector.publish.apply(function (publish) {
+    connector.publishJsons.apply(function (publishJsons) {
           self.publish = (function (extra) {
               var commandJson_id = Spec.Id.toString(extra.id);
               var commandJson_meta = extra.meta;
@@ -44,12 +44,13 @@ function Make(Spec, Connector) {
                 commandJson: commandJson_commandJson,
                 delay: undefined
               };
-              return publishJsonsFn(publish)([commandJson]);
+              return publishJsonsFn(publishJsons)([commandJson]);
             });
-          self.publishJsons = publishJsonsFn(publish);
+          self.publishJsons = publishJsonsFn(publishJsons);
         });
     var outputs = {
-      resources: connector.resources
+      resources: connector.resources,
+      publishJsons: connector.publishJsons
     };
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);

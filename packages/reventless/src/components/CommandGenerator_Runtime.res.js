@@ -10,10 +10,10 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Message$Reventless = require("../Message.res.js");
 
 function Make(Spec, Behaviour) {
-  var generateCommand = function (publish) {
+  var generateCommand = function (publishJsons) {
     return async function (payload) {
       var msgId = Message$Reventless.uuid();
-      var id = Spec.Id.makeFromString(payload.arguments.id);
+      var id = payload.arguments.id;
       var meta_service = Spec.name;
       var meta_time = Message$Reventless.nowAsISOString();
       var meta_ip = Belt_Option.getWithDefault(Caml_option.undefined_to_opt(payload.meta.ip.shift()), "");
@@ -26,22 +26,24 @@ function Make(Spec, Behaviour) {
         msgId: msgId,
         correlationId: msgId
       };
-      var decoded = Belt_Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
+      var argumentsJson = Belt_Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
               return Js_json.decodeObject(JSON.parse(jsonString));
             }));
-      var params = decoded !== undefined ? Js_dict.values(decoded) : Js_exn.raiseError("Couldn't decode:" + Belt_Option.getWithDefault(JSON.stringify(payload.arguments), "<payload.arguments>"));
+      var params = argumentsJson !== undefined ? Js_dict.values(argumentsJson) : Js_exn.raiseError("Couldn't decode:" + Belt_Option.getWithDefault(JSON.stringify(payload.arguments), "<payload.arguments>"));
       params[0] = payload.command;
-      var decoded$1 = Behaviour.resolverConfig.commandDecoder(params);
-      var command;
-      command = decoded$1.TAG === "Ok" ? decoded$1._0 : Js_exn.raiseError("Error: Couldn't decode " + Belt_Array.map(params, (function (prim) {
-                      return JSON.stringify(prim);
-                    })).join(", ") + "->Message.stringify: " + Belt_Option.getExn(JSON.stringify(decoded$1._0)));
-      var command$p = {
-        id: id,
-        meta: meta,
-        command: command
-      };
-      await publish(command$p);
+      console.log("CommandGenerator: generated command:", params);
+      var decodedCommand = Behaviour.resolverConfig.commandDecoder(params);
+      if (decodedCommand.TAG !== "Ok") {
+        return Js_exn.raiseError("Error: Couldn't decode " + Belt_Array.map(params, (function (prim) {
+                            return JSON.stringify(prim);
+                          })).join(", ") + ": " + Belt_Option.getExn(JSON.stringify(decodedCommand._0)));
+      }
+      await publishJsons([{
+              id: id,
+              meta: meta,
+              commandJson: params,
+              delay: undefined
+            }]);
       return msgId;
     };
   };
