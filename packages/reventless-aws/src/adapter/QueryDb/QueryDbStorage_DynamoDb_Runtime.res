@@ -9,23 +9,23 @@ let load = table =>
     | arr => arr->Ok
     | exception Js.Exn.Error(e) =>
       let errorMsg = e->Reventless.Util.Error.message
-      let tableName = table.name->Pulumi.Output.get
+      let tableName = table.name
       Js.log(
         __MODULE__ ++ `.load: Error: Couldn't load state for ${id} from ${tableName}: ${errorMsg}`,
       )
       Error(ReventlessSpec.QueryDb.NotLoadedFromStorage(errorMsg))
     }
 
-let save = (table: PulumiAws.DynamoDb.Table.t) =>
+let save = table =>
   async (id, json, saveMode: ReventlessSpec.QueryDb.saveMode, ttl) => {
-    let tableName = table.name->Pulumi.Output.get
+    let tableName = table.name
     let json = json->insertTtl(ttl)
 
     switch saveMode {
     | Init =>
       switch await table->putIfNotExistsWithRetries(
-        ~idKey=table.hashKey->Pulumi.Output.get,
-        ~sortKey=?table.rangeKey->Pulumi.Output.get,
+        ~idKey=table.hashKey,
+        ~sortKey=?table.rangeKey,
         id,
         json,
       ) {
@@ -62,8 +62,8 @@ let sliceBatch = (arr, batchNr) =>
     ~len=BatchWriteCommand.maxBatchSize,
   )
 
-let writeMultiple = async (writeRequests, op, ids, table: PulumiAws.DynamoDb.Table.t) => {
-  let tableName = table.name->Pulumi.Output.get
+let writeMultiple = async (writeRequests, op, ids, table) => {
+  let tableName = table.name
   let count = ids->Belt.Array.size->Js.Int.toString
   let allIdsStr = ids->Js.Array2.joinWith(", ")
   let size = writeRequests->Belt.Array.size
@@ -126,7 +126,7 @@ let saveBatch = table =>
     | [] => Ok()
     | [(id, json, ttl)] => await save(table)(id, json, Any, ttl)
     | items =>
-      let tableName = table.name->Pulumi.Output.get
+      let tableName = table.name
       let ids = items->Belt.Array.map(((id, _, _)) => id)
       await items
       ->Belt.Array.map(((_id, json, ttl)) => {
@@ -135,9 +135,9 @@ let saveBatch = table =>
       ->writeMultiple("finished put", ids, table)
     }
 
-let count = (table: PulumiAws.DynamoDb.Table.t) =>
+let count = table =>
   async (id, fieldName, inc) => {
-    let tableName = table.name->Pulumi.Output.get
+    let tableName = table.name
     Js.log(__MODULE__ ++ `.count: ${tableName}, ${id}, ${fieldName}, ${inc->Belt.Int.toString}`)
     switch await UpdateCommand.make({
       tableName,
@@ -165,9 +165,9 @@ let count = (table: PulumiAws.DynamoDb.Table.t) =>
     }
   }
 
-let delete = (table: PulumiAws.DynamoDb.Table.t) =>
+let delete = table =>
   async (id, sort) => {
-    let tableName = table.name->Pulumi.Output.get
+    let tableName = table.name
     switch await table->deleteWithRetries(id, ~sort?) {
     | Ok() =>
       Js.log2(__MODULE__ ++ `.delete: deleted state from ${tableName}: id=${id}, sort=`, sort)
@@ -188,7 +188,7 @@ let deleteBatch = table =>
     | [] => Ok()
     | [(id, sort)] => await delete(table)(id, sort)
     | items =>
-      let tableName = table.name->Pulumi.Output.get
+      let tableName = table.name
       let ids = items->Belt.Array.map(((id, _)) => id)
       await items
       ->Belt.Array.map(((id, sort)) =>

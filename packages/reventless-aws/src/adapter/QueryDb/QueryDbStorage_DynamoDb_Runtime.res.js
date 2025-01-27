@@ -22,7 +22,7 @@ function load(table) {
       var e = Caml_js_exceptions.internalToOCamlException(raw_e);
       if (e.RE_EXN_ID === Js_exn.$$Error) {
         var errorMsg = Util_Error$Reventless.message(undefined, e._1);
-        var tableName = table.name.get();
+        var tableName = table.name;
         console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".load: Error: Couldn't load state for " + id + " from " + tableName + ": " + errorMsg));
         return {
                 TAG: "Error",
@@ -43,11 +43,11 @@ function load(table) {
 
 function save(table) {
   return async function (id, json, saveMode, ttl) {
-    var tableName = table.name.get();
+    var tableName = table.name;
     var json$1 = Util_DynamoDb_Runtime$ReventlessAws.insertTtl(json, ttl);
     switch (saveMode) {
       case "Init" :
-          var errorMsg = await Util_DynamoDb_Runtime$ReventlessAws.putIfNotExistsWithRetries(undefined, undefined, table.hashKey.get(), table.rangeKey.get(), table, id, json$1);
+          var errorMsg = await Util_DynamoDb_Runtime$ReventlessAws.putIfNotExistsWithRetries(undefined, undefined, table.hashKey, table.rangeKey, table, id, json$1);
           if (errorMsg.TAG === "Ok") {
             console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".save: saved Init state to " + tableName + ": id=" + id));
             return {
@@ -94,7 +94,7 @@ function sliceBatch(arr, batchNr) {
 }
 
 async function writeMultiple(writeRequests, op, ids, table) {
-  var tableName = table.name.get();
+  var tableName = table.name;
   var count = ids.length.toString();
   var allIdsStr = ids.join(", ");
   var size = writeRequests.length;
@@ -170,7 +170,6 @@ function saveBatch(table) {
                 _0: undefined
               };
       }
-      table.name.get();
       var ids = Belt_Array.map(items, (function (param) {
               return param[0];
             }));
@@ -185,7 +184,7 @@ function saveBatch(table) {
 
 function count(table) {
   return async function (id, fieldName, inc) {
-    var tableName = table.name.get();
+    var tableName = table.name;
     console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".count: " + tableName + ", " + id + ", " + fieldName + ", " + String(inc)));
     var updateOutput;
     try {
@@ -244,7 +243,7 @@ function count(table) {
 
 function $$delete(table) {
   return async function (id, sort) {
-    var tableName = table.name.get();
+    var tableName = table.name;
     var errorMsg = await Util_DynamoDb_Runtime$ReventlessAws.deleteWithRetries(undefined, undefined, sort, table, id);
     if (errorMsg.TAG === "Ok") {
       console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".delete: deleted state from " + tableName + ": id=" + id + ", sort="), sort);
@@ -275,7 +274,6 @@ function deleteBatch(table) {
                 _0: undefined
               };
       }
-      table.name.get();
       var ids = Belt_Array.map(items, (function (param) {
               return param[0];
             }));

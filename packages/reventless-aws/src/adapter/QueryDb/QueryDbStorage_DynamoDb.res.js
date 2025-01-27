@@ -85,12 +85,16 @@ function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
   return {
           resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
           dataSourceName: dataSource(name, table, api, apiRole, opts).name,
-          load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(table),
-          save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table),
-          saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(table),
-          count: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(table),
-          delete: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table),
-          deleteBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.deleteBatch(table)
+          primitives: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
+                return {
+                        load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(runtimeTable),
+                        save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(runtimeTable),
+                        saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(runtimeTable),
+                        count: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(runtimeTable),
+                        delete: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(runtimeTable),
+                        deleteBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.deleteBatch(runtimeTable)
+                      };
+              })
         };
 }
 

@@ -3,6 +3,7 @@
 
 var AWS$ReventlessAws = require("../AWS.res.js");
 var QueryDb$Reventless = require("@reventless/reventless/src/components/QueryDb.res.js");
+var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
 var QueryDbStorage_DynamoDb$ReventlessAws = require("./QueryDbStorage_DynamoDb.res.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_DynamoDb_Runtime.res.js");
@@ -12,12 +13,16 @@ function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
   return {
           resources: [Util_DynamoDbStream$ReventlessAws.toResource(table)],
           dataSourceName: QueryDbStorage_DynamoDb$ReventlessAws.dataSource(name, table, api, apiRole, opts).name,
-          load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(table),
-          save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(table),
-          saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(table),
-          count: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(table),
-          delete: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(table),
-          deleteBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.deleteBatch(table)
+          primitives: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
+                return {
+                        load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(runtimeTable),
+                        save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(runtimeTable),
+                        saveBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.saveBatch(runtimeTable),
+                        count: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.count(runtimeTable),
+                        delete: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.$$delete(runtimeTable),
+                        deleteBatch: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.deleteBatch(runtimeTable)
+                      };
+              })
         };
 }
 

@@ -8,6 +8,17 @@ let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
     hashKey ++ ("," ++ rangeKey->Belt.Option.getWithDefault(""))
   )
 
+let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}: PulumiAws.DynamoDb.Table.t) =>
+  (name, id, arn, hashKey, rangeKey)
+  ->Pulumi.Output.all5
+  ->Pulumi.Output.apply(((name, id, arn, hashKey, rangeKey)) => {
+    Util_DynamoDb_Runtime.id,
+    name,
+    arn,
+    hashKey,
+    rangeKey,
+  })
+
 let toResource: table => resource = ({id, name, arn} as table) => {
   ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => Util_DynamoDb_Runtime.service),
   name,

@@ -2,8 +2,24 @@ open AwsSdk.DynamoDb.DocumentClient
 
 let service = "DynamoDb"
 
-let put = (table: PulumiAws.DynamoDb.Table.t, item) => {
-  {PutCommand.tableName: table.name->Pulumi.Output.get, item}->PutCommand.make->PutCommand.send
+type runtimeTable = {
+  id: string,
+  name: string,
+  arn: string,
+  hashKey: string,
+  rangeKey: option<string>,
+}
+
+let toRuntimeTable = (table: PulumiAws.DynamoDb.Table.t) => {
+  id: table.id->Pulumi.Output.get,
+  name: table.name->Pulumi.Output.get,
+  arn: table.arn->Pulumi.Output.get,
+  hashKey: table.hashKey->Pulumi.Output.get,
+  rangeKey: table.rangeKey->Pulumi.Output.get,
+}
+
+let put = (table, item) => {
+  {PutCommand.tableName: table.name, item}->PutCommand.make->PutCommand.send
 }
 
 let rec putWithRetries = async (~retry=0, ~maxRetries=5, table, id, item) =>
@@ -30,11 +46,11 @@ let rec putIfNotExistsWithRetries = async (
   ~maxRetries=5,
   ~idKey,
   ~sortKey=?,
-  table: PulumiAws.DynamoDb.Table.t,
+  table,
   id,
   item,
 ) =>
-  switch await putIfNotExists(table.name->Pulumi.Output.get, idKey, sortKey, item) {
+  switch await putIfNotExists(table.name, idKey, sortKey, item) {
   | _ => Ok()
   | exception Js.Exn.Error(e) =>
     switch e->PutError.classify {
@@ -63,8 +79,8 @@ let rec putIfNotExistsWithRetries = async (
     }
   }
 
-let delete = (table: PulumiAws.DynamoDb.Table.t, ~sort=?, id) => {
-  delete(~tableName=table.name->Pulumi.Output.get, ~sort?, ~id)
+let delete = (table, ~sort=?, id) => {
+  delete(~tableName=table.name, ~sort?, ~id)
 }
 
 let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) =>
@@ -83,8 +99,7 @@ let rec deleteWithRetries = async (~retry=0, ~maxRetries=5, ~sort=?, table, id) 
     }
   }
 
-let queryById = (table: PulumiAws.DynamoDb.Table.t, id) =>
-  queryById(table.name->Pulumi.Output.get, id)
+let queryById = (table, id) => queryById(table.name, id)
 
 let keysFromResource: ReventlessSpec.Adapter.resource => (string, option<string>) = resource =>
   switch resource.info->Pulumi.Output.get->Js.String2.split(",") {

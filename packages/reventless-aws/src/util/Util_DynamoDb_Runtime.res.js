@@ -17,10 +17,20 @@ var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 
 var service = "DynamoDb";
 
+function toRuntimeTable(table) {
+  return {
+          id: table.id.get(),
+          name: table.name.get(),
+          arn: table.arn.get(),
+          hashKey: table.hashKey.get(),
+          rangeKey: table.rangeKey.get()
+        };
+}
+
 function put(table, item) {
   return DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
                   Item: item,
-                  TableName: table.name.get()
+                  TableName: table.name
                 }));
 }
 
@@ -58,7 +68,7 @@ async function putIfNotExistsWithRetries(retryOpt, maxRetriesOpt, idKey, sortKey
   var retry = retryOpt !== undefined ? retryOpt : 0;
   var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
   try {
-    await DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name.get(), idKey, sortKey, item);
+    await DynamoDb_DocumentClient$AwsSdk.putIfNotExists(table.name, idKey, sortKey, item);
     return {
             TAG: "Ok",
             _0: undefined
@@ -93,7 +103,7 @@ async function putIfNotExistsWithRetries(retryOpt, maxRetriesOpt, idKey, sortKey
 }
 
 function $$delete(table, sort, id) {
-  return DynamoDb_DocumentClient$AwsSdk.$$delete(sort, table.name.get(), id);
+  return DynamoDb_DocumentClient$AwsSdk.$$delete(sort, table.name, id);
 }
 
 async function deleteWithRetries(retryOpt, maxRetriesOpt, sort, table, id) {
@@ -127,7 +137,7 @@ async function deleteWithRetries(retryOpt, maxRetriesOpt, sort, table, id) {
 }
 
 function queryById(table, id) {
-  return DynamoDb_DocumentClient$AwsSdk.queryById(table.name.get(), id);
+  return DynamoDb_DocumentClient$AwsSdk.queryById(table.name, id);
 }
 
 function keysFromResource(resource) {
@@ -314,6 +324,7 @@ function findResource(resources) {
 }
 
 exports.service = service;
+exports.toRuntimeTable = toRuntimeTable;
 exports.put = put;
 exports.putWithRetries = putWithRetries;
 exports.putIfNotExistsWithRetries = putIfNotExistsWithRetries;

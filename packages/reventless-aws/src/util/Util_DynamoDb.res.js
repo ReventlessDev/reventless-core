@@ -23,6 +23,24 @@ function toInfo(param) {
             });
 }
 
+function toRuntimeTableOutput(param) {
+  return Pulumi.all([
+                param.name,
+                param.id,
+                param.arn,
+                param.hashKey,
+                param.rangeKey
+              ]).apply(function (param) {
+              return {
+                      id: param[1],
+                      name: param[0],
+                      arn: param[2],
+                      hashKey: param[3],
+                      rangeKey: param[4]
+                    };
+            });
+}
+
 function toResource(table) {
   var name = table.name;
   return {
@@ -200,6 +218,7 @@ function findResourceInOutput(resourcesOutput) {
 }
 
 exports.toInfo = toInfo;
+exports.toRuntimeTableOutput = toRuntimeTableOutput;
 exports.toResource = toResource;
 exports.arn2tableName = arn2tableName;
 exports.enableTtl = enableTtl;
