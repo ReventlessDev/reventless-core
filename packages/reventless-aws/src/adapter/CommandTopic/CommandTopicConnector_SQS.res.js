@@ -30,9 +30,9 @@ function make(name, handleCommands, memorySize, timeout, opts) {
       });
   return {
           resources: [Util_SQS$ReventlessAws.toResource(queue)],
-          publish: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
+          publishJsons: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
                 return function (extra) {
-                  return CommandTopicConnector_SQS_Runtime$ReventlessAws.publish(runtimeQueue, Util_SQS_Runtime$ReventlessAws.service, extra);
+                  return CommandTopicConnector_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, Util_SQS_Runtime$ReventlessAws.service, extra);
                 };
               })
         };

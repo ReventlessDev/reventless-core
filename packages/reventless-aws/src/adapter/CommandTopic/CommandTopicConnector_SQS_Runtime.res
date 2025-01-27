@@ -59,9 +59,9 @@ let handleQueueEvent = async (handleCommands, queue, event: PulumiAws.SQS.Queue.
   }
 }
 
-let publish = (queue, queueService, jsons) =>
+let publishJsons = (queue, queueService, jsons) =>
   switch jsons->Belt.Array.length {
-  | 0 => Js.log(__MODULE__ ++ ".publish: No commands to send")->Js.Promise.resolve
+  | 0 => Js.log(__MODULE__ ++ ".publishJsons: No commands to send")->Js.Promise.resolve
   | 1 => queue->Util_SQS_Runtime.send(queueService, jsons->Array.getUnsafe(0))
   | _ => queue->Util_SQS_Runtime.sendMessages(queueService, jsons)
   }

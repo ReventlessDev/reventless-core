@@ -78,7 +78,7 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
   
 }
 
-function publish(queue, queueService, jsons) {
+function publishJsons(queue, queueService, jsons) {
   var match = jsons.length;
   if (match !== 0) {
     if (match !== 1) {
@@ -87,10 +87,10 @@ function publish(queue, queueService, jsons) {
       return Util_SQS_Runtime$ReventlessAws.send(queue, queueService, jsons[0]);
     }
   } else {
-    return Promise.resolve((console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".publish: No commands to send"), undefined));
+    return Promise.resolve((console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".publishJsons: No commands to send"), undefined));
   }
 }
 
 exports.handleQueueEvent = handleQueueEvent;
-exports.publish = publish;
+exports.publishJsons = publishJsons;
 /* Logger-Reventless Not a pure module */

@@ -3,5 +3,5 @@ let make: Reventless.CommandTopic.Adapter.remoteConnectorMaker = resources => {
   ->Util.SQS_Runtime.findResource
   ->Util.SQS_Runtime.fromResource
   ->Util_SQS_Runtime.toRuntimeQueue
-  ->(CommandTopicConnector_SQS_Runtime.publish(Util.SQS_Runtime.service, ...)),
+  ->(CommandTopicConnector_SQS_Runtime.publishJsons(Util.SQS_Runtime.service, ...)),
 }
