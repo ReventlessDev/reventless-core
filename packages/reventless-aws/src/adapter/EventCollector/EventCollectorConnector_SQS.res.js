@@ -13,7 +13,6 @@ var Util_SNS$ReventlessAws = require("../../util/Util_SNS.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector.res.js");
-var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
@@ -43,7 +42,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                                 }), __x);
                   })(eventTopics), [
                 Util_DynamoDbStream_Runtime$ReventlessAws.service,
-                Util_SNS_FIFO$ReventlessAws.service
+                Util_SNS$ReventlessAws.service
               ]),
           Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue)
         ]).apply(function (param) {
