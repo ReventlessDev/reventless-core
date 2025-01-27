@@ -15,15 +15,18 @@ module type AggregateSpec = {
 module Adapter = {
   open ReventlessSpec.ReadModel.Spec
 
-  type storage = {
-    resources: array<resource>,
-    dataSourceName: Pulumi.Output.t<string>, // TODO create in API
+  type primitives = {
     load: ReventlessSpec.QueryDb.load<string, Js.Json.t>,
     save: ReventlessSpec.QueryDb.save<string, Js.Json.t>,
     saveBatch: ReventlessSpec.QueryDb.saveBatch<string, Js.Json.t>,
     count: ReventlessSpec.QueryDb.count<string>,
     delete: ReventlessSpec.QueryDb.delete<string>,
     deleteBatch: ReventlessSpec.QueryDb.deleteBatch<string>,
+  }
+  type storage = {
+    resources: array<resource>,
+    dataSourceName: Pulumi.Output.t<string>, // TODO create in API
+    primitives: Pulumi.Output.t<primitives>,
   }
   type storageMaker<'api, 'role> = (
     ~name: string,
@@ -205,28 +208,28 @@ module Make = (
       []
     }
 
-  let loadFn = storage =>
+  let loadFn = load =>
     async id =>
-      switch await storage.Adapter.load(id->Spec.Id.toString) {
+      switch await load(id->Spec.Id.toString) {
       | result =>
         result->Belt.Result.map(states =>
           states->Belt.Array.map(state => decode(id, state))->Belt.Array.concatMany
         )
       }
 
-  let saveFn = storage =>
+  let saveFn = save =>
     async (id, state, saveMode, ttl) =>
       switch state->Spec.state_encode->Js.Json.decodeObject {
       | Some(dict) =>
         dict->Js.Dict.set("id", Spec.Id.t_encode(id))
         let json = Js.Json.object_(dict)
-        await storage.Adapter.save(id->Spec.Id.toString, json, saveMode, ttl)
+        await save(id->Spec.Id.toString, json, saveMode, ttl)
       | None =>
         Js.log2("QueryDB.save: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
         Belt.Result.Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
       }
 
-  let saveBatchFn = storage =>
+  let saveBatchFn = saveBatch =>
     async items => {
       let batch = items->Belt.Array.keepMap(((id, state, ttl)) =>
         switch state->Spec.state_encode->Js.Json.decodeObject {
@@ -239,19 +242,18 @@ module Make = (
           None
         }
       )
-      await storage.Adapter.saveBatch(batch)
+      await saveBatch(batch)
     }
 
-  let countFn = storage =>
-    async (id, fieldName, inc) => await storage.Adapter.count(id->Spec.Id.toString, fieldName, inc)
+  let countFn = count =>
+    async (id, fieldName, inc) => await count(id->Spec.Id.toString, fieldName, inc)
 
-  let deleteFn = storage =>
-    async (id, subId) => await storage.Adapter.delete(id->Spec.Id.toString, subId)
+  let deleteFn = delete => async (id, subId) => await delete(id->Spec.Id.toString, subId)
 
-  let deleteBatchFn = storage =>
+  let deleteBatchFn = deleteBatch =>
     async ids => {
       let ids = ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.toString, sort))
-      await storage.Adapter.deleteBatch(ids)
+      await deleteBatch(ids)
     }
 
   let outputs: ReventlessSpec.Component.t<
@@ -273,13 +275,23 @@ module Make = (
       ~apiRole,
       ~opts,
     )
+    let storageOutputs = storage->Component.extractOutputs
 
-    self->setLoad(storage->loadFn)
-    self->setSave(storage->saveFn)
-    self->setSaveBatch(storage->saveBatchFn)
-    self->setCount(storage->countFn)
-    self->setDelete(storage->deleteFn)
-    self->setDeleteBatch(storage->deleteBatchFn)
+    let _ = storageOutputs.primitives->Pulumi.Output.apply(({
+      load,
+      save,
+      saveBatch,
+      count,
+      delete,
+      deleteBatch,
+    }) => {
+      self->setLoad(loadFn(load))
+      self->setSave(saveFn(save))
+      self->setSaveBatch(saveBatchFn(saveBatch))
+      self->setCount(countFn(count))
+      self->setDelete(deleteFn(delete))
+      self->setDeleteBatch(deleteBatchFn(deleteBatch))
+    })
 
     let resolvers = Resolvers.make(
       ~name,

@@ -36,9 +36,9 @@ var Adapter = {
 };
 
 function Make(Config, Spec, $$Storage, Resolvers) {
-  var loadFn = function (storage) {
+  var loadFn = function (load) {
     return async function (id) {
-      var result = await storage.load(Spec.Id.toString(id));
+      var result = await load(Spec.Id.toString(id));
       return Belt_Result.map(result, (function (states) {
                     return Belt_Array.concatMany(Belt_Array.map(states, (function (state) {
                                       var state$1 = Spec.state_decode(state);
@@ -51,12 +51,12 @@ function Make(Config, Spec, $$Storage, Resolvers) {
                   }));
     };
   };
-  var saveFn = function (storage) {
+  var saveFn = function (save) {
     return async function (id, state, saveMode, ttl) {
       var dict = Js_json.decodeObject(Spec.state_encode(state));
       if (dict !== undefined) {
         dict["id"] = Spec.Id.t_encode(id);
-        return await storage.save(Spec.Id.toString(id), dict, saveMode, ttl);
+        return await save(Spec.Id.toString(id), dict, saveMode, ttl);
       } else {
         console.log("QueryDB.save: Error: Couldn't decodeObject:", JSON.stringify(state));
         return {
@@ -69,7 +69,7 @@ function Make(Config, Spec, $$Storage, Resolvers) {
       }
     };
   };
-  var saveBatchFn = function (storage) {
+  var saveBatchFn = function (saveBatch) {
     return async function (items) {
       var batch = Belt_Array.keepMap(items, (function (param) {
               var state = param[1];
@@ -87,20 +87,20 @@ function Make(Config, Spec, $$Storage, Resolvers) {
                 return ;
               }
             }));
-      return await storage.saveBatch(batch);
+      return await saveBatch(batch);
     };
   };
-  var countFn = function (storage) {
+  var countFn = function (count) {
     return async function (id, fieldName, inc) {
-      return await storage.count(Spec.Id.toString(id), fieldName, inc);
+      return await count(Spec.Id.toString(id), fieldName, inc);
     };
   };
-  var deleteFn = function (storage) {
+  var deleteFn = function ($$delete) {
     return async function (id, subId) {
-      return await storage.delete(Spec.Id.toString(id), subId);
+      return await $$delete(Spec.Id.toString(id), subId);
     };
   };
-  var deleteBatchFn = function (storage) {
+  var deleteBatchFn = function (deleteBatch) {
     return async function (ids) {
       var ids$1 = Belt_Array.map(ids, (function (param) {
               return [
@@ -108,7 +108,7 @@ function Make(Config, Spec, $$Storage, Resolvers) {
                       param[1]
                     ];
             }));
-      return await storage.deleteBatch(ids$1);
+      return await deleteBatch(ids$1);
     };
   };
   var outputs = function (component) {
@@ -124,12 +124,15 @@ function Make(Config, Spec, $$Storage, Resolvers) {
           }));
     var storageName = ComponentType$Reventless.name(name, "QueryDb");
     var storage = $$Storage.make(storageName, Spec.config.indexes, subIdField, ttl, api, apiRole, opts);
-    self.load = loadFn(storage);
-    self.save = saveFn(storage);
-    self.saveBatch = saveBatchFn(storage);
-    self.count = countFn(storage);
-    self.delete = deleteFn(storage);
-    self.deleteBatch = deleteBatchFn(storage);
+    var storageOutputs = Component$Reventless.extractOutputs(storage);
+    storageOutputs.primitives.apply(function (param) {
+          self.load = loadFn(param.load);
+          self.save = saveFn(param.save);
+          self.saveBatch = saveBatchFn(param.saveBatch);
+          self.count = countFn(param.count);
+          self.delete = deleteFn(param.delete);
+          self.deleteBatch = deleteBatchFn(param.deleteBatch);
+        });
     var resolvers = Resolvers.make(name, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, opts);
     var outputs = {
       resources: Belt_Array.concat(storage.resources, resolvers.resources),
