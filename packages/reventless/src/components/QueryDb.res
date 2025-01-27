@@ -275,9 +275,8 @@ module Make = (
       ~apiRole,
       ~opts,
     )
-    let storageOutputs = storage->Component.extractOutputs
 
-    let _ = storageOutputs.primitives->Pulumi.Output.apply(({
+    let _ = storage.primitives->Pulumi.Output.apply(({
       load,
       save,
       saveBatch,

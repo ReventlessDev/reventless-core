@@ -124,8 +124,7 @@ function Make(Config, Spec, $$Storage, Resolvers) {
           }));
     var storageName = ComponentType$Reventless.name(name, "QueryDb");
     var storage = $$Storage.make(storageName, Spec.config.indexes, subIdField, ttl, api, apiRole, opts);
-    var storageOutputs = Component$Reventless.extractOutputs(storage);
-    storageOutputs.primitives.apply(function (param) {
+    storage.primitives.apply(function (param) {
           self.load = loadFn(param.load);
           self.save = saveFn(param.save);
           self.saveBatch = saveBatchFn(param.saveBatch);
