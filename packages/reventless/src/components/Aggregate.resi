@@ -2,7 +2,7 @@ let componentType: ComponentType.t
 
 type outputs = {
   name: string,
-  commandGenerator: CommandGenerator.outputs,
+  commandGenerator: Pulumi.Output.t<CommandGenerator.outputs>,
   commandTopic: ReventlessSpec.CommandTopic.outputs,
   eventLog: EventLog.outputs,
   eventMapper?: EventMapper.outputs,

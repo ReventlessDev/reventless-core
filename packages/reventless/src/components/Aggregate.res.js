@@ -78,42 +78,42 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
     var Runtime = partial_arg(Spec, Behaviour);
     var commandTopic = CommandTopic.make(childName, Runtime.handleCommands(EventLog.append(eventLog), EventLog.replay(eventLog)), undefined, undefined, opts);
     var commandTopicOutputs = Component$Reventless.extractOutputs(commandTopic);
-    return commandTopicOutputs.publishJsons.apply(function (publishJsons) {
-                var commandGenerator = CommandGenerator.make(childName, publishJsons, opts);
-                self.publishJsons = publishJsons;
-                self.addEventMapper = (function (none, none$1) {
-                    var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-                    var partial_arg_name = Spec.name;
-                    var partial_arg_Id = Spec.Id;
-                    var partial_arg_command_encode = Spec.command_encode;
-                    var partial_arg_command_decode = Spec.command_decode;
-                    var partial_arg = {
-                      name: partial_arg_name,
-                      Id: partial_arg_Id,
-                      command_encode: partial_arg_command_encode,
-                      command_decode: partial_arg_command_decode
-                    };
-                    var partial_arg$1 = EventMapper$Reventless.Make;
-                    var partial_arg$2 = function (param, param$1) {
-                      return partial_arg$1(partial_arg, param, param$1);
-                    };
-                    var EventMapper = partial_arg$2(EventCollector, EventMappings);
-                    var eventMapper = EventMappings.mappings.length !== 0 ? EventMapper.make(none, none$1, self.publishJsons, undefined, undefined, opts) : undefined;
-                    var newrecord = Caml_obj.obj_dup(Component$Reventless.extractOutputs(self));
-                    newrecord.eventMapper = Belt_Option.map(eventMapper, (function (eventMapper) {
-                            return Component$Reventless.extractOutputs(eventMapper);
-                          }));
-                    return newrecord;
-                  });
-                var outputs = {
-                  name: name,
-                  commandGenerator: Component$Reventless.extractOutputs(commandGenerator),
-                  commandTopic: commandTopicOutputs,
-                  eventLog: Component$Reventless.extractOutputs(eventLog)
-                };
-                self.setOutputs(outputs);
-                return self.registerOutputs(outputs);
-              });
+    var commandGenerator = commandTopicOutputs.publishJsons.apply(function (publishJsons) {
+          self.publishJsons = publishJsons;
+          self.addEventMapper = (function (none, none$1) {
+              var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+              var partial_arg_name = Spec.name;
+              var partial_arg_Id = Spec.Id;
+              var partial_arg_command_encode = Spec.command_encode;
+              var partial_arg_command_decode = Spec.command_decode;
+              var partial_arg = {
+                name: partial_arg_name,
+                Id: partial_arg_Id,
+                command_encode: partial_arg_command_encode,
+                command_decode: partial_arg_command_decode
+              };
+              var partial_arg$1 = EventMapper$Reventless.Make;
+              var partial_arg$2 = function (param, param$1) {
+                return partial_arg$1(partial_arg, param, param$1);
+              };
+              var EventMapper = partial_arg$2(EventCollector, EventMappings);
+              var eventMapper = EventMappings.mappings.length !== 0 ? EventMapper.make(none, none$1, self.publishJsons, undefined, undefined, opts) : undefined;
+              var newrecord = Caml_obj.obj_dup(Component$Reventless.extractOutputs(self));
+              newrecord.eventMapper = Belt_Option.map(eventMapper, (function (eventMapper) {
+                      return Component$Reventless.extractOutputs(eventMapper);
+                    }));
+              return newrecord;
+            });
+          return Component$Reventless.extractOutputs(CommandGenerator.make(childName, publishJsons, opts));
+        });
+    var outputs = {
+      name: name,
+      commandGenerator: commandGenerator,
+      commandTopic: commandTopicOutputs,
+      eventLog: Component$Reventless.extractOutputs(eventLog)
+    };
+    self.setOutputs(outputs);
+    return self.registerOutputs(outputs);
   };
   var make = function (opts) {
     var prim0 = ComponentType$Reventless.toString("Aggregate");

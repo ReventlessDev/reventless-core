@@ -2,7 +2,7 @@ let componentType = ComponentType.Aggregate
 
 type outputs = {
   name: string,
-  commandGenerator: CommandGenerator.outputs,
+  commandGenerator: Pulumi.Output.t<CommandGenerator.outputs>,
   commandTopic: ReventlessSpec.CommandTopic.outputs,
   eventLog: EventLog.outputs,
   eventMapper?: EventMapper.outputs,
@@ -55,7 +55,7 @@ module Make = (
   module Spec = Spec
 
   type constructed
-  type construct = (component, string) => Pulumi.Output.t<constructed>
+  type construct = (component, string) => constructed
 
   @module("./Component") @new
   external make: (
@@ -136,18 +136,18 @@ module Make = (
     )
     let commandTopicOutputs = commandTopic->Component.extractOutputs
 
-    commandTopicOutputs.publishJsons->Pulumi.Output.apply(publishJsons => {
-      let commandGenerator = CommandGenerator.make(~name=childName, ~publishJsons, ~opts)
-
+    let commandGenerator = commandTopicOutputs.publishJsons->Pulumi.Output.apply(publishJsons => {
       self->setPublishJsons(publishJsons)
       self->setAddEventMapper(self->(addEventMapperFn(~opts, ...)))
 
-      self->setOutputs({
-        name,
-        commandGenerator: commandGenerator->Component.extractOutputs,
-        commandTopic: commandTopicOutputs,
-        eventLog: eventLog->Component.extractOutputs,
-      })
+      CommandGenerator.make(~name=childName, ~publishJsons, ~opts)->Component.extractOutputs
+    })
+
+    self->setOutputs({
+      name,
+      commandGenerator,
+      commandTopic: commandTopicOutputs,
+      eventLog: eventLog->Component.extractOutputs,
     })
   }
 
