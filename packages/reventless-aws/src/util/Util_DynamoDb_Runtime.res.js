@@ -17,16 +17,6 @@ var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 
 var service = "DynamoDb";
 
-function toRuntimeTable(table) {
-  return {
-          id: table.id.get(),
-          name: table.name.get(),
-          arn: table.arn.get(),
-          hashKey: table.hashKey.get(),
-          rangeKey: table.rangeKey.get()
-        };
-}
-
 function put(table, item) {
   return DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
                   Item: item,
@@ -324,7 +314,6 @@ function findResource(resources) {
 }
 
 exports.service = service;
-exports.toRuntimeTable = toRuntimeTable;
 exports.put = put;
 exports.putWithRetries = putWithRetries;
 exports.putIfNotExistsWithRetries = putIfNotExistsWithRetries;

@@ -19,12 +19,12 @@ function make(name, opts) {
       ], undefined, undefined, "sequenceNr", AWS$ReventlessAws.tags(name, EventLog$Reventless.componentType), opts, name);
   return {
           resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
-          append: (function (sequenceNr, id, jsons) {
-              return EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table)(sequenceNr, id, jsons);
-            }),
-          replay: (function (id) {
-              return EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(table)(id);
-            })
+          append: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
+                return EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(runtimeTable);
+              }),
+          replay: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
+                return EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(runtimeTable);
+              })
         };
 }
 

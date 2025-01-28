@@ -9,8 +9,15 @@ let make: Reventless.EventLog.Adapter.storageMaker = (~name, ~opts) => {
 
   {
     resources: [table->Util_DynamoDb.toResource],
-    append: (sequenceNr, id, jsons) =>
-      (table->EventLogStorage_DynamoDb_Runtime.append)(sequenceNr, id, jsons),
-    replay: id => (table->EventLogStorage_DynamoDb_Runtime.replay)(id),
+    append: table
+    ->Util_DynamoDb.toRuntimeTableOutput
+    ->Pulumi.Output.apply(runtimeTable =>
+      EventLogStorage_DynamoDb_Runtime.append(runtimeTable, ...)
+    ),
+    replay: table
+    ->Util_DynamoDb.toRuntimeTableOutput
+    ->Pulumi.Output.apply(runtimeTable =>
+      EventLogStorage_DynamoDb_Runtime.replay(runtimeTable, ...)
+    ),
   }
 }

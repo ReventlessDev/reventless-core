@@ -3,6 +3,7 @@
 
 var AWS$ReventlessAws = require("../AWS.res.js");
 var EventLog$Reventless = require("@reventless/reventless/src/components/EventLog.res.js");
+var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
 var EventLogStorage_DynamoDb_Runtime$ReventlessAws = require("./EventLogStorage_DynamoDb_Runtime.res.js");
 
@@ -18,13 +19,13 @@ function make(name, opts) {
         }
       ], undefined, undefined, "sequenceNr", "NEW_IMAGE", AWS$ReventlessAws.tags(name, EventLog$Reventless.componentType), opts, name);
   return {
-          resources: [Util_DynamoDbStream$ReventlessAws.toResource(table)],
-          append: (function (sequenceNr, id, jsons) {
-              return EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(table)(sequenceNr, id, jsons);
-            }),
-          replay: (function (id) {
-              return EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(table)(id);
-            })
+          resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
+          append: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
+                return EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(runtimeTable);
+              }),
+          replay: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
+                return EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(runtimeTable);
+              })
         };
 }
 

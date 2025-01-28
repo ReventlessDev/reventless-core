@@ -10,14 +10,6 @@ type runtimeTable = {
   rangeKey: option<string>,
 }
 
-let toRuntimeTable = (table: PulumiAws.DynamoDb.Table.t) => {
-  id: table.id->Pulumi.Output.get,
-  name: table.name->Pulumi.Output.get,
-  arn: table.arn->Pulumi.Output.get,
-  hashKey: table.hashKey->Pulumi.Output.get,
-  rangeKey: table.rangeKey->Pulumi.Output.get,
-}
-
 let put = (table, item) => {
   {PutCommand.tableName: table.name, item}->PutCommand.make->PutCommand.send
 }

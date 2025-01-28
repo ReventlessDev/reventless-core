@@ -8,7 +8,7 @@ let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
     hashKey ++ ("," ++ rangeKey->Belt.Option.getWithDefault(""))
   )
 
-let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}: PulumiAws.DynamoDb.Table.t) =>
+let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
   (name, id, arn, hashKey, rangeKey)
   ->Pulumi.Output.all5
   ->Pulumi.Output.apply(((name, id, arn, hashKey, rangeKey)) => {

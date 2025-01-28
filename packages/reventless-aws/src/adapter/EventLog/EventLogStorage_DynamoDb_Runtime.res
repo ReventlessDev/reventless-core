@@ -1,11 +1,11 @@
 open Util_DynamoDb_Runtime
 
-let append = (table: PulumiAws.DynamoDb.Table.t) =>
+let append = table =>
   async (_sequenceNr, _id, jsons) => {
     let result =
       jsons
       ->Belt.Array.map(toPutRequest)
-      ->toTable(table.name->Pulumi.Output.get)
+      ->toTable(table.name)
       ->batchWriteWithRetries
     switch await result {
     | Ok() => Ok()
@@ -30,6 +30,6 @@ let rec tryReplay = async (~retry=0, tableName, id) =>
   | history => history
   }
 
-let replay = (table: PulumiAws.DynamoDb.Table.t) => {
-  async id => await table.name->Pulumi.Output.get->tryReplay(id)
+let replay = table => {
+  async id => await tryReplay(table.name, id)
 }
