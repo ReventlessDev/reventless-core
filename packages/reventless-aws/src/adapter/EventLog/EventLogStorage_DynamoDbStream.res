@@ -9,7 +9,7 @@ let make: Reventless.EventLog.Adapter.storageMaker = (~name, ~opts) => {
   )
 
   {
-    resources: [table->Util_DynamoDb.toResource],
+    resources: [table->Util_DynamoDbStream.toResource],
     append: table
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable =>

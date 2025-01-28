@@ -19,7 +19,7 @@ function make(name, opts) {
         }
       ], undefined, undefined, "sequenceNr", "NEW_IMAGE", AWS$ReventlessAws.tags(name, EventLog$Reventless.componentType), opts, name);
   return {
-          resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
+          resources: [Util_DynamoDbStream$ReventlessAws.toResource(table)],
           append: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
                 return EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(runtimeTable);
               }),

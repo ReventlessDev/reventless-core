@@ -23,4 +23,4 @@ function make(param, storageResources, param$1) {
 }
 
 exports.make = make;
-/* Util_DynamoDbStream-ReventlessAws Not a pure module */
+/* Adapter-Reventless Not a pure module */
