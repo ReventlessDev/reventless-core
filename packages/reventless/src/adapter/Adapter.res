@@ -39,9 +39,17 @@ let unwrappedOutputToResource: Pulumi.Output.t<
   info: unwrappedResource->Pulumi.Output.apply(r => r.info),
 }
 
-let logResource = (r: ReventlessSpec.Adapter.resource) => {
-  let _ = r.name->Pulumi.Output.apply(name => Js.log2("Resource: ", name))
-  let _ = r.id->Pulumi.Output.apply(id => Js.log2("  id: ", id))
-  let _ = r.urn->Pulumi.Output.apply(urn => Js.log2("  urn: ", urn))
-  let _ = r.service->Pulumi.Output.apply(service => Js.log2("  service: ", service))
+let resourceToUnwrappedOutput = (r: ReventlessSpec.Adapter.resource) =>
+  (r.name, r.id, r.urn, r.info, r.service)
+  ->Pulumi.Output.all5
+  ->Pulumi.Output.apply(((name, id, urn, info, service)) => {name, id, urn, info, service})
+
+let logResource = r => {
+  let _ = r->resourceToUnwrappedOutput->Pulumi.Output.apply(r => Js.log2("resource:", r))
+}
+
+let unwrappedToString = (resources: array<unwrappedResource>) => {
+  resources
+  ->Belt.Array.keepMap(resource => resource->Js.Json.stringifyAny)
+  ->Js.Array2.joinWith(", ")
 }

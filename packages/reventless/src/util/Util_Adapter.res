@@ -30,12 +30,17 @@ let findResource = (resources, service) =>
   ->Pulumi.Output.apply(resources =>
     switch resources {
     | [] =>
-      let err = `Util.Adapter.findResource: Couldn't find service ${service} in resources: ${resources
-        ->Belt.Array.map(resource => resource->Js.Json.stringifyAny->Belt.Option.getExn)
-        ->Js.Array2.joinWith(", ")}`
-      Js.log(err)
+      let err = `Util.Adapter.findResource: Couldn't find service ${service} in resources`
+      let _ =
+        resources
+        ->Belt.Array.map(Adapter.resourceToUnwrappedOutput)
+        ->Pulumi.Output.all
+        ->Pulumi.Output.apply(resources => {
+          let resourcesStr = resources->Adapter.unwrappedToString
+          Js.log2(err, resourcesStr)
+        })
       Js.Exn.raiseError(err)
-    | matching => matching->Array.getUnsafe(0)
+    | matching => matching->Belt.Array.getUnsafe(0)
     }
   )
   ->Adapter.outputToResource
@@ -43,13 +48,10 @@ let findResource = (resources, service) =>
 let findUnwrappedResource = (resources, service) =>
   switch resources->filterSupportedUnwrappedResources([service]) {
   | [] =>
-    let err = `Util.Adapter.findUnwrappedResource: Couldn't find service ${service} in resources: ${resources
-      ->Belt.Array.map(resource => resource->Js.Json.stringifyAny->Belt.Option.getExn)
-      ->Js.Array2.joinWith(", ")}`
+    let err = `Util.Adapter.findUnwrappedResource: Couldn't find service ${service} in resources: ${resources->Adapter.unwrappedToString}`
     Js.log(err)
     Js.Exn.raiseError(err)
-
-  | resources => resources->Array.getUnsafe(0)
+  | matching => matching->Belt.Array.getUnsafe(0)
   }
 
 let findResourceInOutput = (resourcesOutput, service) =>
