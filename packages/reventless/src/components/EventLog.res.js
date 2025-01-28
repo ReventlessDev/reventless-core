@@ -8,7 +8,7 @@ var Component$Reventless = require("./Component.res.js");
 var EventTopic$Reventless = require("./EventTopic.res.js");
 var Util_Pulumi$Reventless = require("../util/Util_Pulumi.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
-var EventLogRuntime$Reventless = require("./EventLogRuntime.res.js");
+var EventLog_Runtime$Reventless = require("./EventLog_Runtime.res.js");
 
 var ReplayError = /* @__PURE__ */Caml_exceptions.create("EventLog-Reventless.ReplayError");
 
@@ -24,8 +24,12 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
     };
     var storage = $$Storage.make(ComponentType$Reventless.name(name, "EventLog"), opts);
     var eventTopic = EventTopic.make(name, storage.resources, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts));
-    self.append = EventLogRuntime$Reventless.appendFn(storage.append, Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, EventTopic.publish(eventTopic), Spec.name);
-    self.replay = EventLogRuntime$Reventless.replayFn(storage.replay, Spec.Id.toString, Spec.event_decode);
+    self.append = storage.append.apply(function (append) {
+          return EventLog_Runtime$Reventless.appendFn(append, Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, EventTopic.publish(eventTopic), Spec.name);
+        });
+    self.replay = storage.replay.apply(function (replay) {
+          return EventLog_Runtime$Reventless.replayFn(replay, Spec.Id.toString, Spec.event_decode);
+        });
     var outputs = {
       resources: storage.resources,
       eventTopic: Component$Reventless.extractOutputs(eventTopic)

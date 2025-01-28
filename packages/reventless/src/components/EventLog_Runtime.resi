@@ -29,7 +29,7 @@ let publishToEventTopic: (
 let catchErrorHandler: exn => 'a
 
 let appendFn: (
-  EventLogCommon.append<string, Js.Json.t>,
+  ReventlessSpec.EventLog.append<string, Js.Json.t>,
   'specId => string,
   'specId => Js.Json.t,
   'specEvent => Js.Json.t,
@@ -42,7 +42,7 @@ let appendFn: (
 ) => promise<Belt.Result.t<unit, string>>
 
 let replayFn: (
-  EventLogCommon.replay<string, Js.Json.t>,
+  ReventlessSpec.EventLog.replay<string, Js.Json.t>,
   'specId => string,
   Js.Json.t => result<'specEvent, Decco.decodeError>,
 ) => (. 'specId) => promise<array<'specEvent>>

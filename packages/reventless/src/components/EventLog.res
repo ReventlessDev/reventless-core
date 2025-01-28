@@ -23,15 +23,17 @@ module type T = {
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 
-  let append: component => EventLogCommon.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
-  let replay: component => EventLogCommon.replay<Spec.Id.t, Spec.event>
+  let append: component => Pulumi.Output.t<
+    ReventlessSpec.EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
+  >
+  let replay: component => Pulumi.Output.t<ReventlessSpec.EventLog.replay<Spec.Id.t, Spec.event>>
 }
 
 module Adapter = {
   type storage = {
     resources: array<resource>,
-    append: EventLogCommon.append<string, Js.Json.t>,
-    replay: EventLogCommon.replay<string, Js.Json.t>,
+    append: Pulumi.Output.t<ReventlessSpec.EventLog.append<string, Js.Json.t>>,
+    replay: Pulumi.Output.t<ReventlessSpec.EventLog.replay<string, Js.Json.t>>,
   }
   type storageMaker = (~name: string, ~opts: Pulumi.CustomResourceOptions.t) => storage
 
@@ -50,8 +52,10 @@ module Make = (
   type constructed
   type construct = (component, string) => constructed
 
-  type append = EventLogCommon.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
-  type replay = EventLogCommon.replay<Spec.Id.t, Spec.event>
+  type append = Pulumi.Output.t<
+    ReventlessSpec.EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
+  >
+  type replay = Pulumi.Output.t<ReventlessSpec.EventLog.replay<Spec.Id.t, Spec.event>>
 
   @module("./Component") @new
   external make: (
@@ -88,17 +92,21 @@ module Make = (
     )
 
     self->setAppend(
-      EventLogRuntime.appendFn(
-        storage.Adapter.append,
-        Spec.Id.toString,
-        Spec.Id.t_encode,
-        Spec.event_encode,
-        eventTopic->EventTopic.publish,
-        Spec.name,
+      storage.append->Pulumi.Output.apply(append =>
+        EventLog_Runtime.appendFn(
+          append,
+          Spec.Id.toString,
+          Spec.Id.t_encode,
+          Spec.event_encode,
+          eventTopic->EventTopic.publish,
+          Spec.name,
+        )
       ),
     )
     self->setReplay(
-      EventLogRuntime.replayFn(storage.Adapter.replay, Spec.Id.toString, Spec.event_decode),
+      storage.replay->Pulumi.Output.apply(replay =>
+        EventLog_Runtime.replayFn(replay, Spec.Id.toString, Spec.event_decode)
+      ),
     )
 
     self->setOutputs({

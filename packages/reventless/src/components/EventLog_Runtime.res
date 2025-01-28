@@ -41,7 +41,7 @@ let catchErrorHandler = exn => {
 // FIXME: appendFn is supposed to return result<unit, string/*errorMessage*/>, but at the same moment, we throw errors
 //        We should use result everywhere instead of throwing errors / exceptions
 let appendFn = (
-  storageAppend: EventLogCommon.append<string, Js.Json.t>,
+  storageAppend: ReventlessSpec.EventLog.append<string, Js.Json.t>,
   specIdToString: 'specId => string,
   specIdEncode: 'specId => Js.Json.t,
   specEventEncode: 'specEvent => Js.Json.t,

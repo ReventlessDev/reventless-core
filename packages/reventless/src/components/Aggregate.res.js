@@ -7,6 +7,8 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var EventLog$Reventless = require("./EventLog.res.js");
 var Component$Reventless = require("./Component.res.js");
@@ -76,8 +78,12 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
     var eventLog = EventLog.make(childName, opts);
     var partial_arg = Aggregate_Runtime$Reventless.Make;
     var Runtime = partial_arg(Spec, Behaviour);
-    var commandTopic = CommandTopic.make(childName, Runtime.handleCommands(EventLog.append(eventLog), EventLog.replay(eventLog)), undefined, undefined, opts);
-    var commandTopicOutputs = Component$Reventless.extractOutputs(commandTopic);
+    var commandTopic = Pulumi.all([
+            EventLog.append(eventLog),
+            EventLog.replay(eventLog)
+          ]).apply(function (param) {
+          return CommandTopic.make(childName, Runtime.handleCommands(param[0], param[1]), undefined, undefined, opts);
+        });
     self.addEventMapper = (function (none, none$1) {
         var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
         var partial_arg_name = Spec.name;
@@ -102,14 +108,16 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
               }));
         return newrecord;
       });
-    var commandGenerator = commandTopicOutputs.publishJsons.apply(function (publishJsons) {
-          self.publishJsons = publishJsons;
-          return Component$Reventless.extractOutputs(CommandGenerator.make(childName, publishJsons, opts));
-        });
+    var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
+            return commandTopic.publishJsons.apply(function (publishJsons) {
+                        self.publishJsons = publishJsons;
+                        return Component$Reventless.extractOutputs(CommandGenerator.make(childName, publishJsons, opts));
+                      });
+          }));
     var outputs = {
       name: name,
       commandGenerator: commandGenerator,
-      commandTopic: commandTopicOutputs,
+      commandTopic: commandTopic,
       eventLog: Component$Reventless.extractOutputs(eventLog)
     };
     self.setOutputs(outputs);

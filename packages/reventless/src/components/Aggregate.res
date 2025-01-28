@@ -3,7 +3,7 @@ let componentType = ComponentType.Aggregate
 type outputs = {
   name: string,
   commandGenerator: Pulumi.Output.t<CommandGenerator.outputs>,
-  commandTopic: ReventlessSpec.CommandTopic.outputs,
+  commandTopic: Pulumi.Output.t<ReventlessSpec.CommandTopic.outputs>,
   eventLog: EventLog.outputs,
   eventMapper?: EventMapper.outputs,
 }
@@ -125,28 +125,31 @@ module Make = (
 
     module Runtime = Aggregate_Runtime.Make(Spec, Behaviour)
 
-    let commandTopic = CommandTopic.make(
-      ~name=childName,
-      ~commandsHandler=Runtime.handleCommands(
-        eventLog->EventLog.append,
-        eventLog->EventLog.replay,
-        ...
-      ),
-      ~opts,
-    )
-    let commandTopicOutputs = commandTopic->Component.extractOutputs
+    let commandTopic =
+      (eventLog->EventLog.append, eventLog->EventLog.replay)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((append, replay)) =>
+        CommandTopic.make(
+          ~name=childName,
+          ~commandsHandler=Runtime.handleCommands(append, replay, ...),
+          ~opts,
+        )
+      )
 
     self->setAddEventMapper(self->(addEventMapperFn(~opts, ...)))
-    let commandGenerator = commandTopicOutputs.publishJsons->Pulumi.Output.apply(publishJsons => {
-      self->setPublishJsons(publishJsons)
 
-      CommandGenerator.make(~name=childName, ~publishJsons, ~opts)->Component.extractOutputs
-    })
+    let commandGenerator = commandTopic->Pulumi.Output.flatMap(commandTopic =>
+      commandTopic.publishJsons->Pulumi.Output.apply(publishJsons => {
+        self->setPublishJsons(publishJsons)
+
+        CommandGenerator.make(~name=childName, ~publishJsons, ~opts)->Component.extractOutputs
+      })
+    )
 
     self->setOutputs({
       name,
       commandGenerator,
-      commandTopic: commandTopicOutputs,
+      commandTopic,
       eventLog: eventLog->Component.extractOutputs,
     })
   }
