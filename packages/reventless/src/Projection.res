@@ -173,7 +173,7 @@ let handleAction = async (
       }
     | Error(err) =>
       logAction(
-        `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
+        `UpdateWithDefault Error: Couldn't load oldState(s) for ${id}: ${err->QueryDb_Runtime.storageErrorToString})`,
       )
       Error(err)
     }
@@ -186,7 +186,7 @@ let handleAction = async (
 
     | (Error(err), Some(_)) =>
       logAction(
-        `UpdateMultiState Error: Couldn't load states for ${id}: ${err->QueryDbRuntime.storageErrorToString})`,
+        `UpdateMultiState Error: Couldn't load states for ${id}: ${err->QueryDb_Runtime.storageErrorToString})`,
       )
       Error(err)
     | (_, None) =>
@@ -408,7 +408,7 @@ let handleActions = async (actions, primitives, subIdConfig) => {
     let count = errors->Belt.Array.size
     Js.Exn.raiseError(
       `Projection.handleActions failed with ${count->Belt.Int.toString} errors: ${errors
-        ->Belt.Array.map(QueryDbRuntime.storageErrorToString)
+        ->Belt.Array.map(QueryDb_Runtime.storageErrorToString)
         ->Js.Array2.joinWith(",")}`,
     )
   }

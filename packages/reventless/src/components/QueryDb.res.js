@@ -2,14 +2,13 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
+var QueryDb_Runtime$Reventless = require("./QueryDb_Runtime.res.js");
 
 function allResolversMakers(allQueryDbs) {
   return Belt_Array.map(Js_dict.values(allQueryDbs), (function (queryDb) {
@@ -36,81 +35,6 @@ var Adapter = {
 };
 
 function Make(Config, Spec, $$Storage, Resolvers) {
-  var loadFn = function (load) {
-    return async function (id) {
-      var result = await load(Spec.Id.toString(id));
-      return Belt_Result.map(result, (function (states) {
-                    return Belt_Array.concatMany(Belt_Array.map(states, (function (state) {
-                                      var state$1 = Spec.state_decode(state);
-                                      if (state$1.TAG === "Ok") {
-                                        return [state$1._0];
-                                      }
-                                      console.log("QueryDb: Error: Couldn't decode state for " + Spec.Id.toString(id) + ": " + Belt_Option.getExn(JSON.stringify(state$1._0)));
-                                      return [];
-                                    })));
-                  }));
-    };
-  };
-  var saveFn = function (save) {
-    return async function (id, state, saveMode, ttl) {
-      var dict = Js_json.decodeObject(Spec.state_encode(state));
-      if (dict !== undefined) {
-        dict["id"] = Spec.Id.t_encode(id);
-        return await save(Spec.Id.toString(id), dict, saveMode, ttl);
-      } else {
-        console.log("QueryDB.save: Error: Couldn't decodeObject:", JSON.stringify(state));
-        return {
-                TAG: "Error",
-                _0: {
-                  TAG: "NotSavedToStorage",
-                  _0: "Couldn't decodeObject"
-                }
-              };
-      }
-    };
-  };
-  var saveBatchFn = function (saveBatch) {
-    return async function (items) {
-      var batch = Belt_Array.keepMap(items, (function (param) {
-              var state = param[1];
-              var id = param[0];
-              var dict = Js_json.decodeObject(Spec.state_encode(state));
-              if (dict !== undefined) {
-                dict["id"] = Spec.Id.t_encode(id);
-                return [
-                        Spec.Id.toString(id),
-                        dict,
-                        param[2]
-                      ];
-              } else {
-                console.log("QueryDB.saveBatch: Error: Couldn't decodeObject:", JSON.stringify(state));
-                return ;
-              }
-            }));
-      return await saveBatch(batch);
-    };
-  };
-  var countFn = function (count) {
-    return async function (id, fieldName, inc) {
-      return await count(Spec.Id.toString(id), fieldName, inc);
-    };
-  };
-  var deleteFn = function ($$delete) {
-    return async function (id, subId) {
-      return await $$delete(Spec.Id.toString(id), subId);
-    };
-  };
-  var deleteBatchFn = function (deleteBatch) {
-    return async function (ids) {
-      var ids$1 = Belt_Array.map(ids, (function (param) {
-              return [
-                      Spec.Id.toString(param[0]),
-                      param[1]
-                    ];
-            }));
-      return await deleteBatch(ids$1);
-    };
-  };
   var outputs = function (component) {
     return Component$Reventless.extractOutputs(component);
   };
@@ -123,14 +47,15 @@ function Make(Config, Spec, $$Storage, Resolvers) {
             return config.subIdField;
           }));
     var storageName = ComponentType$Reventless.name(name, "QueryDb");
+    var Runtime = QueryDb_Runtime$Reventless.Make(Spec);
     var storage = $$Storage.make(storageName, Spec.config.indexes, subIdField, ttl, api, apiRole, opts);
     storage.primitives.apply(function (param) {
-          self.load = loadFn(param.load);
-          self.save = saveFn(param.save);
-          self.saveBatch = saveBatchFn(param.saveBatch);
-          self.count = countFn(param.count);
-          self.delete = deleteFn(param.delete);
-          self.deleteBatch = deleteBatchFn(param.deleteBatch);
+          self.load = Runtime.loadFn(param.load);
+          self.save = Runtime.saveFn(param.save);
+          self.saveBatch = Runtime.saveBatchFn(param.saveBatch);
+          self.count = Runtime.countFn(param.count);
+          self.delete = Runtime.deleteFn(param.delete);
+          self.deleteBatch = Runtime.deleteBatchFn(param.deleteBatch);
         });
     var resolvers = Resolvers.make(name, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, opts);
     var outputs = {
