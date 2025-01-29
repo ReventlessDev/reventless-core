@@ -87,39 +87,17 @@ module Make = (
       deleteBatch,
     }
 
-    module EventProjector = ProjectionMapper.Make(Spec, Mappings)
-
-    let eventsHandler: array<Js.Json.t> => Js.Promise.t<unit> = jsons => {
-      let eventCount = jsons->Belt.Array.length
-      jsons
-      ->Belt.Array.mapWithIndex((idx, json) => {
-        let idx = idx + 1
-        let sourceName =
-          json
-          ->ReventlessSpec.Message.context_decode
-          ->Belt.Result.map(context => context.meta.service)
-          ->Belt.Result.getWithDefault("")
-        Js.log2(
-          `ReadModel: handling event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString} from ${sourceName}:`,
-          json,
-        )
-        json->EventProjector.map(~sourceName=Some(sourceName))
-      })
-      ->Belt.Array.concatMany
-      ->Projection.handleActions(primitives, Spec.subIdConfig)
-    }
-
-    module Set = Belt.Set.String
     let sourceNames =
       Mappings.mappings
       ->Belt.Array.map((module(Mapping: Mappings.Mapping)) => Mapping.sourceName)
-      ->Set.fromArray
+      ->Belt.Set.String.fromArray
 
+    module Runtime = ReadModel_Runtime.Make(Spec, Mappings)
     module EventCollector = EventCollector.Make(EventCollectorConnector)
     let eventCollector = EventCollector.make(
       ~name=name->ComponentType.name(componentType),
       ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
-      ~eventsHandler,
+      ~eventsHandler=Runtime.eventsHandler(primitives, ...),
       ~memorySize=2048,
       ~policy1=Pulumi.Output.make(None),
       ~policy2=Pulumi.Output.make(None),
