@@ -27,7 +27,7 @@ module type T = {
 module Adapter = {
   type connector = {
     resources: array<resource>,
-    enqueueEvent: ReventlessSpec.EventCollector.enqueueEvent,
+    enqueueEvent: Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>,
   }
   type connectorMaker = (
     ~name: string,
@@ -92,9 +92,6 @@ module Make = (Connector: Adapter.Connector): T => {
     ReventlessSpec.EventCollector.outputs,
   > => enqueueEvent = "enqueueEvent"
 
-  let enqueueEventFn = (connector, delay, id, message) =>
-    connector.Adapter.enqueueEvent(delay, id, message)
-
   let construct = (
     ~eventTopics,
     ~eventsHandler,
@@ -118,7 +115,10 @@ module Make = (Connector: Adapter.Connector): T => {
       ~opts,
     )
 
-    self->setEnqueueEvent(enqueueEventFn(connector, ...))
+    let _ =
+      connector.enqueueEvent->Pulumi.Output.apply(enqueueEvent =>
+        self->setEnqueueEvent(enqueueEvent)
+      )
 
     self->setOutputs(makeOutputs(~name, ~resources=connector.resources))
   }

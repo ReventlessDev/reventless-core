@@ -14,9 +14,9 @@ function Make(Connector) {
       parent: opts_parent
     };
     var connector = Connector.make(ComponentType$Reventless.name(name, "EventCollector"), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
-    self.enqueueEvent = (function (extra, extra$1, extra$2) {
-        return connector.enqueueEvent(extra, extra$1, extra$2);
-      });
+    connector.enqueueEvent.apply(function (enqueueEvent) {
+          self.enqueueEvent = enqueueEvent;
+        });
     var outputs = {
       name: name,
       resources: connector.resources
