@@ -14,7 +14,6 @@ var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
-var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
@@ -72,9 +71,11 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
       });
   return {
           resources: [Util_SQS$ReventlessAws.toResource(queue)],
-          enqueueEvent: (function (delay, id, messageBody) {
-              return EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(queue), delay, id, messageBody);
-            })
+          enqueueEvent: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
+                return function (extra, extra$1, extra$2) {
+                  return EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(runtimeQueue, extra, extra$1, extra$2);
+                };
+              })
         };
 }
 

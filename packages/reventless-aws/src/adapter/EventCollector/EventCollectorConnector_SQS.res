@@ -109,9 +109,10 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
 
   {
     Reventless.EventCollector.Adapter.resources: [queue->Util_SQS.toResource],
-    enqueueEvent: (delay, id, messageBody) =>
-      queue
-      ->Util_SQS_Runtime.toRuntimeQueue
-      ->EventCollectorConnector_SQS_Runtime.enqueueEvent(delay, id, messageBody),
+    enqueueEvent: queue
+    ->Util_SQS.toRuntimeQueueOutput
+    ->Pulumi.Output.apply(runtimeQueue =>
+      EventCollectorConnector_SQS_Runtime.enqueueEvent(runtimeQueue, ...)
+    ),
   }
 }

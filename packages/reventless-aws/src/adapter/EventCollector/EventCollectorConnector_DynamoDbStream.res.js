@@ -41,11 +41,12 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                     Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
                   });
       });
+  var enqueueEventNotSupported = function (delay, id, messageBody) {
+    return Promise.resolve((console.log("EventCollectorConnector_DynamoDbStream-ReventlessAws" + " supports no enqueueEvent:", delay, id, messageBody), undefined));
+  };
   return {
           resources: [],
-          enqueueEvent: (function (delay, id, messageBody) {
-              return Promise.resolve((console.log("EventCollectorConnector_DynamoDbStream-ReventlessAws" + " supports no enqueueEvent:", delay, id, messageBody), undefined));
-            })
+          enqueueEvent: Pulumi.output(enqueueEventNotSupported)
         };
 }
 

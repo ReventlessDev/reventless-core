@@ -55,15 +55,11 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
     })
   })
 
+  let enqueueEventNotSupported = (delay, id, messageBody) =>
+    // TODO: can we check this at deploy time ?
+    Js.log4(__MODULE__ ++ " supports no enqueueEvent:", delay, id, messageBody)->Js.Promise.resolve
   {
     Reventless.EventCollector.Adapter.resources: [],
-    enqueueEvent: (delay, id, messageBody) =>
-      // TODO: can we check this at deploy time ?
-      Js.log4(
-        __MODULE__ ++ " supports no enqueueEvent:",
-        delay,
-        id,
-        messageBody,
-      )->Js.Promise.resolve,
+    enqueueEvent: enqueueEventNotSupported->Pulumi.Output.make,
   }
 }
