@@ -36,38 +36,44 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
     };
     var QueryDb = partial_arg$1(QueryDbStorage, QueryDbResolvers);
     var queryDb = QueryDb.make(undefined, opts);
-    var load = function (id) {
-      return QueryDb.load(queryDb)(Spec.Id.makeFromString(id));
-    };
-    var save = function (id, state, saveMode, opt) {
-      return QueryDb.save(queryDb)(Spec.Id.makeFromString(id), state, saveMode, opt);
-    };
-    var saveBatch = function (states) {
-      return QueryDb.saveBatch(queryDb)(Belt_Array.map(states, (function (param) {
-                        return [
-                                Spec.Id.makeFromString(param[0]),
-                                param[1],
-                                param[2]
-                              ];
-                      })));
-    };
-    var $$delete = function (id, sort) {
-      return QueryDb.$$delete(queryDb)(Spec.Id.makeFromString(id), sort);
-    };
-    var deleteBatch = function (ids) {
-      return QueryDb.deleteBatch(queryDb)(Belt_Array.map(ids, (function (param) {
-                        return [
-                                Spec.Id.makeFromString(param[0]),
-                                param[1]
-                              ];
-                      })));
-    };
-    var primitives = {
-      load: load,
-      save: save,
-      saveBatch: saveBatch,
-      delete: $$delete,
-      deleteBatch: deleteBatch
+    var toProjectionPrimitives = function (param) {
+      var deleteBatch = param.deleteBatch;
+      var $$delete = param.delete;
+      var count = param.count;
+      var saveBatch = param.saveBatch;
+      var save = param.save;
+      var load = param.load;
+      return {
+              load: (function (id) {
+                  return load(Spec.Id.makeFromString(id));
+                }),
+              save: (function (id, state, saveMode, ttl) {
+                  return save(Spec.Id.makeFromString(id), state, saveMode, ttl);
+                }),
+              saveBatch: (function (batch) {
+                  return saveBatch(Belt_Array.map(batch, (function (param) {
+                                    return [
+                                            Spec.Id.makeFromString(param[0]),
+                                            param[1],
+                                            param[2]
+                                          ];
+                                  })));
+                }),
+              count: (function (id, fieldName, inc) {
+                  return count(Spec.Id.makeFromString(id), fieldName, inc);
+                }),
+              delete: (function (id, subId) {
+                  return $$delete(Spec.Id.makeFromString(id), subId);
+                }),
+              deleteBatch: (function (ids) {
+                  return deleteBatch(Belt_Array.map(ids, (function (param) {
+                                    return [
+                                            Spec.Id.makeFromString(param[0]),
+                                            param[1]
+                                          ];
+                                  })));
+                })
+            };
     };
     var sourceNames = Belt_SetString.fromArray(Belt_Array.map(Mappings.mappings, (function (Mapping) {
                 return Mapping.sourceName;
@@ -75,14 +81,18 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
     var partial_arg$2 = ReadModel_Runtime$Reventless.Make;
     var Runtime = partial_arg$2(Spec, Mappings);
     var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-    var eventCollector = EventCollector.make(ComponentType$Reventless.name(name, "ReadModel"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), (function (extra) {
-            return Curry._2(Runtime.eventsHandler, primitives, extra);
-          }), 2048, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
-    self.enqueueEvent = EventCollector.enqueueEvent(eventCollector);
+    var eventCollector = QueryDb.primitives(queryDb).apply(function (primitives) {
+          return Component$Reventless.extractOutputs(EventCollector.make(ComponentType$Reventless.name(name, "ReadModel"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), (function (extra) {
+                            return Curry._2(Runtime.eventsHandler, toProjectionPrimitives(primitives), extra);
+                          }), 2048, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+        });
+    self.enqueueEvent = eventCollector.apply(function (eventCollector) {
+          return EventCollector.enqueueEvent(eventCollector);
+        });
     var outputs = {
       name: name,
-      queryDb: Component$Reventless.extractOutputs(queryDb),
-      eventCollector: Component$Reventless.extractOutputs(eventCollector)
+      queryDb: queryDb,
+      eventCollector: eventCollector
     };
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);

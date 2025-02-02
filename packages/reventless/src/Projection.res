@@ -1,5 +1,5 @@
 open ReventlessSpec.Projection.Spec // FIXME: open locally
-open ReventlessSpec.ReadModel.Spec // FIXME: open locally
+open ReventlessSpec.ReadModel_Spec // FIXME: open locally
 open Belt.Result // FIXME: open locally
 
 module Set = Belt.Set.String
@@ -35,14 +35,6 @@ module Mappings = {
   }
 }
 
-type primitives<'id, 'state> = {
-  load: ReventlessSpec.QueryDb.load<'id, 'state>,
-  save: ReventlessSpec.QueryDb.save<'id, 'state>,
-  saveBatch: ReventlessSpec.QueryDb.saveBatch<'id, 'state>,
-  delete: ReventlessSpec.QueryDb.delete<'id>,
-  deleteBatch: ReventlessSpec.QueryDb.deleteBatch<'id>,
-}
-
 let logAction = str => Js.log2("Projection.handleAction:", str)
 
 let applyChanges = async (
@@ -50,7 +42,7 @@ let applyChanges = async (
   id,
   beforeStates,
   afterStates,
-  {saveBatch, deleteBatch},
+  {QueryDb.saveBatch: saveBatch, deleteBatch},
   {subIdField, getSubId},
 ) => {
   let beforeCount = beforeStates->Belt.Array.length
@@ -91,7 +83,7 @@ let statesToString: array<'a> => string = states =>
 
 let handleAction = async (
   action,
-  {load, save, saveBatch, delete, deleteBatch} as primitives,
+  {QueryDb.load: load, save, saveBatch, delete, deleteBatch} as primitives,
   subIdConfig,
 ) =>
   switch action {

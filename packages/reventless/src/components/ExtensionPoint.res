@@ -3,7 +3,13 @@ module ReventlessEventTopic = EventTopic
 
 let componentType = ComponentType.ExtensionPoint
 
-type name = string
+type outputs = {
+  name: string,
+  aggregateNames: array<string>,
+  outgoingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
+  commandTopic: CommandTopic.outputs,
+  eventTopic: EventTopic.outputs,
+}
 
 type unwrappedOutputs = {
   name: string,
@@ -11,6 +17,19 @@ type unwrappedOutputs = {
   outgoingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
   commandTopic: CommandTopic.unwrappedOutputs,
   eventTopic: EventTopic.unwrappedOutputs,
+}
+
+type t
+type component = ReventlessSpec.Component.t<t, outputs>
+
+module type T = {
+  type t
+  let make: (
+    ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
+    ~scheduler: ReventlessSpec.Scheduler.t,
+    ~queryEngine: ReventlessSpec.QueryEngine.t,
+    ~opts: option<Pulumi.ComponentResource.options>,
+  ) => component
 }
 
 module type Mappings = {
@@ -24,7 +43,7 @@ module Make = (
   Mappings: Mappings with module Spec := Spec,
   CommandTopicAdapter: CommandTopic.Adapter.Connector,
   EventTopicAdapter: EventTopic.Adapter.Publisher,
-): ReventlessSpec.ExtensionPoint.T => {
+): T => {
   module Spec = Spec
 
   module SpecWithId: ReventlessSpec.ExtensionPoint.Spec
@@ -35,17 +54,10 @@ module Make = (
     module Id = ReventlessSpec.Id.String
   }
 
-  module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter)
-
-  module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
-
   type t
 
   type constructed
-  type construct = (
-    ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs>,
-    string,
-  ) => constructed
+  type construct = (component, string) => constructed
 
   @module("./Component") @new
   external make: (
@@ -53,27 +65,12 @@ module Make = (
     ~name: string,
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.options>,
-  ) => ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs> = "default"
-
-  @obj
-  external makeOutputs: (
-    ~name: string,
-    ~aggregateNames: array<string>,
-    ~outgoingEventHandler: Js.Json.t => Js.Promise.t<unit>,
-    ~commandTopic: ReventlessSpec.CommandTopic.outputs,
-    ~eventTopic: ReventlessSpec.EventTopic.outputs,
-  ) => ReventlessSpec.ExtensionPoint.outputs = ""
+  ) => component = "default"
 
   @send
-  external registerOutputs: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs>,
-    ReventlessSpec.ExtensionPoint.outputs,
-  ) => constructed = "registerOutputs"
+  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send
-  external setOutputs: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.ExtensionPoint.outputs>,
-    ReventlessSpec.ExtensionPoint.outputs,
-  ) => unit = "setOutputs"
+  external setOutputs: (component, outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
@@ -130,9 +127,7 @@ module Make = (
 
     let childName = name->Js.String2.replace(".", "")->ComponentType.name(componentType)
 
-    let commandTopic: ref<
-      option<ReventlessSpec.Component.t<CommandTopic.t, ReventlessSpec.CommandTopic.outputs>>,
-    > = ref(None)
+    let commandTopic: ref<option<CommandTopic.component>> = ref(None)
 
     let applyCommandAction = async action =>
       switch action {
@@ -167,6 +162,7 @@ module Make = (
         }
       }
 
+    module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
     let eventTopic = EventTopic.make(~name=childName, ~storageResources=[], ~opts)
     let publish = EventTopic.publish(eventTopic)
 
@@ -188,7 +184,7 @@ module Make = (
         }
       }
 
-    let outgoingEventHandler = async event'Json => {
+    let outgoingEventHandler = async (event'Json, _pluginDef) => {
       let commandTopic = commandTopic.contents->Belt.Option.getExn
       let eventActions = Mapper.mapOutgoingEvent(
         event'Json,
@@ -214,20 +210,19 @@ module Make = (
       commandActions->Belt.Array.map(applyCommandAction)->Js.Promise.all
     }
 
+    module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter)
     commandTopic :=
       Some(CommandTopic.make(~name=childName, ~commandsHandler=incomingCommandsHandler, ~opts))
 
-    self->setOutputs(
-      makeOutputs(
-        ~name,
-        ~aggregateNames=Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
-          Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
-        ),
-        ~outgoingEventHandler,
-        ~commandTopic=commandTopic.contents->Belt.Option.getExn->Component.extractOutputs,
-        ~eventTopic=eventTopic->Component.extractOutputs,
+    self->setOutputs({
+      name,
+      aggregateNames: Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
+        Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
       ),
-    )
+      outgoingEventHandler,
+      commandTopic: commandTopic.contents->Belt.Option.getExn->Component.extractOutputs,
+      eventTopic: eventTopic->Component.extractOutputs,
+    })
   }
 
   let make = (~publishToAggregates, ~scheduler, ~queryEngine, ~opts) =>

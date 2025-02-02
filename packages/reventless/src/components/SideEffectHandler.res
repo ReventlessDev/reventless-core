@@ -2,7 +2,7 @@ module ReventlessEventCollector = EventCollector
 
 let componentType = ComponentType.SideEffectHandler
 
-type outputs = {"name": string, "eventCollector": ReventlessSpec.EventCollector.outputs}
+type outputs = {"name": string, "eventCollector": EventCollector.outputs}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -13,7 +13,7 @@ module type T = {
   let make: (
     ~name: string,
     ~sideEffects: sideEffects,
-    ~allEventTopics: ReventlessSpec.EventTopic.allOutputs,
+    ~allEventTopics: EventTopic.allOutputs,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~scheduler: ReventlessSpec.Scheduler.t,
     ~memorySize: int=?,
@@ -43,7 +43,7 @@ module Make = (EventCollector: EventCollector.T): T => {
   @obj
   external makeOutputs: (
     ~name: string,
-    ~eventCollector: ReventlessSpec.EventCollector.outputs,
+    ~eventCollector: ReventlessEventCollector.outputs,
   ) => outputs = ""
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"

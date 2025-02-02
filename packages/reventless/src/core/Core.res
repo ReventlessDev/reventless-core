@@ -2,10 +2,10 @@ let componentType = ComponentType.Core
 
 type outputs = {
   version: string,
-  eventCollector: ReventlessSpec.EventCollector.outputs,
-  extensionPoints: Js.Dict.t<ReventlessSpec.ExtensionPoint.outputs>,
+  eventCollector: EventCollector.outputs,
+  extensionPoints: Js.Dict.t<ExtensionPoint.outputs>,
   aggregates: Js.Dict.t<Aggregate.outputs>,
-  readModels: Js.Dict.t<ReventlessSpec.ReadModel.outputs>,
+  readModels: Js.Dict.t<ReadModel.outputs>,
   cloner: Cloner.outputs,
 }
 
@@ -14,9 +14,9 @@ type component = ReventlessSpec.Component.t<t, outputs>
 
 type maker = (
   ~version: string,
-  ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
+  ~extensionPoints: array<module(ExtensionPoint.T)>,
   ~aggregates: array<module(Aggregate.T)>,
-  ~readModels: array<module(ReventlessSpec.ReadModel.T)>,
+  ~readModels: array<module(ReadModel.T)>,
   ~scheduler: ReventlessSpec.Scheduler.t,
 ) => component
 
@@ -50,15 +50,15 @@ module Make = (
   }
 
   type readModel = {
-    module_: module(ReventlessSpec.ReadModel.T),
-    readModel: ReventlessSpec.ReadModel.component,
+    module_: module(ReadModel.T),
+    readModel: ReadModel.component,
   }
 
   let construct = (
     ~version,
-    ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
+    ~extensionPoints: array<module(ExtensionPoint.T)>,
     ~aggregates: array<module(Aggregate.T)>,
-    ~readModels: array<module(ReventlessSpec.ReadModel.T)>,
+    ~readModels: array<module(ReadModel.T)>,
     ~scheduler: ReventlessSpec.Scheduler.t,
     self,
     _,
@@ -81,7 +81,7 @@ module Make = (
 
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
-    let readModels = readModels->Belt.Array.map((module(ReadModel: ReventlessSpec.ReadModel.T)) => {
+    let readModels = readModels->Belt.Array.map((module(ReadModel: ReadModel.T)) => {
       let readModel = ReadModel.make(~allEventTopics, ~opts)
       (ReadModel.Spec.name, {module_: module(ReadModel), readModel})
     })
@@ -101,7 +101,7 @@ module Make = (
     )
 
     let extensionPoints =
-      extensionPoints->Belt.Array.map((module(ExtensionPoint: ReventlessSpec.ExtensionPoint.T)) =>
+      extensionPoints->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) =>
         ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts))
       )
     let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs

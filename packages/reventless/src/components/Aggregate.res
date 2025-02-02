@@ -3,7 +3,7 @@ let componentType = ComponentType.Aggregate
 type outputs = {
   name: string,
   commandGenerator: Pulumi.Output.t<CommandGenerator.outputs>,
-  commandTopic: Pulumi.Output.t<ReventlessSpec.CommandTopic.outputs>,
+  commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
   eventLog: EventLog.outputs,
   eventMapper?: EventMapper.outputs,
 }
@@ -27,10 +27,7 @@ type name = string
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
 
-type addEventMapper = (
-  ReventlessSpec.EventTopic.allOutputs,
-  ReventlessSpec.QueryEngine.t,
-) => outputs
+type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
 
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec

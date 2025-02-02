@@ -3,24 +3,29 @@ open ReventlessSpec.EventCollector
 
 let componentType = ComponentType.EventCollector
 
+type outputs = {name: string, resources: array<resource>}
+
+type t
+type component = ReventlessSpec.Component.t<t, outputs>
+
 type eventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
 module type T = {
   type t
   let make: (
     ~name: string,
-    ~eventTopics: ReventlessSpec.EventTopic.allOutputs,
+    ~eventTopics: EventTopic.allOutputs,
     ~eventsHandler: eventsHandler,
     ~memorySize: int=?,
     ~timeout: int=?,
     ~policy1: Pulumi.Output.t<option<string>>,
     ~policy2: Pulumi.Output.t<option<string>>,
     ~opts: option<Pulumi.ComponentResource.options>,
-  ) => ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>
+  ) => component
 
   let enqueueEvent: ReventlessSpec.Component.t<
     t,
-    ReventlessSpec.EventCollector.outputs,
+    outputs,
   > => ReventlessSpec.EventCollector.enqueueEvent
 }
 
@@ -31,7 +36,7 @@ module Adapter = {
   }
   type connectorMaker = (
     ~name: string,
-    ~eventTopics: ReventlessSpec.EventTopic.allOutputs,
+    ~eventTopics: EventTopic.allOutputs,
     ~handleEvents: eventsHandler,
     ~memorySize: int,
     ~timeout: int,
@@ -48,10 +53,7 @@ module Adapter = {
 module Make = (Connector: Adapter.Connector): T => {
   type t
   type constructed
-  type construct = (
-    ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>,
-    string,
-  ) => constructed
+  type construct = (component, string) => constructed
 
   @module("./Component") @new
   external make: (
@@ -59,38 +61,23 @@ module Make = (Connector: Adapter.Connector): T => {
     ~name: string,
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.options>,
-  ) => ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs> = "default"
+  ) => component = "default"
 
   @obj
-  external makeOutputs: (
-    ~name: string,
-    ~resources: array<resource>,
-  ) => ReventlessSpec.EventCollector.outputs = ""
+  external makeOutputs: (~name: string, ~resources: array<resource>) => outputs = ""
   @send
-  external registerOutputs: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>,
-    ReventlessSpec.EventCollector.outputs,
-  ) => constructed = "registerOutputs"
+  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send
-  external setOutputs: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>,
-    ReventlessSpec.EventCollector.outputs,
-  ) => unit = "setOutputs"
+  external setOutputs: (component, outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
   }
 
   @set
-  external setEnqueueEvent: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.EventCollector.outputs>,
-    enqueueEvent,
-  ) => unit = "enqueueEvent"
+  external setEnqueueEvent: (component, enqueueEvent) => unit = "enqueueEvent"
   @get
-  external enqueueEvent: ReventlessSpec.Component.t<
-    t,
-    ReventlessSpec.EventCollector.outputs,
-  > => enqueueEvent = "enqueueEvent"
+  external enqueueEvent: ReventlessSpec.Component.t<t, outputs> => enqueueEvent = "enqueueEvent"
 
   let construct = (
     ~eventTopics,

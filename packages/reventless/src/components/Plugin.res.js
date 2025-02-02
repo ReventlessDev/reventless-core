@@ -57,6 +57,11 @@ function makeId(name, version) {
 }
 
 function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPointRemoteConnector) {
+  var toDictOutput = function (dict) {
+    return Pulumi.all(Js_dict.values(dict)).apply(function (values) {
+                return Js_dict.fromArray(Belt_Array.zip(Object.keys(dict), values));
+              });
+  };
   var construct = function (version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, self, name) {
     var id = makeId(name, version);
     var opts_parent = Caml_option.some(self);
@@ -116,7 +121,12 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
     var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
             return coreStack.getOutput("extensionPoints");
           }));
-    var pureOutputs = coreExtensionPoints.apply(function (coreExtensionPoints) {
+    var pureOutputs = Pulumi.all([
+            coreExtensionPoints,
+            toDictOutput(publishToReadModels)
+          ]).apply(function (param) {
+          var publishToReadModels = param[1];
+          var coreExtensionPoints = param[0];
           var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
           var extensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
           var corePluginExtensionPoint_name = extensionPointUnwrapped.name;

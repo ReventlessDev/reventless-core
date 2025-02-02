@@ -1,9 +1,6 @@
 let componentType = ComponentType.Counter
 
-type outputs = {
-  "referencesDb": ReventlessSpec.QueryDb.outputs,
-  "countsDb": ReventlessSpec.QueryDb.outputs,
-}
+type outputs = {"referencesDb": QueryDb.outputs, "countsDb": QueryDb.outputs}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -32,8 +29,8 @@ module type T = {
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 
-  let count: component => count
-  let addToCounterTarget: component => addToCounterTarget
+  let count: component => Pulumi.Output.t<count>
+  let addToCounterTarget: component => Pulumi.Output.t<addToCounterTarget>
 }
 
 module Adapter = {
@@ -41,9 +38,9 @@ module Adapter = {
   type handlerMaker = (
     ~name: string,
     ~referencesName: string,
-    ~referencesDb: ReventlessSpec.QueryDb.outputs,
+    ~referencesDb: QueryDb.outputs,
     ~countsName: string,
-    ~countsDb: ReventlessSpec.QueryDb.outputs,
+    ~countsDb: QueryDb.outputs,
     ~counterHandler: Counter_Runtime.counterHandler,
     ~opts: Pulumi.CustomResourceOptions.t,
   ) => handler
@@ -70,10 +67,7 @@ module Make = (
   ) => component = "default"
 
   @obj
-  external makeOutputs: (
-    ~referencesDb: ReventlessSpec.QueryDb.outputs,
-    ~countsDb: ReventlessSpec.QueryDb.outputs,
-  ) => outputs = ""
+  external makeOutputs: (~referencesDb: QueryDb.outputs, ~countsDb: QueryDb.outputs) => outputs = ""
 
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
@@ -83,13 +77,15 @@ module Make = (
     self->registerOutputs(outputs)
   }
 
-  @set external setCount: (component, count) => unit = "count"
-  @get external count: component => count = "count"
+  @set external setCount: (component, Pulumi.Output.t<count>) => unit = "count"
+  @get external count: component => Pulumi.Output.t<count> = "count"
 
   @set
-  external setAddToCounterTarget: (component, addToCounterTarget) => unit = "addToCounterTarget"
+  external setAddToCounterTarget: (component, Pulumi.Output.t<addToCounterTarget>) => unit =
+    "addToCounterTarget"
   @get
-  external addToCounterTarget: component => addToCounterTarget = "addToCounterTarget"
+  external addToCounterTarget: component => Pulumi.Output.t<addToCounterTarget> =
+    "addToCounterTarget"
 
   let construct = (~counterEventsHandler: counterEventsHandler, ~ttl: option<int>, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
@@ -102,7 +98,7 @@ module Make = (
       type state = Counter_Runtime.referencesState
 
       let subIdConfig = None
-      let config = ReventlessSpec.ReadModel.Spec.config()
+      let config = ReventlessSpec.ReadModel_Spec.config()
     }
 
     module ReferencesDb = QueryDb.Make(
@@ -119,7 +115,7 @@ module Make = (
       type state = Counter_Runtime.countsState
 
       let subIdConfig = None
-      let config = ReventlessSpec.ReadModel.Spec.config()
+      let config = ReventlessSpec.ReadModel_Spec.config()
     }
     module CountsDb = QueryDb.Make(
       Config,
@@ -131,29 +127,32 @@ module Make = (
     let referencesDb = ReferencesDb.make(~ttl?, ~opts)
     let countsDb = CountsDb.make(~ttl?, ~opts)
 
-    let handler = Handler.make(
-      ~name,
-      ~referencesName=ReferencesSpec.name,
-      ~referencesDb=referencesDb->Component.extractOutputs,
-      ~countsName=CountsSpec.name,
-      ~countsDb=countsDb->Component.extractOutputs,
-      ~counterHandler=Counter_Runtime.counterHandler(
-        name,
-        countsDb->CountsDb.count,
-        counterEventsHandler,
-      ),
-      ~opts=opts2,
-    )
+    let handler =
+      countsDb
+      ->CountsDb.primitives
+      ->Pulumi.Output.apply(({count}) =>
+        Handler.make(
+          ~name,
+          ~referencesName=ReferencesSpec.name,
+          ~referencesDb=referencesDb->Component.extractOutputs,
+          ~countsName=CountsSpec.name,
+          ~countsDb=countsDb->Component.extractOutputs,
+          ~counterHandler=Counter_Runtime.counterHandler(name, count, counterEventsHandler),
+          ~opts=opts2,
+        )
+      )
 
-    self->setCount(countItems =>
-      Counter_Runtime.count(ttl)(referencesDb->ReferencesDb.saveBatch, countItems)
+    self->setCount(
+      referencesDb
+      ->ReferencesDb.primitives
+      ->Pulumi.Output.apply(({saveBatch}) => Counter_Runtime.count(ttl)(saveBatch, ...)),
     )
-    self->setAddToCounterTarget(handler.addToCounterTarget)
+    self->setAddToCounterTarget(handler->Pulumi.Output.apply(handler => handler.addToCounterTarget))
 
     self->setOutputs(
       makeOutputs(
-        ~referencesDb=referencesDb->ReferencesDb.outputs,
-        ~countsDb=countsDb->CountsDb.outputs,
+        ~referencesDb=referencesDb->Component.extractOutputs,
+        ~countsDb=countsDb->Component.extractOutputs,
       ),
     )
   }

@@ -31,7 +31,7 @@ type setup = (
   ReventlessSpec.Scheduler.t,
   publishCommands,
   queryBucketName,
-  ReventlessSpec.EventTopic.allOutputs,
+  EventTopic.allOutputs,
   Pulumi.CustomResourceOptions.t,
 ) => outputs
 

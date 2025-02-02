@@ -1,5 +1,5 @@
 module Make = (
-  Spec: ReventlessSpec.ReadModel.Spec.T,
+  Spec: ReventlessSpec.ReadModel_Spec.T,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
 ) => {
   module EventProjector = ProjectionMapper.Make(Spec, Mappings)

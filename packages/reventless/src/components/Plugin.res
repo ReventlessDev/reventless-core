@@ -7,11 +7,11 @@ type outputs = {
   id: Pulumi.Output.t<string>,
   version: Pulumi.Output.t<string>,
   heartbeatInterval: Pulumi.Output.t<int>,
-  eventCollector: Pulumi.Output.t<ReventlessSpec.EventCollector.outputs>,
-  extensionPoints: Pulumi.Output.t<Js.Dict.t<ReventlessSpec.ExtensionPoint.outputs>>,
+  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
+  extensionPoints: Pulumi.Output.t<Js.Dict.t<ExtensionPoint.outputs>>,
   extensions: Pulumi.Output.t<Js.Dict.t<Extension.outputs>>,
   aggregates: Pulumi.Output.t<Js.Dict.t<Aggregate.outputs>>,
-  readModels: Pulumi.Output.t<Js.Dict.t<ReventlessSpec.ReadModel.outputs>>,
+  readModels: Pulumi.Output.t<Js.Dict.t<ReadModel.outputs>>,
   tasks: Pulumi.Output.t<Js.Dict.t<Task.outputs>>,
   resolvers: Pulumi.Output.t<array<resource>>,
   heartbeat: Pulumi.Output.t<Heartbeat.outputs>,
@@ -25,10 +25,10 @@ module type T = {
     ~name: string,
     ~version: string,
     ~heartbeatInterval: int,
-    ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
+    ~extensionPoints: array<module(ExtensionPoint.T)>,
     ~extensions: array<module(Extension.T)>,
     ~aggregates: array<module(Aggregate.T)>,
-    ~readModels: array<module(ReventlessSpec.ReadModel.T)>,
+    ~readModels: array<module(ReadModel.T)>,
     ~taskMakers: array<Task.maker>,
     ~scheduler: ReventlessSpec.Scheduler.t,
     ~opts: Pulumi.ComponentResource.options=?,
@@ -40,11 +40,11 @@ type pureOutputs = {
   id: string,
   version: string,
   heartbeatInterval: int,
-  eventCollector: ReventlessSpec.EventCollector.outputs,
-  extensionPoints: Js.Dict.t<ReventlessSpec.ExtensionPoint.outputs>,
+  eventCollector: EventCollector.outputs,
+  extensionPoints: Js.Dict.t<ExtensionPoint.outputs>,
   extensions: Js.Dict.t<Extension.outputs>,
   aggregates: Js.Dict.t<Aggregate.outputs>,
-  readModels: Js.Dict.t<ReventlessSpec.ReadModel.outputs>,
+  readModels: Js.Dict.t<ReadModel.outputs>,
   tasks: Js.Dict.t<Task.outputs>,
   resolvers: array<resource>,
   heartbeat: Heartbeat.outputs,
@@ -57,9 +57,7 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
     ->Pulumi.Output.apply((plugin: pureOutputs) =>
       plugin.readModels
       ->Js.Dict.get(queryDbName)
-      ->Belt.Option.map(
-        (readModel: ReventlessSpec.ReadModel.outputs) => readModel.queryDb.resources,
-      )
+      ->Belt.Option.map((readModel: ReadModel.outputs) => readModel.queryDb.resources)
       ->Belt.Option.getWithDefault([])
     )
   }) {
@@ -105,17 +103,23 @@ module Make = (
   }
 
   type readModel = {
-    module_: module(ReventlessSpec.ReadModel.T),
-    readModel: ReventlessSpec.ReadModel.component,
+    module_: module(ReadModel.T),
+    readModel: ReadModel.component,
   }
+
+  let toDictOutput = dict =>
+    dict
+    ->Js.Dict.values
+    ->Pulumi.Output.all
+    ->Pulumi.Output.apply(values => Belt.Array.zip(dict->Js.Dict.keys, values)->Js.Dict.fromArray)
 
   let construct = (
     ~version: string,
     ~heartbeatInterval: int,
-    ~extensionPoints: array<module(ReventlessSpec.ExtensionPoint.T)>,
+    ~extensionPoints: array<module(ExtensionPoint.T)>,
     ~extensions: array<module(Extension.T)>,
     ~aggregates: array<module(Aggregate.T)>,
-    ~readModels: array<module(ReventlessSpec.ReadModel.T)>,
+    ~readModels: array<module(ReadModel.T)>,
     ~taskMakers: array<Task.maker>,
     ~scheduler: ReventlessSpec.Scheduler.t,
     self,
@@ -144,7 +148,7 @@ module Make = (
     let readModelNamesForSourceName = Js.Dict.empty()
     let publishToReadModels = Js.Dict.empty()
 
-    let readModels = readModels->Belt.Array.map((module(ReadModel: ReventlessSpec.ReadModel.T)) => {
+    let readModels = readModels->Belt.Array.map((module(ReadModel: ReadModel.T)) => {
       let readModel = ReadModel.make(~allEventTopics, ~opts)
       ReadModel.sourceNames->Belt.Array.forEach(sourceName =>
         switch readModelNamesForSourceName->Js.Dict.get(sourceName) {
@@ -177,7 +181,7 @@ module Make = (
     )
 
     let extensionPoints =
-      extensionPoints->Belt.Array.map((module(ExtensionPoint: ReventlessSpec.ExtensionPoint.T)) =>
+      extensionPoints->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) =>
         ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts))
       )
     let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs
@@ -189,7 +193,9 @@ module Make = (
           coreStack => coreStack->Pulumi.StackReference.getOutput("extensionPoints"),
         )
 
-      coreExtensionPoints->Pulumi.Output.apply(coreExtensionPoints => {
+      (coreExtensionPoints, publishToReadModels->toDictOutput)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((coreExtensionPoints, publishToReadModels)) => {
         let coreExtensionPoints = switch coreExtensionPoints {
         | Some(coreExtensionPoints) => coreExtensionPoints
         | None =>
@@ -197,7 +203,7 @@ module Make = (
             "No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
           )
         }
-        let corePluginExtensionPoint: ReventlessSpec.ExtensionPoint.outputs = {
+        let corePluginExtensionPoint: ExtensionPoint.outputs = {
           let extensionPointUnwrapped: ExtensionPoint.unwrappedOutputs =
             coreExtensionPoints->Pulumi.StackReference.get(
               ReventlessSpec.PluginExtensionPointSpec.name,

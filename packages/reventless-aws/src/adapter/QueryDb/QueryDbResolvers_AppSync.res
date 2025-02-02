@@ -1,5 +1,5 @@
 open PulumiAws.AppSync
-open ReventlessSpec.ReadModel.Spec
+open ReventlessSpec.ReadModel_Spec
 open Reventless
 
 type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
@@ -60,7 +60,7 @@ let make: QueryDb.Adapter.resolversMaker<api, role> = (
     ~opts,
   )
 
-  let resourcesMaker: ReventlessSpec.QueryDb.resolversResourcesMaker = allQueryDbs => {
+  let resourcesMaker: Reventless.QueryDb.resolversResourcesMaker = allQueryDbs => {
     let resolversByIndex = indexes->Belt.Array.map(({index} as indexConfig) => {
       let name = name ++ ("By" ++ index->StringLabels.capitalize_ascii)
       let idField = indexConfig.idField->Belt.Option.getWithDefault(index)

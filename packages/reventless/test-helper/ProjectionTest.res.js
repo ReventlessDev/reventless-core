@@ -141,6 +141,12 @@ function Make(Projection) {
                           _0: undefined
                         });
             }),
+          count: (async function (param, param$1, param$2) {
+              return {
+                      TAG: "Ok",
+                      _0: 0
+                    };
+            }),
           delete: (function (extra, extra$1) {
               var match = Projection.subIdConfig;
               if (extra$1 !== undefined) {

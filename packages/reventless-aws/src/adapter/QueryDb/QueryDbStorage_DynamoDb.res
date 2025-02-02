@@ -1,6 +1,6 @@
 open PulumiAws
 open DynamoDb.Table
-open ReventlessSpec.ReadModel.Spec
+open ReventlessSpec.ReadModel_Spec
 
 type api = Pulumi.Output.t<AppSync.GraphQLApi.t>
 type role = Pulumi.Output.t<IAM.Role.t>
@@ -86,7 +86,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
     primitives: table
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable => {
-      Reventless.QueryDb.Adapter.load: runtimeTable->load,
+      Reventless.QueryDb.load: runtimeTable->load,
       save: runtimeTable->save,
       saveBatch: runtimeTable->saveBatch,
       count: runtimeTable->count,

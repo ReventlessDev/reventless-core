@@ -5,18 +5,6 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var ResourceQuery$Reventless = require("./ResourceQuery.res.js");
 
-function eventCollectorConnectorOfAllEventMappers(eventMappers, eventMapperName) {
-  return Belt_Option.flatMap(Belt_Array.getBy(eventMappers, (function (eventMapper) {
-                    return eventMapper.name === eventMapperName;
-                  })), (function (eventMapper) {
-                var resources = eventMapper.eventCollector.resources;
-                if (resources.length !== 0) {
-                  return resources[0];
-                }
-                
-              }));
-}
-
 function bucketNameOfAllTasks(tasks, taskName) {
   return Belt_Option.map(Belt_Option.flatMap(Belt_Array.getBy(tasks, (function (task) {
                         return task.name === taskName;
@@ -27,16 +15,10 @@ function bucketNameOfAllTasks(tasks, taskName) {
               }));
 }
 
-function eventCollectorConnectorOfAllEventMappersExn(eventMappersRef, eventMapperName) {
-  return ResourceQuery$Reventless.unwrapResource(eventCollectorConnectorOfAllEventMappers(eventMappersRef.contents, eventMapperName), "EventCollector", eventMapperName);
-}
-
 function bucketNameOfTaskExn(tasks, taskName) {
   return ResourceQuery$Reventless.unwrapResource(bucketNameOfAllTasks(tasks, taskName), "Bucket", taskName);
 }
 
-exports.eventCollectorConnectorOfAllEventMappers = eventCollectorConnectorOfAllEventMappers;
 exports.bucketNameOfAllTasks = bucketNameOfAllTasks;
-exports.eventCollectorConnectorOfAllEventMappersExn = eventCollectorConnectorOfAllEventMappersExn;
 exports.bucketNameOfTaskExn = bucketNameOfTaskExn;
 /* No side effect */

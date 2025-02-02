@@ -2,8 +2,11 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.EventTopic
 
+type outputs = {resources: array<resource>}
+type allOutputs = Js.Dict.t<outputs>
+
 type t
-type component = ReventlessSpec.Component.t<t, ReventlessSpec.EventTopic.outputs>
+type component = ReventlessSpec.Component.t<t, outputs>
 
 type publish<'id, 'event> = array<Message.event'<'id, 'event>> => Js.Promise.t<unit>
 
@@ -64,12 +67,11 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
-  @obj external makeOutputs: (~resources: array<resource>) => ReventlessSpec.EventTopic.outputs = ""
+  @obj external makeOutputs: (~resources: array<resource>) => outputs = ""
 
   @send
-  external registerOutputs: (component, ReventlessSpec.EventTopic.outputs) => constructed =
-    "registerOutputs"
-  @send external setOutputs: (component, ReventlessSpec.EventTopic.outputs) => unit = "setOutputs"
+  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
+  @send external setOutputs: (component, outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)

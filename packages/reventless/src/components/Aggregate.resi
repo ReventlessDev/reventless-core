@@ -3,25 +3,19 @@ let componentType: ComponentType.t
 type outputs = {
   name: string,
   commandGenerator: Pulumi.Output.t<CommandGenerator.outputs>,
-  commandTopic: Pulumi.Output.t<ReventlessSpec.CommandTopic.outputs>,
+  commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
   eventLog: EventLog.outputs,
   eventMapper?: EventMapper.outputs,
 }
 type allOutputs = Js.Dict.t<outputs>
 
-let allEventTopics: Js.Dict.t<outputs> => Js.Dict.t<ReventlessSpec.EventTopic.outputs>
-let filterEventTopics: (
-  Js.Dict.t<outputs>,
-  Belt.Set.String.t,
-) => Js.Dict.t<ReventlessSpec.EventTopic.outputs>
+let allEventTopics: Js.Dict.t<outputs> => Js.Dict.t<EventTopic.outputs>
+let filterEventTopics: (Js.Dict.t<outputs>, Belt.Set.String.t) => Js.Dict.t<EventTopic.outputs>
 
 type name = string
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
-type addEventMapper = (
-  ReventlessSpec.EventTopic.allOutputs,
-  ReventlessSpec.QueryEngine.t,
-) => outputs
+type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec
   let make: (~opts: Pulumi.ComponentResource.options=?) => component

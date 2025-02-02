@@ -29,7 +29,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
     )
 
     eventTopics
-    ->Js.Dict.map((eventTopic: ReventlessSpec.EventTopic.outputs) => eventTopic.resources, _)
+    ->Js.Dict.map((eventTopic: Reventless.EventTopic.outputs) => eventTopic.resources, _)
     ->Reventless.Util.Adapter.partitionSupportedResources([
       Util_DynamoDbStream_Runtime.service,
       Util_SNS_FIFO.service,

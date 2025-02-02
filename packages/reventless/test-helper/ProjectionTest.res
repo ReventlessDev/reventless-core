@@ -126,7 +126,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     | (None, _) =>
       store->deleteStates(id)
       Ok()->Js.Promise.resolve
-    | (Some((_, subId)), Some({ReventlessSpec.ReadModel.Spec.getSubId: getSubId})) =>
+    | (Some((_, subId)), Some({ReventlessSpec.ReadModel_Spec.getSubId: getSubId})) =>
       store->deleteSubState(id, subId, getSubId)
       Ok()->Js.Promise.resolve
     | _ => Ok()->Js.Promise.resolve
@@ -135,7 +135,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     ids->Belt.Array.forEach(((id, subId)) =>
       switch (subId, Projection.subIdConfig) {
       | (None, _) => store->deleteStates(id)
-      | (Some((_, subId)), Some({ReventlessSpec.ReadModel.Spec.getSubId: getSubId})) =>
+      | (Some((_, subId)), Some({ReventlessSpec.ReadModel_Spec.getSubId: getSubId})) =>
         store->deleteSubState(id, subId, getSubId)
       | _ => ()
       }
@@ -164,6 +164,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       load: load(store, ...),
       save: save(store, ...),
       saveBatch: saveBatch(store, ...),
+      count: async (_, _, _) => Ok(0),
       delete: delete(store, ...),
       deleteBatch: deleteBatch(store, ...),
     })

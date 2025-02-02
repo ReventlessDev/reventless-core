@@ -4,7 +4,7 @@ let componentType = ComponentType.EventMapper
 
 type outputs = {
   name: string,
-  eventCollector: ReventlessSpec.EventCollector.outputs,
+  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
   counter?: Counter.outputs,
 }
 
@@ -13,7 +13,7 @@ type component = ReventlessSpec.Component.t<t, outputs>
 
 module type T = {
   let make: (
-    ~allEventTopics: ReventlessSpec.EventTopic.allOutputs,
+    ~allEventTopics: EventTopic.allOutputs,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~publishJsons: ReventlessSpec.CommandTopic.publishJsons,
     ~memorySize: int=?,
@@ -282,8 +282,12 @@ module Make = (
 
     let (count, setCounterTarget, counterOutputs) = Mappings.counter->Belt.Option.mapWithDefault(
       (
-        _items => Js.log("No counter deployed, but trying to use counter.")->Js.Promise.resolve,
-        _target => Js.log("No counter deployed, but trying to use counter.")->Js.Promise.resolve,
+        Pulumi.Output.make(async _items =>
+          Js.log("No counter deployed, but trying to use counter.")
+        ),
+        Pulumi.Output.make(async _target =>
+          Js.log("No counter deployed, but trying to use counter.")
+        ),
         None,
       ),
       (module(Counter: Counter.T)) => {
@@ -312,26 +316,31 @@ module Make = (
       )
       ->Set.fromArray
 
-    let eventCollector = EventCollector.make(
-      ~name=Target.name->ComponentType.name(componentType),
-      ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
-      ~eventsHandler=eventCollectorEventsHandler(
-        publishJsons,
-        Mappings.mappings,
-        queryEngine,
-        count,
-        setCounterTarget,
-      ),
-      ~memorySize,
-      ~timeout,
-      ~policy1=Pulumi.Output.make(None),
-      ~policy2=Pulumi.Output.make(None),
-      ~opts=Some(opts),
-    )
+    let eventCollector =
+      (count, setCounterTarget)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((count, setCounterTarget)) =>
+        EventCollector.make(
+          ~name=Target.name->ComponentType.name(componentType),
+          ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
+          ~eventsHandler=eventCollectorEventsHandler(
+            publishJsons,
+            Mappings.mappings,
+            queryEngine,
+            count,
+            setCounterTarget,
+          ),
+          ~memorySize,
+          ~timeout,
+          ~policy1=Pulumi.Output.make(None),
+          ~policy2=Pulumi.Output.make(None),
+          ~opts=Some(opts),
+        )->Component.extractOutputs
+      )
 
     self->setOutputs({
       name,
-      eventCollector: eventCollector->Component.extractOutputs,
+      eventCollector,
       counter: ?counterOutputs,
     })
   }

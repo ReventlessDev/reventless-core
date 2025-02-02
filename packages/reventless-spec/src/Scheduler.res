@@ -3,5 +3,3 @@ type deleteSchedule = (array<Adapter.resource>, string) => Js.Promise.t<unit>
 
 type functions = {createSchedule: createSchedule, deleteSchedule: deleteSchedule}
 type t = functions
-
-type outputs = {.}

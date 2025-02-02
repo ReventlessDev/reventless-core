@@ -9,7 +9,7 @@ let storageErrorToString: ReventlessSpec.QueryDb.storageError => string = err =>
   | MissingSubIdConfig => `MissingSubIdConfig`
   }
 
-module Make = (Spec: ReventlessSpec.ReadModel.Spec.T) => {
+module Make = (Spec: ReventlessSpec.ReadModel_Spec.T) => {
   let decode = (id, item) =>
     switch Spec.state_decode(item) {
     | Ok(state) => [state]
@@ -22,7 +22,7 @@ module Make = (Spec: ReventlessSpec.ReadModel.Spec.T) => {
       []
     }
 
-  let loadFn = load =>
+  let loadStates = load =>
     async id =>
       switch await load(id->Spec.Id.toString) {
       | result =>
@@ -31,7 +31,7 @@ module Make = (Spec: ReventlessSpec.ReadModel.Spec.T) => {
         )
       }
 
-  let saveFn = save =>
+  let saveState = save =>
     async (id, state, saveMode, ttl) =>
       switch state->Spec.state_encode->Js.Json.decodeObject {
       | Some(dict) =>
@@ -39,11 +39,11 @@ module Make = (Spec: ReventlessSpec.ReadModel.Spec.T) => {
         let json = Js.Json.object_(dict)
         await save(id->Spec.Id.toString, json, saveMode, ttl)
       | None =>
-        Js.log2("QueryDB.save: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+        Js.log2("QueryDB.saveState: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
         Belt.Result.Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
       }
 
-  let saveBatchFn = saveBatch =>
+  let saveStates = saveBatch =>
     async items => {
       let batch = items->Belt.Array.keepMap(((id, state, ttl)) =>
         switch state->Spec.state_encode->Js.Json.decodeObject {
@@ -52,7 +52,7 @@ module Make = (Spec: ReventlessSpec.ReadModel.Spec.T) => {
           let json = Js.Json.object_(dict)
           Some((id->Spec.Id.toString, json, ttl))
         | None =>
-          Js.log2("QueryDB.saveBatch: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
+          Js.log2("QueryDB.saveStates: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
           None
         }
       )
@@ -62,9 +62,9 @@ module Make = (Spec: ReventlessSpec.ReadModel.Spec.T) => {
   let countFn = count =>
     async (id, fieldName, inc) => await count(id->Spec.Id.toString, fieldName, inc)
 
-  let deleteFn = delete => async (id, subId) => await delete(id->Spec.Id.toString, subId)
+  let deleteState = delete => async (id, subId) => await delete(id->Spec.Id.toString, subId)
 
-  let deleteBatchFn = deleteBatch =>
+  let deleteStates = deleteBatch =>
     async ids => {
       let ids = ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.toString, sort))
       await deleteBatch(ids)

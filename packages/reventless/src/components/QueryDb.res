@@ -1,28 +1,47 @@
 open ReventlessSpec.Adapter
+open ReventlessSpec.QueryDb
 
 let componentType = ComponentType.QueryDb
+
+type rec resolversResourcesMaker = Js.Dict.t<outputs> => array<resource>
+and outputs = {
+  resources: array<resource>,
+  resolversMaker: resolversResourcesMaker,
+}
+type allOutputs = Js.Dict.t<outputs>
+
+type t
+type component = ReventlessSpec.Component.t<t, outputs>
 
 let allResolversMakers = allQueryDbs =>
   allQueryDbs
   ->Js.Dict.values
-  ->Belt.Array.map((queryDb: ReventlessSpec.QueryDb.outputs) => queryDb.resolversMaker)
+  ->Belt.Array.map((queryDb: outputs) => queryDb.resolversMaker)
 
-module type AggregateSpec = {
-  module Id: ReventlessSpec.Id.T
-  let name: string
+type primitives<'id, 'state> = {
+  load: load<'id, 'state>,
+  save: save<'id, 'state>,
+  saveBatch: saveBatch<'id, 'state>,
+  count: count<'id>,
+  delete: delete<'id>,
+  deleteBatch: deleteBatch<'id>,
+}
+
+module type T = {
+  module Spec: ReventlessSpec.ReadModel_Spec.T
+  type t
+
+  type primitives = primitives<Spec.Id.t, Spec.state>
+  let primitives: component => Pulumi.Output.t<primitives>
+
+  let make: (~ttl: int=?, ~opts: Pulumi.ComponentResource.options=?) => component
 }
 
 module Adapter = {
-  open ReventlessSpec.ReadModel.Spec
+  open ReventlessSpec.ReadModel_Spec
 
-  type primitives = {
-    load: ReventlessSpec.QueryDb.load<string, Js.Json.t>,
-    save: ReventlessSpec.QueryDb.save<string, Js.Json.t>,
-    saveBatch: ReventlessSpec.QueryDb.saveBatch<string, Js.Json.t>,
-    count: ReventlessSpec.QueryDb.count<string>,
-    delete: ReventlessSpec.QueryDb.delete<string>,
-    deleteBatch: ReventlessSpec.QueryDb.deleteBatch<string>,
-  }
+  type primitives = primitives<string, Js.Json.t>
+
   type storage = {
     resources: array<resource>,
     dataSourceName: Pulumi.Output.t<string>, // TODO create in API
@@ -45,7 +64,7 @@ module Adapter = {
     let make: storageMaker<api, role>
   }
 
-  type queryEngineMaker = Js.Dict.t<ReventlessSpec.QueryDb.outputs> => ReventlessSpec.QueryEngine.t
+  type queryEngineMaker = Js.Dict.t<outputs> => ReventlessSpec.QueryEngine.t
 
   module type QueryEngineAdapter = {
     let make: queryEngineMaker
@@ -53,7 +72,7 @@ module Adapter = {
 
   type resolvers = {
     resources: array<resource>,
-    resourcesMaker: ReventlessSpec.QueryDb.resolversResourcesMaker,
+    resourcesMaker: resolversResourcesMaker,
   }
   type resolversMaker<'api, 'role> = (
     ~name: string,
@@ -97,30 +116,20 @@ module Adapter = {
 
 module Make = (
   Config: Config.T,
-  Spec: ReventlessSpec.ReadModel.Spec.T,
+  Spec: ReventlessSpec.ReadModel_Spec.T,
   Storage: Adapter.Storage with type api = Config.api and type role = Config.role,
   Resolvers: Adapter.Resolvers with type api = Config.api and type role = Config.role,
-): (ReventlessSpec.QueryDb.T with module Spec = Spec) => {
+): (T with module Spec = Spec) => {
   module Spec = Spec
   type t
 
   type api = Config.api
   type role = Config.role
 
-  type load = ReventlessSpec.QueryDb.load<Spec.Id.t, Spec.state>
-  type save = ReventlessSpec.QueryDb.save<Spec.Id.t, Spec.state>
-  type saveBatch = ReventlessSpec.QueryDb.saveBatch<Spec.Id.t, Spec.state>
-  type count = ReventlessSpec.QueryDb.count<Spec.Id.t>
-  type delete = ReventlessSpec.QueryDb.delete<Spec.Id.t>
-  type deleteBatch = ReventlessSpec.QueryDb.deleteBatch<Spec.Id.t>
+  type primitives = primitives<Spec.Id.t, Spec.state>
 
   type constructed
-  type construct = (
-    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
-    string,
-    api,
-    role,
-  ) => constructed
+  type construct = (component, string, api, role) => constructed
 
   @module("./Component") @new
   external make: (
@@ -130,76 +139,27 @@ module Make = (
     ~opts: option<Pulumi.ComponentResource.options>,
     ~api: api,
     ~apiRole: role,
-  ) => ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> = "default"
+  ) => component = "default"
 
   @obj
   external makeOutputs: (
     ~resources: array<resource>,
-    ~resolversMaker: ReventlessSpec.QueryDb.resolversResourcesMaker,
-  ) => ReventlessSpec.QueryDb.outputs = ""
+    ~resolversMaker: resolversResourcesMaker,
+  ) => outputs = ""
 
   @send
-  external registerOutputs: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
-    ReventlessSpec.QueryDb.outputs,
-  ) => constructed = "registerOutputs"
+  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send
-  external setOutputs: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
-    ReventlessSpec.QueryDb.outputs,
-  ) => unit = "setOutputs"
+  external setOutputs: (component, outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
   }
 
   @set
-  external setLoad: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, load) => unit =
-    "load"
-  @set
-  external setSave: (ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>, save) => unit =
-    "save"
-  @set
-  external setSaveBatch: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
-    saveBatch,
-  ) => unit = "saveBatch"
-  @set
-  external setCount: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
-    count,
-  ) => unit = "count"
-  @set
-  external setDelete: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
-    delete,
-  ) => unit = "delete"
-  @set
-  external setDeleteBatch: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs>,
-    deleteBatch,
-  ) => unit = "deleteBatch"
-
-  @get external load: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => load = "load"
-  @get external save: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => save = "save"
+  external setPrimitives: (component, Pulumi.Output.t<primitives>) => unit = "primitives"
   @get
-  external saveBatch: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => saveBatch =
-    "saveBatch"
-  @get
-  external count: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => count = "count"
-  @get
-  external delete: ReventlessSpec.Component.t<t, ReventlessSpec.QueryDb.outputs> => delete =
-    "delete"
-  @get
-  external deleteBatch: ReventlessSpec.Component.t<
-    t,
-    ReventlessSpec.QueryDb.outputs,
-  > => deleteBatch = "deleteBatch"
-
-  let outputs: ReventlessSpec.Component.t<
-    t,
-    ReventlessSpec.QueryDb.outputs,
-  > => ReventlessSpec.QueryDb.outputs = component => Component.extractOutputs(component)
+  external primitives: component => Pulumi.Output.t<primitives> = "primitives"
 
   let construct = (~ttl=?, self, name, api, apiRole) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
@@ -219,21 +179,23 @@ module Make = (
       ~opts,
     )
 
-    let _ = storage.primitives->Pulumi.Output.apply(({
-      load,
-      save,
-      saveBatch,
-      count,
-      delete,
-      deleteBatch,
-    }) => {
-      self->setLoad(Runtime.loadFn(load))
-      self->setSave(Runtime.saveFn(save))
-      self->setSaveBatch(Runtime.saveBatchFn(saveBatch))
-      self->setCount(Runtime.countFn(count))
-      self->setDelete(Runtime.deleteFn(delete))
-      self->setDeleteBatch(Runtime.deleteBatchFn(deleteBatch))
-    })
+    self->setPrimitives(
+      storage.primitives->Pulumi.Output.apply(({
+        load,
+        save,
+        saveBatch,
+        count,
+        delete,
+        deleteBatch,
+      }) => {
+        load: Runtime.loadStates(load),
+        save: Runtime.saveState(save),
+        saveBatch: Runtime.saveStates(saveBatch),
+        count: Runtime.countFn(count),
+        delete: Runtime.deleteState(delete),
+        deleteBatch: Runtime.deleteStates(deleteBatch),
+      }),
+    )
 
     let resolvers = Resolvers.make(
       ~name,

@@ -1,7 +1,5 @@
-type outputs = {name: string, resources: array<Adapter.resource>}
-
 type enqueueEvent = (
-  . /* ~delay: */ int,
+  /* ~delay: */ int,
   /* ~id: */ string,
   /* ~message: */ string,
 ) => Js.Promise.t<unit>

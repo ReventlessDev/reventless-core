@@ -20,10 +20,10 @@ function Make(Spec, Connector) {
         val = await publishJsons(cmdJsons);
       }
       catch (e){
-        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 131, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
+        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 120, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
         throw e;
       }
-      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 135, characters 47-54", undefined, cmdJsons, "Published commands");
+      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 124, characters 47-54", undefined, cmdJsons, "Published commands");
     };
   };
   var construct = function (memorySize, timeout, self, name, commandsHandler) {

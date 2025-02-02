@@ -1,9 +1,17 @@
 let componentType = ComponentType.CommandTopic
 
+type outputs = {
+  resources: array<ReventlessSpec.Adapter.resource>,
+  publishJsons: Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
+}
+
 type unwrappedOutputs = {
   resources: array<Adapter.unwrappedResource>,
   publishJsons: ReventlessSpec.CommandTopic.publishJsons,
 }
+
+type t
+type component = ReventlessSpec.Component.t<t, outputs>
 
 exception NotPublishedToConnector(Js.Promise.error)
 
@@ -22,15 +30,12 @@ module type T = {
     ~memorySize: int=?,
     ~timeout: int=?,
     ~opts: Pulumi.ComponentResource.options=?,
-  ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>
+  ) => component
 
-  let publish: ReventlessSpec.Component.t<
-    t,
-    ReventlessSpec.CommandTopic.outputs,
-  > => ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
+  let publish: component => ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
   let publishJsons: ReventlessSpec.Component.t<
     t,
-    ReventlessSpec.CommandTopic.outputs,
+    outputs,
   > => ReventlessSpec.CommandTopic.publishJsons
 }
 
@@ -71,11 +76,7 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
   >
 
   type constructed
-  type construct = (
-    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
-    string,
-    commandsHandler,
-  ) => constructed
+  type construct = (component, string, commandsHandler) => constructed
 
   type publish = ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
 
@@ -86,40 +87,28 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.options>,
     ~commandsHandler: commandsHandler,
-  ) => ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs> = "default"
+  ) => component = "default"
 
   @send
-  external registerOutputs: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
-    ReventlessSpec.CommandTopic.outputs,
-  ) => constructed = "registerOutputs"
+  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send
-  external setOutputs: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
-    ReventlessSpec.CommandTopic.outputs,
-  ) => unit = "setOutputs"
+  external setOutputs: (component, outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
   }
 
   @set
-  external setPublish: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
-    publish,
-  ) => unit = "publish"
+  external setPublish: (component, publish) => unit = "publish"
   @get
-  external publish: ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs> => publish =
-    "publish"
+  external publish: component => publish = "publish"
   @set
-  external setPublishJsons: (
-    ReventlessSpec.Component.t<t, ReventlessSpec.CommandTopic.outputs>,
-    ReventlessSpec.CommandTopic.publishJsons,
-  ) => unit = "publishJsons"
+  external setPublishJsons: (component, ReventlessSpec.CommandTopic.publishJsons) => unit =
+    "publishJsons"
   @get
   external publishJsons: ReventlessSpec.Component.t<
     t,
-    ReventlessSpec.CommandTopic.outputs,
+    outputs,
   > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
 
   let publishJsonsFn = publishJsons =>

@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.Scheduler
 
-external toOutputs: ReventlessSpec.Scheduler.t => ReventlessSpec.Scheduler.outputs = "%identity"
+type outputs = {resource: resource}
 
 module type T = {
   let make: (~opts: Pulumi.ComponentResource.options=?) => ReventlessSpec.Scheduler.t

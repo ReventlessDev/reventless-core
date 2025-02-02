@@ -1,12 +1,6 @@
 include ResourceQueryRuntime
 open InterstackResourceQuery
 
-let eventCollectorConnectorOfAllEventMappersExn = (eventMappersRef, eventMapperName) =>
-  eventMappersRef
-  ->Pulumi.Output.get
-  ->eventCollectorConnectorOfAllEventMappers(eventMapperName)
-  ->unwrapResource("EventCollector", eventMapperName)
-
 let bucketNameOfAllTasks: (array<Task.outputs>, string) => option<string> = (tasks, taskName) =>
   tasks
   ->Belt.Array.getBy(task => task.name == taskName)

@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.EventLog
 
-type outputs = {resources: array<resource>, eventTopic: ReventlessSpec.EventTopic.outputs}
+type outputs = {resources: array<resource>, eventTopic: EventTopic.outputs}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -52,10 +52,8 @@ module Make = (
   type constructed
   type construct = (component, string) => constructed
 
-  type append = Pulumi.Output.t<
-    ReventlessSpec.EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
-  >
-  type replay = Pulumi.Output.t<ReventlessSpec.EventLog.replay<Spec.Id.t, Spec.event>>
+  type append = ReventlessSpec.EventLog.append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>
+  type replay = ReventlessSpec.EventLog.replay<Spec.Id.t, Spec.event>
 
   @module("./Component") @new
   external make: (
@@ -73,10 +71,10 @@ module Make = (
     self->registerOutputs(outputs)
   }
 
-  @set external setAppend: (component, append) => unit = "append"
-  @set external setReplay: (component, replay) => unit = "replay"
-  @get external append: component => append = "append"
-  @get external replay: component => replay = "replay"
+  @set external setAppend: (component, Pulumi.Output.t<append>) => unit = "append"
+  @set external setReplay: (component, Pulumi.Output.t<replay>) => unit = "replay"
+  @get external append: component => Pulumi.Output.t<append> = "append"
+  @get external replay: component => Pulumi.Output.t<replay> = "replay"
 
   module EventTopic = EventTopic.Make(Spec, EventTopicPublisher)
 

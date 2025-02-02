@@ -625,7 +625,7 @@ async function handleActions(actions, primitives, subIdConfig) {
                   }), (async function (p, action) {
                   var err = await p;
                   if (err.TAG !== "Ok") {
-                    Logger$Reventless.error("File \"Projection.res\", line 385, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
+                    Logger$Reventless.error("File \"Projection.res\", line 377, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
                   }
                   return await handleAction(action, primitives, subIdConfig);
                 }));

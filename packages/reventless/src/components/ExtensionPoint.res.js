@@ -19,30 +19,11 @@ var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
 function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
-  var partial_arg_command_encode = Spec.command_encode;
-  var partial_arg_command_decode = Spec.command_decode;
-  var partial_arg = {
-    Id: Id$ReventlessSpec.$$String,
-    command_encode: partial_arg_command_encode,
-    command_decode: partial_arg_command_decode
-  };
-  var partial_arg$1 = CommandTopic$Reventless.Make;
-  var CommandTopic = (function (param) {
-        return partial_arg$1(partial_arg, param);
-      })(CommandTopicAdapter);
-  var partial_arg_name = Spec.name;
-  var partial_arg_event_encode = Spec.event_encode;
-  var partial_arg_event_decode = Spec.event_decode;
-  var partial_arg$2 = {
-    Id: Id$ReventlessSpec.$$String,
-    name: partial_arg_name,
-    event_encode: partial_arg_event_encode,
-    event_decode: partial_arg_event_decode
-  };
-  var partial_arg$3 = EventTopic$Reventless.Make;
-  var EventTopic = (function (param) {
-        return partial_arg$3(partial_arg$2, param);
-      })(EventTopicAdapter);
+  var name = Spec.name;
+  var command_encode = Spec.command_encode;
+  var command_decode = Spec.command_decode;
+  var event_encode = Spec.event_encode;
+  var event_decode = Spec.event_decode;
   var findOutgoingMapping = function (aggregateNameOpt, mappings) {
     return Belt_Option.flatMap(aggregateNameOpt, (function (aggregateName) {
                   return Belt_Array.getBy(mappings, (function (Mapping) {
@@ -64,16 +45,16 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     if (mapOutgoingEvent$1 !== undefined) {
       return mapOutgoingEvent$1(event$pJson, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
     } else {
-      Logger$Reventless.error("File \"ExtensionPoint.res\", line 115, characters 17-24", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      Logger$Reventless.error("File \"ExtensionPoint.res\", line 112, characters 17-24", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return [];
     }
   };
-  var construct = function (publishToAggregates, scheduler, queryEngine, self, name) {
+  var construct = function (publishToAggregates, scheduler, queryEngine, self, name$1) {
     var opts_parent = Caml_option.some(self);
     var opts = {
       parent: opts_parent
     };
-    var childName = ComponentType$Reventless.name(name.replace(".", ""), "ExtensionPoint");
+    var childName = ComponentType$Reventless.name(name$1.replace(".", ""), "ExtensionPoint");
     var commandTopic = {
       contents: undefined
     };
@@ -126,6 +107,16 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
               _0: reference$1
             };
     };
+    var partial_arg = {
+      Id: Id$ReventlessSpec.$$String,
+      name: name,
+      event_encode: event_encode,
+      event_decode: event_decode
+    };
+    var partial_arg$1 = EventTopic$Reventless.Make;
+    var EventTopic = (function (param) {
+          return partial_arg$1(partial_arg, param);
+        })(EventTopicAdapter);
     var eventTopic = EventTopic.make(childName, [], opts);
     var publish = EventTopic.publish(eventTopic);
     var applyEventAction = async function (action) {
@@ -163,7 +154,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
         
       }
     };
-    var outgoingEventHandler = async function (event$pJson) {
+    var outgoingEventHandler = async function (event$pJson, _pluginDef) {
       var commandTopic$1 = Belt_Option.getExn(commandTopic.contents);
       var eventActions = mapOutgoingEvent(event$pJson, Mappings.mappings, scheduler, Component$Reventless.extractOutputs(commandTopic$1).resources, queryEngine);
       return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventActions, applyEventAction)));
@@ -173,9 +164,18 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
       var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, scheduler, queryEngine, Component$Reventless.extractOutputs(commandTopic$1).resources);
       return Promise.all(Belt_Array.map(commandActions, applyCommandAction));
     };
+    var partial_arg$2 = {
+      Id: Id$ReventlessSpec.$$String,
+      command_encode: command_encode,
+      command_decode: command_decode
+    };
+    var partial_arg$3 = CommandTopic$Reventless.Make;
+    var CommandTopic = (function (param) {
+          return partial_arg$3(partial_arg$2, param);
+        })(CommandTopicAdapter);
     commandTopic.contents = CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts);
     var outputs = {
-      name: name,
+      name: name$1,
       aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
               return Belt_Option.map(Mapping.mapOutgoingEvent, (function (param) {
                             return Mapping.aggregateName;

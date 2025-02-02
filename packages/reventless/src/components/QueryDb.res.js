@@ -6,7 +6,6 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var QueryDb_Runtime$Reventless = require("./QueryDb_Runtime.res.js");
 
@@ -35,9 +34,6 @@ var Adapter = {
 };
 
 function Make(Config, Spec, $$Storage, Resolvers) {
-  var outputs = function (component) {
-    return Component$Reventless.extractOutputs(component);
-  };
   var construct = function (ttl, self, name, api, apiRole) {
     var opts_parent = Caml_option.some(self);
     var opts = {
@@ -49,13 +45,15 @@ function Make(Config, Spec, $$Storage, Resolvers) {
     var storageName = ComponentType$Reventless.name(name, "QueryDb");
     var Runtime = QueryDb_Runtime$Reventless.Make(Spec);
     var storage = $$Storage.make(storageName, Spec.config.indexes, subIdField, ttl, api, apiRole, opts);
-    storage.primitives.apply(function (param) {
-          self.load = Runtime.loadFn(param.load);
-          self.save = Runtime.saveFn(param.save);
-          self.saveBatch = Runtime.saveBatchFn(param.saveBatch);
-          self.count = Runtime.countFn(param.count);
-          self.delete = Runtime.deleteFn(param.delete);
-          self.deleteBatch = Runtime.deleteBatchFn(param.deleteBatch);
+    self.primitives = storage.primitives.apply(function (param) {
+          return {
+                  load: Runtime.loadStates(param.load),
+                  save: Runtime.saveState(param.save),
+                  saveBatch: Runtime.saveStates(param.saveBatch),
+                  count: Runtime.countFn(param.count),
+                  delete: Runtime.deleteState(param.delete),
+                  deleteBatch: Runtime.deleteStates(param.deleteBatch)
+                };
         });
     var resolvers = Resolvers.make(name, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, opts);
     var outputs = {
@@ -77,26 +75,10 @@ function Make(Config, Spec, $$Storage, Resolvers) {
   };
   return {
           Spec: Spec,
-          make: make,
-          load: (function (prim) {
-              return prim.load;
+          primitives: (function (prim) {
+              return prim.primitives;
             }),
-          save: (function (prim) {
-              return prim.save;
-            }),
-          saveBatch: (function (prim) {
-              return prim.saveBatch;
-            }),
-          count: (function (prim) {
-              return prim.count;
-            }),
-          $$delete: (function (prim) {
-              return prim.delete;
-            }),
-          deleteBatch: (function (prim) {
-              return prim.deleteBatch;
-            }),
-          outputs: outputs
+          make: make
         };
 }
 

@@ -1,23 +1,46 @@
 let componentType = ComponentType.ReadModel
 
+type outputs = {
+  name: string,
+  queryDb: QueryDb.outputs,
+  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
+}
+
 let allQueryDbs = allReadModels =>
-  Js.Dict.map((readModel: ReventlessSpec.ReadModel.outputs) => readModel.queryDb, allReadModels)
+  Js.Dict.map((readModel: outputs) => readModel.queryDb, allReadModels)
+
+type t
+type component = ReventlessSpec.Component.t<t, outputs>
+
+module type T = {
+  module Spec: ReventlessSpec.ReadModel_Spec.T
+  type t
+
+  let make: (
+    ~allEventTopics: EventTopic.allOutputs,
+    ~opts: Pulumi.ComponentResource.options=?,
+  ) => component
+
+  let enqueueEvent: component => Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>
+
+  let sourceNames: array<string>
+}
 
 module Make = (
   Config: Config.T,
-  Spec: ReventlessSpec.ReadModel.Spec.T,
+  Spec: ReventlessSpec.ReadModel_Spec.T,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
   QueryDbStorage: QueryDb.Adapter.Storage with type api = Config.api and type role = Config.role,
   QueryDbResolvers: QueryDb.Adapter.Resolvers
     with type api = Config.api
     and type role = Config.role,
   EventCollectorConnector: EventCollector.Adapter.Connector,
-): (ReventlessSpec.ReadModel.T with module Spec = Spec) => {
+): (T with module Spec = Spec) => {
   module Spec = Spec
   type t
 
   type constructed
-  type construct = (ReventlessSpec.ReadModel.component, string) => constructed
+  type construct = (component, string) => constructed
 
   @module("./Component") @new
   external make: (
@@ -25,24 +48,18 @@ module Make = (
     ~name: string,
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.options>,
-  ) => ReventlessSpec.ReadModel.component = "default"
+  ) => component = "default"
 
   @obj
   external makeOutputs: (
     ~name: string,
-    ~queryDb: ReventlessSpec.QueryDb.outputs,
-    ~eventCollector: ReventlessSpec.EventCollector.outputs,
-  ) => ReventlessSpec.ReadModel.outputs = ""
+    ~queryDb: QueryDb.outputs,
+    ~eventCollector: Pulumi.Output.t<EventCollector.outputs>,
+  ) => outputs = ""
   @send
-  external registerOutputs: (
-    ReventlessSpec.ReadModel.component,
-    ReventlessSpec.ReadModel.outputs,
-  ) => constructed = "registerOutputs"
+  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send
-  external setOutputs: (
-    ReventlessSpec.ReadModel.component,
-    ReventlessSpec.ReadModel.outputs,
-  ) => unit = "setOutputs"
+  external setOutputs: (component, outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
@@ -50,14 +67,16 @@ module Make = (
 
   @set
   external setEnqueueEvent: (
-    ReventlessSpec.ReadModel.component,
-    ReventlessSpec.EventCollector.enqueueEvent,
+    component,
+    Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>,
   ) => unit = "enqueueEvent"
   @get
-  external enqueueEvent: ReventlessSpec.ReadModel.component => ReventlessSpec.EventCollector.enqueueEvent =
+  external enqueueEvent: component => Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent> =
     "enqueueEvent"
 
   let sourceNames = Mappings.mappings->Belt.Array.map((module(Mapping)) => Mapping.sourceName)
+
+  type projectionPrimitives = QueryDb.primitives<string, Spec.state> // TODO: should we really use this "mixed" type?
 
   let construct = (~allEventTopics, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
@@ -66,25 +85,24 @@ module Make = (
 
     let queryDb = QueryDb.make(~opts)
 
-    let load = id => QueryDb.load(queryDb)(id->Spec.Id.makeFromString)
-    let save = (id, state, saveMode, opt) =>
-      QueryDb.save(queryDb)(id->Spec.Id.makeFromString, state, saveMode, opt)
-    let saveBatch = states =>
-      QueryDb.saveBatch(queryDb)(
-        states->Belt.Array.map(((id, state, ttl)) => (id->Spec.Id.makeFromString, state, ttl)),
-      )
-    let delete = (id, sort) => QueryDb.delete(queryDb)(id->Spec.Id.makeFromString, sort)
-    let deleteBatch = ids =>
-      QueryDb.deleteBatch(queryDb)(
-        ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.makeFromString, sort)),
-      )
-
-    let primitives = {
-      Projection.load,
+    let toProjectionPrimitives: QueryDb.primitives => projectionPrimitives = ({
+      load,
       save,
       saveBatch,
+      count,
       delete,
       deleteBatch,
+    }) => {
+      load: id => load(id->Spec.Id.makeFromString),
+      save: (id, state, saveMode, ttl) => save(id->Spec.Id.makeFromString, state, saveMode, ttl),
+      saveBatch: batch =>
+        saveBatch(
+          batch->Belt.Array.map(((id, state, ttl)) => (id->Spec.Id.makeFromString, state, ttl)),
+        ),
+      count: (id, fieldName, inc) => count(id->Spec.Id.makeFromString, fieldName, inc),
+      delete: (id, subId) => delete(id->Spec.Id.makeFromString, subId),
+      deleteBatch: ids =>
+        deleteBatch(ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.makeFromString, sort))),
     }
 
     let sourceNames =
@@ -94,24 +112,27 @@ module Make = (
 
     module Runtime = ReadModel_Runtime.Make(Spec, Mappings)
     module EventCollector = EventCollector.Make(EventCollectorConnector)
-    let eventCollector = EventCollector.make(
-      ~name=name->ComponentType.name(componentType),
-      ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
-      ~eventsHandler=Runtime.eventsHandler(primitives, ...),
-      ~memorySize=2048,
-      ~policy1=Pulumi.Output.make(None),
-      ~policy2=Pulumi.Output.make(None),
-      ~opts=Some(opts),
-    )
+    let eventCollector =
+      queryDb
+      ->QueryDb.primitives
+      ->Pulumi.Output.apply(primitives =>
+        EventCollector.make(
+          ~name=name->ComponentType.name(componentType),
+          ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
+          ~eventsHandler=Runtime.eventsHandler(primitives->toProjectionPrimitives, ...),
+          ~memorySize=2048,
+          ~policy1=Pulumi.Output.make(None),
+          ~policy2=Pulumi.Output.make(None),
+          ~opts=Some(opts),
+        )->Component.extractOutputs
+      )
 
-    self->setEnqueueEvent(eventCollector->EventCollector.enqueueEvent)
-    self->setOutputs(
-      makeOutputs(
-        ~name,
-        ~queryDb=queryDb->Component.extractOutputs,
-        ~eventCollector=eventCollector->Component.extractOutputs,
+    self->setEnqueueEvent(
+      eventCollector->Pulumi.Output.apply(eventCollector =>
+        eventCollector->EventCollector.enqueueEvent
       ),
     )
+    self->setOutputs(makeOutputs(~name, ~queryDb, ~eventCollector))
   }
 
   let make = (~allEventTopics, ~opts=?) =>

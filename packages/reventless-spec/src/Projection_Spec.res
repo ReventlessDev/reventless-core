@@ -1,4 +1,3 @@
-/** see AggregateSpec.T */
 module type Source = {
   module Id: Id.T
   let name: string
@@ -11,7 +10,7 @@ module type Target = {
   let name: string
   @decco
   type state
-  let subIdConfig: option<ReadModel.Spec.subIdConfig<state>>
+  let subIdConfig: option<ReadModel_Spec.subIdConfig<state>>
 }
 
 type action<'id, 'state> =

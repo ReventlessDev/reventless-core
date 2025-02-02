@@ -8,7 +8,7 @@ module Mappings = {
 module Make = (
   CommandTopicAdapter: CommandTopic.Adapter.Connector,
   EventTopicAdapter: EventTopic.Adapter.Publisher,
-): ReventlessSpec.ExtensionPoint.T => {
+): ExtensionPoint.T => {
   include ExtensionPoint.Make(
     ReventlessSpec.PluginExtensionPointSpec,
     Mappings,

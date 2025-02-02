@@ -1,4 +1,3 @@
-/** see AggregateSpec.T */
 module type Source = {
   let name: string
   module Id: Id.T

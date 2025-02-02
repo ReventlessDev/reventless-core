@@ -38,7 +38,7 @@ function Make(Spec) {
     console.log("QueryDb: Error: Couldn't decode state for " + Spec.Id.toString(id) + ": " + Belt_Option.getExn(JSON.stringify(state._0)));
     return [];
   };
-  var loadFn = function (load) {
+  var loadStates = function (load) {
     return async function (id) {
       var result = await load(Spec.Id.toString(id));
       return Belt_Result.map(result, (function (states) {
@@ -48,14 +48,14 @@ function Make(Spec) {
                   }));
     };
   };
-  var saveFn = function (save) {
+  var saveState = function (save) {
     return async function (id, state, saveMode, ttl) {
       var dict = Js_json.decodeObject(Spec.state_encode(state));
       if (dict !== undefined) {
         dict["id"] = Spec.Id.t_encode(id);
         return await save(Spec.Id.toString(id), dict, saveMode, ttl);
       } else {
-        console.log("QueryDB.save: Error: Couldn't decodeObject:", JSON.stringify(state));
+        console.log("QueryDB.saveState: Error: Couldn't decodeObject:", JSON.stringify(state));
         return {
                 TAG: "Error",
                 _0: {
@@ -66,7 +66,7 @@ function Make(Spec) {
       }
     };
   };
-  var saveBatchFn = function (saveBatch) {
+  var saveStates = function (saveBatch) {
     return async function (items) {
       var batch = Belt_Array.keepMap(items, (function (param) {
               var state = param[1];
@@ -80,7 +80,7 @@ function Make(Spec) {
                         param[2]
                       ];
               } else {
-                console.log("QueryDB.saveBatch: Error: Couldn't decodeObject:", JSON.stringify(state));
+                console.log("QueryDB.saveStates: Error: Couldn't decodeObject:", JSON.stringify(state));
                 return ;
               }
             }));
@@ -92,12 +92,12 @@ function Make(Spec) {
       return await count(Spec.Id.toString(id), fieldName, inc);
     };
   };
-  var deleteFn = function ($$delete) {
+  var deleteState = function ($$delete) {
     return async function (id, subId) {
       return await $$delete(Spec.Id.toString(id), subId);
     };
   };
-  var deleteBatchFn = function (deleteBatch) {
+  var deleteStates = function (deleteBatch) {
     return async function (ids) {
       var ids$1 = Belt_Array.map(ids, (function (param) {
               return [
@@ -110,12 +110,12 @@ function Make(Spec) {
   };
   return {
           decode: decode,
-          loadFn: loadFn,
-          saveFn: saveFn,
-          saveBatchFn: saveBatchFn,
+          loadStates: loadStates,
+          saveState: saveState,
+          saveStates: saveStates,
           countFn: countFn,
-          deleteFn: deleteFn,
-          deleteBatchFn: deleteBatchFn
+          deleteState: deleteState,
+          deleteStates: deleteStates
         };
 }
 

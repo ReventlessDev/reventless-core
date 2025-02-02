@@ -1,7 +1,6 @@
-let getLocalStorageResources = (
-  allQueryDbs: Js.Dict.t<ReventlessSpec.QueryDb.outputs>,
-  queryDbName,
-): array<ReventlessSpec.Adapter.resource> =>
+let getLocalStorageResources = (allQueryDbs: Js.Dict.t<QueryDb.outputs>, queryDbName): array<
+  ReventlessSpec.Adapter.resource,
+> =>
   try (allQueryDbs->Js.Dict.get(queryDbName)->Belt.Option.getExn).resources catch {
   | exn =>
     Js.log2(

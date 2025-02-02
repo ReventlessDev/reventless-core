@@ -252,12 +252,12 @@ function Make(Target, EventCollector, Mappings) {
       parent: opts_parent
     };
     var match = Belt_Option.mapWithDefault(Mappings.counter, [
-          (function (_items) {
-              return Promise.resolve((console.log("No counter deployed, but trying to use counter."), undefined));
-            }),
-          (function (_target) {
-              return Promise.resolve((console.log("No counter deployed, but trying to use counter."), undefined));
-            }),
+          Pulumi.output(async function (_items) {
+                console.log("No counter deployed, but trying to use counter.");
+              }),
+          Pulumi.output(async function (_target) {
+                console.log("No counter deployed, but trying to use counter.");
+              }),
           undefined
         ], (function (Counter) {
             var counter = Counter.make(name, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, opts);
@@ -273,10 +273,15 @@ function Make(Target, EventCollector, Mappings) {
                 }
                 
               })));
-    var eventCollector = EventCollector.make(ComponentType$Reventless.name(Target.name, "EventMapper"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, match[0], match[1]), memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts);
+    var eventCollector = Pulumi.all([
+            match[0],
+            match[1]
+          ]).apply(function (param) {
+          return Component$Reventless.extractOutputs(EventCollector.make(ComponentType$Reventless.name(Target.name, "EventMapper"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, param[0], param[1]), memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+        });
     var outputs = {
       name: name,
-      eventCollector: Component$Reventless.extractOutputs(eventCollector),
+      eventCollector: eventCollector,
       counter: match[2]
     };
     self.setOutputs(outputs);

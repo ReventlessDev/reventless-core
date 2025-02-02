@@ -1,7 +1,7 @@
 module type Spec = {
   let pluginDefinition: Pulumi.Output.t<ReventlessSpec.Plugin.pluginDefinition>
   let connectPluginExtension: Extension.component
-  let extensionPointsOutputs: array<ReventlessSpec.ExtensionPoint.outputs>
+  let extensionPointsOutputs: array<ExtensionPoint.outputs>
   let extensionsOutputs: array<Extension.outputs>
 }
 
