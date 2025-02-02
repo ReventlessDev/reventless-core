@@ -19,7 +19,7 @@ function Make(ScheduledPublisher) {
     self.createSchedule = scheduledPublisher.create;
     self.deleteSchedule = scheduledPublisher.delete;
     var outputs = {
-      scheduledPublisher: scheduledPublisher.resource
+      resource: scheduledPublisher.resource
     };
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);

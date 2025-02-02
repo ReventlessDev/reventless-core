@@ -141,12 +141,6 @@ module Make = (
     ~apiRole: role,
   ) => component = "default"
 
-  @obj
-  external makeOutputs: (
-    ~resources: array<resource>,
-    ~resolversMaker: resolversResourcesMaker,
-  ) => outputs = ""
-
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send
@@ -209,12 +203,10 @@ module Make = (
       ~opts,
     )
 
-    self->setOutputs(
-      makeOutputs(
-        ~resources=storage.resources->Belt.Array.concat(resolvers.resources),
-        ~resolversMaker=resolvers.resourcesMaker,
-      ),
-    )
+    self->setOutputs({
+      resources: storage.resources->Belt.Array.concat(resolvers.resources),
+      resolversMaker: resolvers.resourcesMaker,
+    })
   }
 
   let make = (~ttl=?, ~opts=?) =>

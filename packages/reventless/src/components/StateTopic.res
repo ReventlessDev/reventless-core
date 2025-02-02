@@ -2,7 +2,7 @@ open ReventlessSpec.Adapter
 
 let componentType = ComponentType.EventTopic
 
-type outputs = {.}
+type outputs = {resource: resource}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -54,8 +54,6 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     ~allQueryDbs: QueryDb.allOutputs,
   ) => component = "default"
 
-  @obj external makeOutputs: (~publisher: resource) => outputs = ""
-
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send external setOutputs: (component, outputs) => unit = "setOutputs"
@@ -73,9 +71,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
       ~allQueryDbs,
     )
 
-    let publisherOutputs = publisher.resource
-
-    self->setOutputs(makeOutputs(~publisher=publisherOutputs))
+    self->setOutputs({resource: publisher.resource})
   }
 
   let make = (~name, ~opts=?, ~allQueryDbs) =>

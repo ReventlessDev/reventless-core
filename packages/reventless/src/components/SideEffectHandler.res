@@ -2,7 +2,7 @@ module ReventlessEventCollector = EventCollector
 
 let componentType = ComponentType.SideEffectHandler
 
-type outputs = {"name": string, "eventCollector": EventCollector.outputs}
+type outputs = {name: string, eventCollector: EventCollector.outputs}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -40,11 +40,6 @@ module Make = (EventCollector: EventCollector.T): T => {
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
-  @obj
-  external makeOutputs: (
-    ~name: string,
-    ~eventCollector: ReventlessEventCollector.outputs,
-  ) => outputs = ""
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send external setOutputs: (component, outputs) => unit = "setOutputs"
@@ -174,7 +169,7 @@ module Make = (EventCollector: EventCollector.T): T => {
     self->setCreateSchedule(createScheduleFn(scheduler, eventCollectorResources))
     self->setDeleteSchedule(deleteScheduleFn(scheduler, eventCollectorResources))
 
-    self->setOutputs(makeOutputs(~name, ~eventCollector=eventCollector->Component.extractOutputs))
+    self->setOutputs({name, eventCollector: eventCollector->Component.extractOutputs})
   }
 
   let make = (

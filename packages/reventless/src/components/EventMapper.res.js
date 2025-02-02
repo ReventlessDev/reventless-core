@@ -264,7 +264,7 @@ function Make(Target, EventCollector, Mappings) {
             return [
                     Counter.count(counter),
                     Counter.addToCounterTarget(counter),
-                    Caml_option.some(Component$Reventless.extractOutputs(counter))
+                    Component$Reventless.extractOutputs(counter)
                   ];
           }));
     var aggregateNames = Belt_SetString.fromArray(Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {

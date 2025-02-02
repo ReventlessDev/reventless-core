@@ -63,8 +63,6 @@ module Make = (Connector: Adapter.Connector): T => {
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
-  @obj
-  external makeOutputs: (~name: string, ~resources: array<resource>) => outputs = ""
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send
@@ -107,7 +105,7 @@ module Make = (Connector: Adapter.Connector): T => {
         self->setEnqueueEvent(enqueueEvent)
       )
 
-    self->setOutputs(makeOutputs(~name, ~resources=connector.resources))
+    self->setOutputs({name, resources: connector.resources})
   }
 
   let make = (

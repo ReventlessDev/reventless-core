@@ -50,12 +50,6 @@ module Make = (
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
-  @obj
-  external makeOutputs: (
-    ~name: string,
-    ~queryDb: QueryDb.outputs,
-    ~eventCollector: Pulumi.Output.t<EventCollector.outputs>,
-  ) => outputs = ""
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send
@@ -132,7 +126,7 @@ module Make = (
         eventCollector->EventCollector.enqueueEvent
       ),
     )
-    self->setOutputs(makeOutputs(~name, ~queryDb, ~eventCollector))
+    self->setOutputs({name, queryDb, eventCollector})
   }
 
   let make = (~allEventTopics, ~opts=?) =>

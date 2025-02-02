@@ -1,6 +1,6 @@
 let componentType = ComponentType.Counter
 
-type outputs = {"referencesDb": QueryDb.outputs, "countsDb": QueryDb.outputs}
+type outputs = {referencesDb: QueryDb.outputs, countsDb: QueryDb.outputs}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -65,9 +65,6 @@ module Make = (
     ~construct: construct,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
-
-  @obj
-  external makeOutputs: (~referencesDb: QueryDb.outputs, ~countsDb: QueryDb.outputs) => outputs = ""
 
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
@@ -149,12 +146,10 @@ module Make = (
     )
     self->setAddToCounterTarget(handler->Pulumi.Output.apply(handler => handler.addToCounterTarget))
 
-    self->setOutputs(
-      makeOutputs(
-        ~referencesDb=referencesDb->Component.extractOutputs,
-        ~countsDb=countsDb->Component.extractOutputs,
-      ),
-    )
+    self->setOutputs({
+      referencesDb: referencesDb->Component.extractOutputs,
+      countsDb: countsDb->Component.extractOutputs,
+    })
   }
 
   let oneWeek = 60 * 60 * 24 * 7 //604800 sec

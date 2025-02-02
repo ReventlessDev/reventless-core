@@ -14,9 +14,8 @@ function Make(Spec, Publisher) {
       parent: opts_parent
     };
     var publisher = Publisher.make(ComponentType$Reventless.name(name, "EventTopic"), opts, allQueryDbs);
-    var publisherOutputs = publisher.resource;
     var outputs = {
-      publisher: publisherOutputs
+      resource: publisher.resource
     };
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);

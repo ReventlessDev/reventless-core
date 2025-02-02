@@ -1,6 +1,6 @@
 let componentType = ComponentType.Heartbeat
 
-type outputs = {"name": string}
+type outputs = {name: string}
 
 type heartbeat // TODO: rename to t - after refactoring
 
@@ -14,8 +14,6 @@ external make: (
   ~construct: construct,
   ~opts: option<Pulumi.ComponentResource.options>,
 ) => ReventlessSpec.Component.t<heartbeat, outputs> = "default"
-
-@obj external makeOutputs: (~name: string) => outputs = ""
 
 type outputsToRegister
 @obj
@@ -123,7 +121,7 @@ let construct = (~id, ~timeout, ~publishToCorePluginExtensionPoint, self, name) 
     )
   }
 
-  self->setOutputs(makeOutputs(~name))
+  self->setOutputs({name: name})
 
   makeOutputsToRegister(
     ~name,

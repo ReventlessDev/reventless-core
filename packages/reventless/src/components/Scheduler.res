@@ -37,17 +37,10 @@ module Make = (ScheduledPublisher: Adapter.ScheduledPublisher): T => {
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => ReventlessSpec.Scheduler.t = "default"
 
-  @obj
-  external makeOutputs: (~scheduledPublisher: resource) => ReventlessSpec.Scheduler.outputs = ""
-
   @send
-  external registerOutputs: (
-    ReventlessSpec.Scheduler.t,
-    ReventlessSpec.Scheduler.outputs,
-  ) => constructed = "registerOutputs"
+  external registerOutputs: (ReventlessSpec.Scheduler.t, outputs) => constructed = "registerOutputs"
   @send
-  external setOutputs: (ReventlessSpec.Scheduler.t, ReventlessSpec.Scheduler.outputs) => unit =
-    "setOutputs"
+  external setOutputs: (ReventlessSpec.Scheduler.t, outputs) => unit = "setOutputs"
   let setOutputs = (self, outputs) => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
@@ -72,7 +65,7 @@ module Make = (ScheduledPublisher: Adapter.ScheduledPublisher): T => {
     self->setCreateSchedule(scheduledPublisher.create)
     self->setDeleteSchedule(scheduledPublisher.delete)
 
-    self->setOutputs(makeOutputs(~scheduledPublisher=scheduledPublisher.resource))
+    self->setOutputs({resource: scheduledPublisher.resource})
   }
 
   let make: (~opts: Pulumi.ComponentResource.options=?) => ReventlessSpec.Scheduler.t = (~opts=?) =>

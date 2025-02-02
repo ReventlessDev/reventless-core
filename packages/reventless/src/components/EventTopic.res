@@ -67,8 +67,6 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component = "default"
 
-  @obj external makeOutputs: (~resources: array<resource>) => outputs = ""
-
   @send
   external registerOutputs: (component, outputs) => constructed = "registerOutputs"
   @send external setOutputs: (component, outputs) => unit = "setOutputs"
@@ -121,7 +119,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
 
     self->setPublish(publisher->publishFn(name))
 
-    self->setOutputs(makeOutputs(~resources=publisher.resources))
+    self->setOutputs({resources: publisher.resources})
   }
 
   let make = (~name, ~storageResources, ~opts=?) =>
