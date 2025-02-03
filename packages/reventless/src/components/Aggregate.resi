@@ -5,7 +5,7 @@ type outputs = {
   commandGenerator: Pulumi.Output.t<CommandGenerator.outputs>,
   commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
   eventLog: EventLog.outputs,
-  eventMapper?: EventMapper.outputs,
+  eventMapper?: Pulumi.Output.t<EventMapper.outputs>,
 }
 type allOutputs = Js.Dict.t<outputs>
 
@@ -19,7 +19,7 @@ type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => o
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec
   let make: (~opts: Pulumi.ComponentResource.options=?) => component
-  let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
+  let publishJsons: component => Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>
   let addEventMapper: component => addEventMapper
 }
 module Make: (
@@ -77,6 +77,6 @@ module Make: (
     let error_decode: Js.Json.t => Belt.Result.t<error, Decco.decodeError>
   }
   let make: (~opts: Pulumi.ComponentResource.options=?) => component
-  let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
+  let publishJsons: component => Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>
   let addEventMapper: component => addEventMapper
 }

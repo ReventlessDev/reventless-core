@@ -1,14 +1,8 @@
 let componentType = ComponentType.CommandTopic
 
-type outputs = {
-  resources: array<ReventlessSpec.Adapter.resource>,
-  publishJsons: Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
-}
+type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 
-type unwrappedOutputs = {
-  resources: array<Adapter.unwrappedResource>,
-  publishJsons: ReventlessSpec.CommandTopic.publishJsons,
-}
+type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 
 type t
 type component = ReventlessSpec.Component.t<t, outputs>
@@ -32,11 +26,10 @@ module type T = {
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 
-  let publish: component => ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>
-  let publishJsons: ReventlessSpec.Component.t<
-    t,
-    outputs,
-  > => ReventlessSpec.CommandTopic.publishJsons
+  let publish: component => Pulumi.Output.t<
+    ReventlessSpec.CommandTopic.publish<Spec.Id.t, Spec.command>,
+  >
+  let publishJsons: component => Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>
 }
 
 module Adapter = {
@@ -99,17 +92,17 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
   }
 
   @set
-  external setPublish: (component, publish) => unit = "publish"
+  external setPublish: (component, Pulumi.Output.t<publish>) => unit = "publish"
   @get
-  external publish: component => publish = "publish"
+  external publish: component => Pulumi.Output.t<publish> = "publish"
   @set
-  external setPublishJsons: (component, ReventlessSpec.CommandTopic.publishJsons) => unit =
-    "publishJsons"
+  external setPublishJsons: (
+    component,
+    Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
+  ) => unit = "publishJsons"
   @get
-  external publishJsons: ReventlessSpec.Component.t<
-    t,
-    outputs,
-  > => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
+  external publishJsons: component => Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons> =
+    "publishJsons"
 
   let publishJsonsFn = publishJsons =>
     async cmdJsons =>
@@ -147,12 +140,16 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
       ~opts,
     )
 
-    let _ = connector.publishJsons->Pulumi.Output.apply(publishJsons => {
-      self->setPublish(publishFn(publishJsons, ...))
-      self->setPublishJsons(publishJsonsFn(publishJsons, ...))
-    })
+    self->setPublish(
+      connector.publishJsons->Pulumi.Output.apply(publishJsons => publishFn(publishJsons, ...)),
+    )
+    self->setPublishJsons(
+      connector.publishJsons->Pulumi.Output.apply(publishJsons =>
+        publishJsonsFn(publishJsons, ...)
+      ),
+    )
 
-    self->setOutputs({resources: connector.resources, publishJsons: connector.publishJsons})
+    self->setOutputs({resources: connector.resources})
   }
 
   let make = (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?) =>

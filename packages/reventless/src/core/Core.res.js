@@ -61,48 +61,53 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
     var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
             return addEventMapperFn(allEventTopics, queryEngine);
           }), addEventMapperFns);
-    var extensionPoints$1 = Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
-          }));
-    var extensionPointsOutputs = Component$Reventless.extractMultipleOutputs(extensionPoints$1);
-    var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
-                return Belt_SetString.fromArray(extensionPoint.aggregateNames);
-              })), undefined, Belt_SetString.union);
-    var fakePluginDefinition_extensionPoints = [];
-    var fakePluginDefinition_extensions = [];
-    var fakePluginDefinition = {
-      id: "Core@FAKE",
-      name: "Core",
-      version: "FAKE",
-      extensionPoints: fakePluginDefinition_extensionPoints,
-      extensions: fakePluginDefinition_extensions,
-      eventCollector: "NOT-SET"
-    };
-    var eventsHandler = function (events$pJson) {
-      var count = events$pJson.length;
-      return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
-                            var idx$1 = idx + 1 | 0;
-                            Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
-                            return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
-                                                  var handle = extensionPoint.outgoingEventHandler;
-                                                  return handle(event$pJson, fakePluginDefinition);
-                                                }))));
-                          }))));
-    };
-    var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-    var eventCollector = EventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
+    var extensionPoints$1 = Pulumi.all(publishToAggregates).apply(function (publishToAggregates) {
+          return Component$Reventless.extractMultipleOutputs(Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
+                            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
+                          })));
+        });
+    var eventCollector = extensionPoints$1.apply(function (extensionPoints) {
+          var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPoints, (function (extensionPoint) {
+                      return Belt_SetString.fromArray(extensionPoint.aggregateNames);
+                    })), undefined, Belt_SetString.union);
+          var fakePluginDefinition_extensionPoints = [];
+          var fakePluginDefinition_extensions = [];
+          var fakePluginDefinition = {
+            id: "Core@FAKE",
+            name: "Core",
+            version: "FAKE",
+            extensionPoints: fakePluginDefinition_extensionPoints,
+            extensions: fakePluginDefinition_extensions,
+            eventCollector: "NOT-SET"
+          };
+          var eventsHandler = function (events$pJson) {
+            var count = events$pJson.length;
+            return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
+                                  var idx$1 = idx + 1 | 0;
+                                  Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
+                                  return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(extensionPoints, (function (extensionPoint) {
+                                                        var handle = extensionPoint.outgoingEventHandler;
+                                                        return handle(event$pJson, fakePluginDefinition);
+                                                      }))));
+                                }))));
+          };
+          var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+          return Component$Reventless.extractOutputs(EventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+        });
     var partial_arg = Cloner$Reventless.Make;
     var Cloner = partial_arg(Config, ClonerRunner);
     var cloner = Cloner.make(opts);
     return setOutputs(self, {
                 version: version,
-                eventCollector: Component$Reventless.extractOutputs(eventCollector),
-                extensionPoints: Js_dict.fromArray(Belt_Array.map(extensionPointsOutputs, (function (ep) {
-                            return [
-                                    ep.name,
-                                    ep
-                                  ];
-                          }))),
+                eventCollector: eventCollector,
+                extensionPoints: extensionPoints$1.apply(function (extensionPoints) {
+                      return Js_dict.fromArray(Belt_Array.map(extensionPoints, (function (ep) {
+                                        return [
+                                                ep.name,
+                                                ep
+                                              ];
+                                      })));
+                    }),
                 aggregates: aggregatesOutputs,
                 readModels: readModelsOutputs,
                 cloner: Component$Reventless.extractOutputs(cloner)

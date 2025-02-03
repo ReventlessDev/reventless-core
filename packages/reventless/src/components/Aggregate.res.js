@@ -101,18 +101,24 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
           return partial_arg$1(partial_arg, param, param$1);
         };
         var EventMapper = partial_arg$2(EventCollector, EventMappings);
-        var eventMapper = EventMappings.mappings.length !== 0 ? EventMapper.make(none, none$1, self.publishJsons, undefined, undefined, opts) : undefined;
+        var eventMapper = EventMappings.mappings.length !== 0 ? self.publishJsons.apply(function (publishJsons) {
+                return EventMapper.make(none, none$1, publishJsons, undefined, undefined, opts);
+              }) : undefined;
         var newrecord = Caml_obj.obj_dup(Component$Reventless.extractOutputs(self));
         newrecord.eventMapper = Belt_Option.map(eventMapper, (function (eventMapper) {
-                return Component$Reventless.extractOutputs(eventMapper);
+                return eventMapper.apply(function (eventMapper) {
+                            return Component$Reventless.extractOutputs(eventMapper);
+                          });
               }));
         return newrecord;
       });
     var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
-            return commandTopic.publishJsons.apply(function (publishJsons) {
-                        self.publishJsons = publishJsons;
+            return CommandTopic.publishJsons(commandTopic).apply(function (publishJsons) {
                         return Component$Reventless.extractOutputs(CommandGenerator.make(childName, publishJsons, opts));
                       });
+          }));
+    self.publishJsons = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
+            return CommandTopic.publishJsons(commandTopic);
           }));
     var outputs = {
       name: name,

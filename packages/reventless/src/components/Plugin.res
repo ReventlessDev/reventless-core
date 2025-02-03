@@ -107,12 +107,6 @@ module Make = (
     readModel: ReadModel.component,
   }
 
-  let toDictOutput = dict =>
-    dict
-    ->Js.Dict.values
-    ->Pulumi.Output.all
-    ->Pulumi.Output.apply(values => Belt.Array.zip(dict->Js.Dict.keys, values)->Js.Dict.fromArray)
-
   let construct = (
     ~version: string,
     ~heartbeatInterval: int,
@@ -180,12 +174,6 @@ module Make = (
       addEventMapperFns,
     )
 
-    let extensionPoints =
-      extensionPoints->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) =>
-        ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts))
-      )
-    let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs
-
     let pureOutputs = {
       let coreExtensionPoints =
         Interstack.coreStackReference->Belt.Option.mapWithDefault(
@@ -193,9 +181,19 @@ module Make = (
           coreStack => coreStack->Pulumi.StackReference.getOutput("extensionPoints"),
         )
 
-      (coreExtensionPoints, publishToReadModels->toDictOutput)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(((coreExtensionPoints, publishToReadModels)) => {
+      (
+        coreExtensionPoints,
+        publishToAggregates->Pulumi.Output.allDict,
+        publishToReadModels->Pulumi.Output.allDict,
+      )
+      ->Pulumi.Output.all3
+      ->Pulumi.Output.apply(((coreExtensionPoints, publishToAggregates, publishToReadModels)) => {
+        let extensionPoints =
+          extensionPoints->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) =>
+            ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts))
+          )
+        let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs
+
         let coreExtensionPoints = switch coreExtensionPoints {
         | Some(coreExtensionPoints) => coreExtensionPoints
         | None =>
@@ -216,7 +214,6 @@ module Make = (
               resources: extensionPointUnwrapped.commandTopic.resources->Belt.Array.map(
                 AdapterDeploytime.unwrappedToResource,
               ),
-              publishJsons: extensionPointUnwrapped.commandTopic.publishJsons->Pulumi.Output.make,
             },
             eventTopic: {
               resources: extensionPointUnwrapped.eventTopic.resources->Belt.Array.map(

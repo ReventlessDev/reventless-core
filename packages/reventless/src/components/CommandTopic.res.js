@@ -20,10 +20,10 @@ function Make(Spec, Connector) {
         val = await publishJsons(cmdJsons);
       }
       catch (e){
-        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 120, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
+        Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 113, characters 15-22", "Error", cmdJsons, "Couldn't publish commands");
         throw e;
       }
-      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 124, characters 47-54", undefined, cmdJsons, "Published commands");
+      return Logger$Reventless.logCmdJsons("File \"CommandTopic.res\", line 117, characters 47-54", undefined, cmdJsons, "Published commands");
     };
   };
   var construct = function (memorySize, timeout, self, name, commandsHandler) {
@@ -33,24 +33,25 @@ function Make(Spec, Connector) {
     };
     var Runtime = CommandTopic_Runtime$Reventless.Make(Spec);
     var connector = Connector.make(ComponentType$Reventless.name(name, "CommandTopic"), Runtime.handleCommands(commandsHandler), memorySize, timeout, opts);
-    connector.publishJsons.apply(function (publishJsons) {
-          self.publish = (function (extra) {
-              var commandJson_id = Spec.Id.toString(extra.id);
-              var commandJson_meta = extra.meta;
-              var commandJson_commandJson = Spec.command_encode(extra.command);
-              var commandJson = {
-                id: commandJson_id,
-                meta: commandJson_meta,
-                commandJson: commandJson_commandJson,
-                delay: undefined
-              };
-              return publishJsonsFn(publishJsons)([commandJson]);
-            });
-          self.publishJsons = publishJsonsFn(publishJsons);
+    self.publish = connector.publishJsons.apply(function (publishJsons) {
+          return function (extra) {
+            var commandJson_id = Spec.Id.toString(extra.id);
+            var commandJson_meta = extra.meta;
+            var commandJson_commandJson = Spec.command_encode(extra.command);
+            var commandJson = {
+              id: commandJson_id,
+              meta: commandJson_meta,
+              commandJson: commandJson_commandJson,
+              delay: undefined
+            };
+            return publishJsonsFn(publishJsons)([commandJson]);
+          };
+        });
+    self.publishJsons = connector.publishJsons.apply(function (publishJsons) {
+          return publishJsonsFn(publishJsons);
         });
     var outputs = {
-      resources: connector.resources,
-      publishJsons: connector.publishJsons
+      resources: connector.resources
     };
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);

@@ -5,7 +5,7 @@ type outputs = {
   commandGenerator: Pulumi.Output.t<CommandGenerator.outputs>,
   commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
   eventLog: EventLog.outputs,
-  eventMapper?: EventMapper.outputs,
+  eventMapper?: Pulumi.Output.t<EventMapper.outputs>,
 }
 type allOutputs = Js.Dict.t<outputs>
 
@@ -34,7 +34,7 @@ module type T = {
 
   let make: (~opts: Pulumi.ComponentResource.options=?) => component
 
-  let publishJsons: component => ReventlessSpec.CommandTopic.publishJsons
+  let publishJsons: component => Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>
   let addEventMapper: component => addEventMapper
 }
 
@@ -71,10 +71,13 @@ module Make = (
   }
 
   @set
-  external setPublishJsons: (component, ReventlessSpec.CommandTopic.publishJsons) => unit =
-    "publishJsons"
+  external setPublishJsons: (
+    component,
+    Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
+  ) => unit = "publishJsons"
   @get
-  external publishJsons: component => ReventlessSpec.CommandTopic.publishJsons = "publishJsons"
+  external publishJsons: component => Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons> =
+    "publishJsons"
 
   @set
   external setAddEventMapper: (component, addEventMapper) => unit = "addEventMapper"
@@ -97,18 +100,18 @@ module Make = (
     let eventMapper =
       EventMappings.mappings->Belt.Array.length > 0
         ? Some(
-            EventMapper.make(
-              ~allEventTopics,
-              ~queryEngine,
-              ~publishJsons=component->publishJsons,
-              ~opts,
+            component
+            ->publishJsons
+            ->Pulumi.Output.apply(publishJsons =>
+              EventMapper.make(~allEventTopics, ~queryEngine, ~publishJsons, ~opts)
             ),
           )
         : None
+
     {
       ...component->Component.extractOutputs,
       eventMapper: ?eventMapper->Belt.Option.map(eventMapper =>
-        eventMapper->Component.extractOutputs
+        eventMapper->Pulumi.Output.apply(eventMapper => eventMapper->Component.extractOutputs)
       ),
     }
   }
@@ -136,13 +139,16 @@ module Make = (
     self->setAddEventMapper(self->(addEventMapperFn(~opts, ...)))
 
     let commandGenerator = commandTopic->Pulumi.Output.flatMap(commandTopic =>
-      commandTopic.publishJsons->Pulumi.Output.apply(publishJsons => {
-        self->setPublishJsons(publishJsons)
-
+      commandTopic
+      ->CommandTopic.publishJsons
+      ->Pulumi.Output.apply(publishJsons => {
         CommandGenerator.make(~name=childName, ~publishJsons, ~opts)->Component.extractOutputs
       })
     )
 
+    self->setPublishJsons(
+      commandTopic->Pulumi.Output.flatMap(commandTopic => commandTopic->CommandTopic.publishJsons),
+    )
     self->setOutputs({
       name,
       commandGenerator,

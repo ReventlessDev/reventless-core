@@ -2,10 +2,10 @@ let componentType = ComponentType.Core
 
 type outputs = {
   version: string,
-  eventCollector: EventCollector.outputs,
-  extensionPoints: Js.Dict.t<ExtensionPoint.outputs>,
-  aggregates: Js.Dict.t<Aggregate.outputs>,
-  readModels: Js.Dict.t<ReadModel.outputs>,
+  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
+  extensionPoints: Pulumi.Output.t<dict<ExtensionPoint.outputs>>,
+  aggregates: dict<Aggregate.outputs>,
+  readModels: dict<ReadModel.outputs>,
   cloner: Cloner.outputs,
 }
 
@@ -101,65 +101,76 @@ module Make = (
     )
 
     let extensionPoints =
-      extensionPoints->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) =>
-        ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts))
-      )
-    let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs
-
-    let aggregateNames =
-      extensionPointsOutputs
-      ->Belt.Array.map(extensionPoint => extensionPoint.aggregateNames->Belt.Set.String.fromArray)
-      ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union)
-
-    let fakePluginDefinition: ReventlessSpec.Plugin.pluginDefinition = {
-      id: "Core@FAKE",
-      name: "Core",
-      version: "FAKE",
-      extensionPoints: [],
-      extensions: [],
-      eventCollector: "NOT-SET",
-    }
-
-    let eventsHandler = events'Json => {
-      let count = events'Json->Belt.Array.size
-      events'Json
-      ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
-        let idx = idx + 1
-        event'Json->Logger.logEvent'Json(
-          `Core eventHandler: outgoing event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
+      publishToAggregates
+      ->Pulumi.Output.allDict
+      ->Pulumi.Output.apply(publishToAggregates =>
+        extensionPoints
+        ->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) =>
+          ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts))
         )
-        extensionPointsOutputs
-        ->Belt.Array.map(extensionPoint => {
-          let handle = extensionPoint.outgoingEventHandler
-          handle(event'Json, fakePluginDefinition)
+        ->Component.extractMultipleOutputs
+      )
+
+    let eventCollector = extensionPoints->Pulumi.Output.apply(extensionPoints => {
+      let aggregateNames =
+        extensionPoints
+        ->Belt.Array.map(extensionPoint => extensionPoint.aggregateNames->Belt.Set.String.fromArray)
+        ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union)
+
+      let fakePluginDefinition: ReventlessSpec.Plugin.pluginDefinition = {
+        id: "Core@FAKE",
+        name: "Core",
+        version: "FAKE",
+        extensionPoints: [],
+        extensions: [],
+        eventCollector: "NOT-SET",
+      }
+
+      let eventsHandler = events'Json => {
+        let count = events'Json->Belt.Array.size
+        events'Json
+        ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
+          let idx = idx + 1
+          event'Json->Logger.logEvent'Json(
+            `Core eventHandler: outgoing event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
+          )
+          extensionPoints
+          ->Belt.Array.map(
+            extensionPoint => {
+              let handle = extensionPoint.outgoingEventHandler
+              handle(event'Json, fakePluginDefinition)
+            },
+          )
+          ->Js.Promise.all
+          ->Util.Promise.toUnit
         })
         ->Js.Promise.all
         ->Util.Promise.toUnit
-      })
-      ->Js.Promise.all
-      ->Util.Promise.toUnit
-    }
+      }
 
-    module EventCollector = EventCollector.Make(EventCollectorConnector)
+      module EventCollector = EventCollector.Make(EventCollectorConnector)
 
-    let eventCollector = EventCollector.make(
-      ~name=componentType->ComponentType.toName,
-      ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
-      ~eventsHandler,
-      ~policy1=Pulumi.Output.make(None),
-      ~policy2=Pulumi.Output.make(None),
-      ~opts=Some(opts),
-    )
+      EventCollector.make(
+        ~name=componentType->ComponentType.toName,
+        ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
+        ~eventsHandler,
+        ~policy1=Pulumi.Output.make(None),
+        ~policy2=Pulumi.Output.make(None),
+        ~opts=Some(opts),
+      )->Component.extractOutputs
+    })
 
     module Cloner = Cloner.Make(Config, ClonerRunner)
     let cloner = Cloner.make(~opts)
 
     self->setOutputs({
       version,
-      eventCollector: eventCollector->Component.extractOutputs,
-      extensionPoints: extensionPointsOutputs
-      ->Belt.Array.map(ep => (ep.name, ep))
-      ->Js.Dict.fromArray,
+      eventCollector,
+      extensionPoints: extensionPoints->Pulumi.Output.apply(extensionPoints =>
+        extensionPoints
+        ->Belt.Array.map(ep => (ep.name, ep))
+        ->Js.Dict.fromArray
+      ),
       aggregates: aggregatesOutputs,
       readModels: readModelsOutputs,
       cloner: cloner->Component.extractOutputs,
