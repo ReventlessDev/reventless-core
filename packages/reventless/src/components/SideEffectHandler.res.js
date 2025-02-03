@@ -55,9 +55,11 @@ function Make(EventCollector) {
     };
   };
   var enqueueEventFn = function (eventCollector) {
-    return async function (delay, id, message) {
-      return await EventCollector.enqueueEvent(eventCollector)(delay, id, message);
-    };
+    return EventCollector.enqueueEvent(eventCollector).apply(function (enqueueEvent) {
+                return async function (delay, id, message) {
+                  return await enqueueEvent(delay, id, message);
+                };
+              });
   };
   var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name) {
     var opts_parent = Caml_option.some(self);

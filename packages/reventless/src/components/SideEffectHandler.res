@@ -23,7 +23,7 @@ module type T = {
     ~opts: Pulumi.CustomResourceOptions.t=?,
   ) => component
 
-  let enqueueEvent: component => ReventlessSpec.EventCollector.enqueueEvent
+  let enqueueEvent: component => Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>
   let createSchedule: component => ReventlessSpec.Schedule.create
   let deleteSchedule: component => ReventlessSpec.Schedule.delete
 }
@@ -49,10 +49,13 @@ module Make = (EventCollector: EventCollector.T): T => {
   }
 
   @set
-  external setEnqueueEvent: (component, ReventlessSpec.EventCollector.enqueueEvent) => unit =
-    "enqueueEvent"
+  external setEnqueueEvent: (
+    component,
+    Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>,
+  ) => unit = "enqueueEvent"
   @get
-  external enqueueEvent: component => ReventlessSpec.EventCollector.enqueueEvent = "enqueueEvent"
+  external enqueueEvent: component => Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent> =
+    "enqueueEvent"
 
   @set
   external setCreateSchedule: (component, ReventlessSpec.Schedule.create) => unit = "createSchedule"
@@ -130,8 +133,9 @@ module Make = (EventCollector: EventCollector.T): T => {
     async scheduleName => await Schedule.delete(scheduler, queueResources)(scheduleName)
 
   let enqueueEventFn = eventCollector =>
-    async (delay, id, message) =>
-      await EventCollector.enqueueEvent(eventCollector)(delay, id, message)
+    EventCollector.enqueueEvent(eventCollector)->Pulumi.Output.apply(enqueueEvent =>
+      async (delay, id, message) => await enqueueEvent(delay, id, message)
+    )
 
   let construct = (
     ~sideEffects,

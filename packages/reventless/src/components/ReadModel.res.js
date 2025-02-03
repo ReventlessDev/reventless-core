@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var QueryDb$Reventless = require("./QueryDb.res.js");
@@ -86,9 +87,9 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                         return Curry._2(Runtime.eventsHandler, toProjectionPrimitives(primitives), extra);
                       }), 2048, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
         });
-    self.enqueueEvent = eventCollector.apply(function (eventCollector) {
-          return EventCollector.enqueueEvent(eventCollector);
-        });
+    self.enqueueEvent = Output$Pulumi.flatMap(eventCollector, (function (eventCollector) {
+            return EventCollector.enqueueEvent(eventCollector);
+          }));
     var outputs = {
       name: name,
       queryDb: Component$Reventless.extractOutputs(queryDb),

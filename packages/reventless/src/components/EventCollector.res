@@ -22,7 +22,7 @@ module type T = {
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
 
-  let enqueueEvent: component => ReventlessSpec.EventCollector.enqueueEvent
+  let enqueueEvent: component => Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>
 }
 
 module Adapter = {
@@ -68,9 +68,9 @@ module Make = (Connector: Adapter.Connector): T => {
   }
 
   @set
-  external setEnqueueEvent: (component, enqueueEvent) => unit = "enqueueEvent"
+  external setEnqueueEvent: (component, Pulumi.Output.t<enqueueEvent>) => unit = "enqueueEvent"
   @get
-  external enqueueEvent: component => enqueueEvent = "enqueueEvent"
+  external enqueueEvent: component => Pulumi.Output.t<enqueueEvent> = "enqueueEvent"
 
   let construct = (
     ~eventTopics,
@@ -95,10 +95,7 @@ module Make = (Connector: Adapter.Connector): T => {
       ~opts,
     )
 
-    let _ =
-      connector.enqueueEvent->Pulumi.Output.apply(enqueueEvent =>
-        self->setEnqueueEvent(enqueueEvent)
-      )
+    self->setEnqueueEvent(connector.enqueueEvent)
 
     self->setOutputs({name, resources: connector.resources})
   }

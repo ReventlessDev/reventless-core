@@ -120,7 +120,7 @@ module Make = (
       )
 
     self->setEnqueueEvent(
-      eventCollector->Pulumi.Output.apply(eventCollector =>
+      eventCollector->Pulumi.Output.flatMap(eventCollector =>
         eventCollector->EventCollector.enqueueEvent
       ),
     )
