@@ -20,10 +20,9 @@ type unwrappedOutputs = {
 }
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 module type T = {
-  type t
   let make: (
     ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
     ~scheduler: ReventlessSpec.Scheduler.t,
@@ -53,8 +52,6 @@ module Make = (
     include Spec
     module Id = ReventlessSpec.Id.String
   }
-
-  type t
 
   type constructed
   type construct = (component, string) => constructed

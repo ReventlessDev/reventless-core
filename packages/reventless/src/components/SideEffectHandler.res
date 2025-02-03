@@ -5,7 +5,7 @@ let componentType = ComponentType.SideEffectHandler
 type outputs = {name: string, eventCollector: EventCollector.outputs}
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 type sideEffects = array<module(ReventlessSpec.SideEffect.T)>
 

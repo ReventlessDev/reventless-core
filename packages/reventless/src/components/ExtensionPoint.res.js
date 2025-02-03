@@ -45,7 +45,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     if (mapOutgoingEvent$1 !== undefined) {
       return mapOutgoingEvent$1(event$pJson, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
     } else {
-      Logger$Reventless.error("File \"ExtensionPoint.res\", line 112, characters 17-24", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      Logger$Reventless.error("File \"ExtensionPoint.res\", line 109, characters 17-24", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return [];
     }
   };
@@ -173,7 +173,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     var CommandTopic = (function (param) {
           return partial_arg$3(partial_arg$2, param);
         })(CommandTopicAdapter);
-    commandTopic.contents = CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts);
+    commandTopic.contents = Caml_option.some(CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts));
     var outputs = {
       name: name$1,
       aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {

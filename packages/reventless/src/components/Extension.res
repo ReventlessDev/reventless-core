@@ -8,7 +8,7 @@ type outputs = {
   outgoingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
 }
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 type name = string
 

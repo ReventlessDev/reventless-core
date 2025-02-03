@@ -25,7 +25,7 @@ let filterEventTopics = (allAggregates, aggregateNames) =>
 type name = string
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
 
@@ -152,7 +152,7 @@ module Make = (
     self->setOutputs({
       name,
       commandGenerator,
-      commandTopic,
+      commandTopic: commandTopic->Component.extractWrappedOutputs,
       eventLog: eventLog->Component.extractOutputs,
     })
   }

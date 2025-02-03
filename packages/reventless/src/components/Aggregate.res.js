@@ -123,7 +123,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
     var outputs = {
       name: name,
       commandGenerator: commandGenerator,
-      commandTopic: commandTopic,
+      commandTopic: Component$Reventless.extractWrappedOutputs(commandTopic),
       eventLog: Component$Reventless.extractOutputs(eventLog)
     };
     self.setOutputs(outputs);

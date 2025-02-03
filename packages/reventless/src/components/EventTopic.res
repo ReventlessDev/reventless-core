@@ -6,7 +6,7 @@ type outputs = {resources: array<resource>}
 type allOutputs = Js.Dict.t<outputs>
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 type publish<'id, 'event> = array<Message.event'<'id, 'event>> => Js.Promise.t<unit>
 

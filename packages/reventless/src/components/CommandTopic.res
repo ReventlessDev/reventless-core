@@ -5,14 +5,12 @@ type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 exception NotPublishedToConnector(Js.Promise.error)
 
 module type T = {
   module Spec: ReventlessSpec.CommandTopic.Spec
-
-  type t
 
   type commandsHandler = ReventlessSpec.CommandTopic.commandsHandler<
     Message.command'<Spec.Id.t, Spec.command>,
@@ -61,8 +59,6 @@ module Make = (Spec: ReventlessSpec.CommandTopic.Spec, Connector: Adapter.Connec
   T with module Spec = Spec
 ) => {
   module Spec = Spec
-
-  type t
 
   type commandsHandler = ReventlessSpec.CommandTopic.commandsHandler<
     Message.command'<Spec.Id.t, Spec.command>,

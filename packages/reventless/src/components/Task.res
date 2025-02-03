@@ -13,7 +13,7 @@ type outputs = {
 }
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 type queryBucketName = string => string
 

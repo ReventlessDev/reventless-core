@@ -11,7 +11,7 @@ and outputs = {
 type allOutputs = Js.Dict.t<outputs>
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 let allResolversMakers = allQueryDbs =>
   allQueryDbs
@@ -29,7 +29,6 @@ type primitives<'id, 'state> = {
 
 module type T = {
   module Spec: ReventlessSpec.ReadModel_Spec.T
-  type t
 
   type primitives = primitives<Spec.Id.t, Spec.state>
   let primitives: component => Pulumi.Output.t<primitives>
@@ -121,7 +120,6 @@ module Make = (
   Resolvers: Adapter.Resolvers with type api = Config.api and type role = Config.role,
 ): (T with module Spec = Spec) => {
   module Spec = Spec
-  type t
 
   type api = Config.api
   type role = Config.role

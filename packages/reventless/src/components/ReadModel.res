@@ -10,11 +10,10 @@ let allQueryDbs = allReadModels =>
   Js.Dict.map((readModel: outputs) => readModel.queryDb, allReadModels)
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 module type T = {
   module Spec: ReventlessSpec.ReadModel_Spec.T
-  type t
 
   let make: (
     ~allEventTopics: EventTopic.allOutputs,
@@ -37,7 +36,6 @@ module Make = (
   EventCollectorConnector: EventCollector.Adapter.Connector,
 ): (T with module Spec = Spec) => {
   module Spec = Spec
-  type t
 
   type constructed
   type construct = (component, string) => constructed
@@ -118,7 +116,7 @@ module Make = (
           ~policy1=Pulumi.Output.make(None),
           ~policy2=Pulumi.Output.make(None),
           ~opts=Some(opts),
-        )->Component.extractOutputs
+        )
       )
 
     self->setEnqueueEvent(
@@ -126,7 +124,11 @@ module Make = (
         eventCollector->EventCollector.enqueueEvent
       ),
     )
-    self->setOutputs({name, queryDb, eventCollector})
+    self->setOutputs({
+      name,
+      queryDb: queryDb->Component.extractOutputs,
+      eventCollector: eventCollector->Component.extractWrappedOutputs,
+    })
   }
 
   let make = (~allEventTopics, ~opts=?) =>

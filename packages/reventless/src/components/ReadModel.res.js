@@ -82,17 +82,17 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
     var Runtime = partial_arg$2(Spec, Mappings);
     var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
     var eventCollector = QueryDb.primitives(queryDb).apply(function (primitives) {
-          return Component$Reventless.extractOutputs(EventCollector.make(ComponentType$Reventless.name(name, "ReadModel"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), (function (extra) {
-                            return Curry._2(Runtime.eventsHandler, toProjectionPrimitives(primitives), extra);
-                          }), 2048, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+          return EventCollector.make(ComponentType$Reventless.name(name, "ReadModel"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), (function (extra) {
+                        return Curry._2(Runtime.eventsHandler, toProjectionPrimitives(primitives), extra);
+                      }), 2048, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
         });
     self.enqueueEvent = eventCollector.apply(function (eventCollector) {
           return EventCollector.enqueueEvent(eventCollector);
         });
     var outputs = {
       name: name,
-      queryDb: queryDb,
-      eventCollector: eventCollector
+      queryDb: Component$Reventless.extractOutputs(queryDb),
+      eventCollector: Component$Reventless.extractWrappedOutputs(eventCollector)
     };
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);

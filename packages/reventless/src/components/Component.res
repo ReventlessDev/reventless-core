@@ -1,5 +1,4 @@
-open ReventlessSpec.Component
-// type unknown
+type t<'component, 'outputs>
 
 // in Component.js setOutputs(_), which is called in the constructor sets the output keys
 @get
@@ -18,11 +17,14 @@ let unsafeGetProp: (obj, string) => propValue = %raw(`
 `)
 let unsafeGetProp: (obj, string) => propValue = (obj, key) => unsafeGetProp(obj, key)
 
-let extractOutputs: t<'component, 'outputs> => 'outputs = component =>
+let extractOutputs = component =>
   component
   ->getOutputKeys
   ->Belt.Array.map(key => (key, unsafeGetProp(component->toObj, key)))
   ->objFromEntries
+
+let extractWrappedOutputs = component =>
+  component->Pulumi.Output.apply(component => component->extractOutputs)
 
 let extractMultipleOutputs: array<t<'component, 'outputs>> => array<'outputs> = components =>
   components->Belt.Array.map(extractOutputs)

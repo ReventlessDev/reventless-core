@@ -5,7 +5,7 @@ let componentType = ComponentType.EventLog
 type outputs = {resources: array<resource>, eventTopic: EventTopic.outputs}
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 exception ReplayError(string)
 

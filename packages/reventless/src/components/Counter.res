@@ -3,7 +3,7 @@ let componentType = ComponentType.Counter
 type outputs = {referencesDb: QueryDb.outputs, countsDb: QueryDb.outputs}
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 type action =
   | Count(Counter_Runtime.countItem)

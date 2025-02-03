@@ -16,10 +16,17 @@ function extractOutputs(component) {
                   })));
 }
 
+function extractWrappedOutputs(component) {
+  return component.apply(function (component) {
+              return extractOutputs(component);
+            });
+}
+
 function extractMultipleOutputs(components) {
   return Belt_Array.map(components, extractOutputs);
 }
 
 exports.extractOutputs = extractOutputs;
 exports.extractMultipleOutputs = extractMultipleOutputs;
+exports.extractWrappedOutputs = extractWrappedOutputs;
 /* No side effect */

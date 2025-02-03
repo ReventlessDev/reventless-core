@@ -5,7 +5,7 @@ let componentType = ComponentType.EventTopic
 type outputs = {resource: resource}
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 module type Spec = {
   module Id: ReventlessSpec.Id.T

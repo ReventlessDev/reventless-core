@@ -6,12 +6,11 @@ let componentType = ComponentType.EventCollector
 type outputs = {name: string, resources: array<resource>}
 
 type t
-type component = ReventlessSpec.Component.t<t, outputs>
+type component = Component.t<t, outputs>
 
 type eventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
 module type T = {
-  type t
   let make: (
     ~name: string,
     ~eventTopics: EventTopic.allOutputs,
@@ -23,10 +22,7 @@ module type T = {
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
 
-  let enqueueEvent: ReventlessSpec.Component.t<
-    t,
-    outputs,
-  > => ReventlessSpec.EventCollector.enqueueEvent
+  let enqueueEvent: component => ReventlessSpec.EventCollector.enqueueEvent
 }
 
 module Adapter = {
@@ -51,7 +47,6 @@ module Adapter = {
 }
 
 module Make = (Connector: Adapter.Connector): T => {
-  type t
   type constructed
   type construct = (component, string) => constructed
 
@@ -75,7 +70,7 @@ module Make = (Connector: Adapter.Connector): T => {
   @set
   external setEnqueueEvent: (component, enqueueEvent) => unit = "enqueueEvent"
   @get
-  external enqueueEvent: ReventlessSpec.Component.t<t, outputs> => enqueueEvent = "enqueueEvent"
+  external enqueueEvent: component => enqueueEvent = "enqueueEvent"
 
   let construct = (
     ~eventTopics,
