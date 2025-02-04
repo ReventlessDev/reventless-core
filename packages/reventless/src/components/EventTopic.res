@@ -32,13 +32,13 @@ module type T = {
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 
-  let publish: component => publish<Spec.Id.t, Spec.event>
+  let publish: component => Pulumi.Output.t<publish<Spec.Id.t, Spec.event>>
 }
 
 module Adapter = {
   type publisher = {
     resources: array<resource>,
-    publish: (string, Message.meta, Js.Json.t) => Js.Promise.t<unit>,
+    publish: Pulumi.Output.t<(string, Message.meta, Js.Json.t) => Js.Promise.t<unit>>,
   }
   type publisherMaker = (
     ~name: string,
@@ -75,11 +75,11 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
     self->registerOutputs(outputs)
   }
 
-  @set external setPublish: (component, publish) => unit = "publish"
-  @get external publish: component => publish = "publish"
+  @set external setPublish: (component, Pulumi.Output.t<publish>) => unit = "publish"
+  @get external publish: component => Pulumi.Output.t<publish> = "publish"
 
   // FIXME: is name argument really unnecessary? can we remove it?
-  let publishFn = (publisher: Adapter.publisher, __name) =>
+  let publishFn = publish =>
     async events' => {
       let eventCount = events'->Belt.Array.length
       await events'
@@ -89,7 +89,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
         let id = event'.id
         let idx = idx + 1
 
-        switch await publisher.publish(id->Spec.Id.toString, event'.meta, event'Json) {
+        switch await publish(id->Spec.Id.toString, event'.meta, event'Json) {
         | exception e =>
           event'Json->Logger.logEvent'Json(
             ~loc=__LOC__,
@@ -117,7 +117,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
       ~opts,
     )
 
-    self->setPublish(publisher->publishFn(name))
+    self->setPublish(publisher.publish->Pulumi.Output.apply(publish => publishFn(publish, ...)))
 
     self->setOutputs({resources: publisher.resources})
   }

@@ -40,7 +40,7 @@ type pureOutputs = {
   id: string,
   version: string,
   heartbeatInterval: int,
-  eventCollector: EventCollector.outputs,
+  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
   extensionPoints: Js.Dict.t<ExtensionPoint.outputs>,
   extensions: Js.Dict.t<Extension.outputs>,
   aggregates: Js.Dict.t<Aggregate.outputs>,
@@ -106,6 +106,13 @@ module Make = (
     module_: module(ReadModel.T),
     readModel: ReadModel.component,
   }
+
+  type eventHandlers = {
+    outgoing?: Plugin_Runtime.eventHandler,
+    incoming?: Plugin_Runtime.eventHandler,
+  }
+  let incomingEventHandler = eventHandlers => eventHandlers.incoming
+  let outgoingEventHandler = eventHandlers => eventHandlers.outgoing
 
   let construct = (
     ~version: string,
@@ -188,11 +195,20 @@ module Make = (
       )
       ->Pulumi.Output.all3
       ->Pulumi.Output.apply(((coreExtensionPoints, publishToAggregates, publishToReadModels)) => {
-        let extensionPoints =
-          extensionPoints->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) =>
-            ExtensionPoint.make(~publishToAggregates, ~scheduler, ~queryEngine, ~opts=Some(opts))
-          )
-        let extensionPointsOutputs = extensionPoints->Component.extractMultipleOutputs
+        let extensionPointsHandlers =
+          extensionPoints->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) => {
+            let extensionPoint = ExtensionPoint.make(
+              ~publishToAggregates,
+              ~scheduler,
+              ~queryEngine,
+              ~opts=Some(opts),
+            )
+            (
+              extensionPoint->Component.extractOutputs,
+              {outgoing: extensionPoint->ExtensionPoint.outgoingEventHandler->Pulumi.Output.unwrap},
+            )
+          })
+        let (extensionPointsOutputs, _) = extensionPointsHandlers->Belt.Array.unzip
 
         let coreExtensionPoints = switch coreExtensionPoints {
         | Some(coreExtensionPoints) => coreExtensionPoints
@@ -209,7 +225,6 @@ module Make = (
           {
             name: extensionPointUnwrapped.name,
             aggregateNames: extensionPointUnwrapped.aggregateNames,
-            outgoingEventHandler: extensionPointUnwrapped.outgoingEventHandler,
             commandTopic: {
               resources: extensionPointUnwrapped.commandTopic.resources->Belt.Array.map(
                 AdapterDeploytime.unwrappedToResource,
@@ -228,32 +243,37 @@ module Make = (
         )
         let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish
 
-        let extensions =
-          extensions->Belt.Array.map((module(Extension: Extension.T)) =>
-            Extension.make(
-              ~publishToCorePluginExtensionPoint,
-              ~publishToAggregates,
-              ~readModelNamesForSourceName,
-              ~publishToReadModels,
-              ~queryEngine,
-              ~opts=Some(opts),
-            )
+        let extensionsHandlers = extensions->Belt.Array.map((module(Extension: Extension.T)) => {
+          let extension = Extension.make(
+            ~publishToCorePluginExtensionPoint,
+            ~publishToAggregates,
+            ~readModelNamesForSourceName,
+            ~publishToReadModels,
+            ~queryEngine,
+            ~opts=Some(opts),
           )
-        let extensionsOutputs = extensions->Component.extractMultipleOutputs
+          (
+            extension->Component.extractOutputs,
+            {
+              outgoing: extension->Extension.outgoingEventHandler,
+              incoming: extension->Extension.incomingEventHandler,
+            },
+          )
+        })
+        let extensionsOutputs =
+          extensionsHandlers->Belt.Array.map(((extensionOutputs, _)) => extensionOutputs)
 
-        let (eventCollectorUrn, setEventCollectorUrn) = Util.Pulumi.Output.Async.make()
-
-        let extensionPointsConfig =
+        let extensionPointsDefinitions =
           extensionPointsOutputs
-          ->Belt.Array.map(extensionPoint =>
+          ->Belt.Array.map(extensionPointOutputs =>
             (
-              (extensionPoint.commandTopic.resources->Array.getUnsafe(0)).id, // FIXME
-              (extensionPoint.eventTopic.resources->Array.getUnsafe(0)).id,
+              (extensionPointOutputs.commandTopic.resources->Array.getUnsafe(0)).id, // FIXME
+              (extensionPointOutputs.eventTopic.resources->Array.getUnsafe(0)).id,
             )
             ->Pulumi.Output.all2
             ->Pulumi.Output.apply(
               ((commandTopicConnectorId, eventTopicPublisherId)) => {
-                ReventlessSpec.Plugin.name: extensionPoint.name,
+                ReventlessSpec.Plugin.name: extensionPointOutputs.name,
                 commandTopic: commandTopicConnectorId,
                 eventTopic: eventTopicPublisherId,
               },
@@ -261,29 +281,26 @@ module Make = (
           )
           ->Pulumi.Output.all
 
-        let extensionsConfig = extensionsOutputs->Belt.Array.map(extension => {
-          ReventlessSpec.Plugin.name: extension.name,
-          extensionPointName: extension.extensionPointName,
+        let extensionsDefinitions = extensionsOutputs->Belt.Array.map(extensionOutputs => {
+          ReventlessSpec.Plugin.name: extensionOutputs.name,
+          extensionPointName: extensionOutputs.extensionPointName,
         })
 
         let pluginDefinition =
-          (extensionPointsConfig, eventCollectorUrn)
-          ->Pulumi.Output.all2
-          ->Pulumi.Output.apply(((extensionPointsConfig, eventCollectorUrn)) => {
+          extensionPointsDefinitions->Pulumi.Output.apply(extensionPointsDefinitions => {
             ReventlessSpec.Plugin.id,
             name,
             version,
-            extensionPoints: extensionPointsConfig,
-            extensions: extensionsConfig,
-            eventCollector: eventCollectorUrn,
+            extensionPoints: extensionPointsDefinitions,
+            extensions: extensionsDefinitions,
+            eventCollector: "",
           })
 
-        module PluginConnectExtensionSpec = {
+        module ConnectPluginExtension = PluginConnectExtension.Make({
           let pluginDefinition = pluginDefinition
           let extensionPointsOutputs = extensionPointsOutputs
           let extensionsOutputs = extensionsOutputs
-        }
-        module ConnectPluginExtension = PluginConnectExtension.Make(PluginConnectExtensionSpec)
+        })
         let connectPluginExtension = ConnectPluginExtension.make(
           ~publishToCorePluginExtensionPoint,
           ~publishToAggregates,
@@ -292,6 +309,9 @@ module Make = (
           ~queryEngine,
           ~opts=Some(opts),
         )
+        let connectPluginExtensionOutputs = connectPluginExtension->Component.extractOutputs
+        let connectPluginExtensionIncomingEventHandler =
+          connectPluginExtension->ConnectPluginExtension.incomingEventHandler
 
         let tasksOutputs = ref([])
         let queryBucketName = taskName =>
@@ -346,26 +366,79 @@ module Make = (
           },
         )
 
-        module RuntimeSpec = {
-          let pluginDefinition = pluginDefinition
-          let connectPluginExtension = connectPluginExtension
-          let extensionPointsOutputs = extensionPointsOutputs
-          let extensionsOutputs = extensionsOutputs
+        let serviceNameToEventHandlers = (handlers, getServiceNames, getEventHandler) => {
+          let dict = Js.Dict.empty()
+          handlers->Belt.Array.forEach(((outputs, eventHandlers)) => {
+            eventHandlers
+            ->getEventHandler
+            ->Belt.Option.forEach(
+              eventHandler =>
+                outputs
+                ->getServiceNames
+                ->Belt.Array.forEach(
+                  serviceName =>
+                    switch dict->Js.Dict.get(serviceName) {
+                    | Some(mappedExtensionPoints) =>
+                      Js.Dict.set(
+                        dict,
+                        serviceName,
+                        mappedExtensionPoints->Belt.Array.concat([eventHandler]),
+                      )
+                    | None => Js.Dict.set(dict, serviceName, [eventHandler])
+                    },
+                ),
+            )
+          })
+          dict
         }
-        module Runtime = Plugin_Runtime.Make(RuntimeSpec)
 
-        module PluginEventCollector = EventCollector.Make(EventCollectorConnector)
-        let eventCollector = PluginEventCollector.make(
-          ~name=name->ComponentType.name(componentType),
-          ~eventTopics,
-          ~eventsHandler=Runtime.eventsHandler,
-          ~policy1=Pulumi.Output.make(None),
-          ~policy2=Pulumi.Output.make(None),
-          ~opts=Some(opts),
-        )
-        let eventCollectorOutputs = eventCollector->Component.extractOutputs
-        setEventCollectorUrn((eventCollectorOutputs.resources->Array.getUnsafe(0)).urn) //FIXME
+        let eventCollectorOutputs = pluginDefinition->Pulumi.Output.apply(pluginDefinition => {
+          module Runtime = Plugin_Runtime.Make({
+            let pluginDefinition = pluginDefinition
+            let incomingConnectExtensionEventHandlers =
+              [
+                (
+                  connectPluginExtensionOutputs,
+                  {incoming: connectPluginExtensionIncomingEventHandler},
+                ),
+              ]->serviceNameToEventHandlers(
+                outputs => [outputs.extensionPointName],
+                incomingEventHandler,
+              )
+            let outgoingExtensionPointEventHandlers =
+              extensionPointsHandlers->serviceNameToEventHandlers(
+                outputs => outputs.aggregateNames,
+                outgoingEventHandler,
+              )
+            let outgoingExtensionEventHandlers =
+              extensionsHandlers->serviceNameToEventHandlers(
+                outputs => outputs.aggregateNames,
+                outgoingEventHandler,
+              )
+            let incomingExtensionEventHandlers =
+              extensionsHandlers->serviceNameToEventHandlers(
+                outputs => [outputs.extensionPointName],
+                incomingEventHandler,
+              )
+          })
+          module PluginEventCollector = EventCollector.Make(EventCollectorConnector)
 
+          let eventCollector = PluginEventCollector.make(
+            ~name=name->ComponentType.name(componentType),
+            ~eventTopics,
+            ~eventsHandler=Runtime.eventsHandler,
+            ~policy1=Pulumi.Output.make(None),
+            ~policy2=Pulumi.Output.make(None),
+            ~opts=Some(opts),
+          )
+          let eventCollectorOutputs = eventCollector->Component.extractOutputs
+
+          let _ =
+            (eventCollectorOutputs.resources->Array.getUnsafe(0)).urn->Pulumi.Output.apply(
+              urn => Runtime.setEventCollector(urn),
+            )
+          eventCollectorOutputs
+        })
         let heartbeat = Heartbeat.make(
           ~id,
           ~name=name ++ componentType->ComponentType.toName,
@@ -399,7 +472,7 @@ module Make = (
       id: pureOutputs->Pulumi.Output.apply(outputs => outputs.id),
       version: pureOutputs->Pulumi.Output.apply(outputs => outputs.version),
       heartbeatInterval: pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeatInterval),
-      eventCollector: pureOutputs->Pulumi.Output.apply(outputs => outputs.eventCollector),
+      eventCollector: pureOutputs->Pulumi.Output.flatMap(outputs => outputs.eventCollector),
       extensionPoints: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensionPoints),
       extensions: pureOutputs->Pulumi.Output.apply(outputs => outputs.extensions),
       aggregates: pureOutputs->Pulumi.Output.apply(outputs => outputs.aggregates),

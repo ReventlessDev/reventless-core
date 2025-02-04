@@ -1,66 +1,40 @@
+type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
+type eventHandlersByService = dict<array<eventHandler>>
+
 module type Spec = {
-  let pluginDefinition: Pulumi.Output.t<ReventlessSpec.Plugin.pluginDefinition>
-  let connectPluginExtension: Extension.component
-  let extensionPointsOutputs: array<ExtensionPoint.outputs>
-  let extensionsOutputs: array<Extension.outputs>
+  let pluginDefinition: ReventlessSpec.Plugin.pluginDefinition
+  let incomingConnectExtensionEventHandlers: eventHandlersByService
+  let outgoingExtensionPointEventHandlers: eventHandlersByService
+  let outgoingExtensionEventHandlers: eventHandlersByService
+  let incomingExtensionEventHandlers: eventHandlersByService
 }
 
 module Make = (Spec: Spec) => {
-  let serviceNameToComponent = (components, getServiceNames) => {
-    let dict = Js.Dict.empty()
-    components->Belt.Array.forEach(component =>
-      component
-      ->getServiceNames
-      ->Belt.Array.forEach(serviceName =>
-        switch dict->Js.Dict.get(serviceName) {
-        | Some(mappedExtensionPoints) =>
-          Js.Dict.set(dict, serviceName, mappedExtensionPoints->Belt.Array.concat([component]))
-        | None => Js.Dict.set(dict, serviceName, [component])
-        }
-      )
-    )
-    dict
+  module Spec = Spec
+
+  let setEventCollector = urn => {
+    Spec.pluginDefinition.eventCollector = urn
   }
 
-  let incomingServiceNameToPluginConnectExtensionsMapping = serviceNameToComponent(
-    [Spec.connectPluginExtension->Component.extractOutputs],
-    extension => [extension.extensionPointName],
-  )
-  let serviceNameToExtensionPointsMapping = serviceNameToComponent(
-    Spec.extensionPointsOutputs,
-    extensionPoint => extensionPoint.aggregateNames,
-  )
-  let outgoingServiceNameToExtensionsMapping = serviceNameToComponent(
-    Spec.extensionsOutputs,
-    extension => extension.aggregateNames,
-  )
-  let incomingServiceNameToExtensionsMapping = serviceNameToComponent(
-    Spec.extensionsOutputs,
-    extension => [extension.extensionPointName],
-  )
-
-  let handleEvent = async (event'Json, dict, getEventHandler) => {
-    let pluginDefinition = Spec.pluginDefinition->Pulumi.Output.get
-
+  let handleEvent = async (event'Json, eventHandlersByService) =>
     await event'Json
     ->Message.serviceNameOfMsg
-    ->Belt.Option.flatMap(serviceName => dict->Js.Dict.get(serviceName))
-    ->Belt.Option.mapWithDefault(Js.Promise.resolve(), async components => {
-      await components
-      ->Belt.Array.map(component => getEventHandler(component)(event'Json, pluginDefinition))
+    ->Belt.Option.flatMap(serviceName => eventHandlersByService->Js.Dict.get(serviceName))
+    ->Belt.Option.mapWithDefault(Js.Promise.resolve(), async eventHandlers => {
+      await eventHandlers
+      ->Belt.Array.map(eventHandler => eventHandler(event'Json, Spec.pluginDefinition))
       ->Js.Promise.all
       ->Util.Promise.toUnit
     })
-  }
 
   let detectUnhandledEvent = event'Json =>
     event'Json
     ->Message.serviceNameOfMsg
     ->Belt.Option.mapWithDefault((), serviceName =>
       switch (
-        serviceNameToExtensionPointsMapping->Js.Dict.get(serviceName),
-        incomingServiceNameToExtensionsMapping->Js.Dict.get(serviceName),
-        outgoingServiceNameToExtensionsMapping->Js.Dict.get(serviceName),
+        Spec.outgoingExtensionPointEventHandlers->Js.Dict.get(serviceName),
+        Spec.outgoingExtensionEventHandlers->Js.Dict.get(serviceName),
+        Spec.incomingExtensionEventHandlers->Js.Dict.get(serviceName),
       ) {
       | (None, None, None) => Js.log("No mapping matches service name")
       | _ => ()
@@ -68,8 +42,7 @@ module Make = (Spec: Spec) => {
     )
 
   let eventsHandler = events'Json => {
-    let pluginDefinition = Spec.pluginDefinition->Pulumi.Output.get
-    let id = pluginDefinition.id
+    let id = Spec.pluginDefinition.id
     let count = events'Json->Belt.Array.size
     events'Json
     ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
@@ -78,22 +51,12 @@ module Make = (Spec: Spec) => {
         `Plugin ${id} eventsHandler: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
       )
       detectUnhandledEvent(event'Json)
-      switch await handleEvent(
-        event'Json,
-        incomingServiceNameToPluginConnectExtensionsMapping,
-        extension => extension.incomingEventHandler,
-      ) {
+      switch await event'Json->handleEvent(Spec.incomingConnectExtensionEventHandlers) {
       | _ =>
         [
-          event'Json->handleEvent(serviceNameToExtensionPointsMapping, extensionPoint =>
-            extensionPoint.outgoingEventHandler
-          ),
-          event'Json->handleEvent(outgoingServiceNameToExtensionsMapping, extension =>
-            extension.outgoingEventHandler
-          ),
-          event'Json->handleEvent(incomingServiceNameToExtensionsMapping, extension =>
-            extension.incomingEventHandler
-          ),
+          event'Json->handleEvent(Spec.outgoingExtensionPointEventHandlers),
+          event'Json->handleEvent(Spec.outgoingExtensionEventHandlers),
+          event'Json->handleEvent(Spec.incomingExtensionEventHandlers),
         ]->Js.Promise.all
       }
     })

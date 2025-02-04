@@ -90,13 +90,15 @@ module Make = (
     )
 
     self->setAppend(
-      storage.append->Pulumi.Output.apply(append =>
+      (storage.append, eventTopic->EventTopic.publish)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((append, publish)) =>
         EventLog_Runtime.appendFn(
           append,
           Spec.Id.toString,
           Spec.Id.t_encode,
           Spec.event_encode,
-          eventTopic->EventTopic.publish,
+          publish,
           Spec.name,
         )
       ),

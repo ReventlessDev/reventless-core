@@ -38,7 +38,7 @@ function Make(Spec, Mappings) {
     if (mapOutgoingEvent$1 !== undefined) {
       return mapOutgoingEvent$1(event$pJson, pluginDef);
     } else {
-      Logger$Reventless.error("File \"Extension.res\", line 76, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      Logger$Reventless.error("File \"Extension.res\", line 88, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return [];
     }
   };
@@ -170,6 +170,8 @@ function Make(Spec, Mappings) {
       var commandActions = mapOutgoingEvent(event$pJson, pluginDef);
       return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction)));
     };
+    self.incomingEventHandler = incomingEventHandler;
+    self.outgoingEventHandler = outgoingEventHandler;
     var outputs = {
       name: name,
       extensionPointName: Spec.name,
@@ -179,9 +181,7 @@ function Make(Spec, Mappings) {
               } else {
                 return Mapping.aggregateName;
               }
-            })),
-      incomingEventHandler: incomingEventHandler,
-      outgoingEventHandler: outgoingEventHandler
+            }))
     };
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
@@ -195,7 +195,13 @@ function Make(Spec, Mappings) {
     return new Component(prim0, prim1, prim2, opts);
   };
   return {
-          make: make
+          make: make,
+          outgoingEventHandler: (function (prim) {
+              return prim.outgoingEventHandler;
+            }),
+          incomingEventHandler: (function (prim) {
+              return prim.incomingEventHandler;
+            })
         };
 }
 

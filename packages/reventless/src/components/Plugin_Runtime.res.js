@@ -7,51 +7,26 @@ var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.res.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Logger$Reventless = require("../util/Logger.res.js");
 var Message$Reventless = require("../Message.res.js");
-var Component$Reventless = require("./Component.res.js");
 var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
 
 function Make(Spec) {
-  var serviceNameToComponent = function (components, getServiceNames) {
-    var dict = {};
-    Belt_Array.forEach(components, (function (component) {
-            Belt_Array.forEach(getServiceNames(component), (function (serviceName) {
-                    var mappedExtensionPoints = Js_dict.get(dict, serviceName);
-                    if (mappedExtensionPoints !== undefined) {
-                      dict[serviceName] = Belt_Array.concat(mappedExtensionPoints, [component]);
-                    } else {
-                      dict[serviceName] = [component];
-                    }
-                  }));
-          }));
-    return dict;
+  var setEventCollector = function (urn) {
+    Spec.pluginDefinition.eventCollector = urn;
   };
-  var incomingServiceNameToPluginConnectExtensionsMapping = serviceNameToComponent([Component$Reventless.extractOutputs(Spec.connectPluginExtension)], (function (extension) {
-          return [extension.extensionPointName];
-        }));
-  var serviceNameToExtensionPointsMapping = serviceNameToComponent(Spec.extensionPointsOutputs, (function (extensionPoint) {
-          return extensionPoint.aggregateNames;
-        }));
-  var outgoingServiceNameToExtensionsMapping = serviceNameToComponent(Spec.extensionsOutputs, (function (extension) {
-          return extension.aggregateNames;
-        }));
-  var incomingServiceNameToExtensionsMapping = serviceNameToComponent(Spec.extensionsOutputs, (function (extension) {
-          return [extension.extensionPointName];
-        }));
-  var handleEvent = async function (event$pJson, dict, getEventHandler) {
-    var pluginDefinition = Spec.pluginDefinition.get();
+  var handleEvent = async function (event$pJson, eventHandlersByService) {
     return await Belt_Option.mapWithDefault(Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(event$pJson), (function (serviceName) {
-                      return Js_dict.get(dict, serviceName);
-                    })), Promise.resolve(), (async function (components) {
-                  return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(components, (function (component) {
-                                        return getEventHandler(component)(event$pJson, pluginDefinition);
+                      return Js_dict.get(eventHandlersByService, serviceName);
+                    })), Promise.resolve(), (async function (eventHandlers) {
+                  return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventHandlers, (function (eventHandler) {
+                                        return eventHandler(event$pJson, Spec.pluginDefinition);
                                       }))));
                 }));
   };
   var detectUnhandledEvent = function (event$pJson) {
     Belt_Option.mapWithDefault(Message$Reventless.serviceNameOfMsg(event$pJson), undefined, (function (serviceName) {
-            var match = Js_dict.get(serviceNameToExtensionPointsMapping, serviceName);
-            var match$1 = Js_dict.get(incomingServiceNameToExtensionsMapping, serviceName);
-            var match$2 = Js_dict.get(outgoingServiceNameToExtensionsMapping, serviceName);
+            var match = Js_dict.get(Spec.outgoingExtensionPointEventHandlers, serviceName);
+            var match$1 = Js_dict.get(Spec.outgoingExtensionEventHandlers, serviceName);
+            var match$2 = Js_dict.get(Spec.incomingExtensionEventHandlers, serviceName);
             if (match !== undefined || match$1 !== undefined || match$2 !== undefined) {
               return ;
             } else {
@@ -61,35 +36,23 @@ function Make(Spec) {
           }));
   };
   var eventsHandler = function (events$pJson) {
-    var pluginDefinition = Spec.pluginDefinition.get();
-    var id = pluginDefinition.id;
+    var id = Spec.pluginDefinition.id;
     var count = events$pJson.length;
     return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
                           var idx$1 = idx + 1 | 0;
                           Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "Plugin " + id + " eventsHandler: incoming event " + String(idx$1) + "/" + String(count) + ":");
                           detectUnhandledEvent(event$pJson);
-                          await handleEvent(event$pJson, incomingServiceNameToPluginConnectExtensionsMapping, (function (extension) {
-                                  return extension.incomingEventHandler;
-                                }));
+                          await handleEvent(event$pJson, Spec.incomingConnectExtensionEventHandlers);
                           return Promise.all([
-                                      handleEvent(event$pJson, serviceNameToExtensionPointsMapping, (function (extensionPoint) {
-                                              return extensionPoint.outgoingEventHandler;
-                                            })),
-                                      handleEvent(event$pJson, outgoingServiceNameToExtensionsMapping, (function (extension) {
-                                              return extension.outgoingEventHandler;
-                                            })),
-                                      handleEvent(event$pJson, incomingServiceNameToExtensionsMapping, (function (extension) {
-                                              return extension.incomingEventHandler;
-                                            }))
+                                      handleEvent(event$pJson, Spec.outgoingExtensionPointEventHandlers),
+                                      handleEvent(event$pJson, Spec.outgoingExtensionEventHandlers),
+                                      handleEvent(event$pJson, Spec.incomingExtensionEventHandlers)
                                     ]);
                         }))));
   };
   return {
-          serviceNameToComponent: serviceNameToComponent,
-          incomingServiceNameToPluginConnectExtensionsMapping: incomingServiceNameToPluginConnectExtensionsMapping,
-          serviceNameToExtensionPointsMapping: serviceNameToExtensionPointsMapping,
-          outgoingServiceNameToExtensionsMapping: outgoingServiceNameToExtensionsMapping,
-          incomingServiceNameToExtensionsMapping: incomingServiceNameToExtensionsMapping,
+          Spec: Spec,
+          setEventCollector: setEventCollector,
           handleEvent: handleEvent,
           detectUnhandledEvent: detectUnhandledEvent,
           eventsHandler: eventsHandler

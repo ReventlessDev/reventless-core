@@ -5,34 +5,36 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var TestFixtures$Reventless = require("../../test-helper/TestFixtures.res.js");
 var PluginProjection$Reventless = require("../../src/core/ReadModels/Plugin/PluginProjection.res.js");
 
-var pluginDefinition_extensionPoints = [];
-
-var pluginDefinition_extensions = [{
-    name: "Core.Plugin.Test",
-    extensionPointName: "Core.Plugin"
-  }];
-
 var pluginDefinition = {
   id: "id@1",
   name: "name",
   version: "1",
-  extensionPoints: pluginDefinition_extensionPoints,
-  extensions: pluginDefinition_extensions,
+  extensionPoints: [],
+  extensions: [{
+      name: "Core.Plugin.Test",
+      extensionPointName: "Core.Plugin"
+    }],
   eventCollector: "eventCollector"
 };
 
-var state_extensionPoints = pluginDefinition_extensionPoints;
+var state_name = pluginDefinition.name;
 
-var state_extensionPointNames = PluginProjection$Reventless.Util.extractExtensionPointNames(pluginDefinition_extensionPoints);
+var state_version = pluginDefinition.version;
 
-var state_extensionNames = PluginProjection$Reventless.Util.extractExtensionNames(pluginDefinition_extensions);
+var state_eventCollector = pluginDefinition.eventCollector;
 
-var state_extensions = pluginDefinition_extensions;
+var state_extensionPoints = pluginDefinition.extensionPoints;
+
+var state_extensionPointNames = PluginProjection$Reventless.Util.extractExtensionPointNames(pluginDefinition.extensionPoints);
+
+var state_extensionNames = PluginProjection$Reventless.Util.extractExtensionNames(pluginDefinition.extensions);
+
+var state_extensions = pluginDefinition.extensions;
 
 var state = {
-  name: "name",
-  version: "1",
-  eventCollector: "eventCollector",
+  name: state_name,
+  version: state_version,
+  eventCollector: state_eventCollector,
   extensionPoints: state_extensionPoints,
   extensionPointNames: state_extensionPointNames,
   extensionNames: state_extensionNames,
@@ -43,22 +45,18 @@ var state = {
 
 var extensionPointNames2 = ["Test.Test"];
 
-var pluginDefinition2_extensionPoints = Belt_Array.mapWithIndex(extensionPointNames2, (function (idx, name) {
-        return {
-                name: name,
-                commandTopic: "commandTopic" + String(idx),
-                eventTopic: "eventTopic" + String(idx)
-              };
-      }));
-
-var pluginDefinition2_extensions = [];
-
 var pluginDefinition2 = {
   id: "id2@1",
   name: "name2",
   version: "1",
-  extensionPoints: pluginDefinition2_extensionPoints,
-  extensions: pluginDefinition2_extensions,
+  extensionPoints: Belt_Array.mapWithIndex(extensionPointNames2, (function (idx, name) {
+          return {
+                  name: name,
+                  commandTopic: "commandTopic" + String(idx),
+                  eventTopic: "eventTopic" + String(idx)
+                };
+        })),
+  extensions: [],
   eventCollector: "eventCollector"
 };
 

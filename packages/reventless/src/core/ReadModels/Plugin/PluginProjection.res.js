@@ -59,13 +59,14 @@ function map(param) {
         var match$1 = $$event._0;
         var extensions = match$1.extensions;
         var extensionPoints = match$1.extensionPoints;
+        var eventCollector = match$1.eventCollector;
         return {
                 TAG: "Set",
                 _0: id,
                 _1: {
                   name: match$1.name,
                   version: match$1.version,
-                  eventCollector: match$1.eventCollector,
+                  eventCollector: eventCollector,
                   extensionPoints: extensionPoints,
                   extensionPointNames: Belt_Array.map(extensionPoints, (function (extensionPoint) {
                           return extensionPoint.name;
@@ -82,13 +83,14 @@ function map(param) {
         var match$2 = $$event._0;
         var extensions$1 = match$2.extensions;
         var extensionPoints$1 = match$2.extensionPoints;
+        var eventCollector$1 = match$2.eventCollector;
         return {
                 TAG: "UpdateWithDefault",
                 _0: id,
                 _1: {
                   name: match$2.name,
                   version: match$2.version,
-                  eventCollector: match$2.eventCollector,
+                  eventCollector: eventCollector$1,
                   extensionPoints: extensionPoints$1,
                   extensionPointNames: Belt_Array.map(extensionPoints$1, (function (extensionPoint) {
                           return extensionPoint.name;
@@ -121,13 +123,14 @@ function map(param) {
         var match$3 = $$event._0;
         var extensions$2 = match$3.extensions;
         var extensionPoints$2 = match$3.extensionPoints;
+        var eventCollector$2 = match$3.eventCollector;
         return {
                 TAG: "UpdateWithDefault",
                 _0: id,
                 _1: {
                   name: match$3.name,
                   version: match$3.version,
-                  eventCollector: match$3.eventCollector,
+                  eventCollector: eventCollector$2,
                   extensionPoints: extensionPoints$2,
                   extensionPointNames: Belt_Array.map(extensionPoints$2, (function (extensionPoint) {
                           return extensionPoint.name;
@@ -158,13 +161,14 @@ function map(param) {
   var match$4 = $$event._0;
   var extensions$3 = match$4.extensions;
   var extensionPoints$3 = match$4.extensionPoints;
+  var eventCollector$3 = match$4.eventCollector;
   return {
           TAG: "UpdateWithDefault",
           _0: id,
           _1: {
             name: match$4.name,
             version: match$4.version,
-            eventCollector: match$4.eventCollector,
+            eventCollector: eventCollector$3,
             extensionPoints: extensionPoints$3,
             extensionPointNames: Belt_Array.map(extensionPoints$3, (function (extensionPoint) {
                     return extensionPoint.name;

@@ -4,8 +4,6 @@ type outputs = {
   name: string,
   extensionPointName: string,
   aggregateNames: array<string>,
-  incomingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
-  outgoingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
 }
 type t
 type component = Component.t<t, outputs>
@@ -13,6 +11,8 @@ type component = Component.t<t, outputs>
 type name = string
 
 open ReventlessSpec.ExtensionMapping
+
+type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
 
 module type T = {
   let make: (
@@ -23,6 +23,9 @@ module type T = {
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
+
+  let outgoingEventHandler: component => eventHandler
+  let incomingEventHandler: component => eventHandler
 }
 
 module type Mappings = {
@@ -51,6 +54,15 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
   }
+
+  @set
+  external setOutgoingEventHandler: (component, eventHandler) => unit = "outgoingEventHandler"
+  @get
+  external outgoingEventHandler: component => eventHandler = "outgoingEventHandler"
+  @set
+  external setIncomingEventHandler: (component, eventHandler) => unit = "incomingEventHandler"
+  @get
+  external incomingEventHandler: component => eventHandler = "incomingEventHandler"
 
   let findOutgoingMapping = (aggregateNameOpt, mappings) =>
     aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
@@ -213,6 +225,9 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
       ->Util.Promise.toUnit
     }
 
+    self->setIncomingEventHandler(incomingEventHandler)
+    self->setOutgoingEventHandler(outgoingEventHandler)
+
     self->setOutputs({
       name,
       extensionPointName: Spec.name,
@@ -221,8 +236,6 @@ module Make = (Spec: Spec, Mappings: Mappings with module Spec := Spec): T => {
           ? None
           : Some(Mapping.aggregateName)
       ),
-      incomingEventHandler,
-      outgoingEventHandler,
     })
   }
 

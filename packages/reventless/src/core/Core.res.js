@@ -7,12 +7,11 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Cloner$Reventless = require("../components/Cloner.res.js");
-var Logger$Reventless = require("../util/Logger.res.js");
 var Aggregate$Reventless = require("../components/Aggregate.res.js");
 var Component$Reventless = require("../components/Component.res.js");
 var ReadModel$Reventless = require("../components/ReadModel.res.js");
 var Component = require("../components/Component").default;
-var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
+var Core_Runtime$Reventless = require("./Core_Runtime.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var EventCollector$Reventless = require("../components/EventCollector.res.js");
 
@@ -61,47 +60,47 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
     var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
             return addEventMapperFn(allEventTopics, queryEngine);
           }), addEventMapperFns);
-    var extensionPoints$1 = Pulumi.all(publishToAggregates).apply(function (publishToAggregates) {
-          return Component$Reventless.extractMultipleOutputs(Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-                            return ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
-                          })));
-        });
-    var eventCollector = extensionPoints$1.apply(function (extensionPoints) {
-          var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPoints, (function (extensionPoint) {
-                      return Belt_SetString.fromArray(extensionPoint.aggregateNames);
+    var outputs = Pulumi.all(publishToAggregates).apply(function (publishToAggregates) {
+          var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
+                      var extensionPoint = ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
+                      return [
+                              Component$Reventless.extractOutputs(extensionPoint),
+                              ExtensionPoint.outgoingEventHandler(extensionPoint)
+                            ];
+                    })));
+          var extensionPointsOutputs = match[0];
+          var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPointOutputs) {
+                      return Belt_SetString.fromArray(extensionPointOutputs.aggregateNames);
                     })), undefined, Belt_SetString.union);
-          var fakePluginDefinition_extensionPoints = [];
-          var fakePluginDefinition_extensions = [];
           var fakePluginDefinition = {
             id: "Core@FAKE",
             name: "Core",
             version: "FAKE",
-            extensionPoints: fakePluginDefinition_extensionPoints,
-            extensions: fakePluginDefinition_extensions,
+            extensionPoints: [],
+            extensions: [],
             eventCollector: "NOT-SET"
           };
-          var eventsHandler = function (events$pJson) {
-            var count = events$pJson.length;
-            return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
-                                  var idx$1 = idx + 1 | 0;
-                                  Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
-                                  return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(extensionPoints, (function (extensionPoint) {
-                                                        var handle = extensionPoint.outgoingEventHandler;
-                                                        return handle(event$pJson, fakePluginDefinition);
-                                                      }))));
-                                }))));
-          };
-          var EventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-          return Component$Reventless.extractOutputs(EventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+          var Runtime = Core_Runtime$Reventless.Make({
+                pluginDefinition: fakePluginDefinition,
+                outgoingExtensionPointEventHandlers: match[1]
+              });
+          var PluginEventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+          var eventCollectorOutputs = Component$Reventless.extractOutputs(PluginEventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), Runtime.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+          return [
+                  extensionPointsOutputs,
+                  eventCollectorOutputs
+                ];
         });
     var partial_arg = Cloner$Reventless.Make;
     var Cloner = partial_arg(Config, ClonerRunner);
     var cloner = Cloner.make(opts);
     return setOutputs(self, {
                 version: version,
-                eventCollector: eventCollector,
-                extensionPoints: extensionPoints$1.apply(function (extensionPoints) {
-                      return Js_dict.fromArray(Belt_Array.map(extensionPoints, (function (ep) {
+                eventCollector: outputs.apply(function (param) {
+                      return param[1];
+                    }),
+                extensionPoints: outputs.apply(function (param) {
+                      return Js_dict.fromArray(Belt_Array.map(param[0], (function (ep) {
                                         return [
                                                 ep.name,
                                                 ep

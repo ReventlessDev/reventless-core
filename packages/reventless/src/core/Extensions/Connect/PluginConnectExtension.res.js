@@ -59,9 +59,9 @@ function Make(Spec) {
     switch (command.TAG) {
       case "DoConnectPlugin" :
           var match = command._0;
-          var otherPluginEventCollector = match.eventCollector;
           var otherPluginExtensions = match.extensions;
           var otherPluginId = match.id;
+          var otherPluginEventCollector = match.eventCollector;
           var connectToExtensionPoints = Belt_Array.keepMap(Message$Reventless.log(match.extensionPoints, "otherPluginExtensionPoints:"), (function (param) {
                   var extensionPointName = param.name;
                   if (Message$Reventless.log(Belt_Array.keep(Spec.extensionsOutputs, (function (extension) {
@@ -82,9 +82,9 @@ function Make(Spec) {
           return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.concat(connectToExtensionPoints, connectToExtensions)));
       case "DoDisconnectPlugin" :
           var match$1 = command._0;
-          var pluginEventCollector = match$1.eventCollector;
           var pluginExtensions = match$1.extensions;
           var pluginId = match$1.id;
+          var pluginEventCollector = match$1.eventCollector;
           var disconnectFromExtensionPoints = Belt_Array.keepMap(match$1.extensionPoints, (function (param) {
                   var extensionPointName = param.name;
                   if (Belt_Array.keep(Spec.extensionsOutputs, (function (extension) {
@@ -228,7 +228,9 @@ function Make(Spec) {
           callHandler: callHandler,
           ConnectPluginMapping: ConnectPluginMapping,
           ConnectPluginMappings: ConnectPluginMappings,
-          make: include.make
+          make: include.make,
+          outgoingEventHandler: include.outgoingEventHandler,
+          incomingEventHandler: include.incomingEventHandler
         };
 }
 

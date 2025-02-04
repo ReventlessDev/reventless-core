@@ -6,7 +6,6 @@ let componentType = ComponentType.ExtensionPoint
 type outputs = {
   name: string,
   aggregateNames: array<string>,
-  outgoingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
   commandTopic: CommandTopic.outputs,
   eventTopic: EventTopic.outputs,
 }
@@ -14,13 +13,14 @@ type outputs = {
 type unwrappedOutputs = {
   name: string,
   aggregateNames: array<string>,
-  outgoingEventHandler: (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>,
   commandTopic: CommandTopic.unwrappedOutputs,
   eventTopic: EventTopic.unwrappedOutputs,
 }
 
 type t
 type component = Component.t<t, outputs>
+
+type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
 
 module type T = {
   let make: (
@@ -29,6 +29,8 @@ module type T = {
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
+
+  let outgoingEventHandler: component => Pulumi.Output.t<eventHandler>
 }
 
 module type Mappings = {
@@ -72,6 +74,12 @@ module Make = (
     self->setOutputs(outputs)
     self->registerOutputs(outputs)
   }
+
+  @set
+  external setOutgoingEventHandler: (component, Pulumi.Output.t<eventHandler>) => unit =
+    "outgoingEventHandler"
+  @get
+  external outgoingEventHandler: component => Pulumi.Output.t<eventHandler> = "outgoingEventHandler"
 
   module Mapper = {
     let findOutgoingMapping = (aggregateNameOpt, mappings) =>
@@ -126,6 +134,9 @@ module Make = (
 
     let commandTopic: ref<option<CommandTopic.component>> = ref(None)
 
+    module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
+    let eventTopic = EventTopic.make(~name=childName, ~storageResources=[], ~opts)
+
     let applyCommandAction = async action =>
       switch action {
       | ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
@@ -159,40 +170,41 @@ module Make = (
         }
       }
 
-    module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
-    let eventTopic = EventTopic.make(~name=childName, ~storageResources=[], ~opts)
-    let publish = EventTopic.publish(eventTopic)
-
-    let applyEventAction = async action =>
-      switch action {
-      | ExtensionPointMapping.AbstractPublishEvent(event') =>
-        try await publish([event']) catch {
-        | err => err->Js.log2("ExtensionPoint: Error on publish command:")
-        }
-      | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
-        let publish = async promise =>
-          try await publish([await promise]) catch {
-          | err => err->Js.log2("ExtensionPoint: Error on publish command:")
+    let outgoingEventHandler =
+      eventTopic
+      ->EventTopic.publish
+      ->Pulumi.Output.apply(publish => {
+        let applyEventAction = async action =>
+          switch action {
+          | ExtensionPointMapping.AbstractPublishEvent(event') =>
+            try await publish([event']) catch {
+            | err => err->Js.log2("ExtensionPoint: Error on publish command:")
+            }
+          | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
+            let publish = async promise =>
+              try await publish([await promise]) catch {
+              | err => err->Js.log2("ExtensionPoint: Error on publish command:")
+              }
+            await promise->publish
+          | AbstractCall(handler) =>
+            try await handler() catch {
+            | err => err->Js.log2("ExtensionPoint: Error on calling handler:")
+            }
           }
-        await promise->publish
-      | AbstractCall(handler) =>
-        try await handler() catch {
-        | err => err->Js.log2("ExtensionPoint: Error on calling handler:")
+
+        async (event'Json, _pluginDef) => {
+          let commandTopic = commandTopic.contents->Belt.Option.getExn
+          let eventActions = Mapper.mapOutgoingEvent(
+            event'Json,
+            Mappings.mappings,
+            scheduler,
+            (commandTopic->Component.extractOutputs).resources,
+            queryEngine,
+          )
+
+          await eventActions->Belt.Array.map(applyEventAction)->Js.Promise.all->Util.Promise.toUnit
         }
-      }
-
-    let outgoingEventHandler = async (event'Json, _pluginDef) => {
-      let commandTopic = commandTopic.contents->Belt.Option.getExn
-      let eventActions = Mapper.mapOutgoingEvent(
-        event'Json,
-        Mappings.mappings,
-        scheduler,
-        (commandTopic->Component.extractOutputs).resources,
-        queryEngine,
-      )
-
-      await eventActions->Belt.Array.map(applyEventAction)->Js.Promise.all->Util.Promise.toUnit
-    }
+      })
 
     let incomingCommandsHandler = topicItems => {
       let commandTopic = commandTopic.contents->Belt.Option.getExn
@@ -211,12 +223,13 @@ module Make = (
     commandTopic :=
       Some(CommandTopic.make(~name=childName, ~commandsHandler=incomingCommandsHandler, ~opts))
 
+    self->setOutgoingEventHandler(outgoingEventHandler)
+
     self->setOutputs({
       name,
       aggregateNames: Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
         Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
       ),
-      outgoingEventHandler,
       commandTopic: commandTopic.contents->Belt.Option.getExn->Component.extractOutputs,
       eventTopic: eventTopic->Component.extractOutputs,
     })

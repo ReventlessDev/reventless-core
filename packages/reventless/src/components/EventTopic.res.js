@@ -15,32 +15,31 @@ var NotPublishedToPublisher = /* @__PURE__ */Caml_exceptions.create("EventTopic-
 var Adapter = {};
 
 function Make(Spec, Publisher) {
-  var publishFn = function (publisher, __name) {
-    return async function (events$p) {
-      var eventCount = events$p.length;
-      return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$p, (async function (idx, event$p) {
-                            var event$pJson = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
-                            var id = event$p.id;
-                            var idx$1 = idx + 1 | 0;
-                            var val;
-                            try {
-                              val = await publisher.publish(Spec.Id.toString(id), event$p.meta, event$pJson);
-                            }
-                            catch (e){
-                              Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 95, characters 17-24", "Error", event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
-                              throw e;
-                            }
-                            return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 102, characters 17-24", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
-                          }))));
-    };
-  };
   var construct = function (storageResources, self, name) {
     var opts_parent = Caml_option.some(self);
     var opts = {
       parent: opts_parent
     };
     var publisher = Publisher.make(ComponentType$Reventless.name(name, "EventTopic"), storageResources, opts);
-    self.publish = publishFn(publisher, name);
+    self.publish = publisher.publish.apply(function (publish) {
+          return async function (events$p) {
+            var eventCount = events$p.length;
+            return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$p, (async function (idx, event$p) {
+                                  var event$pJson = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
+                                  var id = event$p.id;
+                                  var idx$1 = idx + 1 | 0;
+                                  var val;
+                                  try {
+                                    val = await publish(Spec.Id.toString(id), event$p.meta, event$pJson);
+                                  }
+                                  catch (e){
+                                    Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 95, characters 17-24", "Error", event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
+                                    throw e;
+                                  }
+                                  return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 102, characters 17-24", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
+                                }))));
+          };
+        });
     var outputs = {
       resources: publisher.resources
     };

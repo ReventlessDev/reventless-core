@@ -3,6 +3,7 @@
 
 var Component = require("./Component").default;
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Component$Reventless = require("./Component.res.js");
 var EventTopic$Reventless = require("./EventTopic.res.js");
@@ -24,8 +25,11 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
     };
     var storage = $$Storage.make(ComponentType$Reventless.name(name, "EventLog"), opts);
     var eventTopic = EventTopic.make(name, storage.resources, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts));
-    self.append = storage.append.apply(function (append) {
-          return EventLog_Runtime$Reventless.appendFn(append, Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, EventTopic.publish(eventTopic), Spec.name);
+    self.append = Pulumi.all([
+            storage.append,
+            EventTopic.publish(eventTopic)
+          ]).apply(function (param) {
+          return EventLog_Runtime$Reventless.appendFn(param[0], Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, param[1], Spec.name);
         });
     self.replay = storage.replay.apply(function (replay) {
           return EventLog_Runtime$Reventless.replayFn(replay, Spec.Id.toString, Spec.event_decode);
