@@ -10,12 +10,14 @@ var EventTopicPublisher_SNS_Runtime$ReventlessAws = require("./EventTopicPublish
 function make(name, param, opts) {
   var topic = new (Aws.sns.Topic)(name, {
         tags: AWS$ReventlessAws.tags(name, EventTopic$Reventless.componentType)
-      });
+      }, opts);
   return {
           resources: [Util_SNS$ReventlessAws.toResource(topic)],
-          publish: (function (id, meta, json) {
-              return EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(topic, id, meta, json);
-            })
+          publish: Util_SNS$ReventlessAws.toRuntimeTopicOutput(topic).apply(function (runtimeTopic) {
+                return function (extra, extra$1, extra$2) {
+                  return EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(runtimeTopic, extra, extra$1, extra$2);
+                };
+              })
         };
 }
 

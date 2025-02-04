@@ -19,6 +19,6 @@ let make: Reventless.EventTopic.Adapter.publisherMaker = (
       )
       ->Reventless.Adapter.outputToResource,
     ],
-    publish: (_, _, _) => Js.Promise.resolve(), // ignore publish
+    publish: Pulumi.Output.make((_, _, _) => Js.Promise.resolve()), // ignore publish
   }
 }

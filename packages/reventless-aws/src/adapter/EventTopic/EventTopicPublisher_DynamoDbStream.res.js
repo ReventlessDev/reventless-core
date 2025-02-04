@@ -2,6 +2,7 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var Pulumi = require("@pulumi/pulumi");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
@@ -16,11 +17,11 @@ function make(param, storageResources, param$1) {
                         return Js_exn.raiseError("EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_" + service);
                       }
                     }))],
-          publish: (function (param, param$1, param$2) {
-              return Promise.resolve();
-            })
+          publish: Pulumi.output(function (param, param$1, param$2) {
+                return Promise.resolve();
+              })
         };
 }
 
 exports.make = make;
-/* Adapter-Reventless Not a pure module */
+/* @pulumi/pulumi Not a pure module */

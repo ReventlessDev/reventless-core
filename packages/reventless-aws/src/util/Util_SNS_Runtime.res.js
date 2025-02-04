@@ -3,14 +3,23 @@
 
 var SNS$AwsSdk = require("@reventless/bs-aws-sdk/src/SNS.res.js");
 
+function toRuntimeTopic(topic) {
+  return {
+          id: topic.id.get(),
+          name: topic.name.get(),
+          arn: topic.arn.get()
+        };
+}
+
 function publish(topic, message) {
-  return SNS$AwsSdk.publish(topic.arn.get(), undefined, message);
+  return SNS$AwsSdk.publish(topic.arn, undefined, message);
 }
 
 function publishFifo(topic, messageGroupId, message) {
-  return SNS$AwsSdk.publish(topic.arn.get(), messageGroupId, message);
+  return SNS$AwsSdk.publish(topic.arn, messageGroupId, message);
 }
 
+exports.toRuntimeTopic = toRuntimeTopic;
 exports.publish = publish;
 exports.publishFifo = publishFifo;
 /* SNS-AwsSdk Not a pure module */

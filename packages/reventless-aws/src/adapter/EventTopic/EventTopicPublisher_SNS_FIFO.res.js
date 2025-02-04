@@ -4,6 +4,7 @@
 var Aws = require("@pulumi/aws");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var EventTopic$Reventless = require("@reventless/reventless/src/components/EventTopic.res.js");
+var Util_SNS$ReventlessAws = require("../../util/Util_SNS.res.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.res.js");
 var EventTopicPublisher_SNS_Runtime$ReventlessAws = require("./EventTopicPublisher_SNS_Runtime.res.js");
 
@@ -15,9 +16,11 @@ function make(name, param, opts) {
       }, opts);
   return {
           resources: [Util_SNS_FIFO$ReventlessAws.toResource(topic)],
-          publish: (function (id, meta, json) {
-              return EventTopicPublisher_SNS_Runtime$ReventlessAws.publishFifo(topic, id, meta, json);
-            })
+          publish: Util_SNS$ReventlessAws.toRuntimeTopicOutput(topic).apply(function (runtimeTopic) {
+                return function (extra, extra$1, extra$2) {
+                  return EventTopicPublisher_SNS_Runtime$ReventlessAws.publishFifo(runtimeTopic, extra, extra$1, extra$2);
+                };
+              })
         };
 }
 
