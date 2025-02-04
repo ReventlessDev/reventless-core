@@ -23,5 +23,5 @@ type pluginDefinition = {
   version: version,
   extensionPoints: array<extensionPointDefinition>,
   extensions: array<extensionDefinition>,
-  eventCollector: string,
+  mutable eventCollector: string,
 }
