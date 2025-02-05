@@ -102,13 +102,7 @@ async function build(opt) {
       }
     })
     .then(() => {
-      spinner.start(`zip layer to ${pathToLayerData}`);
-      zip(pathToLayerData, path.join(pathToLayerData, '../reventless-layer.zip'))
-        .then(_ => spinner.succeed('Layer zipped'))
-        .catch(err => {
-          console.error(err);
-          spinner.fail(err.toString());
-        })
+      zipLayer(pathToLayerData);
     });
 }
 
@@ -193,6 +187,16 @@ async function processNodeDefault(node, options, pathToSavedDependencies) {
       spinner.fail(`Failed to extract dependency ${err}`);
       throw err;
     });
+}
+
+async function zipLayer(pathToLayerData) {
+  spinner.start(`zip layer to ${pathToLayerData}`);
+  zip(pathToLayerData, path.join(pathToLayerData, '../reventless-layer.zip'))
+    .then(() => spinner.succeed('Layer zipped'))
+    .catch(err => {
+      console.error(err);
+      spinner.fail(err.toString());
+    })
 }
 
 function filterOptional(node) {
