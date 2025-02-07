@@ -14,11 +14,11 @@ var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Ut
 
 var service = "SQS";
 
-function toRuntimeQueue(queue) {
+function toRuntimeQueue(param) {
   return {
-          id: queue.id.get(),
-          name: queue.name.get(),
-          arn: queue.arn.get()
+          id: param.id,
+          name: param.name,
+          arn: param.urn
         };
 }
 

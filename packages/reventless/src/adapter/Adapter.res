@@ -44,6 +44,11 @@ let resourceToUnwrappedOutput = (r: ReventlessSpec.Adapter.resource) =>
   ->Pulumi.Output.all5
   ->Pulumi.Output.apply(((name, id, urn, info, service)) => {name, id, urn, info, service})
 
+let resourcesToUnwrappedOutput = (resources: array<ReventlessSpec.Adapter.resource>) =>
+  resources
+  ->Belt.Array.map(resource => resource->resourceToUnwrappedOutput)
+  ->Pulumi.Output.all
+
 let logResource = r => {
   let _ = r->resourceToUnwrappedOutput->Pulumi.Output.apply(r => Js.log2("resource:", r))
 }

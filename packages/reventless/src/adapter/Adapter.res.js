@@ -88,6 +88,12 @@ function resourceToUnwrappedOutput(r) {
             });
 }
 
+function resourcesToUnwrappedOutput(resources) {
+  return Pulumi.all(Belt_Array.map(resources, (function (resource) {
+                    return resourceToUnwrappedOutput(resource);
+                  })));
+}
+
 function logResource(r) {
   resourceToUnwrappedOutput(r).apply(function (r) {
         console.log("resource:", r);
@@ -104,6 +110,7 @@ exports.outputToResource = outputToResource;
 exports.resourcesOutputToResource = resourcesOutputToResource;
 exports.unwrappedOutputToResource = unwrappedOutputToResource;
 exports.resourceToUnwrappedOutput = resourceToUnwrappedOutput;
+exports.resourcesToUnwrappedOutput = resourcesToUnwrappedOutput;
 exports.logResource = logResource;
 exports.unwrappedToString = unwrappedToString;
-/* @pulumi/pulumi Not a pure module */
+/* Output-Pulumi Not a pure module */

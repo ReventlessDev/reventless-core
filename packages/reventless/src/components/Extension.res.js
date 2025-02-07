@@ -7,6 +7,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Logger$Reventless = require("../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -38,140 +39,146 @@ function Make(Spec, Mappings) {
     if (mapOutgoingEvent$1 !== undefined) {
       return mapOutgoingEvent$1(event$pJson, pluginDef);
     } else {
-      Logger$Reventless.error("File \"Extension.res\", line 88, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      Logger$Reventless.error("File \"Extension.res\", line 90, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return [];
     }
   };
   var construct = function (publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, self, name) {
-    var publishAggregateCommand = async function (aggregateName, cmdJson) {
-      var pub = Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName));
-      try {
-        return await pub([cmdJson]);
-      }
-      catch (raw_err){
-        var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-        console.log("Extension: Error on publish command to aggregate " + aggregateName + ":", err);
-        return ;
-      }
-    };
-    var publishCorePluginExtensionPointCommand = async function (cmdJson) {
-      try {
-        return await publishToCorePluginExtensionPoint([cmdJson]);
-      }
-      catch (raw_err){
-        var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-        console.log("Extension: Error on publish command to Core.Plugin ExtensionPoint:", err);
-        return ;
-      }
-    };
-    var forwardCommand = function (extensionPointName, commandJson) {
-      var init = commandJson.meta;
-      return publishCorePluginExtensionPointCommand({
-                  id: "",
-                  meta: {
-                    service: init.service,
-                    time: init.time,
-                    ip: init.ip,
-                    user: init.user,
-                    msgId: Message$Reventless.uuid(),
-                    correlationId: init.correlationId
-                  },
-                  commandJson: PluginExtensionPointSpec$ReventlessSpec.command_encode({
-                        TAG: "ForwardCommand",
-                        _0: {
-                          extensionPointName: extensionPointName,
-                          id: commandJson.id,
-                          command: Message$Reventless.toMessageBody(commandJson)
-                        }
-                      }),
-                  delay: undefined
-                });
-    };
-    var handle = async function (handler) {
-      try {
-        return await handler();
-      }
-      catch (raw_err){
-        var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-        console.log("ExtensionPoint: Error on calling handler:", err);
-        return ;
-      }
-    };
-    var applyIncomingCommandAction = async function (action) {
-      var tmp;
-      switch (action.TAG) {
-        case "AbstractPublishAggregateCommand" :
-            tmp = publishAggregateCommand(action._0, action._1);
-            break;
-        case "AbstractPublishAggregateCommandAsync" :
-            var match = await action._0;
-            tmp = publishAggregateCommand(match[0], match[1]);
-            break;
-        case "AbstractPublishAggregateCommandsAsync" :
-            var publish = async function (promise) {
-              return await Util_Promise$Reventless.toUnit(Util_Promise$Reventless.mapOk(promise, (function (arr) {
-                                return Promise.all(Belt_Array.map(arr, (function (param) {
-                                                  return publishAggregateCommand(param[0], param[1]);
-                                                })));
-                              })));
-            };
-            tmp = publish(action._0);
-            break;
-        case "AbstractPublishPluginExtensionPointCommand" :
-            tmp = publishCorePluginExtensionPointCommand(action._0);
-            break;
-        case "AbstractPublishExtensionPointCommand" :
-            tmp = forwardCommand(action._0, action._1);
-            break;
-        case "AbstractCall" :
-            tmp = handle(action._0);
-            break;
-        
-      }
-      return await tmp;
-    };
-    var applyOutgoingCommandAction = async function (action) {
-      switch (action.TAG) {
-        case "AbstractPublishPluginExtensionPointCommand" :
-            return publishCorePluginExtensionPointCommand(action._0);
-        case "AbstractPublishExtensionPointCommand" :
-            return forwardCommand(action._0, action._1);
-        case "AbstractCall" :
-            return handle(action._0);
-        
-      }
-    };
-    var incomingEventHandler = async function (event$pJson, pluginDef) {
-      var event$p = Message$Reventless.event$p_decode(Id$ReventlessSpec.StringPure.t_decode, Spec.event_decode, event$pJson);
-      if (event$p.TAG === "Ok") {
-        var event$p$1 = event$p._0;
-        var commandActions = mapIncomingEvent(event$p$1, pluginDef, queryEngine);
-        var apply = async function (commandActions) {
-          return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction)));
-        };
-        await apply(commandActions);
-        var p = Belt_Option.map(Js_dict.get(readModelNamesForSourceName, event$p$1.meta.service), (function (readModelNames) {
-                return Promise.all(Belt_Array.keepMap(readModelNames, (function (readModelName) {
-                                  return Belt_Option.map(Js_dict.get(publishToReadModels, readModelName), (function (enqueueEvent) {
-                                                return enqueueEvent(0, event$p$1.id, JSON.stringify(event$pJson));
-                                              }));
-                                })));
-              }));
-        if (p !== undefined) {
-          await Caml_option.valFromOption(p);
-          return ;
-        } else {
-          return ;
-        }
-      }
-      console.log("Could not decode event':", event$p._0);
-    };
-    var outgoingEventHandler = function (event$pJson, pluginDef) {
-      var commandActions = mapOutgoingEvent(event$pJson, pluginDef);
-      return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction)));
-    };
-    self.incomingEventHandler = incomingEventHandler;
-    self.outgoingEventHandler = outgoingEventHandler;
+    var match = Output$Pulumi.unzip(publishToCorePluginExtensionPoint.apply(function (publishToCorePluginExtensionPoint) {
+              var publishAggregateCommand = async function (aggregateName, cmdJson) {
+                var pub = Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName));
+                try {
+                  return await pub([cmdJson]);
+                }
+                catch (raw_err){
+                  var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+                  console.log("Extension: Error on publish command to aggregate " + aggregateName + ":", err);
+                  return ;
+                }
+              };
+              var publishCorePluginExtensionPointCommand = async function (cmdJson) {
+                try {
+                  return await publishToCorePluginExtensionPoint([cmdJson]);
+                }
+                catch (raw_err){
+                  var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+                  console.log("Extension: Error on publish command to Core.Plugin ExtensionPoint:", err);
+                  return ;
+                }
+              };
+              var forwardCommand = function (extensionPointName, commandJson) {
+                var init = commandJson.meta;
+                return publishCorePluginExtensionPointCommand({
+                            id: "",
+                            meta: {
+                              service: init.service,
+                              time: init.time,
+                              ip: init.ip,
+                              user: init.user,
+                              msgId: Message$Reventless.uuid(),
+                              correlationId: init.correlationId
+                            },
+                            commandJson: PluginExtensionPointSpec$ReventlessSpec.command_encode({
+                                  TAG: "ForwardCommand",
+                                  _0: {
+                                    extensionPointName: extensionPointName,
+                                    id: commandJson.id,
+                                    command: Message$Reventless.toMessageBody(commandJson)
+                                  }
+                                }),
+                            delay: undefined
+                          });
+              };
+              var handle = async function (handler) {
+                try {
+                  return await handler();
+                }
+                catch (raw_err){
+                  var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+                  console.log("ExtensionPoint: Error on calling handler:", err);
+                  return ;
+                }
+              };
+              var applyIncomingCommandAction = async function (action) {
+                var tmp;
+                switch (action.TAG) {
+                  case "AbstractPublishAggregateCommand" :
+                      tmp = publishAggregateCommand(action._0, action._1);
+                      break;
+                  case "AbstractPublishAggregateCommandAsync" :
+                      var match = await action._0;
+                      tmp = publishAggregateCommand(match[0], match[1]);
+                      break;
+                  case "AbstractPublishAggregateCommandsAsync" :
+                      var publish = async function (promise) {
+                        return await Util_Promise$Reventless.toUnit(Util_Promise$Reventless.mapOk(promise, (function (arr) {
+                                          return Promise.all(Belt_Array.map(arr, (function (param) {
+                                                            return publishAggregateCommand(param[0], param[1]);
+                                                          })));
+                                        })));
+                      };
+                      tmp = publish(action._0);
+                      break;
+                  case "AbstractPublishPluginExtensionPointCommand" :
+                      tmp = publishCorePluginExtensionPointCommand(action._0);
+                      break;
+                  case "AbstractPublishExtensionPointCommand" :
+                      tmp = forwardCommand(action._0, action._1);
+                      break;
+                  case "AbstractCall" :
+                      tmp = handle(action._0);
+                      break;
+                  
+                }
+                return await tmp;
+              };
+              var applyOutgoingCommandAction = async function (action) {
+                switch (action.TAG) {
+                  case "AbstractPublishPluginExtensionPointCommand" :
+                      return publishCorePluginExtensionPointCommand(action._0);
+                  case "AbstractPublishExtensionPointCommand" :
+                      return forwardCommand(action._0, action._1);
+                  case "AbstractCall" :
+                      return handle(action._0);
+                  
+                }
+              };
+              var incomingEventHandler = async function (event$pJson, pluginDef) {
+                var event$p = Message$Reventless.event$p_decode(Id$ReventlessSpec.StringPure.t_decode, Spec.event_decode, event$pJson);
+                if (event$p.TAG === "Ok") {
+                  var event$p$1 = event$p._0;
+                  var commandActions = mapIncomingEvent(event$p$1, pluginDef, queryEngine);
+                  var apply = async function (commandActions) {
+                    return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction)));
+                  };
+                  await apply(commandActions);
+                  var p = Belt_Option.map(Js_dict.get(readModelNamesForSourceName, event$p$1.meta.service), (function (readModelNames) {
+                          return Promise.all(Belt_Array.keepMap(readModelNames, (function (readModelName) {
+                                            return Belt_Option.map(Js_dict.get(publishToReadModels, readModelName), (function (enqueueEvent) {
+                                                          return enqueueEvent(0, event$p$1.id, JSON.stringify(event$pJson));
+                                                        }));
+                                          })));
+                        }));
+                  if (p !== undefined) {
+                    await Caml_option.valFromOption(p);
+                    return ;
+                  } else {
+                    return ;
+                  }
+                }
+                console.log("Could not decode event':", event$p._0);
+              };
+              var outgoingEventHandler = function (event$pJson, pluginDef) {
+                var commandActions = mapOutgoingEvent(event$pJson, pluginDef);
+                return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction)));
+              };
+              return [
+                      incomingEventHandler,
+                      outgoingEventHandler
+                    ];
+            }));
+    self.incomingEventHandler = match[0];
+    self.outgoingEventHandler = match[1];
     var outputs = {
       name: name,
       extensionPointName: Spec.name,

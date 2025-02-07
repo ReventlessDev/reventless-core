@@ -9,10 +9,10 @@ type runtimeQueue = {
   arn: string,
 }
 
-let toRuntimeQueue = (queue: PulumiAws.SQS.Queue.t) => {
-  id: queue.id->Pulumi.Output.get,
-  name: queue.name->Pulumi.Output.get,
-  arn: queue.arn->Pulumi.Output.get,
+let toRuntimeQueue = ({id, name, urn}: Reventless.Adapter.unwrappedResource) => {
+  id,
+  name,
+  arn: urn,
 }
 
 let sendMessage = (queue, ~delay=?, messageBody) =>

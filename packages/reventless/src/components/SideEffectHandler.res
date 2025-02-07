@@ -15,7 +15,7 @@ module type T = {
     ~sideEffects: sideEffects,
     ~allEventTopics: EventTopic.allOutputs,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
-    ~scheduler: ReventlessSpec.Scheduler.t,
+    ~scheduler: Scheduler.operations,
     ~memorySize: int=?,
     ~timeout: int=?,
     ~policy1: Pulumi.Output.t<option<string>>,
@@ -24,8 +24,8 @@ module type T = {
   ) => component
 
   let enqueueEvent: component => Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>
-  let createSchedule: component => ReventlessSpec.Schedule.create
-  let deleteSchedule: component => ReventlessSpec.Schedule.delete
+  let createSchedule: component => Pulumi.Output.t<ReventlessSpec.Schedule.create>
+  let deleteSchedule: component => Pulumi.Output.t<ReventlessSpec.Schedule.delete>
 }
 
 module Make = (EventCollector: EventCollector.T): T => {
@@ -58,14 +58,18 @@ module Make = (EventCollector: EventCollector.T): T => {
     "enqueueEvent"
 
   @set
-  external setCreateSchedule: (component, ReventlessSpec.Schedule.create) => unit = "createSchedule"
+  external setCreateSchedule: (component, Pulumi.Output.t<ReventlessSpec.Schedule.create>) => unit =
+    "createSchedule"
   @get
-  external createSchedule: component => ReventlessSpec.Schedule.create = "createSchedule"
+  external createSchedule: component => Pulumi.Output.t<ReventlessSpec.Schedule.create> =
+    "createSchedule"
 
   @set
-  external setDeleteSchedule: (component, ReventlessSpec.Schedule.delete) => unit = "deleteSchedule"
+  external setDeleteSchedule: (component, Pulumi.Output.t<ReventlessSpec.Schedule.delete>) => unit =
+    "deleteSchedule"
   @get
-  external deleteSchedule: component => ReventlessSpec.Schedule.delete = "deleteSchedule"
+  external deleteSchedule: component => Pulumi.Output.t<ReventlessSpec.Schedule.delete> =
+    "deleteSchedule"
 
   let findSideEffect = (sideEffects, event'Json) =>
     event'Json
@@ -141,7 +145,7 @@ module Make = (EventCollector: EventCollector.T): T => {
     ~sideEffects,
     ~allEventTopics,
     ~queryEngine,
-    ~scheduler: ReventlessSpec.Scheduler.t,
+    ~scheduler,
     ~memorySize,
     ~timeout,
     ~policy1,
@@ -167,11 +171,20 @@ module Make = (EventCollector: EventCollector.T): T => {
       ~policy2,
       ~opts=Some(opts),
     )
-    let eventCollectorResources = (eventCollector->Component.extractOutputs).resources
+    let eventCollectorResources =
+      (eventCollector->Component.extractOutputs).resources->Adapter.resourcesToUnwrappedOutput
 
     self->setEnqueueEvent(enqueueEventFn(eventCollector))
-    self->setCreateSchedule(createScheduleFn(scheduler, eventCollectorResources))
-    self->setDeleteSchedule(deleteScheduleFn(scheduler, eventCollectorResources))
+    self->setCreateSchedule(
+      eventCollectorResources->Pulumi.Output.apply(eventCollectorResources =>
+        createScheduleFn(scheduler, eventCollectorResources)
+      ),
+    )
+    self->setDeleteSchedule(
+      eventCollectorResources->Pulumi.Output.apply(eventCollectorResources =>
+        deleteScheduleFn(scheduler, eventCollectorResources)
+      ),
+    )
 
     self->setOutputs({name, eventCollector: eventCollector->Component.extractOutputs})
   }

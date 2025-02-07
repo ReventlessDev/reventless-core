@@ -47,8 +47,10 @@ module Adapter = {
     let make: connectorMaker
   }
 
-  type remoteConnector = {remotePublish: ReventlessSpec.CommandTopic.publishJsons}
-  type remoteConnectorMaker = array<ReventlessSpec.Adapter.resource> => remoteConnector
+  type remoteConnector = {remotePublish: Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>}
+  type remoteConnectorMaker = Pulumi.Output.t<
+    array<Reventless.Adapter.unwrappedResource>,
+  > => remoteConnector
 
   module type RemoteConnector = {
     let make: remoteConnectorMaker

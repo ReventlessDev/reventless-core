@@ -1,7 +1,8 @@
 let make: Reventless.CommandTopic.Adapter.remoteConnectorMaker = resources => {
-  remotePublish: resources
-  ->Util.SQS_Runtime.findResource
-  ->Util.SQS_Runtime.fromResource
-  ->Util_SQS_Runtime.toRuntimeQueue
-  ->(CommandTopicConnector_SQS_Runtime.publishJsons(Util.SQS_Runtime.service, ...)),
+  remotePublish: resources->Pulumi.Output.apply(resources =>
+    resources
+    ->Util.SQS_Runtime.findUnwrappedResource
+    ->Util_SQS_Runtime.toRuntimeQueue
+    ->(CommandTopicConnector_SQS_Runtime.publishJsons(Util.SQS_Runtime.service, ...))
+  ),
 }

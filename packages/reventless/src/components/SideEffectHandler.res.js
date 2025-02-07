@@ -9,6 +9,7 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Logger$Reventless = require("../util/Logger.res.js");
+var Adapter$Reventless = require("../adapter/Adapter.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.res.js");
 var Schedule$Reventless = require("../util/Schedule.res.js");
@@ -43,16 +44,6 @@ function Make(EventCollector) {
                   }
                   console.log("SideEffects.map: Invalid JSON object");
                 }));
-  };
-  var createScheduleFn = function (scheduler, queueResources) {
-    return async function (schedule) {
-      return await Schedule$Reventless.create(scheduler, queueResources)(schedule);
-    };
-  };
-  var deleteScheduleFn = function (scheduler, queueResources) {
-    return async function (scheduleName) {
-      return await Schedule$Reventless.$$delete(scheduler, queueResources)(scheduleName);
-    };
   };
   var enqueueEventFn = function (eventCollector) {
     return EventCollector.enqueueEvent(eventCollector).apply(function (enqueueEvent) {
@@ -109,10 +100,18 @@ function Make(EventCollector) {
                           }))));
     };
     var eventCollector = EventCollector.make(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventsHandler, memorySize, timeout, policy1, policy2, opts);
-    var eventCollectorResources = Component$Reventless.extractOutputs(eventCollector).resources;
+    var eventCollectorResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(eventCollector).resources);
     self.enqueueEvent = enqueueEventFn(eventCollector);
-    self.createSchedule = createScheduleFn(scheduler, eventCollectorResources);
-    self.deleteSchedule = deleteScheduleFn(scheduler, eventCollectorResources);
+    self.createSchedule = eventCollectorResources.apply(function (eventCollectorResources) {
+          return async function (schedule) {
+            return await Schedule$Reventless.create(scheduler, eventCollectorResources)(schedule);
+          };
+        });
+    self.deleteSchedule = eventCollectorResources.apply(function (eventCollectorResources) {
+          return async function (scheduleName) {
+            return await Schedule$Reventless.$$delete(scheduler, eventCollectorResources)(scheduleName);
+          };
+        });
     var outputs = {
       name: name,
       eventCollector: Component$Reventless.extractOutputs(eventCollector)

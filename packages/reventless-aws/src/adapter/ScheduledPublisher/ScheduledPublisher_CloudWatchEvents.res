@@ -38,7 +38,7 @@ let make: scheduledPublisherMaker = (~name as _, ~opts) => {
       urn: ""->Pulumi.Output.make,
       info: ""->Pulumi.Output.make,
     },
-    create: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(role),
-    delete: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
+    createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(role),
+    deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
   }
 }

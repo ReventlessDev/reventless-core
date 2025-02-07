@@ -16,8 +16,7 @@ function Make(ScheduledPublisher) {
       parent: opts_parent
     };
     var scheduledPublisher = ScheduledPublisher.make(name, opts);
-    self.createSchedule = scheduledPublisher.create;
-    self.deleteSchedule = scheduledPublisher.delete;
+    self.operations = scheduledPublisher.operations;
     var outputs = {
       resource: scheduledPublisher.resource
     };
@@ -30,7 +29,10 @@ function Make(ScheduledPublisher) {
     return new Component(prim0, prim1, construct, opts);
   };
   return {
-          make: make
+          make: make,
+          operations: (function (prim) {
+              return prim.operations;
+            })
         };
 }
 

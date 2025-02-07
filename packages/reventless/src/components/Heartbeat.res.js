@@ -12,62 +12,62 @@ var Cloudwatch_EventRule$PulumiAws = require("@reventless/bs-pulumi-aws/src/Clou
 var Cloudwatch_EventTarget$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
+function setOutputs(self, outputs) {
+  self.setOutputs(outputs);
+  return self.registerOutputs(outputs);
+}
+
 function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
   var opts_parent = Caml_option.some(self);
   var opts = {
     parent: opts_parent
   };
-  var publishHeartbeatCommand = function () {
-    var msgId = Message$Reventless.uuid();
-    return publishToCorePluginExtensionPoint([{
-                  id: id,
-                  meta: {
-                    service: PluginExtensionPointSpec$ReventlessSpec.name,
-                    time: Message$Reventless.nowAsISOString(),
-                    ip: "",
-                    user: "Heartbeat",
-                    msgId: msgId,
-                    correlationId: msgId
-                  },
-                  commandJson: PluginExtensionPointSpec$ReventlessSpec.command_encode({
-                        TAG: "Heartbeat",
+  publishToCorePluginExtensionPoint.apply(function (publishToCorePluginExtensionPoint) {
+        var publishHeartbeatCommand = function () {
+          var msgId = Message$Reventless.uuid();
+          return publishToCorePluginExtensionPoint([{
+                        id: id,
+                        meta: {
+                          service: PluginExtensionPointSpec$ReventlessSpec.name,
+                          time: Message$Reventless.nowAsISOString(),
+                          ip: "",
+                          user: "Heartbeat",
+                          msgId: msgId,
+                          correlationId: msgId
+                        },
+                        commandJson: PluginExtensionPointSpec$ReventlessSpec.command_encode({
+                              TAG: "Heartbeat",
+                              _0: timeout
+                            }),
+                        delay: undefined
+                      }]);
+        };
+        var childName = ComponentType$Reventless.name(name, "Heartbeat");
+        var heartBeatCallback = function (param, param$1) {
+          return publishHeartbeatCommand();
+        };
+        var cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + childName), {
+              description: "Send a heartbeat to the Core Plugin ExtensionPoint",
+              scheduleExpression: Caml_option.some(Cloudwatch_EventRule$PulumiAws.ScheduleExpression.every({
+                        TAG: "Minutes",
                         _0: timeout
-                      }),
-                  delay: undefined
-                }]);
-  };
-  var childName = ComponentType$Reventless.name(name, "Heartbeat");
-  var heartBeatCallback = function (param, param$1) {
-    return publishHeartbeatCommand();
-  };
-  var cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + childName), {
-        description: "Send a heartbeat to the Core Plugin ExtensionPoint",
-        scheduleExpression: Caml_option.some(Cloudwatch_EventRule$PulumiAws.ScheduleExpression.every({
-                  TAG: "Minutes",
-                  _0: timeout
-                }))
-      }, opts);
-  var heartbeatLambda = new (Aws.lambda.CallbackFunction)(childName, Lambda$PulumiAws.CallbackFunction.Args.make(heartBeatCallback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
-  var cloudwatchEventTarget = new (Aws.cloudwatch.EventTarget)(childName, {
-        rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
-        arn: heartbeatLambda.arn
-      }, opts);
-  var heartbeatLambdaPermission = new (Aws.lambda.Permission)(childName, {
-        action: "lambda:InvokeFunction",
-        function: heartbeatLambda.arn,
-        principal: "events.amazonaws.com",
-        sourceArn: cloudwatchEventRule.arn
-      }, opts);
-  self.setOutputs({
-        name: name
+                      }))
+            }, opts);
+        var heartbeatLambda = new (Aws.lambda.CallbackFunction)(childName, Lambda$PulumiAws.CallbackFunction.Args.make(heartBeatCallback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
+        new (Aws.cloudwatch.EventTarget)(childName, {
+              rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
+              arn: heartbeatLambda.arn
+            }, opts);
+        new (Aws.lambda.Permission)(childName, {
+              action: "lambda:InvokeFunction",
+              function: heartbeatLambda.arn,
+              principal: "events.amazonaws.com",
+              sourceArn: cloudwatchEventRule.arn
+            }, opts);
       });
-  var __x = {
-    name: name,
-    cloudwatchEventRule: cloudwatchEventRule,
-    cloudwatchEventTarget: cloudwatchEventTarget,
-    heartbeatLambdaPermission: heartbeatLambdaPermission
-  };
-  return self.registerOutputs(__x);
+  return setOutputs(self, {
+              name: name
+            });
 }
 
 function make(id, name, timeoutOpt, publishToCorePluginExtensionPoint, opts) {
@@ -82,6 +82,7 @@ function make(id, name, timeoutOpt, publishToCorePluginExtensionPoint, opts) {
 var componentType = "Heartbeat";
 
 exports.componentType = componentType;
+exports.setOutputs = setOutputs;
 exports.construct = construct;
 exports.make = make;
 /* ./Component Not a pure module */

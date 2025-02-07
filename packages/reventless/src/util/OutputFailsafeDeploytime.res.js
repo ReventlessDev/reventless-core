@@ -16,4 +16,4 @@ function flatMap(output, f) {
 
 exports.apply = apply;
 exports.flatMap = flatMap;
-/* @pulumi/pulumi Not a pure module */
+/* Output-Pulumi Not a pure module */

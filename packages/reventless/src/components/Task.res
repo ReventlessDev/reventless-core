@@ -19,7 +19,7 @@ type queryBucketName = string => string
 
 type maker = (
   ~queryBucketName: queryBucketName,
-  ~scheduler: ReventlessSpec.Scheduler.t,
+  ~scheduler: Scheduler.operations,
   ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
   ~queryEngine: ReventlessSpec.QueryEngine.t,
   ~allAggregates: Js.Dict.t<Aggregate.outputs>,
@@ -28,7 +28,7 @@ type maker = (
 
 type setup = (
   . ReventlessSpec.QueryEngine.t,
-  ReventlessSpec.Scheduler.t,
+  Scheduler.operations,
   publishCommands,
   queryBucketName,
   EventTopic.allOutputs,
@@ -57,7 +57,7 @@ let setOutputs = (self, outputs) => {
 let construct = (
   ~setup: setup,
   ~queryBucketName,
-  ~scheduler: ReventlessSpec.Scheduler.t,
+  ~scheduler,
   ~publishToAggregates,
   ~queryEngine,
   ~allAggregates,

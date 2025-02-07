@@ -9,5 +9,5 @@ module type T = {
   let apiRole: role
   let userPoolId: Pulumi.Output.t<string>
 
-  let scheduler: ReventlessSpec.Scheduler.t
+  let scheduler: Scheduler.t
 }

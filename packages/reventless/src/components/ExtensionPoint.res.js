@@ -7,8 +7,10 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Logger$Reventless = require("../util/Logger.res.js");
+var Adapter$Reventless = require("../adapter/Adapter.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.res.js");
 var Schedule$Reventless = require("../util/Schedule.res.js");
@@ -58,6 +60,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     var commandTopic = {
       contents: undefined
     };
+    var commandTopicResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(Belt_Option.getExn(commandTopic.contents)).resources);
     var partial_arg = {
       Id: Id$ReventlessSpec.$$String,
       name: name,
@@ -118,7 +121,12 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
               _0: reference$1
             };
     };
-    var outgoingEventHandler = EventTopic.publish(eventTopic).apply(function (publish) {
+    var outgoingEventHandler = Pulumi.all([
+            EventTopic.publish(eventTopic),
+            commandTopicResources
+          ]).apply(function (param) {
+          var commandTopicResources = param[1];
+          var publish = param[0];
           var applyEventAction = async function (action) {
             switch (action.TAG) {
               case "AbstractPublishEvent" :
@@ -155,16 +163,18 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
             }
           };
           return async function (event$pJson, _pluginDef) {
-            var commandTopic$1 = Belt_Option.getExn(commandTopic.contents);
-            var eventActions = mapOutgoingEvent(event$pJson, Mappings.mappings, scheduler, Component$Reventless.extractOutputs(commandTopic$1).resources, queryEngine);
+            Belt_Option.getExn(commandTopic.contents);
+            var eventActions = mapOutgoingEvent(event$pJson, Mappings.mappings, scheduler, commandTopicResources, queryEngine);
             return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventActions, applyEventAction)));
           };
         });
-    var incomingCommandsHandler = function (topicItems) {
-      var commandTopic$1 = Belt_Option.getExn(commandTopic.contents);
-      var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, scheduler, queryEngine, Component$Reventless.extractOutputs(commandTopic$1).resources);
-      return Promise.all(Belt_Array.map(commandActions, applyCommandAction));
-    };
+    var incomingCommandsHandler = commandTopicResources.apply(function (commandTopicResources) {
+          return async function (topicItems) {
+            Belt_Option.getExn(commandTopic.contents);
+            var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, scheduler, queryEngine, commandTopicResources);
+            return await Promise.all(Belt_Array.map(commandActions, applyCommandAction));
+          };
+        });
     var partial_arg$2 = {
       Id: Id$ReventlessSpec.$$String,
       command_encode: command_encode,
@@ -174,7 +184,9 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     var CommandTopic = (function (param) {
           return partial_arg$3(partial_arg$2, param);
         })(CommandTopicAdapter);
-    commandTopic.contents = Caml_option.some(CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts));
+    incomingCommandsHandler.apply(function (incomingCommandsHandler) {
+          commandTopic.contents = Caml_option.some(CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts));
+        });
     self.outgoingEventHandler = outgoingEventHandler;
     var outputs = {
       name: name$1,

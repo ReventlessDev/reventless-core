@@ -17,7 +17,7 @@ type maker = (
   ~extensionPoints: array<module(ExtensionPoint.T)>,
   ~aggregates: array<module(Aggregate.T)>,
   ~readModels: array<module(ReadModel.T)>,
-  ~scheduler: ReventlessSpec.Scheduler.t,
+  ~scheduler: Scheduler.operations,
 ) => component
 
 module type T = {
@@ -59,7 +59,7 @@ module Make = (
     ~extensionPoints: array<module(ExtensionPoint.T)>,
     ~aggregates: array<module(Aggregate.T)>,
     ~readModels: array<module(ReadModel.T)>,
-    ~scheduler: ReventlessSpec.Scheduler.t,
+    ~scheduler: Scheduler.operations,
     self,
     _,
   ) => {

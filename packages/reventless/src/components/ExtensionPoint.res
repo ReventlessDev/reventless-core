@@ -25,7 +25,7 @@ type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Pr
 module type T = {
   let make: (
     ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
-    ~scheduler: ReventlessSpec.Scheduler.t,
+    ~scheduler: Scheduler.operations,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
@@ -133,6 +133,10 @@ module Make = (
     let childName = name->Js.String2.replace(".", "")->ComponentType.name(componentType)
 
     let commandTopic: ref<option<CommandTopic.component>> = ref(None)
+    let commandTopicResources =
+      (
+        commandTopic.contents->Belt.Option.getExn->Component.extractOutputs
+      ).resources->Adapter.resourcesToUnwrappedOutput
 
     module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
     let eventTopic = EventTopic.make(~name=childName, ~storageResources=[], ~opts)
@@ -171,9 +175,9 @@ module Make = (
       }
 
     let outgoingEventHandler =
-      eventTopic
-      ->EventTopic.publish
-      ->Pulumi.Output.apply(publish => {
+      (eventTopic->EventTopic.publish, commandTopicResources)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((publish, commandTopicResources)) => {
         let applyEventAction = async action =>
           switch action {
           | ExtensionPointMapping.AbstractPublishEvent(event') =>
@@ -198,7 +202,7 @@ module Make = (
             event'Json,
             Mappings.mappings,
             scheduler,
-            (commandTopic->Component.extractOutputs).resources,
+            commandTopicResources,
             queryEngine,
           )
 
@@ -206,22 +210,28 @@ module Make = (
         }
       })
 
-    let incomingCommandsHandler = topicItems => {
-      let commandTopic = commandTopic.contents->Belt.Option.getExn
-      let commandActions =
-        topicItems->Mapper.mapIncomingCommands(
-          Mappings.mappings,
-          scheduler,
-          queryEngine,
-          (commandTopic->Component.extractOutputs).resources,
-        )
+    let incomingCommandsHandler =
+      commandTopicResources->Pulumi.Output.apply(commandTopicResources =>
+        async topicItems => {
+          let commandTopic = commandTopic.contents->Belt.Option.getExn
+          let commandActions =
+            topicItems->Mapper.mapIncomingCommands(
+              Mappings.mappings,
+              scheduler,
+              queryEngine,
+              commandTopicResources,
+            )
 
-      commandActions->Belt.Array.map(applyCommandAction)->Js.Promise.all
-    }
+          await commandActions->Belt.Array.map(applyCommandAction)->Js.Promise.all
+        }
+      )
 
     module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter)
-    commandTopic :=
-      Some(CommandTopic.make(~name=childName, ~commandsHandler=incomingCommandsHandler, ~opts))
+    let _ =
+      incomingCommandsHandler->Pulumi.Output.apply(incomingCommandsHandler =>
+        commandTopic :=
+          Some(CommandTopic.make(~name=childName, ~commandsHandler=incomingCommandsHandler, ~opts))
+      )
 
     self->setOutgoingEventHandler(outgoingEventHandler)
 

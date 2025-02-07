@@ -62,7 +62,7 @@ let nextTime = (h: hour, m: minute) => {
 exception ScheduleNotCreated(schedule)
 exception ScheduleNotDeleted(string)
 
-let create = (scheduler: ReventlessSpec.Scheduler.t, queueResources) =>
+let create = (scheduler: Scheduler.operations, queueResources) =>
   async schedule => {
     let name = schedule.name->AWS.validateName
     let schedule = {...schedule, name}
@@ -76,7 +76,7 @@ let create = (scheduler: ReventlessSpec.Scheduler.t, queueResources) =>
     }
   }
 
-let delete = (scheduler: ReventlessSpec.Scheduler.t, queueResources) =>
+let delete = (scheduler: Scheduler.operations, queueResources) =>
   async name => {
     let name = name->AWS.validateName
     let deleteSchedule = scheduler.deleteSchedule

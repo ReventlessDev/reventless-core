@@ -6,9 +6,11 @@ var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicCon
 
 function make(resources) {
   return {
-          remotePublish: (function (extra) {
-              return CommandTopicConnector_SQS_Runtime$ReventlessAws.publishJsons(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(Util_SQS_Runtime$ReventlessAws.fromResource(Util_SQS_Runtime$ReventlessAws.findResource(resources))), Util_SQS_Runtime$ReventlessAws.service, extra);
-            })
+          remotePublish: resources.apply(function (resources) {
+                return function (extra) {
+                  return CommandTopicConnector_SQS_Runtime$ReventlessAws.publishJsons(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(Util_SQS_Runtime$ReventlessAws.findUnwrappedResource(resources)), Util_SQS_Runtime$ReventlessAws.service, extra);
+                };
+              })
         };
 }
 
