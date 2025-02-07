@@ -52,8 +52,8 @@ function createSchedule(role) {
       await CloudWatchEvents$AwsSdk.PutTargetsCommand.send(new ClientCloudwatchEvents.PutTargetsCommand({
                 Rule: schedule.name,
                 Targets: [{
-                    Arn: resource.urn.get(),
-                    Id: resource.name.get(),
+                    Arn: resource.urn,
+                    Id: resource.name,
                     Input: schedule.payload
                   }]
               }));
@@ -70,7 +70,7 @@ async function deleteSchedule(queueResources, name) {
     var resource = queueResources[0];
     await CloudWatchEvents$AwsSdk.RemoveTargetsCommand.send(new ClientCloudwatchEvents.RemoveTargetsCommand({
               Rule: name,
-              Ids: [resource.name.get()]
+              Ids: [resource.name]
             }));
     CloudWatchEvents$AwsSdk.DeleteRuleCommand.send(new ClientCloudwatchEvents.DeleteRuleCommand({
               Name: name
