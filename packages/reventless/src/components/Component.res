@@ -1,15 +1,20 @@
-type t<'component, 'outputs>
+type t<'component, 'outputs, 'operations>
+
+@set
+external setOperations: (t<'component, 'outputs, 'operations>, 'operations) => unit = "operations"
+@get
+external operations: t<'component, 'outputs, 'operations> => 'operations = "operations"
 
 // in Component.js setOutputs(_), which is called in the constructor sets the output keys
 @get
-external getOutputKeys: t<'component, 'outputs> => array<string> = "outputKeys"
+external getOutputKeys: t<'component, 'outputs, 'operations> => array<string> = "outputKeys"
 
 type propValue
 @val @scope("Object")
 external objFromEntries: array<(string, propValue)> => 'b = "fromEntries"
 
 type obj
-external toObj: t<'component, 'outputs> => obj = "%identity"
+external toObj: t<'component, 'outputs, 'operations> => obj = "%identity"
 let unsafeGetProp: (obj, string) => propValue = %raw(`
   function(obj, prop) {
     return obj[prop]
@@ -26,13 +31,32 @@ let extractOutputs = component =>
 let extractWrappedOutputs = component =>
   component->Pulumi.Output.apply(component => component->extractOutputs)
 
-let extractMultipleOutputs: array<t<'component, 'outputs>> => array<'outputs> = components =>
-  components->Belt.Array.map(extractOutputs)
+let extractMultipleOutputs: array<t<'component, 'outputs, 'operations>> => array<
+  'outputs,
+> = components => components->Belt.Array.map(extractOutputs)
 
-external toPulumiResource: t<'component, 'outputs> => Pulumi.Resource.t = "%identity"
-// external toUnknown: t<'component, 'outputs> => t<unknown, 'outputs> = "%identity"
+external toPulumiResource: t<'component, 'outputs, 'operations> => Pulumi.Resource.t = "%identity"
 
-// TODO:
-//  - adapt components make function to return this t('outputs)
-//  - add a `getOutputs` function to each component
-//  - use getOutputs in each parent's component to set only the child's outputs as the parent's outputs
+type constructed
+
+@module("./Component") @new
+external make: (
+  ~componentType: string,
+  ~name: string,
+  ~construct: 'construct,
+  ~opts: option<Pulumi.ComponentResource.options>,
+) => 'component = "default"
+
+@send
+external registerOutputs: ('component, 'outputs) => constructed = "registerOutputs"
+@send
+external setOutputs: ('component, 'outputs) => unit = "setOutputs"
+
+let setOutputs = (self, outputs) => {
+  self->setOutputs(outputs)
+  self->registerOutputs(outputs)
+}
+
+module type T = {
+  let make: (~opts: Pulumi.ComponentResource.options=?) => 'component
+}

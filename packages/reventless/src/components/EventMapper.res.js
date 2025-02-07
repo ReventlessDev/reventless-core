@@ -247,7 +247,7 @@ function Make(Target, EventCollector, Mappings) {
     };
   };
   var construct = function (allEventTopics, queryEngine, publishJsons, memorySize, timeout, self, name) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };

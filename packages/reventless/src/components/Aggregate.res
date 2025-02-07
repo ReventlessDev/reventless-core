@@ -25,7 +25,7 @@ let filterEventTopics = (allAggregates, aggregateNames) =>
 type name = string
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
 

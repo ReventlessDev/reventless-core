@@ -21,7 +21,7 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
     return self.registerOutputs(outputs);
   };
   var construct = function (version, extensionPoints, aggregates, readModels, scheduler, self, param) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };

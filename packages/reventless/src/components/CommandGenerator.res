@@ -3,7 +3,7 @@ let componentType = ComponentType.CommandGenerator
 type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec

@@ -32,11 +32,11 @@ var Adapter = {};
 
 function Make(Config, QueryDbStorage, Handler) {
   var construct = function (counterEventsHandler, ttl, self, name) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };
-    var opts2_parent = Caml_option.some(self);
+    var opts2_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts2 = {
       parent: opts2_parent
     };

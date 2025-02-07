@@ -11,7 +11,7 @@ type fullQualifiedStackName = {
 }
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 module type T = {
   let make: (~opts: Pulumi.ComponentResource.options=?) => component

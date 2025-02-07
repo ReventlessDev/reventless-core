@@ -3,7 +3,7 @@ let componentType = ComponentType.Heartbeat
 type outputs = {name: string}
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 type constructed
 type construct = (component, string) => constructed

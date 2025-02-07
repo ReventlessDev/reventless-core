@@ -10,7 +10,7 @@ type outputs = {
 }
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 type maker = (
   ~version: string,

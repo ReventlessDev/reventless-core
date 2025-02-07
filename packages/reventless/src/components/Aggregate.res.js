@@ -70,7 +70,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
   };
   var EventLog = partial_arg$6(EventLogStorage, EventTopicPublisher);
   var construct = function (self, name) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };

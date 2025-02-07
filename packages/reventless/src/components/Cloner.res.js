@@ -6,6 +6,7 @@ var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
+var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
 var noRunner = {
@@ -18,7 +19,7 @@ var Adapter = {
 
 function Make(Config, Runner) {
   var construct = function (api, self, name) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };

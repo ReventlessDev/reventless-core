@@ -86,7 +86,7 @@ function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEvent
 function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPointRemoteConnector) {
   var construct = function (version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, self, name) {
     var id = makeId(name, version);
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };

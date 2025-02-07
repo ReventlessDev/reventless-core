@@ -3,6 +3,7 @@
 
 var Component = require("./Component").default;
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var CommandGenerator_Runtime$Reventless = require("./CommandGenerator_Runtime.res.js");
 
@@ -12,7 +13,7 @@ function Make(Config, Spec, Behaviour, Resolvers) {
   var partial_arg = CommandGenerator_Runtime$Reventless.Make;
   var Runtime = partial_arg(Spec, Behaviour);
   var construct = function (self, name, api, publishJsons) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };

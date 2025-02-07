@@ -5,6 +5,7 @@ var Component = require("./Component").default;
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Logger$Reventless = require("../util/Logger.res.js");
+var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var CommandTopic_Runtime$Reventless = require("./CommandTopic_Runtime.res.js");
 
@@ -27,7 +28,7 @@ function Make(Spec, Connector) {
     };
   };
   var construct = function (memorySize, timeout, self, name, commandsHandler) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };

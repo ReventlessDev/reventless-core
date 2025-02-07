@@ -6,7 +6,7 @@ let componentType = ComponentType.EventCollector
 type outputs = {name: string, resources: array<resource>}
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 type eventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 

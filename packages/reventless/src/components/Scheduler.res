@@ -16,13 +16,7 @@ type operations = {
 }
 
 type t
-type component = Component.t<t, outputs>
-
-module type T = {
-  let make: (~opts: Pulumi.ComponentResource.options=?) => component
-
-  let operations: component => operations
-}
+type component = Component.t<t, outputs, operations>
 
 module Adapter = {
   let publisher = "Publisher"
@@ -40,44 +34,18 @@ module Adapter = {
   }
 }
 
-module Make = (ScheduledPublisher: Adapter.ScheduledPublisher): T => {
-  type constructed
-  type construct = (component, string) => constructed
-
-  @module("./Component") @new
-  external make: (
-    ~componentType: string,
-    ~name: string,
-    ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.options>,
-  ) => component = "default"
-
-  @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send
-  external setOutputs: (component, outputs) => unit = "setOutputs"
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs)
-    self->registerOutputs(outputs)
-  }
-
-  @set
-  external setOperations: (component, operations) => unit = "operations"
-  @get
-  external operations: component => operations = "operations"
-
-  let construct = (self, name) => {
-    let opts = {Pulumi.CustomResourceOptions.parent: self->Pulumi.Resource.makeFromJs}
+module Make = (ScheduledPublisher: Adapter.ScheduledPublisher) => {
+  let construct = (self, name): Component.constructed => {
+    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let scheduledPublisher = ScheduledPublisher.make(~name, ~opts)
 
-    self->setOperations(scheduledPublisher.operations)
-
-    self->setOutputs({resource: scheduledPublisher.resource})
+    self->Component.setOperations(scheduledPublisher.operations)
+    self->Component.setOutputs({resource: scheduledPublisher.resource})
   }
 
-  let make = (~opts=?) =>
-    make(
+  let make = (~opts=?): component =>
+    Component.make(
       ~componentType=componentType->ComponentType.toString,
       ~name=componentType->ComponentType.toName,
       ~construct,

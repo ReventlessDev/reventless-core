@@ -5,7 +5,7 @@ type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 exception NotPublishedToConnector(Js.Promise.error)
 

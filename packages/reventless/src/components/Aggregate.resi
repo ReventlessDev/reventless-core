@@ -13,8 +13,10 @@ let allEventTopics: Js.Dict.t<outputs> => Js.Dict.t<EventTopic.outputs>
 let filterEventTopics: (Js.Dict.t<outputs>, Belt.Set.String.t) => Js.Dict.t<EventTopic.outputs>
 
 type name = string
+
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
+
 type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec

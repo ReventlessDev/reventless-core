@@ -10,7 +10,7 @@ let allQueryDbs = allReadModels =>
   Js.Dict.map((readModel: outputs) => readModel.queryDb, allReadModels)
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 module type T = {
   module Spec: ReventlessSpec.ReadModel_Spec.T

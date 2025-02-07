@@ -6,7 +6,7 @@ type outputs = {
   aggregateNames: array<string>,
 }
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 type name = string
 

@@ -11,7 +11,7 @@ and outputs = {
 type allOutputs = Js.Dict.t<outputs>
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 let allResolversMakers = allQueryDbs =>
   allQueryDbs

@@ -7,6 +7,7 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var Message$Reventless = require("../Message.res.js");
+var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var Cloudwatch_EventRule$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.js");
 var Cloudwatch_EventTarget$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.js");
@@ -18,7 +19,7 @@ function setOutputs(self, outputs) {
 }
 
 function construct(id, timeout, publishToCorePluginExtensionPoint, self, name) {
-  var opts_parent = Caml_option.some(self);
+  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
   var opts = {
     parent: opts_parent
   };

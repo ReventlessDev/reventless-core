@@ -6,6 +6,7 @@ var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Aggregate$Reventless = require("./Aggregate.res.js");
+var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
 function setOutputs(self, outputs) {
@@ -14,7 +15,7 @@ function setOutputs(self, outputs) {
 }
 
 function construct(setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, self, _name) {
-  var opts_parent = Caml_option.some(self);
+  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
   var opts = {
     parent: opts_parent
   };

@@ -2,6 +2,7 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Component = require("./Component").default;
 
 var unsafeGetProp = (function(obj, prop) {
     return obj[prop]
@@ -26,7 +27,33 @@ function extractMultipleOutputs(components) {
   return Belt_Array.map(components, extractOutputs);
 }
 
+function make(prim0, prim1, prim2, prim3) {
+  return new Component(prim0, prim1, prim2, prim3);
+}
+
+function setOutputs(self, outputs) {
+  self.setOutputs(outputs);
+  return self.registerOutputs(outputs);
+}
+
+function setOperations(prim0, prim1) {
+  prim0.operations = prim1;
+}
+
+function operations(prim) {
+  return prim.operations;
+}
+
+function toPulumiResource(prim) {
+  return prim;
+}
+
+exports.setOperations = setOperations;
+exports.operations = operations;
 exports.extractOutputs = extractOutputs;
 exports.extractMultipleOutputs = extractMultipleOutputs;
 exports.extractWrappedOutputs = extractWrappedOutputs;
-/* No side effect */
+exports.toPulumiResource = toPulumiResource;
+exports.setOutputs = setOutputs;
+exports.make = make;
+/* ./Component Not a pure module */

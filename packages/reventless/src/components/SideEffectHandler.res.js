@@ -53,7 +53,7 @@ function Make(EventCollector) {
               });
   };
   var construct = function (sideEffects, allEventTopics, queryEngine, scheduler, memorySize, timeout, policy1, policy2, self, name) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };

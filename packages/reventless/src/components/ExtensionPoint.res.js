@@ -52,7 +52,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     }
   };
   var construct = function (publishToAggregates, scheduler, queryEngine, self, name$1) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };
@@ -163,14 +163,12 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
             }
           };
           return async function (event$pJson, _pluginDef) {
-            Belt_Option.getExn(commandTopic.contents);
             var eventActions = mapOutgoingEvent(event$pJson, Mappings.mappings, scheduler, commandTopicResources, queryEngine);
             return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventActions, applyEventAction)));
           };
         });
     var incomingCommandsHandler = commandTopicResources.apply(function (commandTopicResources) {
           return async function (topicItems) {
-            Belt_Option.getExn(commandTopic.contents);
             var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, scheduler, queryEngine, commandTopicResources);
             return await Promise.all(Belt_Array.map(commandActions, applyCommandAction));
           };

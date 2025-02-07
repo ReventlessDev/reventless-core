@@ -18,7 +18,7 @@ type unwrappedOutputs = {
 }
 
 type t
-type component = Component.t<t, outputs>
+type component = Component.t<t, outputs, unit>
 
 type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
 
@@ -197,7 +197,6 @@ module Make = (
           }
 
         async (event'Json, _pluginDef) => {
-          let commandTopic = commandTopic.contents->Belt.Option.getExn
           let eventActions = Mapper.mapOutgoingEvent(
             event'Json,
             Mappings.mappings,
@@ -213,7 +212,6 @@ module Make = (
     let incomingCommandsHandler =
       commandTopicResources->Pulumi.Output.apply(commandTopicResources =>
         async topicItems => {
-          let commandTopic = commandTopic.contents->Belt.Option.getExn
           let commandActions =
             topicItems->Mapper.mapIncomingCommands(
               Mappings.mappings,

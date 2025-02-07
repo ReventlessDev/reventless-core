@@ -6,6 +6,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var QueryDb_Runtime$Reventless = require("./QueryDb_Runtime.res.js");
 
@@ -35,7 +36,7 @@ var Adapter = {
 
 function Make(Config, Spec, $$Storage, Resolvers) {
   var construct = function (ttl, self, name, api, apiRole) {
-    var opts_parent = Caml_option.some(self);
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };
