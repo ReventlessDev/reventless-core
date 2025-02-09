@@ -1,9 +1,13 @@
 type t<'component, 'outputs, 'operations>
 
 @set
-external setOperations: (t<'component, 'outputs, 'operations>, 'operations) => unit = "operations"
+external setOperations: (
+  t<'component, 'outputs, 'operations>,
+  Pulumi.Output.t<'operations>,
+) => unit = "operations"
 @get
-external operations: t<'component, 'outputs, 'operations> => 'operations = "operations"
+external operations: t<'component, 'outputs, 'operations> => Pulumi.Output.t<'operations> =
+  "operations"
 
 // in Component.js setOutputs(_), which is called in the constructor sets the output keys
 @get

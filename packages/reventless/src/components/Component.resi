@@ -1,7 +1,7 @@
 type t<'component, 'outputs, 'operations>
 
-let setOperations: (t<'component, 'outputs, 'operations>, 'operations) => unit
-let operations: t<'component, 'outputs, 'operations> => 'operations
+let setOperations: (t<'component, 'outputs, 'operations>, Pulumi.Output.t<'operations>) => unit
+let operations: t<'component, 'outputs, 'operations> => Pulumi.Output.t<'operations>
 
 let extractOutputs: t<'component, 'outputs, 'operations> => 'outputs
 let extractMultipleOutputs: array<t<'component, 'outputs, 'operations>> => array<'outputs>

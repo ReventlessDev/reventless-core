@@ -142,8 +142,10 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
     var pureOutputs = Pulumi.all([
             coreExtensionPoints,
             Pulumi.all(publishToAggregates),
-            Pulumi.all(publishToReadModels)
+            Pulumi.all(publishToReadModels),
+            scheduler
           ]).apply(function (param) {
+          var scheduler = param[3];
           var publishToReadModels = param[2];
           var publishToAggregates = param[1];
           var coreExtensionPoints = param[0];

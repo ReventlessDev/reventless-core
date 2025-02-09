@@ -30,7 +30,7 @@ module type T = {
     ~aggregates: array<module(Aggregate.T)>,
     ~readModels: array<module(ReadModel.T)>,
     ~taskMakers: array<Task.maker>,
-    ~scheduler: Scheduler.operations,
+    ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }
@@ -149,7 +149,7 @@ module Make = (
     ~aggregates: array<module(Aggregate.T)>,
     ~readModels: array<module(ReadModel.T)>,
     ~taskMakers: array<Task.maker>,
-    ~scheduler: Scheduler.operations,
+    ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     self,
     name,
   ) => {
@@ -219,9 +219,15 @@ module Make = (
         coreExtensionPoints,
         publishToAggregates->Pulumi.Output.allDict,
         publishToReadModels->Pulumi.Output.allDict,
+        scheduler,
       )
-      ->Pulumi.Output.all3
-      ->Pulumi.Output.apply(((coreExtensionPoints, publishToAggregates, publishToReadModels)) => {
+      ->Pulumi.Output.all4
+      ->Pulumi.Output.apply(((
+        coreExtensionPoints,
+        publishToAggregates,
+        publishToReadModels,
+        scheduler,
+      )) => {
         let (extensionPointsOutputs, extensionPointsHandlers) =
           extensionPoints
           ->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) => {

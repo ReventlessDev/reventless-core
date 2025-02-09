@@ -22,7 +22,7 @@ module Adapter = {
   let publisher = "Publisher"
   type scheduledPublisher = {
     resource: resource,
-    operations: operations,
+    operations: Pulumi.Output.t<operations>,
   }
   type scheduledPublisherMaker = (
     ~name: string,
