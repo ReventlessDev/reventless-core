@@ -239,7 +239,9 @@ module Make = (
             )
             (
               extensionPoint->Component.extractOutputs,
-              {outgoing: extensionPoint->ExtensionPoint.outgoingEventHandler->Pulumi.Output.unwrap},
+              extensionPoint
+              ->Component.operations
+              ->Pulumi.Output.apply(({outgoingEventHandler}) => {outgoing: outgoingEventHandler}),
             )
           })
           ->Belt.Array.unzip
@@ -412,12 +414,14 @@ module Make = (
             pluginDefinition,
             connectPluginExtensionIncomingEventHandler,
             extensionsHandlers->Pulumi.Output.all,
+            extensionPointsHandlers->Pulumi.Output.all,
           )
-          ->Pulumi.Output.all3
+          ->Pulumi.Output.all4
           ->Pulumi.Output.apply(((
             pluginDefinition,
             connectPluginExtensionIncomingEventHandler,
             extensionsHandlers,
+            extensionPointsHandlers,
           )) => {
             module Runtime = Plugin_Runtime.Make({
               let pluginDefinition = pluginDefinition

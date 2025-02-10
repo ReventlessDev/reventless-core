@@ -1,5 +1,11 @@
 let componentType = ComponentType.ExtensionPoint
 
+type unwrappedOutputs = {
+  name: string,
+  aggregateNames: array<string>,
+  commandTopic: CommandTopic.unwrappedOutputs,
+  eventTopic: EventTopic.unwrappedOutputs,
+}
 type outputs = {
   name: string,
   aggregateNames: array<string>,
@@ -7,27 +13,20 @@ type outputs = {
   eventTopic: EventTopic.outputs,
 }
 
-type unwrappedOutputs = {
-  name: string,
-  aggregateNames: array<string>,
-  commandTopic: CommandTopic.unwrappedOutputs,
-  eventTopic: EventTopic.unwrappedOutputs,
-}
-
 type t
-type component = Component.t<t, outputs, unit>
 
 type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
 
 module type T = {
+  type operations = {outgoingEventHandler: eventHandler}
+  type component = Component.t<t, outputs, operations>
+
   let make: (
     ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
     ~scheduler: Scheduler.operations,
     ~queryEngine: ReventlessSpec.QueryEngine.t,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
-
-  let outgoingEventHandler: component => Pulumi.Output.t<eventHandler>
 }
 
 module type Mappings = {
@@ -44,6 +43,9 @@ module Make = (
 ): T => {
   module Spec = Spec
 
+  type operations = {outgoingEventHandler: eventHandler}
+  type component = Component.t<t, outputs, operations>
+
   module SpecWithId: ReventlessSpec.ExtensionPoint.Spec
     with type command = Spec.command
     and type event = Spec.event
@@ -51,32 +53,6 @@ module Make = (
     include Spec
     module Id = ReventlessSpec.Id.String
   }
-
-  type constructed
-  type construct = (component, string) => constructed
-
-  @module("./Component") @new
-  external make: (
-    ~componentType: string,
-    ~name: string,
-    ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.options>,
-  ) => component = "default"
-
-  @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send
-  external setOutputs: (component, outputs) => unit = "setOutputs"
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs)
-    self->registerOutputs(outputs)
-  }
-
-  @set
-  external setOutgoingEventHandler: (component, Pulumi.Output.t<eventHandler>) => unit =
-    "outgoingEventHandler"
-  @get
-  external outgoingEventHandler: component => Pulumi.Output.t<eventHandler> = "outgoingEventHandler"
 
   let construct = (
     ~publishToAggregates,
@@ -128,9 +104,13 @@ module Make = (
           )
       )
 
-    self->setOutgoingEventHandler(outgoingEventHandler)
+    self->Component.setOperations(
+      outgoingEventHandler->Pulumi.Output.apply(outgoingEventHandler => {
+        outgoingEventHandler: outgoingEventHandler,
+      }),
+    )
 
-    self->setOutputs({
+    self->Component.setOutputs({
       name,
       aggregateNames: Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
         Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
@@ -141,7 +121,7 @@ module Make = (
   }
 
   let make = (~publishToAggregates, ~scheduler, ~queryEngine, ~opts) =>
-    make(
+    Component.make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine, ...),

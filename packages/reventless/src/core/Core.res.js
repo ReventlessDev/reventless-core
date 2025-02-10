@@ -4,6 +4,7 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Cloner$Reventless = require("../components/Cloner.res.js");
@@ -60,47 +61,51 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
     var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
             return addEventMapperFn(allEventTopics, queryEngine);
           }), addEventMapperFns);
-    var outputs = Pulumi.all(publishToAggregates).apply(function (publishToAggregates) {
-          var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-                      var extensionPoint = ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
-                      return [
-                              Component$Reventless.extractOutputs(extensionPoint),
-                              ExtensionPoint.outgoingEventHandler(extensionPoint)
-                            ];
-                    })));
-          var extensionPointsOutputs = match[0];
-          var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPointOutputs) {
-                      return Belt_SetString.fromArray(extensionPointOutputs.aggregateNames);
-                    })), undefined, Belt_SetString.union);
-          var fakePluginDefinition = {
-            id: "Core@FAKE",
-            name: "Core",
-            version: "FAKE",
-            extensionPoints: [],
-            extensions: [],
-            eventCollector: "NOT-SET"
-          };
-          var Runtime = Core_Runtime$Reventless.Make({
-                pluginDefinition: fakePluginDefinition,
-                outgoingExtensionPointEventHandlers: match[1]
-              });
-          var PluginEventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-          var eventCollectorOutputs = Component$Reventless.extractOutputs(PluginEventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), Runtime.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
-          return [
-                  extensionPointsOutputs,
-                  eventCollectorOutputs
-                ];
-        });
+    var match = Output$Pulumi.unzip(Pulumi.all(publishToAggregates).apply(function (publishToAggregates) {
+              var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
+                          var extensionPoint = ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
+                          return [
+                                  Component$Reventless.extractOutputs(extensionPoint),
+                                  Component$Reventless.operations(extensionPoint).apply(function (param) {
+                                        return param.outgoingEventHandler;
+                                      })
+                                ];
+                        })));
+              var extensionPointsOutputs = match[0];
+              var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPointOutputs) {
+                          return Belt_SetString.fromArray(extensionPointOutputs.aggregateNames);
+                        })), undefined, Belt_SetString.union);
+              var fakePluginDefinition = {
+                id: "Core@FAKE",
+                name: "Core",
+                version: "FAKE",
+                extensionPoints: [],
+                extensions: [],
+                eventCollector: "NOT-SET"
+              };
+              var eventCollectorOutputs = Pulumi.all(match[1]).apply(function (extensionPointsOutgoingEventHandlers) {
+                    var Runtime = Core_Runtime$Reventless.Make({
+                          pluginDefinition: fakePluginDefinition,
+                          outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
+                        });
+                    var PluginEventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+                    return Component$Reventless.extractOutputs(PluginEventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), Runtime.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+                  });
+              return [
+                      extensionPointsOutputs,
+                      eventCollectorOutputs
+                    ];
+            }));
     var partial_arg = Cloner$Reventless.Make;
     var Cloner = partial_arg(Config, ClonerRunner);
     var cloner = Cloner.make(opts);
     return setOutputs(self, {
                 version: version,
-                eventCollector: outputs.apply(function (param) {
-                      return param[1];
-                    }),
-                extensionPoints: outputs.apply(function (param) {
-                      return Js_dict.fromArray(Belt_Array.map(param[0], (function (ep) {
+                eventCollector: Output$Pulumi.flatMap(match[1], (function (eventCollectorOutputs) {
+                        return eventCollectorOutputs;
+                      })),
+                extensionPoints: match[0].apply(function (extensionPointsOutputs) {
+                      return Js_dict.fromArray(Belt_Array.map(extensionPointsOutputs, (function (ep) {
                                         return [
                                                 ep.name,
                                                 ep
@@ -132,4 +137,4 @@ var componentType = "Core";
 
 exports.componentType = componentType;
 exports.Make = Make;
-/* @pulumi/pulumi Not a pure module */
+/* Output-Pulumi Not a pure module */

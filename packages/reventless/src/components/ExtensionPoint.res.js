@@ -2,7 +2,6 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
@@ -21,89 +20,82 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
   var command_decode = Spec.command_decode;
   var event_encode = Spec.event_encode;
   var event_decode = Spec.event_decode;
-  var construct = function (publishToAggregates, scheduler, queryEngine, self, name$1) {
-    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
-    var opts = {
-      parent: opts_parent
-    };
-    var childName = ComponentType$Reventless.name(name$1.replace(".", ""), "ExtensionPoint");
-    var commandTopic = {
-      contents: undefined
-    };
-    var commandTopicResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(Belt_Option.getExn(commandTopic.contents)).resources);
-    var partial_arg = {
-      Id: Id$ReventlessSpec.$$String,
-      name: name,
-      event_encode: event_encode,
-      event_decode: event_decode
-    };
-    var partial_arg$1 = EventTopic$Reventless.Make;
-    var SpecificEventTopic = (function (param) {
-          return partial_arg$1(partial_arg, param);
-        })(EventTopicAdapter);
-    var eventTopic = SpecificEventTopic.make(childName, [], opts);
-    var match = Output$Pulumi.unzip(Pulumi.all([
-                Component$Reventless.operations(eventTopic),
-                commandTopicResources
-              ]).apply(function (param) {
-              var RuntimeSpec_publishToEventTopic = param[0].publishJson;
-              var RuntimeSpec_commandTopicResources = param[1];
-              var RuntimeSpec = {
-                publishToAggregates: publishToAggregates,
-                publishToEventTopic: RuntimeSpec_publishToEventTopic,
-                commandTopicResources: RuntimeSpec_commandTopicResources,
-                scheduler: scheduler,
-                queryEngine: queryEngine
-              };
-              var partial_arg = ExtensionPoint_Runtime$Reventless.Make;
-              var partial_arg$1 = function (param, param$1) {
-                return partial_arg(RuntimeSpec, param, param$1);
-              };
-              var Runtime = partial_arg$1(Spec, Mappings);
-              return [
-                      Runtime.outgoingEventHandler,
-                      Runtime.incomingCommandsHandler
-                    ];
-            }));
-    var partial_arg$2 = {
-      Id: Id$ReventlessSpec.$$String,
-      command_encode: command_encode,
-      command_decode: command_decode
-    };
-    var partial_arg$3 = CommandTopic$Reventless.Make;
-    var SpecificCommandTopic = (function (param) {
-          return partial_arg$3(partial_arg$2, param);
-        })(CommandTopicAdapter);
-    match[1].apply(function (incomingCommandsHandler) {
-          commandTopic.contents = Caml_option.some(SpecificCommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts));
-        });
-    self.outgoingEventHandler = match[0];
-    var outputs = {
-      name: name$1,
-      aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
-              return Belt_Option.map(Mapping.mapOutgoingEvent, (function (param) {
-                            return Mapping.aggregateName;
-                          }));
-            })),
-      commandTopic: Component$Reventless.extractOutputs(Belt_Option.getExn(commandTopic.contents)),
-      eventTopic: Component$Reventless.extractOutputs(eventTopic)
-    };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
-  };
   var make = function (publishToAggregates, scheduler, queryEngine, opts) {
-    var prim0 = ComponentType$Reventless.toString("ExtensionPoint");
-    var prim1 = Spec.name;
-    var prim2 = function (extra, extra$1) {
-      return construct(publishToAggregates, scheduler, queryEngine, extra, extra$1);
-    };
-    return new Component(prim0, prim1, prim2, opts);
+    return Component$Reventless.make(ComponentType$Reventless.toString("ExtensionPoint"), Spec.name, (function (extra, extra$1) {
+                  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
+                  var opts = {
+                    parent: opts_parent
+                  };
+                  var childName = ComponentType$Reventless.name(extra$1.replace(".", ""), "ExtensionPoint");
+                  var commandTopic = {
+                    contents: undefined
+                  };
+                  var commandTopicResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(Belt_Option.getExn(commandTopic.contents)).resources);
+                  var partial_arg = {
+                    Id: Id$ReventlessSpec.$$String,
+                    name: name,
+                    event_encode: event_encode,
+                    event_decode: event_decode
+                  };
+                  var partial_arg$1 = EventTopic$Reventless.Make;
+                  var SpecificEventTopic = (function (param) {
+                        return partial_arg$1(partial_arg, param);
+                      })(EventTopicAdapter);
+                  var eventTopic = SpecificEventTopic.make(childName, [], opts);
+                  var match = Output$Pulumi.unzip(Pulumi.all([
+                              Component$Reventless.operations(eventTopic),
+                              commandTopicResources
+                            ]).apply(function (param) {
+                            var RuntimeSpec_publishToEventTopic = param[0].publishJson;
+                            var RuntimeSpec_commandTopicResources = param[1];
+                            var RuntimeSpec = {
+                              publishToAggregates: publishToAggregates,
+                              publishToEventTopic: RuntimeSpec_publishToEventTopic,
+                              commandTopicResources: RuntimeSpec_commandTopicResources,
+                              scheduler: scheduler,
+                              queryEngine: queryEngine
+                            };
+                            var partial_arg = ExtensionPoint_Runtime$Reventless.Make;
+                            var partial_arg$1 = function (param, param$1) {
+                              return partial_arg(RuntimeSpec, param, param$1);
+                            };
+                            var Runtime = partial_arg$1(Spec, Mappings);
+                            return [
+                                    Runtime.outgoingEventHandler,
+                                    Runtime.incomingCommandsHandler
+                                  ];
+                          }));
+                  var partial_arg$2 = {
+                    Id: Id$ReventlessSpec.$$String,
+                    command_encode: command_encode,
+                    command_decode: command_decode
+                  };
+                  var partial_arg$3 = CommandTopic$Reventless.Make;
+                  var SpecificCommandTopic = (function (param) {
+                        return partial_arg$3(partial_arg$2, param);
+                      })(CommandTopicAdapter);
+                  match[1].apply(function (incomingCommandsHandler) {
+                        commandTopic.contents = Caml_option.some(SpecificCommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts));
+                      });
+                  Component$Reventless.setOperations(extra, match[0].apply(function (outgoingEventHandler) {
+                            return {
+                                    outgoingEventHandler: outgoingEventHandler
+                                  };
+                          }));
+                  return Component$Reventless.setOutputs(extra, {
+                              name: extra$1,
+                              aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
+                                      return Belt_Option.map(Mapping.mapOutgoingEvent, (function (param) {
+                                                    return Mapping.aggregateName;
+                                                  }));
+                                    })),
+                              commandTopic: Component$Reventless.extractOutputs(Belt_Option.getExn(commandTopic.contents)),
+                              eventTopic: Component$Reventless.extractOutputs(eventTopic)
+                            });
+                }), opts);
   };
   return {
-          make: make,
-          outgoingEventHandler: (function (prim) {
-              return prim.outgoingEventHandler;
-            })
+          make: make
         };
 }
 
@@ -111,4 +103,4 @@ var componentType = "ExtensionPoint";
 
 exports.componentType = componentType;
 exports.Make = Make;
-/* ./Component Not a pure module */
+/* Output-Pulumi Not a pure module */

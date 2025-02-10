@@ -100,7 +100,7 @@ module Make = (
       addEventMapperFns,
     )
 
-    let outputs =
+    let (extensionPointsOutputs, eventCollectorOutputs) =
       publishToAggregates
       ->Pulumi.Output.allDict
       ->Pulumi.Output.apply(publishToAggregates => {
@@ -115,7 +115,9 @@ module Make = (
             )
             (
               extensionPoint->Component.extractOutputs,
-              extensionPoint->ExtensionPoint.outgoingEventHandler->Pulumi.Output.unwrap,
+              extensionPoint
+              ->Component.operations
+              ->Pulumi.Output.apply(({outgoingEventHandler}) => outgoingEventHandler),
             )
           })
           ->Belt.Array.unzip
@@ -136,34 +138,38 @@ module Make = (
           eventCollector: "NOT-SET",
         }
 
-        module Runtime = Core_Runtime.Make({
-          let pluginDefinition = fakePluginDefinition
-          let outgoingExtensionPointEventHandlers = extensionPointsOutgoingEventHandlers
-        })
-        module PluginEventCollector = EventCollector.Make(EventCollectorConnector)
-
         let eventCollectorOutputs =
-          PluginEventCollector.make(
-            ~name=componentType->ComponentType.toName,
-            ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
-            ~eventsHandler=Runtime.eventsHandler,
-            ~policy1=Pulumi.Output.make(None),
-            ~policy2=Pulumi.Output.make(None),
-            ~opts=Some(opts),
-          )->Component.extractOutputs
+          extensionPointsOutgoingEventHandlers
+          ->Pulumi.Output.all
+          ->Pulumi.Output.apply(extensionPointsOutgoingEventHandlers => {
+            module Runtime = Core_Runtime.Make({
+              let pluginDefinition = fakePluginDefinition
+              let outgoingExtensionPointEventHandlers = extensionPointsOutgoingEventHandlers
+            })
+            module PluginEventCollector = EventCollector.Make(EventCollectorConnector)
 
+            PluginEventCollector.make(
+              ~name=componentType->ComponentType.toName,
+              ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
+              ~eventsHandler=Runtime.eventsHandler,
+              ~policy1=Pulumi.Output.make(None),
+              ~policy2=Pulumi.Output.make(None),
+              ~opts=Some(opts),
+            )->Component.extractOutputs
+          })
         (extensionPointsOutputs, eventCollectorOutputs)
       })
+      ->Pulumi.Output.unzip
 
     module Cloner = Cloner.Make(Config, ClonerRunner)
     let cloner = Cloner.make(~opts)
 
     self->setOutputs({
       version,
-      eventCollector: outputs->Pulumi.Output.apply(((_, eventCollectorOutputs)) =>
+      eventCollector: eventCollectorOutputs->Pulumi.Output.flatMap(eventCollectorOutputs =>
         eventCollectorOutputs
       ),
-      extensionPoints: outputs->Pulumi.Output.apply(((extensionPointsOutputs, _)) =>
+      extensionPoints: extensionPointsOutputs->Pulumi.Output.apply(extensionPointsOutputs =>
         extensionPointsOutputs
         ->Belt.Array.map(ep => (ep.name, ep))
         ->Js.Dict.fromArray

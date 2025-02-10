@@ -153,12 +153,13 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                       var extensionPoint = ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
                       return [
                               Component$Reventless.extractOutputs(extensionPoint),
-                              {
-                                outgoing: ExtensionPoint.outgoingEventHandler(extensionPoint)
-                              }
+                              Component$Reventless.operations(extensionPoint).apply(function (param) {
+                                    return {
+                                            outgoing: param.outgoingEventHandler
+                                          };
+                                  })
                             ];
                     })));
-          var extensionPointsHandlers = match[1];
           var extensionPointsOutputs = match[0];
           var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
           var extensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
@@ -253,12 +254,13 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var eventCollectorOutputs = Pulumi.all([
                   pluginDefinition,
                   connectPluginExtensionIncomingEventHandler,
-                  Pulumi.all(match$1[1])
+                  Pulumi.all(match$1[1]),
+                  Pulumi.all(match[1])
                 ]).apply(function (param) {
                 var extensionsHandlers = param[2];
                 var outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(extensionPointsOutputs, (function (outputs) {
                         return outputs.aggregateNames;
-                      }), extensionPointsHandlers, getOutgoingEventHandler);
+                      }), param[3], getOutgoingEventHandler);
                 var incomingConnectExtensionEventHandlers = serviceNameToEventHandlers([connectPluginExtensionOutputs], (function (outputs) {
                         return [outputs.extensionPointName];
                       }), [{
