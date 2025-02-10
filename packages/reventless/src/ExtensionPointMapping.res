@@ -6,10 +6,8 @@ type abstractCommandAction =
   | AbstractCall(string, unit => Js.Promise.t<unit>)
 
 type abstractEventAction<'extensionPointEvent> =
-  | AbstractPublishEvent(Message.event'<ReventlessSpec.Id.String.t, 'extensionPointEvent>)
-  | AbstractPublishEventAsync(
-      Js.Promise.t<Message.event'<ReventlessSpec.Id.String.t, 'extensionPointEvent>>,
-    )
+  | AbstractPublishEvent(string, Message.meta, Js.Json.t)
+  | AbstractPublishEventAsync(Js.Promise.t<(string, Message.meta, Js.Json.t)>)
   | AbstractCall(unit => Js.Promise.t<unit>)
 
 module type T = {
@@ -109,36 +107,24 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
           )->Belt.Array.map(x =>
             switch x {
             | PublishEvent(id, event) =>
-              let eventStr = event->Spec.event_encode->Js.Json.stringify
+              let eventJson = event->Spec.event_encode
               Js.log(
-                `ExtensionPointMapping: outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventStr} id: ${id}`,
+                `ExtensionPointMapping: outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
               )
-
-              AbstractPublishEvent({
-                Message.id: id->ReventlessSpec.Id.String.makeFromString,
-                event,
-                meta: {
-                  ...meta,
-                  service: Spec.name,
-                  msgId: Message.uuid(),
-                },
-              })
+              let meta = {
+                ...meta,
+                service: Spec.name,
+                msgId: Message.uuid(),
+              }
+              AbstractPublishEvent(id, meta, eventJson)
             | PublishEventAsync(promise) =>
               let toEvent' = async promise => {
                 let (id, event) = await promise
-                let eventStr = event->Spec.event_encode->Js.Json.stringify
+                let eventJson = event->Spec.event_encode
                 Js.log(
-                  `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventStr} id: ${id}`,
+                  `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
                 )
-                {
-                  Message.id: id->ReventlessSpec.Id.String.makeFromString,
-                  event,
-                  meta: {
-                    ...meta,
-                    service: Spec.name,
-                    msgId: Message.uuid(),
-                  },
-                }
+                (id, meta, eventJson)
               }
               AbstractPublishEventAsync(promise->toEvent')
             | Call(handler, msg) =>

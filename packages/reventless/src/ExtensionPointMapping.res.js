@@ -62,44 +62,40 @@ function Make(Spec, MappingImpl) {
               return Belt_Array.map(mappingImplMapOutgoingEvent(Aggregate.Id.toString(match.id), match.event, meta, queryEngine), (function (x) {
                             switch (x.TAG) {
                               case "PublishEvent" :
-                                  var $$event = x._1;
                                   var id = x._0;
-                                  var eventStr = JSON.stringify(Spec.event_encode($$event));
-                                  console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id);
+                                  var eventJson = Spec.event_encode(x._1);
+                                  console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + JSON.stringify(eventJson) + " id: " + id);
+                                  var meta_service = Spec.name;
+                                  var meta_time = meta.time;
+                                  var meta_ip = meta.ip;
+                                  var meta_user = meta.user;
+                                  var meta_msgId = Message$Reventless.uuid();
+                                  var meta_correlationId = meta.correlationId;
+                                  var meta$1 = {
+                                    service: meta_service,
+                                    time: meta_time,
+                                    ip: meta_ip,
+                                    user: meta_user,
+                                    msgId: meta_msgId,
+                                    correlationId: meta_correlationId
+                                  };
                                   return {
                                           TAG: "AbstractPublishEvent",
-                                          _0: {
-                                            id: Id$ReventlessSpec.$$String.makeFromString(id),
-                                            meta: {
-                                              service: Spec.name,
-                                              time: meta.time,
-                                              ip: meta.ip,
-                                              user: meta.user,
-                                              msgId: Message$Reventless.uuid(),
-                                              correlationId: meta.correlationId
-                                            },
-                                            event: $$event
-                                          }
+                                          _0: id,
+                                          _1: meta$1,
+                                          _2: eventJson
                                         };
                               case "PublishEventAsync" :
                                   var toEvent$p = async function (promise) {
                                     var match = await promise;
-                                    var $$event = match[1];
                                     var id = match[0];
-                                    var eventStr = JSON.stringify(Spec.event_encode($$event));
-                                    console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + eventStr + " id: " + id);
-                                    return {
-                                            id: Id$ReventlessSpec.$$String.makeFromString(id),
-                                            meta: {
-                                              service: Spec.name,
-                                              time: meta.time,
-                                              ip: meta.ip,
-                                              user: meta.user,
-                                              msgId: Message$Reventless.uuid(),
-                                              correlationId: meta.correlationId
-                                            },
-                                            event: $$event
-                                          };
+                                    var eventJson = Spec.event_encode(match[1]);
+                                    console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + JSON.stringify(eventJson) + " id: " + id);
+                                    return [
+                                            id,
+                                            meta,
+                                            eventJson
+                                          ];
                                   };
                                   return {
                                           TAG: "AbstractPublishEventAsync",

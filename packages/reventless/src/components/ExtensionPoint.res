@@ -78,53 +78,13 @@ module Make = (
   @get
   external outgoingEventHandler: component => Pulumi.Output.t<eventHandler> = "outgoingEventHandler"
 
-  module Mapper = {
-    let findOutgoingMapping = (aggregateNameOpt, mappings) =>
-      aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
-        mappings->Belt.Array.getBy((module(Mapping: Mappings.Mapping)) =>
-          Mapping.aggregateName == aggregateName
-        )
-      ) // TODO: handle multiple mappings for same Aggregate name
-
-    let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, queue) =>
-      mappings
-      ->Belt.Array.map((module(Mapping: Mappings.Mapping)) =>
-        Mapping.mapIncomingCommands(
-          topicItems,
-          Schedule.create(scheduler, queue),
-          Schedule.delete(scheduler, queue),
-          queryEngine,
-        )
-      )
-      ->Belt.Array.concatMany
-
-    let mapOutgoingEvent = (event'Json, mappings, scheduler, queue, queryEngine) =>
-      switch event'Json->Message.serviceNameOfMsg->findOutgoingMapping(mappings) {
-      | Some(module(Mapping)) =>
-        switch Mapping.mapOutgoingEvent {
-        | Some(mapOutgoingEvent) =>
-          mapOutgoingEvent(
-            event'Json,
-            Schedule.create(scheduler, queue),
-            Schedule.delete(scheduler, queue),
-            queryEngine,
-          )
-        | None =>
-          Logger.error(
-            ~loc=__LOC__,
-            "mapOutgoingEvent",
-            "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !",
-          )
-          []
-        }
-      | None =>
-        Js.Exn.raiseError(
-          "ExtensionPoint.Mapping: Missing mapping for " ++ event'Json->Js.Json.stringify,
-        )
-      }
-  }
-
-  let construct = (~publishToAggregates, ~scheduler, ~queryEngine, self, name) => {
+  let construct = (
+    ~publishToAggregates,
+    ~scheduler: Scheduler.operations,
+    ~queryEngine: ReventlessSpec.QueryEngine.t,
+    self,
+    name,
+  ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     let childName = name->Js.String2.replace(".", "")->ComponentType.name(componentType)
@@ -138,86 +98,22 @@ module Make = (
     module SpecificEventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
     let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
 
-    let applyCommandAction = async action =>
-      switch action {
-      | ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
-        let result =
-          publishToAggregates
-          ->Js.Dict.get(aggregateName)
-          ->Belt.Option.map((publishJsons: ReventlessSpec.CommandTopic.publishJsons) =>
-            publishJsons([cmdJson])
-          )
-          ->Belt.Option.mapWithDefault(
-            () =>
-              Js.Exn.raiseError(
-                `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
-              ),
-            x => {() => x},
-          )
-        switch result() {
-        | _ => Belt.Result.Ok(reference)
-        | exception err => {
-            Js.log2("ExtensionPoint: Error on publish command:", err)
-            Belt.Result.Error(reference)
-          }
-        }
-      | AbstractCall(reference, handler) =>
-        switch await handler() {
-        | _ => Belt.Result.Ok(reference)
-        | exception err => {
-            err->Js.log2("ExtensionPoint: Error on calling handler:")
-            Belt.Result.Error(reference)
-          }
-        }
-      }
-
-    let outgoingEventHandler =
+    let (outgoingEventHandler, incomingCommandsHandler) =
       (eventTopic->Component.operations, commandTopicResources)
       ->Pulumi.Output.all2
-      ->Pulumi.Output.apply((({publish}, commandTopicResources)) => {
-        let applyEventAction = async action =>
-          switch action {
-          | ExtensionPointMapping.AbstractPublishEvent(event') =>
-            try await publish([event']) catch {
-            | err => err->Js.log2("ExtensionPoint: Error on publish command:")
-            }
-          | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
-            try await publish([await promise]) catch {
-            | err => err->Js.log2("ExtensionPoint: Error on publish command:")
-            }
-          | AbstractCall(handler) =>
-            try await handler() catch {
-            | err => err->Js.log2("ExtensionPoint: Error on calling handler:")
-            }
-          }
-
-        async (event'Json, _pluginDef) => {
-          let eventActions = Mapper.mapOutgoingEvent(
-            event'Json,
-            Mappings.mappings,
-            scheduler,
-            commandTopicResources,
-            queryEngine,
-          )
-
-          await eventActions->Belt.Array.map(applyEventAction)->Js.Promise.all->Util.Promise.toUnit
+      ->Pulumi.Output.apply((({publishJson: publishToEventTopic}, commandTopicResources)) => {
+        module RuntimeSpec = {
+          let publishToAggregates = publishToAggregates
+          let publishToEventTopic = publishToEventTopic
+          let commandTopicResources = commandTopicResources
+          let scheduler = scheduler
+          let queryEngine = queryEngine
         }
+        module Runtime = ExtensionPoint_Runtime.Make(RuntimeSpec, Spec, Mappings)
+
+        (Runtime.outgoingEventHandler, Runtime.incomingCommandsHandler)
       })
-
-    let incomingCommandsHandler =
-      commandTopicResources->Pulumi.Output.apply(commandTopicResources =>
-        async topicItems => {
-          let commandActions =
-            topicItems->Mapper.mapIncomingCommands(
-              Mappings.mappings,
-              scheduler,
-              queryEngine,
-              commandTopicResources,
-            )
-
-          await commandActions->Belt.Array.map(applyCommandAction)->Js.Promise.all
-        }
-      )
+      ->Pulumi.Output.unzip
 
     module SpecificCommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter)
     let _ =
