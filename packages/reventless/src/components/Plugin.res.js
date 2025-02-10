@@ -149,8 +149,8 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var publishToReadModels = param[2];
           var publishToAggregates = param[1];
           var coreExtensionPoints = param[0];
-          var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-                      var extensionPoint = ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
+          var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
+                      var extensionPoint = SpecificExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
                       return [
                               Component$Reventless.extractOutputs(extensionPoint),
                               Component$Reventless.operations(extensionPoint).apply(function (param) {
@@ -173,17 +173,14 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           };
           var corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(Pulumi.all(Belt_Array.map(corePluginExtensionPoint_commandTopic.resources, Adapter$Reventless.resourceToUnwrappedOutput)));
           var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish;
-          var match$1 = Belt_Array.unzip(Belt_Array.map(extensions, (function (Extension) {
-                      var extension = Extension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+          var match$1 = Belt_Array.unzip(Belt_Array.map(extensions, (function (SpecificExtension) {
+                      var extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
                       return [
                               Component$Reventless.extractOutputs(extension),
-                              Pulumi.all([
-                                      Extension.outgoingEventHandler(extension),
-                                      Extension.incomingEventHandler(extension)
-                                    ]).apply(function (param) {
+                              Component$Reventless.operations(extension).apply(function (param) {
                                     return {
-                                            outgoing: param[0],
-                                            incoming: param[1]
+                                            outgoing: param.outgoingEventHandler,
+                                            incoming: param.incomingEventHandler
                                           };
                                   })
                             ];
@@ -224,7 +221,9 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
               });
           var connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
           var connectPluginExtensionOutputs = Component$Reventless.extractOutputs(connectPluginExtension);
-          var connectPluginExtensionIncomingEventHandler = ConnectPluginExtension.incomingEventHandler(connectPluginExtension);
+          var connectPluginExtensionIncomingEventHandler = Component$Reventless.operations(connectPluginExtension).apply(function (param) {
+                return param.incomingEventHandler;
+              });
           var tasksOutputs = {
             contents: []
           };

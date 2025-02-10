@@ -230,8 +230,8 @@ module Make = (
       )) => {
         let (extensionPointsOutputs, extensionPointsHandlers) =
           extensionPoints
-          ->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) => {
-            let extensionPoint = ExtensionPoint.make(
+          ->Belt.Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
+            let extensionPoint = SpecificExtensionPoint.make(
               ~publishToAggregates,
               ~scheduler,
               ~queryEngine,
@@ -283,8 +283,8 @@ module Make = (
 
         let (extensionsOutputs, extensionsHandlers) =
           extensions
-          ->Belt.Array.map((module(Extension: Extension.T)) => {
-            let extension = Extension.make(
+          ->Belt.Array.map((module(SpecificExtension: Extension.T)) => {
+            let extension = SpecificExtension.make(
               ~publishToCorePluginExtensionPoint,
               ~publishToAggregates,
               ~readModelNamesForSourceName,
@@ -294,12 +294,12 @@ module Make = (
             )
             (
               extension->Component.extractOutputs,
-              (extension->Extension.outgoingEventHandler, extension->Extension.incomingEventHandler)
-              ->Pulumi.Output.all2
+              extension
+              ->Component.operations
               ->Pulumi.Output.apply(
-                ((outgoing, incoming)) => {
-                  outgoing,
-                  incoming,
+                ({outgoingEventHandler, incomingEventHandler}) => {
+                  incoming: incomingEventHandler,
+                  outgoing: outgoingEventHandler,
                 },
               ),
             )
@@ -354,7 +354,9 @@ module Make = (
         )
         let connectPluginExtensionOutputs = connectPluginExtension->Component.extractOutputs
         let connectPluginExtensionIncomingEventHandler =
-          connectPluginExtension->ConnectPluginExtension.incomingEventHandler
+          connectPluginExtension
+          ->Component.operations
+          ->Pulumi.Output.apply(({incomingEventHandler}) => incomingEventHandler)
 
         let tasksOutputs = ref([])
         let queryBucketName = taskName =>
