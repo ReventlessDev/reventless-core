@@ -12,15 +12,11 @@ let extractWrappedOutputs: Pulumi.Output.t<t<'component, 'outputs, 'operations>>
 let toPulumiResource: t<'component, 'outputs, 'operations> => Pulumi.Resource.t
 
 type constructed
-let setOutputs: ('component, 'outputs) => constructed
+let setOutputs: (t<'component, 'outputs, 'operations>, 'outputs) => constructed
 
 let make: (
   ~componentType: string,
   ~name: string,
   ~construct: 'construct,
   ~opts: option<Pulumi.ComponentResource.options>,
-) => 'component
-
-module type T = {
-  let make: (~opts: Pulumi.ComponentResource.options=?) => 'component
-}
+) => t<'component, 'outputs, 'operations>

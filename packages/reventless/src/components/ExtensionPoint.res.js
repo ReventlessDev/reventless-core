@@ -47,7 +47,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
     if (mapOutgoingEvent$1 !== undefined) {
       return mapOutgoingEvent$1(event$pJson, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
     } else {
-      Logger$Reventless.error("File \"ExtensionPoint.res\", line 117, characters 17-24", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      Logger$Reventless.error("File \"ExtensionPoint.res\", line 114, characters 17-24", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return [];
     }
   };
@@ -68,10 +68,10 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
       event_decode: event_decode
     };
     var partial_arg$1 = EventTopic$Reventless.Make;
-    var EventTopic = (function (param) {
+    var SpecificEventTopic = (function (param) {
           return partial_arg$1(partial_arg, param);
         })(EventTopicAdapter);
-    var eventTopic = EventTopic.make(childName, [], opts);
+    var eventTopic = SpecificEventTopic.make(childName, [], opts);
     var applyCommandAction = async function (action) {
       if (action.TAG === "AbstractPublishCommand") {
         var cmdJson = action._2;
@@ -122,11 +122,11 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
             };
     };
     var outgoingEventHandler = Pulumi.all([
-            EventTopic.publish(eventTopic),
+            Component$Reventless.operations(eventTopic),
             commandTopicResources
           ]).apply(function (param) {
           var commandTopicResources = param[1];
-          var publish = param[0];
+          var publish = param[0].publish;
           var applyEventAction = async function (action) {
             switch (action.TAG) {
               case "AbstractPublishEvent" :
@@ -139,24 +139,21 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                     return ;
                   }
               case "AbstractPublishEventAsync" :
-                  var publish$1 = async function (promise) {
-                    try {
-                      return await publish([await promise]);
-                    }
-                    catch (raw_err){
-                      var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-                      console.log(err, "ExtensionPoint: Error on publish command:");
-                      return ;
-                    }
-                  };
-                  return await publish$1(action._0);
+                  try {
+                    return await publish([await action._0]);
+                  }
+                  catch (raw_err$1){
+                    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+                    console.log(err$1, "ExtensionPoint: Error on publish command:");
+                    return ;
+                  }
               case "AbstractCall" :
                   try {
                     return await action._0();
                   }
-                  catch (raw_err$1){
-                    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-                    console.log(err$1, "ExtensionPoint: Error on calling handler:");
+                  catch (raw_err$2){
+                    var err$2 = Caml_js_exceptions.internalToOCamlException(raw_err$2);
+                    console.log(err$2, "ExtensionPoint: Error on calling handler:");
                     return ;
                   }
               
@@ -179,11 +176,11 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
       command_decode: command_decode
     };
     var partial_arg$3 = CommandTopic$Reventless.Make;
-    var CommandTopic = (function (param) {
+    var SpecificCommandTopic = (function (param) {
           return partial_arg$3(partial_arg$2, param);
         })(CommandTopicAdapter);
     incomingCommandsHandler.apply(function (incomingCommandsHandler) {
-          commandTopic.contents = Caml_option.some(CommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts));
+          commandTopic.contents = Caml_option.some(SpecificCommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts));
         });
     self.outgoingEventHandler = outgoingEventHandler;
     var outputs = {
@@ -215,14 +212,8 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
         };
 }
 
-var ReventlessCommandTopic;
-
-var ReventlessEventTopic;
-
 var componentType = "ExtensionPoint";
 
-exports.ReventlessCommandTopic = ReventlessCommandTopic;
-exports.ReventlessEventTopic = ReventlessEventTopic;
 exports.componentType = componentType;
 exports.Make = Make;
 /* ./Component Not a pure module */

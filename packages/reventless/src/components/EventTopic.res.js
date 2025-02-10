@@ -2,7 +2,6 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Component = require("./Component").default;
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Logger$Reventless = require("../util/Logger.res.js");
@@ -16,50 +15,46 @@ var NotPublishedToPublisher = /* @__PURE__ */Caml_exceptions.create("EventTopic-
 var Adapter = {};
 
 function Make(Spec, Publisher) {
-  var construct = function (storageResources, self, name) {
-    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
-    var opts = {
-      parent: opts_parent
+  var publish = function (publishJson) {
+    return async function (events$p) {
+      var eventCount = events$p.length;
+      return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$p, (async function (idx, event$p) {
+                            var event$pJson = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
+                            var id = event$p.id;
+                            var idx$1 = idx + 1 | 0;
+                            var val;
+                            try {
+                              val = await publishJson(Spec.Id.toString(id), event$p.meta, event$pJson);
+                            }
+                            catch (e){
+                              Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 74, characters 17-24", "Error", event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
+                              throw e;
+                            }
+                            return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 81, characters 17-24", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
+                          }))));
     };
-    var publisher = Publisher.make(ComponentType$Reventless.name(name, "EventTopic"), storageResources, opts);
-    self.publish = publisher.publish.apply(function (publish) {
-          return async function (events$p) {
-            var eventCount = events$p.length;
-            return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$p, (async function (idx, event$p) {
-                                  var event$pJson = Message$Reventless.event$p_encode(Spec.Id.t_encode, Spec.event_encode, event$p);
-                                  var id = event$p.id;
-                                  var idx$1 = idx + 1 | 0;
-                                  var val;
-                                  try {
-                                    val = await publish(Spec.Id.toString(id), event$p.meta, event$pJson);
-                                  }
-                                  catch (e){
-                                    Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 95, characters 17-24", "Error", event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
-                                    throw e;
-                                  }
-                                  return Logger$Reventless.logEvent$pJson("File \"EventTopic.res\", line 102, characters 17-24", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
-                                }))));
-          };
-        });
-    var outputs = {
-      resources: publisher.resources
-    };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
   };
   var make = function (name, storageResources, opts) {
-    var prim0 = ComponentType$Reventless.toString("EventTopic");
-    var prim2 = function (extra, extra$1) {
-      return construct(storageResources, extra, extra$1);
-    };
-    return new Component(prim0, name, prim2, opts);
+    return Component$Reventless.make(ComponentType$Reventless.toString("EventTopic"), name, (function (extra, extra$1) {
+                  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
+                  var opts = {
+                    parent: opts_parent
+                  };
+                  var publisher = Publisher.make(ComponentType$Reventless.name(extra$1, "EventTopic"), storageResources, opts);
+                  Component$Reventless.setOperations(extra, publisher.publishJson.apply(function (publishJson) {
+                            return {
+                                    publish: publish(publishJson),
+                                    publishJson: publishJson
+                                  };
+                          }));
+                  return Component$Reventless.setOutputs(extra, {
+                              resources: publisher.resources
+                            });
+                }), opts);
   };
   return {
           Spec: Spec,
-          make: make,
-          publish: (function (prim) {
-              return prim.publish;
-            })
+          make: make
         };
 }
 
@@ -69,4 +64,4 @@ exports.componentType = componentType;
 exports.NotPublishedToPublisher = NotPublishedToPublisher;
 exports.Adapter = Adapter;
 exports.Make = Make;
-/* ./Component Not a pure module */
+/* Logger-Reventless Not a pure module */

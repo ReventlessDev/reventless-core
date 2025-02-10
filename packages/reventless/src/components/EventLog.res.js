@@ -17,19 +17,19 @@ var Adapter = {};
 
 function Make(Spec, $$Storage, EventTopicPublisher) {
   var partial_arg = EventTopic$Reventless.Make;
-  var EventTopic = partial_arg(Spec, EventTopicPublisher);
+  var SpecificEventTopic = partial_arg(Spec, EventTopicPublisher);
   var construct = function (self, name) {
     var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };
     var storage = $$Storage.make(ComponentType$Reventless.name(name, "EventLog"), opts);
-    var eventTopic = EventTopic.make(name, storage.resources, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts));
+    var eventTopic = SpecificEventTopic.make(name, storage.resources, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions(opts));
     self.append = Pulumi.all([
             storage.append,
-            EventTopic.publish(eventTopic)
+            Component$Reventless.operations(eventTopic)
           ]).apply(function (param) {
-          return EventLog_Runtime$Reventless.appendFn(param[0], Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, param[1], Spec.name);
+          return EventLog_Runtime$Reventless.appendFn(param[0], Spec.Id.toString, Spec.Id.t_encode, Spec.event_encode, param[1].publish, Spec.name);
         });
     self.replay = storage.replay.apply(function (replay) {
           return EventLog_Runtime$Reventless.replayFn(replay, Spec.Id.toString, Spec.event_decode);

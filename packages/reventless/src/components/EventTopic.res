@@ -1,16 +1,13 @@
-open ReventlessSpec.Adapter
-
 let componentType = ComponentType.EventTopic
 
-type outputs = {resources: array<resource>}
+type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
+type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 type allOutputs = Js.Dict.t<outputs>
 
 type t
-type component = Component.t<t, outputs, unit>
 
 type publish<'id, 'event> = array<Message.event'<'id, 'event>> => Js.Promise.t<unit>
-
-type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
+type publishJson = (string, Message.meta, Js.Json.t) => Js.Promise.t<unit>
 
 exception NotPublishedToPublisher(Js.Promise.error)
 
@@ -26,23 +23,25 @@ module type Spec = {
 module type T = {
   module Spec: Spec
 
+  type publish = publish<Spec.Id.t, Spec.event>
+  type operations = {publish: publish, publishJson: publishJson}
+  type component = Component.t<t, outputs, operations>
+
   let make: (
     ~name: string,
-    ~storageResources: array<resource>,
+    ~storageResources: array<ReventlessSpec.Adapter.resource>,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
-
-  let publish: component => Pulumi.Output.t<publish<Spec.Id.t, Spec.event>>
 }
 
 module Adapter = {
   type publisher = {
-    resources: array<resource>,
-    publish: Pulumi.Output.t<(string, Message.meta, Js.Json.t) => Js.Promise.t<unit>>,
+    resources: array<ReventlessSpec.Adapter.resource>,
+    publishJson: Pulumi.Output.t<publishJson>,
   }
   type publisherMaker = (
     ~name: string,
-    ~storageResources: array<resource>,
+    ~storageResources: array<ReventlessSpec.Adapter.resource>,
     ~opts: Pulumi.CustomResourceOptions.t,
   ) => publisher
 
@@ -54,32 +53,12 @@ module Adapter = {
 module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  type constructed
-  type construct = (component, string) => constructed
-
   type publish = publish<Spec.Id.t, Spec.event>
+  type operations = {publish: publish, publishJson: publishJson}
 
-  @module("./Component") @new
-  external make: (
-    ~componentType: string,
-    ~name: string,
-    ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.options>,
-  ) => component = "default"
+  type component = Component.t<t, outputs, operations>
 
-  @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (component, outputs) => unit = "setOutputs"
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs)
-    self->registerOutputs(outputs)
-  }
-
-  @set external setPublish: (component, Pulumi.Output.t<publish>) => unit = "publish"
-  @get external publish: component => Pulumi.Output.t<publish> = "publish"
-
-  // FIXME: is name argument really unnecessary? can we remove it?
-  let publishFn = publish =>
+  let publish = publishJson =>
     async events' => {
       let eventCount = events'->Belt.Array.length
       await events'
@@ -89,7 +68,7 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
         let id = event'.id
         let idx = idx + 1
 
-        switch await publish(id->Spec.Id.toString, event'.meta, event'Json) {
+        switch await publishJson(id->Spec.Id.toString, event'.meta, event'Json) {
         | exception e =>
           event'Json->Logger.logEvent'Json(
             ~loc=__LOC__,
@@ -117,13 +96,18 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
       ~opts,
     )
 
-    self->setPublish(publisher.publish->Pulumi.Output.apply(publish => publishFn(publish, ...)))
+    self->Component.setOperations(
+      publisher.publishJson->Pulumi.Output.apply(publishJson => {
+        publishJson,
+        publish: publish(publishJson, ...),
+      }),
+    )
 
-    self->setOutputs({resources: publisher.resources})
+    self->Component.setOutputs({resources: publisher.resources})
   }
 
-  let make = (~name, ~storageResources, ~opts=?) =>
-    make(
+  let make = (~name, ~storageResources, ~opts=?): component =>
+    Component.make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
       ~construct=construct(~storageResources, ...),

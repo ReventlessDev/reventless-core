@@ -1,6 +1,3 @@
-module ReventlessCommandTopic = CommandTopic
-module ReventlessEventTopic = EventTopic
-
 let componentType = ComponentType.ExtensionPoint
 
 type outputs = {
@@ -138,8 +135,8 @@ module Make = (
         commandTopic.contents->Belt.Option.getExn->Component.extractOutputs
       ).resources->Adapter.resourcesToUnwrappedOutput
 
-    module EventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
-    let eventTopic = EventTopic.make(~name=childName, ~storageResources=[], ~opts)
+    module SpecificEventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
+    let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
 
     let applyCommandAction = async action =>
       switch action {
@@ -175,9 +172,9 @@ module Make = (
       }
 
     let outgoingEventHandler =
-      (eventTopic->EventTopic.publish, commandTopicResources)
+      (eventTopic->Component.operations, commandTopicResources)
       ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(((publish, commandTopicResources)) => {
+      ->Pulumi.Output.apply((({publish}, commandTopicResources)) => {
         let applyEventAction = async action =>
           switch action {
           | ExtensionPointMapping.AbstractPublishEvent(event') =>
@@ -185,11 +182,9 @@ module Make = (
             | err => err->Js.log2("ExtensionPoint: Error on publish command:")
             }
           | ExtensionPointMapping.AbstractPublishEventAsync(promise) =>
-            let publish = async promise =>
-              try await publish([await promise]) catch {
-              | err => err->Js.log2("ExtensionPoint: Error on publish command:")
-              }
-            await promise->publish
+            try await publish([await promise]) catch {
+            | err => err->Js.log2("ExtensionPoint: Error on publish command:")
+            }
           | AbstractCall(handler) =>
             try await handler() catch {
             | err => err->Js.log2("ExtensionPoint: Error on calling handler:")
@@ -224,11 +219,17 @@ module Make = (
         }
       )
 
-    module CommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter)
+    module SpecificCommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter)
     let _ =
       incomingCommandsHandler->Pulumi.Output.apply(incomingCommandsHandler =>
         commandTopic :=
-          Some(CommandTopic.make(~name=childName, ~commandsHandler=incomingCommandsHandler, ~opts))
+          Some(
+            SpecificCommandTopic.make(
+              ~name=childName,
+              ~commandsHandler=incomingCommandsHandler,
+              ~opts,
+            ),
+          )
       )
 
     self->setOutgoingEventHandler(outgoingEventHandler)

@@ -49,18 +49,15 @@ external make: (
   ~name: string,
   ~construct: 'construct,
   ~opts: option<Pulumi.ComponentResource.options>,
-) => 'component = "default"
+) => t<'component, 'outputs, 'operations> = "default"
 
 @send
-external registerOutputs: ('component, 'outputs) => constructed = "registerOutputs"
+external registerOutputs: (t<'component, 'outputs, 'operations>, 'outputs) => constructed =
+  "registerOutputs"
 @send
-external setOutputs: ('component, 'outputs) => unit = "setOutputs"
+external setOutputs: (t<'component, 'outputs, 'operations>, 'outputs) => unit = "setOutputs"
 
 let setOutputs = (self, outputs) => {
   self->setOutputs(outputs)
   self->registerOutputs(outputs)
-}
-
-module type T = {
-  let make: (~opts: Pulumi.ComponentResource.options=?) => 'component
 }

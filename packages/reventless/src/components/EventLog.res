@@ -76,23 +76,23 @@ module Make = (
   @get external append: component => Pulumi.Output.t<append> = "append"
   @get external replay: component => Pulumi.Output.t<replay> = "replay"
 
-  module EventTopic = EventTopic.Make(Spec, EventTopicPublisher)
+  module SpecificEventTopic = EventTopic.Make(Spec, EventTopicPublisher)
 
   let construct = (self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let storage = Storage.make(~name=name->ComponentType.name(componentType), ~opts)
 
-    let eventTopic = EventTopic.make(
+    let eventTopic = SpecificEventTopic.make(
       ~name,
       ~storageResources=storage.resources,
       ~opts=opts->Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions,
     )
 
     self->setAppend(
-      (storage.append, eventTopic->EventTopic.publish)
+      (storage.append, eventTopic->Component.operations)
       ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(((append, publish)) =>
+      ->Pulumi.Output.apply(((append, {publish})) =>
         EventLog_Runtime.appendFn(
           append,
           Spec.Id.toString,
