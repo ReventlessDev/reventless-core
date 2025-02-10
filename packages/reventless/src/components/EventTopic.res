@@ -11,17 +11,8 @@ type publishJson = (string, Message.meta, Js.Json.t) => Js.Promise.t<unit>
 
 exception NotPublishedToPublisher(Js.Promise.error)
 
-module type Spec = {
-  module Id: ReventlessSpec.Id.T
-
-  let name: string
-
-  @decco
-  type event
-}
-
 module type T = {
-  module Spec: Spec
+  module Spec: EventTopic_Runtime.Spec
 
   type publish = publish<Spec.Id.t, Spec.event>
   type operations = {publish: publish, publishJson: publishJson}
@@ -50,42 +41,15 @@ module Adapter = {
   }
 }
 
-module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = Spec) => {
+module Make = (Spec: EventTopic_Runtime.Spec, Publisher: Adapter.Publisher): (
+  T with module Spec = Spec
+) => {
   module Spec = Spec
 
   type publish = publish<Spec.Id.t, Spec.event>
   type operations = {publish: publish, publishJson: publishJson}
 
   type component = Component.t<t, outputs, operations>
-
-  let publish = publishJson =>
-    async events' => {
-      let eventCount = events'->Belt.Array.length
-      await events'
-      ->Belt.Array.mapWithIndex(async (idx, event') => {
-        let event'Json = Message.event'_encode(Spec.Id.t_encode, Spec.event_encode, event')
-
-        let id = event'.id
-        let idx = idx + 1
-
-        switch await publishJson(id->Spec.Id.toString, event'.meta, event'Json) {
-        | exception e =>
-          event'Json->Logger.logEvent'Json(
-            ~loc=__LOC__,
-            ~level=Error,
-            `Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
-          )
-          raise(e)
-        | _ =>
-          event'Json->Logger.logEvent'Json(
-            ~loc=__LOC__,
-            `Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
-          )
-        }
-      })
-      ->Js.Promise.all
-      ->Util.Promise.toUnit
-    }
 
   let construct = (~storageResources, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
@@ -96,10 +60,12 @@ module Make = (Spec: Spec, Publisher: Adapter.Publisher): (T with module Spec = 
       ~opts,
     )
 
+    module Runtime = EventTopic_Runtime.Make(Spec)
+
     self->Component.setOperations(
       publisher.publishJson->Pulumi.Output.apply(publishJson => {
         publishJson,
-        publish: publish(publishJson, ...),
+        publish: Runtime.publish(publishJson, ...),
       }),
     )
 

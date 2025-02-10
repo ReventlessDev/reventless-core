@@ -15,7 +15,6 @@ var ComponentType$Reventless = require("../ComponentType.res.js");
 var ExtensionPoint_Runtime$Reventless = require("./ExtensionPoint_Runtime.res.js");
 
 function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
-  var name = Spec.name;
   var command_encode = Spec.command_encode;
   var command_decode = Spec.command_decode;
   var event_encode = Spec.event_encode;
@@ -33,7 +32,6 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                   var commandTopicResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(Belt_Option.getExn(commandTopic.contents)).resources);
                   var partial_arg = {
                     Id: Id$ReventlessSpec.$$String,
-                    name: name,
                     event_encode: event_encode,
                     event_decode: event_decode
                   };

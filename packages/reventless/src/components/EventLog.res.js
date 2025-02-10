@@ -16,8 +16,18 @@ var ReplayError = /* @__PURE__ */Caml_exceptions.create("EventLog-Reventless.Rep
 var Adapter = {};
 
 function Make(Spec, $$Storage, EventTopicPublisher) {
-  var partial_arg = EventTopic$Reventless.Make;
-  var SpecificEventTopic = partial_arg(Spec, EventTopicPublisher);
+  var partial_arg_Id = Spec.Id;
+  var partial_arg_event_encode = Spec.event_encode;
+  var partial_arg_event_decode = Spec.event_decode;
+  var partial_arg = {
+    Id: partial_arg_Id,
+    event_encode: partial_arg_event_encode,
+    event_decode: partial_arg_event_decode
+  };
+  var partial_arg$1 = EventTopic$Reventless.Make;
+  var SpecificEventTopic = (function (param) {
+        return partial_arg$1(partial_arg, param);
+      })(EventTopicPublisher);
   var construct = function (self, name) {
     var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
