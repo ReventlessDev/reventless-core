@@ -1,6 +1,6 @@
-open Reventless.Scheduler.Adapter
+open Reventless.Scheduler
 
-let make: scheduledPublisherMaker = (~name as _, ~opts) => {
+let make: Adapter.scheduledPublisherMaker = (~name as _, ~opts) => {
   let role = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name="CloudWatchEventsRole",
     ~service="events.amazonaws.com"->Pulumi.Output.make,
@@ -41,6 +41,6 @@ let make: scheduledPublisherMaker = (~name as _, ~opts) => {
     operations: {
       createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.createSchedule(role),
       deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime.deleteSchedule,
-    },
+    }->Pulumi.Output.make,
   }
 }

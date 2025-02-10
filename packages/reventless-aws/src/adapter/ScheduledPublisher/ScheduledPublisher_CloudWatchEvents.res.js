@@ -21,10 +21,10 @@ function make(param, opts) {
             info: Pulumi.output(""),
             service: Pulumi.output("CloudWatchEvents")
           },
-          operations: {
-            createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(role),
-            deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule
-          }
+          operations: Pulumi.output({
+                createSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.createSchedule(role),
+                deleteSchedule: ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws.deleteSchedule
+              })
         };
 }
 
