@@ -13,7 +13,7 @@ function make(name, param, opts) {
       }, opts);
   return {
           resources: [Util_SNS$ReventlessAws.toResource(topic)],
-          publish: Util_SNS$ReventlessAws.toRuntimeTopicOutput(topic).apply(function (runtimeTopic) {
+          publishJson: Util_SNS$ReventlessAws.toRuntimeTopicOutput(topic).apply(function (runtimeTopic) {
                 return function (extra, extra$1, extra$2) {
                   return EventTopicPublisher_SNS_Runtime$ReventlessAws.publish(runtimeTopic, extra, extra$1, extra$2);
                 };

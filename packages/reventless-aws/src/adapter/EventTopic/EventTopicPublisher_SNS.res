@@ -9,7 +9,7 @@ let make: Reventless.EventTopic.Adapter.publisherMaker = (~name, ~storageResourc
 
   {
     resources: [topic->Util_SNS.toResource],
-    publish: topic
+    publishJson: topic
     ->Util_SNS.toRuntimeTopicOutput
     ->Pulumi.Output.apply(runtimeTopic =>
       EventTopicPublisher_SNS_Runtime.publish(runtimeTopic, ...)

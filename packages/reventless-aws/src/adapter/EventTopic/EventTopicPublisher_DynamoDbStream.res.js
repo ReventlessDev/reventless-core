@@ -17,7 +17,7 @@ function make(param, storageResources, param$1) {
                         return Js_exn.raiseError("EventTopicPublisher_DynamoDbStream cannot connect to EventLogStorage_" + service);
                       }
                     }))],
-          publish: Pulumi.output(function (param, param$1, param$2) {
+          publishJson: Pulumi.output(function (param, param$1, param$2) {
                 return Promise.resolve();
               })
         };
