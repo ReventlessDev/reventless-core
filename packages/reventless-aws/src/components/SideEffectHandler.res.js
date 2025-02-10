@@ -9,14 +9,5 @@ var include = SideEffectHandler$Reventless.Make(EventCollector$Reventless.Make(E
 
 var make = include.make;
 
-var enqueueEvent = include.enqueueEvent;
-
-var createSchedule = include.createSchedule;
-
-var deleteSchedule = include.deleteSchedule;
-
 exports.make = make;
-exports.enqueueEvent = enqueueEvent;
-exports.createSchedule = createSchedule;
-exports.deleteSchedule = deleteSchedule;
 /* include Not a pure module */

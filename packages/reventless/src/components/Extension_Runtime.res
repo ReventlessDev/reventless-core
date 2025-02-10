@@ -9,7 +9,7 @@ module type Spec = {
   let publishToAggregates: dict<ReventlessSpec.CommandTopic.publishJsons>
   let publishToCorePluginExtensionPoint: ReventlessSpec.CommandTopic.publishJsons
   let readModelNamesForSourceName: Js.Dict.t<array<string>>
-  let publishToReadModels: Js.Dict.t<ReventlessSpec.EventCollector.enqueueEvent>
+  let publishToReadModels: Js.Dict.t<EventCollector.enqueueEvent>
   let queryEngine: ReventlessSpec.QueryEngine.t
 }
 

@@ -1,12 +1,15 @@
-open ReventlessSpec.Adapter
-open ReventlessSpec.EventCollector
-
 let componentType = ComponentType.EventCollector
 
-type outputs = {name: string, resources: array<resource>}
+type enqueueEvent = (
+  /* ~delay: */ int,
+  /* ~id: */ string,
+  /* ~message: */ string,
+) => Js.Promise.t<unit>
 
 type t
-type component = Component.t<t, outputs, unit>
+type outputs = {name: string, resources: array<ReventlessSpec.Adapter.resource>}
+type operations = {enqueueEvent: enqueueEvent}
+type component = Component.t<t, outputs, operations>
 
 type eventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
@@ -21,14 +24,12 @@ module type T = {
     ~policy2: Pulumi.Output.t<option<string>>,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
-
-  let enqueueEvent: component => Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>
 }
 
 module Adapter = {
   type connector = {
-    resources: array<resource>,
-    enqueueEvent: Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>,
+    resources: array<ReventlessSpec.Adapter.resource>,
+    enqueueEvent: Pulumi.Output.t<enqueueEvent>,
   }
   type connectorMaker = (
     ~name: string,
@@ -47,31 +48,6 @@ module Adapter = {
 }
 
 module Make = (Connector: Adapter.Connector): T => {
-  type constructed
-  type construct = (component, string) => constructed
-
-  @module("./Component") @new
-  external make: (
-    ~componentType: string,
-    ~name: string,
-    ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.options>,
-  ) => component = "default"
-
-  @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send
-  external setOutputs: (component, outputs) => unit = "setOutputs"
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs)
-    self->registerOutputs(outputs)
-  }
-
-  @set
-  external setEnqueueEvent: (component, Pulumi.Output.t<enqueueEvent>) => unit = "enqueueEvent"
-  @get
-  external enqueueEvent: component => Pulumi.Output.t<enqueueEvent> = "enqueueEvent"
-
   let construct = (
     ~eventTopics,
     ~eventsHandler,
@@ -95,9 +71,11 @@ module Make = (Connector: Adapter.Connector): T => {
       ~opts,
     )
 
-    self->setEnqueueEvent(connector.enqueueEvent)
+    self->Component.setOperations(
+      connector.enqueueEvent->Pulumi.Output.apply(enqueueEvent => {enqueueEvent: enqueueEvent}),
+    )
 
-    self->setOutputs({name, resources: connector.resources})
+    self->Component.setOutputs({name, resources: connector.resources})
   }
 
   let make = (
@@ -109,8 +87,8 @@ module Make = (Connector: Adapter.Connector): T => {
     ~policy1,
     ~policy2,
     ~opts,
-  ) =>
-    make(
+  ): component =>
+    Component.make(
       ~componentType=componentType->ComponentType.toString,
       ~name,
       ~construct=construct(

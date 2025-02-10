@@ -108,7 +108,7 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
     var publishToReadModels = {};
     var readModels$1 = Belt_Array.map(readModels, (function (ReadModel) {
             var readModel = ReadModel.make(allEventTopics, opts);
-            Belt_Array.forEach(ReadModel.sourceNames, (function (sourceName) {
+            Belt_Array.forEach(Component$Reventless.extractOutputs(readModel).sourceNames, (function (sourceName) {
                     var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
                     if (readModelNames !== undefined) {
                       readModelNamesForSourceName[sourceName] = Belt_Array.concat(readModelNames, [ReadModel.Spec.name]);
@@ -116,7 +116,9 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                       readModelNamesForSourceName[sourceName] = [ReadModel.Spec.name];
                     }
                   }));
-            publishToReadModels[ReadModel.Spec.name] = ReadModel.enqueueEvent(readModel);
+            publishToReadModels[ReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(function (param) {
+                  return param.enqueueEvent;
+                });
             return [
                     ReadModel.Spec.name,
                     {

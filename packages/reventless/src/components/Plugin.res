@@ -178,18 +178,23 @@ module Make = (
 
     let readModels = readModels->Belt.Array.map((module(ReadModel: ReadModel.T)) => {
       let readModel = ReadModel.make(~allEventTopics, ~opts)
-      ReadModel.sourceNames->Belt.Array.forEach(sourceName =>
+      (readModel->Component.extractOutputs).sourceNames->Belt.Array.forEach(sourceName =>
         switch readModelNamesForSourceName->Js.Dict.get(sourceName) {
         | Some(readModelNames) =>
-          Js.Dict.set(
-            readModelNamesForSourceName,
+          readModelNamesForSourceName->Js.Dict.set(
             sourceName,
             readModelNames->Belt.Array.concat([ReadModel.Spec.name]),
           )
         | None => Js.Dict.set(readModelNamesForSourceName, sourceName, [ReadModel.Spec.name])
         }
       )
-      publishToReadModels->Js.Dict.set(ReadModel.Spec.name, readModel->ReadModel.enqueueEvent)
+
+      publishToReadModels->Js.Dict.set(
+        ReadModel.Spec.name,
+        readModel
+        ->Component.operations
+        ->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
+      )
 
       (ReadModel.Spec.name, {module_: module(ReadModel), readModel})
     })

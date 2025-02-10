@@ -1,16 +1,17 @@
 let componentType = ComponentType.ReadModel
 
+type t
 type outputs = {
   name: string,
   queryDb: QueryDb.outputs,
   eventCollector: Pulumi.Output.t<EventCollector.outputs>,
+  sourceNames: array<string>,
 }
+type operations = {enqueueEvent: EventCollector.enqueueEvent}
+type component = Component.t<t, outputs, operations>
 
 let allQueryDbs = allReadModels =>
   Js.Dict.map((readModel: outputs) => readModel.queryDb, allReadModels)
-
-type t
-type component = Component.t<t, outputs, unit>
 
 module type T = {
   module Spec: ReventlessSpec.ReadModel_Spec.T
@@ -19,10 +20,6 @@ module type T = {
     ~allEventTopics: EventTopic.allOutputs,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
-
-  let enqueueEvent: component => Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>
-
-  let sourceNames: array<string>
 }
 
 module Make = (
@@ -37,35 +34,6 @@ module Make = (
 ): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  type constructed
-  type construct = (component, string) => constructed
-
-  @module("./Component") @new
-  external make: (
-    ~componentType: string,
-    ~name: string,
-    ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.options>,
-  ) => component = "default"
-
-  @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send
-  external setOutputs: (component, outputs) => unit = "setOutputs"
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs)
-    self->registerOutputs(outputs)
-  }
-
-  @set
-  external setEnqueueEvent: (
-    component,
-    Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent>,
-  ) => unit = "enqueueEvent"
-  @get
-  external enqueueEvent: component => Pulumi.Output.t<ReventlessSpec.EventCollector.enqueueEvent> =
-    "enqueueEvent"
-
   let sourceNames = Mappings.mappings->Belt.Array.map((module(Mapping)) => Mapping.sourceName)
 
   type projectionPrimitives = QueryDb.primitives<string, Spec.state> // TODO: should we really use this "mixed" type?
@@ -73,11 +41,10 @@ module Make = (
   let construct = (~allEventTopics, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
-    module QueryDb = QueryDb.Make(Config, Spec, QueryDbStorage, QueryDbResolvers)
+    module SpecificQueryDb = QueryDb.Make(Config, Spec, QueryDbStorage, QueryDbResolvers)
+    let queryDb = SpecificQueryDb.make(~opts)
 
-    let queryDb = QueryDb.make(~opts)
-
-    let toProjectionPrimitives: QueryDb.primitives => projectionPrimitives = ({
+    let toProjectionPrimitives: SpecificQueryDb.primitives => projectionPrimitives = ({
       load,
       save,
       saveBatch,
@@ -103,12 +70,12 @@ module Make = (
       ->Belt.Set.String.fromArray
 
     module Runtime = ReadModel_Runtime.Make(Spec, Mappings)
-    module EventCollector = EventCollector.Make(EventCollectorConnector)
+    module SpecificEventCollector = EventCollector.Make(EventCollectorConnector)
     let eventCollector =
       queryDb
-      ->QueryDb.primitives
+      ->SpecificQueryDb.primitives
       ->Pulumi.Output.apply(primitives =>
-        EventCollector.make(
+        SpecificEventCollector.make(
           ~name=name->ComponentType.name(componentType),
           ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
           ~eventsHandler=Runtime.eventsHandler(primitives->toProjectionPrimitives, ...),
@@ -119,20 +86,21 @@ module Make = (
         )
       )
 
-    self->setEnqueueEvent(
-      eventCollector->Pulumi.Output.flatMap(eventCollector =>
-        eventCollector->EventCollector.enqueueEvent
-      ),
+    self->Component.setOperations(
+      eventCollector
+      ->Pulumi.Output.flatMap(eventCollector => eventCollector->Component.operations)
+      ->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
     )
-    self->setOutputs({
+    self->Component.setOutputs({
       name,
       queryDb: queryDb->Component.extractOutputs,
       eventCollector: eventCollector->Component.extractWrappedOutputs,
+      sourceNames: sourceNames->Belt.Set.String.toArray,
     })
   }
 
-  let make = (~allEventTopics, ~opts=?) =>
-    make(
+  let make = (~allEventTopics, ~opts=?): component =>
+    Component.make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~allEventTopics, ...),
