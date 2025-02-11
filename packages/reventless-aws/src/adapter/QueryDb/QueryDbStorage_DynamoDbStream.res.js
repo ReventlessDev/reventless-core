@@ -13,7 +13,7 @@ function make(name, indexes, subIdField, ttl, api, apiRole, opts) {
   return {
           resources: [Util_DynamoDbStream$ReventlessAws.toResource(table)],
           dataSourceName: QueryDbStorage_DynamoDb$ReventlessAws.dataSource(name, table, api, apiRole, opts).name,
-          primitives: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
+          operations: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
                 return {
                         load: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.load(runtimeTable),
                         save: QueryDbStorage_DynamoDb_Runtime$ReventlessAws.save(runtimeTable),

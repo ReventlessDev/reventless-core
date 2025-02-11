@@ -3,7 +3,6 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Component$Reventless = require("./Component.res.js");
@@ -35,50 +34,39 @@ var Adapter = {
 };
 
 function Make(Config, Spec, $$Storage, Resolvers) {
-  var construct = function (ttl, self, name, api, apiRole) {
-    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
-    var opts = {
-      parent: opts_parent
-    };
-    var subIdField = Belt_Option.map(Spec.subIdConfig, (function (config) {
-            return config.subIdField;
-          }));
-    var storageName = ComponentType$Reventless.name(name, "QueryDb");
-    var Runtime = QueryDb_Runtime$Reventless.Make(Spec);
-    var storage = $$Storage.make(storageName, Spec.config.indexes, subIdField, ttl, api, apiRole, opts);
-    self.primitives = storage.primitives.apply(function (param) {
-          return {
-                  load: Runtime.loadStates(param.load),
-                  save: Runtime.saveState(param.save),
-                  saveBatch: Runtime.saveStates(param.saveBatch),
-                  count: Runtime.countFn(param.count),
-                  delete: Runtime.deleteState(param.delete),
-                  deleteBatch: Runtime.deleteStates(param.deleteBatch)
-                };
-        });
-    var resolvers = Resolvers.make(name, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, opts);
-    var outputs = {
-      resources: Belt_Array.concat(storage.resources, resolvers.resources),
-      resolversMaker: resolvers.resourcesMaker
-    };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
-  };
   var make = function (ttl, opts) {
-    var prim0 = ComponentType$Reventless.toString("QueryDb");
-    var prim1 = Spec.name;
-    var prim2 = function (extra, extra$1, extra$2, extra$3) {
-      return construct(ttl, extra, extra$1, extra$2, extra$3);
-    };
-    var prim4 = Config.api;
-    var prim5 = Config.apiRole;
-    return new Component(prim0, prim1, prim2, opts, prim4, prim5);
+    return Component$Reventless.make(ComponentType$Reventless.toString("QueryDb"), Spec.name, (function (none, none$1) {
+                  var api = Config.api;
+                  var apiRole = Config.apiRole;
+                  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(none));
+                  var opts = {
+                    parent: opts_parent
+                  };
+                  var subIdField = Belt_Option.map(Spec.subIdConfig, (function (config) {
+                          return config.subIdField;
+                        }));
+                  var storageName = ComponentType$Reventless.name(none$1, "QueryDb");
+                  var Runtime = QueryDb_Runtime$Reventless.Make(Spec);
+                  var storage = $$Storage.make(storageName, Spec.config.indexes, subIdField, ttl, api, apiRole, opts);
+                  Component$Reventless.setOperations(none, storage.operations.apply(function (param) {
+                            return {
+                                    load: Runtime.loadStates(param.load),
+                                    save: Runtime.saveState(param.save),
+                                    saveBatch: Runtime.saveStates(param.saveBatch),
+                                    count: Runtime.countFn(param.count),
+                                    delete: Runtime.deleteState(param.delete),
+                                    deleteBatch: Runtime.deleteStates(param.deleteBatch)
+                                  };
+                          }));
+                  var resolvers = Resolvers.make(none$1, api, apiRole, storage.dataSourceName, Spec.config.indexes, subIdField, Spec.config.idResolvers, Spec.config.idsResolvers, opts);
+                  return Component$Reventless.setOutputs(none, {
+                              resources: Belt_Array.concat(storage.resources, resolvers.resources),
+                              resolversMaker: resolvers.resourcesMaker
+                            });
+                }), opts);
   };
   return {
           Spec: Spec,
-          primitives: (function (prim) {
-              return prim.primitives;
-            }),
           make: make
         };
 }
@@ -89,4 +77,4 @@ exports.componentType = componentType;
 exports.allResolversMakers = allResolversMakers;
 exports.Adapter = Adapter;
 exports.Make = Make;
-/* ./Component Not a pure module */
+/* Component-Reventless Not a pure module */

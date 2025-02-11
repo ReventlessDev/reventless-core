@@ -112,10 +112,10 @@ function Make(Config, QueryDbStorage, Handler) {
     var CountsDb = partial_arg$5(QueryDbStorage, QueryDb$Reventless.Adapter.NoResolvers(Config));
     var referencesDb = ReferencesDb.make(ttl, opts);
     var countsDb = CountsDb.make(ttl, opts);
-    var handler = CountsDb.primitives(countsDb).apply(function (param) {
+    var handler = Component$Reventless.operations(countsDb).apply(function (param) {
           return Handler.make(name, name$1, Component$Reventless.extractOutputs(referencesDb), name$2, Component$Reventless.extractOutputs(countsDb), Counter_Runtime$Reventless.counterHandler(name, param.count, counterEventsHandler), opts2);
         });
-    self.count = ReferencesDb.primitives(referencesDb).apply(function (param) {
+    self.count = Component$Reventless.operations(referencesDb).apply(function (param) {
           var saveBatch = param.saveBatch;
           return function (extra) {
             return Curry._2(Counter_Runtime$Reventless.count(ttl), saveBatch, extra);

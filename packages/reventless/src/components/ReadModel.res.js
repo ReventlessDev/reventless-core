@@ -37,7 +37,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                   };
                   var SpecificQueryDb = partial_arg$1(QueryDbStorage, QueryDbResolvers);
                   var queryDb = SpecificQueryDb.make(undefined, opts);
-                  var toProjectionPrimitives = function (param) {
+                  var toProjectionOperations = function (param) {
                     var deleteBatch = param.deleteBatch;
                     var $$delete = param.delete;
                     var count = param.count;
@@ -82,9 +82,9 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                   var partial_arg$2 = ReadModel_Runtime$Reventless.Make;
                   var Runtime = partial_arg$2(Spec, Mappings);
                   var SpecificEventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
-                  var eventCollector = SpecificQueryDb.primitives(queryDb).apply(function (primitives) {
+                  var eventCollector = Component$Reventless.operations(queryDb).apply(function (operations) {
                         return SpecificEventCollector.make(ComponentType$Reventless.name(extra$1, "ReadModel"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), (function (extra) {
-                                      return Curry._2(Runtime.eventsHandler, toProjectionPrimitives(primitives), extra);
+                                      return Curry._2(Runtime.eventsHandler, toProjectionOperations(operations), extra);
                                     }), 2048, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
                       });
                   Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, (function (eventCollector) {

@@ -17,7 +17,7 @@ let load = table =>
     }
 
 let save = table =>
-  async (id, json, saveMode: ReventlessSpec.QueryDb.saveMode, ttl) => {
+  async (id, json, saveMode: Reventless.QueryDb.saveMode, ttl) => {
     let tableName = table.name
     let json = json->insertTtl(ttl)
 

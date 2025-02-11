@@ -108,7 +108,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   open Belt.Result
   //open QueryDb
   let load = (store, id) => store->states(id)->Ok->Js.Promise.resolve
-  let save = (store, id, state, saveMode: ReventlessSpec.QueryDb.saveMode, _ttl) =>
+  let save = (store, id, state, saveMode: QueryDb.saveMode, _ttl) =>
     switch (store->states(id), saveMode) {
     | (_, Any)
     | ([], Init)

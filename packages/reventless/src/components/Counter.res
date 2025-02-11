@@ -126,7 +126,7 @@ module Make = (
 
     let handler =
       countsDb
-      ->CountsDb.primitives
+      ->Component.operations
       ->Pulumi.Output.apply(({count}) =>
         Handler.make(
           ~name,
@@ -141,7 +141,7 @@ module Make = (
 
     self->setCount(
       referencesDb
-      ->ReferencesDb.primitives
+      ->Component.operations
       ->Pulumi.Output.apply(({saveBatch}) => Counter_Runtime.count(ttl)(saveBatch, ...)),
     )
     self->setAddToCounterTarget(handler->Pulumi.Output.apply(handler => handler.addToCounterTarget))

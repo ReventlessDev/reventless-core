@@ -1,24 +1,50 @@
-open ReventlessSpec.Adapter
-open ReventlessSpec.QueryDb
-
 let componentType = ComponentType.QueryDb
 
-type rec resolversResourcesMaker = Js.Dict.t<outputs> => array<resource>
+type rec resolversResourcesMaker = Js.Dict.t<outputs> => array<ReventlessSpec.Adapter.resource>
 and outputs = {
-  resources: array<resource>,
+  resources: array<ReventlessSpec.Adapter.resource>,
   resolversMaker: resolversResourcesMaker,
 }
 type allOutputs = Js.Dict.t<outputs>
 
 type t
-type component = Component.t<t, outputs, unit>
 
 let allResolversMakers = allQueryDbs =>
   allQueryDbs
   ->Js.Dict.values
   ->Belt.Array.map((queryDb: outputs) => queryDb.resolversMaker)
 
-type primitives<'id, 'state> = {
+type saveMode =
+  | Init
+  | Overwrite
+  | Any
+
+type load<'id, 'state> = 'id => Js.Promise.t<
+  Belt.Result.t<array<'state>, ReventlessSpec.QueryDb.storageError>,
+>
+type save<'id, 'state> = (
+  'id,
+  'state,
+  saveMode,
+  option<int>,
+) => Js.Promise.t<Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>>
+type saveBatch<'id, 'state> = array<('id, 'state, option<int>)> => Js.Promise.t<
+  Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>,
+>
+type count<'id> = (
+  'id,
+  string,
+  int,
+) => Js.Promise.t<Belt.Result.t<int, ReventlessSpec.QueryDb.storageError>>
+type delete<'id> = (
+  'id,
+  option<(string, string)>,
+) => Js.Promise.t<Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>>
+type deleteBatch<'id> = array<('id, option<(string, string)>)> => Js.Promise.t<
+  Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>,
+>
+
+type operations<'id, 'state> = {
   load: load<'id, 'state>,
   save: save<'id, 'state>,
   saveBatch: saveBatch<'id, 'state>,
@@ -30,8 +56,8 @@ type primitives<'id, 'state> = {
 module type T = {
   module Spec: ReventlessSpec.ReadModel_Spec.T
 
-  type primitives = primitives<Spec.Id.t, Spec.state>
-  let primitives: component => Pulumi.Output.t<primitives>
+  type operations = operations<Spec.Id.t, Spec.state>
+  type component = Component.t<t, outputs, operations>
 
   let make: (~ttl: int=?, ~opts: Pulumi.ComponentResource.options=?) => component
 }
@@ -39,12 +65,12 @@ module type T = {
 module Adapter = {
   open ReventlessSpec.ReadModel_Spec
 
-  type primitives = primitives<string, Js.Json.t>
+  type operations = operations<string, Js.Json.t>
 
   type storage = {
-    resources: array<resource>,
+    resources: array<ReventlessSpec.Adapter.resource>,
     dataSourceName: Pulumi.Output.t<string>, // TODO create in API
-    primitives: Pulumi.Output.t<primitives>,
+    operations: Pulumi.Output.t<operations>,
   }
   type storageMaker<'api, 'role> = (
     ~name: string,
@@ -70,7 +96,7 @@ module Adapter = {
   }
 
   type resolvers = {
-    resources: array<resource>,
+    resources: array<ReventlessSpec.Adapter.resource>,
     resourcesMaker: resolversResourcesMaker,
   }
   type resolversMaker<'api, 'role> = (
@@ -121,39 +147,10 @@ module Make = (
 ): (T with module Spec = Spec) => {
   module Spec = Spec
 
-  type api = Config.api
-  type role = Config.role
+  type operations = operations<Spec.Id.t, Spec.state>
+  type component = Component.t<t, outputs, operations>
 
-  type primitives = primitives<Spec.Id.t, Spec.state>
-
-  type constructed
-  type construct = (component, string, api, role) => constructed
-
-  @module("./Component") @new
-  external make: (
-    ~componentType: string,
-    ~name: string,
-    ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.options>,
-    ~api: api,
-    ~apiRole: role,
-  ) => component = "default"
-
-  @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send
-  external setOutputs: (component, outputs) => unit = "setOutputs"
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs)
-    self->registerOutputs(outputs)
-  }
-
-  @set
-  external setPrimitives: (component, Pulumi.Output.t<primitives>) => unit = "primitives"
-  @get
-  external primitives: component => Pulumi.Output.t<primitives> = "primitives"
-
-  let construct = (~ttl=?, self, name, api, apiRole) => {
+  let construct = (self, name, ~api, ~apiRole, ~ttl=?) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let subIdField = Spec.subIdConfig->Belt.Option.map(config => config.subIdField)
@@ -171,8 +168,8 @@ module Make = (
       ~opts,
     )
 
-    self->setPrimitives(
-      storage.primitives->Pulumi.Output.apply(({
+    self->Component.setOperations(
+      storage.operations->Pulumi.Output.apply(({
         load,
         save,
         saveBatch,
@@ -201,19 +198,17 @@ module Make = (
       ~opts,
     )
 
-    self->setOutputs({
+    self->Component.setOutputs({
       resources: storage.resources->Belt.Array.concat(resolvers.resources),
       resolversMaker: resolvers.resourcesMaker,
     })
   }
 
-  let make = (~ttl=?, ~opts=?) =>
-    make(
+  let make = (~ttl=?, ~opts=?): component =>
+    Component.make(
       ~componentType=componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~ttl?, ...),
+      ~construct=construct(~api=Config.api, ~apiRole=Config.apiRole, ~ttl?, ...),
       ~opts,
-      ~api=Config.api,
-      ~apiRole=Config.apiRole,
     )
 }

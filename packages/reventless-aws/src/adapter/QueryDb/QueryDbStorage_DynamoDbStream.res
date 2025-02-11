@@ -26,7 +26,7 @@ let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
   {
     resources: [table->Util_DynamoDbStream.toResource],
     dataSourceName: dataSource(name, table, api, apiRole, opts).name,
-    primitives: table
+    operations: table
     ->Util_DynamoDb.toRuntimeTableOutput
     ->Pulumi.Output.apply(runtimeTable => {
       Reventless.QueryDb.load: runtimeTable->load,

@@ -36,7 +36,7 @@ module Make = (
 
   let sourceNames = Mappings.mappings->Belt.Array.map((module(Mapping)) => Mapping.sourceName)
 
-  type projectionPrimitives = QueryDb.primitives<string, Spec.state> // TODO: should we really use this "mixed" type?
+  type projectionOperations = QueryDb.operations<string, Spec.state> // TODO: should we really use this "mixed" type?
 
   let construct = (~allEventTopics, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
@@ -44,7 +44,7 @@ module Make = (
     module SpecificQueryDb = QueryDb.Make(Config, Spec, QueryDbStorage, QueryDbResolvers)
     let queryDb = SpecificQueryDb.make(~opts)
 
-    let toProjectionPrimitives: SpecificQueryDb.primitives => projectionPrimitives = ({
+    let toProjectionOperations: SpecificQueryDb.operations => projectionOperations = ({
       load,
       save,
       saveBatch,
@@ -73,12 +73,12 @@ module Make = (
     module SpecificEventCollector = EventCollector.Make(EventCollectorConnector)
     let eventCollector =
       queryDb
-      ->SpecificQueryDb.primitives
-      ->Pulumi.Output.apply(primitives =>
+      ->Component.operations
+      ->Pulumi.Output.apply(operations =>
         SpecificEventCollector.make(
           ~name=name->ComponentType.name(componentType),
           ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
-          ~eventsHandler=Runtime.eventsHandler(primitives->toProjectionPrimitives, ...),
+          ~eventsHandler=Runtime.eventsHandler(operations->toProjectionOperations, ...),
           ~memorySize=2048,
           ~policy1=Pulumi.Output.make(None),
           ~policy2=Pulumi.Output.make(None),
