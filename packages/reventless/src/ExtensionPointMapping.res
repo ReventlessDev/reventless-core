@@ -43,13 +43,19 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
   let aggregateName = Aggregate.name
   let extensionPointName = Spec.name
 
-  let mapIncomingCommands = (topicItems, createSchedule, deleteSchedule, queryEngine) =>
+  let doMapIncomingCommands = (
+    mapIncomingEventImpl,
+    topicItems,
+    createSchedule,
+    deleteSchedule,
+    queryEngine,
+  ) =>
     topicItems
     ->Belt.Array.map(({
       ReventlessSpec.CommandTopic.reference: reference,
       command: {Message.id: id, command, meta},
     }) =>
-      MappingImpl.mapIncomingCommand(
+      mapIncomingEventImpl(
         id->ReventlessSpec.Id.String.toString,
         command,
         meta,
@@ -90,55 +96,60 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     )
     ->Belt.Array.concatMany
 
-  let mapOutgoingEvent =
-    MappingImpl.mapOutgoingEvent->Belt.Option.map(mappingImplMapOutgoingEvent => {
-      (aggregateEvent'Json, createSchedule, deleteSchedule, queryEngine) =>
-        switch Message.event'_decode(
-          Aggregate.Id.t_decode,
-          Aggregate.event_decode,
-          aggregateEvent'Json,
-        ) {
-        | Ok({id, meta, event}) =>
-          mappingImplMapOutgoingEvent(
-            id->Aggregate.Id.toString,
-            event,
-            meta,
-            queryEngine,
-          )->Belt.Array.map(x =>
-            switch x {
-            | PublishEvent(id, event) =>
-              let eventJson = event->Spec.event_encode
-              Js.log(
-                `ExtensionPointMapping: outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
-              )
-              let meta = {
-                ...meta,
-                service: Spec.name,
-                msgId: Message.uuid(),
-              }
-              AbstractPublishEvent(id, meta, eventJson)
-            | PublishEventAsync(promise) =>
-              let toEvent' = async promise => {
-                let (id, event) = await promise
-                let eventJson = event->Spec.event_encode
-                Js.log(
-                  `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
-                )
-                (id, meta, eventJson)
-              }
-              AbstractPublishEventAsync(promise->toEvent')
-            | Call(handler, msg) =>
-              Js.log2(
-                `ExtensionPointMapping: outgoing from Aggregate ${aggregateName}: Handling call command`,
-                msg->Spec.callCommand_encode->Js.Json.stringify,
-              )
+  let mapIncomingCommands = doMapIncomingCommands(MappingImpl.mapIncomingCommand, ...)
 
-              AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, msg))
-            }
+  let doMapOutgoingEvent = (
+    mapOutgoingEventImpl,
+    aggregateEvent'Json,
+    createSchedule,
+    deleteSchedule,
+    queryEngine,
+  ) =>
+    switch Message.event'_decode(
+      Aggregate.Id.t_decode,
+      Aggregate.event_decode,
+      aggregateEvent'Json,
+    ) {
+    | Ok({id, meta, event}) =>
+      mapOutgoingEventImpl(id->Aggregate.Id.toString, event, meta, queryEngine)->Belt.Array.map(x =>
+        switch x {
+        | PublishEvent(id, event) =>
+          let eventJson = event->Spec.event_encode
+          Js.log(
+            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
           )
-        | Error(err) =>
-          Js.log2("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err)
-          []
+          let meta = {
+            ...meta,
+            service: Spec.name,
+            msgId: Message.uuid(),
+          }
+          AbstractPublishEvent(id, meta, eventJson)
+        | PublishEventAsync(promise) =>
+          let toEvent' = async promise => {
+            let (id, event) = await promise
+            let eventJson = event->Spec.event_encode
+            Js.log(
+              `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
+            )
+            (id, meta, eventJson)
+          }
+          AbstractPublishEventAsync(promise->toEvent')
+        | Call(handler, msg) =>
+          Js.log2(
+            `ExtensionPointMapping: outgoing from Aggregate ${aggregateName}: Handling call command`,
+            msg->Spec.callCommand_encode->Js.Json.stringify,
+          )
+
+          AbstractCall(() => handler(createSchedule, deleteSchedule, queryEngine, msg))
         }
-    })
+      )
+    | Error(err) =>
+      Js.log2("ExtensionPointMapping.mapOutgoing: Error: Decode failure: ", err)
+      []
+    }
+
+  let mapOutgoingEvent =
+    MappingImpl.mapOutgoingEvent->Belt.Option.map(mapOutgoingEventImpl =>
+      doMapOutgoingEvent(mapOutgoingEventImpl, ...)
+    )
 }

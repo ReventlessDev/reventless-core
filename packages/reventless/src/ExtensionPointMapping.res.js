@@ -10,12 +10,13 @@ function Make(Spec, MappingImpl) {
   var Aggregate = MappingImpl.Aggregate;
   var aggregateName = Aggregate.name;
   var extensionPointName = Spec.name;
-  var mapIncomingCommands = function (topicItems, createSchedule, deleteSchedule, queryEngine) {
-    return Belt_Array.concatMany(Belt_Array.map(topicItems, (function (param) {
+  var mapIncomingCommands = function (extra, extra$1, extra$2, extra$3) {
+    var mapIncomingEventImpl = MappingImpl.mapIncomingCommand;
+    return Belt_Array.concatMany(Belt_Array.map(extra, (function (param) {
                       var reference = param.reference;
                       var match = param.command;
                       var meta = match.meta;
-                      return Belt_Array.map(MappingImpl.mapIncomingCommand(Id$ReventlessSpec.$$String.toString(match.id), match.command, meta), (function (x) {
+                      return Belt_Array.map(mapIncomingEventImpl(Id$ReventlessSpec.$$String.toString(match.id), match.command, meta), (function (x) {
                                     if (x.TAG === "PublishCommand") {
                                       var aggregateCmd = x._1;
                                       var aggregateId = x._0;
@@ -47,19 +48,19 @@ function Make(Spec, MappingImpl) {
                                             TAG: "AbstractCall",
                                             _0: reference,
                                             _1: (function () {
-                                                return handler(createSchedule, deleteSchedule, queryEngine, callCommand);
+                                                return handler(extra$1, extra$2, extra$3, callCommand);
                                               })
                                           };
                                   }));
                     })));
   };
-  var mapOutgoingEvent = Belt_Option.map(MappingImpl.mapOutgoingEvent, (function (mappingImplMapOutgoingEvent) {
-          return function (aggregateEvent$pJson, createSchedule, deleteSchedule, queryEngine) {
-            var err = Message$Reventless.event$p_decode(Aggregate.Id.t_decode, Aggregate.event_decode, aggregateEvent$pJson);
+  var mapOutgoingEvent = Belt_Option.map(MappingImpl.mapOutgoingEvent, (function (mapOutgoingEventImpl) {
+          return function (extra, extra$1, extra$2, extra$3) {
+            var err = Message$Reventless.event$p_decode(Aggregate.Id.t_decode, Aggregate.event_decode, extra);
             if (err.TAG === "Ok") {
               var match = err._0;
               var meta = match.meta;
-              return Belt_Array.map(mappingImplMapOutgoingEvent(Aggregate.Id.toString(match.id), match.event, meta, queryEngine), (function (x) {
+              return Belt_Array.map(mapOutgoingEventImpl(Aggregate.Id.toString(match.id), match.event, meta, extra$3), (function (x) {
                             switch (x.TAG) {
                               case "PublishEvent" :
                                   var id = x._0;
@@ -108,7 +109,7 @@ function Make(Spec, MappingImpl) {
                                   return {
                                           TAG: "AbstractCall",
                                           _0: (function () {
-                                              return handler(createSchedule, deleteSchedule, queryEngine, msg);
+                                              return handler(extra$1, extra$2, extra$3, msg);
                                             })
                                         };
                               
