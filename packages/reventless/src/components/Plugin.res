@@ -116,6 +116,7 @@ module Make = (
   EventCollectorConnector: EventCollector.Adapter.Connector,
   QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
   CorePluginExtensionPointRemoteConnector: CommandTopic.Adapter.RemoteConnector,
+  HeartbeatRunner: Heartbeat.Adapter.Runner,
 ): T => {
   type constructed
   type construct = (component, string) => constructed
@@ -475,7 +476,9 @@ module Make = (
               )
             eventCollectorOutputs
           })
-        let heartbeat = Heartbeat.make(
+
+        module SpecificHeartbeat = Heartbeat.Make(HeartbeatRunner)
+        let heartbeat = SpecificHeartbeat.make(
           ~id,
           ~name=name ++ componentType->ComponentType.toName,
           ~timeout=heartbeatInterval,

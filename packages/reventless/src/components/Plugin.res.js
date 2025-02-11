@@ -83,7 +83,7 @@ function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEvent
   return dict;
 }
 
-function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPointRemoteConnector) {
+function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPointRemoteConnector, HeartbeatRunner) {
   var construct = function (version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, self, name) {
     var id = makeId(name, version);
     var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
@@ -288,7 +288,8 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
                     });
                 return eventCollectorOutputs;
               });
-          var heartbeat = Heartbeat$Reventless.make(id, name + ComponentType$Reventless.toName("Plugin"), heartbeatInterval, publishToCorePluginExtensionPoint, opts);
+          var SpecificHeartbeat = Heartbeat$Reventless.Make(HeartbeatRunner);
+          var heartbeat = SpecificHeartbeat.make(id, name + ComponentType$Reventless.toName("Plugin"), heartbeatInterval, publishToCorePluginExtensionPoint, opts);
           return {
                   id: id,
                   version: version,
