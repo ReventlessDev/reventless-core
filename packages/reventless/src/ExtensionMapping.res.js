@@ -20,8 +20,9 @@ function Make(Spec, MappingImpl) {
             correlationId: meta.correlationId
           };
   };
-  var mapIncomingEvent = function (param, pluginDef, queryEngine) {
-    var meta = param.meta;
+  var mapIncomingEvent = function (extra, extra$1, extra$2) {
+    var mapIncomingEventImpl = MappingImpl.mapIncomingEvent;
+    var meta = extra.meta;
     var encodeAggregateCommandJson = function (aggregateCmd, aggregateId) {
       var commandStr = JSON.stringify(Aggregate.command_encode(aggregateCmd));
       console.log("ExtensionMapping incoming from ExtensionPoint " + extensionPointName + " to Aggregate " + aggregateName + ": Publishing command: " + commandStr + " id: " + aggregateId);
@@ -45,7 +46,7 @@ function Make(Spec, MappingImpl) {
     var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
       return encodeExtensionPointCommandJson(Spec.command_encode(command), id, extensionPointName, action);
     };
-    return Belt_Array.map(MappingImpl.mapIncomingEvent(param.id, param.event, meta, pluginDef, queryEngine), (function (x) {
+    return Belt_Array.map(mapIncomingEventImpl(extra.id, extra.event, meta, extra$1, extra$2), (function (x) {
                   switch (x.TAG) {
                     case "PublishAggregateCommand" :
                         return {
@@ -115,9 +116,9 @@ function Make(Spec, MappingImpl) {
                   }
                 }));
   };
-  var mapOutgoingEvent = Belt_Option.map(MappingImpl.mapOutgoingEvent, (function (mappingImplMapOutgoingEvent) {
-          return function (aggregateEvent$pJson, pluginDef) {
-            var err = Message$Reventless.event$p_decode(Aggregate.Id.t_decode, Aggregate.event_decode, aggregateEvent$pJson);
+  var mapOutgoingEvent = Belt_Option.map(MappingImpl.mapOutgoingEvent, (function (mapOutgoingEventImpl) {
+          return function (extra, extra$1) {
+            var err = Message$Reventless.event$p_decode(Aggregate.Id.t_decode, Aggregate.event_decode, extra);
             if (err.TAG === "Ok") {
               var match = err._0;
               var meta = match.meta;
@@ -134,7 +135,7 @@ function Make(Spec, MappingImpl) {
               var encodeExtensionPointCommand = function (command, id, extensionPointName, action) {
                 return encodeExtensionPointCommandJson(Spec.command_encode(command), id, extensionPointName, action);
               };
-              return Belt_Array.map(mappingImplMapOutgoingEvent(Aggregate.Id.toString(match.id), match.event, meta, pluginDef), (function (x) {
+              return Belt_Array.map(mapOutgoingEventImpl(Aggregate.Id.toString(match.id), match.event, meta, extra$1), (function (x) {
                             switch (x.TAG) {
                               case "PublishExtensionPointCommand" :
                                   var command = x._1;

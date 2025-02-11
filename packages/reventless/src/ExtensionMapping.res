@@ -48,7 +48,12 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     msgId: Message.uuid(),
   }
 
-  let mapIncomingEvent = ({Message.id: id, event, meta}, pluginDef, queryEngine) => {
+  let doMapIncomingEvent = (
+    mapIncomingEventImpl,
+    {Message.id: id, event, meta},
+    pluginDef,
+    queryEngine,
+  ) => {
     let encodeAggregateCommandJson = (aggregateCmd, aggregateId) => {
       let commandStr = aggregateCmd->Aggregate.command_encode->Js.Json.stringify
       Js.log(
@@ -80,7 +85,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       ->Spec.command_encode
       ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
 
-    MappingImpl.mapIncomingEvent(id, event, meta, pluginDef, queryEngine)->Belt.Array.map(x =>
+    mapIncomingEventImpl(id, event, meta, pluginDef, queryEngine)->Belt.Array.map(x =>
       switch x {
       | PublishAggregateCommand(aggregateId, aggregateCmd) =>
         AbstractPublishAggregateCommand(
@@ -138,81 +143,79 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     )
   }
 
-  let mapOutgoingEvent =
-    MappingImpl.mapOutgoingEvent->Belt.Option.map(mappingImplMapOutgoingEvent => (
+  let mapIncomingEvent = doMapIncomingEvent(MappingImpl.mapIncomingEvent, ...)
+
+  let doMapOutgoingEvent = (mapOutgoingEventImpl, aggregateEvent'Json, pluginDef) =>
+    switch Message.event'_decode(
+      Aggregate.Id.t_decode,
+      Aggregate.event_decode,
       aggregateEvent'Json,
-      pluginDef,
-    ) =>
-      switch Message.event'_decode(
-        Aggregate.Id.t_decode,
-        Aggregate.event_decode,
-        aggregateEvent'Json,
-      ) {
-      | Ok({id, meta, event}) =>
-        let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
-          let commandStr = commandJson->Js.Json.stringify
-          Js.log(
-            `ExtensionMapping outgoing from Aggregate ${aggregateName}: ${action}: ${commandStr} id: ${id}`,
-          )
-          {
-            Message.id,
-            meta: encodeMeta(meta, extensionPointName),
-            commandJson,
-            delay: None,
-          }
-        }
-
-        let encodeExtensionPointCommand = (command, ~id, ~extensionPointName, ~action) =>
-          command
-          ->Spec.command_encode
-          ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
-
-        mappingImplMapOutgoingEvent(
-          id->Aggregate.Id.toString,
-          event,
-          meta,
-          pluginDef,
-        )->Belt.Array.map(x =>
-          switch x {
-          | PublishExtensionPointCommand(id, command)
-            if Spec.name == ReventlessSpec.PluginExtensionPointSpec.name =>
-            AbstractPublishPluginExtensionPointCommand(
-              command->encodeExtensionPointCommand(
-                ~id,
-                ~extensionPointName,
-                ~action="Publish PluginExtensionPoint command",
-              ),
-            )
-
-          | PublishExtensionPointCommand(id, command) =>
-            AbstractPublishExtensionPointCommand(
-              extensionPointName,
-              command->encodeExtensionPointCommand(
-                ~id,
-                ~extensionPointName,
-                ~action="Publish ExtensionPoint command",
-              ),
-            )
-          | ForwardCommand({extensionPointName, id, commandJson}) =>
-            AbstractPublishExtensionPointCommand(
-              extensionPointName,
-              commandJson->encodeExtensionPointCommandJson(
-                ~id,
-                ~extensionPointName,
-                ~action="Forward ExtensionPoint command",
-              ),
-            )
-          | Call(handler, callCommand) =>
-            Js.log2(
-              `ExtensionMapping outgoing from Aggregate ${aggregateName}: Handling call command`,
-              callCommand->Spec.callCommand_encode->Js.Json.stringify,
-            )
-
-            AbstractCall(() => handler(callCommand))
-          }
+    ) {
+    | Ok({id, meta, event}) =>
+      let encodeExtensionPointCommandJson = (commandJson, ~id, ~extensionPointName, ~action) => {
+        let commandStr = commandJson->Js.Json.stringify
+        Js.log(
+          `ExtensionMapping outgoing from Aggregate ${aggregateName}: ${action}: ${commandStr} id: ${id}`,
         )
-      | Error(err) =>
-        Js.log2("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err)
-        []
-      })
+        {
+          Message.id,
+          meta: encodeMeta(meta, extensionPointName),
+          commandJson,
+          delay: None,
+        }
+      }
+
+      let encodeExtensionPointCommand = (command, ~id, ~extensionPointName, ~action) =>
+        command
+        ->Spec.command_encode
+        ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
+
+      mapOutgoingEventImpl(id->Aggregate.Id.toString, event, meta, pluginDef)->Belt.Array.map(x =>
+        switch x {
+        | PublishExtensionPointCommand(id, command)
+          if Spec.name == ReventlessSpec.PluginExtensionPointSpec.name =>
+          AbstractPublishPluginExtensionPointCommand(
+            command->encodeExtensionPointCommand(
+              ~id,
+              ~extensionPointName,
+              ~action="Publish PluginExtensionPoint command",
+            ),
+          )
+
+        | PublishExtensionPointCommand(id, command) =>
+          AbstractPublishExtensionPointCommand(
+            extensionPointName,
+            command->encodeExtensionPointCommand(
+              ~id,
+              ~extensionPointName,
+              ~action="Publish ExtensionPoint command",
+            ),
+          )
+        | ForwardCommand({extensionPointName, id, commandJson}) =>
+          AbstractPublishExtensionPointCommand(
+            extensionPointName,
+            commandJson->encodeExtensionPointCommandJson(
+              ~id,
+              ~extensionPointName,
+              ~action="Forward ExtensionPoint command",
+            ),
+          )
+        | Call(handler, callCommand) =>
+          Js.log2(
+            `ExtensionMapping outgoing from Aggregate ${aggregateName}: Handling call command`,
+            callCommand->Spec.callCommand_encode->Js.Json.stringify,
+          )
+
+          AbstractCall(() => handler(callCommand))
+        }
+      )
+    | Error(err) =>
+      Js.log2("ExtensionMapping.mapOutgoing: Error: Decode failure: ", err)
+      []
+    }
+
+  let mapOutgoingEvent =
+    MappingImpl.mapOutgoingEvent->Belt.Option.map(mapOutgoingEventImpl =>
+      doMapOutgoingEvent(mapOutgoingEventImpl, ...)
+    )
 }
