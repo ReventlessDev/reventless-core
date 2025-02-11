@@ -89,7 +89,7 @@ module Adapter = {
     let make: storageMaker<api, role>
   }
 
-  type queryEngineMaker = Js.Dict.t<outputs> => ReventlessSpec.QueryEngine.t
+  type queryEngineMaker = Js.Dict.t<outputs> => ReventlessSpec.QueryEngine.operations
 
   module type QueryEngineAdapter = {
     let make: queryEngineMaker

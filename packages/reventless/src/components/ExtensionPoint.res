@@ -24,7 +24,7 @@ module type T = {
   let make: (
     ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
     ~scheduler: Scheduler.operations,
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
+    ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
 }
@@ -57,7 +57,7 @@ module Make = (
   let construct = (
     ~publishToAggregates,
     ~scheduler: Scheduler.operations,
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
+    ~queryEngine: ReventlessSpec.QueryEngine.operations,
     self,
     name,
   ) => {

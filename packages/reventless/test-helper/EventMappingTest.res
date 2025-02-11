@@ -118,7 +118,7 @@ module Make = (
   let describe = Jest.describe
   let test = Jest.testPromise
 
-  let queryEngine: ReventlessSpec.QueryEngine.t = {
+  let queryEngine: ReventlessSpec.QueryEngine.operations = {
     scan: (~readModelName as _, ~filterConfigs as _, ~limit as _) => []->Js.Promise.resolve,
     query: (
       ~readModelName as _: string,

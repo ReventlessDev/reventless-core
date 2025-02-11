@@ -18,7 +18,7 @@ module type T = {
     ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
     ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
     ~publishToReadModels: Js.Dict.t<EventCollector.enqueueEvent>,
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
+    ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
 }

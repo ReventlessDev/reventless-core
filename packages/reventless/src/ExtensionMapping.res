@@ -27,7 +27,7 @@ module type T = {
   let mapIncomingEvent: (
     Message.event'<string, ExtensionPoint.event>,
     pluginDefinition,
-    ReventlessSpec.QueryEngine.t,
+    ReventlessSpec.QueryEngine.operations,
   ) => array<abstractIncomingCommandAction>
 
   let mapOutgoingEvent: option<

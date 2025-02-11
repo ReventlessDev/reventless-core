@@ -14,7 +14,7 @@ type component = Component.t<t, outputs, unit>
 module type T = {
   let make: (
     ~allEventTopics: EventTopic.allOutputs,
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
+    ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~publishJsons: ReventlessSpec.CommandTopic.publishJsons,
     ~memorySize: int=?,
     ~timeout: int=?,

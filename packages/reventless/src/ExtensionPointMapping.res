@@ -23,7 +23,7 @@ module type T = {
     >,
     ReventlessSpec.Schedule.create,
     ReventlessSpec.Schedule.delete,
-    ReventlessSpec.QueryEngine.t,
+    ReventlessSpec.QueryEngine.operations,
   ) => array<abstractCommandAction>
 
   let mapOutgoingEvent: option<
@@ -31,7 +31,7 @@ module type T = {
       Js.Json.t,
       ReventlessSpec.Schedule.create,
       ReventlessSpec.Schedule.delete,
-      ReventlessSpec.QueryEngine.t,
+      ReventlessSpec.QueryEngine.operations,
     ) => array<abstractEventAction<ExtensionPoint.event>>,
   >
 }

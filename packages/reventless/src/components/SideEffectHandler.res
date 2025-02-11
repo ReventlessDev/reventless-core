@@ -18,7 +18,7 @@ module type T = {
     ~name: string,
     ~sideEffects: sideEffects,
     ~allEventTopics: EventTopic.allOutputs,
-    ~queryEngine: ReventlessSpec.QueryEngine.t,
+    ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~scheduler: Scheduler.operations,
     ~memorySize: int=?,
     ~timeout: int=?,

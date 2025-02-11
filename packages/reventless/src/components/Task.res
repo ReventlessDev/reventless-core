@@ -21,13 +21,13 @@ type maker = (
   ~queryBucketName: queryBucketName,
   ~scheduler: Scheduler.operations,
   ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
-  ~queryEngine: ReventlessSpec.QueryEngine.t,
+  ~queryEngine: ReventlessSpec.QueryEngine.operations,
   ~allAggregates: Js.Dict.t<Aggregate.outputs>,
   ~opts: option<Pulumi.ComponentResource.options>,
 ) => component
 
 type setup = (
-  . ReventlessSpec.QueryEngine.t,
+  . ReventlessSpec.QueryEngine.operations,
   Scheduler.operations,
   publishCommands,
   queryBucketName,

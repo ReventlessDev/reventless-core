@@ -5,7 +5,7 @@ let forwardCommand = async (
   _id,
   command,
   extensionPointName,
-  queryEngine: ReventlessSpec.QueryEngine.t,
+  queryEngine: ReventlessSpec.QueryEngine.operations,
 ) =>
   switch await queryEngine.scan(
     ~readModelName=PluginSpec.name,
@@ -64,7 +64,7 @@ let forwardCommand = async (
 let callHandler = async (
   createSchedule: ReventlessSpec.Schedule.create,
   deleteSchedule: ReventlessSpec.Schedule.delete,
-  queryEngine: ReventlessSpec.QueryEngine.t,
+  queryEngine: ReventlessSpec.QueryEngine.operations,
   callCommand,
 ) =>
   switch callCommand {

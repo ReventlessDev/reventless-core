@@ -27,7 +27,7 @@ type name = string
 type t
 type component = Component.t<t, outputs, unit>
 
-type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
+type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.operations) => outputs
 
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec

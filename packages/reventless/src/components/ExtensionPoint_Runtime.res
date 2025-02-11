@@ -9,7 +9,7 @@ module type Spec = {
   let publishToEventTopic: EventTopic.publishJson
   let commandTopicResources: array<Adapter.unwrappedResource>
   let scheduler: Scheduler.operations
-  let queryEngine: ReventlessSpec.QueryEngine.t
+  let queryEngine: ReventlessSpec.QueryEngine.operations
 }
 
 module Make = (

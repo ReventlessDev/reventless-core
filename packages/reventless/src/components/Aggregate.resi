@@ -17,7 +17,7 @@ type name = string
 type t
 type component = Component.t<t, outputs, unit>
 
-type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.t) => outputs
+type addEventMapper = (EventTopic.allOutputs, ReventlessSpec.QueryEngine.operations) => outputs
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec
   let make: (~opts: Pulumi.ComponentResource.options=?) => component
@@ -41,7 +41,7 @@ module Make: (
       let map: (
         Source.Id.t,
         Source.event,
-        ReventlessSpec.QueryEngine.t,
+        ReventlessSpec.QueryEngine.operations,
       ) => array<ReventlessSpec.EventMapping.action<Spec.Id.t, Spec.command>>
     }
     let mappings: array<module(Mapping)>

@@ -30,7 +30,7 @@ type mapIncomingEvent<
   'extensionPointEvent,
   Message.meta,
   PluginExtensionPointSpec.pluginDefinition,
-  QueryEngine.t,
+  QueryEngine.operations,
 ) => array<
   incomingCommandAction<'aggregateCommand, 'extensionPointCommand, 'extensionPointCallCommand>,
 >

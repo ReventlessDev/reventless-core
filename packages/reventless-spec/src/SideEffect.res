@@ -7,5 +7,10 @@ module type Source = {
 
 module type T = {
   module Source: Source
-  let execute: (Source.Id.t, Message.meta, Source.event, QueryEngine.t) => Js.Promise.t<unit>
+  let execute: (
+    Source.Id.t,
+    Message.meta,
+    Source.event,
+    QueryEngine.operations,
+  ) => Js.Promise.t<unit>
 }

@@ -47,7 +47,7 @@ type scan = (
   ~limit: int,
 ) => Js.Promise.t<array<Js.Json.t>>
 
-type t = {
+type operations = {
   scan: scan,
   query: query,
 }
