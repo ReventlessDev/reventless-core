@@ -3,9 +3,9 @@
 
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var PluginSpec$Reventless = require("@reventless/reventless/src/core/Aggregates/Plugin/PluginSpec.res.js");
-var Aggregate$ReventlessAws = require("../components/Aggregate.res.js");
 var NoEventMappings$Reventless = require("@reventless/reventless/src/util/NoEventMappings.res.js");
 var PluginBehaviour$Reventless = require("@reventless/reventless/src/core/Aggregates/Plugin/PluginBehaviour.res.js");
+var Aggregate_Builder$ReventlessAws = require("../components/Aggregate_Builder.res.js");
 
 function Make(Config) {
   var partial_arg = {
@@ -25,7 +25,7 @@ function Make(Config) {
     error_encode: PluginSpec$Reventless.error_encode,
     error_decode: PluginSpec$Reventless.error_decode
   };
-  var partial_arg$2 = Aggregate$ReventlessAws.Make;
+  var partial_arg$2 = Aggregate_Builder$ReventlessAws.Make;
   var param = NoEventMappings$Reventless.Make({
         name: PluginSpec$Reventless.name,
         Id: Id$ReventlessSpec.$$String,
@@ -36,4 +36,4 @@ function Make(Config) {
 }
 
 exports.Make = Make;
-/* Aggregate-ReventlessAws Not a pure module */
+/* PluginBehaviour-Reventless Not a pure module */

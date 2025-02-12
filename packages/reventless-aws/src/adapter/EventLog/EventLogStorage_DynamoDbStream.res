@@ -1,4 +1,4 @@
-let make: Reventless.EventLog.Adapter.storageMaker = (~name, ~opts) => {
+let make: Reventless.EventLog_Adapter.storageMaker = (~name, ~opts) => {
   let table = Util.DynamoDbStream.makeTable(
     name,
     ~attributes=[{name: "id", type_: "S"}, {name: "sequenceNr", type_: "S"}],
@@ -10,15 +10,14 @@ let make: Reventless.EventLog.Adapter.storageMaker = (~name, ~opts) => {
 
   {
     resources: [table->Util_DynamoDbStream.toResource],
-    append: table
+    operations: table
     ->Util_DynamoDb.toRuntimeTableOutput
-    ->Pulumi.Output.apply(runtimeTable =>
-      EventLogStorage_DynamoDb_Runtime.append(runtimeTable, ...)
-    ),
-    replay: table
-    ->Util_DynamoDb.toRuntimeTableOutput
-    ->Pulumi.Output.apply(runtimeTable =>
-      EventLogStorage_DynamoDb_Runtime.replay(runtimeTable, ...)
-    ),
+    ->Pulumi.Output.apply(runtimeTable => {
+      Reventless.EventLog_Adapter.append: EventLogStorage_DynamoDb_Runtime.append(
+        runtimeTable,
+        ...
+      ),
+      replay: EventLogStorage_DynamoDb_Runtime.replay(runtimeTable, ...),
+    }),
   }
 }

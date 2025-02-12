@@ -3,7 +3,7 @@ module Make = (
   Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Reventless.Behaviour.T with module Spec := Spec,
   EventMappings: Reventless.EventMapper.Mappings with module Target := Spec,
-): Reventless.Aggregate.T => Reventless.Aggregate.Make(
+): Reventless.Aggregate.T => Reventless.Aggregate_Builder.Make(
   Config,
   Spec,
   Behaviour,

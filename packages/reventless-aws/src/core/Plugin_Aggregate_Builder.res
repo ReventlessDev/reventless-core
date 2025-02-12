@@ -1,4 +1,4 @@
-module Make = (Config: Config.T) => Aggregate.Make(
+module Make = (Config: Config.T) => Aggregate_Builder.Make(
   Config,
   Reventless.PluginSpec,
   Reventless.PluginBehaviour,

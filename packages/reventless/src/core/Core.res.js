@@ -8,7 +8,7 @@ var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Cloner$Reventless = require("../components/Cloner.res.js");
-var Aggregate$Reventless = require("../components/Aggregate.res.js");
+var Aggregate$Reventless = require("../components/Aggregate/Aggregate.res.js");
 var Component$Reventless = require("../components/Component.res.js");
 var ReadModel$Reventless = require("../components/ReadModel.res.js");
 var Component = require("../components/Component").default;
@@ -28,10 +28,12 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
     };
     var addEventMapperFns = {};
     var publishToAggregates = {};
-    var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (Aggregate) {
-                    var aggregate = Aggregate.make(opts);
-                    addEventMapperFns[Aggregate.Spec.name] = Aggregate.addEventMapper(aggregate);
-                    publishToAggregates[Aggregate.Spec.name] = Aggregate.publishJsons(aggregate);
+    var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (SpecificAggregate) {
+                    var aggregate = SpecificAggregate.make(opts);
+                    addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.extractOutputs(aggregate).addEventMapper;
+                    publishToAggregates[SpecificAggregate.Spec.name] = Component$Reventless.operations(aggregate).apply(function (param) {
+                          return param.publishJsons;
+                        });
                     return Component$Reventless.extractOutputs(aggregate);
                   })), (function (aggregate) {
                 return [
@@ -40,12 +42,12 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
                       ];
               })));
     var allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
-    var readModels$1 = Belt_Array.map(readModels, (function (ReadModel) {
-            var readModel = ReadModel.make(allEventTopics, opts);
+    var readModels$1 = Belt_Array.map(readModels, (function (SpecificReadModel) {
+            var readModel = SpecificReadModel.make(allEventTopics, opts);
             return [
-                    ReadModel.Spec.name,
+                    SpecificReadModel.Spec.name,
                     {
-                      module_: ReadModel,
+                      module_: SpecificReadModel,
                       readModel: readModel
                     }
                   ];
@@ -62,8 +64,8 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
             return addEventMapperFn(allEventTopics, queryEngine);
           }), addEventMapperFns);
     var match = Output$Pulumi.unzip(Pulumi.all(publishToAggregates).apply(function (publishToAggregates) {
-              var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (ExtensionPoint) {
-                          var extensionPoint = ExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
+              var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
+                          var extensionPoint = SpecificExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
                           return [
                                   Component$Reventless.extractOutputs(extensionPoint),
                                   Component$Reventless.operations(extensionPoint).apply(function (param) {

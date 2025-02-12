@@ -2,7 +2,7 @@
 'use strict';
 
 var AWS$ReventlessAws = require("../AWS.res.js");
-var EventLog$Reventless = require("@reventless/reventless/src/components/EventLog.res.js");
+var EventLog$Reventless = require("@reventless/reventless/src/components/EventLog/EventLog.res.js");
 var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
 var EventLogStorage_DynamoDb_Runtime$ReventlessAws = require("./EventLogStorage_DynamoDb_Runtime.res.js");
 
@@ -19,11 +19,11 @@ function make(name, opts) {
       ], undefined, undefined, "sequenceNr", AWS$ReventlessAws.tags(name, EventLog$Reventless.componentType), opts, name);
   return {
           resources: [Util_DynamoDb$ReventlessAws.toResource(table)],
-          append: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
-                return EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(runtimeTable);
-              }),
-          replay: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
-                return EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(runtimeTable);
+          operations: Util_DynamoDb$ReventlessAws.toRuntimeTableOutput(table).apply(function (runtimeTable) {
+                return {
+                        append: EventLogStorage_DynamoDb_Runtime$ReventlessAws.append(runtimeTable),
+                        replay: EventLogStorage_DynamoDb_Runtime$ReventlessAws.replay(runtimeTable)
+                      };
               })
         };
 }

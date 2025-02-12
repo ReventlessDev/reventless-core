@@ -163,10 +163,16 @@ module Make = (
 
     let aggregatesWithoutEventMappers =
       aggregates
-      ->Belt.Array.map((module(Aggregate: Aggregate.T)) => {
-        let aggregate = Aggregate.make(~opts)
-        addEventMapperFns->Js.Dict.set(Aggregate.Spec.name, aggregate->Aggregate.addEventMapper)
-        publishToAggregates->Js.Dict.set(Aggregate.Spec.name, aggregate->Aggregate.publishJsons)
+      ->Belt.Array.map((module(SpecificAggregate: Aggregate.T)) => {
+        let aggregate = SpecificAggregate.make(~opts)
+        addEventMapperFns->Js.Dict.set(
+          SpecificAggregate.Spec.name,
+          (aggregate->Component.extractOutputs).addEventMapper,
+        )
+        publishToAggregates->Js.Dict.set(
+          SpecificAggregate.Spec.name,
+          aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons),
+        )
         aggregate->Component.extractOutputs
       })
       ->Belt.Array.map(aggregate => {(aggregate.name, aggregate)})
@@ -177,27 +183,28 @@ module Make = (
     let readModelNamesForSourceName = Js.Dict.empty()
     let publishToReadModels = Js.Dict.empty()
 
-    let readModels = readModels->Belt.Array.map((module(ReadModel: ReadModel.T)) => {
-      let readModel = ReadModel.make(~allEventTopics, ~opts)
+    let readModels = readModels->Belt.Array.map((module(SpecificReadModel: ReadModel.T)) => {
+      let readModel = SpecificReadModel.make(~allEventTopics, ~opts)
       (readModel->Component.extractOutputs).sourceNames->Belt.Array.forEach(sourceName =>
         switch readModelNamesForSourceName->Js.Dict.get(sourceName) {
         | Some(readModelNames) =>
           readModelNamesForSourceName->Js.Dict.set(
             sourceName,
-            readModelNames->Belt.Array.concat([ReadModel.Spec.name]),
+            readModelNames->Belt.Array.concat([SpecificReadModel.Spec.name]),
           )
-        | None => Js.Dict.set(readModelNamesForSourceName, sourceName, [ReadModel.Spec.name])
+        | None =>
+          Js.Dict.set(readModelNamesForSourceName, sourceName, [SpecificReadModel.Spec.name])
         }
       )
 
       publishToReadModels->Js.Dict.set(
-        ReadModel.Spec.name,
+        SpecificReadModel.Spec.name,
         readModel
         ->Component.operations
         ->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
       )
 
-      (ReadModel.Spec.name, {module_: module(ReadModel), readModel})
+      (SpecificReadModel.Spec.name, {module_: module(SpecificReadModel), readModel})
     })
     let readModelsOutputs =
       readModels

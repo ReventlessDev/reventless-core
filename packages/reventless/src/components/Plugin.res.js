@@ -12,7 +12,7 @@ var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Adapter$Reventless = require("../adapter/Adapter.res.js");
 var QueryDb$Reventless = require("./QueryDb.res.js");
-var Aggregate$Reventless = require("./Aggregate.res.js");
+var Aggregate$Reventless = require("./Aggregate/Aggregate.res.js");
 var Component$Reventless = require("./Component.res.js");
 var Heartbeat$Reventless = require("./Heartbeat.res.js");
 var ReadModel$Reventless = require("./ReadModel.res.js");
@@ -92,10 +92,12 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
     };
     var addEventMapperFns = {};
     var publishToAggregates = {};
-    var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (Aggregate) {
-                    var aggregate = Aggregate.make(opts);
-                    addEventMapperFns[Aggregate.Spec.name] = Aggregate.addEventMapper(aggregate);
-                    publishToAggregates[Aggregate.Spec.name] = Aggregate.publishJsons(aggregate);
+    var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (SpecificAggregate) {
+                    var aggregate = SpecificAggregate.make(opts);
+                    addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.extractOutputs(aggregate).addEventMapper;
+                    publishToAggregates[SpecificAggregate.Spec.name] = Component$Reventless.operations(aggregate).apply(function (param) {
+                          return param.publishJsons;
+                        });
                     return Component$Reventless.extractOutputs(aggregate);
                   })), (function (aggregate) {
                 return [
@@ -106,23 +108,23 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
     var allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
     var readModelNamesForSourceName = {};
     var publishToReadModels = {};
-    var readModels$1 = Belt_Array.map(readModels, (function (ReadModel) {
-            var readModel = ReadModel.make(allEventTopics, opts);
+    var readModels$1 = Belt_Array.map(readModels, (function (SpecificReadModel) {
+            var readModel = SpecificReadModel.make(allEventTopics, opts);
             Belt_Array.forEach(Component$Reventless.extractOutputs(readModel).sourceNames, (function (sourceName) {
                     var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
                     if (readModelNames !== undefined) {
-                      readModelNamesForSourceName[sourceName] = Belt_Array.concat(readModelNames, [ReadModel.Spec.name]);
+                      readModelNamesForSourceName[sourceName] = Belt_Array.concat(readModelNames, [SpecificReadModel.Spec.name]);
                     } else {
-                      readModelNamesForSourceName[sourceName] = [ReadModel.Spec.name];
+                      readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
                     }
                   }));
-            publishToReadModels[ReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(function (param) {
+            publishToReadModels[SpecificReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(function (param) {
                   return param.enqueueEvent;
                 });
             return [
-                    ReadModel.Spec.name,
+                    SpecificReadModel.Spec.name,
                     {
-                      module_: ReadModel,
+                      module_: SpecificReadModel,
                       readModel: readModel
                     }
                   ];

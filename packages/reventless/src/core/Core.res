@@ -70,10 +70,16 @@ module Make = (
 
     let aggregatesWithoutEventMappers =
       aggregates
-      ->Belt.Array.map((module(Aggregate: Aggregate.T)) => {
-        let aggregate = Aggregate.make(~opts)
-        addEventMapperFns->Js.Dict.set(Aggregate.Spec.name, aggregate->Aggregate.addEventMapper)
-        publishToAggregates->Js.Dict.set(Aggregate.Spec.name, aggregate->Aggregate.publishJsons)
+      ->Belt.Array.map((module(SpecificAggregate: Aggregate.T)) => {
+        let aggregate = SpecificAggregate.make(~opts)
+        addEventMapperFns->Js.Dict.set(
+          SpecificAggregate.Spec.name,
+          (aggregate->Component.extractOutputs).addEventMapper,
+        )
+        publishToAggregates->Js.Dict.set(
+          SpecificAggregate.Spec.name,
+          aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons),
+        )
         aggregate->Component.extractOutputs
       })
       ->Belt.Array.map(aggregate => {(aggregate.name, aggregate)})
@@ -81,9 +87,9 @@ module Make = (
 
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
-    let readModels = readModels->Belt.Array.map((module(ReadModel: ReadModel.T)) => {
-      let readModel = ReadModel.make(~allEventTopics, ~opts)
-      (ReadModel.Spec.name, {module_: module(ReadModel), readModel})
+    let readModels = readModels->Belt.Array.map((module(SpecificReadModel: ReadModel.T)) => {
+      let readModel = SpecificReadModel.make(~allEventTopics, ~opts)
+      (SpecificReadModel.Spec.name, {module_: module(SpecificReadModel), readModel})
     })
     let readModelsOutputs =
       readModels
@@ -106,8 +112,8 @@ module Make = (
       ->Pulumi.Output.apply(publishToAggregates => {
         let (extensionPointsOutputs, extensionPointsOutgoingEventHandlers) =
           extensionPoints
-          ->Belt.Array.map((module(ExtensionPoint: ExtensionPoint.T)) => {
-            let extensionPoint = ExtensionPoint.make(
+          ->Belt.Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
+            let extensionPoint = SpecificExtensionPoint.make(
               ~publishToAggregates,
               ~scheduler,
               ~queryEngine,

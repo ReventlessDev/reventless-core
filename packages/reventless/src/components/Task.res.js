@@ -5,7 +5,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Aggregate$Reventless = require("./Aggregate.res.js");
+var Aggregate$Reventless = require("./Aggregate/Aggregate.res.js");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
