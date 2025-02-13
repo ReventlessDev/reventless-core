@@ -169,13 +169,15 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var extensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
           var corePluginExtensionPoint_name = extensionPointUnwrapped.name;
           var corePluginExtensionPoint_aggregateNames = extensionPointUnwrapped.aggregateNames;
-          var corePluginExtensionPoint_commandTopic = {
-            resources: Belt_Array.map(extensionPointUnwrapped.commandTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource)
-          };
+          var corePluginExtensionPoint_commandTopic = Pulumi.output({
+                resources: Belt_Array.map(extensionPointUnwrapped.commandTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource)
+              });
           var corePluginExtensionPoint_eventTopic = {
             resources: Belt_Array.map(extensionPointUnwrapped.eventTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource)
           };
-          var corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(Pulumi.all(Belt_Array.map(corePluginExtensionPoint_commandTopic.resources, Adapter$Reventless.resourceToUnwrappedOutput)));
+          var corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(Output$Pulumi.flatMap(corePluginExtensionPoint_commandTopic, (function (commandTopic) {
+                      return Pulumi.all(Belt_Array.map(commandTopic.resources, Adapter$Reventless.resourceToUnwrappedOutput));
+                    })));
           var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish;
           var match$1 = Belt_Array.unzip(Belt_Array.map(extensions, (function (SpecificExtension) {
                       var extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
@@ -192,7 +194,9 @@ function Make(EventCollectorConnector, QueryEngineAdapter, CorePluginExtensionPo
           var extensionsOutputs = match$1[0];
           var extensionPointsDefinitions = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPointOutputs) {
                       return Pulumi.all([
-                                    extensionPointOutputs.commandTopic.resources[0].id,
+                                    Output$Pulumi.flatMap(extensionPointOutputs.commandTopic, (function (param) {
+                                            return param.resources[0].id;
+                                          })),
                                     extensionPointOutputs.eventTopic.resources[0].id
                                   ]).apply(function (param) {
                                   return {

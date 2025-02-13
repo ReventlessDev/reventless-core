@@ -115,7 +115,7 @@ let serviceNameToEventHandlers: (
 module Make = (
   EventCollectorConnector: EventCollector.Adapter.Connector,
   QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
-  CorePluginExtensionPointRemoteConnector: CommandTopic.Adapter.RemoteConnector,
+  CorePluginExtensionPointRemoteConnector: CommandTopic_Adapter.RemoteConnector,
   HeartbeatRunner: Heartbeat.Adapter.Runner,
 ): T => {
   type constructed
@@ -275,10 +275,10 @@ module Make = (
             name: extensionPointUnwrapped.name,
             aggregateNames: extensionPointUnwrapped.aggregateNames,
             commandTopic: {
-              resources: extensionPointUnwrapped.commandTopic.resources->Belt.Array.map(
+              CommandTopic.resources: extensionPointUnwrapped.commandTopic.resources->Belt.Array.map(
                 AdapterDeploytime.unwrappedToResource,
               ),
-            },
+            }->Pulumi.Output.make,
             eventTopic: {
               resources: extensionPointUnwrapped.eventTopic.resources->Belt.Array.map(
                 AdapterDeploytime.unwrappedToResource,
@@ -288,9 +288,11 @@ module Make = (
         }
 
         let corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(
-          corePluginExtensionPoint.commandTopic.resources
-          ->Belt.Array.map(Adapter.resourceToUnwrappedOutput)
-          ->Pulumi.Output.all,
+          corePluginExtensionPoint.commandTopic->Pulumi.Output.flatMap(commandTopic =>
+            commandTopic.resources
+            ->Belt.Array.map(Adapter.resourceToUnwrappedOutput)
+            ->Pulumi.Output.all
+          ),
         )
         let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish
 
@@ -323,7 +325,9 @@ module Make = (
           extensionPointsOutputs
           ->Belt.Array.map(extensionPointOutputs =>
             (
-              (extensionPointOutputs.commandTopic.resources->Array.getUnsafe(0)).id, // FIXME
+              extensionPointOutputs.commandTopic->Pulumi.Output.flatMap(
+                ({resources}) => (resources->Array.getUnsafe(0)).id, // FIXME
+              ),
               (extensionPointOutputs.eventTopic.resources->Array.getUnsafe(0)).id,
             )
             ->Pulumi.Output.all2

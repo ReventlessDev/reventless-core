@@ -1,6 +1,6 @@
 open PulumiAws
 
-let make: Reventless.CommandTopic.Adapter.connectorMaker = (
+let make: Reventless.CommandTopic_Adapter.connectorMaker = (
   ~name,
   ~handleCommands,
   ~memorySize,

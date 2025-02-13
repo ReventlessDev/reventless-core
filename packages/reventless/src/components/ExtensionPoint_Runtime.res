@@ -5,7 +5,7 @@ module type Mappings = {
 }
 
 module type Spec = {
-  let publishToAggregates: dict<ReventlessSpec.CommandTopic.publishJsons>
+  let publishToAggregates: dict<CommandTopic.publishJsons>
   let publishToEventTopic: EventTopic.publishJson
   let commandTopicResources: array<Adapter.unwrappedResource>
   let scheduler: Scheduler.operations
@@ -23,18 +23,6 @@ module Make = (
         Mapping.aggregateName == aggregateName
       )
     ) // TODO: handle multiple mappings for same Aggregate name
-
-  let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, queue) =>
-    mappings
-    ->Belt.Array.map((module(Mapping: Mappings.Mapping)) =>
-      Mapping.mapIncomingCommands(
-        topicItems,
-        Schedule.create(scheduler, queue),
-        Schedule.delete(scheduler, queue),
-        queryEngine,
-      )
-    )
-    ->Belt.Array.concatMany
 
   let mapOutgoingEvent = (event'Json, mappings, scheduler, queue, queryEngine) =>
     switch event'Json->Message.serviceNameOfMsg->findOutgoingMapping(mappings) {
@@ -59,39 +47,6 @@ module Make = (
       Js.Exn.raiseError(
         "ExtensionPoint.Mapping: Missing mapping for " ++ event'Json->Js.Json.stringify,
       )
-    }
-
-  let applyCommandAction = async action =>
-    switch action {
-    | ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
-      let result =
-        Spec.publishToAggregates
-        ->Js.Dict.get(aggregateName)
-        ->Belt.Option.map((publishJsons: ReventlessSpec.CommandTopic.publishJsons) =>
-          publishJsons([cmdJson])
-        )
-        ->Belt.Option.mapWithDefault(
-          () =>
-            Js.Exn.raiseError(
-              `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
-            ),
-          x => {() => x},
-        )
-      switch result() {
-      | _ => Belt.Result.Ok(reference)
-      | exception err => {
-          Js.log2("ExtensionPoint: Error on publish command:", err)
-          Belt.Result.Error(reference)
-        }
-      }
-    | AbstractCall(reference, handler) =>
-      switch await handler() {
-      | _ => Belt.Result.Ok(reference)
-      | exception err => {
-          err->Js.log2("ExtensionPoint: Error on calling handler:")
-          Belt.Result.Error(reference)
-        }
-      }
     }
 
   let applyEventAction = async action =>
@@ -128,6 +83,50 @@ module Make = (
     ->Js.Promise.all
     ->Util.Promise.toUnit
   }
+
+  let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, queue) =>
+    mappings
+    ->Belt.Array.map((module(Mapping: Mappings.Mapping)) =>
+      Mapping.mapIncomingCommands(
+        topicItems,
+        Schedule.create(scheduler, queue),
+        Schedule.delete(scheduler, queue),
+        queryEngine,
+      )
+    )
+    ->Belt.Array.concatMany
+
+  let applyCommandAction = async action =>
+    switch action {
+    | ExtensionPointMapping.AbstractPublishCommand(aggregateName, reference, cmdJson) =>
+      let result =
+        Spec.publishToAggregates
+        ->Js.Dict.get(aggregateName)
+        ->Belt.Option.map((publishJsons: CommandTopic.publishJsons) => publishJsons([cmdJson]))
+        ->Belt.Option.mapWithDefault(
+          () =>
+            Js.Exn.raiseError(
+              `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,
+            ),
+          x => {() => x},
+        )
+      switch result() {
+      | _ => Belt.Result.Ok(reference)
+      | exception err => {
+          Js.log2("ExtensionPoint: Error on publish command:", err)
+          Belt.Result.Error(reference)
+        }
+      }
+    | AbstractCall(reference, handler) =>
+      switch await handler() {
+      | _ => Belt.Result.Ok(reference)
+      | exception err => {
+          err->Js.log2("ExtensionPoint: Error on calling handler:")
+          Belt.Result.Error(reference)
+        }
+      }
+    }
+
   let incomingCommandsHandler = async topicItems => {
     let commandActions =
       topicItems->mapIncomingCommands(

@@ -10,7 +10,7 @@ module type T = {
 
   let make: (
     ~name: string,
-    ~publishJsons: ReventlessSpec.CommandTopic.publishJsons,
+    ~publishJsons: CommandTopic.publishJsons,
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }

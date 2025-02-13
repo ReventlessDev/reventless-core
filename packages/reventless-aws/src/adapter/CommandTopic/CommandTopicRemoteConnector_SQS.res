@@ -1,4 +1,4 @@
-let make: Reventless.CommandTopic.Adapter.remoteConnectorMaker = resources => {
+let make: Reventless.CommandTopic_Adapter.remoteConnectorMaker = resources => {
   remotePublish: resources->Pulumi.Output.apply(resources =>
     resources
     ->Util.SQS_Runtime.findUnwrappedResource

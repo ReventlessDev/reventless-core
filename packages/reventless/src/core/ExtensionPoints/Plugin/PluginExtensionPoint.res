@@ -6,7 +6,7 @@ module Mappings = {
 }
 
 module Make = (
-  CommandTopicAdapter: CommandTopic.Adapter.Connector,
+  CommandTopicAdapter: CommandTopic_Adapter.Connector,
   EventTopicAdapter: EventTopic.Adapter.Publisher,
 ): ExtensionPoint.T => {
   include ExtensionPoint.Make(

@@ -8,12 +8,12 @@ var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Aggregate$Reventless = require("./Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
 var EventMapper$Reventless = require("../EventMapper.res.js");
-var CommandTopic$Reventless = require("../CommandTopic.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventCollector$Reventless = require("../EventCollector.res.js");
 var CommandGenerator$Reventless = require("../CommandGenerator.res.js");
 var EventLog_Builder$Reventless = require("../EventLog/EventLog_Builder.res.js");
 var Aggregate_Runtime$Reventless = require("./Aggregate_Runtime.res.js");
+var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Builder.res.js");
 
 function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers, CommandTopicConnector, EventLogStorage, EventTopicPublisher, EventCollectorConnector) {
   var partial_arg = CommandGenerator$Reventless.Make;
@@ -29,7 +29,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
     command_encode: partial_arg_command_encode,
     command_decode: partial_arg_command_decode
   };
-  var partial_arg$3 = CommandTopic$Reventless.Make;
+  var partial_arg$3 = CommandTopic_Builder$Reventless.Make;
   var SpecificCommandTopic = (function (param) {
         return partial_arg$3(partial_arg$2, param);
       })(CommandTopicConnector);
@@ -68,14 +68,14 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
           return SpecificCommandTopic.make(childName, Runtime.handleCommands, undefined, undefined, opts);
         });
     var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
-            return SpecificCommandTopic.publishJsons(commandTopic).apply(function (publishJsons) {
-                        return Component$Reventless.extractOutputs(SpecificCommandGenerator.make(childName, publishJsons, opts));
+            return Component$Reventless.operations(commandTopic).apply(function (param) {
+                        return Component$Reventless.extractOutputs(SpecificCommandGenerator.make(childName, param.publishJsons, opts));
                       });
           }));
     Component$Reventless.setOperations(self, Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
-                return SpecificCommandTopic.publishJsons(commandTopic).apply(function (publishJsons) {
+                return Component$Reventless.operations(commandTopic).apply(function (param) {
                             return {
-                                    publishJsons: publishJsons
+                                    publishJsons: param.publishJsons
                                   };
                           });
               })));

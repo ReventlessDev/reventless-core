@@ -1,5 +1,5 @@
 module type Spec = {
-  let publishToCorePluginExtensionPoint: ReventlessSpec.CommandTopic.publishJsons
+  let publishToCorePluginExtensionPoint: CommandTopic.publishJsons
   let id: string
   let timeout: int
 }

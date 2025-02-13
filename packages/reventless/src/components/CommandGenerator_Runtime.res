@@ -11,7 +11,7 @@ module Make = (
   Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := Spec,
 ) => {
-  type publishJsons = ReventlessSpec.CommandTopic.publishJsons
+  type publishJsons = CommandTopic.publishJsons
 
   let generateCommand: publishJsons => commandGenerator = publishJsons =>
     async payload => {

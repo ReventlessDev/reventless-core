@@ -11,7 +11,7 @@ and outputs = {
   addEventMapper: addEventMapper,
 }
 type allOutputs = Js.Dict.t<outputs>
-type operations = {publishJsons: ReventlessSpec.CommandTopic.publishJsons}
+type operations = {publishJsons: CommandTopic.publishJsons}
 type component = Component.t<t, outputs, operations>
 
 type name = string

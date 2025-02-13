@@ -9,7 +9,7 @@ type unwrappedOutputs = {
 type outputs = {
   name: string,
   aggregateNames: array<string>,
-  commandTopic: CommandTopic.outputs,
+  commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
   eventTopic: EventTopic.outputs,
 }
 
@@ -22,7 +22,7 @@ module type T = {
   type component = Component.t<t, outputs, operations>
 
   let make: (
-    ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
+    ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
     ~scheduler: Scheduler.operations,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
@@ -38,7 +38,7 @@ module type Mappings = {
 module Make = (
   Spec: ReventlessSpec.ExtensionPointMapping.Spec,
   Mappings: Mappings with module Spec := Spec,
-  CommandTopicAdapter: CommandTopic.Adapter.Connector,
+  CommandTopicAdapter: CommandTopic_Adapter.Connector,
   EventTopicAdapter: EventTopic.Adapter.Publisher,
 ): T => {
   module Spec = Spec
@@ -65,17 +65,15 @@ module Make = (
 
     let childName = name->Js.String2.replace(".", "")->ComponentType.name(componentType)
 
-    let commandTopic: ref<option<CommandTopic.component>> = ref(None)
-    let commandTopicResources =
-      (
-        commandTopic.contents->Belt.Option.getExn->Component.extractOutputs
-      ).resources->Adapter.resourcesToUnwrappedOutput
+    let commandTopicResources: ref<Pulumi.Output.t<array<Adapter.unwrappedResource>>> = ref(
+      []->Pulumi.Output.make,
+    )
 
     module SpecificEventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
     let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
 
     let (outgoingEventHandler, incomingCommandsHandler) =
-      (eventTopic->Component.operations, commandTopicResources)
+      (eventTopic->Component.operations, commandTopicResources.contents)
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply((({publishJson: publishToEventTopic}, commandTopicResources)) => {
         module RuntimeSpec = {
@@ -91,18 +89,17 @@ module Make = (
       })
       ->Pulumi.Output.unzip
 
-    module SpecificCommandTopic = CommandTopic.Make(SpecWithId, CommandTopicAdapter)
-    let _ =
-      incomingCommandsHandler->Pulumi.Output.apply(incomingCommandsHandler =>
-        commandTopic :=
-          Some(
-            SpecificCommandTopic.make(
-              ~name=childName,
-              ~commandsHandler=incomingCommandsHandler,
-              ~opts,
-            ),
-          )
+    module SpecificCommandTopic = CommandTopic_Builder.Make(SpecWithId, CommandTopicAdapter)
+    let commandTopic = incomingCommandsHandler->Pulumi.Output.apply(incomingCommandsHandler => {
+      let commandTopic = SpecificCommandTopic.make(
+        ~name=childName,
+        ~commandsHandler=incomingCommandsHandler,
+        ~opts,
       )
+      commandTopicResources :=
+        (commandTopic->Component.extractOutputs).resources->Adapter.resourcesToUnwrappedOutput
+      commandTopic
+    })
 
     self->Component.setOperations(
       outgoingEventHandler->Pulumi.Output.apply(outgoingEventHandler => {
@@ -115,7 +112,9 @@ module Make = (
       aggregateNames: Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
         Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
       ),
-      commandTopic: commandTopic.contents->Belt.Option.getExn->Component.extractOutputs,
+      commandTopic: commandTopic->Pulumi.Output.apply(commandTopic =>
+        commandTopic->Component.extractOutputs
+      ),
       eventTopic: eventTopic->Component.extractOutputs,
     })
   }

@@ -20,7 +20,7 @@ type queryBucketName = string => string
 type maker = (
   ~queryBucketName: queryBucketName,
   ~scheduler: Scheduler.operations,
-  ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
+  ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
   ~queryEngine: ReventlessSpec.QueryEngine.operations,
   ~allAggregates: Js.Dict.t<Aggregate.outputs>,
   ~opts: option<Pulumi.ComponentResource.options>,

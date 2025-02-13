@@ -19,11 +19,6 @@ function Make(Spec, MappingSpec, Mappings) {
                               }));
                 }));
   };
-  var mapIncomingCommands = function (topicItems, mappings, scheduler, queryEngine, queue) {
-    return Belt_Array.concatMany(Belt_Array.map(mappings, (function (Mapping) {
-                      return Mapping.mapIncomingCommands(topicItems, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
-                    })));
-  };
   var mapOutgoingEvent = function (event$pJson, mappings, scheduler, queue, queryEngine) {
     var Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(event$pJson), mappings);
     if (Mapping === undefined) {
@@ -33,9 +28,54 @@ function Make(Spec, MappingSpec, Mappings) {
     if (mapOutgoingEvent$1 !== undefined) {
       return mapOutgoingEvent$1(event$pJson, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
     } else {
-      Logger$Reventless.error("File \"ExtensionPoint_Runtime.res\", line 52, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
+      Logger$Reventless.error("File \"ExtensionPoint_Runtime.res\", line 40, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return [];
     }
+  };
+  var applyEventAction = async function (action) {
+    switch (action.TAG) {
+      case "AbstractPublishEvent" :
+          try {
+            return await Spec.publishToEventTopic(action._0, action._1, action._2);
+          }
+          catch (raw_err){
+            var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+            console.log(err, "ExtensionPoint: Error on publishToEventTopic command:");
+            return ;
+          }
+      case "AbstractPublishEventAsync" :
+          var publishToEventTopic = async function (promise) {
+            var match = await promise;
+            try {
+              return await Spec.publishToEventTopic(match[0], match[1], match[2]);
+            }
+            catch (raw_err){
+              var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+              console.log(err, "ExtensionPoint: Error on publishToEventTopic command:");
+              return ;
+            }
+          };
+          return await publishToEventTopic(action._0);
+      case "AbstractCall" :
+          try {
+            return await action._0();
+          }
+          catch (raw_err$1){
+            var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+            console.log(err$1, "ExtensionPoint: Error on calling handler:");
+            return ;
+          }
+      
+    }
+  };
+  var outgoingEventHandler = async function (event$pJson, _pluginDef) {
+    var eventActions = mapOutgoingEvent(event$pJson, Mappings.mappings, Spec.scheduler, Spec.commandTopicResources, Spec.queryEngine);
+    return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventActions, applyEventAction)));
+  };
+  var mapIncomingCommands = function (topicItems, mappings, scheduler, queryEngine, queue) {
+    return Belt_Array.concatMany(Belt_Array.map(mappings, (function (Mapping) {
+                      return Mapping.mapIncomingCommands(topicItems, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
+                    })));
   };
   var applyCommandAction = async function (action) {
     if (action.TAG === "AbstractPublishCommand") {
@@ -86,57 +126,17 @@ function Make(Spec, MappingSpec, Mappings) {
             _0: reference$1
           };
   };
-  var applyEventAction = async function (action) {
-    switch (action.TAG) {
-      case "AbstractPublishEvent" :
-          try {
-            return await Spec.publishToEventTopic(action._0, action._1, action._2);
-          }
-          catch (raw_err){
-            var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-            console.log(err, "ExtensionPoint: Error on publishToEventTopic command:");
-            return ;
-          }
-      case "AbstractPublishEventAsync" :
-          var publishToEventTopic = async function (promise) {
-            var match = await promise;
-            try {
-              return await Spec.publishToEventTopic(match[0], match[1], match[2]);
-            }
-            catch (raw_err){
-              var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-              console.log(err, "ExtensionPoint: Error on publishToEventTopic command:");
-              return ;
-            }
-          };
-          return await publishToEventTopic(action._0);
-      case "AbstractCall" :
-          try {
-            return await action._0();
-          }
-          catch (raw_err$1){
-            var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-            console.log(err$1, "ExtensionPoint: Error on calling handler:");
-            return ;
-          }
-      
-    }
-  };
-  var outgoingEventHandler = async function (event$pJson, _pluginDef) {
-    var eventActions = mapOutgoingEvent(event$pJson, Mappings.mappings, Spec.scheduler, Spec.commandTopicResources, Spec.queryEngine);
-    return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventActions, applyEventAction)));
-  };
   var incomingCommandsHandler = async function (topicItems) {
     var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, Spec.scheduler, Spec.queryEngine, Spec.commandTopicResources);
     return await Promise.all(Belt_Array.map(commandActions, applyCommandAction));
   };
   return {
           findOutgoingMapping: findOutgoingMapping,
-          mapIncomingCommands: mapIncomingCommands,
           mapOutgoingEvent: mapOutgoingEvent,
-          applyCommandAction: applyCommandAction,
           applyEventAction: applyEventAction,
           outgoingEventHandler: outgoingEventHandler,
+          mapIncomingCommands: mapIncomingCommands,
+          applyCommandAction: applyCommandAction,
           incomingCommandsHandler: incomingCommandsHandler
         };
 }

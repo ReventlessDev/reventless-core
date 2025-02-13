@@ -10,8 +10,8 @@ var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Adapter$Reventless = require("../adapter/Adapter.res.js");
 var Component$Reventless = require("./Component.res.js");
 var EventTopic$Reventless = require("./EventTopic.res.js");
-var CommandTopic$Reventless = require("./CommandTopic.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
+var CommandTopic_Builder$Reventless = require("./CommandTopic/CommandTopic_Builder.res.js");
 var ExtensionPoint_Runtime$Reventless = require("./ExtensionPoint_Runtime.res.js");
 
 function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
@@ -26,10 +26,9 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                     parent: opts_parent
                   };
                   var childName = ComponentType$Reventless.name(extra$1.replace(".", ""), "ExtensionPoint");
-                  var commandTopic = {
-                    contents: undefined
+                  var commandTopicResources = {
+                    contents: Pulumi.output([])
                   };
-                  var commandTopicResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(Belt_Option.getExn(commandTopic.contents)).resources);
                   var partial_arg = {
                     Id: Id$ReventlessSpec.$$String,
                     event_encode: event_encode,
@@ -42,7 +41,7 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                   var eventTopic = SpecificEventTopic.make(childName, [], opts);
                   var match = Output$Pulumi.unzip(Pulumi.all([
                               Component$Reventless.operations(eventTopic),
-                              commandTopicResources
+                              commandTopicResources.contents
                             ]).apply(function (param) {
                             var RuntimeSpec_publishToEventTopic = param[0].publishJson;
                             var RuntimeSpec_commandTopicResources = param[1];
@@ -68,12 +67,14 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                     command_encode: command_encode,
                     command_decode: command_decode
                   };
-                  var partial_arg$3 = CommandTopic$Reventless.Make;
+                  var partial_arg$3 = CommandTopic_Builder$Reventless.Make;
                   var SpecificCommandTopic = (function (param) {
                         return partial_arg$3(partial_arg$2, param);
                       })(CommandTopicAdapter);
-                  match[1].apply(function (incomingCommandsHandler) {
-                        commandTopic.contents = Caml_option.some(SpecificCommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts));
+                  var commandTopic = match[1].apply(function (incomingCommandsHandler) {
+                        var commandTopic = SpecificCommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts);
+                        commandTopicResources.contents = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(commandTopic).resources);
+                        return commandTopic;
                       });
                   Component$Reventless.setOperations(extra, match[0].apply(function (outgoingEventHandler) {
                             return {
@@ -87,7 +88,9 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                                                     return Mapping.aggregateName;
                                                   }));
                                     })),
-                              commandTopic: Component$Reventless.extractOutputs(Belt_Option.getExn(commandTopic.contents)),
+                              commandTopic: commandTopic.apply(function (commandTopic) {
+                                    return Component$Reventless.extractOutputs(commandTopic);
+                                  }),
                               eventTopic: Component$Reventless.extractOutputs(eventTopic)
                             });
                 }), opts);

@@ -17,9 +17,7 @@ module type T = {
 
   let mapIncomingCommands: (
     array<
-      ReventlessSpec.CommandTopic.topicItem<
-        Message.command'<ReventlessSpec.Id.String.t, ExtensionPoint.command>,
-      >,
+      CommandTopic.topicItem<Message.command'<ReventlessSpec.Id.String.t, ExtensionPoint.command>>,
     >,
     ReventlessSpec.Schedule.create,
     ReventlessSpec.Schedule.delete,
@@ -52,7 +50,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
   ) =>
     topicItems
     ->Belt.Array.map(({
-      ReventlessSpec.CommandTopic.reference: reference,
+      CommandTopic.reference: reference,
       command: {Message.id: id, command, meta},
     }) =>
       mapIncomingEventImpl(

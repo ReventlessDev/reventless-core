@@ -14,8 +14,8 @@ module type T = {
   type component = Component.t<t, outputs, operations>
 
   let make: (
-    ~publishToCorePluginExtensionPoint: Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
-    ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
+    ~publishToCorePluginExtensionPoint: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
     ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
     ~publishToReadModels: Js.Dict.t<EventCollector.enqueueEvent>,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
@@ -38,8 +38,8 @@ module Make = (
   type component = Component.t<t, outputs, operations>
 
   let construct = (
-    ~publishToCorePluginExtensionPoint: Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
-    ~publishToAggregates: Js.Dict.t<ReventlessSpec.CommandTopic.publishJsons>,
+    ~publishToCorePluginExtensionPoint: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
     ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
     ~publishToReadModels: Js.Dict.t<EventCollector.enqueueEvent>,
     ~queryEngine,

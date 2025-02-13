@@ -7,7 +7,7 @@ module type Ops = {
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec
   let handleCommands: array<
-    ReventlessSpec.CommandTopic.topicItem<Reventless.Message.command'<Spec.Id.t, Spec.command>>,
+    CommandTopic.topicItem<Reventless.Message.command'<Spec.Id.t, Spec.command>>,
   > => promise<array<result<string, string>>>
 }
 
@@ -38,7 +38,7 @@ module Make = (
     ->Message.variantNameOfJson
 
   let groupTopicItemsById = (
-    topicItems: array<ReventlessSpec.CommandTopic.topicItem<Message.command'<'id, 'command>>>,
+    topicItems: array<CommandTopic.topicItem<Message.command'<'id, 'command>>>,
   ) => {
     // FIXME: rethink usage of Set & Belt structures -> optimize
     let ids = topicItems->Belt.Array.map(({command}) => command.id->Spec.Id.toString)

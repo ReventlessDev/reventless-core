@@ -15,7 +15,7 @@ module type T = {
   let make: (
     ~allEventTopics: EventTopic.allOutputs,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
-    ~publishJsons: ReventlessSpec.CommandTopic.publishJsons,
+    ~publishJsons: CommandTopic.publishJsons,
     ~memorySize: int=?,
     ~timeout: int=?,
     ~opts: Pulumi.ComponentResource.options=?,

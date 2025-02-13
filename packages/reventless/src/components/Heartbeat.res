@@ -10,7 +10,7 @@ module type T = {
     ~id: string,
     ~name: string,
     ~timeout: int,
-    ~publishToCorePluginExtensionPoint: Pulumi.Output.t<ReventlessSpec.CommandTopic.publishJsons>,
+    ~publishToCorePluginExtensionPoint: Pulumi.Output.t<CommandTopic.publishJsons>,
   ) => component
 }
 
@@ -36,8 +36,7 @@ module Make = (Runner: Adapter.Runner) => {
     // see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/RunLambdaSchedule.html
 
     let runnerResources =
-      publishToCorePluginExtensionPoint
-      ->Pulumi.Output.apply(publishToCorePluginExtensionPoint => {
+      publishToCorePluginExtensionPoint->Pulumi.Output.apply(publishToCorePluginExtensionPoint => {
         module Runtime = Heartbeat_Runtime.Make({
           let publishToCorePluginExtensionPoint = publishToCorePluginExtensionPoint
           let id = id
@@ -50,7 +49,7 @@ module Make = (Runner: Adapter.Runner) => {
           ~opts,
         ).resources
       })
-      // ->Reventless.Adapter.outputToResource
+    // ->Reventless.Adapter.outputToResource
 
     self->Component.setOutputs({name, resources: runnerResources})
   }

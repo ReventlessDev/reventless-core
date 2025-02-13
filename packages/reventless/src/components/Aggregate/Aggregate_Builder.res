@@ -4,7 +4,7 @@ module Make = (
   Behaviour: Behaviour.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
   CommandGeneratorResolvers: CommandGenerator.Adapter.Resolvers with type api := Config.api,
-  CommandTopicConnector: CommandTopic.Adapter.Connector,
+  CommandTopicConnector: CommandTopic_Adapter.Connector,
   EventLogStorage: EventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic.Adapter.Publisher,
   EventCollectorConnector: EventCollector.Adapter.Connector,
@@ -16,7 +16,7 @@ module Make = (
     Behaviour,
     CommandGeneratorResolvers,
   )
-  module SpecificCommandTopic = CommandTopic.Make(Spec, CommandTopicConnector)
+  module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicConnector)
   module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
 
   let addEventMapperFn = (component: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
@@ -64,8 +64,8 @@ module Make = (
 
     let commandGenerator = commandTopic->Pulumi.Output.flatMap(commandTopic =>
       commandTopic
-      ->SpecificCommandTopic.publishJsons
-      ->Pulumi.Output.apply(publishJsons => {
+      ->Component.operations
+      ->Pulumi.Output.apply(({publishJsons}) => {
         SpecificCommandGenerator.make(
           ~name=childName,
           ~publishJsons,
@@ -77,8 +77,8 @@ module Make = (
     self->Component.setOperations(
       commandTopic->Pulumi.Output.flatMap(commandTopic =>
         commandTopic
-        ->SpecificCommandTopic.publishJsons
-        ->Pulumi.Output.apply(publishJsons => {Aggregate.publishJsons: publishJsons})
+        ->Component.operations
+        ->Pulumi.Output.apply(({publishJsons}) => {Aggregate.publishJsons: publishJsons})
       ),
     )
     self->Component.setOutputs({
