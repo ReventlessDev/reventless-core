@@ -2,14 +2,16 @@
 'use strict';
 
 var ExtensionPoint$Reventless = require("@reventless/reventless/src/components/ExtensionPoint.res.js");
+var CommandTopicChannel_SQS$ReventlessAws = require("../adapter/CommandTopic/CommandTopicChannel_SQS.res.js");
 var EventTopicPublisher_SNS$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_SNS.res.js");
-var CommandTopicConnector_SQS$ReventlessAws = require("../adapter/CommandTopic/CommandTopicConnector_SQS.res.js");
+var RuntimeEnvironment_Lambda_SQS$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda_SQS.res.js");
 
 function Make(Spec, Mappings) {
-  var partial_arg = CommandTopicConnector_SQS$ReventlessAws;
-  var partial_arg$1 = ExtensionPoint$Reventless.Make;
-  var param = EventTopicPublisher_SNS$ReventlessAws;
-  return partial_arg$1(Spec, Mappings, partial_arg, param);
+  var partial_arg = EventTopicPublisher_SNS$ReventlessAws;
+  var partial_arg$1 = CommandTopicChannel_SQS$ReventlessAws;
+  var partial_arg$2 = ExtensionPoint$Reventless.Make;
+  var param = RuntimeEnvironment_Lambda_SQS$ReventlessAws;
+  return partial_arg$2(Spec, Mappings, partial_arg$1, partial_arg, param);
 }
 
 exports.Make = Make;

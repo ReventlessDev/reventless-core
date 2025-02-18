@@ -5,42 +5,45 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Component$Reventless = require("../Component.res.js");
 var CommandTopic$Reventless = require("./CommandTopic.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
-var CommandTopic_Runtime$Reventless = require("./CommandTopic_Runtime.res.js");
-var CommandTopicConnector_Runtime$Reventless = require("./CommandTopicConnector_Runtime.res.js");
+var CommandTopic_Callback$Reventless = require("./CommandTopic_Callback.res.js");
+var CommandTopic_Operations$Reventless = require("./CommandTopic_Operations.res.js");
 
-function Make(Spec, Connector) {
-  var make = function (name, commandsHandler, memorySizeOpt, timeoutOpt, opts) {
-    var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
-    var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
+function Make(Spec, Channel, RuntimeEnvironment) {
+  var makeChannel = function (name, opts) {
+    var name$1 = ComponentType$Reventless.name(name, CommandTopic$Reventless.componentType);
+    return Channel.make(name$1, opts);
+  };
+  var make = function (name, channel, commandsHandler, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(CommandTopic$Reventless.componentType), name, (function (none, none$1) {
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(none));
                   var opts = {
                     parent: opts_parent
                   };
-                  var partial_arg = CommandTopicConnector_Runtime$Reventless.Make;
+                  var partial_arg = CommandTopic_Callback$Reventless.Make;
                   var Callback = partial_arg(Spec, {
                         Spec: Spec,
                         commandsHandler: commandsHandler
                       });
-                  var connector = Connector.make(ComponentType$Reventless.name(none$1, CommandTopic$Reventless.componentType), Callback.handleCommands, memorySize, timeout, opts);
-                  Component$Reventless.setOperations(none, connector.publishJsons.apply(function (publishJsons) {
+                  var runtime = RuntimeEnvironment.make(none$1, channel.resources, Callback.handleJsonCommands, opts);
+                  Component$Reventless.setOperations(none, channel.publishJsons.apply(function (publishJsons) {
                             var Ops = {
                               publishJsons: publishJsons
                             };
-                            var partial_arg = CommandTopic_Runtime$Reventless.Make;
-                            var Runtime = partial_arg(Spec, Ops);
+                            var partial_arg = CommandTopic_Operations$Reventless.Make;
+                            var Operations = partial_arg(Spec, Ops);
                             return {
-                                    publish: Runtime.publish,
-                                    publishJsons: Runtime.publishJsons
+                                    publish: Operations.publish,
+                                    publishJsons: Operations.publishJsons
                                   };
                           }));
                   return Component$Reventless.setOutputs(none, {
-                              resources: connector.resources
+                              resources: channel.resources.concat(runtime.resources)
                             });
                 }), opts);
   };
   return {
           Spec: Spec,
+          makeChannel: makeChannel,
           make: make
         };
 }

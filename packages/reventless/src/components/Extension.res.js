@@ -3,6 +3,7 @@
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var Extension_Runtime$Reventless = require("./Extension_Runtime.res.js");
@@ -11,25 +12,25 @@ var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/E
 function Make(Spec, Mappings) {
   var make = function (publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString("Extension"), Spec.name + ("." + Mappings.name), (function (extra, extra$1) {
-                  var eventHandlers = publishToCorePluginExtensionPoint.apply(function (publishToCorePluginExtensionPoint) {
-                        var RuntimeSpec = {
-                          publishToAggregates: publishToAggregates,
-                          publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
-                          readModelNamesForSourceName: readModelNamesForSourceName,
-                          publishToReadModels: publishToReadModels,
-                          queryEngine: queryEngine
-                        };
-                        var partial_arg = Extension_Runtime$Reventless.Make;
-                        var partial_arg$1 = function (param, param$1) {
-                          return partial_arg(RuntimeSpec, param, param$1);
-                        };
-                        var Runtime = partial_arg$1(Spec, Mappings);
-                        return {
-                                incomingEventHandler: Runtime.incomingEventHandler,
-                                outgoingEventHandler: Runtime.outgoingEventHandler
-                              };
-                      });
-                  Component$Reventless.setOperations(extra, eventHandlers);
+                  var RuntimeSpec = {
+                    publishToAggregates: publishToAggregates,
+                    publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
+                    readModelNamesForSourceName: readModelNamesForSourceName,
+                    publishToReadModels: publishToReadModels,
+                    queryEngine: queryEngine
+                  };
+                  var partial_arg = Extension_Runtime$Reventless.Make;
+                  var partial_arg$1 = function (param, param$1) {
+                    return partial_arg(RuntimeSpec, param, param$1);
+                  };
+                  var Runtime = partial_arg$1(Spec, Mappings);
+                  var eventHandlers_incomingEventHandler = Runtime.incomingEventHandler;
+                  var eventHandlers_outgoingEventHandler = Runtime.outgoingEventHandler;
+                  var eventHandlers = {
+                    incomingEventHandler: eventHandlers_incomingEventHandler,
+                    outgoingEventHandler: eventHandlers_outgoingEventHandler
+                  };
+                  Component$Reventless.setOperations(extra, Pulumi.output(eventHandlers));
                   return Component$Reventless.setOutputs(extra, {
                               name: extra$1,
                               extensionPointName: Spec.name,
@@ -52,4 +53,4 @@ var componentType = "Extension";
 
 exports.componentType = componentType;
 exports.Make = Make;
-/* Component-Reventless Not a pure module */
+/* @pulumi/pulumi Not a pure module */

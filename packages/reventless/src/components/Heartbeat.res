@@ -1,6 +1,6 @@
 let componentType = ComponentType.Heartbeat
 
-type outputs = {name: string, resources: Pulumi.Output.t<array<ReventlessSpec.Adapter.resource>>}
+type outputs = {name: string, resources: array<ReventlessSpec.Adapter.resource>}
 
 type t
 type component = Component.t<t, outputs, unit>
@@ -10,7 +10,7 @@ module type T = {
     ~id: string,
     ~name: string,
     ~timeout: int,
-    ~publishToCorePluginExtensionPoint: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
   ) => component
 }
 
@@ -35,21 +35,19 @@ module Make = (Runner: Adapter.Runner) => {
     // Heartbeat + HealthCheck
     // see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/RunLambdaSchedule.html
 
-    let runnerResources =
-      publishToCorePluginExtensionPoint->Pulumi.Output.apply(publishToCorePluginExtensionPoint => {
-        module Runtime = Heartbeat_Runtime.Make({
-          let publishToCorePluginExtensionPoint = publishToCorePluginExtensionPoint
-          let id = id
-          let timeout = timeout
-        })
-        Runner.make(
-          ~name=name->ComponentType.name(componentType),
-          ~timeout,
-          ~heartbeat=Runtime.heartbeat,
-          ~opts,
-        ).resources
+    let runnerResources = {
+      module Runtime = Heartbeat_Runtime.Make({
+        let publishToCorePluginExtensionPoint = publishToCorePluginExtensionPoint
+        let id = id
+        let timeout = timeout
       })
-    // ->Reventless.Adapter.outputToResource
+      Runner.make(
+        ~name=name->ComponentType.name(componentType),
+        ~timeout,
+        ~heartbeat=Runtime.heartbeat,
+        ~opts,
+      ).resources
+    }
 
     self->Component.setOutputs({name, resources: runnerResources})
   }

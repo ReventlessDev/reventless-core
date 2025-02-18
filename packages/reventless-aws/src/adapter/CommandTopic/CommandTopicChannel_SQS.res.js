@@ -2,37 +2,34 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
+var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var CommandTopic$Reventless = require("@reventless/reventless/src/components/CommandTopic/CommandTopic.res.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
-var CommandTopicConnector_SQS_Runtime$ReventlessAws = require("./CommandTopicConnector_SQS_Runtime.res.js");
+var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("./CommandTopicChannel_SQS_Runtime.res.js");
 
-function make(name, handleCommands, memorySize, timeout, opts) {
+function make(name, opts) {
+  var opts$1 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
   var queue = new (Aws.sqs.Queue)(name, {
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
               return SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5);
             }),
         tags: AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType),
-        visibilityTimeoutSeconds: Math.imul(6, timeout),
+        visibilityTimeoutSeconds: 180,
         sqsManagedSseEnabled: false
-      }, opts);
-  Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], opts);
-  Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
-        var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
-                    return CommandTopicConnector_SQS_Runtime$ReventlessAws.handleQueueEvent(handleCommands, runtimeQueue, extra, extra$1);
-                  }), undefined, Lambda$PulumiAws.Policy.defaultPolicies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType), undefined), opts);
-        queue.onEvent(name, handler, undefined, opts);
-      });
+      }, opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined);
+  Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents], opts$1);
   return {
           resources: [Util_SQS$ReventlessAws.toResource(queue)],
           publishJsons: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
                 return function (extra) {
-                  return CommandTopicConnector_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, Util_SQS_Runtime$ReventlessAws.service, extra);
+                  return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, Util_SQS_Runtime$ReventlessAws.service, extra);
                 };
               })
         };

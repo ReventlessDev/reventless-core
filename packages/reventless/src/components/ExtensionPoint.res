@@ -10,9 +10,23 @@ type outputs = {
   name: string,
   aggregateNames: array<string>,
   commandTopic: Pulumi.Output.t<CommandTopic.outputs>,
-  eventTopic: EventTopic.outputs,
+  eventTopic: Pulumi.Output.t<EventTopic.outputs>,
 }
-
+let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =>
+  (
+    outputs.commandTopic->Pulumi.Output.flatMap(CommandTopic.toUnwrappedOutputs),
+    outputs.eventTopic->Pulumi.Output.flatMap(EventTopic.toUnwrappedOutputs),
+  )
+  ->Pulumi.Output.all2
+  ->Pulumi.Output.apply(((commandTopic, eventTopic)) => {
+    let unwrappedOutputs: unwrappedOutputs = {
+      name: outputs.name,
+      aggregateNames: outputs.aggregateNames,
+      commandTopic,
+      eventTopic,
+    }
+    unwrappedOutputs
+  })
 type t
 
 type eventHandler = (Js.Json.t, ReventlessSpec.Plugin.pluginDefinition) => Js.Promise.t<unit>
@@ -38,8 +52,9 @@ module type Mappings = {
 module Make = (
   Spec: ReventlessSpec.ExtensionPointMapping.Spec,
   Mappings: Mappings with module Spec := Spec,
-  CommandTopicAdapter: CommandTopic_Adapter.Connector,
+  CommandTopicChannel: CommandTopic_Adapter.Channel,
   EventTopicAdapter: EventTopic.Adapter.Publisher,
+  RuntimeEnvironment: Runtime.Environment,
 ): T => {
   module Spec = Spec
 
@@ -65,41 +80,50 @@ module Make = (
 
     let childName = name->Js.String2.replace(".", "")->ComponentType.name(componentType)
 
-    let commandTopicResources: ref<Pulumi.Output.t<array<Adapter.unwrappedResource>>> = ref(
-      []->Pulumi.Output.make,
+    module SpecificCommandTopic = CommandTopic_Builder.Make(
+      SpecWithId,
+      CommandTopicChannel,
+      RuntimeEnvironment,
     )
+    let commandTopicChannel = SpecificCommandTopic.makeChannel(~name=childName, ~opts)
 
-    module SpecificEventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
-    let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
-
-    let (outgoingEventHandler, incomingCommandsHandler) =
-      (eventTopic->Component.operations, commandTopicResources.contents)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.apply((({publishJson: publishToEventTopic}, commandTopicResources)) => {
-        module RuntimeSpec = {
+    let (commandTopic, eventTopic, outgoingEventHandler) =
+      commandTopicChannel.resources
+      ->Adapter.resourcesToUnwrappedOutput
+      ->Pulumi.Output.flatMap(commandTopicResources => {
+        module CallbackSpec = {
           let publishToAggregates = publishToAggregates
-          let publishToEventTopic = publishToEventTopic
           let commandTopicResources = commandTopicResources
           let scheduler = scheduler
           let queryEngine = queryEngine
         }
-        module Runtime = ExtensionPoint_Runtime.Make(RuntimeSpec, Spec, Mappings)
+        module Callback = ExtensionPoint_Callback.Make(CallbackSpec, Spec, Mappings)
 
-        (Runtime.outgoingEventHandler, Runtime.incomingCommandsHandler)
+        let commandTopic = SpecificCommandTopic.make(
+          ~name=childName,
+          ~channel=commandTopicChannel,
+          ~commandsHandler=Callback.incomingCommandsHandler,
+          ~opts,
+        )
+
+        module SpecificEventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
+        let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
+
+        eventTopic
+        ->Component.operations
+        ->Pulumi.Output.apply(({publishJson: publishToEventTopic}) => {
+          module OperationsSpec = {
+            let publishToEventTopic = publishToEventTopic
+            let commandTopicResources = commandTopicResources
+            let scheduler = scheduler
+            let queryEngine = queryEngine
+          }
+          module Operations = ExtensionPoint_Operations.Make(OperationsSpec, Spec, Mappings)
+
+          (commandTopic, eventTopic, Operations.outgoingEventHandler)
+        })
       })
-      ->Pulumi.Output.unzip
-
-    module SpecificCommandTopic = CommandTopic_Builder.Make(SpecWithId, CommandTopicAdapter)
-    let commandTopic = incomingCommandsHandler->Pulumi.Output.apply(incomingCommandsHandler => {
-      let commandTopic = SpecificCommandTopic.make(
-        ~name=childName,
-        ~commandsHandler=incomingCommandsHandler,
-        ~opts,
-      )
-      commandTopicResources :=
-        (commandTopic->Component.extractOutputs).resources->Adapter.resourcesToUnwrappedOutput
-      commandTopic
-    })
+      ->Pulumi.Output.unzip3
 
     self->Component.setOperations(
       outgoingEventHandler->Pulumi.Output.apply(outgoingEventHandler => {
@@ -115,7 +139,9 @@ module Make = (
       commandTopic: commandTopic->Pulumi.Output.apply(commandTopic =>
         commandTopic->Component.extractOutputs
       ),
-      eventTopic: eventTopic->Component.extractOutputs,
+      eventTopic: eventTopic->Pulumi.Output.apply(eventTopic =>
+        eventTopic->Component.extractOutputs
+      ),
     })
   }
 

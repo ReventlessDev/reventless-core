@@ -2,20 +2,22 @@
 'use strict';
 
 var Aggregate_Builder$Reventless = require("@reventless/reventless/src/components/Aggregate/Aggregate_Builder.res.js");
-var CommandTopicConnector_SQS_FIFO$ReventlessAws = require("../adapter/CommandTopic/CommandTopicConnector_SQS_FIFO.res.js");
+var CommandTopicChannel_SQS_FIFO$ReventlessAws = require("../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.js");
+var RuntimeEnvironment_Lambda_SQS$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda_SQS.res.js");
 var EventLogStorage_DynamoDbStream$ReventlessAws = require("../adapter/EventLog/EventLogStorage_DynamoDbStream.res.js");
 var CommandGeneratorResolvers_AppSync$ReventlessAws = require("../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.js");
 var EventTopicPublisher_DynamoDbStream$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.js");
 var EventCollectorConnector_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_DynamoDbStream.res.js");
 
 function Make(Config, Spec, Behaviour, EventMappings) {
-  var partial_arg = EventTopicPublisher_DynamoDbStream$ReventlessAws;
-  var partial_arg$1 = EventLogStorage_DynamoDbStream$ReventlessAws;
-  var partial_arg$2 = CommandTopicConnector_SQS_FIFO$ReventlessAws;
-  var partial_arg$3 = CommandGeneratorResolvers_AppSync$ReventlessAws;
-  var partial_arg$4 = Aggregate_Builder$Reventless.Make;
-  var param = EventCollectorConnector_DynamoDbStream$ReventlessAws;
-  return partial_arg$4(Config, Spec, Behaviour, EventMappings, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
+  var partial_arg = EventCollectorConnector_DynamoDbStream$ReventlessAws;
+  var partial_arg$1 = EventTopicPublisher_DynamoDbStream$ReventlessAws;
+  var partial_arg$2 = EventLogStorage_DynamoDbStream$ReventlessAws;
+  var partial_arg$3 = CommandTopicChannel_SQS_FIFO$ReventlessAws;
+  var partial_arg$4 = CommandGeneratorResolvers_AppSync$ReventlessAws;
+  var partial_arg$5 = Aggregate_Builder$Reventless.Make;
+  var param = RuntimeEnvironment_Lambda_SQS$ReventlessAws;
+  return partial_arg$5(Config, Spec, Behaviour, EventMappings, partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
 }
 
 exports.Make = Make;

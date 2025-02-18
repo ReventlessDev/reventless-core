@@ -2,11 +2,21 @@
 'use strict';
 
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
+var Adapter$Reventless = require("../../adapter/Adapter.res.js");
 
-var NotPublishedToConnector = /* @__PURE__ */Caml_exceptions.create("CommandTopic-Reventless.NotPublishedToConnector");
+function toUnwrappedOutputs(outputs) {
+  return Adapter$Reventless.resourcesToUnwrappedOutput(outputs.resources).apply(function (resources) {
+              return {
+                      resources: resources
+                    };
+            });
+}
+
+var NotPublishedToChannel = /* @__PURE__ */Caml_exceptions.create("CommandTopic-Reventless.NotPublishedToChannel");
 
 var componentType = "CommandTopic";
 
 exports.componentType = componentType;
-exports.NotPublishedToConnector = NotPublishedToConnector;
-/* No side effect */
+exports.toUnwrappedOutputs = toUnwrappedOutputs;
+exports.NotPublishedToChannel = NotPublishedToChannel;
+/* Adapter-Reventless Not a pure module */

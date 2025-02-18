@@ -49,10 +49,10 @@ function Make(Spec, Behaviour, Ops) {
             correlationId: init.correlationId
           };
   };
-  var handleCommands = async function (allTopicItems) {
+  var handleCommands = async function (topicItems) {
     Logger$Reventless.debug("File \"Aggregate_Runtime.res\", line 69, characters 22-29", undefined, undefined, "starting", "Aggregate.execCommands");
-    return Belt_Array.concatMany(await Promise.all(Belt_Array.map(groupTopicItemsById(allTopicItems), (async function (param) {
-                          var topicItems = param[1];
+    return Belt_Array.concatMany(await Promise.all(Belt_Array.map(groupTopicItemsById(topicItems), (async function (param) {
+                          var topicItemsForId = param[1];
                           var id = param[0];
                           var history = await Ops.eventLog.replay(id);
                           var processCommand = async function (accP, command$p) {
@@ -108,10 +108,10 @@ function Make(Spec, Behaviour, Ops) {
                             }
                           };
                           Logger$Reventless.debug("File \"Aggregate_Runtime.res\", line 117, characters 26-33", undefined, undefined, "finished eventLogReplay for id", id);
-                          Logger$Reventless.logCmdJsons("File \"Aggregate_Runtime.res\", line 129, characters 34-41", undefined, Belt_Array.map(topicItems, (function (param) {
+                          Logger$Reventless.logCmdJsons("File \"Aggregate_Runtime.res\", line 129, characters 34-41", undefined, Belt_Array.map(topicItemsForId, (function (param) {
                                       return Message$Reventless.commandJsonOfCommand$p(Spec.Id.toString, Spec.command_encode, param.command);
                                     })), "Handling command");
-                          var match = Belt_Array.unzip(Belt_Array.map(topicItems, (function (param) {
+                          var match = Belt_Array.unzip(Belt_Array.map(topicItemsForId, (function (param) {
                                       return [
                                               param.reference,
                                               param.command

@@ -1,6 +1,8 @@
-module Make = (Spec: CommandTopic.Spec, Connector: CommandTopic_Adapter.Connector): (
-  CommandTopic.T with module Spec = Spec
-) => {
+module Make = (
+  Spec: CommandTopic.Spec,
+  Channel: CommandTopic_Adapter.Channel,
+  RuntimeEnvironment: Runtime.Environment,
+): (CommandTopic.T with module Spec = Spec) => {
   module Spec = Spec
 
   type commandsHandler = CommandTopic.commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
@@ -9,44 +11,51 @@ module Make = (Spec: CommandTopic.Spec, Connector: CommandTopic_Adapter.Connecto
   type operations = {publish: publish, publishJsons: CommandTopic.publishJsons}
   type component = Component.t<CommandTopic.t, CommandTopic.outputs, operations>
 
-  let construct = (self, name, ~commandsHandler, ~memorySize, ~timeout) => {
+  let construct = (self, name, ~channel: CommandTopic.channel, ~commandsHandler) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     module CallbackOps = {
       module Spec = Spec
       let commandsHandler = commandsHandler
     }
-    module Callback = CommandTopicConnector_Runtime.Make(Spec, CallbackOps)
-    let connector = Connector.make(
-      ~name=name->ComponentType.name(CommandTopic.componentType),
-      ~handleCommands=Callback.handleCommands,
-      ~memorySize,
-      ~timeout,
+    module Callback = CommandTopic_Callback.Make(Spec, CallbackOps)
+
+    let runtime = RuntimeEnvironment.make(
+      ~name,
+      ~channelResources=channel.resources,
+      ~handleJsons=Callback.handleJsonCommands,
       ~opts,
     )
 
     self->Component.setOperations(
-      connector.publishJsons->Pulumi.Output.apply(publishJsons => {
+      channel.publishJsons->Pulumi.Output.apply(publishJsons => {
         module Ops = {
           let publishJsons = publishJsons
         }
-        module Runtime = CommandTopic_Runtime.Make(Spec, Ops)
+        module Operations = CommandTopic_Operations.Make(Spec, Ops)
 
         {
-          publish: Runtime.publish,
-          publishJsons: Runtime.publishJsons,
+          publish: Operations.publish,
+          publishJsons: Operations.publishJsons,
         }
       }),
     )
 
-    self->Component.setOutputs({CommandTopic.resources: connector.resources})
+    self->Component.setOutputs({
+      CommandTopic.resources: channel.resources->Array.concat(runtime.resources),
+    })
   }
 
-  let make = (~name, ~commandsHandler, ~memorySize=1024, ~timeout=30, ~opts=?): component =>
+  let makeChannel = (~name, ~opts=?): CommandTopic.channel => {
+    let name = name->ComponentType.name(CommandTopic.componentType)
+    Channel.make(~name, ~opts?)
+  }
+
+  let make = (~name, ~channel, ~commandsHandler, ~opts=?): component =>
     Component.make(
       ~componentType=CommandTopic.componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~commandsHandler, ~memorySize, ~timeout, ...),
+      ~construct=construct(~channel, ~commandsHandler, ...),
       ~opts,
     )
 }

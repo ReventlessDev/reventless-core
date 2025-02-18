@@ -17,7 +17,7 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
           }
           catch (raw_err){
             var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-            console.log("CommandTopicConnector_SQS.handleQueueEvent: Couldn't parse command:", commandStr, err);
+            console.log("CommandTopicChannel_SQS.handleQueueEvent: Couldn't parse command:", commandStr, err);
             return ;
           }
           return json;
@@ -40,8 +40,8 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
     if (err.RE_EXN_ID === Js_exn.$$Error) {
       var err$1 = err._1;
-      console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent error:", err$1, JSON.stringify(err$1));
-      return Js_exn.raiseError("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!");
+      console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent error:", err$1, JSON.stringify(err$1));
+      return Js_exn.raiseError("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: handleCommands is not allowed to reject (use Belt.Result) !!");
     }
     throw err;
   }
@@ -56,7 +56,7 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
                                 ReceiptHandle: result._0
                               };
                       }
-                      console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
+                      console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
                     })), (function (x) {
                   return x;
                 })), queue);
@@ -65,13 +65,13 @@ async function handleQueueEvent(handleCommands, queue, $$event, param) {
     catch (raw_e){
       var e = Caml_js_exceptions.internalToOCamlException(raw_e);
       if (e.RE_EXN_ID === Js_exn.$$Error) {
-        console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", e._1.message);
+        console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't deleteMessageBatch:", e._1.message);
         return ;
       }
       throw e;
     }
     if (exit$1 === 2) {
-      return Logger$Reventless.debug("File \"CommandTopicConnector_SQS_Runtime.res\", line 52, characters 35-42", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
+      return Logger$Reventless.debug("File \"CommandTopicChannel_SQS_Runtime.res\", line 48, characters 35-42", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
     }
     
   }
@@ -87,7 +87,7 @@ function publishJsons(queue, queueService, jsons) {
       return Util_SQS_Runtime$ReventlessAws.send(queue, queueService, jsons[0]);
     }
   } else {
-    return Promise.resolve((console.log("CommandTopicConnector_SQS_Runtime-ReventlessAws" + ".publishJsons: No commands to send"), undefined));
+    return Promise.resolve((console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".publishJsons: No commands to send"), undefined));
   }
 }
 

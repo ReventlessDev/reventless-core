@@ -17,6 +17,12 @@ let toResource = (queue: PulumiAws.SQS.Queue.t) => {
   info: queue.name->Pulumi.Output.apply(_ => ""),
 }
 
+let fromResource = ({urn, id, name}: ReventlessSpec.Adapter.resource) => {
+  PulumiAws.SQS.Queue.name,
+  id,
+  arn: urn,
+}
+
 // Example ARN: arn:aws:sqs:eu-west-1:xxxxxx:MarketplaceServiceExtensionPointCommandTopic-0101023
 let arn2Account = arn =>
   switch arn->Js.String2.split(":") {

@@ -9,8 +9,9 @@ module Make = (
   Behaviour,
   EventMappings,
   CommandGeneratorResolvers.AppSync,
-  CommandTopicConnector.SQS_FIFO,
+  CommandTopicChannel.SQS_FIFO,
   EventLogStorage.DynamoDbStream,
   EventTopicPublisher.DynamoDbStream,
   EventCollectorConnector_DynamoDbStream,
+  RuntimeEnvironment_Lambda_SQS,
 )

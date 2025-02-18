@@ -65,12 +65,12 @@ module Make = (
     msgId: Message.uuid(),
   }
 
-  let handleCommands = async allTopicItems => {
+  let handleCommands = async topicItems => {
     Logger.debug(~loc=__LOC__, "starting", "Aggregate.execCommands")
     let results =
-      await allTopicItems
+      await topicItems
       ->groupTopicItemsById
-      ->Belt.Array.map(async ((id, topicItems)) => {
+      ->Belt.Array.map(async ((id, topicItemsForId)) => {
         let history = await Ops.eventLog.replay(id)
         let processCommand = async (accP, command': Message.command'<Spec.Id.t, Spec.command>) => {
           let runBehaviour = ((stateO, events)) =>
@@ -119,7 +119,7 @@ module Make = (
         // TOREVIEW: should we use Logger.debug or just some minimal data here?
         //    also: do we need the additional info of Message.command'
         //            (compared to Spec.command)
-        topicItems
+        topicItemsForId
         ->Belt.Array.map(({command}) =>
           command->Message.commandJsonOfCommand'(
             ~idToString=Spec.Id.toString,
@@ -130,7 +130,7 @@ module Make = (
 
         let (references, commands') =
           // TODO: handle finer granular references
-          topicItems
+          topicItemsForId
           ->Belt.Array.map(({reference, command}) => (reference, command))
           ->Belt.Array.unzip
         let result =

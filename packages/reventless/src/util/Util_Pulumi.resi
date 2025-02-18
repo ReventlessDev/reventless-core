@@ -17,4 +17,5 @@ module Output: {
 
 module ComponentResourceOptions: {
   let ofCustomResourceOptions: Pulumi.CustomResourceOptions.t => Pulumi.ComponentResource.options
+  let toCustomResourceOptions: Pulumi.ComponentResource.options => Pulumi.CustomResourceOptions.t
 }

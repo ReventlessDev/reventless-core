@@ -24,4 +24,12 @@ module ComponentResourceOptions = {
     protect: ?customResourceOpts.protect,
     provider: ?customResourceOpts.provider,
   }
+
+  let toCustomResourceOptions = (componentResourceOpts: Pulumi.ComponentResource.options) => {
+    Pulumi.CustomResourceOptions.id: ?componentResourceOpts.id,
+    dependsOn: ?componentResourceOpts.dependsOn,
+    parent: ?componentResourceOpts.parent,
+    protect: ?componentResourceOpts.protect,
+    provider: ?componentResourceOpts.provider,
+  }
 }

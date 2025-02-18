@@ -10,10 +10,10 @@ function Make(Spec, Ops) {
       val = await Ops.publishJsons(cmdJsons);
     }
     catch (e){
-      Logger$Reventless.logCmdJsons("File \"CommandTopic_Runtime.res\", line 11, characters 13-20", "Error", cmdJsons, "Couldn't publish commands");
+      Logger$Reventless.logCmdJsons("File \"CommandTopic_Operations.res\", line 11, characters 13-20", "Error", cmdJsons, "Couldn't publish commands");
       throw e;
     }
-    return Logger$Reventless.logCmdJsons("File \"CommandTopic_Runtime.res\", line 15, characters 45-52", undefined, cmdJsons, "Published commands");
+    return Logger$Reventless.logCmdJsons("File \"CommandTopic_Operations.res\", line 15, characters 45-52", undefined, cmdJsons, "Published commands");
   };
   var publish = function (command$p) {
     var commandJson_id = Spec.Id.toString(command$p.id);

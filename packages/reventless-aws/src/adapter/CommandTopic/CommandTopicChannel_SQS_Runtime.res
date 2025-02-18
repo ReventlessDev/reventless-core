@@ -5,11 +5,7 @@ let handleQueueEvent = async (handleCommands, queue, event: PulumiAws.SQS.Queue.
     switch Js.Json.parseExn(commandStr) {
     | json => Some(json)
     | exception err =>
-      Js.log3(
-        "CommandTopicConnector_SQS.handleQueueEvent: Couldn't parse command:",
-        commandStr,
-        err,
-      )
+      Js.log3("CommandTopicChannel_SQS.handleQueueEvent: Couldn't parse command:", commandStr, err)
       None
     }
   })

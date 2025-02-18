@@ -3,9 +3,18 @@
 
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
+var Adapter$Reventless = require("../adapter/Adapter.res.js");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var EventTopic_Runtime$Reventless = require("./EventTopic_Runtime.res.js");
+
+function toUnwrappedOutputs(outputs) {
+  return Adapter$Reventless.resourcesToUnwrappedOutput(outputs.resources).apply(function (resources) {
+              return {
+                      resources: resources
+                    };
+            });
+}
 
 var NotPublishedToPublisher = /* @__PURE__ */Caml_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
 
@@ -40,7 +49,8 @@ function Make(Spec, Publisher) {
 var componentType = "EventTopic";
 
 exports.componentType = componentType;
+exports.toUnwrappedOutputs = toUnwrappedOutputs;
 exports.NotPublishedToPublisher = NotPublishedToPublisher;
 exports.Adapter = Adapter;
 exports.Make = Make;
-/* Component-Reventless Not a pure module */
+/* Adapter-Reventless Not a pure module */

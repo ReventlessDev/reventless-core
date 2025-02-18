@@ -113,9 +113,9 @@ let serviceNameToEventHandlers: (
 }
 
 module Make = (
-  EventCollectorConnector: EventCollector.Adapter.Connector,
+  EventCollectorChannel: EventCollector.Adapter.Connector,
   QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
-  CorePluginExtensionPointRemoteConnector: CommandTopic_Adapter.RemoteConnector,
+  CorePluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
   HeartbeatRunner: Heartbeat.Adapter.Runner,
 ): T => {
   type constructed
@@ -266,35 +266,15 @@ module Make = (
             "No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
           )
         }
-        let corePluginExtensionPoint: ExtensionPoint.outputs = {
-          let extensionPointUnwrapped: ExtensionPoint.unwrappedOutputs =
-            coreExtensionPoints->Pulumi.StackReference.get(
-              ReventlessSpec.PluginExtensionPointSpec.name,
-            )
-          {
-            name: extensionPointUnwrapped.name,
-            aggregateNames: extensionPointUnwrapped.aggregateNames,
-            commandTopic: {
-              CommandTopic.resources: extensionPointUnwrapped.commandTopic.resources->Belt.Array.map(
-                AdapterDeploytime.unwrappedToResource,
-              ),
-            }->Pulumi.Output.make,
-            eventTopic: {
-              resources: extensionPointUnwrapped.eventTopic.resources->Belt.Array.map(
-                AdapterDeploytime.unwrappedToResource,
-              ),
-            },
-          }
-        }
+        let corePluginExtensionPointUnwrapped: ExtensionPoint.unwrappedOutputs =
+          coreExtensionPoints->Pulumi.StackReference.get(
+            ReventlessSpec.PluginExtensionPointSpec.name,
+          )
 
-        let corePluginExtensionPointCommandTopicRemoteConnector = CorePluginExtensionPointRemoteConnector.make(
-          corePluginExtensionPoint.commandTopic->Pulumi.Output.flatMap(commandTopic =>
-            commandTopic.resources
-            ->Belt.Array.map(Adapter.resourceToUnwrappedOutput)
-            ->Pulumi.Output.all
-          ),
+        let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(
+          corePluginExtensionPointUnwrapped.commandTopic.resources,
         )
-        let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteConnector.remotePublish
+        let publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish
 
         let (extensionsOutputs, extensionsHandlers) =
           extensions
@@ -328,13 +308,15 @@ module Make = (
               extensionPointOutputs.commandTopic->Pulumi.Output.flatMap(
                 ({resources}) => (resources->Array.getUnsafe(0)).id, // FIXME
               ),
-              (extensionPointOutputs.eventTopic.resources->Array.getUnsafe(0)).id,
+              extensionPointOutputs.eventTopic->Pulumi.Output.flatMap(
+                ({resources}) => (resources->Array.getUnsafe(0)).id, // FIXME
+              ),
             )
             ->Pulumi.Output.all2
             ->Pulumi.Output.apply(
-              ((commandTopicConnectorId, eventTopicPublisherId)) => {
+              ((commandTopicChannelId, eventTopicPublisherId)) => {
                 ReventlessSpec.Plugin.name: extensionPointOutputs.name,
-                commandTopic: commandTopicConnectorId,
+                commandTopic: commandTopicChannelId,
                 eventTopic: eventTopicPublisherId,
               },
             )
@@ -356,24 +338,32 @@ module Make = (
             eventCollector: "",
           })
 
-        module ConnectPluginExtension = PluginConnectExtension.Make({
-          let pluginDefinition = pluginDefinition
-          let extensionPointsOutputs = extensionPointsOutputs
-          let extensionsOutputs = extensionsOutputs
-        })
-        let connectPluginExtension = ConnectPluginExtension.make(
-          ~publishToCorePluginExtensionPoint,
-          ~publishToAggregates,
-          ~readModelNamesForSourceName,
-          ~publishToReadModels,
-          ~queryEngine,
-          ~opts=Some(opts),
-        )
-        let connectPluginExtensionOutputs = connectPluginExtension->Component.extractOutputs
-        let connectPluginExtensionIncomingEventHandler =
-          connectPluginExtension
-          ->Component.operations
-          ->Pulumi.Output.apply(({incomingEventHandler}) => incomingEventHandler)
+        let (connectPluginExtensionOutputs, connectPluginExtensionIncomingEventHandler) =
+          extensionPointsOutputs
+          ->Belt.Array.map(ExtensionPoint.toUnwrappedOutputs)
+          ->Pulumi.Output.all
+          ->Pulumi.Output.apply(extensionPointsOutputs => {
+            module ConnectPluginExtension = PluginConnectExtension.Make({
+              let pluginDefinition = pluginDefinition
+              let extensionPointsOutputs = extensionPointsOutputs
+              let extensionsOutputs = extensionsOutputs
+            })
+            let connectPluginExtension = ConnectPluginExtension.make(
+              ~publishToCorePluginExtensionPoint,
+              ~publishToAggregates,
+              ~readModelNamesForSourceName,
+              ~publishToReadModels,
+              ~queryEngine,
+              ~opts=Some(opts),
+            )
+            let connectPluginExtensionOutputs = connectPluginExtension->Component.extractOutputs
+            let connectPluginExtensionIncomingEventHandler =
+              connectPluginExtension
+              ->Component.operations
+              ->Pulumi.Output.apply(({incomingEventHandler}) => incomingEventHandler)
+            (connectPluginExtensionOutputs, connectPluginExtensionIncomingEventHandler)
+          })
+          ->Pulumi.Output.unzip
 
         let tasksOutputs = ref([])
         let queryBucketName = taskName =>
@@ -422,8 +412,8 @@ module Make = (
         eventTopics->Js.Dict.set(
           ReventlessSpec.PluginExtensionPointSpec.name,
           {
-            resources: corePluginExtensionPoint.eventTopic.resources->Belt.Array.map(
-              AdapterDeploytime.stackRefResourceToResource,
+            resources: corePluginExtensionPointUnwrapped.eventTopic.resources->Belt.Array.map(
+              AdapterDeploytime.unwrappedToResource,
             ),
           },
         )
@@ -431,16 +421,18 @@ module Make = (
         let eventCollectorOutputs =
           (
             pluginDefinition,
-            connectPluginExtensionIncomingEventHandler,
+            connectPluginExtensionIncomingEventHandler->Pulumi.Output.unwrap,
             extensionsHandlers->Pulumi.Output.all,
             extensionPointsHandlers->Pulumi.Output.all,
+            connectPluginExtensionOutputs,
           )
-          ->Pulumi.Output.all4
+          ->Pulumi.Output.all5
           ->Pulumi.Output.apply(((
             pluginDefinition,
             connectPluginExtensionIncomingEventHandler,
             extensionsHandlers,
             extensionPointsHandlers,
+            connectPluginExtensionOutputs,
           )) => {
             module Runtime = Plugin_Runtime.Make({
               let pluginDefinition = pluginDefinition
@@ -469,7 +461,7 @@ module Make = (
                 getIncomingEventHandler,
               )
             })
-            module PluginEventCollector = EventCollector.Make(EventCollectorConnector)
+            module PluginEventCollector = EventCollector.Make(EventCollectorChannel)
 
             let eventCollector = PluginEventCollector.make(
               ~name=name->ComponentType.name(componentType),

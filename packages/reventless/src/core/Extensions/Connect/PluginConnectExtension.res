@@ -1,6 +1,6 @@
 module type Spec = {
   let pluginDefinition: Pulumi.Output.t<ReventlessSpec.Plugin.pluginDefinition>
-  let extensionPointsOutputs: array<ExtensionPoint.outputs>
+  let extensionPointsOutputs: array<ExtensionPoint.unwrappedOutputs>
   let extensionsOutputs: array<Extension.outputs>
 }
 
@@ -99,7 +99,7 @@ module Make = (Spec: Spec) => {
                 subscribe(
                   "connectToExtensions",
                   extensionPoint.name,
-                  (extensionPoint.eventTopic.resources->Array.getUnsafe(0)).id->Pulumi.Output.get, // FIXME
+                  (extensionPoint.eventTopic.resources->Array.getUnsafe(0)).id, // FIXME
                   otherPluginId,
                   otherPluginEventCollector,
                 ),
@@ -146,7 +146,7 @@ module Make = (Spec: Spec) => {
                 unsubscribe(
                   "disconnectFromExtensions",
                   extensionPoint.name,
-                  (extensionPoint.eventTopic.resources->Array.getUnsafe(0)).id->Pulumi.Output.get, // FIXME
+                  (extensionPoint.eventTopic.resources->Array.getUnsafe(0)).id, // FIXME
                   pluginId,
                   pluginEventCollector,
                 ),

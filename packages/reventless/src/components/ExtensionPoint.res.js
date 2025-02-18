@@ -10,11 +10,27 @@ var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Adapter$Reventless = require("../adapter/Adapter.res.js");
 var Component$Reventless = require("./Component.res.js");
 var EventTopic$Reventless = require("./EventTopic.res.js");
+var CommandTopic$Reventless = require("./CommandTopic/CommandTopic.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 var CommandTopic_Builder$Reventless = require("./CommandTopic/CommandTopic_Builder.res.js");
-var ExtensionPoint_Runtime$Reventless = require("./ExtensionPoint_Runtime.res.js");
+var ExtensionPoint_Callback$Reventless = require("./ExtensionPoint_Callback.res.js");
+var ExtensionPoint_Operations$Reventless = require("./ExtensionPoint_Operations.res.js");
 
-function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
+function toUnwrappedOutputs(outputs) {
+  return Pulumi.all([
+                Output$Pulumi.flatMap(outputs.commandTopic, CommandTopic$Reventless.toUnwrappedOutputs),
+                Output$Pulumi.flatMap(outputs.eventTopic, EventTopic$Reventless.toUnwrappedOutputs)
+              ]).apply(function (param) {
+              return {
+                      name: outputs.name,
+                      aggregateNames: outputs.aggregateNames,
+                      commandTopic: param[0],
+                      eventTopic: param[1]
+                    };
+            });
+}
+
+function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnvironment) {
   var command_encode = Spec.command_encode;
   var command_decode = Spec.command_decode;
   var event_encode = Spec.event_encode;
@@ -26,57 +42,61 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                     parent: opts_parent
                   };
                   var childName = ComponentType$Reventless.name(extra$1.replace(".", ""), "ExtensionPoint");
-                  var commandTopicResources = {
-                    contents: Pulumi.output([])
-                  };
                   var partial_arg = {
-                    Id: Id$ReventlessSpec.$$String,
-                    event_encode: event_encode,
-                    event_decode: event_decode
-                  };
-                  var partial_arg$1 = EventTopic$Reventless.Make;
-                  var SpecificEventTopic = (function (param) {
-                        return partial_arg$1(partial_arg, param);
-                      })(EventTopicAdapter);
-                  var eventTopic = SpecificEventTopic.make(childName, [], opts);
-                  var match = Output$Pulumi.unzip(Pulumi.all([
-                              Component$Reventless.operations(eventTopic),
-                              commandTopicResources.contents
-                            ]).apply(function (param) {
-                            var RuntimeSpec_publishToEventTopic = param[0].publishJson;
-                            var RuntimeSpec_commandTopicResources = param[1];
-                            var RuntimeSpec = {
-                              publishToAggregates: publishToAggregates,
-                              publishToEventTopic: RuntimeSpec_publishToEventTopic,
-                              commandTopicResources: RuntimeSpec_commandTopicResources,
-                              scheduler: scheduler,
-                              queryEngine: queryEngine
-                            };
-                            var partial_arg = ExtensionPoint_Runtime$Reventless.Make;
-                            var partial_arg$1 = function (param, param$1) {
-                              return partial_arg(RuntimeSpec, param, param$1);
-                            };
-                            var Runtime = partial_arg$1(Spec, Mappings);
-                            return [
-                                    Runtime.outgoingEventHandler,
-                                    Runtime.incomingCommandsHandler
-                                  ];
-                          }));
-                  var partial_arg$2 = {
                     Id: Id$ReventlessSpec.$$String,
                     command_encode: command_encode,
                     command_decode: command_decode
                   };
-                  var partial_arg$3 = CommandTopic_Builder$Reventless.Make;
-                  var SpecificCommandTopic = (function (param) {
-                        return partial_arg$3(partial_arg$2, param);
-                      })(CommandTopicAdapter);
-                  var commandTopic = match[1].apply(function (incomingCommandsHandler) {
-                        var commandTopic = SpecificCommandTopic.make(childName, incomingCommandsHandler, undefined, undefined, opts);
-                        commandTopicResources.contents = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(commandTopic).resources);
-                        return commandTopic;
-                      });
-                  Component$Reventless.setOperations(extra, match[0].apply(function (outgoingEventHandler) {
+                  var partial_arg$1 = CommandTopic_Builder$Reventless.Make;
+                  var partial_arg$2 = function (param, param$1) {
+                    return partial_arg$1(partial_arg, param, param$1);
+                  };
+                  var SpecificCommandTopic = partial_arg$2(CommandTopicChannel, RuntimeEnvironment);
+                  var commandTopicChannel = SpecificCommandTopic.makeChannel(childName, opts);
+                  var match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(Adapter$Reventless.resourcesToUnwrappedOutput(commandTopicChannel.resources), (function (commandTopicResources) {
+                              var CallbackSpec = {
+                                publishToAggregates: publishToAggregates,
+                                commandTopicResources: commandTopicResources,
+                                scheduler: scheduler,
+                                queryEngine: queryEngine
+                              };
+                              var partial_arg = ExtensionPoint_Callback$Reventless.Make;
+                              var partial_arg$1 = function (param, param$1) {
+                                return partial_arg(CallbackSpec, param, param$1);
+                              };
+                              var Callback = partial_arg$1(Spec, Mappings);
+                              var commandTopic = SpecificCommandTopic.make(childName, commandTopicChannel, Callback.incomingCommandsHandler, opts);
+                              var partial_arg$2 = {
+                                Id: Id$ReventlessSpec.$$String,
+                                event_encode: event_encode,
+                                event_decode: event_decode
+                              };
+                              var partial_arg$3 = EventTopic$Reventless.Make;
+                              var SpecificEventTopic = (function (param) {
+                                    return partial_arg$3(partial_arg$2, param);
+                                  })(EventTopicAdapter);
+                              var eventTopic = SpecificEventTopic.make(childName, [], opts);
+                              return Component$Reventless.operations(eventTopic).apply(function (param) {
+                                          var OperationsSpec_publishToEventTopic = param.publishJson;
+                                          var OperationsSpec = {
+                                            publishToEventTopic: OperationsSpec_publishToEventTopic,
+                                            commandTopicResources: commandTopicResources,
+                                            scheduler: scheduler,
+                                            queryEngine: queryEngine
+                                          };
+                                          var partial_arg = ExtensionPoint_Operations$Reventless.Make;
+                                          var partial_arg$1 = function (param, param$1) {
+                                            return partial_arg(OperationsSpec, param, param$1);
+                                          };
+                                          var Operations = partial_arg$1(Spec, Mappings);
+                                          return [
+                                                  commandTopic,
+                                                  eventTopic,
+                                                  Operations.outgoingEventHandler
+                                                ];
+                                        });
+                            })));
+                  Component$Reventless.setOperations(extra, match[2].apply(function (outgoingEventHandler) {
                             return {
                                     outgoingEventHandler: outgoingEventHandler
                                   };
@@ -88,10 +108,12 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
                                                     return Mapping.aggregateName;
                                                   }));
                                     })),
-                              commandTopic: commandTopic.apply(function (commandTopic) {
+                              commandTopic: match[0].apply(function (commandTopic) {
                                     return Component$Reventless.extractOutputs(commandTopic);
                                   }),
-                              eventTopic: Component$Reventless.extractOutputs(eventTopic)
+                              eventTopic: match[1].apply(function (eventTopic) {
+                                    return Component$Reventless.extractOutputs(eventTopic);
+                                  })
                             });
                 }), opts);
   };
@@ -103,5 +125,6 @@ function Make(Spec, Mappings, CommandTopicAdapter, EventTopicAdapter) {
 var componentType = "ExtensionPoint";
 
 exports.componentType = componentType;
+exports.toUnwrappedOutputs = toUnwrappedOutputs;
 exports.Make = Make;
 /* Output-Pulumi Not a pure module */

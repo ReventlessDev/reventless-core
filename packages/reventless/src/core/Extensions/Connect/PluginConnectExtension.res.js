@@ -75,7 +75,7 @@ function Make(Spec) {
                   if (Message$Reventless.log(Belt_Array.keep(otherPluginExtensions, (function (param) {
                                 return extensionPoint.name === param.extensionPointName;
                               })), "matching otherPluginExtensions:").length !== 0) {
-                    return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id.get(), otherPluginId, otherPluginEventCollector));
+                    return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id, otherPluginId, otherPluginEventCollector));
                   }
                   
                 }));
@@ -98,7 +98,7 @@ function Make(Spec) {
                   if (Belt_Array.keep(pluginExtensions, (function (param) {
                             return extensionPoint.name === param.extensionPointName;
                           })).length !== 0) {
-                    return Caml_option.some(unsubscribe("disconnectFromExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id.get(), pluginId, pluginEventCollector));
+                    return Caml_option.some(unsubscribe("disconnectFromExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id, pluginId, pluginEventCollector));
                   }
                   
                 }));

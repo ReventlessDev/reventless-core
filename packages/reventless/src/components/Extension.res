@@ -14,7 +14,7 @@ module type T = {
   type component = Component.t<t, outputs, operations>
 
   let make: (
-    ~publishToCorePluginExtensionPoint: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
     ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
     ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
     ~publishToReadModels: Js.Dict.t<EventCollector.enqueueEvent>,
@@ -38,7 +38,7 @@ module Make = (
   type component = Component.t<t, outputs, operations>
 
   let construct = (
-    ~publishToCorePluginExtensionPoint: Pulumi.Output.t<CommandTopic.publishJsons>,
+    ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
     ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
     ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
     ~publishToReadModels: Js.Dict.t<EventCollector.enqueueEvent>,
@@ -46,24 +46,23 @@ module Make = (
     self,
     name,
   ) => {
-    let eventHandlers =
-      publishToCorePluginExtensionPoint->Pulumi.Output.apply(publishToCorePluginExtensionPoint => {
-        module RuntimeSpec = {
-          let publishToAggregates = publishToAggregates
-          let publishToCorePluginExtensionPoint = publishToCorePluginExtensionPoint
-          let readModelNamesForSourceName = readModelNamesForSourceName
-          let publishToReadModels = publishToReadModels
-          let queryEngine = queryEngine
-        }
-        module Runtime = Extension_Runtime.Make(RuntimeSpec, Spec, Mappings)
+    let eventHandlers = {
+      module RuntimeSpec = {
+        let publishToAggregates = publishToAggregates
+        let publishToCorePluginExtensionPoint = publishToCorePluginExtensionPoint
+        let readModelNamesForSourceName = readModelNamesForSourceName
+        let publishToReadModels = publishToReadModels
+        let queryEngine = queryEngine
+      }
+      module Runtime = Extension_Runtime.Make(RuntimeSpec, Spec, Mappings)
 
-        {
-          incomingEventHandler: Runtime.incomingEventHandler,
-          outgoingEventHandler: Runtime.outgoingEventHandler,
-        }
-      })
+      {
+        incomingEventHandler: Runtime.incomingEventHandler,
+        outgoingEventHandler: Runtime.outgoingEventHandler,
+      }
+    }
 
-    self->Component.setOperations(eventHandlers)
+    self->Component.setOperations(eventHandlers->Pulumi.Output.make)
     self->Component.setOutputs({
       name,
       extensionPointName: Spec.name,

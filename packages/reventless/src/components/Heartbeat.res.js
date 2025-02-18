@@ -14,14 +14,12 @@ function Make(Runner) {
     var opts = {
       parent: opts_parent
     };
-    var runnerResources = publishToCorePluginExtensionPoint.apply(function (publishToCorePluginExtensionPoint) {
-          var Runtime = Heartbeat_Runtime$Reventless.Make({
-                publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
-                id: id,
-                timeout: timeout
-              });
-          return Runner.make(ComponentType$Reventless.name(name, "Heartbeat"), timeout, Runtime.heartbeat, opts).resources;
+    var Runtime = Heartbeat_Runtime$Reventless.Make({
+          publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
+          id: id,
+          timeout: timeout
         });
+    var runnerResources = Runner.make(ComponentType$Reventless.name(name, "Heartbeat"), timeout, Runtime.heartbeat, opts).resources;
     return Component$Reventless.setOutputs(self, {
                 name: name,
                 resources: runnerResources

@@ -4,7 +4,7 @@ module type Ops = {
 }
 
 module Make = (Spec: CommandTopic.Spec, Ops: Ops) => {
-  let handleCommands = async jsonItems => {
+  let handleJsonCommands = async jsonItems => {
     Logger.debug(~loc=__LOC__, "starting handleCommands. Command count", jsonItems->Belt.Array.size)
     let topicItems = jsonItems->Belt.Array.keepMap(({
       CommandTopic.reference: reference,

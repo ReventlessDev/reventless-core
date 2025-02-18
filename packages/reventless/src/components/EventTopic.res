@@ -4,6 +4,14 @@ type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 type allOutputs = Js.Dict.t<outputs>
 
+let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =>
+  outputs.resources
+  ->Adapter.resourcesToUnwrappedOutput
+  ->Pulumi.Output.apply(resources => {
+    let unwrappedOutputs: unwrappedOutputs = {resources: resources}
+    unwrappedOutputs
+  })
+
 type t
 
 type publish<'id, 'event> = array<Message.event'<'id, 'event>> => Js.Promise.t<unit>

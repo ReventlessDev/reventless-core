@@ -15,57 +15,59 @@ var EventLog_Builder$Reventless = require("../EventLog/EventLog_Builder.res.js")
 var Aggregate_Runtime$Reventless = require("./Aggregate_Runtime.res.js");
 var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Builder.res.js");
 
-function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers, CommandTopicConnector, EventLogStorage, EventTopicPublisher, EventCollectorConnector) {
+function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorConnector, RuntimeEnvironment) {
   var partial_arg = CommandGenerator$Reventless.Make;
   var partial_arg$1 = function (param, param$1) {
     return partial_arg(Config, Spec, param, param$1);
   };
   var SpecificCommandGenerator = partial_arg$1(Behaviour, CommandGeneratorResolvers);
-  var partial_arg_Id = Spec.Id;
-  var partial_arg_command_encode = Spec.command_encode;
-  var partial_arg_command_decode = Spec.command_decode;
-  var partial_arg$2 = {
-    Id: partial_arg_Id,
-    command_encode: partial_arg_command_encode,
-    command_decode: partial_arg_command_decode
-  };
-  var partial_arg$3 = CommandTopic_Builder$Reventless.Make;
-  var SpecificCommandTopic = (function (param) {
-        return partial_arg$3(partial_arg$2, param);
-      })(CommandTopicConnector);
-  var partial_arg_Id$1 = Spec.Id;
-  var partial_arg_name = Spec.name;
-  var partial_arg_event_encode = Spec.event_encode;
-  var partial_arg_event_decode = Spec.event_decode;
-  var partial_arg$4 = {
-    Id: partial_arg_Id$1,
-    name: partial_arg_name,
-    event_encode: partial_arg_event_encode,
-    event_decode: partial_arg_event_decode
-  };
-  var partial_arg$5 = EventLog_Builder$Reventless.Make;
-  var partial_arg$6 = function (param, param$1) {
-    return partial_arg$5(partial_arg$4, param, param$1);
-  };
-  var SpecificEventLog = partial_arg$6(EventLogStorage, EventTopicPublisher);
   var construct = function (self, name) {
     var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };
     var childName = ComponentType$Reventless.name(name, Aggregate$Reventless.componentType);
+    var partial_arg_Id = Spec.Id;
+    var partial_arg_name = Spec.name;
+    var partial_arg_event_encode = Spec.event_encode;
+    var partial_arg_event_decode = Spec.event_decode;
+    var partial_arg = {
+      Id: partial_arg_Id,
+      name: partial_arg_name,
+      event_encode: partial_arg_event_encode,
+      event_decode: partial_arg_event_decode
+    };
+    var partial_arg$1 = EventLog_Builder$Reventless.Make;
+    var partial_arg$2 = function (param, param$1) {
+      return partial_arg$1(partial_arg, param, param$1);
+    };
+    var SpecificEventLog = partial_arg$2(EventLogStorage, EventTopicPublisher);
     var eventLog = SpecificEventLog.make(childName, opts);
     var commandTopic = Component$Reventless.operations(eventLog).apply(function (eventLogOps) {
-          var partial_arg = Aggregate_Runtime$Reventless.Make;
-          var partial_arg$1 = function (param, param$1) {
-            return partial_arg(Spec, param, param$1);
+          var partial_arg_Id = Spec.Id;
+          var partial_arg_command_encode = Spec.command_encode;
+          var partial_arg_command_decode = Spec.command_decode;
+          var partial_arg = {
+            Id: partial_arg_Id,
+            command_encode: partial_arg_command_encode,
+            command_decode: partial_arg_command_decode
           };
-          var Runtime = partial_arg$1(Behaviour, {
+          var partial_arg$1 = CommandTopic_Builder$Reventless.Make;
+          var partial_arg$2 = function (param, param$1) {
+            return partial_arg$1(partial_arg, param, param$1);
+          };
+          var SpecificCommandTopic = partial_arg$2(CommandTopicChannel, RuntimeEnvironment);
+          var channel = SpecificCommandTopic.makeChannel(childName, opts);
+          var partial_arg$3 = Aggregate_Runtime$Reventless.Make;
+          var partial_arg$4 = function (param, param$1) {
+            return partial_arg$3(Spec, param, param$1);
+          };
+          var Runtime = partial_arg$4(Behaviour, {
                 Spec: Spec,
                 EventLog: SpecificEventLog,
                 eventLog: eventLogOps
               });
-          return SpecificCommandTopic.make(childName, Runtime.handleCommands, undefined, undefined, opts);
+          return SpecificCommandTopic.make(childName, channel, Runtime.handleCommands, opts);
         });
     var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
             return Component$Reventless.operations(commandTopic).apply(function (param) {

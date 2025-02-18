@@ -48,6 +48,14 @@ function toResource(queue) {
         };
 }
 
+function fromResource(param) {
+  return {
+          arn: param.urn,
+          name: param.name,
+          id: param.id
+        };
+}
+
 function arn2Account(arn) {
   var match = arn.split(":");
   if (match.length !== 6) {
@@ -72,6 +80,7 @@ function findResourceInOutput(resourcesOutput) {
 
 exports.toRuntimeQueueOutput = toRuntimeQueueOutput;
 exports.toResource = toResource;
+exports.fromResource = fromResource;
 exports.arn2Account = arn2Account;
 exports.subscribeToSnsTopic = subscribeToSnsTopic;
 exports.findResourceInOutput = findResourceInOutput;

@@ -4,10 +4,11 @@ module Make = (
   Behaviour: Behaviour.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
   CommandGeneratorResolvers: CommandGenerator.Adapter.Resolvers with type api := Config.api,
-  CommandTopicConnector: CommandTopic_Adapter.Connector,
+  CommandTopicChannel: CommandTopic_Adapter.Channel,
   EventLogStorage: EventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic.Adapter.Publisher,
   EventCollectorConnector: EventCollector.Adapter.Connector,
+  RuntimeEnvironment: Runtime.Environment,
 ): Aggregate.T => {
   module Spec = Spec
   module SpecificCommandGenerator = CommandGenerator.Make(
@@ -16,8 +17,6 @@ module Make = (
     Behaviour,
     CommandGeneratorResolvers,
   )
-  module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicConnector)
-  module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
 
   let addEventMapperFn = (component: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
     module SpecificEventCollector = EventCollector.Make(EventCollectorConnector)
@@ -47,6 +46,7 @@ module Make = (
 
     let childName = name->ComponentType.name(Aggregate.componentType)
 
+    module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
     let eventLog = SpecificEventLog.make(~name=childName, ~opts)
 
     let commandTopic =
@@ -58,8 +58,19 @@ module Make = (
           module EventLog = SpecificEventLog
           let eventLog = eventLogOps
         }
+        module SpecificCommandTopic = CommandTopic_Builder.Make(
+          Spec,
+          CommandTopicChannel,
+          RuntimeEnvironment,
+        )
+        let channel = SpecificCommandTopic.makeChannel(~name=childName, ~opts)
         module Runtime = Aggregate_Runtime.Make(Spec, Behaviour, Ops)
-        SpecificCommandTopic.make(~name=childName, ~commandsHandler=Runtime.handleCommands, ~opts)
+        SpecificCommandTopic.make(
+          ~name=childName,
+          ~channel,
+          ~commandsHandler=Runtime.handleCommands,
+          ~opts,
+        )
       })
 
     let commandGenerator = commandTopic->Pulumi.Output.flatMap(commandTopic =>

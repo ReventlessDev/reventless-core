@@ -1,24 +1,15 @@
-type connector = {
-  resources: array<ReventlessSpec.Adapter.resource>,
-  publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
-}
-type connectorMaker = (
+type channelMaker = (
   ~name: string,
-  ~handleCommands: CommandTopic.commandsHandler<Js.Json.t>,
-  ~memorySize: int,
-  ~timeout: int,
-  ~opts: Pulumi.CustomResourceOptions.t,
-) => connector
+  ~opts: Pulumi.ComponentResource.options=?,
+) => CommandTopic.channel
 
-module type Connector = {
-  let make: connectorMaker
+module type Channel = {
+  let make: channelMaker
 }
 
-type remoteConnector = {remotePublish: Pulumi.Output.t<CommandTopic.publishJsons>}
-type remoteConnectorMaker = Pulumi.Output.t<
-  array<Reventless.Adapter.unwrappedResource>,
-> => remoteConnector
+type remoteChannel = {remotePublish: CommandTopic.publishJsons}
+type remoteChannelMaker = array<Reventless.Adapter.unwrappedResource> => remoteChannel
 
-module type RemoteConnector = {
-  let make: remoteConnectorMaker
+module type RemoteChannel = {
+  let make: remoteChannelMaker
 }
