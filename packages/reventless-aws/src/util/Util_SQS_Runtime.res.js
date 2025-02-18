@@ -128,14 +128,6 @@ function parseSqsRecord(record) {
   return json;
 }
 
-function fromResource(resource) {
-  return {
-          arn: resource.urn,
-          name: resource.name,
-          id: resource.id
-        };
-}
-
 function findResource(resources) {
   return Util_AdapterRuntime$Reventless.findResource(resources, service);
 }
@@ -154,7 +146,6 @@ exports.sendMessages = sendMessages;
 exports.deleteMessage = deleteMessage;
 exports.deleteMessages = deleteMessages;
 exports.parseSqsRecord = parseSqsRecord;
-exports.fromResource = fromResource;
 exports.findResource = findResource;
 exports.findUnwrappedResource = findUnwrappedResource;
 /* SQS-AwsSdk Not a pure module */

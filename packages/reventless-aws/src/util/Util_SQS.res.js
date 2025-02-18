@@ -48,14 +48,6 @@ function toResource(queue) {
         };
 }
 
-function fromResource(param) {
-  return {
-          arn: param.urn,
-          name: param.name,
-          id: param.id
-        };
-}
-
 function arn2Account(arn) {
   var match = arn.split(":");
   if (match.length !== 6) {
@@ -74,14 +66,27 @@ function subscribeToSnsTopic(queue, targetName, sourceName, topic, opts) {
             }, opts);
 }
 
+function findResource(resources) {
+  return Util_Adapter$Reventless.findResource(resources, Util_SQS_Runtime$ReventlessAws.service);
+}
+
 function findResourceInOutput(resourcesOutput) {
   return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, Util_SQS_Runtime$ReventlessAws.service);
 }
 
+function fromResource(resource) {
+  return {
+          arn: resource.urn,
+          name: resource.name,
+          id: resource.id
+        };
+}
+
 exports.toRuntimeQueueOutput = toRuntimeQueueOutput;
 exports.toResource = toResource;
-exports.fromResource = fromResource;
 exports.arn2Account = arn2Account;
 exports.subscribeToSnsTopic = subscribeToSnsTopic;
+exports.findResource = findResource;
 exports.findResourceInOutput = findResourceInOutput;
+exports.fromResource = fromResource;
 /* @pulumi/aws Not a pure module */

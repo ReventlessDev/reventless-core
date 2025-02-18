@@ -111,16 +111,6 @@ let parseSqsRecord = (record: PulumiAws.SQS.Queue.record) => {
   }
 }
 
-@obj
-external makeQueue: (
-  ~arn: Pulumi.Output.t<string>,
-  ~name: Pulumi.Output.t<string>,
-  ~id: Pulumi.Output.t<string>,
-) => PulumiAws.SQS.Queue.t = ""
-
-let fromResource = (resource: ReventlessSpec.Adapter.resource) =>
-  makeQueue(~id=resource.id, ~name=resource.name, ~arn=resource.urn)
-
 let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)
 
 let findUnwrappedResource = resources =>

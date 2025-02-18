@@ -48,5 +48,18 @@ let subscribeToSnsTopic = (
     ~opts=Some(opts),
   )
 
+let findResource = resources =>
+  resources->Reventless.Util.Adapter.findResource(Util_SQS_Runtime.service)
+
 let findResourceInOutput = resourcesOutput =>
   resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(Util_SQS_Runtime.service)
+
+@obj
+external makeQueue: (
+  ~arn: Pulumi.Output.t<string>,
+  ~name: Pulumi.Output.t<string>,
+  ~id: Pulumi.Output.t<string>,
+) => PulumiAws.SQS.Queue.t = ""
+
+let fromResource = (resource: ReventlessSpec.Adapter.resource) =>
+  makeQueue(~id=resource.id, ~name=resource.name, ~arn=resource.urn)

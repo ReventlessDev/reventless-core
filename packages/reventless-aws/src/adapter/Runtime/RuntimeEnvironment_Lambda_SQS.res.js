@@ -9,11 +9,10 @@ var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var CommandTopic$Reventless = require("@reventless/reventless/src/components/CommandTopic/CommandTopic.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
-var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("../CommandTopic/CommandTopicChannel_SQS_Runtime.res.js");
 
 function make(name, channelResources, handleJsons, opts) {
-  var queue = Util_SQS_Runtime$ReventlessAws.fromResource(Util_SQS_Runtime$ReventlessAws.findResource(channelResources));
+  var queue = Util_SQS$ReventlessAws.fromResource(Util_SQS$ReventlessAws.findResource(channelResources));
   var lambdaResource = Adapter$Reventless.outputToResource(Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
             var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
                         return CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(handleJsons, runtimeQueue, extra, extra$1);

@@ -3,8 +3,8 @@ open PulumiAws
 let make: Reventless.Runtime.environmentMaker = (~name, ~channelResources, ~handleJsons, ~opts) => {
   let queue =
     channelResources
-    ->Util.SQS_Runtime.findResource
-    ->Util.SQS_Runtime.fromResource
+    ->Util.SQS.findResource
+    ->Util.SQS.fromResource
 
   let lambdaResource =
     queue
