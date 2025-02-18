@@ -32,13 +32,17 @@ module Make = (
             ),
           )
         : None
-    Js.log2("eventMapper:", eventMapper)
+    Js.log2("eventMapper1:", eventMapper)
 
     {
       ...component->Component.extractOutputs,
-      eventMapper: ?eventMapper->Belt.Option.map(eventMapper =>
-        eventMapper->Pulumi.Output.apply(eventMapper => eventMapper->Component.extractOutputs)
-      ),
+      eventMapper: ?eventMapper->Belt.Option.map(eventMapper => {
+        Js.log2("eventMapper2:", eventMapper)
+        eventMapper->Pulumi.Output.apply(eventMapper => {
+          Js.log2("eventMapper3:", eventMapper)
+          eventMapper->Component.extractOutputs
+        })
+      }),
     }
   }
 

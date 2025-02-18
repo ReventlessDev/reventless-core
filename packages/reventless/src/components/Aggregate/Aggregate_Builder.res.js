@@ -106,10 +106,12 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                     var eventMapper = EventMappings.mappings.length !== 0 ? Component$Reventless.operations(self).apply(function (param) {
                             return SpecificEventMapper.make(none, none$1, param.publishJsons, undefined, undefined, opts);
                           }) : undefined;
-                    console.log("eventMapper:", eventMapper);
+                    console.log("eventMapper1:", eventMapper);
                     var newrecord = Caml_obj.obj_dup(Component$Reventless.extractOutputs(self));
                     newrecord.eventMapper = Belt_Option.map(eventMapper, (function (eventMapper) {
+                            console.log("eventMapper2:", eventMapper);
                             return eventMapper.apply(function (eventMapper) {
+                                        console.log("eventMapper3:", eventMapper);
                                         return Component$Reventless.extractOutputs(eventMapper);
                                       });
                           }));
