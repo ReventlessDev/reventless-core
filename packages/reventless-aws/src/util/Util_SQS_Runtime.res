@@ -1,8 +1,6 @@
 open Reventless.Message
 open AwsSdk
 
-let service = "SQS"
-
 type runtimeQueue = {
   id: string,
   name: string,
@@ -39,10 +37,7 @@ let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   }
 }
 
-let makeEntry = (
-  queueService,
-  {id, meta: {msgId: messageId, service: _}, delay} as commandJson,
-) => {
+let makeEntry = (queueService, {id, meta: {msgId: messageId}, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
 
   // Js.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${CommandTopic: Published commands:id}`)
@@ -110,8 +105,3 @@ let parseSqsRecord = (record: PulumiAws.SQS.Queue.record) => {
     None
   }
 }
-
-let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)
-
-let findUnwrappedResource = resources =>
-  resources->Reventless.Util.AdapterRuntime.findUnwrappedResource(service)

@@ -10,9 +10,6 @@ var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var ClientSqs = require("@aws-sdk/client-sqs");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.res.js");
 var Util_SQS_FIFO$ReventlessAws = require("./Util_SQS_FIFO.res.js");
-var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
-
-var service = "SQS";
 
 function toRuntimeQueue(param) {
   return {
@@ -128,15 +125,6 @@ function parseSqsRecord(record) {
   return json;
 }
 
-function findResource(resources) {
-  return Util_AdapterRuntime$Reventless.findResource(resources, service);
-}
-
-function findUnwrappedResource(resources) {
-  return Util_AdapterRuntime$Reventless.findUnwrappedResource(resources, service);
-}
-
-exports.service = service;
 exports.toRuntimeQueue = toRuntimeQueue;
 exports.sendMessage = sendMessage;
 exports.sendFifoMessage = sendFifoMessage;
@@ -146,6 +134,4 @@ exports.sendMessages = sendMessages;
 exports.deleteMessage = deleteMessage;
 exports.deleteMessages = deleteMessages;
 exports.parseSqsRecord = parseSqsRecord;
-exports.findResource = findResource;
-exports.findUnwrappedResource = findUnwrappedResource;
 /* SQS-AwsSdk Not a pure module */

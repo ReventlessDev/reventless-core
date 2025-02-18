@@ -28,7 +28,7 @@ let make: Reventless.CommandTopic_Adapter.channelMaker = (~name, ~opts=?) => {
     publishJsons: queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>
-      runtimeQueue->(CommandTopicChannel_SQS_Runtime.publishJsons(Util_SQS_Runtime.service, ...))
+      runtimeQueue->(CommandTopicChannel_SQS_Runtime.publishJsons(Util_SQS.service, ...))
     ),
   }
 }

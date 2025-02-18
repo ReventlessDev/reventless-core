@@ -4,7 +4,9 @@
 var Aws = require("@pulumi/aws");
 var Pulumi = require("@pulumi/pulumi");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
-var Util_SQS_Runtime$ReventlessAws = require("./Util_SQS_Runtime.res.js");
+var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
+
+var service = "SQS";
 
 function toRuntimeQueueOutput(param) {
   return Pulumi.all([
@@ -12,24 +14,10 @@ function toRuntimeQueueOutput(param) {
                 param.id,
                 param.arn
               ]).apply(function (param) {
-              if (param.length !== 3) {
-                throw {
-                      RE_EXN_ID: "Match_failure",
-                      _1: [
-                        "Util_SQS.res",
-                        6,
-                        25
-                      ],
-                      Error: new Error()
-                    };
-              }
-              var name = param[0];
-              var id = param[1];
-              var arn = param[2];
               return {
-                      id: id,
-                      name: name,
-                      arn: arn
+                      id: param[1],
+                      name: param[0],
+                      arn: param[2]
                     };
             });
 }
@@ -43,8 +31,16 @@ function toResource(queue) {
                 return "";
               }),
           service: queue.name.apply(function (param) {
-                return Util_SQS_Runtime$ReventlessAws.service;
+                return service;
               })
+        };
+}
+
+function fromResource(param) {
+  return {
+          arn: param.urn,
+          name: param.name,
+          id: param.id
         };
 }
 
@@ -67,26 +63,24 @@ function subscribeToSnsTopic(queue, targetName, sourceName, topic, opts) {
 }
 
 function findResource(resources) {
-  return Util_Adapter$Reventless.findResource(resources, Util_SQS_Runtime$ReventlessAws.service);
+  return Util_Adapter$Reventless.findResource(resources, service);
 }
 
 function findResourceInOutput(resourcesOutput) {
-  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, Util_SQS_Runtime$ReventlessAws.service);
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, service);
 }
 
-function fromResource(resource) {
-  return {
-          arn: resource.urn,
-          name: resource.name,
-          id: resource.id
-        };
+function findUnwrappedResource(resources) {
+  return Util_AdapterRuntime$Reventless.findUnwrappedResource(resources, service);
 }
 
+exports.service = service;
 exports.toRuntimeQueueOutput = toRuntimeQueueOutput;
 exports.toResource = toResource;
+exports.fromResource = fromResource;
 exports.arn2Account = arn2Account;
 exports.subscribeToSnsTopic = subscribeToSnsTopic;
 exports.findResource = findResource;
 exports.findResourceInOutput = findResourceInOutput;
-exports.fromResource = fromResource;
+exports.findUnwrappedResource = findUnwrappedResource;
 /* @pulumi/aws Not a pure module */

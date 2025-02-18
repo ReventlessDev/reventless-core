@@ -1,16 +1,18 @@
 open PulumiAws
 
+let service = "SQS"
+
 let toRuntimeQueueOutput = ({name, id, arn}: PulumiAws.SQS.Queue.t) =>
-  [name, id, arn]
-  ->Pulumi.Output.all
-  ->Pulumi.Output.apply(([name, id, arn]) => {
+  (name, id, arn)
+  ->Pulumi.Output.all3
+  ->Pulumi.Output.apply(((name, id, arn)) => {
     Util_SQS_Runtime.id,
     name,
     arn,
   })
 
 let toResource = (queue: PulumiAws.SQS.Queue.t) => {
-  ReventlessSpec.Adapter.service: queue.name->Pulumi.Output.apply(_ => Util_SQS_Runtime.service),
+  ReventlessSpec.Adapter.service: queue.name->Pulumi.Output.apply(_ => service),
   name: queue.name,
   id: queue.id,
   urn: queue.arn,
@@ -48,18 +50,10 @@ let subscribeToSnsTopic = (
     ~opts=Some(opts),
   )
 
-let findResource = resources =>
-  resources->Reventless.Util.Adapter.findResource(Util_SQS_Runtime.service)
+let findResource = resources => resources->Reventless.Util.Adapter.findResource(service)
 
 let findResourceInOutput = resourcesOutput =>
-  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(Util_SQS_Runtime.service)
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(service)
 
-@obj
-external makeQueue: (
-  ~arn: Pulumi.Output.t<string>,
-  ~name: Pulumi.Output.t<string>,
-  ~id: Pulumi.Output.t<string>,
-) => PulumiAws.SQS.Queue.t = ""
-
-let fromResource = (resource: ReventlessSpec.Adapter.resource) =>
-  makeQueue(~id=resource.id, ~name=resource.name, ~arn=resource.urn)
+let findUnwrappedResource = resources =>
+  resources->Reventless.Util.AdapterRuntime.findUnwrappedResource(service)

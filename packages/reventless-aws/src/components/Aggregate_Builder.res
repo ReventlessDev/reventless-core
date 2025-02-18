@@ -13,5 +13,5 @@ module Make = (
   EventLogStorage.DynamoDbStream,
   EventTopicPublisher.DynamoDbStream,
   EventCollectorConnector_DynamoDbStream,
-  RuntimeEnvironment_Lambda_SQS,
+  RuntimeEnvironment_Lambda_SQS_FIFO,
 )
