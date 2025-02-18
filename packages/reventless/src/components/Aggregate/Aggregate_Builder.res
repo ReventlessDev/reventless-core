@@ -32,6 +32,7 @@ module Make = (
             ),
           )
         : None
+    Js.log2("eventMapper:", eventMapper)
 
     {
       ...component->Component.extractOutputs,
