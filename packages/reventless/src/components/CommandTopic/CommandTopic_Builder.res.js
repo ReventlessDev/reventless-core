@@ -19,12 +19,13 @@ function Make(Spec, Channel, RuntimeEnvironment) {
                   var opts = {
                     parent: opts_parent
                   };
+                  var name = ComponentType$Reventless.name(none$1, CommandTopic$Reventless.componentType);
                   var partial_arg = CommandTopic_Callback$Reventless.Make;
                   var Callback = partial_arg(Spec, {
                         Spec: Spec,
                         commandsHandler: commandsHandler
                       });
-                  var runtime = RuntimeEnvironment.make(none$1, channel.resources, Callback.handleJsonCommands, opts);
+                  var runtime = RuntimeEnvironment.make(name, channel.resources, Callback.handleJsonCommands, opts);
                   Component$Reventless.setOperations(none, channel.publishJsons.apply(function (publishJsons) {
                             var Ops = {
                               publishJsons: publishJsons

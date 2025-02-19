@@ -13,6 +13,7 @@ module Make = (
 
   let construct = (self, name, ~channel: CommandTopic.channel, ~commandsHandler) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
+    let name = name->ComponentType.name(CommandTopic.componentType)
 
     module CallbackOps = {
       module Spec = Spec
