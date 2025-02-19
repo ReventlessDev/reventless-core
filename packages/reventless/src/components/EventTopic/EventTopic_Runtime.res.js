@@ -2,9 +2,9 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Logger$Reventless = require("../util/Logger.res.js");
-var Message$Reventless = require("../Message.res.js");
-var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
+var Logger$Reventless = require("../../util/Logger.res.js");
+var Message$Reventless = require("../../Message.res.js");
+var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function Make(Spec) {
   var publish = function (publishJson) {

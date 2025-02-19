@@ -15,15 +15,15 @@ function Make(Channel) {
                   var opts = {
                     parent: opts_parent
                   };
-                  var connector = Channel.make(ComponentType$Reventless.name(extra$1, EventCollector$Reventless.componentType), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
-                  Component$Reventless.setOperations(extra, connector.enqueueEvent.apply(function (enqueueEvent) {
+                  var channel = Channel.make(ComponentType$Reventless.name(extra$1, EventCollector$Reventless.componentType), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
+                  Component$Reventless.setOperations(extra, channel.enqueueEvent.apply(function (enqueueEvent) {
                             return {
                                     enqueueEvent: enqueueEvent
                                   };
                           }));
                   return Component$Reventless.setOutputs(extra, {
                               name: extra$1,
-                              resources: connector.resources
+                              resources: channel.resources
                             });
                 }), opts);
   };

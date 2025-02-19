@@ -1,4 +1,4 @@
-let make: Reventless.EventTopic.Adapter.publisherMaker = (
+let make: Reventless.EventTopic_Adapter.publisherMaker = (
   ~name as _,
   ~storageResources,
   ~opts as _,

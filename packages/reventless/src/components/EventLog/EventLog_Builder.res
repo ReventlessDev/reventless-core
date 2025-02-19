@@ -1,7 +1,7 @@
 module Make = (
   Spec: EventLog.Spec,
   Storage: EventLog_Adapter.Storage,
-  EventTopicPublisher: EventTopic.Adapter.Publisher,
+  EventTopicPublisher: EventTopic_Adapter.Publisher,
 ): (EventLog.T with module Spec = Spec) => {
   module Spec = Spec
 
@@ -16,7 +16,7 @@ module Make = (
 
     let storage = Storage.make(~name=name->ComponentType.name(EventLog.componentType), ~opts)
 
-    module SpecificEventTopic = EventTopic.Make(Spec, EventTopicPublisher)
+    module SpecificEventTopic = EventTopic_Builder.Make(Spec, EventTopicPublisher)
     let eventTopic = SpecificEventTopic.make(
       ~name,
       ~storageResources=storage.resources,

@@ -9,9 +9,10 @@ var Pulumi = require("@pulumi/pulumi");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Adapter$Reventless = require("../adapter/Adapter.res.js");
 var Component$Reventless = require("./Component.res.js");
-var EventTopic$Reventless = require("./EventTopic.res.js");
+var EventTopic$Reventless = require("./EventTopic/EventTopic.res.js");
 var CommandTopic$Reventless = require("./CommandTopic/CommandTopic.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
+var EventTopic_Builder$Reventless = require("./EventTopic/EventTopic_Builder.res.js");
 var CommandTopic_Builder$Reventless = require("./CommandTopic/CommandTopic_Builder.res.js");
 var ExtensionPoint_Callback$Reventless = require("./ExtensionPoint_Callback.res.js");
 var ExtensionPoint_Operations$Reventless = require("./ExtensionPoint_Operations.res.js");
@@ -71,7 +72,7 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                                 event_encode: event_encode,
                                 event_decode: event_decode
                               };
-                              var partial_arg$3 = EventTopic$Reventless.Make;
+                              var partial_arg$3 = EventTopic_Builder$Reventless.Make;
                               var SpecificEventTopic = (function (param) {
                                     return partial_arg$3(partial_arg$2, param);
                                   })(EventTopicAdapter);

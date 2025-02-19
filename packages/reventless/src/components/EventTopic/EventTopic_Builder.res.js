@@ -2,32 +2,19 @@
 'use strict';
 
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
-var Adapter$Reventless = require("../adapter/Adapter.res.js");
-var Component$Reventless = require("./Component.res.js");
-var ComponentType$Reventless = require("../ComponentType.res.js");
+var Component$Reventless = require("../Component.res.js");
+var EventTopic$Reventless = require("./EventTopic.res.js");
+var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventTopic_Runtime$Reventless = require("./EventTopic_Runtime.res.js");
-
-function toUnwrappedOutputs(outputs) {
-  return Adapter$Reventless.resourcesToUnwrappedOutput(outputs.resources).apply(function (resources) {
-              return {
-                      resources: resources
-                    };
-            });
-}
-
-var NotPublishedToPublisher = /* @__PURE__ */Caml_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
-
-var Adapter = {};
 
 function Make(Spec, Publisher) {
   var make = function (name, storageResources, opts) {
-    return Component$Reventless.make(ComponentType$Reventless.toString("EventTopic"), name, (function (extra, extra$1) {
+    return Component$Reventless.make(ComponentType$Reventless.toString(EventTopic$Reventless.componentType), name, (function (extra, extra$1) {
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
                   var opts = {
                     parent: opts_parent
                   };
-                  var publisher = Publisher.make(ComponentType$Reventless.name(extra$1, "EventTopic"), storageResources, opts);
+                  var publisher = Publisher.make(ComponentType$Reventless.name(extra$1, EventTopic$Reventless.componentType), storageResources, opts);
                   var Runtime = EventTopic_Runtime$Reventless.Make(Spec);
                   Component$Reventless.setOperations(extra, publisher.publishJson.apply(function (publishJson) {
                             return {
@@ -46,11 +33,5 @@ function Make(Spec, Publisher) {
         };
 }
 
-var componentType = "EventTopic";
-
-exports.componentType = componentType;
-exports.toUnwrappedOutputs = toUnwrappedOutputs;
-exports.NotPublishedToPublisher = NotPublishedToPublisher;
-exports.Adapter = Adapter;
 exports.Make = Make;
-/* Adapter-Reventless Not a pure module */
+/* Component-Reventless Not a pure module */

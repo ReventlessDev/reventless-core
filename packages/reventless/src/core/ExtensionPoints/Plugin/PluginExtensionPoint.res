@@ -7,7 +7,7 @@ module Mappings = {
 
 module Make = (
   CommandTopicChannel: CommandTopic_Adapter.Channel,
-  EventTopicAdapter: EventTopic.Adapter.Publisher,
+  EventTopicAdapter: EventTopic_Adapter.Publisher,
   RuntimeEnvironment: Reventless.Runtime.Environment,
 ): ExtensionPoint.T => {
   include ExtensionPoint.Make(

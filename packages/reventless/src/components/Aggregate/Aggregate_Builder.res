@@ -6,7 +6,7 @@ module Make = (
   CommandGeneratorResolvers: CommandGenerator_Adapter.Resolvers with type api := Config.api,
   CommandTopicChannel: CommandTopic_Adapter.Channel,
   EventLogStorage: EventLog_Adapter.Storage,
-  EventTopicPublisher: EventTopic.Adapter.Publisher,
+  EventTopicPublisher: EventTopic_Adapter.Publisher,
   EventCollectorChannel: EventCollector_Adapter.Channel,
   RuntimeEnvironment: Runtime.Environment,
 ): Aggregate.T => {

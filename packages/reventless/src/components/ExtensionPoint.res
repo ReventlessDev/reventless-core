@@ -53,7 +53,7 @@ module Make = (
   Spec: ReventlessSpec.ExtensionPointMapping.Spec,
   Mappings: Mappings with module Spec := Spec,
   CommandTopicChannel: CommandTopic_Adapter.Channel,
-  EventTopicAdapter: EventTopic.Adapter.Publisher,
+  EventTopicAdapter: EventTopic_Adapter.Publisher,
   RuntimeEnvironment: Runtime.Environment,
 ): T => {
   module Spec = Spec
@@ -106,7 +106,7 @@ module Make = (
           ~opts,
         )
 
-        module SpecificEventTopic = EventTopic.Make(SpecWithId, EventTopicAdapter)
+        module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)
         let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
 
         eventTopic

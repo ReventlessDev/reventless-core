@@ -5,10 +5,10 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var EventLog$Reventless = require("./EventLog.res.js");
 var Component$Reventless = require("../Component.res.js");
-var EventTopic$Reventless = require("../EventTopic.res.js");
 var Util_Pulumi$Reventless = require("../../util/Util_Pulumi.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventLog_Runtime$Reventless = require("./EventLog_Runtime.res.js");
+var EventTopic_Builder$Reventless = require("../EventTopic/EventTopic_Builder.res.js");
 
 function Make(Spec, $$Storage, EventTopicPublisher) {
   var construct = function (self, name) {
@@ -25,7 +25,7 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
       event_encode: partial_arg_event_encode,
       event_decode: partial_arg_event_decode
     };
-    var partial_arg$1 = EventTopic$Reventless.Make;
+    var partial_arg$1 = EventTopic_Builder$Reventless.Make;
     var SpecificEventTopic = (function (param) {
           return partial_arg$1(partial_arg, param);
         })(EventTopicPublisher);

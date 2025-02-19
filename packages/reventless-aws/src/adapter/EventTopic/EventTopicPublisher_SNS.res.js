@@ -3,7 +3,7 @@
 
 var Aws = require("@pulumi/aws");
 var AWS$ReventlessAws = require("../AWS.res.js");
-var EventTopic$Reventless = require("@reventless/reventless/src/components/EventTopic.res.js");
+var EventTopic$Reventless = require("@reventless/reventless/src/components/EventTopic/EventTopic.res.js");
 var Util_SNS$ReventlessAws = require("../../util/Util_SNS.res.js");
 var EventTopicPublisher_SNS_Runtime$ReventlessAws = require("./EventTopicPublisher_SNS_Runtime.res.js");
 
