@@ -37,11 +37,10 @@ function toResource(queue) {
 }
 
 function fromResource(param) {
-  return {
-          arn: param.urn,
-          name: param.name,
-          id: param.id
-        };
+  var id = param.id;
+  return param.name.apply(function (name) {
+              return Aws.sqs.Queue.get(name, id);
+            });
 }
 
 function arn2Account(arn) {

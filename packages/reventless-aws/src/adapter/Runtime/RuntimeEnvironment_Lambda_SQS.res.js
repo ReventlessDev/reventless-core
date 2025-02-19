@@ -3,6 +3,7 @@
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
@@ -12,14 +13,15 @@ var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("../CommandTopic/CommandTopicChannel_SQS_Runtime.res.js");
 
 function make(name, channelResources, handleJsons, opts) {
-  var queue = Util_SQS$ReventlessAws.fromResource(Util_SQS$ReventlessAws.findResource(channelResources));
-  var lambdaResource = Adapter$Reventless.outputToResource(Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
-            var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
-                        return CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(handleJsons, runtimeQueue, extra, extra$1);
-                      }), undefined, Lambda$PulumiAws.Policy.defaultPolicies, undefined, undefined, 1024, 30, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType), undefined), opts);
-            queue.onEvent(name, handler, undefined, opts);
-            return Util_Lambda$ReventlessAws.toResource(handler);
-          }));
+  var lambdaResource = Adapter$Reventless.outputToResource(Output$Pulumi.flatMap(Util_SQS$ReventlessAws.fromResource(Util_SQS$ReventlessAws.findResource(channelResources)), (function (queue) {
+              return Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
+                          var handler = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
+                                      return CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(handleJsons, runtimeQueue, extra, extra$1);
+                                    }), undefined, Lambda$PulumiAws.Policy.defaultPolicies, undefined, undefined, 1024, 30, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType), undefined), opts);
+                          queue.onEvent(name, handler, undefined, opts);
+                          return Util_Lambda$ReventlessAws.toResource(handler);
+                        });
+            })));
   return {
           resources: Belt_Array.concat(channelResources, [lambdaResource])
         };
