@@ -34,6 +34,6 @@ let make: Reventless.Runtime.environmentMaker = (~name, ~channelResources, ~hand
     ->Reventless.Adapter.outputToResource
 
   {
-    resources: channelResources->Belt.Array.concat([lambdaResource]),
+    resources: [lambdaResource],
   }
 }
