@@ -13,7 +13,7 @@ var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Logger$Reventless = require("../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
-var Counter$Reventless = require("./Counter.res.js");
+var Counter$Reventless = require("./Counter/Counter.res.js");
 var Message$Reventless = require("../Message.res.js");
 var Component$Reventless = require("./Component.res.js");
 var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
@@ -252,18 +252,19 @@ function Make(Target, EventCollector, Mappings) {
       parent: opts_parent
     };
     var match = Belt_Option.mapWithDefault(Mappings.counter, [
-          Pulumi.output(async function (_items) {
-                console.log("No counter deployed, but trying to use counter.");
-              }),
-          Pulumi.output(async function (_target) {
-                console.log("No counter deployed, but trying to use counter.");
+          Pulumi.output({
+                count: (async function (_items) {
+                    console.log("No counter deployed, but trying to use count");
+                  }),
+                addToCounterTarget: (async function (_target) {
+                    console.log("No counter deployed, but trying to use addToCounterTarget");
+                  })
               }),
           undefined
         ], (function (Counter) {
             var counter = Counter.make(name, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, opts);
             return [
-                    Counter.count(counter),
-                    Counter.addToCounterTarget(counter),
+                    Component$Reventless.operations(counter),
                     Component$Reventless.extractOutputs(counter)
                   ];
           }));
@@ -273,16 +274,13 @@ function Make(Target, EventCollector, Mappings) {
                 }
                 
               })));
-    var eventCollector = Pulumi.all([
-            match[0],
-            match[1]
-          ]).apply(function (param) {
-          return Component$Reventless.extractOutputs(EventCollector.make(ComponentType$Reventless.name(Target.name, "EventMapper"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, param[0], param[1]), memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+    var eventCollector = match[0].apply(function (param) {
+          return Component$Reventless.extractOutputs(EventCollector.make(ComponentType$Reventless.name(Target.name, "EventMapper"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, param.count, param.addToCounterTarget), memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts));
         });
     var outputs = {
       name: name,
       eventCollector: eventCollector,
-      counter: match[2]
+      counter: match[1]
     };
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);

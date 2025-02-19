@@ -1,6 +1,6 @@
 open PulumiAws
 
-let make: Reventless.Counter.Adapter.handlerMaker = (
+let make: Reventless.Counter_Adapter.handlerMaker = (
   ~name,
   ~referencesName,
   ~referencesDb,

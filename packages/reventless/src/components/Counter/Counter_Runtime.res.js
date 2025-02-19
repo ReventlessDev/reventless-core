@@ -8,9 +8,9 @@ var Js_array = require("@rescript/std/lib/js/js_array.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
-var Message$Reventless = require("../Message.res.js");
-var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
-var ComponentType$Reventless = require("../ComponentType.res.js");
+var Message$Reventless = require("../../Message.res.js");
+var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
+var ComponentType$Reventless = require("../../ComponentType.res.js");
 
 function referencesState_encode(value) {
   return Js_dict.fromArray([
