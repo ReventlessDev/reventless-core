@@ -22,27 +22,22 @@ module Make = (
     module SpecificEventCollector = EventCollector.Make(EventCollectorConnector)
     module SpecificEventMapper = EventMapper.Make(Spec, SpecificEventCollector, EventMappings)
 
-    let eventMapper =
-      EventMappings.mappings->Belt.Array.length > 0
-        ? Some(
-            component
-            ->Component.operations
-            ->Pulumi.Output.apply(({publishJsons}) =>
-              SpecificEventMapper.make(~allEventTopics, ~queryEngine, ~publishJsons, ~opts)
-            ),
-          )
-        : None
-    Js.log2("eventMapper1:", eventMapper)
-
-    {
-      ...component->Component.extractOutputs,
-      eventMapper: ?eventMapper->Belt.Option.map(eventMapper => {
-        Js.log2("eventMapper2:", eventMapper)
-        eventMapper->Pulumi.Output.apply(eventMapper => {
-          Js.log2("eventMapper3:", eventMapper)
+    let outputs = component->Component.extractOutputs
+    if EventMappings.mappings->Belt.Array.length > 0 {
+      let eventMapper =
+        component
+        ->Component.operations
+        ->Pulumi.Output.apply(({publishJsons}) =>
+          SpecificEventMapper.make(~allEventTopics, ~queryEngine, ~publishJsons, ~opts)
+        )
+      {
+        ...outputs,
+        eventMapper: eventMapper->Pulumi.Output.apply(eventMapper =>
           eventMapper->Component.extractOutputs
-        })
-      }),
+        ),
+      }
+    } else {
+      outputs
     }
   }
 

@@ -2,7 +2,6 @@
 'use strict';
 
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Aggregate$Reventless = require("./Aggregate.res.js");
@@ -103,18 +102,17 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                       return partial_arg$1(partial_arg, param, param$1);
                     };
                     var SpecificEventMapper = partial_arg$2(SpecificEventCollector, EventMappings);
-                    var eventMapper = EventMappings.mappings.length !== 0 ? Component$Reventless.operations(self).apply(function (param) {
-                            return SpecificEventMapper.make(none, none$1, param.publishJsons, undefined, undefined, opts);
-                          }) : undefined;
-                    console.log("eventMapper1:", eventMapper);
-                    var newrecord = Caml_obj.obj_dup(Component$Reventless.extractOutputs(self));
-                    newrecord.eventMapper = Belt_Option.map(eventMapper, (function (eventMapper) {
-                            console.log("eventMapper2:", eventMapper);
-                            return eventMapper.apply(function (eventMapper) {
-                                        console.log("eventMapper3:", eventMapper);
-                                        return Component$Reventless.extractOutputs(eventMapper);
-                                      });
-                          }));
+                    var outputs = Component$Reventless.extractOutputs(self);
+                    if (EventMappings.mappings.length === 0) {
+                      return outputs;
+                    }
+                    var eventMapper = Component$Reventless.operations(self).apply(function (param) {
+                          return SpecificEventMapper.make(none, none$1, param.publishJsons, undefined, undefined, opts);
+                        });
+                    var newrecord = Caml_obj.obj_dup(outputs);
+                    newrecord.eventMapper = eventMapper.apply(function (eventMapper) {
+                          return Component$Reventless.extractOutputs(eventMapper);
+                        });
                     return newrecord;
                   })
               });
