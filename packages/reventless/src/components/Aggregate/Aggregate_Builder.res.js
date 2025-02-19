@@ -9,13 +9,13 @@ var Component$Reventless = require("../Component.res.js");
 var EventMapper$Reventless = require("../EventMapper.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventCollector$Reventless = require("../EventCollector.res.js");
-var CommandGenerator$Reventless = require("../CommandGenerator.res.js");
 var EventLog_Builder$Reventless = require("../EventLog/EventLog_Builder.res.js");
 var Aggregate_Runtime$Reventless = require("./Aggregate_Runtime.res.js");
 var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Builder.res.js");
+var CommandGenerator_Builder$Reventless = require("../CommandGenerator/CommandGenerator_Builder.res.js");
 
 function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorConnector, RuntimeEnvironment) {
-  var partial_arg = CommandGenerator$Reventless.Make;
+  var partial_arg = CommandGenerator_Builder$Reventless.Make;
   var partial_arg$1 = function (param, param$1) {
     return partial_arg(Config, Spec, param, param$1);
   };

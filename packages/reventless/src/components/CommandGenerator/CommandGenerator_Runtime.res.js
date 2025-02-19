@@ -7,7 +7,7 @@ var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Message$Reventless = require("../Message.res.js");
+var Message$Reventless = require("../../Message.res.js");
 
 function Make(Spec, Behaviour) {
   var generateCommand = function (publishJsons) {

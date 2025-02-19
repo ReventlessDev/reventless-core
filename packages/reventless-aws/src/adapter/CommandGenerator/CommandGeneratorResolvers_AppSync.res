@@ -2,7 +2,7 @@ open PulumiAws
 
 type api = Pulumi.Output.t<AppSync.GraphQLApi.t>
 
-let make: Reventless.CommandGenerator.Adapter.resolversMaker<api> = (
+let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
   ~name: string,
   ~api: api,
   ~fields,

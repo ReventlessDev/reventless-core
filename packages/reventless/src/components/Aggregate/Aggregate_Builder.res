@@ -3,7 +3,7 @@ module Make = (
   Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
-  CommandGeneratorResolvers: CommandGenerator.Adapter.Resolvers with type api := Config.api,
+  CommandGeneratorResolvers: CommandGenerator_Adapter.Resolvers with type api := Config.api,
   CommandTopicChannel: CommandTopic_Adapter.Channel,
   EventLogStorage: EventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic.Adapter.Publisher,
@@ -11,7 +11,7 @@ module Make = (
   RuntimeEnvironment: Runtime.Environment,
 ): Aggregate.T => {
   module Spec = Spec
-  module SpecificCommandGenerator = CommandGenerator.Make(
+  module SpecificCommandGenerator = CommandGenerator_Builder.Make(
     Config,
     Spec,
     Behaviour,

@@ -9,7 +9,6 @@ function Make(Spec) {
           };
   };
   return {
-          Spec: Spec,
           make: make
         };
 }
