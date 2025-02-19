@@ -2,21 +2,20 @@
 'use strict';
 
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Component$Reventless = require("./Component.res.js");
-var ComponentType$Reventless = require("../ComponentType.res.js");
+var Component$Reventless = require("../Component.res.js");
+var ComponentType$Reventless = require("../../ComponentType.res.js");
+var EventCollector$Reventless = require("./EventCollector.res.js");
 
-var Adapter = {};
-
-function Make(Connector) {
+function Make(Channel) {
   var make = function (name, eventTopics, eventsHandler, memorySizeOpt, timeoutOpt, policy1, policy2, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 512;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 120;
-    return Component$Reventless.make(ComponentType$Reventless.toString("EventCollector"), name, (function (extra, extra$1) {
+    return Component$Reventless.make(ComponentType$Reventless.toString(EventCollector$Reventless.componentType), name, (function (extra, extra$1) {
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
                   var opts = {
                     parent: opts_parent
                   };
-                  var connector = Connector.make(ComponentType$Reventless.name(extra$1, "EventCollector"), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
+                  var connector = Channel.make(ComponentType$Reventless.name(extra$1, EventCollector$Reventless.componentType), eventTopics, eventsHandler, memorySize, timeout, policy1, policy2, opts);
                   Component$Reventless.setOperations(extra, connector.enqueueEvent.apply(function (enqueueEvent) {
                             return {
                                     enqueueEvent: enqueueEvent
@@ -33,9 +32,5 @@ function Make(Connector) {
         };
 }
 
-var componentType = "EventCollector";
-
-exports.componentType = componentType;
-exports.Adapter = Adapter;
 exports.Make = Make;
 /* Component-Reventless Not a pure module */

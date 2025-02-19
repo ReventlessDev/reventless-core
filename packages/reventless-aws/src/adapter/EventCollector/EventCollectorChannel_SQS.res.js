@@ -12,14 +12,14 @@ var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.r
 var Util_SNS$ReventlessAws = require("../../util/Util_SNS.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
-var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector.res.js");
+var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector/EventCollector.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
-var EventCollectorConnector_SQS_Runtime$ReventlessAws = require("./EventCollectorConnector_SQS_Runtime.res.js");
+var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
   var queue = new (Aws.sqs.Queue)(name, {
@@ -27,7 +27,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
               return SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5);
             }),
         tags: AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType),
-        visibilityTimeoutSeconds: timeout,
+        visibilityTimeoutSeconds: 120,
         sqsManagedSseEnabled: false
       }, opts);
   Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [
@@ -50,7 +50,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
         var errorResources = match[1];
         var eventHandlerLambda = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2).apply(function (policies) {
               return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
-                                return EventCollectorConnector_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, runtimeQueue, extra, extra$1);
+                                return EventCollectorChannel_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, runtimeQueue, extra, extra$1);
                               }), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType), undefined), opts);
             });
         eventHandlerLambda.apply(function (eventHandlerLambda) {
@@ -67,13 +67,13 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
           return ;
         }
         var eventTopicNames = errorResources.join(",");
-        Js_exn.raiseError("EventCollectorConnector_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
+        Js_exn.raiseError("EventCollectorChannel_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
       });
   return {
           resources: [Util_SQS$ReventlessAws.toResource(queue)],
           enqueueEvent: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
                 return function (extra, extra$1, extra$2) {
-                  return EventCollectorConnector_SQS_Runtime$ReventlessAws.enqueueEvent(runtimeQueue, extra, extra$1, extra$2);
+                  return EventCollectorChannel_SQS_Runtime$ReventlessAws.enqueueEvent(runtimeQueue, extra, extra$1, extra$2);
                 };
               })
         };

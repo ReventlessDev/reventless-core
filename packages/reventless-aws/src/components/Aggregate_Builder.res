@@ -12,6 +12,6 @@ module Make = (
   CommandTopicChannel.SQS_FIFO,
   EventLogStorage.DynamoDbStream,
   EventTopicPublisher.DynamoDbStream,
-  EventCollectorConnector_DynamoDbStream,
+  EventCollectorChannel_DynamoDbStream,
   RuntimeEnvironment_Lambda_SQS_FIFO,
 )

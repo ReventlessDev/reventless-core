@@ -7,7 +7,7 @@ module Make = (
   CommandTopicChannel: CommandTopic_Adapter.Channel,
   EventLogStorage: EventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic.Adapter.Publisher,
-  EventCollectorConnector: EventCollector.Adapter.Connector,
+  EventCollectorChannel: EventCollector_Adapter.Channel,
   RuntimeEnvironment: Runtime.Environment,
 ): Aggregate.T => {
   module Spec = Spec
@@ -19,7 +19,7 @@ module Make = (
   )
 
   let addEventMapperFn = (component: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
-    module SpecificEventCollector = EventCollector.Make(EventCollectorConnector)
+    module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
     module SpecificEventMapper = EventMapper.Make(Spec, SpecificEventCollector, EventMappings)
 
     let outputs = component->Component.extractOutputs

@@ -7,10 +7,10 @@ var EventLogStorage_DynamoDbStream$ReventlessAws = require("../adapter/EventLog/
 var CommandGeneratorResolvers_AppSync$ReventlessAws = require("../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.js");
 var EventTopicPublisher_DynamoDbStream$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.js");
 var RuntimeEnvironment_Lambda_SQS_FIFO$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda_SQS_FIFO.res.js");
-var EventCollectorConnector_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_DynamoDbStream.res.js");
+var EventCollectorChannel_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.js");
 
 function Make(Config, Spec, Behaviour, EventMappings) {
-  var partial_arg = EventCollectorConnector_DynamoDbStream$ReventlessAws;
+  var partial_arg = EventCollectorChannel_DynamoDbStream$ReventlessAws;
   var partial_arg$1 = EventTopicPublisher_DynamoDbStream$ReventlessAws;
   var partial_arg$2 = EventLogStorage_DynamoDbStream$ReventlessAws;
   var partial_arg$3 = CommandTopicChannel_SQS_FIFO$ReventlessAws;

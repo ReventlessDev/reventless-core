@@ -18,7 +18,6 @@ var ReadModel$Reventless = require("./ReadModel.res.js");
 var Interstack$Reventless = require("../util/Interstack.res.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
-var EventCollector$Reventless = require("./EventCollector.res.js");
 var ExtensionPoint$Reventless = require("./ExtensionPoint.res.js");
 var Plugin_Runtime$Reventless = require("./Plugin_Runtime.res.js");
 var Util_StackRefs$Reventless = require("../util/Util_StackRefs.res.js");
@@ -26,6 +25,7 @@ var AdapterDeploytime$Reventless = require("../adapter/AdapterDeploytime.res.js"
 var Util_QueryDbRuntime$Reventless = require("../util/Util_QueryDbRuntime.res.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.res.js");
 var ResourceQueryRuntime$Reventless = require("../util/ResourceQueryRuntime.res.js");
+var EventCollector_Builder$Reventless = require("./EventCollector/EventCollector_Builder.res.js");
 var PluginConnectExtension$Reventless = require("../core/Extensions/Connect/PluginConnectExtension.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
@@ -285,7 +285,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                       outgoingExtensionEventHandlers: outgoingExtensionEventHandlers,
                       incomingExtensionEventHandlers: incomingExtensionEventHandlers
                     });
-                var PluginEventCollector = EventCollector$Reventless.Make(EventCollectorChannel);
+                var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                 var eventCollector = PluginEventCollector.make(ComponentType$Reventless.name(name, "Plugin"), eventTopics, Runtime.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
                 var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
                 eventCollectorOutputs.resources[0].urn.apply(function (urn) {

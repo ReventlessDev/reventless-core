@@ -26,7 +26,7 @@ module type T = {
 
 module Make = (
   Config: Config.T,
-  EventCollectorConnector: EventCollector.Adapter.Connector,
+  EventCollectorChannel: EventCollector_Adapter.Channel,
   QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
   ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
 ) => {
@@ -152,7 +152,7 @@ module Make = (
               let pluginDefinition = fakePluginDefinition
               let outgoingExtensionPointEventHandlers = extensionPointsOutgoingEventHandlers
             })
-            module PluginEventCollector = EventCollector.Make(EventCollectorConnector)
+            module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
 
             PluginEventCollector.make(
               ~name=componentType->ComponentType.toName,

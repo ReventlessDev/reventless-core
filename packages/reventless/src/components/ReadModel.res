@@ -30,7 +30,7 @@ module Make = (
   QueryDbResolvers: QueryDb.Adapter.Resolvers
     with type api = Config.api
     and type role = Config.role,
-  EventCollectorConnector: EventCollector.Adapter.Connector,
+  EventCollectorChannel: EventCollector_Adapter.Channel,
 ): (T with module Spec = Spec) => {
   module Spec = Spec
 
@@ -70,7 +70,7 @@ module Make = (
       ->Belt.Set.String.fromArray
 
     module Runtime = ReadModel_Runtime.Make(Spec, Mappings)
-    module SpecificEventCollector = EventCollector.Make(EventCollectorConnector)
+    module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
     let eventCollector =
       queryDb
       ->Component.operations

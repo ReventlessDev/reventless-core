@@ -9,18 +9,18 @@ var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
-var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector.res.js");
+var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector/EventCollector.res.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
-var EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws = require("./EventCollectorConnector_DynamoDbStream_Runtime.res.js");
+var EventCollectorChannel_DynamoDbStream_Runtime$ReventlessAws = require("./EventCollectorChannel_DynamoDbStream_Runtime.res.js");
 
 function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
   var policies = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2);
   policies.apply(function (policies) {
         var eventHandlerLambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
-                    return EventCollectorConnector_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleEvents, extra, extra$1);
+                    return EventCollectorChannel_DynamoDbStream_Runtime$ReventlessAws.handleStreamEvent(handleEvents, extra, extra$1);
                   }), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType), undefined), opts);
         return Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
                           return Js_dict.map((function (eventTopic) {
@@ -38,11 +38,11 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
                       return ;
                     }
                     var eventTopicNames = errorResources.join(",");
-                    Js_exn.raiseError("EventCollectorConnector_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
+                    Js_exn.raiseError("EventCollectorChannel_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
                   });
       });
   var enqueueEventNotSupported = function (delay, id, messageBody) {
-    return Promise.resolve((console.log("EventCollectorConnector_DynamoDbStream-ReventlessAws" + " supports no enqueueEvent:", delay, id, messageBody), undefined));
+    return Promise.resolve((console.log("EventCollectorChannel_DynamoDbStream-ReventlessAws" + " supports no enqueueEvent:", delay, id, messageBody), undefined));
   };
   return {
           resources: [],

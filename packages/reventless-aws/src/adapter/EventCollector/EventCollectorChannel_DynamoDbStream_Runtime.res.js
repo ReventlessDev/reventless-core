@@ -11,12 +11,12 @@ async function handleStreamEvent(handleEvents, streamEvent, param) {
           if (eventSource === "aws:dynamodb") {
             var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
             if (typeof match !== "object") {
-              console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws" + ": no NewImage included in Stream event !");
+              console.log("EventCollectorChannel_DynamoDbStream_Runtime-ReventlessAws" + ": no NewImage included in Stream event !");
               return ;
             }
             switch (match.TAG) {
               case "OldImage" :
-                  console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws" + ": no NewImage included in Stream event !");
+                  console.log("EventCollectorChannel_DynamoDbStream_Runtime-ReventlessAws" + ": no NewImage included in Stream event !");
                   return ;
               case "NewImage" :
               case "NewAndOldImage" :
@@ -24,7 +24,7 @@ async function handleStreamEvent(handleEvents, streamEvent, param) {
               
             }
           } else {
-            console.log("EventCollectorConnector_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource:", eventSource);
+            console.log("EventCollectorChannel_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource:", eventSource);
             return ;
           }
         }));

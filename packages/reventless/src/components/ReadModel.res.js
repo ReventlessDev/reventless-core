@@ -11,9 +11,9 @@ var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var QueryDb$Reventless = require("./QueryDb.res.js");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
-var EventCollector$Reventless = require("./EventCollector.res.js");
 var Util_EventTopic$Reventless = require("../util/Util_EventTopic.res.js");
 var ReadModel_Runtime$Reventless = require("./ReadModel_Runtime.res.js");
+var EventCollector_Builder$Reventless = require("./EventCollector/EventCollector_Builder.res.js");
 
 function allQueryDbs(allReadModels) {
   return Js_dict.map((function (readModel) {
@@ -21,7 +21,7 @@ function allQueryDbs(allReadModels) {
               }), allReadModels);
 }
 
-function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCollectorConnector) {
+function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCollectorChannel) {
   Belt_Array.map(Mappings.mappings, (function (Mapping) {
           return Mapping.sourceName;
         }));
@@ -81,7 +81,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                             })));
                   var partial_arg$2 = ReadModel_Runtime$Reventless.Make;
                   var Runtime = partial_arg$2(Spec, Mappings);
-                  var SpecificEventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+                  var SpecificEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                   var eventCollector = Component$Reventless.operations(queryDb).apply(function (operations) {
                         return SpecificEventCollector.make(ComponentType$Reventless.name(extra$1, "ReadModel"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), (function (extra) {
                                       return Curry._2(Runtime.eventsHandler, toProjectionOperations(operations), extra);

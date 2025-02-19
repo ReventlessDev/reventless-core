@@ -1,7 +1,7 @@
 open PulumiAws
 open Reventless.Util.Adapter
 
-let make: Reventless.EventCollector.Adapter.connectorMaker = (
+let make: Reventless.EventCollector_Adapter.channelMaker = (
   ~name,
   ~eventTopics,
   ~handleEvents,
@@ -14,7 +14,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
   let queue = SQS.Queue.make(
     ~name,
     ~args={
-      SQS.Queue.visibilityTimeoutSeconds: timeout->Pulumi.Input.make,
+      SQS.Queue.visibilityTimeoutSeconds: 120->Pulumi.Input.make,
       redrivePolicy: Util_DeadLetterQueue.queue.arn
       ->Pulumi.Output.apply(dlqArn =>
         SQS.Queue.RedrivePolicy.make(~deadLetterTargetArn=dlqArn, ~maxReceiveCount=5)
@@ -56,7 +56,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
         Lambda.CallbackFunction.make(
           ~name,
           ~args=Lambda.CallbackFunction.Args.make(
-            ~callback=EventCollectorConnector_SQS_Runtime.handleCallbackEvent(
+            ~callback=EventCollectorChannel_SQS_Runtime.handleCallbackEvent(
               handleEvents,
               runtimeQueue,
               ...
@@ -108,11 +108,11 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
     })
 
   {
-    Reventless.EventCollector.Adapter.resources: [queue->Util_SQS.toResource],
+    Reventless.EventCollector_Adapter.resources: [queue->Util_SQS.toResource],
     enqueueEvent: queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>
-      EventCollectorConnector_SQS_Runtime.enqueueEvent(runtimeQueue, ...)
+      EventCollectorChannel_SQS_Runtime.enqueueEvent(runtimeQueue, ...)
     ),
   }
 }

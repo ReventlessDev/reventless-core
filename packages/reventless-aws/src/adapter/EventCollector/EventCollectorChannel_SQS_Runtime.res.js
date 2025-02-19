@@ -12,12 +12,12 @@ async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
             case "aws:dynamodb" :
                 var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
                 if (typeof match !== "object") {
-                  console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
+                  console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
                   return ;
                 }
                 switch (match.TAG) {
                   case "OldImage" :
-                      console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
+                      console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
                       return ;
                   case "NewImage" :
                   case "NewAndOldImage" :
@@ -27,7 +27,7 @@ async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
             case "aws:sqs" :
                 return Util_SQS_Runtime$ReventlessAws.parseSqsRecord(record);
             default:
-              console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: ignoring record from eventSource:", eventSource);
+              console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: ignoring record from eventSource:", eventSource);
               return ;
           }
         }));
@@ -53,13 +53,13 @@ async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
 
 function enqueueEvent(queue, delay, _id, messageBody) {
   var queueName = queue.name;
-  console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueEvent:", delay, messageBody, queueName);
+  console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueEvent:", delay, messageBody, queueName);
   return Util_SQS_Runtime$ReventlessAws.sendMessage(queue, delay, messageBody);
 }
 
 function enqueueFifoEvent(queue, delay, id, messageBody) {
   var queueName = queue.name;
-  console.log("EventCollectorConnector_SQS_Runtime-ReventlessAws" + ".enqueueFifoEvent:", delay, messageBody, queueName);
+  console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueFifoEvent:", delay, messageBody, queueName);
   return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, id, messageBody);
 }
 

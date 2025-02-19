@@ -1,6 +1,6 @@
 open PulumiAws
 
-let make: Reventless.EventCollector.Adapter.connectorMaker = (
+let make: Reventless.EventCollector_Adapter.channelMaker = (
   ~name,
   ~eventTopics,
   ~handleEvents,
@@ -16,10 +16,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
     let eventHandlerLambda = Lambda.CallbackFunction.make(
       ~name,
       ~args=Lambda.CallbackFunction.Args.make(
-        ~callback=EventCollectorConnector_DynamoDbStream_Runtime.handleStreamEvent(
-          handleEvents,
-          ...
-        ),
+        ~callback=EventCollectorChannel_DynamoDbStream_Runtime.handleStreamEvent(handleEvents, ...),
         ~policies,
         ~memorySize=memorySize->Pulumi.Input.make,
         ~timeout=timeout->Pulumi.Input.make,
@@ -59,7 +56,7 @@ let make: Reventless.EventCollector.Adapter.connectorMaker = (
     // TODO: can we check this at deploy time ?
     Js.log4(__MODULE__ ++ " supports no enqueueEvent:", delay, id, messageBody)->Js.Promise.resolve
   {
-    Reventless.EventCollector.Adapter.resources: [],
+    Reventless.EventCollector_Adapter.resources: [],
     enqueueEvent: enqueueEventNotSupported->Pulumi.Output.make,
   }
 }

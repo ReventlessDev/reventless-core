@@ -4,7 +4,7 @@
 var Plugin$Reventless = require("@reventless/reventless/src/components/Plugin.res.js");
 var QueryEngine_DynamoDb$ReventlessAws = require("../adapter/QueryEngine/QueryEngine_DynamoDb.res.js");
 var HeartbeatRunner_Lambda$ReventlessAws = require("../adapter/Heartbeat/HeartbeatRunner_Lambda.res.js");
-var EventCollectorConnector_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorConnector_SQS.res.js");
+var EventCollectorChannel_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_SQS.res.js");
 var CommandTopicRemoteChannel_SQS$ReventlessAws = require("../adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res.js");
 
 var partial_arg = CommandTopicRemoteChannel_SQS$ReventlessAws;
@@ -13,7 +13,7 @@ var partial_arg$1 = {
   make: QueryEngine_DynamoDb$ReventlessAws.make
 };
 
-var partial_arg$2 = EventCollectorConnector_SQS$ReventlessAws;
+var partial_arg$2 = EventCollectorChannel_SQS$ReventlessAws;
 
 var partial_arg$3 = Plugin$Reventless.Make;
 

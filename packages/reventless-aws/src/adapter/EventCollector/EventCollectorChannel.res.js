@@ -2,7 +2,7 @@
 'use strict';
 
 
-var name = "EventCollectorConnector";
+var name = "EventCollectorChannel";
 
 var SQS;
 

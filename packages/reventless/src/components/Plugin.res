@@ -113,7 +113,7 @@ let serviceNameToEventHandlers: (
 }
 
 module Make = (
-  EventCollectorChannel: EventCollector.Adapter.Connector,
+  EventCollectorChannel: EventCollector_Adapter.Channel,
   QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
   CorePluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
   HeartbeatRunner: Heartbeat.Adapter.Runner,
@@ -461,7 +461,7 @@ module Make = (
                 getIncomingEventHandler,
               )
             })
-            module PluginEventCollector = EventCollector.Make(EventCollectorChannel)
+            module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
 
             let eventCollector = PluginEventCollector.make(
               ~name=name->ComponentType.name(componentType),

@@ -1,5 +1,5 @@
 include Reventless.Plugin.Make(
-  EventCollectorConnector.SQS,
+  EventCollectorChannel.SQS,
   QueryEngine.DynamoDb,
   CommandTopicRemoteChannel.SQS,
   HeartbeatRunner.Lambda,

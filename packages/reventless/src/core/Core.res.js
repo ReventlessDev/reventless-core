@@ -14,9 +14,9 @@ var ReadModel$Reventless = require("../components/ReadModel.res.js");
 var Component = require("../components/Component").default;
 var Core_Runtime$Reventless = require("./Core_Runtime.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
-var EventCollector$Reventless = require("../components/EventCollector.res.js");
+var EventCollector_Builder$Reventless = require("../components/EventCollector/EventCollector_Builder.res.js");
 
-function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner) {
+function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
   var setOutputs = function (self, outputs) {
     self.setOutputs(outputs);
     return self.registerOutputs(outputs);
@@ -90,7 +90,7 @@ function Make(Config, EventCollectorConnector, QueryEngineAdapter, ClonerRunner)
                           pluginDefinition: fakePluginDefinition,
                           outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
                         });
-                    var PluginEventCollector = EventCollector$Reventless.Make(EventCollectorConnector);
+                    var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                     return Component$Reventless.extractOutputs(PluginEventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), Runtime.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
                   });
               return [

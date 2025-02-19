@@ -8,5 +8,5 @@ module Make = (
   Mappings,
   QueryDbStorage.DynamoDb,
   QueryDbResolvers.AppSync,
-  EventCollectorConnector.SQS,
+  EventCollectorChannel.SQS,
 )
