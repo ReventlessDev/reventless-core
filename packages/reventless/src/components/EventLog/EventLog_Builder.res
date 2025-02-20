@@ -33,7 +33,7 @@ module Make = (
           let eventTopic = eventTopic
           let storage = storage
         }
-        module Runtime = EventLog_Runtime.Make(Spec, Ops)
+        module Runtime = EventLog_Operations.Make(Spec, Ops)
 
         {
           append: Runtime.append,

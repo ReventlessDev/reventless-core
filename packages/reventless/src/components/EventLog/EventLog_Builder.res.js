@@ -7,8 +7,8 @@ var EventLog$Reventless = require("./EventLog.res.js");
 var Component$Reventless = require("../Component.res.js");
 var Util_Pulumi$Reventless = require("../../util/Util_Pulumi.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
-var EventLog_Runtime$Reventless = require("./EventLog_Runtime.res.js");
 var EventTopic_Builder$Reventless = require("../EventTopic/EventTopic_Builder.res.js");
+var EventLog_Operations$Reventless = require("./EventLog_Operations.res.js");
 
 function Make(Spec, $$Storage, EventTopicPublisher) {
   var construct = function (self, name) {
@@ -34,7 +34,7 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
                 storage.operations,
                 Component$Reventless.operations(eventTopic)
               ]).apply(function (param) {
-              var partial_arg = EventLog_Runtime$Reventless.Make;
+              var partial_arg = EventLog_Operations$Reventless.Make;
               var Runtime = partial_arg(Spec, {
                     Spec: Spec,
                     EventTopic: SpecificEventTopic,
