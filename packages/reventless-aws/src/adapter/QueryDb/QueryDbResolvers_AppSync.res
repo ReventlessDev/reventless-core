@@ -5,7 +5,7 @@ open Reventless
 type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
 type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
 
-let make: QueryDb.Adapter.resolversMaker<api, role> = (
+let make: QueryDb_Adapter.resolversMaker<api, role> = (
   ~name: string,
   ~api: api,
   ~apiRole: role,

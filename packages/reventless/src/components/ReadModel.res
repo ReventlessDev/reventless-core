@@ -26,8 +26,8 @@ module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.ReadModel_Spec.T,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
-  QueryDbStorage: QueryDb.Adapter.Storage with type api = Config.api and type role = Config.role,
-  QueryDbResolvers: QueryDb.Adapter.Resolvers
+  QueryDbStorage: QueryDb_Adapter.Storage with type api = Config.api and type role = Config.role,
+  QueryDbResolvers: QueryDb_Adapter.Resolvers
     with type api = Config.api
     and type role = Config.role,
   EventCollectorChannel: EventCollector_Adapter.Channel,
@@ -41,7 +41,7 @@ module Make = (
   let construct = (~allEventTopics, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
-    module SpecificQueryDb = QueryDb.Make(Config, Spec, QueryDbStorage, QueryDbResolvers)
+    module SpecificQueryDb = QueryDb_Builder.Make(Config, Spec, QueryDbStorage, QueryDbResolvers)
     let queryDb = SpecificQueryDb.make(~opts)
 
     let toProjectionOperations: SpecificQueryDb.operations => projectionOperations = ({

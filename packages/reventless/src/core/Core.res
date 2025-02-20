@@ -27,7 +27,7 @@ module type T = {
 module Make = (
   Config: Config.T,
   EventCollectorChannel: EventCollector_Adapter.Channel,
-  QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
+  QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
 ) => {
   type constructed

@@ -3,7 +3,7 @@ open QueryDbStorage_DynamoDb
 type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
 type role = Pulumi.Output.t<PulumiAws.IAM.Role.t>
 
-let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
+let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
   ~name,
   ~indexes,
   ~subIdField=?,

@@ -75,7 +75,7 @@ let serviceNameToEventHandlers: (
 
 module Make = (
   EventCollectorChannel: EventCollector_Adapter.Channel,
-  QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
+  QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   CorePluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
   HeartbeatRunner: Heartbeat_Adapter.Runner,
 ): Plugin.T => {

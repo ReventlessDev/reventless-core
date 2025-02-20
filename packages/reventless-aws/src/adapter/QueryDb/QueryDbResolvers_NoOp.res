@@ -4,7 +4,7 @@ open ReventlessSpec.ReadModel_Spec
 type api = unit
 type role = unit
 
-let make: QueryDb.Adapter.resolversMaker<api, role> = (
+let make: QueryDb_Adapter.resolversMaker<api, role> = (
   ~name as _: string,
   ~api as _: api,
   ~apiRole as _: role,

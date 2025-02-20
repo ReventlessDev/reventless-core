@@ -2,7 +2,7 @@
 'use strict';
 
 var AWS$ReventlessAws = require("../AWS.res.js");
-var QueryDb$Reventless = require("@reventless/reventless/src/components/QueryDb.res.js");
+var QueryDb$Reventless = require("@reventless/reventless/src/components/QueryDb/QueryDb.res.js");
 var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
 var QueryDbStorage_DynamoDb$ReventlessAws = require("./QueryDbStorage_DynamoDb.res.js");

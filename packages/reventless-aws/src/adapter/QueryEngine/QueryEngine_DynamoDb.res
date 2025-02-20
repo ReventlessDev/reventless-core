@@ -141,7 +141,7 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   }
 }
 
-let make: Reventless.QueryDb.Adapter.queryEngineMaker = allQueryDbs => {
+let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
   let tableName = readModelName =>
     (
       allQueryDbs

@@ -7,8 +7,8 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Logger$Reventless = require("./util/Logger.res.js");
+var QueryDb$Reventless = require("./components/QueryDb/QueryDb.res.js");
 var QueryDb$ReventlessSpec = require("@reventless/reventless-spec/src/components/QueryDb.res.js");
-var QueryDb_Runtime$Reventless = require("./components/QueryDb_Runtime.res.js");
 
 function Make(Source, Target, MappingImpl) {
   return {
@@ -192,7 +192,7 @@ async function handleAction(action, primitives, subIdConfig) {
           return await save(id$2, newState$1, "Overwrite", undefined);
         }
         var err = states$2._0;
-        var str$4 = "UpdateWithDefault Error: Couldn't load oldState(s) for " + id$2 + ": " + QueryDb_Runtime$Reventless.storageErrorToString(err) + ")";
+        var str$4 = "UpdateWithDefault Error: Couldn't load oldState(s) for " + id$2 + ": " + QueryDb$Reventless.storageErrorToString(err) + ")";
         console.log("Projection.handleAction:", str$4);
         return {
                 TAG: "Error",
@@ -275,7 +275,7 @@ async function handleAction(action, primitives, subIdConfig) {
         }
         if (subIdConfig !== undefined) {
           var err$1 = match._0;
-          var str$8 = "UpdateMultiState Error: Couldn't load states for " + id$6 + ": " + QueryDb_Runtime$Reventless.storageErrorToString(err$1) + ")";
+          var str$8 = "UpdateMultiState Error: Couldn't load states for " + id$6 + ": " + QueryDb$Reventless.storageErrorToString(err$1) + ")";
           console.log("Projection.handleAction:", str$8);
           return {
                   TAG: "Error",
@@ -644,7 +644,7 @@ async function handleActions(actions, primitives, subIdConfig) {
     return ;
   }
   var count = errors.length;
-  return Js_exn.raiseError("Projection.handleActions failed with " + String(count) + " errors: " + Belt_Array.map(errors, QueryDb_Runtime$Reventless.storageErrorToString).join(","));
+  return Js_exn.raiseError("Projection.handleActions failed with " + String(count) + " errors: " + Belt_Array.map(errors, QueryDb$Reventless.storageErrorToString).join(","));
 }
 
 var $$Set;

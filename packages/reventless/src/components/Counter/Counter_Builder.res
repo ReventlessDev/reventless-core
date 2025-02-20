@@ -1,6 +1,6 @@
 module Make = (
   Config: Config.T,
-  QueryDbStorage: QueryDb.Adapter.Storage with type api = Config.api and type role = Config.role,
+  QueryDbStorage: QueryDb_Adapter.Storage with type api = Config.api and type role = Config.role,
   Handler: Counter_Adapter.Handler,
 ): Counter.T => {
   let construct = (
@@ -22,11 +22,11 @@ module Make = (
       let config = ReventlessSpec.ReadModel_Spec.config()
     }
 
-    module ReferencesDb = QueryDb.Make(
+    module ReferencesDb = QueryDb_Builder.Make(
       Config,
       ReferencesSpec,
       QueryDbStorage,
-      QueryDb.Adapter.NoResolvers(Config),
+      QueryDb_Adapter.NoResolvers(Config),
     )
 
     module CountsSpec = {
@@ -38,11 +38,11 @@ module Make = (
       let subIdConfig = None
       let config = ReventlessSpec.ReadModel_Spec.config()
     }
-    module CountsDb = QueryDb.Make(
+    module CountsDb = QueryDb_Builder.Make(
       Config,
       CountsSpec,
       QueryDbStorage,
-      QueryDb.Adapter.NoResolvers(Config),
+      QueryDb_Adapter.NoResolvers(Config),
     )
 
     let referencesDb = ReferencesDb.make(~ttl?, ~opts)

@@ -8,9 +8,9 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
-var QueryDb$Reventless = require("./QueryDb.res.js");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
+var QueryDb_Builder$Reventless = require("./QueryDb/QueryDb_Builder.res.js");
 var Util_EventTopic$Reventless = require("../util/Util_EventTopic.res.js");
 var ReadModel_Runtime$Reventless = require("./ReadModel_Runtime.res.js");
 var EventCollector_Builder$Reventless = require("./EventCollector/EventCollector_Builder.res.js");
@@ -31,7 +31,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                   var opts = {
                     parent: opts_parent
                   };
-                  var partial_arg = QueryDb$Reventless.Make;
+                  var partial_arg = QueryDb_Builder$Reventless.Make;
                   var partial_arg$1 = function (param, param$1) {
                     return partial_arg(Config, Spec, param, param$1);
                   };

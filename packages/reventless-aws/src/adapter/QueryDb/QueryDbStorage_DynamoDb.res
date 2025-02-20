@@ -60,7 +60,7 @@ let dataSource = (name, table, api, apiRole, opts) => {
   AppSync.DataSource.makeDynamoDBDataSource(~name, ~api, ~table, ~serviceRole=apiRole, ~opts)
 }
 
-let make: Reventless.QueryDb.Adapter.storageMaker<api, role> = (
+let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
   ~name,
   ~indexes,
   ~subIdField=?,

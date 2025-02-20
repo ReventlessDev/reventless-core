@@ -5,9 +5,10 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Counter$Reventless = require("./Counter.res.js");
-var QueryDb$Reventless = require("../QueryDb.res.js");
 var Component$Reventless = require("../Component.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
+var QueryDb_Adapter$Reventless = require("../QueryDb/QueryDb_Adapter.res.js");
+var QueryDb_Builder$Reventless = require("../QueryDb/QueryDb_Builder.res.js");
 var Counter_Callback$Reventless = require("./Counter_Callback.res.js");
 var Counter_Operations$Reventless = require("./Counter_Operations.res.js");
 var ReadModel_Spec$ReventlessSpec = require("@reventless/reventless-spec/src/components/ReadModel/ReadModel_Spec.res.js");
@@ -55,11 +56,11 @@ function Make(Config, QueryDbStorage, Handler) {
                     config: config,
                     subIdConfig: undefined
                   };
-                  var partial_arg$1 = QueryDb$Reventless.Make;
+                  var partial_arg$1 = QueryDb_Builder$Reventless.Make;
                   var partial_arg$2 = function (param, param$1) {
                     return partial_arg$1(Config, partial_arg, param, param$1);
                   };
-                  var ReferencesDb = partial_arg$2(QueryDbStorage, QueryDb$Reventless.Adapter.NoResolvers(Config));
+                  var ReferencesDb = partial_arg$2(QueryDbStorage, QueryDb_Adapter$Reventless.NoResolvers(Config));
                   var name$1 = extra$1 + "Counts";
                   var state_encode$1 = function (value) {
                     return Counter_Callback$Reventless.countsState_encode(value);
@@ -90,11 +91,11 @@ function Make(Config, QueryDbStorage, Handler) {
                     config: config$1,
                     subIdConfig: undefined
                   };
-                  var partial_arg$4 = QueryDb$Reventless.Make;
+                  var partial_arg$4 = QueryDb_Builder$Reventless.Make;
                   var partial_arg$5 = function (param, param$1) {
                     return partial_arg$4(Config, partial_arg$3, param, param$1);
                   };
-                  var CountsDb = partial_arg$5(QueryDbStorage, QueryDb$Reventless.Adapter.NoResolvers(Config));
+                  var CountsDb = partial_arg$5(QueryDbStorage, QueryDb_Adapter$Reventless.NoResolvers(Config));
                   var referencesDb = ReferencesDb.make(ttl$1, opts);
                   var countsDb = CountsDb.make(ttl$1, opts);
                   var handler = Component$Reventless.operations(countsDb).apply(function (param) {
