@@ -16,7 +16,7 @@ module Make = (
       module Id = ReventlessSpec.Id.StringPure
       let name = name ++ "References"
       @decco
-      type state = Counter_Runtime.referencesState
+      type state = Counter_Operations.referencesState
 
       let subIdConfig = None
       let config = ReventlessSpec.ReadModel_Spec.config()
@@ -33,7 +33,7 @@ module Make = (
       module Id = ReventlessSpec.Id.StringPure
       let name = name ++ "Counts"
       @decco
-      type state = Counter_Runtime.countsState
+      type state = Counter_Callback.countsState
 
       let subIdConfig = None
       let config = ReventlessSpec.ReadModel_Spec.config()
@@ -51,24 +51,36 @@ module Make = (
     let handler =
       countsDb
       ->Component.operations
-      ->Pulumi.Output.apply(({count}) =>
+      ->Pulumi.Output.apply(({count}) => {
+        module Callback = Counter_Callback.Make({
+          let name = name
+          let countsDbCount = count
+          let counterEventsHandler = counterEventsHandler
+        })
+
         Handler.make(
           ~name,
           ~referencesName=ReferencesSpec.name,
           ~referencesDb=referencesDb->Component.extractOutputs,
           ~countsName=CountsSpec.name,
           ~countsDb=countsDb->Component.extractOutputs,
-          ~counterHandler=Counter_Runtime.counterHandler(name, count, counterEventsHandler),
+          ~counterHandler=Callback.counterHandler,
           ~opts=opts2,
         )
-      )
+      })
 
     self->Component.setOperations(
       (referencesDb->Component.operations, handler)
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply((({saveBatch}, handler)) => {
-        Counter.count: Counter_Runtime.count(ttl)(saveBatch, ...),
-        addToCounterTarget: handler.addToCounterTarget,
+        module Operations = Counter_Operations.Make({
+          let ttl = ttl
+          let saveBatch = saveBatch
+        })
+        {
+          Counter.count: Operations.count,
+          addToCounterTarget: handler.addToCounterTarget,
+        }
       }),
     )
 

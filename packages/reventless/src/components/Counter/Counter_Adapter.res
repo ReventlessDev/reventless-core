@@ -6,7 +6,7 @@ type handlerMaker = (
   ~referencesDb: QueryDb.outputs,
   ~countsName: string,
   ~countsDb: QueryDb.outputs,
-  ~counterHandler: Counter_Runtime.counterHandler,
+  ~counterHandler: Counter_Callback.counterHandler,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => handler
 
