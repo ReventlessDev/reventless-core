@@ -10,9 +10,6 @@ var Message$Reventless = require("../../Message.res.js");
 var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function Make(Spec) {
-  var setEventCollector = function (urn) {
-    Spec.pluginDefinition.eventCollector = urn;
-  };
   var handleEvent = async function (event$pJson, eventHandlersByService) {
     return await Belt_Option.mapWithDefault(Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(event$pJson), (function (serviceName) {
                       return Js_dict.get(eventHandlersByService, serviceName);
@@ -51,10 +48,6 @@ function Make(Spec) {
                         }))));
   };
   return {
-          Spec: Spec,
-          setEventCollector: setEventCollector,
-          handleEvent: handleEvent,
-          detectUnhandledEvent: detectUnhandledEvent,
           eventsHandler: eventsHandler
         };
 }

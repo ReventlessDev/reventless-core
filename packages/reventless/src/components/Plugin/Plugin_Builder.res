@@ -26,7 +26,7 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
   }) {
   | Some(resources) => resources
   | None =>
-    Js.log("Util_QueryDbRuntime.getLocalStorageResources: Couldn't find Plugin $pluginName")
+    Js.log("Plugin_Builder.getRemoteStorageResources: Couldn't find Plugin $pluginName")
     []->Pulumi.Output.make
   }
 
@@ -39,7 +39,7 @@ let getStorageResources = (allQueryDbs, pluginName, queryDbName) =>
 
 let makeId = (name, version) => `${name}@${version}`
 
-type eventHandler = Plugin_Runtime.eventHandler
+type eventHandler = Plugin_Callback.eventHandler
 type eventHandlers = {
   outgoing?: eventHandler,
   incoming?: eventHandler,
@@ -376,7 +376,7 @@ module Make = (
             extensionPointsHandlers,
             connectPluginExtensionOutputs,
           )) => {
-            module Runtime = Plugin_Runtime.Make({
+            module Callback = Plugin_Callback.Make({
               let pluginDefinition = pluginDefinition
               let outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(
                 extensionPointsOutputs,
@@ -408,7 +408,7 @@ module Make = (
             let eventCollector = PluginEventCollector.make(
               ~name=name->ComponentType.name(Plugin.componentType),
               ~eventTopics,
-              ~eventsHandler=Runtime.eventsHandler,
+              ~eventsHandler=Callback.eventsHandler,
               ~policy1=Pulumi.Output.make(None),
               ~policy2=Pulumi.Output.make(None),
               ~opts=Some(opts),
@@ -417,7 +417,7 @@ module Make = (
 
             let _ =
               (eventCollectorOutputs.resources->Array.getUnsafe(0)).urn->Pulumi.Output.apply(
-                urn => Runtime.setEventCollector(urn),
+                urn => pluginDefinition.eventCollector = urn,
               )
             eventCollectorOutputs
           })

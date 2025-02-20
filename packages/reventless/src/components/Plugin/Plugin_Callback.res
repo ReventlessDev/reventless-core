@@ -9,13 +9,11 @@ module type Spec = {
   let incomingExtensionEventHandlers: eventHandlersByService
 }
 
-module Make = (Spec: Spec) => {
-  module Spec = Spec
+module type T = {
+  let eventsHandler: array<Js.Json.t> => Js.Promise.t<unit>
+}
 
-  let setEventCollector = urn => {
-    Spec.pluginDefinition.eventCollector = urn
-  }
-
+module Make = (Spec: Spec): T => {
   let handleEvent = async (event'Json, eventHandlersByService) =>
     await event'Json
     ->Message.serviceNameOfMsg

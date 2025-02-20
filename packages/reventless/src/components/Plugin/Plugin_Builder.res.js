@@ -18,8 +18,8 @@ var Interstack$Reventless = require("../../util/Interstack.res.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var ExtensionPoint$Reventless = require("../ExtensionPoint/ExtensionPoint.res.js");
-var Plugin_Runtime$Reventless = require("./Plugin_Runtime.res.js");
 var Util_StackRefs$Reventless = require("../../util/Util_StackRefs.res.js");
+var Plugin_Callback$Reventless = require("./Plugin_Callback.res.js");
 var AdapterDeploytime$Reventless = require("../../adapter/AdapterDeploytime.res.js");
 var Heartbeat_Builder$Reventless = require("../Heartbeat/Heartbeat_Builder.res.js");
 var Util_QueryDbRuntime$Reventless = require("../../util/Util_QueryDbRuntime.res.js");
@@ -40,7 +40,7 @@ function getRemoteStorageResources(pluginName, queryDbName) {
   if (resources !== undefined) {
     return resources;
   } else {
-    console.log("Util_QueryDbRuntime.getLocalStorageResources: Couldn't find Plugin $pluginName");
+    console.log("Plugin_Builder.getRemoteStorageResources: Couldn't find Plugin $pluginName");
     return Pulumi.output([]);
   }
 }
@@ -265,6 +265,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                 match$2[0]
                               ]).apply(function (param) {
                               var extensionsHandlers = param[2];
+                              var pluginDefinition = param[0];
                               var outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(extensionPointsOutputs, (function (outputs) {
                                       return outputs.aggregateNames;
                                     }), param[3], getOutgoingEventHandler);
@@ -279,18 +280,18 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                               var incomingExtensionEventHandlers = serviceNameToEventHandlers(extensionsOutputs, (function (outputs) {
                                       return [outputs.extensionPointName];
                                     }), extensionsHandlers, getIncomingEventHandler);
-                              var Runtime = Plugin_Runtime$Reventless.Make({
-                                    pluginDefinition: param[0],
+                              var Callback = Plugin_Callback$Reventless.Make({
+                                    pluginDefinition: pluginDefinition,
                                     incomingConnectExtensionEventHandlers: incomingConnectExtensionEventHandlers,
                                     outgoingExtensionPointEventHandlers: outgoingExtensionPointEventHandlers,
                                     outgoingExtensionEventHandlers: outgoingExtensionEventHandlers,
                                     incomingExtensionEventHandlers: incomingExtensionEventHandlers
                                   });
                               var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
-                              var eventCollector = PluginEventCollector.make(ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType), eventTopics, Runtime.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
+                              var eventCollector = PluginEventCollector.make(ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType), eventTopics, Callback.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
                               var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
-                                    Runtime.setEventCollector(urn);
+                                    pluginDefinition.eventCollector = urn;
                                   });
                               return eventCollectorOutputs;
                             });
