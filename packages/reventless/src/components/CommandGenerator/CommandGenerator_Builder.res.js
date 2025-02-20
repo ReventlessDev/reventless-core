@@ -5,11 +5,9 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Component$Reventless = require("../Component.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var CommandGenerator$Reventless = require("./CommandGenerator.res.js");
-var CommandGenerator_Runtime$Reventless = require("./CommandGenerator_Runtime.res.js");
+var CommandGenerator_Callback$Reventless = require("./CommandGenerator_Callback.res.js");
 
 function Make(Config, Spec, Behaviour, Resolvers) {
-  var partial_arg = CommandGenerator_Runtime$Reventless.Make;
-  var Runtime = partial_arg(Spec, Behaviour);
   var make = function (name, publishJsons, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(CommandGenerator$Reventless.componentType), name, (function (none, none$1) {
                   var api = Config.api;
@@ -17,7 +15,15 @@ function Make(Config, Spec, Behaviour, Resolvers) {
                   var opts = {
                     parent: opts_parent
                   };
-                  var resolvers = Resolvers.make(ComponentType$Reventless.name(none$1, CommandGenerator$Reventless.componentType), api, Behaviour.resolverConfig.fields, Runtime.generateCommand(publishJsons), opts);
+                  var partial_arg = {
+                    publishJsons: publishJsons
+                  };
+                  var partial_arg$1 = CommandGenerator_Callback$Reventless.Make;
+                  var partial_arg$2 = function (param, param$1) {
+                    return partial_arg$1(partial_arg, param, param$1);
+                  };
+                  var Callback = partial_arg$2(Spec, Behaviour);
+                  var resolvers = Resolvers.make(ComponentType$Reventless.name(none$1, CommandGenerator$Reventless.componentType), api, Behaviour.resolverConfig.fields, Callback.generateCommand, opts);
                   return Component$Reventless.setOutputs(none, {
                               resources: resolvers.resources
                             });

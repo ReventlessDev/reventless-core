@@ -1,9 +1,10 @@
 type resolvers = {resources: array<ReventlessSpec.Adapter.resource>}
+
 type resolversMaker<'api> = (
   ~name: string,
   ~api: 'api,
   ~fields: array<string>,
-  ~commandGenerator: CommandGenerator_Runtime.commandGenerator,
+  ~commandGenerator: CommandGenerator_Callback.commandGenerator,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => resolvers
 

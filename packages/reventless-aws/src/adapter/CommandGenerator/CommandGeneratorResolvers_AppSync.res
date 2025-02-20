@@ -6,7 +6,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
   ~name: string,
   ~api: api,
   ~fields,
-  ~commandGenerator: Reventless.CommandGenerator_Runtime.commandGenerator,
+  ~commandGenerator: Reventless.CommandGenerator_Callback.commandGenerator,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => {
   let commandGeneratorLambda = Lambda.CallbackFunction.make(
