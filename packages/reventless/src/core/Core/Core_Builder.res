@@ -1,54 +1,9 @@
-let componentType = ComponentType.Core
-
-type outputs = {
-  version: string,
-  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
-  extensionPoints: Pulumi.Output.t<dict<ExtensionPoint.outputs>>,
-  aggregates: dict<Aggregate.outputs>,
-  readModels: dict<ReadModel.outputs>,
-  cloner: Cloner.outputs,
-}
-
-type t
-type component = Component.t<t, outputs, unit>
-
-type maker = (
-  ~version: string,
-  ~extensionPoints: array<module(ExtensionPoint.T)>,
-  ~aggregates: array<module(Aggregate.T)>,
-  ~readModels: array<module(ReadModel.T)>,
-  ~scheduler: Scheduler.operations,
-) => component
-
-module type T = {
-  let make: maker
-}
-
 module Make = (
   Config: Config.T,
   EventCollectorChannel: EventCollector_Adapter.Channel,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
 ) => {
-  type constructed
-  type construct = (component, string) => constructed
-
-  @module("../components/Component") @new
-  external make: (
-    ~componentType: string,
-    ~name: string,
-    ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.options>,
-  ) => component = "default"
-
-  @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (component, outputs) => unit = "setOutputs"
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs)
-    self->registerOutputs(outputs)
-  }
-
   type readModel = {
     module_: module(ReadModel.T),
     readModel: ReadModel.component,
@@ -148,16 +103,16 @@ module Make = (
           extensionPointsOutgoingEventHandlers
           ->Pulumi.Output.all
           ->Pulumi.Output.apply(extensionPointsOutgoingEventHandlers => {
-            module Runtime = Core_Runtime.Make({
+            module Callback = Core_Callback.Make({
               let pluginDefinition = fakePluginDefinition
               let outgoingExtensionPointEventHandlers = extensionPointsOutgoingEventHandlers
             })
             module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
 
             PluginEventCollector.make(
-              ~name=componentType->ComponentType.toName,
+              ~name=Core.componentType->ComponentType.toName,
               ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
-              ~eventsHandler=Runtime.eventsHandler,
+              ~eventsHandler=Callback.eventsHandler,
               ~policy1=Pulumi.Output.make(None),
               ~policy2=Pulumi.Output.make(None),
               ~opts=Some(opts),
@@ -170,8 +125,8 @@ module Make = (
     module Cloner = Cloner.Make(Config, ClonerRunner)
     let cloner = Cloner.make(~opts)
 
-    self->setOutputs({
-      version,
+    self->Component.setOutputs({
+      Core.version,
       eventCollector: eventCollectorOutputs->Pulumi.Output.flatMap(eventCollectorOutputs =>
         eventCollectorOutputs
       ),
@@ -186,9 +141,9 @@ module Make = (
     })
   }
 
-  let make: maker = (~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler) =>
-    make(
-      ~componentType=componentType->ComponentType.toString,
+  let make = (~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler): Core.component =>
+    Component.make(
+      ~componentType=Core.componentType->ComponentType.toString,
       ~name="Core",
       ~construct=construct(~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler, ...),
       ~opts=None,

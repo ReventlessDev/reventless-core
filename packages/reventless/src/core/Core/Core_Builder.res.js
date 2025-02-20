@@ -7,20 +7,16 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
-var Cloner$Reventless = require("../components/Cloner.res.js");
-var Aggregate$Reventless = require("../components/Aggregate/Aggregate.res.js");
-var Component$Reventless = require("../components/Component.res.js");
-var ReadModel$Reventless = require("../components/ReadModel/ReadModel.res.js");
-var Component = require("../components/Component").default;
-var Core_Runtime$Reventless = require("./Core_Runtime.res.js");
-var ComponentType$Reventless = require("../ComponentType.res.js");
-var EventCollector_Builder$Reventless = require("../components/EventCollector/EventCollector_Builder.res.js");
+var Core$Reventless = require("./Core.res.js");
+var Cloner$Reventless = require("../../components/Cloner.res.js");
+var Aggregate$Reventless = require("../../components/Aggregate/Aggregate.res.js");
+var Component$Reventless = require("../../components/Component.res.js");
+var ReadModel$Reventless = require("../../components/ReadModel/ReadModel.res.js");
+var ComponentType$Reventless = require("../../ComponentType.res.js");
+var Core_Callback$Reventless = require("./Core_Callback.res.js");
+var EventCollector_Builder$Reventless = require("../../components/EventCollector/EventCollector_Builder.res.js");
 
 function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
-  var setOutputs = function (self, outputs) {
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
-  };
   var construct = function (version, extensionPoints, aggregates, readModels, scheduler, self, param) {
     var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
@@ -86,12 +82,12 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
                 eventCollector: "NOT-SET"
               };
               var eventCollectorOutputs = Pulumi.all(match[1]).apply(function (extensionPointsOutgoingEventHandlers) {
-                    var Runtime = Core_Runtime$Reventless.Make({
+                    var Callback = Core_Callback$Reventless.Make({
                           pluginDefinition: fakePluginDefinition,
                           outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
                         });
                     var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
-                    return Component$Reventless.extractOutputs(PluginEventCollector.make(ComponentType$Reventless.toName("Core"), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), Runtime.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+                    return Component$Reventless.extractOutputs(PluginEventCollector.make(ComponentType$Reventless.toName(Core$Reventless.componentType), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), Callback.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
                   });
               return [
                       extensionPointsOutputs,
@@ -101,7 +97,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
     var partial_arg = Cloner$Reventless.Make;
     var Cloner = partial_arg(Config, ClonerRunner);
     var cloner = Cloner.make(opts);
-    return setOutputs(self, {
+    return Component$Reventless.setOutputs(self, {
                 version: version,
                 eventCollector: Output$Pulumi.flatMap(match[1], (function (eventCollectorOutputs) {
                         return eventCollectorOutputs;
@@ -120,23 +116,15 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
               });
   };
   var make = function (version, extensionPoints, aggregates, readModels, scheduler) {
-    var prim0 = ComponentType$Reventless.toString("Core");
-    var prim1 = "Core";
-    var prim2 = function (extra, extra$1) {
-      return construct(version, extensionPoints, aggregates, readModels, scheduler, extra, extra$1);
-    };
-    var prim3;
-    return new Component(prim0, prim1, prim2, prim3);
+    return Component$Reventless.make(ComponentType$Reventless.toString(Core$Reventless.componentType), "Core", (function (extra, extra$1) {
+                  return construct(version, extensionPoints, aggregates, readModels, scheduler, extra, extra$1);
+                }), undefined);
   };
   return {
-          setOutputs: setOutputs,
           construct: construct,
           make: make
         };
 }
 
-var componentType = "Core";
-
-exports.componentType = componentType;
 exports.Make = Make;
 /* Output-Pulumi Not a pure module */

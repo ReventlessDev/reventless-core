@@ -1,0 +1,23 @@
+let componentType = ComponentType.Core
+
+type outputs = {
+  version: string,
+  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
+  extensionPoints: Pulumi.Output.t<dict<ExtensionPoint.outputs>>,
+  aggregates: dict<Aggregate.outputs>,
+  readModels: dict<ReadModel.outputs>,
+  cloner: Cloner.outputs,
+}
+
+type t
+type component = Component.t<t, outputs, unit>
+
+module type T = {
+  let make: (
+    ~version: string,
+    ~extensionPoints: array<module(ExtensionPoint.T)>,
+    ~aggregates: array<module(Aggregate.T)>,
+    ~readModels: array<module(ReadModel.T)>,
+    ~scheduler: Scheduler.operations,
+  ) => component
+}
