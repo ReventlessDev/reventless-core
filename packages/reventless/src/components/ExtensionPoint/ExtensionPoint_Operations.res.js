@@ -4,11 +4,11 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Logger$Reventless = require("../util/Logger.res.js");
+var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
-var Message$Reventless = require("../Message.res.js");
-var Schedule$Reventless = require("../util/Schedule.res.js");
-var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
+var Message$Reventless = require("../../Message.res.js");
+var Schedule$Reventless = require("../../util/Schedule.res.js");
+var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function Make(Spec, MappingSpec, Mappings) {
   var findOutgoingMapping = function (aggregateNameOpt, mappings) {

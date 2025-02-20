@@ -10,7 +10,7 @@ module Make = (
   EventTopicAdapter: EventTopic_Adapter.Publisher,
   RuntimeEnvironment: Reventless.Runtime.Environment,
 ): ExtensionPoint.T => {
-  include ExtensionPoint.Make(
+  include ExtensionPoint_Builder.Make(
     ReventlessSpec.PluginExtensionPointSpec,
     Mappings,
     CommandTopicChannel,

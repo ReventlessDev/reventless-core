@@ -5,31 +5,15 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
-var Pulumi = require("@pulumi/pulumi");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
-var Adapter$Reventless = require("../adapter/Adapter.res.js");
-var Component$Reventless = require("./Component.res.js");
-var EventTopic$Reventless = require("./EventTopic/EventTopic.res.js");
-var CommandTopic$Reventless = require("./CommandTopic/CommandTopic.res.js");
-var ComponentType$Reventless = require("../ComponentType.res.js");
-var EventTopic_Builder$Reventless = require("./EventTopic/EventTopic_Builder.res.js");
-var CommandTopic_Builder$Reventless = require("./CommandTopic/CommandTopic_Builder.res.js");
+var Adapter$Reventless = require("../../adapter/Adapter.res.js");
+var Component$Reventless = require("../Component.res.js");
+var ComponentType$Reventless = require("../../ComponentType.res.js");
+var ExtensionPoint$Reventless = require("./ExtensionPoint.res.js");
+var EventTopic_Builder$Reventless = require("../EventTopic/EventTopic_Builder.res.js");
+var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Builder.res.js");
 var ExtensionPoint_Callback$Reventless = require("./ExtensionPoint_Callback.res.js");
 var ExtensionPoint_Operations$Reventless = require("./ExtensionPoint_Operations.res.js");
-
-function toUnwrappedOutputs(outputs) {
-  return Pulumi.all([
-                Output$Pulumi.flatMap(outputs.commandTopic, CommandTopic$Reventless.toUnwrappedOutputs),
-                Output$Pulumi.flatMap(outputs.eventTopic, EventTopic$Reventless.toUnwrappedOutputs)
-              ]).apply(function (param) {
-              return {
-                      name: outputs.name,
-                      aggregateNames: outputs.aggregateNames,
-                      commandTopic: param[0],
-                      eventTopic: param[1]
-                    };
-            });
-}
 
 function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnvironment) {
   var command_encode = Spec.command_encode;
@@ -37,12 +21,12 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
   var event_encode = Spec.event_encode;
   var event_decode = Spec.event_decode;
   var make = function (publishToAggregates, scheduler, queryEngine, opts) {
-    return Component$Reventless.make(ComponentType$Reventless.toString("ExtensionPoint"), Spec.name, (function (extra, extra$1) {
+    return Component$Reventless.make(ComponentType$Reventless.toString(ExtensionPoint$Reventless.componentType), Spec.name, (function (extra, extra$1) {
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
                   var opts = {
                     parent: opts_parent
                   };
-                  var childName = ComponentType$Reventless.name(extra$1.replace(".", ""), "ExtensionPoint");
+                  var childName = ComponentType$Reventless.name(extra$1.replace(".", ""), ExtensionPoint$Reventless.componentType);
                   var partial_arg = {
                     Id: Id$ReventlessSpec.$$String,
                     command_encode: command_encode,
@@ -123,9 +107,5 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
         };
 }
 
-var componentType = "ExtensionPoint";
-
-exports.componentType = componentType;
-exports.toUnwrappedOutputs = toUnwrappedOutputs;
 exports.Make = Make;
 /* Output-Pulumi Not a pure module */
