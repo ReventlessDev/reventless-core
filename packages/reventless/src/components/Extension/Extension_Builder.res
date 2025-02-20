@@ -17,23 +17,25 @@ module Make = (
     self,
     name,
   ) => {
-    let eventHandlers = {
-      module RuntimeSpec = {
+    module Operations = Extension_Operations.Make(
+      {
         let publishToAggregates = publishToAggregates
         let publishToCorePluginExtensionPoint = publishToCorePluginExtensionPoint
         let readModelNamesForSourceName = readModelNamesForSourceName
         let publishToReadModels = publishToReadModels
         let queryEngine = queryEngine
-      }
-      module Runtime = Extension_Runtime.Make(RuntimeSpec, Spec, Mappings)
-
+      },
+      Spec,
+      Mappings,
+    )
+    let operations = {
       {
-        incomingEventHandler: Runtime.incomingEventHandler,
-        outgoingEventHandler: Runtime.outgoingEventHandler,
+        incomingEventHandler: Operations.incomingEventHandler,
+        outgoingEventHandler: Operations.outgoingEventHandler,
       }
     }
 
-    self->Component.setOperations(eventHandlers->Pulumi.Output.make)
+    self->Component.setOperations(operations->Pulumi.Output.make)
     self->Component.setOutputs({
       Extension.name,
       extensionPointName: Spec.name,

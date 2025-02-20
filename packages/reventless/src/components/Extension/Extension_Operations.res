@@ -13,11 +13,16 @@ module type Spec = {
   let queryEngine: ReventlessSpec.QueryEngine.operations
 }
 
+module type T = {
+  let incomingEventHandler: Extension.eventHandler
+  let outgoingEventHandler: Extension.eventHandler
+}
+
 module Make = (
   Spec: Spec,
   MappingSpec: ReventlessSpec.ExtensionMapping.Spec,
   Mappings: Mappings with module Spec := MappingSpec,
-) => {
+): T => {
   let findOutgoingMapping = (aggregateNameOpt, mappings) =>
     aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
       mappings->Belt.Array.getBy((module(Mapping: Mappings.Mapping)) =>

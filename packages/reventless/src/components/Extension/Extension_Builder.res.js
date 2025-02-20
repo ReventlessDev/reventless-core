@@ -7,31 +7,31 @@ var Pulumi = require("@pulumi/pulumi");
 var Component$Reventless = require("../Component.res.js");
 var Extension$Reventless = require("./Extension.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
-var Extension_Runtime$Reventless = require("./Extension_Runtime.res.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.res.js");
+var Extension_Operations$Reventless = require("./Extension_Operations.res.js");
 
 function Make(Spec, Mappings) {
   var make = function (publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(Extension$Reventless.componentType), Spec.name + ("." + Mappings.name), (function (extra, extra$1) {
-                  var RuntimeSpec = {
+                  var partial_arg = {
                     publishToAggregates: publishToAggregates,
                     publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
                     readModelNamesForSourceName: readModelNamesForSourceName,
                     publishToReadModels: publishToReadModels,
                     queryEngine: queryEngine
                   };
-                  var partial_arg = Extension_Runtime$Reventless.Make;
-                  var partial_arg$1 = function (param, param$1) {
-                    return partial_arg(RuntimeSpec, param, param$1);
+                  var partial_arg$1 = Extension_Operations$Reventless.Make;
+                  var partial_arg$2 = function (param, param$1) {
+                    return partial_arg$1(partial_arg, param, param$1);
                   };
-                  var Runtime = partial_arg$1(Spec, Mappings);
-                  var eventHandlers_incomingEventHandler = Runtime.incomingEventHandler;
-                  var eventHandlers_outgoingEventHandler = Runtime.outgoingEventHandler;
-                  var eventHandlers = {
-                    incomingEventHandler: eventHandlers_incomingEventHandler,
-                    outgoingEventHandler: eventHandlers_outgoingEventHandler
+                  var Operations = partial_arg$2(Spec, Mappings);
+                  var operations_incomingEventHandler = Operations.incomingEventHandler;
+                  var operations_outgoingEventHandler = Operations.outgoingEventHandler;
+                  var operations = {
+                    incomingEventHandler: operations_incomingEventHandler,
+                    outgoingEventHandler: operations_outgoingEventHandler
                   };
-                  Component$Reventless.setOperations(extra, Pulumi.output(eventHandlers));
+                  Component$Reventless.setOperations(extra, Pulumi.output(operations));
                   return Component$Reventless.setOutputs(extra, {
                               name: extra$1,
                               extensionPointName: Spec.name,
