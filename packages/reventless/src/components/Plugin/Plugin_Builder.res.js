@@ -26,8 +26,8 @@ var Util_QueryDbRuntime$Reventless = require("../../util/Util_QueryDbRuntime.res
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.res.js");
 var ResourceQueryRuntime$Reventless = require("../../util/ResourceQueryRuntime.res.js");
 var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
-var PluginConnectExtension$Reventless = require("../../core/Extensions/Connect/PluginConnectExtension.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
+var PluginConnectExtension_Builder$Reventless = require("../../core/Extensions/Connect/PluginConnectExtension_Builder.res.js");
 
 function getRemoteStorageResources(pluginName, queryDbName) {
   var resources = Belt_Option.map(Util_StackRefs$Reventless.get(pluginName), (function (stackRef) {
@@ -216,7 +216,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                     };
                             });
                         var match$2 = Output$Pulumi.unzip(Pulumi.all(Belt_Array.map(extensionPointsOutputs, ExtensionPoint$Reventless.toUnwrappedOutputs)).apply(function (extensionPointsOutputs) {
-                                  var ConnectPluginExtension = PluginConnectExtension$Reventless.Make({
+                                  var ConnectPluginExtension = PluginConnectExtension_Builder$Reventless.Make({
                                         pluginDefinition: pluginDefinition,
                                         extensionPointsOutputs: extensionPointsOutputs,
                                         extensionsOutputs: extensionsOutputs

@@ -285,7 +285,7 @@ module Make = (
           ->Belt.Array.map(ExtensionPoint.toUnwrappedOutputs)
           ->Pulumi.Output.all
           ->Pulumi.Output.apply(extensionPointsOutputs => {
-            module ConnectPluginExtension = PluginConnectExtension.Make({
+            module ConnectPluginExtension = PluginConnectExtension_Builder.Make({
               let pluginDefinition = pluginDefinition
               let extensionPointsOutputs = extensionPointsOutputs
               let extensionsOutputs = extensionsOutputs

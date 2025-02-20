@@ -3,9 +3,9 @@
 
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Projection$Reventless = require("@reventless/reventless/src/Projection.res.js");
-var ReadModel$ReventlessAws = require("../components/ReadModel.res.js");
 var PluginProjection$Reventless = require("@reventless/reventless/src/core/ReadModels/Plugin/PluginProjection.res.js");
 var PluginReadModelSpec$Reventless = require("@reventless/reventless/src/core/ReadModels/Plugin/PluginReadModelSpec.res.js");
+var ReadModel_Builder$ReventlessAws = require("../components/ReadModel_Builder.res.js");
 
 var MappingsType = Projection$Reventless.Mappings.Make({
       Id: Id$ReventlessSpec.$$String,
@@ -30,7 +30,7 @@ function Make(Config) {
     config: PluginReadModelSpec$Reventless.config,
     subIdConfig: undefined
   };
-  var partial_arg$1 = ReadModel$ReventlessAws.Make;
+  var partial_arg$1 = ReadModel_Builder$ReventlessAws.Make;
   return partial_arg$1(Config, partial_arg, Mappings);
 }
 

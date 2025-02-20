@@ -6,7 +6,7 @@ module Mappings = {
   let mappings: array<module(Mapping)> = [module(Reventless.PluginProjection.PluginMapping)]
 }
 
-module Make = (Config: Config.T) => ReadModel.Make(
+module Make = (Config: Config.T) => ReadModel_Builder.Make(
   Config,
   Reventless.PluginReadModelSpec,
   Mappings,
