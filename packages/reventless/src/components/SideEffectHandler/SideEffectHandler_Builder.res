@@ -1,34 +1,4 @@
-module ReventlessEventCollector = EventCollector
-
-let componentType = ComponentType.SideEffectHandler
-
-type t
-type outputs = {name: string, eventCollector: EventCollector.outputs}
-type operations = {
-  enqueueEvent: EventCollector.enqueueEvent,
-  createSchedule: ReventlessSpec.Schedule.create,
-  deleteSchedule: ReventlessSpec.Schedule.delete,
-}
-type component = Component.t<t, outputs, operations>
-
-type sideEffects = array<module(ReventlessSpec.SideEffect.T)>
-
-module type T = {
-  let make: (
-    ~name: string,
-    ~sideEffects: sideEffects,
-    ~allEventTopics: EventTopic.allOutputs,
-    ~queryEngine: ReventlessSpec.QueryEngine.operations,
-    ~scheduler: Scheduler.operations,
-    ~memorySize: int=?,
-    ~timeout: int=?,
-    ~policy1: Pulumi.Output.t<option<string>>,
-    ~policy2: Pulumi.Output.t<option<string>>,
-    ~opts: Pulumi.CustomResourceOptions.t=?,
-  ) => component
-}
-
-module Make = (SpecificEventCollector: EventCollector.T): T => {
+module Make = (SpecificEventCollector: EventCollector.T): SideEffectHandler.T => {
   let construct = (
     ~sideEffects,
     ~allEventTopics,
@@ -48,11 +18,14 @@ module Make = (SpecificEventCollector: EventCollector.T): T => {
       ->Belt.Array.map((module(SideEffect: ReventlessSpec.SideEffect.T)) => SideEffect.Source.name)
       ->Belt.Set.String.fromArray
 
-    module Runtime = SideEffectHandler_Runtime
+    module Callback = SideEffectHandler_Callback.Make({
+      let sideEffects = sideEffects
+      let queryEngine = queryEngine
+    })
     let eventCollector = SpecificEventCollector.make(
       ~name,
       ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
-      ~eventsHandler=Runtime.eventsHandler(sideEffects, queryEngine, ...),
+      ~eventsHandler=Callback.eventsHandler,
       ~memorySize,
       ~timeout,
       ~policy1,
@@ -66,13 +39,16 @@ module Make = (SpecificEventCollector: EventCollector.T): T => {
       (eventCollector->Component.operations, eventCollectorResources)
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply((({enqueueEvent}, eventCollectorResources)) => {
-        enqueueEvent,
+        SideEffectHandler.enqueueEvent,
         createSchedule: Schedule.create(scheduler, eventCollectorResources),
         deleteSchedule: Schedule.delete(scheduler, eventCollectorResources),
       }),
     )
 
-    self->Component.setOutputs({name, eventCollector: eventCollector->Component.extractOutputs})
+    self->Component.setOutputs({
+      SideEffectHandler.name,
+      eventCollector: eventCollector->Component.extractOutputs,
+    })
   }
 
   let make = (
@@ -88,7 +64,7 @@ module Make = (SpecificEventCollector: EventCollector.T): T => {
     ~opts=?,
   ) => {
     Component.make(
-      ~componentType=componentType->ComponentType.toString,
+      ~componentType=SideEffectHandler.componentType->ComponentType.toString,
       ~name,
       ~construct=construct(
         ~sideEffects,

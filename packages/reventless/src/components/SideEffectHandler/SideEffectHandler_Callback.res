@@ -1,0 +1,69 @@
+module type Spec = {
+  let sideEffects: array<module(ReventlessSpec.SideEffect.T)>
+  let queryEngine: ReventlessSpec.QueryEngine.operations
+}
+
+module type T = {
+  let eventsHandler: EventCollector.eventsHandler
+}
+
+module Make = (Spec: Spec): T => {
+  let findSideEffect = (sideEffects, event'Json) =>
+    event'Json
+    ->Js.Json.decodeObject
+    ->Belt.Option.flatMapU(eventObj' => {
+      let meta = eventObj'->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
+
+      switch meta {
+      | Some(Belt.Result.Ok(eventMeta)) =>
+        let sideEffect =
+          sideEffects->Belt.Array.getBy((module(SideEffect: ReventlessSpec.SideEffect.T)) =>
+            SideEffect.Source.name == eventMeta.service
+          )
+        switch sideEffect {
+        | None => None
+        | Some(sideEffect) => Some((eventObj', eventMeta, sideEffect))
+        }
+      | Some(Error(err)) =>
+        Js.log2("SideEffects.map: Couldn't decode meta:", err)
+        None
+      | _ =>
+        Js.log("SideEffects.map: Invalid JSON object")
+        None
+      }
+    })
+
+  let eventsHandler = events'Json => {
+    events'Json
+    ->Belt.Array.map(async event'Json =>
+      switch Spec.sideEffects->findSideEffect(event'Json) {
+      | Some((eventObj, eventMeta, sideEffect)) =>
+        module SideEffect = unpack(sideEffect)
+        let sourceName = SideEffect.Source.name
+        event'Json->Logger.logEvent'Json(
+          `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
+        )
+        let idDecoded = eventObj->Js.Dict.get("id")->Belt.Option.map(SideEffect.Source.Id.t_decode)
+        let eventDecoded =
+          eventObj->Js.Dict.get("event")->Belt.Option.map(SideEffect.Source.event_decode)
+
+        switch (idDecoded, eventDecoded) {
+        | (Some(Ok(eventId)), Some(Ok(event))) =>
+          try await SideEffect.execute(eventId, eventMeta, event, Spec.queryEngine) catch {
+          | err => Js.log2("SideEffect: Error while processing:", err)
+          }
+
+        | (None, _)
+        | (_, None) =>
+          Js.log("SideEffectHandler.eventHandler: Invalid event")
+        | (_, Some(Error(err)))
+        | (Some(Error(err)), _) =>
+          Js.log2("SideEffectHandler.eventHandler: Couldn't decode event:", err)
+        }
+      | None => ()
+      }
+    )
+    ->Js.Promise.all
+    ->Util.Promise.toUnit
+  }
+}

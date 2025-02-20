@@ -6,19 +6,20 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
-var Adapter$Reventless = require("../adapter/Adapter.res.js");
-var Schedule$Reventless = require("../util/Schedule.res.js");
-var Component$Reventless = require("./Component.res.js");
-var Util_Pulumi$Reventless = require("../util/Util_Pulumi.res.js");
-var ComponentType$Reventless = require("../ComponentType.res.js");
-var Util_EventTopic$Reventless = require("../util/Util_EventTopic.res.js");
-var SideEffectHandler_Runtime$Reventless = require("./SideEffectHandler_Runtime.res.js");
+var Adapter$Reventless = require("../../adapter/Adapter.res.js");
+var Schedule$Reventless = require("../../util/Schedule.res.js");
+var Component$Reventless = require("../Component.res.js");
+var Util_Pulumi$Reventless = require("../../util/Util_Pulumi.res.js");
+var ComponentType$Reventless = require("../../ComponentType.res.js");
+var Util_EventTopic$Reventless = require("../../util/Util_EventTopic.res.js");
+var SideEffectHandler$Reventless = require("./SideEffectHandler.res.js");
+var SideEffectHandler_Callback$Reventless = require("./SideEffectHandler_Callback.res.js");
 
 function Make(SpecificEventCollector) {
   var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, policy1, policy2, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
-    return Component$Reventless.make(ComponentType$Reventless.toString("SideEffectHandler"), name, (function (extra, extra$1) {
+    return Component$Reventless.make(ComponentType$Reventless.toString(SideEffectHandler$Reventless.componentType), name, (function (extra, extra$1) {
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
                   var opts = {
                     parent: opts_parent
@@ -26,9 +27,11 @@ function Make(SpecificEventCollector) {
                   var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(sideEffects, (function (SideEffect) {
                               return SideEffect.Source.name;
                             })));
-                  var eventCollector = SpecificEventCollector.make(extra$1, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), (function (extra) {
-                          return SideEffectHandler_Runtime$Reventless.eventsHandler(sideEffects, queryEngine, extra);
-                        }), memorySize, timeout, policy1, policy2, opts);
+                  var Callback = SideEffectHandler_Callback$Reventless.Make({
+                        sideEffects: sideEffects,
+                        queryEngine: queryEngine
+                      });
+                  var eventCollector = SpecificEventCollector.make(extra$1, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), Callback.eventsHandler, memorySize, timeout, policy1, policy2, opts);
                   var eventCollectorResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(eventCollector).resources);
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),
@@ -52,11 +55,5 @@ function Make(SpecificEventCollector) {
         };
 }
 
-var ReventlessEventCollector;
-
-var componentType = "SideEffectHandler";
-
-exports.ReventlessEventCollector = ReventlessEventCollector;
-exports.componentType = componentType;
 exports.Make = Make;
 /* @pulumi/pulumi Not a pure module */
