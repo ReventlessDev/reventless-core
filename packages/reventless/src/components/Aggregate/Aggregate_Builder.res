@@ -64,11 +64,11 @@ module Make = (
           RuntimeEnvironment,
         )
         let channel = SpecificCommandTopic.makeChannel(~name=childName, ~opts)
-        module Runtime = Aggregate_Runtime.Make(Spec, Behaviour, Ops)
+        module Callback = Aggregate_Callback.Make(Spec, Behaviour, Ops)
         SpecificCommandTopic.make(
           ~name=childName,
           ~channel,
-          ~commandsHandler=Runtime.handleCommands,
+          ~commandsHandler=Callback.handleCommands,
           ~opts,
         )
       })
