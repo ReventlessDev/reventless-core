@@ -2,12 +2,9 @@
 'use strict';
 
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Component$Reventless = require("./Component.res.js");
-var ComponentType$Reventless = require("../ComponentType.res.js");
-
-var Adapter = {
-  publisher: "Publisher"
-};
+var Component$Reventless = require("../Component.res.js");
+var Scheduler$Reventless = require("./Scheduler.res.js");
+var ComponentType$Reventless = require("../../ComponentType.res.js");
 
 function Make(ScheduledPublisher) {
   var construct = function (self, name) {
@@ -22,17 +19,12 @@ function Make(ScheduledPublisher) {
               });
   };
   var make = function (opts) {
-    return Component$Reventless.make(ComponentType$Reventless.toString("Scheduler"), ComponentType$Reventless.toName("Scheduler"), construct, opts);
+    return Component$Reventless.make(ComponentType$Reventless.toString(Scheduler$Reventless.componentType), ComponentType$Reventless.toName(Scheduler$Reventless.componentType), construct, opts);
   };
   return {
-          construct: construct,
           make: make
         };
 }
 
-var componentType = "Scheduler";
-
-exports.componentType = componentType;
-exports.Adapter = Adapter;
 exports.Make = Make;
 /* Component-Reventless Not a pure module */
