@@ -1,27 +1,3 @@
-let componentType = ComponentType.ReadModel
-
-type t
-type outputs = {
-  name: string,
-  queryDb: QueryDb.outputs,
-  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
-  sourceNames: array<string>,
-}
-type operations = {enqueueEvent: EventCollector.enqueueEvent}
-type component = Component.t<t, outputs, operations>
-
-let allQueryDbs = allReadModels =>
-  Js.Dict.map((readModel: outputs) => readModel.queryDb, allReadModels)
-
-module type T = {
-  module Spec: ReventlessSpec.ReadModel_Spec.T
-
-  let make: (
-    ~allEventTopics: EventTopic.allOutputs,
-    ~opts: Pulumi.ComponentResource.options=?,
-  ) => component
-}
-
 module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.ReadModel_Spec.T,
@@ -31,10 +7,8 @@ module Make = (
     with type api = Config.api
     and type role = Config.role,
   EventCollectorChannel: EventCollector_Adapter.Channel,
-): (T with module Spec = Spec) => {
+): (ReadModel.T with module Spec = Spec) => {
   module Spec = Spec
-
-  let sourceNames = Mappings.mappings->Belt.Array.map((module(Mapping)) => Mapping.sourceName)
 
   type projectionOperations = QueryDb.operations<string, Spec.state> // TODO: should we really use this "mixed" type?
 
@@ -69,22 +43,29 @@ module Make = (
       ->Belt.Array.map((module(Mapping: Mappings.Mapping)) => Mapping.sourceName)
       ->Belt.Set.String.fromArray
 
-    module Runtime = ReadModel_Runtime.Make(Spec, Mappings)
     module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
     let eventCollector =
       queryDb
       ->Component.operations
-      ->Pulumi.Output.apply(operations =>
+      ->Pulumi.Output.apply(operations => {
+        module Callback = ReadModel_Callback.Make(
+          Spec,
+          Mappings,
+          {
+            module ReadModelSpec = Spec
+            let operations = operations->toProjectionOperations
+          },
+        )
         SpecificEventCollector.make(
-          ~name=name->ComponentType.name(componentType),
+          ~name=name->ComponentType.name(ReadModel.componentType),
           ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
-          ~eventsHandler=Runtime.eventsHandler(operations->toProjectionOperations, ...),
+          ~eventsHandler=Callback.eventsHandler,
           ~memorySize=2048,
           ~policy1=Pulumi.Output.make(None),
           ~policy2=Pulumi.Output.make(None),
           ~opts=Some(opts),
         )
-      )
+      })
 
     self->Component.setOperations(
       eventCollector
@@ -92,16 +73,16 @@ module Make = (
       ->Pulumi.Output.apply(({enqueueEvent}) => enqueueEvent),
     )
     self->Component.setOutputs({
-      name,
+      ReadModel.name,
       queryDb: queryDb->Component.extractOutputs,
       eventCollector: eventCollector->Component.extractWrappedOutputs,
       sourceNames: sourceNames->Belt.Set.String.toArray,
     })
   }
 
-  let make = (~allEventTopics, ~opts=?): component =>
+  let make = (~allEventTopics, ~opts=?): ReadModel.component =>
     Component.make(
-      ~componentType=componentType->ComponentType.toString,
+      ~componentType=ReadModel.componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~allEventTopics, ...),
       ~opts,

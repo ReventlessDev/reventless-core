@@ -58,8 +58,8 @@ function Make(Projection) {
                             }));
               })), []);
   };
-  var handleActions = function (actions, primitives) {
-    return Projection$Reventless.handleActions(actions, primitives, Projection.subIdConfig);
+  var handleActions = function (actions, operations) {
+    return Projection$Reventless.handleActions(actions, operations, Projection.subIdConfig);
   };
   var update = async function (store, id, meta, $$event) {
     await handleActions([Projection.map({

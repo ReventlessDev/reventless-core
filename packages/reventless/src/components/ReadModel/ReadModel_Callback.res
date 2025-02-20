@@ -1,10 +1,16 @@
-module Make = (
-  Spec: ReventlessSpec.ReadModel_Spec.T,
-  Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
-) => {
-  module EventProjector = ProjectionMapper.Make(Spec, Mappings)
+module type Spec = {
+  module ReadModelSpec: ReventlessSpec.ReadModel_Spec.T
+  let operations: QueryDb.operations<string, ReadModelSpec.state>
+}
 
-  let eventsHandler = (primitives, jsons) => {
+module Make = (
+  ReadModelSpec: ReventlessSpec.ReadModel_Spec.T,
+  Mappings: ReventlessSpec.Projection.Mappings with module Target := ReadModelSpec,
+  Spec: Spec with module ReadModelSpec = ReadModelSpec,
+) => {
+  module EventProjector = ProjectionMapper.Make(ReadModelSpec, Mappings)
+
+  let eventsHandler = jsons => {
     let eventCount = jsons->Belt.Array.length
     jsons
     ->Belt.Array.mapWithIndex((idx, json) => {
@@ -21,6 +27,6 @@ module Make = (
       json->EventProjector.map(~sourceName=Some(sourceName))
     })
     ->Belt.Array.concatMany
-    ->Projection.handleActions(primitives, Spec.subIdConfig)
+    ->Projection.handleActions(Spec.operations, ReadModelSpec.subIdConfig)
   }
 }

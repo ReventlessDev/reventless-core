@@ -3,16 +3,16 @@
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
-var Projection$Reventless = require("../Projection.res.js");
+var Projection$Reventless = require("../../Projection.res.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.res.js");
-var ProjectionMapper$Reventless = require("../ProjectionMapper.res.js");
+var ProjectionMapper$Reventless = require("../../ProjectionMapper.res.js");
 
-function Make(Spec, Mappings) {
-  var partial_arg_Id = Spec.Id;
-  var partial_arg_name = Spec.name;
-  var partial_arg_state_encode = Spec.state_encode;
-  var partial_arg_state_decode = Spec.state_decode;
-  var partial_arg_subIdConfig = Spec.subIdConfig;
+function Make(ReadModelSpec, Mappings, Spec) {
+  var partial_arg_Id = ReadModelSpec.Id;
+  var partial_arg_name = ReadModelSpec.name;
+  var partial_arg_state_encode = ReadModelSpec.state_encode;
+  var partial_arg_state_decode = ReadModelSpec.state_decode;
+  var partial_arg_subIdConfig = ReadModelSpec.subIdConfig;
   var partial_arg = {
     Id: partial_arg_Id,
     name: partial_arg_name,
@@ -24,7 +24,7 @@ function Make(Spec, Mappings) {
   var EventProjector = (function (param) {
         return partial_arg$1(partial_arg, param);
       })(Mappings);
-  var eventsHandler = function (primitives, jsons) {
+  var eventsHandler = function (jsons) {
     var eventCount = jsons.length;
     return Projection$Reventless.handleActions(Belt_Array.concatMany(Belt_Array.mapWithIndex(jsons, (function (idx, json) {
                           var idx$1 = idx + 1 | 0;
@@ -33,7 +33,7 @@ function Make(Spec, Mappings) {
                                     })), "");
                           console.log("ReadModel: handling event " + String(idx$1) + "/" + String(eventCount) + " from " + sourceName + ":", json);
                           return EventProjector.map(sourceName, json);
-                        }))), primitives, Spec.subIdConfig);
+                        }))), Spec.operations, ReadModelSpec.subIdConfig);
   };
   return {
           EventProjector: EventProjector,

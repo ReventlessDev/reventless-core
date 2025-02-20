@@ -143,8 +143,8 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     Ok()->Js.Promise.resolve
   }
 
-  let handleActions = (actions, primitives) =>
-    actions->handleActions(primitives, Projection.subIdConfig)
+  let handleActions = (actions, operations) =>
+    actions->handleActions(operations, Projection.subIdConfig)
 
   let update = async (store, id, meta, event) => {
     /* NOTE: unused

@@ -103,10 +103,10 @@ function statesToString(states) {
   return Belt_Array.map(states, stateToString).join(", ");
 }
 
-async function handleAction(action, primitives, subIdConfig) {
-  var saveBatch = primitives.saveBatch;
-  var save = primitives.save;
-  var load = primitives.load;
+async function handleAction(action, operations, subIdConfig) {
+  var saveBatch = operations.saveBatch;
+  var save = operations.save;
+  var load = operations.load;
   if (typeof action !== "object") {
     console.log("Projection.handleAction:", "Ignore");
     return {
@@ -221,12 +221,12 @@ async function handleAction(action, primitives, subIdConfig) {
     case "Delete" :
         var id$4 = action._0;
         console.log("Projection.handleAction:", "Delete(" + id$4 + ")");
-        return await primitives.delete(id$4, undefined);
+        return await operations.delete(id$4, undefined);
     case "DeleteMany" :
         var ids = action._0;
         var str$6 = "DeleteMany(" + ids.join(", ") + ")";
         console.log("Projection.handleAction:", str$6);
-        return await primitives.deleteBatch(Belt_Array.map(ids, (function (id) {
+        return await operations.deleteBatch(Belt_Array.map(ids, (function (id) {
                           return [
                                   id,
                                   undefined
@@ -265,7 +265,7 @@ async function handleAction(action, primitives, subIdConfig) {
           if (subIdConfig !== undefined) {
             var states$5 = match._0;
             var afterStates = action._1(states$5);
-            return await applyChanges("UpdateMultiState", id$6, states$5, afterStates, primitives, subIdConfig);
+            return await applyChanges("UpdateMultiState", id$6, states$5, afterStates, operations, subIdConfig);
           }
           console.log("Projection.handleAction:", "UpdateMultiState Error: Missing SubIdConfig !");
           return {
@@ -610,7 +610,7 @@ function optimizeActions(actions) {
               }));
 }
 
-async function handleActions(actions, primitives, subIdConfig) {
+async function handleActions(actions, operations, subIdConfig) {
   var handleActionsForId = async function (actions, id) {
     var actionCount = actions.length;
     if (actionCount > 1) {
@@ -627,7 +627,7 @@ async function handleActions(actions, primitives, subIdConfig) {
                   if (err.TAG !== "Ok") {
                     Logger$Reventless.error("File \"Projection.res\", line 377, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
                   }
-                  return await handleAction(action, primitives, subIdConfig);
+                  return await handleAction(action, operations, subIdConfig);
                 }));
   };
   var results = await Promise.all(Belt_Array.map(groupActionsById(actions), (function (param) {

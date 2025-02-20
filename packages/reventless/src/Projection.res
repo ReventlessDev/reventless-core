@@ -83,7 +83,7 @@ let statesToString: array<'a> => string = states =>
 
 let handleAction = async (
   action,
-  {QueryDb.load: load, save, saveBatch, delete, deleteBatch} as primitives,
+  {QueryDb.load: load, save, saveBatch, delete, deleteBatch} as operations,
   subIdConfig,
 ) =>
   switch action {
@@ -174,7 +174,7 @@ let handleAction = async (
     | (Ok(states), Some(subIdConfig)) =>
       let beforeStates = states
       let afterStates = beforeStates->update
-      await applyChanges("UpdateMultiState", id, beforeStates, afterStates, primitives, subIdConfig)
+      await applyChanges("UpdateMultiState", id, beforeStates, afterStates, operations, subIdConfig)
 
     | (Error(err), Some(_)) =>
       logAction(
@@ -353,7 +353,7 @@ let optimizeActions = actions => {
   })
 }
 
-let handleActions = async (actions, primitives, subIdConfig) => {
+let handleActions = async (actions, operations, subIdConfig) => {
   let handleActionsForId = async (actions, id) => {
     let actionCount = actions->Belt.Array.size
     if actionCount > 1 {
@@ -379,7 +379,7 @@ let handleActions = async (actions, primitives, subIdConfig) => {
           err->ReventlessSpec.QueryDb.storageError_encode->Js.Json.stringify,
         )
       }
-      await action->handleAction(primitives, subIdConfig)
+      await action->handleAction(operations, subIdConfig)
     })
   }
 
