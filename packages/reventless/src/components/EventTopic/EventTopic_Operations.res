@@ -1,0 +1,37 @@
+module type Spec = {
+  let publishJson: EventTopic.publishJson
+}
+
+module Make = (Spec: Spec, EventTopicSpec: EventTopic.Spec) => {
+  let publish = async events' => {
+    let eventCount = events'->Belt.Array.length
+    await events'
+    ->Belt.Array.mapWithIndex(async (idx, event') => {
+      let event'Json = Message.event'_encode(
+        EventTopicSpec.Id.t_encode,
+        EventTopicSpec.event_encode,
+        event',
+      )
+
+      let id = event'.id
+      let idx = idx + 1
+
+      switch await Spec.publishJson(id->EventTopicSpec.Id.toString, event'.meta, event'Json) {
+      | exception e =>
+        event'Json->Logger.logEvent'Json(
+          ~loc=__LOC__,
+          ~level=Error,
+          `Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
+        )
+        raise(e)
+      | _ =>
+        event'Json->Logger.logEvent'Json(
+          ~loc=__LOC__,
+          `Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
+        )
+      }
+    })
+    ->Js.Promise.all
+    ->Util.Promise.toUnit
+  }
+}

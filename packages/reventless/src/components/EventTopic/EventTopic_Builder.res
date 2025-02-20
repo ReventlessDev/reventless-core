@@ -1,4 +1,4 @@
-module Make = (Spec: EventTopic_Runtime.Spec, Publisher: EventTopic_Adapter.Publisher): (
+module Make = (Spec: EventTopic.Spec, Publisher: EventTopic_Adapter.Publisher): (
   EventTopic.T with module Spec = Spec
 ) => {
   module Spec = Spec
@@ -17,12 +17,18 @@ module Make = (Spec: EventTopic_Runtime.Spec, Publisher: EventTopic_Adapter.Publ
       ~opts,
     )
 
-    module Runtime = EventTopic_Runtime.Make(Spec)
-
     self->Component.setOperations(
       publisher.publishJson->Pulumi.Output.apply(publishJson => {
-        publishJson,
-        publish: Runtime.publish(publishJson, ...),
+        module Operations = EventTopic_Operations.Make(
+          {
+            let publishJson = publishJson
+          },
+          Spec,
+        )
+        {
+          publishJson,
+          publish: Operations.publish,
+        }
       }),
     )
 

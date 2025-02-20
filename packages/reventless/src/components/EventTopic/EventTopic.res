@@ -19,8 +19,15 @@ type publishJson = (string, Message.meta, Js.Json.t) => Js.Promise.t<unit>
 
 exception NotPublishedToPublisher(Js.Promise.error)
 
+module type Spec = {
+  module Id: ReventlessSpec.Id.T
+
+  @decco
+  type event
+}
+
 module type T = {
-  module Spec: EventTopic_Runtime.Spec
+  module Spec: Spec
 
   type publish = publish<Spec.Id.t, Spec.event>
   type operations = {publish: publish, publishJson: publishJson}

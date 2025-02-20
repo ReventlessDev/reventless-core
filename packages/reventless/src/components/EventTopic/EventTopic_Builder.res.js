@@ -5,7 +5,7 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Component$Reventless = require("../Component.res.js");
 var EventTopic$Reventless = require("./EventTopic.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
-var EventTopic_Runtime$Reventless = require("./EventTopic_Runtime.res.js");
+var EventTopic_Operations$Reventless = require("./EventTopic_Operations.res.js");
 
 function Make(Spec, Publisher) {
   var make = function (name, storageResources, opts) {
@@ -15,10 +15,16 @@ function Make(Spec, Publisher) {
                     parent: opts_parent
                   };
                   var publisher = Publisher.make(ComponentType$Reventless.name(extra$1, EventTopic$Reventless.componentType), storageResources, opts);
-                  var Runtime = EventTopic_Runtime$Reventless.Make(Spec);
                   Component$Reventless.setOperations(extra, publisher.publishJson.apply(function (publishJson) {
+                            var partial_arg = {
+                              publishJson: publishJson
+                            };
+                            var partial_arg$1 = EventTopic_Operations$Reventless.Make;
+                            var Operations = (function (param) {
+                                  return partial_arg$1(partial_arg, param);
+                                })(Spec);
                             return {
-                                    publish: Runtime.publish(publishJson),
+                                    publish: Operations.publish,
                                     publishJson: publishJson
                                   };
                           }));
