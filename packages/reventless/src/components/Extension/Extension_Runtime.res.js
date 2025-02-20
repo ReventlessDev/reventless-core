@@ -7,10 +7,10 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
-var Logger$Reventless = require("../util/Logger.res.js");
+var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
-var Message$Reventless = require("../Message.res.js");
-var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
+var Message$Reventless = require("../../Message.res.js");
+var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
 function Make(Spec, MappingSpec, Mappings) {

@@ -8,9 +8,9 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var AWS$Reventless = require("../../../util/AWS.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../../Message.res.js");
-var Extension$Reventless = require("../../../components/Extension.res.js");
 var Util_Promise$Reventless = require("../../../util/Util_Promise.res.js");
 var ExtensionMapping$Reventless = require("../../../ExtensionMapping.res.js");
+var Extension_Builder$Reventless = require("../../../components/Extension/Extension_Builder.res.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
@@ -215,7 +215,7 @@ function Make(Spec) {
     callCommand_encode: PluginExtensionPointSpec$ReventlessSpec.callCommand_encode,
     callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
   };
-  var partial_arg$3 = Extension$Reventless.Make;
+  var partial_arg$3 = Extension_Builder$Reventless.Make;
   var include = (function (param) {
         return partial_arg$3(partial_arg$2, param);
       })({

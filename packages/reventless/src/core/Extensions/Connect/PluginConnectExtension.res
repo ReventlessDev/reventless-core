@@ -209,5 +209,5 @@ module Make = (Spec: Spec) => {
     let mappings: array<module(Mapping)> = [module(ConnectPluginMapping)]
   }
 
-  include Extension.Make(ReventlessSpec.PluginExtensionPointSpec, ConnectPluginMappings)
+  include Extension_Builder.Make(ReventlessSpec.PluginExtensionPointSpec, ConnectPluginMappings)
 }
