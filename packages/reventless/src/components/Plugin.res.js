@@ -13,7 +13,6 @@ var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var QueryDb$Reventless = require("./QueryDb.res.js");
 var Aggregate$Reventless = require("./Aggregate/Aggregate.res.js");
 var Component$Reventless = require("./Component.res.js");
-var Heartbeat$Reventless = require("./Heartbeat.res.js");
 var ReadModel$Reventless = require("./ReadModel.res.js");
 var Interstack$Reventless = require("../util/Interstack.res.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.res.js");
@@ -22,6 +21,7 @@ var ExtensionPoint$Reventless = require("./ExtensionPoint/ExtensionPoint.res.js"
 var Plugin_Runtime$Reventless = require("./Plugin_Runtime.res.js");
 var Util_StackRefs$Reventless = require("../util/Util_StackRefs.res.js");
 var AdapterDeploytime$Reventless = require("../adapter/AdapterDeploytime.res.js");
+var Heartbeat_Builder$Reventless = require("./Heartbeat/Heartbeat_Builder.res.js");
 var Util_QueryDbRuntime$Reventless = require("../util/Util_QueryDbRuntime.res.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.res.js");
 var ResourceQueryRuntime$Reventless = require("../util/ResourceQueryRuntime.res.js");
@@ -293,7 +293,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                     });
                 return eventCollectorOutputs;
               });
-          var SpecificHeartbeat = Heartbeat$Reventless.Make(HeartbeatRunner);
+          var SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
           var heartbeat = SpecificHeartbeat.make(id, name + ComponentType$Reventless.toName("Plugin"), heartbeatInterval, publishToCorePluginExtensionPoint, opts);
           return {
                   id: id,

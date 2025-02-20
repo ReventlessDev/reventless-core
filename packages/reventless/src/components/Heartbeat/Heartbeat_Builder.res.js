@@ -2,11 +2,10 @@
 'use strict';
 
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Component$Reventless = require("./Component.res.js");
-var ComponentType$Reventless = require("../ComponentType.res.js");
-var Heartbeat_Runtime$Reventless = require("./Heartbeat_Runtime.res.js");
-
-var Adapter = {};
+var Component$Reventless = require("../Component.res.js");
+var Heartbeat$Reventless = require("./Heartbeat.res.js");
+var ComponentType$Reventless = require("../../ComponentType.res.js");
+var Heartbeat_Callback$Reventless = require("./Heartbeat_Callback.res.js");
 
 function Make(Runner) {
   var construct = function (id, timeout, publishToCorePluginExtensionPoint, self, name) {
@@ -14,12 +13,12 @@ function Make(Runner) {
     var opts = {
       parent: opts_parent
     };
-    var Runtime = Heartbeat_Runtime$Reventless.Make({
+    var Callback = Heartbeat_Callback$Reventless.Make({
           publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
           id: id,
           timeout: timeout
         });
-    var runnerResources = Runner.make(ComponentType$Reventless.name(name, "Heartbeat"), timeout, Runtime.heartbeat, opts).resources;
+    var runnerResources = Runner.make(ComponentType$Reventless.name(name, Heartbeat$Reventless.componentType), timeout, Callback.heartbeat, opts).resources;
     return Component$Reventless.setOutputs(self, {
                 name: name,
                 resources: runnerResources
@@ -27,7 +26,7 @@ function Make(Runner) {
   };
   var make = function (id, name, timeoutOpt, publishToCorePluginExtensionPoint, opts) {
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
-    return Component$Reventless.make(ComponentType$Reventless.toString("Heartbeat"), name, (function (extra, extra$1) {
+    return Component$Reventless.make(ComponentType$Reventless.toString(Heartbeat$Reventless.componentType), name, (function (extra, extra$1) {
                   return construct(id, timeout, publishToCorePluginExtensionPoint, extra, extra$1);
                 }), opts);
   };
@@ -37,9 +36,5 @@ function Make(Runner) {
         };
 }
 
-var componentType = "Heartbeat";
-
-exports.componentType = componentType;
-exports.Adapter = Adapter;
 exports.Make = Make;
 /* Component-Reventless Not a pure module */

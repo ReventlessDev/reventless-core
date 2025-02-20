@@ -1,4 +1,4 @@
-let make: Reventless.Heartbeat.Adapter.runnerMaker = (~name, ~timeout, ~heartbeat, ~opts) => {
+let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~heartbeat, ~opts) => {
   let heartBeatCallback: PulumiAws.Lambda.eventHandler<unit, unit> = (_, _) => heartbeat()
 
   let cloudwatchEventRule = {
