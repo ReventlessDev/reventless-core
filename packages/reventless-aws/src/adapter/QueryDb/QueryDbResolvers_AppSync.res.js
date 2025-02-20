@@ -4,8 +4,8 @@
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
-var Plugin$Reventless = require("@reventless/reventless/src/components/Plugin.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
+var Plugin_Builder$Reventless = require("@reventless/reventless/src/components/Plugin/Plugin_Builder.res.js");
 var AppSync_Function$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Function.res.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
@@ -42,7 +42,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
             return AppSync_Resolver$PulumiAws.makeUnitResolver(name$2, api, dataSourceName, "Query", StringLabels.uncapitalize_ascii(name$2), sortField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIndexSortFiltered(index, idField, sortField) : AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, opts);
           }));
     var storageResource = function (pluginName, tableName) {
-      return Adapter$Reventless.outputToResource(Util_DynamoDb$ReventlessAws.findResourceInOutput(Plugin$Reventless.getStorageResources(allQueryDbs, pluginName, tableName)));
+      return Adapter$Reventless.outputToResource(Util_DynamoDb$ReventlessAws.findResourceInOutput(Plugin_Builder$Reventless.getStorageResources(allQueryDbs, pluginName, tableName)));
     };
     var generateTemplate = function (storageResource, template) {
       return storageResource.name.apply(function (realTableName) {
@@ -149,4 +149,4 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
 }
 
 exports.make = make;
-/* Plugin-Reventless Not a pure module */
+/* Adapter-Reventless Not a pure module */

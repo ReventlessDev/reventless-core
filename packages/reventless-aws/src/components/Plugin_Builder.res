@@ -1,4 +1,4 @@
-include Reventless.Plugin.Make(
+include Reventless.Plugin_Builder.Make(
   EventCollectorChannel.SQS,
   QueryEngine.DynamoDb,
   CommandTopicRemoteChannel.SQS,

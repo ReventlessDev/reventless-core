@@ -1,40 +1,3 @@
-// TODO: refactor to smaller code parts for a better overview
-open ReventlessSpec.Adapter
-
-let componentType = ComponentType.Plugin
-
-type outputs = {
-  id: Pulumi.Output.t<string>,
-  version: Pulumi.Output.t<string>,
-  heartbeatInterval: Pulumi.Output.t<int>,
-  eventCollector: Pulumi.Output.t<EventCollector.outputs>,
-  extensionPoints: Pulumi.Output.t<Js.Dict.t<ExtensionPoint.outputs>>,
-  extensions: Pulumi.Output.t<Js.Dict.t<Extension.outputs>>,
-  aggregates: Pulumi.Output.t<Js.Dict.t<Aggregate.outputs>>,
-  readModels: Pulumi.Output.t<Js.Dict.t<ReadModel.outputs>>,
-  tasks: Pulumi.Output.t<Js.Dict.t<Task.outputs>>,
-  resolvers: Pulumi.Output.t<array<resource>>,
-  heartbeat: Pulumi.Output.t<Heartbeat.outputs>,
-}
-
-type t
-type component = Component.t<t, outputs, unit>
-
-module type T = {
-  let make: (
-    ~name: string,
-    ~version: string,
-    ~heartbeatInterval: int,
-    ~extensionPoints: array<module(ExtensionPoint.T)>,
-    ~extensions: array<module(Extension.T)>,
-    ~aggregates: array<module(Aggregate.T)>,
-    ~readModels: array<module(ReadModel.T)>,
-    ~taskMakers: array<Task.maker>,
-    ~scheduler: Pulumi.Output.t<Scheduler.operations>,
-    ~opts: Pulumi.ComponentResource.options=?,
-  ) => component
-}
-
 // TODO: find better naming
 type pureOutputs = {
   id: string,
@@ -46,7 +9,7 @@ type pureOutputs = {
   aggregates: Js.Dict.t<Aggregate.outputs>,
   readModels: Js.Dict.t<ReadModel.outputs>,
   tasks: Js.Dict.t<Task.outputs>,
-  resolvers: array<resource>,
+  resolvers: array<ReventlessSpec.Adapter.resource>,
   heartbeat: Heartbeat.outputs,
 }
 
@@ -73,8 +36,6 @@ let getStorageResources = (allQueryDbs, pluginName, queryDbName) =>
     Util_QueryDbRuntime.getLocalStorageResources(allQueryDbs, queryDbName)->Pulumi.Output.make
   | Some(pluginName) => getRemoteStorageResources(pluginName, queryDbName)
   }
-
-type withAggregateNames = {aggregateNames: array<string>}
 
 let makeId = (name, version) => `${name}@${version}`
 
@@ -117,26 +78,7 @@ module Make = (
   QueryEngineAdapter: QueryDb.Adapter.QueryEngineAdapter,
   CorePluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
   HeartbeatRunner: Heartbeat_Adapter.Runner,
-): T => {
-  type constructed
-  type construct = (component, string) => constructed
-
-  @module("./Component") @new
-  external make: (
-    ~componentType: string,
-    ~name: string,
-    ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.options>,
-  ) => component = "default"
-
-  @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (component, outputs) => unit = "setOutputs"
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs)
-    self->registerOutputs(outputs)
-  }
-
+): Plugin.T => {
   type readModel = {
     module_: module(ReadModel.T),
     readModel: ReadModel.component,
@@ -464,7 +406,7 @@ module Make = (
             module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
 
             let eventCollector = PluginEventCollector.make(
-              ~name=name->ComponentType.name(componentType),
+              ~name=name->ComponentType.name(Plugin.componentType),
               ~eventTopics,
               ~eventsHandler=Runtime.eventsHandler,
               ~policy1=Pulumi.Output.make(None),
@@ -483,7 +425,7 @@ module Make = (
         module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner)
         let heartbeat = SpecificHeartbeat.make(
           ~id,
-          ~name=name ++ componentType->ComponentType.toName,
+          ~name=name ++ Plugin.componentType->ComponentType.toName,
           ~timeout=heartbeatInterval,
           ~publishToCorePluginExtensionPoint,
           ~opts,
@@ -510,8 +452,8 @@ module Make = (
         }
       })
     }
-    self->setOutputs({
-      id: pureOutputs->Pulumi.Output.apply(outputs => outputs.id),
+    self->Component.setOutputs({
+      Plugin.id: pureOutputs->Pulumi.Output.apply(outputs => outputs.id),
       version: pureOutputs->Pulumi.Output.apply(outputs => outputs.version),
       heartbeatInterval: pureOutputs->Pulumi.Output.apply(outputs => outputs.heartbeatInterval),
       eventCollector: pureOutputs->Pulumi.Output.flatMap(outputs => outputs.eventCollector),
@@ -537,8 +479,8 @@ module Make = (
     ~scheduler,
     ~opts=?,
   ) =>
-    make(
-      ~componentType=componentType->ComponentType.toString,
+    Component.make(
+      ~componentType=Plugin.componentType->ComponentType.toString,
       ~name,
       ~construct=construct(
         ~version,
