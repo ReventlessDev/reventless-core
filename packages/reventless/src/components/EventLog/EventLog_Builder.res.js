@@ -48,7 +48,7 @@ function Make(Spec, $$Storage, EventTopicPublisher) {
             }));
     return Component$Reventless.setOutputs(self, {
                 resources: storage.resources,
-                eventTopic: Component$Reventless.extractOutputs(eventTopic)
+                eventTopic: Component$Reventless.outputs(eventTopic)
               });
   };
   var make = function (name, opts) {

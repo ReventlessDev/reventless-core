@@ -95,11 +95,11 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                   var publishToAggregates = {};
                   var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (SpecificAggregate) {
                                   var aggregate = SpecificAggregate.make(opts);
-                                  addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.extractOutputs(aggregate).addEventMapper;
+                                  addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
                                   publishToAggregates[SpecificAggregate.Spec.name] = Component$Reventless.operations(aggregate).apply(function (param) {
                                         return param.publishJsons;
                                       });
-                                  return Component$Reventless.extractOutputs(aggregate);
+                                  return Component$Reventless.outputs(aggregate);
                                 })), (function (aggregate) {
                               return [
                                       aggregate.name,
@@ -111,7 +111,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                   var publishToReadModels = {};
                   var readModels$1 = Belt_Array.map(readModels, (function (SpecificReadModel) {
                           var readModel = SpecificReadModel.make(allEventTopics, opts);
-                          Belt_Array.forEach(Component$Reventless.extractOutputs(readModel).sourceNames, (function (sourceName) {
+                          Belt_Array.forEach(Component$Reventless.outputs(readModel).sourceNames, (function (sourceName) {
                                   var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
                                   if (readModelNames !== undefined) {
                                     readModelNamesForSourceName[sourceName] = Belt_Array.concat(readModelNames, [SpecificReadModel.Spec.name]);
@@ -133,7 +133,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                   var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(Js_dict.fromArray(readModels$1)), (function (param) {
                               return [
                                       param[0],
-                                      Component$Reventless.extractOutputs(param[1].readModel)
+                                      Component$Reventless.outputs(param[1].readModel)
                                     ];
                             })));
                   var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
@@ -157,7 +157,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                         var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
                                     var extensionPoint = SpecificExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
                                     return [
-                                            Component$Reventless.extractOutputs(extensionPoint),
+                                            Component$Reventless.outputs(extensionPoint),
                                             Component$Reventless.operations(extensionPoint).apply(function (param) {
                                                   return {
                                                           outgoing: param.outgoingEventHandler
@@ -173,7 +173,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                         var match$1 = Belt_Array.unzip(Belt_Array.map(extensions, (function (SpecificExtension) {
                                     var extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
                                     return [
-                                            Component$Reventless.extractOutputs(extension),
+                                            Component$Reventless.outputs(extension),
                                             Component$Reventless.operations(extension).apply(function (param) {
                                                   return {
                                                           outgoing: param.outgoingEventHandler,
@@ -222,7 +222,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                         extensionsOutputs: extensionsOutputs
                                       });
                                   var connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-                                  var connectPluginExtensionOutputs = Component$Reventless.extractOutputs(connectPluginExtension);
+                                  var connectPluginExtensionOutputs = Component$Reventless.outputs(connectPluginExtension);
                                   var connectPluginExtensionIncomingEventHandler = Component$Reventless.operations(connectPluginExtension).apply(function (param) {
                                         return param.incomingEventHandler;
                                       });
@@ -238,7 +238,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                           return ResourceQueryRuntime$Reventless.bucketNameOfTaskExn(tasksOutputs.contents, taskName);
                         };
                         tasksOutputs.contents = Belt_Array.map(taskMakers, (function (taskMaker) {
-                                return Component$Reventless.extractOutputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
+                                return Component$Reventless.outputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
                               }));
                         var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
                         var resolvers = Belt_Array.concatMany(Belt_Array.map(QueryDb$Reventless.allResolversMakers(allQueryDbs), (function (resolverMaker) {
@@ -289,7 +289,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                   });
                               var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                               var eventCollector = PluginEventCollector.make(ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType), eventTopics, Callback.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
-                              var eventCollectorOutputs = Component$Reventless.extractOutputs(eventCollector);
+                              var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;
                                   });
@@ -323,7 +323,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                                   ];
                                           }))),
                                 resolvers: resolvers,
-                                heartbeat: Component$Reventless.extractOutputs(heartbeat)
+                                heartbeat: Component$Reventless.outputs(heartbeat)
                               };
                       });
                   return Component$Reventless.setOutputs(extra, {

@@ -94,10 +94,10 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                                                   }));
                                     })),
                               commandTopic: match[0].apply(function (commandTopic) {
-                                    return Component$Reventless.extractOutputs(commandTopic);
+                                    return Component$Reventless.outputs(commandTopic);
                                   }),
                               eventTopic: match[1].apply(function (eventTopic) {
-                                    return Component$Reventless.extractOutputs(eventTopic);
+                                    return Component$Reventless.outputs(eventTopic);
                                   })
                             });
                 }), opts);

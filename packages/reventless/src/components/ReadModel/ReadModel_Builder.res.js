@@ -89,8 +89,8 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                           }));
                   return Component$Reventless.setOutputs(extra, {
                               name: extra$1,
-                              queryDb: Component$Reventless.extractOutputs(queryDb),
-                              eventCollector: Component$Reventless.extractWrappedOutputs(eventCollector),
+                              queryDb: Component$Reventless.outputs(queryDb),
+                              eventCollector: Component$Reventless.wrappedOutputs(eventCollector),
                               sourceNames: Belt_SetString.toArray(sourceNames)
                             });
                 }), opts);

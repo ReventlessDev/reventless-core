@@ -40,7 +40,7 @@ module Make = (
           ~counterEventsHandler=CounterHandler.counterEventsHandler,
           ~opts,
         )
-        (counter->Component.operations, counter->Component.extractOutputs->Some)
+        (counter->Component.operations, counter->Component.outputs->Some)
       },
     )
 
@@ -75,7 +75,7 @@ module Make = (
           ~policy2=Pulumi.Output.make(None),
           ~opts=Some(opts),
         )
-      }->Component.extractOutputs
+      }->Component.outputs
     )
 
     self->Component.setOutputs({

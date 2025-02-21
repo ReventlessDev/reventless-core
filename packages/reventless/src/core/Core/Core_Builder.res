@@ -29,13 +29,13 @@ module Make = (
         let aggregate = SpecificAggregate.make(~opts)
         addEventMapperFns->Js.Dict.set(
           SpecificAggregate.Spec.name,
-          (aggregate->Component.extractOutputs).addEventMapper,
+          (aggregate->Component.outputs).addEventMapper,
         )
         publishToAggregates->Js.Dict.set(
           SpecificAggregate.Spec.name,
           aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons),
         )
-        aggregate->Component.extractOutputs
+        aggregate->Component.outputs
       })
       ->Belt.Array.map(aggregate => {(aggregate.name, aggregate)})
       ->Js.Dict.fromArray
@@ -50,7 +50,7 @@ module Make = (
       readModels
       ->Js.Dict.fromArray
       ->Js.Dict.entries
-      ->Belt.Array.map(((name, {readModel})) => (name, readModel->Component.extractOutputs))
+      ->Belt.Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
       ->Js.Dict.fromArray
 
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
@@ -75,7 +75,7 @@ module Make = (
               ~opts=Some(opts),
             )
             (
-              extensionPoint->Component.extractOutputs,
+              extensionPoint->Component.outputs,
               extensionPoint
               ->Component.operations
               ->Pulumi.Output.apply(({outgoingEventHandler}) => outgoingEventHandler),
@@ -116,7 +116,7 @@ module Make = (
               ~policy1=Pulumi.Output.make(None),
               ~policy2=Pulumi.Output.make(None),
               ~opts=Some(opts),
-            )->Component.extractOutputs
+            )->Component.outputs
           })
         (extensionPointsOutputs, eventCollectorOutputs)
       })
@@ -137,7 +137,7 @@ module Make = (
       ),
       aggregates: aggregatesOutputs,
       readModels: readModelsOutputs,
-      cloner: cloner->Component.extractOutputs,
+      cloner: cloner->Component.outputs,
     })
   }
 

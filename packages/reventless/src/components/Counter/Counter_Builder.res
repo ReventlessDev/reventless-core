@@ -61,9 +61,9 @@ module Make = (
         Handler.make(
           ~name,
           ~referencesName=ReferencesSpec.name,
-          ~referencesDb=referencesDb->Component.extractOutputs,
+          ~referencesDb=referencesDb->Component.outputs,
           ~countsName=CountsSpec.name,
-          ~countsDb=countsDb->Component.extractOutputs,
+          ~countsDb=countsDb->Component.outputs,
           ~counterHandler=Callback.counterHandler,
           ~opts=opts2,
         )
@@ -85,8 +85,8 @@ module Make = (
     )
 
     self->Component.setOutputs({
-      Counter.referencesDb: referencesDb->Component.extractOutputs,
-      countsDb: countsDb->Component.extractOutputs,
+      Counter.referencesDb: referencesDb->Component.outputs,
+      countsDb: countsDb->Component.outputs,
     })
   }
 

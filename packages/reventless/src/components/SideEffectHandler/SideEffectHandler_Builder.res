@@ -33,7 +33,7 @@ module Make = (SpecificEventCollector: EventCollector.T): SideEffectHandler.T =>
       ~opts=Some(opts),
     )
     let eventCollectorResources =
-      (eventCollector->Component.extractOutputs).resources->Adapter.resourcesToUnwrappedOutput
+      (eventCollector->Component.outputs).resources->Adapter.resourcesToUnwrappedOutput
 
     self->Component.setOperations(
       (eventCollector->Component.operations, eventCollectorResources)
@@ -47,7 +47,7 @@ module Make = (SpecificEventCollector: EventCollector.T): SideEffectHandler.T =>
 
     self->Component.setOutputs({
       SideEffectHandler.name,
-      eventCollector: eventCollector->Component.extractOutputs,
+      eventCollector: eventCollector->Component.outputs,
     })
   }
 

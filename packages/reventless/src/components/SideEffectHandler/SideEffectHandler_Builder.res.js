@@ -32,7 +32,7 @@ function Make(SpecificEventCollector) {
                         queryEngine: queryEngine
                       });
                   var eventCollector = SpecificEventCollector.make(extra$1, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), Callback.eventsHandler, memorySize, timeout, policy1, policy2, opts);
-                  var eventCollectorResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.extractOutputs(eventCollector).resources);
+                  var eventCollectorResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(eventCollector).resources);
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),
                               eventCollectorResources
@@ -46,7 +46,7 @@ function Make(SpecificEventCollector) {
                           }));
                   return Component$Reventless.setOutputs(extra, {
                               name: extra$1,
-                              eventCollector: Component$Reventless.extractOutputs(eventCollector)
+                              eventCollector: Component$Reventless.outputs(eventCollector)
                             });
                 }), Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.ofCustomResourceOptions));
   };

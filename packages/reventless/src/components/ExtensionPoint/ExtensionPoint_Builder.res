@@ -87,11 +87,9 @@ module Make = (
         Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
       ),
       commandTopic: commandTopic->Pulumi.Output.apply(commandTopic =>
-        commandTopic->Component.extractOutputs
+        commandTopic->Component.outputs
       ),
-      eventTopic: eventTopic->Pulumi.Output.apply(eventTopic =>
-        eventTopic->Component.extractOutputs
-      ),
+      eventTopic: eventTopic->Pulumi.Output.apply(eventTopic => eventTopic->Component.outputs),
     })
   }
 

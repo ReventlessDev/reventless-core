@@ -26,7 +26,7 @@ module Make = (
       EventMappings,
     )
 
-    let outputs = component->Component.extractOutputs
+    let outputs = component->Component.outputs
     if EventMappings.mappings->Belt.Array.length > 0 {
       let eventMapper =
         component
@@ -37,7 +37,7 @@ module Make = (
       {
         ...outputs,
         eventMapper: eventMapper->Pulumi.Output.apply(eventMapper =>
-          eventMapper->Component.extractOutputs
+          eventMapper->Component.outputs
         ),
       }
     } else {
@@ -81,11 +81,7 @@ module Make = (
       commandTopic
       ->Component.operations
       ->Pulumi.Output.apply(({publishJsons}) => {
-        SpecificCommandGenerator.make(
-          ~name=childName,
-          ~publishJsons,
-          ~opts,
-        )->Component.extractOutputs
+        SpecificCommandGenerator.make(~name=childName, ~publishJsons, ~opts)->Component.outputs
       })
     )
 
@@ -99,8 +95,8 @@ module Make = (
     self->Component.setOutputs({
       Aggregate.name,
       commandGenerator,
-      commandTopic: commandTopic->Component.extractWrappedOutputs,
-      eventLog: eventLog->Component.extractOutputs,
+      commandTopic: commandTopic->Component.wrappedOutputs,
+      eventLog: eventLog->Component.outputs,
       addEventMapper: self->(addEventMapperFn(~opts, ...)),
     })
   }

@@ -44,7 +44,7 @@ function Make(Target, EventCollector, Mappings) {
                           var counter = Counter.make(extra$1, CounterHandler.counterEventsHandler, undefined, opts);
                           return [
                                   Component$Reventless.operations(counter),
-                                  Component$Reventless.extractOutputs(counter)
+                                  Component$Reventless.outputs(counter)
                                 ];
                         }));
                   var aggregateNames = Belt_SetString.fromArray(Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
@@ -60,7 +60,7 @@ function Make(Target, EventCollector, Mappings) {
                               addToCounterTarget: param.addToCounterTarget,
                               commonEventsHandler: CounterHandler.commonEventsHandler
                             });
-                        return Component$Reventless.extractOutputs(EventCollector.make(ComponentType$Reventless.name(Target.name, EventMapper$Reventless.componentType), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), EventCollectorHandler.eventCollectorEventsHandler, memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+                        return Component$Reventless.outputs(EventCollector.make(ComponentType$Reventless.name(Target.name, EventMapper$Reventless.componentType), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), EventCollectorHandler.eventCollectorEventsHandler, memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts));
                       });
                   return Component$Reventless.setOutputs(extra, {
                               name: extra$1,

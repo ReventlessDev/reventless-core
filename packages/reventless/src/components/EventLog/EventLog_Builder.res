@@ -44,7 +44,7 @@ module Make = (
 
     self->Component.setOutputs({
       EventLog.resources: storage.resources,
-      eventTopic: eventTopic->Component.extractOutputs,
+      eventTopic: eventTopic->Component.outputs,
     })
   }
 

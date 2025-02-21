@@ -74,8 +74,8 @@ module Make = (
     )
     self->Component.setOutputs({
       ReadModel.name,
-      queryDb: queryDb->Component.extractOutputs,
-      eventCollector: eventCollector->Component.extractWrappedOutputs,
+      queryDb: queryDb->Component.outputs,
+      eventCollector: eventCollector->Component.wrappedOutputs,
       sourceNames: sourceNames->Belt.Set.String.toArray,
     })
   }

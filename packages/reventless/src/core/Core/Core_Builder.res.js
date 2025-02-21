@@ -26,11 +26,11 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
     var publishToAggregates = {};
     var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (SpecificAggregate) {
                     var aggregate = SpecificAggregate.make(opts);
-                    addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.extractOutputs(aggregate).addEventMapper;
+                    addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
                     publishToAggregates[SpecificAggregate.Spec.name] = Component$Reventless.operations(aggregate).apply(function (param) {
                           return param.publishJsons;
                         });
-                    return Component$Reventless.extractOutputs(aggregate);
+                    return Component$Reventless.outputs(aggregate);
                   })), (function (aggregate) {
                 return [
                         aggregate.name,
@@ -51,7 +51,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
     var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(Js_dict.fromArray(readModels$1)), (function (param) {
                 return [
                         param[0],
-                        Component$Reventless.extractOutputs(param[1].readModel)
+                        Component$Reventless.outputs(param[1].readModel)
                       ];
               })));
     var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
@@ -63,7 +63,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
               var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
                           var extensionPoint = SpecificExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
                           return [
-                                  Component$Reventless.extractOutputs(extensionPoint),
+                                  Component$Reventless.outputs(extensionPoint),
                                   Component$Reventless.operations(extensionPoint).apply(function (param) {
                                         return param.outgoingEventHandler;
                                       })
@@ -87,7 +87,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
                           outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
                         });
                     var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
-                    return Component$Reventless.extractOutputs(PluginEventCollector.make(ComponentType$Reventless.toName(Core$Reventless.componentType), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), Callback.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
+                    return Component$Reventless.outputs(PluginEventCollector.make(ComponentType$Reventless.toName(Core$Reventless.componentType), Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), Callback.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts));
                   });
               return [
                       extensionPointsOutputs,
@@ -112,7 +112,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner) {
                     }),
                 aggregates: aggregatesOutputs,
                 readModels: readModelsOutputs,
-                cloner: Component$Reventless.extractOutputs(cloner)
+                cloner: Component$Reventless.outputs(cloner)
               });
   };
   var make = function (version, extensionPoints, aggregates, readModels, scheduler) {

@@ -104,7 +104,7 @@ function Make(Config, QueryDbStorage, Handler) {
                               countsDbCount: param.count,
                               counterEventsHandler: counterEventsHandler
                             });
-                        return Handler.make(extra$1, name, Component$Reventless.extractOutputs(referencesDb), name$1, Component$Reventless.extractOutputs(countsDb), Callback.counterHandler, opts2);
+                        return Handler.make(extra$1, name, Component$Reventless.outputs(referencesDb), name$1, Component$Reventless.outputs(countsDb), Callback.counterHandler, opts2);
                       });
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(referencesDb),
@@ -120,8 +120,8 @@ function Make(Config, QueryDbStorage, Handler) {
                                   };
                           }));
                   return Component$Reventless.setOutputs(extra, {
-                              referencesDb: Component$Reventless.extractOutputs(referencesDb),
-                              countsDb: Component$Reventless.extractOutputs(countsDb)
+                              referencesDb: Component$Reventless.outputs(referencesDb),
+                              countsDb: Component$Reventless.outputs(countsDb)
                             });
                 }), opts);
   };
