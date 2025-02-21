@@ -6,21 +6,13 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Pulumi = require("@pulumi/pulumi");
-var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
-var Logger$Reventless = require("../util/Logger.res.js");
+var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
-var Counter$Reventless = require("./Counter/Counter.res.js");
-var Message$Reventless = require("../Message.res.js");
-var Component$Reventless = require("./Component.res.js");
-var Util_Promise$Reventless = require("../util/Util_Promise.res.js");
-var ComponentType$Reventless = require("../ComponentType.res.js");
-var Util_EventTopic$Reventless = require("../util/Util_EventTopic.res.js");
+var Message$Reventless = require("../../Message.res.js");
+var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
-function Make(Target, EventCollector, Mappings) {
+function MakeCounterHandler(Target, Mappings, Ops) {
   var target = Target.name;
   var findMapping = function (mappings, eventObj) {
     return Belt_Option.flatMapU(eventObj, (function (eventObj$p) {
@@ -129,13 +121,13 @@ function Make(Target, EventCollector, Mappings) {
                   }
                 }));
   };
-  var commonEventsHandler = async function (mappings, queryEngine, events$pJson) {
+  var commonEventsHandler = async function (events$pJson) {
     var eventsCount = events$pJson.length;
     var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(events$pJson, (function (idx, event$pJson) {
                         var idx$1 = idx + 1 | 0;
                         Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
                         var event$p = Js_json.decodeObject(event$pJson);
-                        var match = findMapping(mappings, event$p);
+                        var match = findMapping(Mappings.mappings, event$p);
                         if (match === undefined) {
                           return ;
                         }
@@ -145,7 +137,7 @@ function Make(Target, EventCollector, Mappings) {
                         var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), mapping.Source.event_decode);
                         if (idDecoded !== undefined) {
                           if (idDecoded.TAG === "Ok" && eventDecoded !== undefined && eventDecoded.TAG === "Ok") {
-                            return processMappingActions(mapping.map(idDecoded._0, eventDecoded._0, queryEngine), match[1]);
+                            return processMappingActions(mapping.map(idDecoded._0, eventDecoded._0, Ops.queryEngine), match[1]);
                           }
                           
                         } else {
@@ -189,122 +181,71 @@ function Make(Target, EventCollector, Mappings) {
             counterActions
           ];
   };
-  var doCount = async function (count, countActions) {
-    var match = countActions.length;
+  var counterEventsHandler = async function (events$pJson) {
+    var match = await commonEventsHandler(events$pJson);
+    if (match[1].length !== 0) {
+      console.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!");
+    }
+    return await Ops.publishJsons(await match[0]);
+  };
+  return {
+          commonEventsHandler: commonEventsHandler,
+          counterEventsHandler: counterEventsHandler
+        };
+}
+
+function MakeEventCollectorHandler(Ops) {
+  var doCount = async function (countItems) {
+    var match = countItems.length;
     if (match === 0) {
       return ;
     }
     try {
-      await count(countActions);
+      await Ops.count(countItems);
       return ;
     }
     catch (raw_e){
       var e = Caml_js_exceptions.internalToOCamlException(raw_e);
-      console.log("EventMapper-Reventless" + ".doCount: count error", e);
+      console.log("EventMapper_Callback-Reventless" + ".doCount: count error", e);
       var timeout = Js_math.random_int(1000, 3000);
       await Util_Promise$Reventless.finishTimeout(timeout);
       console.log("Retry count after " + timeout.toString() + " ms");
-      return await doCount(count, countActions);
+      return await doCount(countItems);
     }
   };
-  var eventCollectorEventsHandler = function (publishJsons, mappings, queryEngine, count, addToCounterTarget) {
-    return async function (events$pJson) {
-      var match = await commonEventsHandler(mappings, queryEngine, events$pJson);
-      var match$1 = Belt_Array.partition(match[1], (function (x) {
-              if (x.TAG === "Count") {
-                return true;
-              } else {
-                return false;
-              }
-            }));
-      var addToCounterTargetActions = match$1[1];
-      var countActions = Belt_Array.keepMap(match$1[0], (function (countAction) {
-              if (countAction.TAG === "Count") {
-                return countAction._0;
-              }
-              
-            }));
-      console.log("EventMapper.eventCollectorEventsHandler: countActions:", countActions.length);
-      await doCount(count, countActions);
-      console.log("EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:", JSON.stringify(addToCounterTargetActions));
-      await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(addToCounterTargetActions, (async function (x) {
-                      if (x.TAG === "Count") {
-                        return ;
-                      } else {
-                        return await addToCounterTarget(x._0);
-                      }
-                    }))));
-      return await publishJsons(await match[0]);
-    };
-  };
-  var counterEventsHandler = function (publishJsons, mappings, queryEngine) {
-    return async function (events$pJson) {
-      var match = await commonEventsHandler(mappings, queryEngine, events$pJson);
-      if (match[1].length !== 0) {
-        console.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!");
-      }
-      return await publishJsons(await match[0]);
-    };
-  };
-  var construct = function (allEventTopics, queryEngine, publishJsons, memorySize, timeout, self, name) {
-    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
-    var opts = {
-      parent: opts_parent
-    };
-    var match = Belt_Option.mapWithDefault(Mappings.counter, [
-          Pulumi.output({
-                count: (async function (_items) {
-                    console.log("No counter deployed, but trying to use count");
-                  }),
-                addToCounterTarget: (async function (_target) {
-                    console.log("No counter deployed, but trying to use addToCounterTarget");
-                  })
-              }),
-          undefined
-        ], (function (Counter) {
-            var counter = Counter.make(name, counterEventsHandler(publishJsons, Mappings.mappings, queryEngine), undefined, opts);
-            return [
-                    Component$Reventless.operations(counter),
-                    Component$Reventless.extractOutputs(counter)
-                  ];
+  var eventCollectorEventsHandler = async function (events$pJson) {
+    var match = await Ops.commonEventsHandler(events$pJson);
+    var match$1 = Belt_Array.partition(match[1], (function (x) {
+            if (x.TAG === "Count") {
+              return true;
+            } else {
+              return false;
+            }
           }));
-    var aggregateNames = Belt_SetString.fromArray(Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
-                if (Mapping.Source.name !== Counter$Reventless.Source.name) {
-                  return Mapping.Source.name;
-                }
-                
-              })));
-    var eventCollector = match[0].apply(function (param) {
-          return Component$Reventless.extractOutputs(EventCollector.make(ComponentType$Reventless.name(Target.name, "EventMapper"), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollectorEventsHandler(publishJsons, Mappings.mappings, queryEngine, param.count, param.addToCounterTarget), memorySize, timeout, Pulumi.output(undefined), Pulumi.output(undefined), opts));
-        });
-    var outputs = {
-      name: name,
-      eventCollector: eventCollector,
-      counter: match[1]
-    };
-    self.setOutputs(outputs);
-    return self.registerOutputs(outputs);
-  };
-  var make = function (allEventTopics, queryEngine, publishJsons, memorySizeOpt, timeoutOpt, opts) {
-    var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
-    var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
-    var prim0 = ComponentType$Reventless.toString("EventMapper");
-    var prim1 = Target.name;
-    var prim2 = function (extra, extra$1) {
-      return construct(allEventTopics, queryEngine, publishJsons, memorySize, timeout, extra, extra$1);
-    };
-    return new Component(prim0, prim1, prim2, opts);
+    var addToCounterTargetActions = match$1[1];
+    var countItems = Belt_Array.keepMap(match$1[0], (function (countAction) {
+            if (countAction.TAG === "Count") {
+              return countAction._0;
+            }
+            
+          }));
+    console.log("EventMapper.eventCollectorEventsHandler: countItems:", countItems.length);
+    await doCount(countItems);
+    console.log("EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:", JSON.stringify(addToCounterTargetActions));
+    await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(addToCounterTargetActions, (async function (x) {
+                    if (x.TAG === "Count") {
+                      return ;
+                    } else {
+                      return await Ops.addToCounterTarget(x._0);
+                    }
+                  }))));
+    return await Ops.publishJsons(await match[0]);
   };
   return {
-          make: make
+          eventCollectorEventsHandler: eventCollectorEventsHandler
         };
 }
 
-var ReventlessEventCollector;
-
-var componentType = "EventMapper";
-
-exports.ReventlessEventCollector = ReventlessEventCollector;
-exports.componentType = componentType;
-exports.Make = Make;
-/* ./Component Not a pure module */
+exports.MakeCounterHandler = MakeCounterHandler;
+exports.MakeEventCollectorHandler = MakeEventCollectorHandler;
+/* Logger-Reventless Not a pure module */

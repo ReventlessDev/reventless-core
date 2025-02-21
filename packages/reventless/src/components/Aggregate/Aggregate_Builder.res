@@ -20,7 +20,11 @@ module Make = (
 
   let addEventMapperFn = (component: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
     module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
-    module SpecificEventMapper = EventMapper.Make(Spec, SpecificEventCollector, EventMappings)
+    module SpecificEventMapper = EventMapper_Builder.Make(
+      Spec,
+      SpecificEventCollector,
+      EventMappings,
+    )
 
     let outputs = component->Component.extractOutputs
     if EventMappings.mappings->Belt.Array.length > 0 {

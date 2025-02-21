@@ -6,10 +6,10 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Aggregate$Reventless = require("./Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
-var EventMapper$Reventless = require("../EventMapper.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventLog_Builder$Reventless = require("../EventLog/EventLog_Builder.res.js");
 var Aggregate_Callback$Reventless = require("./Aggregate_Callback.res.js");
+var EventMapper_Builder$Reventless = require("../EventMapper/EventMapper_Builder.res.js");
 var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Builder.res.js");
 var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
 var CommandGenerator_Builder$Reventless = require("../CommandGenerator/CommandGenerator_Builder.res.js");
@@ -97,7 +97,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                       command_encode: partial_arg_command_encode,
                       command_decode: partial_arg_command_decode
                     };
-                    var partial_arg$1 = EventMapper$Reventless.Make;
+                    var partial_arg$1 = EventMapper_Builder$Reventless.Make;
                     var partial_arg$2 = function (param, param$1) {
                       return partial_arg$1(partial_arg, param, param$1);
                     };
