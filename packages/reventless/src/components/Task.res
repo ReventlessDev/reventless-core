@@ -27,32 +27,13 @@ type maker = (
 ) => component
 
 type setup = (
-  . ReventlessSpec.QueryEngine.operations,
+  ReventlessSpec.QueryEngine.operations,
   Scheduler.operations,
   publishCommands,
   queryBucketName,
   EventTopic.allOutputs,
   Pulumi.CustomResourceOptions.t,
 ) => outputs
-
-type constructed
-type construct = (component, string) => constructed
-
-@module("./Component") @new
-external make: (
-  ~componentType: string,
-  ~name: string,
-  ~construct: construct,
-  ~opts: option<Pulumi.ComponentResource.options>,
-) => component = "default"
-
-@send
-external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-@send external setOutputs: (component, outputs) => unit = "setOutputs"
-let setOutputs = (self, outputs) => {
-  self->setOutputs(outputs)
-  self->registerOutputs(outputs)
-}
 
 let construct = (
   ~setup: setup,
@@ -70,7 +51,7 @@ let construct = (
     (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(cmdJsons)
   }
 
-  self->setOutputs(
+  self->Component.setOutputs(
     setup(
       queryEngine,
       scheduler,
@@ -92,7 +73,7 @@ let make = (
   ~allAggregates,
   ~opts,
 ) =>
-  make(
+  Component.make(
     ~componentType=componentType->ComponentType.toString,
     ~name=name->ComponentType.name(componentType),
     ~construct=construct(

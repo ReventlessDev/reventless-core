@@ -2,17 +2,11 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Component = require("./Component").default;
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Aggregate$Reventless = require("./Aggregate/Aggregate.res.js");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
-
-function setOutputs(self, outputs) {
-  self.setOutputs(outputs);
-  return self.registerOutputs(outputs);
-}
 
 function construct(setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, self, _name) {
   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
@@ -22,22 +16,18 @@ function construct(setup, queryBucketName, scheduler, publishToAggregates, query
   var publishCommands = function (aggregateName, cmdJsons) {
     return Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName))(cmdJsons);
   };
-  return setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, Aggregate$Reventless.allEventTopics(allAggregates), opts));
+  return Component$Reventless.setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, Aggregate$Reventless.allEventTopics(allAggregates), opts));
 }
 
 function make(name, setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, opts) {
-  var prim0 = ComponentType$Reventless.toString("Task");
-  var prim1 = ComponentType$Reventless.name(name, "Task");
-  var prim2 = function (extra, extra$1) {
-    return construct(setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, extra, extra$1);
-  };
-  return new Component(prim0, prim1, prim2, opts);
+  return Component$Reventless.make(ComponentType$Reventless.toString("Task"), ComponentType$Reventless.name(name, "Task"), (function (extra, extra$1) {
+                return construct(setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, extra, extra$1);
+              }), opts);
 }
 
 var componentType = "Task";
 
 exports.componentType = componentType;
-exports.setOutputs = setOutputs;
 exports.construct = construct;
 exports.make = make;
-/* ./Component Not a pure module */
+/* Component-Reventless Not a pure module */
