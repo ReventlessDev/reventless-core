@@ -7,9 +7,7 @@ var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("./CommandTopicChann
 
 function make(resources) {
   return {
-          remotePublish: (function (extra) {
-              return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(Util_SQS$ReventlessAws.findUnwrappedResource(resources)), Util_SQS$ReventlessAws.service, extra);
-            })
+          remotePublish: CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(Util_SQS_Runtime$ReventlessAws.toRuntimeQueue(Util_SQS$ReventlessAws.findUnwrappedResource(resources)), Util_SQS$ReventlessAws.service)
         };
 }
 

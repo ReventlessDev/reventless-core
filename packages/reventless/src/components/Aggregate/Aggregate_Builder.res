@@ -11,12 +11,6 @@ module Make = (
   RuntimeEnvironment: Runtime.Environment,
 ): Aggregate.T => {
   module Spec = Spec
-  module SpecificCommandGenerator = CommandGenerator_Builder.Make(
-    Config,
-    Spec,
-    Behaviour,
-    CommandGeneratorResolvers,
-  )
 
   let addEventMapperFn = (component: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
     module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
@@ -57,31 +51,41 @@ module Make = (
       eventLog
       ->Component.operations
       ->Pulumi.Output.apply(eventLogOps => {
-        module Ops = {
-          module Spec = Spec
-          module EventLog = SpecificEventLog
-          let eventLog = eventLogOps
-        }
-        module SpecificCommandTopic = CommandTopic_Builder.Make(
-          Spec,
-          CommandTopicChannel,
-          RuntimeEnvironment,
-        )
+        module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
         let channel = SpecificCommandTopic.makeChannel(~name=childName, ~opts)
-        module Callback = Aggregate_Callback.Make(Spec, Behaviour, Ops)
-        SpecificCommandTopic.make(
-          ~name=childName,
-          ~channel,
-          ~commandsHandler=Callback.handleCommands,
-          ~opts,
+        module AggregateCallback = Aggregate_Callback.Make(
+          Spec,
+          Behaviour,
+          {
+            module Spec = Spec
+            module EventLog = SpecificEventLog
+            let eventLog = eventLogOps
+          },
         )
+        let handler = SpecificCommandTopic.makeHandler(
+          ~channel,
+          ~commandsHandler=AggregateCallback.handleCommands,
+        )
+        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+        SpecificCommandTopic.make(~name=childName, ~channel, ~runtime, ~opts)
       })
 
     let commandGenerator = commandTopic->Pulumi.Output.flatMap(commandTopic =>
       commandTopic
       ->Component.operations
       ->Pulumi.Output.apply(({publishJsons}) => {
-        SpecificCommandGenerator.make(~name=childName, ~publishJsons, ~opts)->Component.outputs
+        module SpecificCommandGenerator = CommandGenerator_Builder.Make(
+          Config,
+          Spec,
+          Behaviour,
+          CommandGeneratorResolvers,
+        )
+        let runtime = RuntimeEnvironment.make(
+          ~name=childName,
+          ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
+          ~opts,
+        )
+        SpecificCommandGenerator.make(~name=childName, ~runtime, ~opts)->Component.outputs
       })
     )
 

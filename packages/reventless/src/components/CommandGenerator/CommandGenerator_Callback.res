@@ -1,19 +1,9 @@
-type arguments = {id: string}
-type meta = {ip: array<string>, user: string}
-type payload = {
-  command: string,
-  arguments: arguments,
-  meta: meta,
-}
-type commandGenerator = payload => Js.Promise.t<string>
-type publishJsons = CommandTopic.publishJsons
-
 module type Spec = {
-  let publishJsons: publishJsons
+  let publishJsons: CommandGenerator.publishJsons
 }
 
 module type T = {
-  let generateCommand: commandGenerator
+  let generateCommand: CommandGenerator.commandGenerator
 }
 
 module Make = (
@@ -21,7 +11,7 @@ module Make = (
   AggregateSpec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := AggregateSpec,
 ): T => {
-  let generateCommand = async payload => {
+  let generateCommand = async (payload: CommandGenerator.payload) => {
     let msgId = Message.uuid()
     let id = payload.arguments.id
     let meta = {

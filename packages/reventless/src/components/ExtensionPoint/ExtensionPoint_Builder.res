@@ -30,29 +30,33 @@ module Make = (
     let childName =
       name->Js.String2.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
 
-    module SpecificCommandTopic = CommandTopic_Builder.Make(
-      SpecWithId,
-      CommandTopicChannel,
-      RuntimeEnvironment,
-    )
+    module SpecificCommandTopic = CommandTopic_Builder.Make(SpecWithId, CommandTopicChannel)
     let commandTopicChannel = SpecificCommandTopic.makeChannel(~name=childName, ~opts)
 
     let (commandTopic, eventTopic, outgoingEventHandler) =
       commandTopicChannel.resources
       ->Adapter.resourcesToUnwrappedOutput
       ->Pulumi.Output.flatMap(commandTopicResources => {
-        module CallbackSpec = {
-          let publishToAggregates = publishToAggregates
-          let commandTopicResources = commandTopicResources
-          let scheduler = scheduler
-          let queryEngine = queryEngine
-        }
-        module Callback = ExtensionPoint_Callback.Make(CallbackSpec, Spec, Mappings)
+        module ExtensionPointCallback = ExtensionPoint_Callback.Make(
+          {
+            let publishToAggregates = publishToAggregates
+            let commandTopicResources = commandTopicResources
+            let scheduler = scheduler
+            let queryEngine = queryEngine
+          },
+          Spec,
+          Mappings,
+        )
+        let handler = SpecificCommandTopic.makeHandler(
+          ~channel=commandTopicChannel,
+          ~commandsHandler=ExtensionPointCallback.handleIncomingCommands,
+        )
+        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
 
         let commandTopic = SpecificCommandTopic.make(
           ~name=childName,
           ~channel=commandTopicChannel,
-          ~commandsHandler=Callback.incomingCommandsHandler,
+          ~runtime,
           ~opts,
         )
 

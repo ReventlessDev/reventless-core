@@ -7,17 +7,19 @@ var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
-var CommandGeneratorResolvers_AppSync_Runtime$ReventlessAws = require("./CommandGeneratorResolvers_AppSync_Runtime.res.js");
 
-function make(name, api, fields, commandGenerator, opts) {
-  var commandGeneratorLambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
-              return CommandGeneratorResolvers_AppSync_Runtime$ReventlessAws.generateCommand(commandGenerator, extra, extra$1);
-            }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
-  var commandGeneratorArn = commandGeneratorLambda.arn;
+function makeHandler(generateCommand) {
+  return Pulumi.output(function ($$event, param) {
+              return generateCommand($$event);
+            });
+}
+
+function make(name, api, fields, runtime, opts) {
+  var commandGeneratorArn = Util_Lambda$ReventlessAws.findResource(runtime.resources).urn;
   new (Aws.lambda.Permission)(name, {
         action: "lambda:InvokeFunction",
         function: commandGeneratorArn,
@@ -54,5 +56,6 @@ function make(name, api, fields, commandGenerator, opts) {
         };
 }
 
+exports.makeHandler = makeHandler;
 exports.make = make;
 /* @pulumi/aws Not a pure module */

@@ -2,10 +2,10 @@
 'use strict';
 
 
-var AppSync;
+var AppSync_Lambda;
 
 var AppSync_Runtime;
 
-exports.AppSync = AppSync;
+exports.AppSync_Lambda = AppSync_Lambda;
 exports.AppSync_Runtime = AppSync_Runtime;
 /* No side effect */

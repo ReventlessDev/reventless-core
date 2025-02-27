@@ -6,5 +6,5 @@ module Make = (
   Mappings,
   CommandTopicChannel.SQS,
   EventTopicPublisher.SNS,
-  RuntimeEnvironment_Lambda_SQS,
+  RuntimeEnvironment_Lambda,
 )

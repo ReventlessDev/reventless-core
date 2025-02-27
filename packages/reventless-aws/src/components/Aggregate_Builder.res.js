@@ -2,21 +2,23 @@
 'use strict';
 
 var Aggregate_Builder$Reventless = require("@reventless/reventless/src/components/Aggregate/Aggregate_Builder.res.js");
+var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 var CommandTopicChannel_SQS_FIFO$ReventlessAws = require("../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.js");
 var EventLogStorage_DynamoDbStream$ReventlessAws = require("../adapter/EventLog/EventLogStorage_DynamoDbStream.res.js");
-var CommandGeneratorResolvers_AppSync$ReventlessAws = require("../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.js");
 var EventTopicPublisher_DynamoDbStream$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.js");
-var RuntimeEnvironment_Lambda_SQS_FIFO$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda_SQS_FIFO.res.js");
 var EventCollectorChannel_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.js");
+var CommandGeneratorResolvers_AppSync_Lambda$ReventlessAws = require("../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync_Lambda.res.js");
 
 function Make(Config, Spec, Behaviour, EventMappings) {
   var partial_arg = EventCollectorChannel_DynamoDbStream$ReventlessAws;
   var partial_arg$1 = EventTopicPublisher_DynamoDbStream$ReventlessAws;
   var partial_arg$2 = EventLogStorage_DynamoDbStream$ReventlessAws;
-  var partial_arg$3 = CommandTopicChannel_SQS_FIFO$ReventlessAws;
-  var partial_arg$4 = CommandGeneratorResolvers_AppSync$ReventlessAws;
+  var partial_arg$3 = {
+    make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+  };
+  var partial_arg$4 = CommandGeneratorResolvers_AppSync_Lambda$ReventlessAws;
   var partial_arg$5 = Aggregate_Builder$Reventless.Make;
-  var param = RuntimeEnvironment_Lambda_SQS_FIFO$ReventlessAws;
+  var param = RuntimeEnvironment_Lambda$ReventlessAws;
   return partial_arg$5(Config, Spec, Behaviour, EventMappings, partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
 }
 

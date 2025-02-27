@@ -26,6 +26,8 @@ var EventSourceMapping;
 
 var Kinesis_Runtime;
 
+var Lambda;
+
 var SesPolicy_Runtime;
 
 var SNS;
@@ -54,6 +56,7 @@ exports.DynamoDbStream_Runtime = DynamoDbStream_Runtime;
 exports.DynamoDbStream = DynamoDbStream;
 exports.EventSourceMapping = EventSourceMapping;
 exports.Kinesis_Runtime = Kinesis_Runtime;
+exports.Lambda = Lambda;
 exports.SesPolicy_Runtime = SesPolicy_Runtime;
 exports.SNS = SNS;
 exports.SNS_FIFO = SNS_FIFO;

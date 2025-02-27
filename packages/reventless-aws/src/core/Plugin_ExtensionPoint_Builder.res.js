@@ -4,17 +4,19 @@
 var CommandTopicChannel_SQS$ReventlessAws = require("../adapter/CommandTopic/CommandTopicChannel_SQS.res.js");
 var EventTopicPublisher_SNS$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_SNS.res.js");
 var PluginExtensionPoint_Builder$Reventless = require("@reventless/reventless/src/core/ExtensionPoints/Plugin/PluginExtensionPoint_Builder.res.js");
-var RuntimeEnvironment_Lambda_SQS$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda_SQS.res.js");
+var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 
 var partial_arg = EventTopicPublisher_SNS$ReventlessAws;
 
-var partial_arg$1 = CommandTopicChannel_SQS$ReventlessAws;
+var partial_arg$1 = {
+  make: CommandTopicChannel_SQS$ReventlessAws.make
+};
 
 var partial_arg$2 = PluginExtensionPoint_Builder$Reventless.Make;
 
 var Make = (function (param) {
       return partial_arg$2(partial_arg$1, partial_arg, param);
-    })(RuntimeEnvironment_Lambda_SQS$ReventlessAws);
+    })(RuntimeEnvironment_Lambda$ReventlessAws);
 
 exports.Make = Make;
 /* Make Not a pure module */

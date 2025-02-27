@@ -3,7 +3,11 @@ module type Ops = {
   let commandsHandler: CommandTopic.commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 }
 
-module Make = (Spec: CommandTopic.Spec, Ops: Ops) => {
+module type T = {
+  let handleJsonCommands: CommandTopic.jsonCommandsHandler
+}
+
+module Make = (Spec: CommandTopic.Spec, Ops: Ops with module Spec = Spec): T => {
   let handleJsonCommands = async jsonItems => {
     Logger.debug(~loc=__LOC__, "starting handleCommands. Command count", jsonItems->Belt.Array.size)
     let topicItems = jsonItems->Belt.Array.keepMap(({

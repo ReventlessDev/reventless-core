@@ -4,9 +4,21 @@ module Make = (
   Behaviour: Behaviour.T with module Spec := Spec,
   Resolvers: CommandGenerator_Adapter.Resolvers with type api := Config.api,
 ): CommandGenerator.T => {
-  let construct = (self, name, ~api, ~publishJsons) => {
+  let construct = (self, name, ~api, ~runtime) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
+    let resolvers = Resolvers.make(
+      ~name=name->ComponentType.name(CommandGenerator.componentType),
+      ~api,
+      ~fields=Behaviour.resolverConfig.fields,
+      ~runtime,
+      ~opts,
+    )
+
+    self->Component.setOutputs({CommandGenerator.resources: resolvers.resources})
+  }
+
+  let makeHandler = (~publishJsons) => {
     module Callback = CommandGenerator_Callback.Make(
       {
         let publishJsons = publishJsons
@@ -15,22 +27,14 @@ module Make = (
       Behaviour,
     )
 
-    let resolvers = Resolvers.make(
-      ~name=name->ComponentType.name(CommandGenerator.componentType),
-      ~api,
-      ~fields=Behaviour.resolverConfig.fields,
-      ~commandGenerator=Callback.generateCommand,
-      ~opts,
-    )
-
-    self->Component.setOutputs({CommandGenerator.resources: resolvers.resources})
+    Resolvers.makeHandler(Callback.generateCommand)
   }
 
-  let make = (~name, ~publishJsons, ~opts=?): CommandGenerator.component =>
+  let make = (~name, ~runtime, ~opts=?): CommandGenerator.component =>
     Component.make(
       ~componentType=CommandGenerator.componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~api=Config.api, ~publishJsons, ...),
+      ~construct=construct(~api=Config.api, ~runtime, ...),
       ~opts,
     )
 }

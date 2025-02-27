@@ -11,11 +11,20 @@ module type Spec = {
   let queryEngine: ReventlessSpec.QueryEngine.operations
 }
 
+module type T = {
+  module MappingSpec: ReventlessSpec.ExtensionPointMapping.Spec
+  let handleIncomingCommands: CommandTopic.commandsHandler<
+    Message.command'<ReventlessSpec.Id.String.t, MappingSpec.command>,
+  >
+}
+
 module Make = (
   Spec: Spec,
   MappingSpec: ReventlessSpec.ExtensionPointMapping.Spec,
   Mappings: Mappings with module Spec := MappingSpec,
-) => {
+): (T with module MappingSpec = MappingSpec) => {
+  module MappingSpec = MappingSpec
+
   let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, queue) =>
     mappings
     ->Belt.Array.map((module(Mapping: Mappings.Mapping)) =>
@@ -59,7 +68,7 @@ module Make = (
       }
     }
 
-  let incomingCommandsHandler = async topicItems => {
+  let handleIncomingCommands = async topicItems => {
     let commandActions =
       topicItems->mapIncomingCommands(
         Mappings.mappings,

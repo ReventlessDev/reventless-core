@@ -73,6 +73,26 @@ function findUnwrappedResource(resources) {
   return Util_AdapterRuntime$Reventless.findUnwrappedResource(resources, service);
 }
 
+function toResource$1(param) {
+  var match = param.eventSourceMapping;
+  var id = match.id;
+  return {
+          name: id,
+          id: id,
+          urn: match.arn,
+          info: id.apply(function (param) {
+                return "";
+              }),
+          service: id.apply(function (param) {
+                return service;
+              })
+        };
+}
+
+var Subscription = {
+  toResource: toResource$1
+};
+
 exports.service = service;
 exports.toRuntimeQueueOutput = toRuntimeQueueOutput;
 exports.toResource = toResource;
@@ -82,4 +102,5 @@ exports.subscribeToSnsTopic = subscribeToSnsTopic;
 exports.findResource = findResource;
 exports.findResourceInOutput = findResourceInOutput;
 exports.findUnwrappedResource = findUnwrappedResource;
+exports.Subscription = Subscription;
 /* @pulumi/aws Not a pure module */

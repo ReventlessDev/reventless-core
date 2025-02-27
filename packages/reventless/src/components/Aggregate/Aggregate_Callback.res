@@ -6,9 +6,7 @@ module type Ops = {
 
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec
-  let handleCommands: array<
-    CommandTopic.topicItem<Reventless.Message.command'<Spec.Id.t, Spec.command>>,
-  > => promise<array<result<string, string>>>
+  let handleCommands: CommandTopic.commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 }
 
 module Make = (

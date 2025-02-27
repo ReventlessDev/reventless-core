@@ -4,15 +4,30 @@
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var AWS$ReventlessAws = require("../AWS.res.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var CommandTopic$Reventless = require("@reventless/reventless/src/components/CommandTopic/CommandTopic.res.js");
+var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.res.js");
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
 var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("./CommandTopicChannel_SQS_Runtime.res.js");
+
+function subscribe(name, channel, runtime, opts) {
+  var opts$1 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
+  var queue = Util_SQS$ReventlessAws.fromResource(Util_SQS$ReventlessAws.findResource(channel.resources));
+  var handler = Util_Lambda$ReventlessAws.fromResource(Util_Lambda$ReventlessAws.findResource(runtime.resources));
+  return [Adapter$Reventless.outputToResource(Pulumi.all([
+                      queue,
+                      handler
+                    ]).apply(function (param) {
+                    return Util_SQS$ReventlessAws.Subscription.toResource(param[0].onEvent(name, param[1], undefined, opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined));
+                  }))];
+}
 
 function make(name, opts) {
   var opts$1 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
@@ -32,12 +47,17 @@ function make(name, opts) {
   return {
           resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
           publishJsons: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
-                return function (extra) {
-                  return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, Util_SQS_FIFO$ReventlessAws.service, extra);
-                };
-              })
+                return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, Util_SQS_FIFO$ReventlessAws.service);
+              }),
+          handleChannelEvent: (function (handleCommands) {
+              return Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
+                          return CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(runtimeQueue, handleCommands);
+                        });
+            }),
+          subscribe: subscribe
         };
 }
 
+exports.subscribe = subscribe;
 exports.make = make;
 /* @pulumi/aws Not a pure module */

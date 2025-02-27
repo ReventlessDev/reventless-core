@@ -63,14 +63,13 @@ function Make(Spec, MappingSpec, Mappings) {
             _0: reference$1
           };
   };
-  var incomingCommandsHandler = async function (topicItems) {
+  var handleIncomingCommands = async function (topicItems) {
     var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, Spec.scheduler, Spec.queryEngine, Spec.commandTopicResources);
     return await Promise.all(Belt_Array.map(commandActions, applyCommandAction));
   };
   return {
-          mapIncomingCommands: mapIncomingCommands,
-          applyCommandAction: applyCommandAction,
-          incomingCommandsHandler: incomingCommandsHandler
+          MappingSpec: MappingSpec,
+          handleIncomingCommands: handleIncomingCommands
         };
 }
 

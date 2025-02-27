@@ -1,42 +1,35 @@
-open PulumiAws
+type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
 
-type api = Pulumi.Output.t<AppSync.GraphQLApi.t>
+let makeHandler = (generateCommand: Reventless.CommandGenerator.commandGenerator) =>
+  Pulumi.Output.make((event, _) => event->generateCommand)
 
 let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
   ~name: string,
   ~api: api,
   ~fields,
-  ~commandGenerator: Reventless.CommandGenerator_Callback.commandGenerator,
+  ~runtime: Reventless.Runtime.environment,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => {
-  let commandGeneratorLambda = Lambda.CallbackFunction.make(
-    ~name,
-    ~args=Lambda.CallbackFunction.Args.make(
-      ~callback=CommandGeneratorResolvers_AppSync_Runtime.generateCommand(commandGenerator, ...),
-    ),
-    ~opts,
-  )
+  let commandGeneratorArn = (runtime.resources->Util.Lambda.findResource).urn
 
-  let commandGeneratorArn = commandGeneratorLambda.arn
-
-  let _commandGeneratorPermission = Lambda.Permission.make(
+  let _commandGeneratorPermission = PulumiAws.Lambda.Permission.make(
     ~name,
     ~args={
-      Lambda.Permission.action: "lambda:InvokeFunction",
+      PulumiAws.Lambda.Permission.action: "lambda:InvokeFunction",
       function: commandGeneratorArn->Pulumi.Output.asInput,
       principal: "appsync.amazonaws.com",
     },
     ~opts,
   )
 
-  let dataSourceRole = IAM.Role.makeWithDefaultPolicy(
+  let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "DS",
     ~service="appsync.amazonaws.com"->Pulumi.Output.make,
     ~opts,
   )
 
   let _dataSourcePolicy = {
-    open IAM
+    open PulumiAws.IAM
     RolePolicy.make(
       ~name=name ++ "DS",
       ~args={
@@ -51,13 +44,13 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
     )
   }
 
-  let dataSource = AppSync.DataSource.make(
+  let dataSource = PulumiAws.AppSync.DataSource.make(
     ~name,
     ~args={
       type_: AWS_LAMBDA,
       apiId: api->Pulumi.Output.flatMap(api => api.id)->Pulumi.Output.asInput,
       lambdaConfig: {
-        AppSync.DataSource.functionArn: commandGeneratorArn->Pulumi.Output.asInput,
+        PulumiAws.AppSync.DataSource.functionArn: commandGeneratorArn->Pulumi.Output.asInput,
       }->Pulumi.Input.make,
       serviceRoleArn: dataSourceRole.arn->Pulumi.Output.asInput,
     },
@@ -85,14 +78,14 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
     | [_aggregate, commandName] => commandName->StringLabels.capitalize_ascii
     | _ => field->StringLabels.capitalize_ascii
     }
-    AppSync.Resolver.makeUnitResolver(
+    PulumiAws.AppSync.Resolver.makeUnitResolver(
       ~name=field->StringLabels.capitalize_ascii,
       ~api,
       ~dataSourceName=dataSource.name->Pulumi.Output.asInput,
       ~type_="Mutation"->Pulumi.Input.make,
       ~field=field->Pulumi.Input.make,
       ~requestTemplate=invokeCommandGenerator(commandName),
-      ~responseTemplate=AppSync.Resolver.Templates.result,
+      ~responseTemplate=PulumiAws.AppSync.Resolver.Templates.result,
       ~opts,
     )
   })

@@ -8,28 +8,32 @@ var CommandGenerator$Reventless = require("./CommandGenerator.res.js");
 var CommandGenerator_Callback$Reventless = require("./CommandGenerator_Callback.res.js");
 
 function Make(Config, Spec, Behaviour, Resolvers) {
-  var make = function (name, publishJsons, opts) {
+  var makeHandler = function (publishJsons) {
+    var partial_arg = {
+      publishJsons: publishJsons
+    };
+    var partial_arg$1 = CommandGenerator_Callback$Reventless.Make;
+    var partial_arg$2 = function (param, param$1) {
+      return partial_arg$1(partial_arg, param, param$1);
+    };
+    var Callback = partial_arg$2(Spec, Behaviour);
+    return Resolvers.makeHandler(Callback.generateCommand);
+  };
+  var make = function (name, runtime, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(CommandGenerator$Reventless.componentType), name, (function (none, none$1) {
                   var api = Config.api;
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(none));
                   var opts = {
                     parent: opts_parent
                   };
-                  var partial_arg = {
-                    publishJsons: publishJsons
-                  };
-                  var partial_arg$1 = CommandGenerator_Callback$Reventless.Make;
-                  var partial_arg$2 = function (param, param$1) {
-                    return partial_arg$1(partial_arg, param, param$1);
-                  };
-                  var Callback = partial_arg$2(Spec, Behaviour);
-                  var resolvers = Resolvers.make(ComponentType$Reventless.name(none$1, CommandGenerator$Reventless.componentType), api, Behaviour.resolverConfig.fields, Callback.generateCommand, opts);
+                  var resolvers = Resolvers.make(ComponentType$Reventless.name(none$1, CommandGenerator$Reventless.componentType), api, Behaviour.resolverConfig.fields, runtime, opts);
                   return Component$Reventless.setOutputs(none, {
                               resources: resolvers.resources
                             });
                 }), opts);
   };
   return {
+          makeHandler: makeHandler,
           make: make
         };
 }

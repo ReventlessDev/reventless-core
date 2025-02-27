@@ -54,9 +54,7 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
         var match = param[0];
         var errorResources = match[1];
         var eventHandlerLambda = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2).apply(function (policies) {
-              return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
-                                return EventCollectorChannel_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, runtimeQueue, extra, extra$1);
-                              }), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType), undefined), opts);
+              return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(EventCollectorChannel_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, runtimeQueue), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType), undefined), opts);
             });
         eventHandlerLambda.apply(function (eventHandlerLambda) {
               return queue.onEvent(name, eventHandlerLambda, undefined, opts);

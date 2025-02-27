@@ -15,7 +15,7 @@ function Make(Spec, Behaviour, Ops) {
     var errorJson = JSON.stringify(Spec.error_encode(error));
     var commandJsonStr = JSON.stringify(Spec.command_encode(command));
     var id = context.id;
-    Logger$Reventless.error("File \"Aggregate_Callback.res\", line 27, characters 11-18", undefined, undefined, "Behaviour error " + errorJson + " in " + Spec.name + "(" + id + "): Command: ", commandJsonStr);
+    Logger$Reventless.error("File \"Aggregate_Callback.res\", line 25, characters 11-18", undefined, undefined, "Behaviour error " + errorJson + " in " + Spec.name + "(" + id + "): Command: ", commandJsonStr);
     return [];
   };
   var groupTopicItemsById = function (topicItems) {
@@ -50,7 +50,7 @@ function Make(Spec, Behaviour, Ops) {
           };
   };
   var handleCommands = async function (topicItems) {
-    Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 69, characters 22-29", undefined, undefined, "starting", "Aggregate.execCommands");
+    Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 67, characters 22-29", undefined, undefined, "starting", "Aggregate.execCommands");
     return Belt_Array.concatMany(await Promise.all(Belt_Array.map(groupTopicItemsById(topicItems), (async function (param) {
                           var topicItemsForId = param[1];
                           var id = param[0];
@@ -72,7 +72,7 @@ function Make(Spec, Behaviour, Ops) {
                                 catch (raw_event){
                                   var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
                                   if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-                                    Logger$Reventless.error("File \"Aggregate_Callback.res\", line 89, characters 34-41", undefined, undefined, "Behaviour.execute: InvalidEvent", $$event._1);
+                                    Logger$Reventless.error("File \"Aggregate_Callback.res\", line 87, characters 34-41", undefined, undefined, "Behaviour.execute: InvalidEvent", $$event._1);
                                     generatedEvents = [];
                                   } else {
                                     throw $$event;
@@ -107,8 +107,8 @@ function Make(Spec, Behaviour, Ops) {
                               return acc;
                             }
                           };
-                          Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 117, characters 26-33", undefined, undefined, "finished eventLogReplay for id", id);
-                          Logger$Reventless.logCmdJsons("File \"Aggregate_Callback.res\", line 129, characters 34-41", undefined, Belt_Array.map(topicItemsForId, (function (param) {
+                          Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 115, characters 26-33", undefined, undefined, "finished eventLogReplay for id", id);
+                          Logger$Reventless.logCmdJsons("File \"Aggregate_Callback.res\", line 127, characters 34-41", undefined, Belt_Array.map(topicItemsForId, (function (param) {
                                       return Message$Reventless.commandJsonOfCommand$p(Spec.Id.toString, Spec.command_encode, param.command);
                                     })), "Handling command");
                           var match = Belt_Array.unzip(Belt_Array.map(topicItemsForId, (function (param) {
@@ -143,7 +143,7 @@ function Make(Spec, Behaviour, Ops) {
                                       })));
                             var match$1 = await Ops.eventLog.append(history.length, id, events);
                             if (match$1.TAG === "Ok") {
-                              Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 167, characters 30-37", undefined, undefined, "finished eventLogAppend for id", Spec.Id.toString(id));
+                              Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 165, characters 30-37", undefined, undefined, "finished eventLogAppend for id", Spec.Id.toString(id));
                               return Belt_Array.map(references, (function (reference) {
                                             return {
                                                     TAG: "Ok",
@@ -151,7 +151,7 @@ function Make(Spec, Behaviour, Ops) {
                                                   };
                                           }));
                             }
-                            Logger$Reventless.error("File \"Aggregate_Callback.res\", line 170, characters 30-37", undefined, undefined, "failed eventLogAppend for id", Spec.Id.toString(id));
+                            Logger$Reventless.error("File \"Aggregate_Callback.res\", line 168, characters 30-37", undefined, undefined, "failed eventLogAppend for id", Spec.Id.toString(id));
                             return Belt_Array.map(references, (function (reference) {
                                           return {
                                                   TAG: "Error",
@@ -159,7 +159,7 @@ function Make(Spec, Behaviour, Ops) {
                                                 };
                                         }));
                           }
-                          Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 153, characters 19-26", undefined, undefined, "handleCommands(" + Spec.Id.toString(id) + ")", "no Event generated");
+                          Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 151, characters 19-26", undefined, undefined, "handleCommands(" + Spec.Id.toString(id) + ")", "no Event generated");
                           return Belt_Array.map(references, (function (reference) {
                                         return {
                                                 TAG: "Ok",

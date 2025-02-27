@@ -1,10 +1,11 @@
-type channelMaker = (
+type channelMaker<'callbackEvent, 'context> = (
   ~name: string,
   ~opts: Pulumi.ComponentResource.options=?,
-) => CommandTopic.channel
+) => CommandTopic.channel<'callbackEvent, 'context>
 
 module type Channel = {
-  let make: channelMaker
+  type callbackEvent
+  let make: channelMaker<callbackEvent, 'context>
 }
 
 type remoteChannel = {remotePublish: CommandTopic.publishJsons}

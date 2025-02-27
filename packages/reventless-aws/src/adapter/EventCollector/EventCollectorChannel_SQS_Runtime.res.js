@@ -5,50 +5,53 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 
-async function handleCallbackEvent(handleEvents, queue, callbackEvent, param) {
-  var jsons = Belt_Array.keepMap(callbackEvent.Records, (function (record) {
-          var eventSource = record.eventSource;
-          switch (eventSource) {
-            case "aws:dynamodb" :
-                var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
-                if (typeof match !== "object") {
-                  console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
-                  return ;
+function handleCallbackEvent(handleEvents, queue) {
+  return async function ($$event, param) {
+    var records = $$event.Records;
+    var jsons = Belt_Array.keepMap(records, (function (record) {
+            var eventSource = record.eventSource;
+            switch (eventSource) {
+              case "aws:dynamodb" :
+                  var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
+                  if (typeof match !== "object") {
+                    console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
+                    return ;
+                  }
+                  switch (match.TAG) {
+                    case "OldImage" :
+                        console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
+                        return ;
+                    case "NewImage" :
+                    case "NewAndOldImage" :
+                        return match._1;
+                    
+                  }
+              case "aws:sqs" :
+                  return Util_SQS_Runtime$ReventlessAws.parseSqsRecord(record);
+              default:
+                console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: ignoring record from eventSource:", eventSource);
+                return ;
+            }
+          }));
+    await handleEvents(jsons);
+    var entries = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
+                var match = record.eventSource;
+                if (match === "aws:sqs") {
+                  return true;
+                } else {
+                  return false;
                 }
-                switch (match.TAG) {
-                  case "OldImage" :
-                      console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
-                      return ;
-                  case "NewImage" :
-                  case "NewAndOldImage" :
-                      return match._1;
-                  
-                }
-            case "aws:sqs" :
-                return Util_SQS_Runtime$ReventlessAws.parseSqsRecord(record);
-            default:
-              console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: ignoring record from eventSource:", eventSource);
-              return ;
-          }
-        }));
-  await handleEvents(jsons);
-  var entries = Belt_Array.mapWithIndex(Belt_Array.keep(callbackEvent.Records, (function (record) {
-              var match = record.eventSource;
-              if (match === "aws:sqs") {
-                return true;
-              } else {
-                return false;
-              }
-            })), (function (idx, record) {
-          return {
-                  Id: String(idx),
-                  ReceiptHandle: record.receiptHandle
-                };
-        }));
-  if (entries.length !== 0) {
-    return await Util_SQS_Runtime$ReventlessAws.deleteMessages(entries, queue);
-  }
-  
+              })), (function (idx, record) {
+            return {
+                    Id: String(idx),
+                    ReceiptHandle: record.receiptHandle
+                  };
+          }));
+    if (entries.length !== 0) {
+      return await Util_SQS_Runtime$ReventlessAws.deleteMessages(entries, queue);
+    }
+    
+  };
 }
 
 function enqueueEvent(queue, delay, _id, messageBody) {
