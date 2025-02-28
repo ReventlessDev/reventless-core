@@ -3,6 +3,7 @@ module Make = (
   EventCollectorChannel: EventCollector_Adapter.Channel,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
+  RuntimeEnvironment: Runtime.Environment,
 ) => {
   type readModel = {
     module_: module(ReadModel.T),
@@ -103,18 +104,24 @@ module Make = (
           extensionPointsOutgoingEventHandlers
           ->Pulumi.Output.all
           ->Pulumi.Output.apply(extensionPointsOutgoingEventHandlers => {
+            let childName = Core.componentType->ComponentType.toName
             module Callback = Core_Callback.Make({
               let pluginDefinition = fakePluginDefinition
               let outgoingExtensionPointEventHandlers = extensionPointsOutgoingEventHandlers
             })
-            module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
-
-            PluginEventCollector.make(
-              ~name=Core.componentType->ComponentType.toName,
-              ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
+            module CoreEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
+            let channel = CoreEventCollector.makeChannel(~name=childName, ~opts)
+            let handler = CoreEventCollector.makeHandler(
+              ~channel,
               ~eventsHandler=Callback.eventsHandler,
-              ~policy1=Pulumi.Output.make(None),
-              ~policy2=Pulumi.Output.make(None),
+            )
+            let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+
+            CoreEventCollector.make(
+              ~name=childName,
+              ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
+              ~channel,
+              ~runtime,
               ~opts=Some(opts),
             )->Component.outputs
           })
@@ -146,6 +153,6 @@ module Make = (
       ~componentType=Core.componentType->ComponentType.toString,
       ~name="Core",
       ~construct=construct(~version, ~extensionPoints, ~aggregates, ~readModels, ~scheduler, ...),
-      ~opts=None,
+      ~opts=None
     )
 }

@@ -22,8 +22,8 @@ module type T = {
     ~scheduler: Scheduler.operations,
     ~memorySize: int=?,
     ~timeout: int=?,
-    ~policy1: Pulumi.Output.t<option<string>>,
-    ~policy2: Pulumi.Output.t<option<string>>,
+    ~policy1: Pulumi.Output.t<string>=?,
+    ~policy2: Pulumi.Output.t<string>=?,
     ~opts: Pulumi.CustomResourceOptions.t=?,
   ) => component
 }

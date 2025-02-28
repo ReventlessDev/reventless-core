@@ -7,6 +7,7 @@ module Make = (
     with type api = Config.api
     and type role = Config.role,
   EventCollectorChannel: EventCollector_Adapter.Channel,
+  RuntimeEnvironment: Runtime.Environment,
 ): (ReadModel.T with module Spec = Spec) => {
   module Spec = Spec
 
@@ -48,6 +49,7 @@ module Make = (
       queryDb
       ->Component.operations
       ->Pulumi.Output.apply(operations => {
+        let childName = name->ComponentType.name(ReadModel.componentType)
         module Callback = ReadModel_Callback.Make(
           Spec,
           Mappings,
@@ -56,13 +58,17 @@ module Make = (
             let operations = operations->toProjectionOperations
           },
         )
-        SpecificEventCollector.make(
-          ~name=name->ComponentType.name(ReadModel.componentType),
-          ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
+        let channel = SpecificEventCollector.makeChannel(~name=childName, ~opts)
+        let handler = SpecificEventCollector.makeHandler(
+          ~channel,
           ~eventsHandler=Callback.eventsHandler,
-          ~memorySize=2048,
-          ~policy1=Pulumi.Output.make(None),
-          ~policy2=Pulumi.Output.make(None),
+        )
+        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+        SpecificEventCollector.make(
+          ~name=childName,
+          ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
+          ~channel,
+          ~runtime,
           ~opts=Some(opts),
         )
       })
@@ -85,6 +91,6 @@ module Make = (
       ~componentType=ReadModel.componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~allEventTopics, ...),
-      ~opts,
+      ~opts
     )
 }

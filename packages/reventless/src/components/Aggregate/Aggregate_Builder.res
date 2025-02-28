@@ -18,6 +18,7 @@ module Make = (
       Spec,
       SpecificEventCollector,
       EventMappings,
+      RuntimeEnvironment,
     )
 
     let outputs = component->Component.outputs
@@ -41,7 +42,6 @@ module Make = (
 
   let construct = (self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
-
     let childName = name->ComponentType.name(Aggregate.componentType)
 
     module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
@@ -67,6 +67,7 @@ module Make = (
           ~commandsHandler=AggregateCallback.handleCommands,
         )
         let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+
         SpecificCommandTopic.make(~name=childName, ~channel, ~runtime, ~opts)
       })
 

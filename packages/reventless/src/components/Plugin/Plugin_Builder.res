@@ -78,6 +78,7 @@ module Make = (
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   CorePluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
   HeartbeatRunner: Heartbeat_Adapter.Runner,
+  RuntimeEnvironment: Runtime.Environment,
 ): Plugin.T => {
   type readModel = {
     module_: module(ReadModel.T),
@@ -360,6 +361,7 @@ module Make = (
           },
         )
 
+        let childName = name->ComponentType.name(Plugin.componentType)
         let eventCollectorOutputs =
           (
             pluginDefinition,
@@ -404,13 +406,18 @@ module Make = (
               )
             })
             module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
+            let channel = PluginEventCollector.makeChannel(~name=childName, ~opts)
+            let handler = PluginEventCollector.makeHandler(
+              ~channel,
+              ~eventsHandler=Callback.eventsHandler,
+            )
+            let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
 
             let eventCollector = PluginEventCollector.make(
-              ~name=name->ComponentType.name(Plugin.componentType),
+              ~name=childName,
               ~eventTopics,
-              ~eventsHandler=Callback.eventsHandler,
-              ~policy1=Pulumi.Output.make(None),
-              ~policy2=Pulumi.Output.make(None),
+              ~channel,
+              ~runtime,
               ~opts=Some(opts),
             )
             let eventCollectorOutputs = eventCollector->Component.outputs
@@ -425,7 +432,7 @@ module Make = (
         module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner)
         let heartbeat = SpecificHeartbeat.make(
           ~id,
-          ~name=name ++ Plugin.componentType->ComponentType.toName,
+          ~name=childName,
           ~timeout=heartbeatInterval,
           ~publishToCorePluginExtensionPoint,
           ~opts,
@@ -493,6 +500,6 @@ module Make = (
         ~scheduler,
         ...
       ),
-      ~opts,
+      ~opts
     )
 }

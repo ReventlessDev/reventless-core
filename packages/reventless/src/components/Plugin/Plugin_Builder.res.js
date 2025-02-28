@@ -83,7 +83,7 @@ function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEvent
   return dict;
 }
 
-function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner) {
+function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner, RuntimeEnvironment) {
   var make = function (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(Plugin$Reventless.componentType), name, (function (extra, extra$1) {
                   var id = makeId(extra$1, version);
@@ -257,6 +257,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                         eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
                           resources: Belt_Array.map(corePluginExtensionPointUnwrapped.eventTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource)
                         };
+                        var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
                         var eventCollectorOutputs = Pulumi.all([
                                 pluginDefinition,
                                 match$2[1],
@@ -288,7 +289,10 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                     incomingExtensionEventHandlers: incomingExtensionEventHandlers
                                   });
                               var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
-                              var eventCollector = PluginEventCollector.make(ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType), eventTopics, Callback.eventsHandler, undefined, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
+                              var channel = PluginEventCollector.makeChannel(childName, opts);
+                              var handler = PluginEventCollector.makeHandler(channel, Callback.eventsHandler);
+                              var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, undefined, undefined, opts);
+                              var eventCollector = PluginEventCollector.make(childName, eventTopics, channel, runtime, opts);
                               var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;
@@ -296,7 +300,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                               return eventCollectorOutputs;
                             });
                         var SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
-                        var heartbeat = SpecificHeartbeat.make(id, extra$1 + ComponentType$Reventless.toName(Plugin$Reventless.componentType), heartbeatInterval, publishToCorePluginExtensionPoint, opts);
+                        var heartbeat = SpecificHeartbeat.make(id, childName, heartbeatInterval, publishToCorePluginExtensionPoint, opts);
                         return {
                                 id: id,
                                 version: version,

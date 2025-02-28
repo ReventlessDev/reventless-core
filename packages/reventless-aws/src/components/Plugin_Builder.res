@@ -3,4 +3,5 @@ include Reventless.Plugin_Builder.Make(
   QueryEngine.DynamoDb,
   CommandTopicRemoteChannel.SQS,
   HeartbeatRunner.Lambda,
+  RuntimeEnvironment_Lambda,
 )

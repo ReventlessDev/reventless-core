@@ -10,7 +10,9 @@ var EventCollectorChannel_DynamoDbStream$ReventlessAws = require("../adapter/Eve
 var CommandGeneratorResolvers_AppSync_Lambda$ReventlessAws = require("../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync_Lambda.res.js");
 
 function Make(Config, Spec, Behaviour, EventMappings) {
-  var partial_arg = EventCollectorChannel_DynamoDbStream$ReventlessAws;
+  var partial_arg = {
+    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+  };
   var partial_arg$1 = EventTopicPublisher_DynamoDbStream$ReventlessAws;
   var partial_arg$2 = EventLogStorage_DynamoDbStream$ReventlessAws;
   var partial_arg$3 = {

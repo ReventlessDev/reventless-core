@@ -9,4 +9,5 @@ module Make = (
   QueryDbStorage.DynamoDb,
   QueryDbResolvers.AppSync,
   EventCollectorChannel.DynamoDbStream,
+  RuntimeEnvironment_Lambda,
 )

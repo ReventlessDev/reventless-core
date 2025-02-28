@@ -4,7 +4,6 @@
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
-var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Component$Reventless = require("../Component.res.js");
 var ReadModel$Reventless = require("./ReadModel.res.js");
@@ -14,7 +13,7 @@ var Util_EventTopic$Reventless = require("../../util/Util_EventTopic.res.js");
 var ReadModel_Callback$Reventless = require("./ReadModel_Callback.res.js");
 var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
 
-function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCollectorChannel) {
+function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCollectorChannel, RuntimeEnvironment) {
   var make = function (allEventTopics, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(ReadModel$Reventless.componentType), Spec.name, (function (extra, extra$1) {
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
@@ -71,6 +70,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                             })));
                   var SpecificEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                   var eventCollector = Component$Reventless.operations(queryDb).apply(function (operations) {
+                        var childName = ComponentType$Reventless.name(extra$1, ReadModel$Reventless.componentType);
                         var partial_arg = ReadModel_Callback$Reventless.Make;
                         var partial_arg$1 = function (param, param$1) {
                           return partial_arg(Spec, param, param$1);
@@ -80,7 +80,10 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                               ReadModelSpec: Spec,
                               operations: operations$1
                             });
-                        return SpecificEventCollector.make(ComponentType$Reventless.name(extra$1, ReadModel$Reventless.componentType), Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), Callback.eventsHandler, 2048, undefined, Pulumi.output(undefined), Pulumi.output(undefined), opts);
+                        var channel = SpecificEventCollector.makeChannel(childName, opts);
+                        var handler = SpecificEventCollector.makeHandler(channel, Callback.eventsHandler);
+                        var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, undefined, undefined, opts);
+                        return SpecificEventCollector.make(childName, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), channel, runtime, opts);
                       });
                   Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, (function (eventCollector) {
                                 return Component$Reventless.operations(eventCollector);

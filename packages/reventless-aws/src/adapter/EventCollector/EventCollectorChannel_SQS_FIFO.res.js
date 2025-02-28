@@ -6,12 +6,14 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
+var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector/EventCollector.res.js");
+var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.res.js");
 var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
@@ -22,7 +24,49 @@ var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSource
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
-function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, policy2, opts) {
+function subscribe(name, eventTopics, channel, runtime, opts) {
+  var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
+  var queue = Util_SQS$ReventlessAws.fromResource(Util_SQS$ReventlessAws.findResource(channel.resources));
+  var handler = Util_Lambda$ReventlessAws.fromResource(Util_Lambda$ReventlessAws.findResource(runtime.resources));
+  var eventTopicResources = Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
+            return Js_dict.map((function (eventTopic) {
+                          return eventTopic.resources;
+                        }), __x);
+          })(eventTopics), [
+        Util_DynamoDbStream_Runtime$ReventlessAws.service,
+        Util_SNS_FIFO$ReventlessAws.service
+      ]);
+  var subscriptionResource = Pulumi.all([
+          eventTopicResources,
+          queue,
+          handler
+        ]).apply(function (param) {
+        var handler = param[2];
+        var queue = param[1];
+        var match = param[0];
+        var errorResources = match[1];
+        Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [
+              Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),
+              Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents
+            ], opts$1);
+        var match$1 = Util_Adapter$Reventless.partitionUnwrappedResourcesByService(match[0], Util_SNS_FIFO$ReventlessAws.service);
+        Belt_Array.map(match$1[0], (function (param) {
+                return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_SNS_FIFO$ReventlessAws.findTopicInUnwrappedResources(param[1])), opts$1);
+              }));
+        Belt_Array.map(match$1[1], (function (param) {
+                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(handler), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts$1);
+              }));
+        if (errorResources.length !== 0) {
+          var eventTopicNames = errorResources.join(",");
+          Js_exn.raiseError("EventCollectorChannel_SQS_FIFO-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
+        }
+        return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, handler, undefined, opts$1));
+      });
+  return [Adapter$Reventless.outputToResource(subscriptionResource)];
+}
+
+function make(name, opts) {
+  var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = new (Aws.sqs.Queue)(name, {
         contentBasedDeduplication: true,
         fifoQueue: true,
@@ -30,57 +74,27 @@ function make(name, eventTopics, handleEvents, memorySize, timeout, policy1, pol
               return SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5);
             }),
         tags: AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType),
-        visibilityTimeoutSeconds: timeout,
+        visibilityTimeoutSeconds: 30,
         deduplicationScope: "messageGroup",
         fifoThroughputLimit: "perMessageGroupId",
         sqsManagedSseEnabled: false
-      }, opts);
-  Util_SqsQueuePolicy$ReventlessAws.make(name, queue, [
-        Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),
-        Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents
-      ], opts);
-  Pulumi.all([
-          Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
-                    return Js_dict.map((function (eventTopic) {
-                                  return eventTopic.resources;
-                                }), __x);
-                  })(eventTopics), [
-                Util_DynamoDbStream_Runtime$ReventlessAws.service,
-                Util_SNS_FIFO$ReventlessAws.service
-              ]),
-          Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue)
-        ]).apply(function (param) {
-        var runtimeQueue = param[1];
-        var match = param[0];
-        var errorResources = match[1];
-        var eventHandlerLambda = Lambda$PulumiAws.Policy.customPolicies(policy1, policy2).apply(function (policies) {
-              return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(EventCollectorChannel_SQS_Runtime$ReventlessAws.handleCallbackEvent(handleEvents, runtimeQueue), undefined, policies, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType), undefined), opts);
-            });
-        eventHandlerLambda.apply(function (eventHandlerLambda) {
-              return queue.onEvent(name, eventHandlerLambda, undefined, opts);
-            });
-        var match$1 = Util_Adapter$Reventless.partitionUnwrappedResourcesByService(match[0], Util_SNS_FIFO$ReventlessAws.service);
-        Belt_Array.map(match$1[0], (function (param) {
-                return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_SNS_FIFO$ReventlessAws.findTopicInUnwrappedResources(param[1])), opts);
-              }));
-        Belt_Array.map(match$1[1], (function (param) {
-                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, eventHandlerLambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts);
-              }));
-        if (errorResources.length === 0) {
-          return ;
-        }
-        var eventTopicNames = errorResources.join(",");
-        Js_exn.raiseError("EventCollectorChannel_SQS_FIFO-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
-      });
+      }, opts$1);
   return {
           resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
           enqueueEvent: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
                 return function (extra, extra$1, extra$2) {
                   return EventCollectorChannel_SQS_Runtime$ReventlessAws.enqueueEvent(runtimeQueue, extra, extra$1, extra$2);
                 };
-              })
+              }),
+          handleChannelEvent: (function (handleEvents) {
+              return Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
+                          return EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbOrSqsEvent(runtimeQueue, handleEvents);
+                        });
+            }),
+          subscribe: subscribe
         };
 }
 
+exports.subscribe = subscribe;
 exports.make = make;
 /* @pulumi/aws Not a pure module */

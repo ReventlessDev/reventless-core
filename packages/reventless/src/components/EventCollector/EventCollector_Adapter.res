@@ -1,19 +1,9 @@
-type channel = {
-  resources: array<ReventlessSpec.Adapter.resource>,
-  enqueueEvent: Pulumi.Output.t<EventCollector.enqueueEvent>,
-}
-
-type channelMaker = (
+type channelMaker<'callbackEvent, 'context> = (
   ~name: string,
-  ~eventTopics: EventTopic.allOutputs,
-  ~handleEvents: EventCollector.eventsHandler,
-  ~memorySize: int,
-  ~timeout: int,
-  ~policy1: Pulumi.Output.t<option<string>>,
-  ~policy2: Pulumi.Output.t<option<string>>,
-  ~opts: Pulumi.CustomResourceOptions.t,
-) => channel
+  ~opts: Pulumi.ComponentResource.options,
+) => EventCollector.channel<'callbackEvent, 'context>
 
 module type Channel = {
-  let make: channelMaker
+  type callbackEvent
+  let make: channelMaker<callbackEvent, 'context>
 }

@@ -61,7 +61,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                 eventLog: eventLogOps
               });
           var handler = SpecificCommandTopic.makeHandler(channel, AggregateCallback.handleCommands);
-          var runtime = RuntimeEnvironment.make(childName, handler, opts);
+          var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, undefined, undefined, opts);
           return SpecificCommandTopic.make(childName, channel, runtime, opts);
         });
     var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
@@ -71,7 +71,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                           return partial_arg(Config, Spec, param, param$1);
                         };
                         var SpecificCommandGenerator = partial_arg$1(Behaviour, CommandGeneratorResolvers);
-                        var runtime = RuntimeEnvironment.make(childName, SpecificCommandGenerator.makeHandler(param.publishJsons), opts);
+                        var runtime = RuntimeEnvironment.make(childName, SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, undefined, undefined, opts);
                         return Component$Reventless.outputs(SpecificCommandGenerator.make(childName, runtime, opts));
                       });
           }));
@@ -101,9 +101,9 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                     };
                     var partial_arg$1 = EventMapper_Builder$Reventless.Make;
                     var partial_arg$2 = function (param, param$1) {
-                      return partial_arg$1(partial_arg, param, param$1);
+                      return partial_arg$1(partial_arg, SpecificEventCollector, param, param$1);
                     };
-                    var SpecificEventMapper = partial_arg$2(SpecificEventCollector, EventMappings);
+                    var SpecificEventMapper = partial_arg$2(EventMappings, RuntimeEnvironment);
                     var outputs = Component$Reventless.outputs(self);
                     if (EventMappings.mappings.length === 0) {
                       return outputs;

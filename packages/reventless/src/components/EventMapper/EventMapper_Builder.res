@@ -1,7 +1,8 @@
 module Make = (
   Target: ReventlessSpec.EventMapping.Target,
-  EventCollector: EventCollector.T,
+  SpecificEventCollector: EventCollector.T,
   Mappings: EventMapper.Mappings with module Target := Target,
+  RuntimeEnvironment: Runtime.Environment,
 ): EventMapper.T => {
   module Target = Target
 
@@ -15,6 +16,7 @@ module Make = (
     name,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    let childName = Target.name->ComponentType.name(EventMapper.componentType)
 
     module CounterHandler = EventMapper_Callback.MakeCounterHandler(
       Target,
@@ -58,6 +60,7 @@ module Make = (
 
     let eventCollector = counterOperations->Pulumi.Output.apply(({count, addToCounterTarget}) =>
       {
+        let channel = SpecificEventCollector.makeChannel(~name=childName, ~opts)
         module EventCollectorHandler = EventMapper_Callback.MakeEventCollectorHandler({
           let publishJsons = publishJsons
           let count = count
@@ -65,14 +68,23 @@ module Make = (
           let commonEventsHandler = CounterHandler.commonEventsHandler
         })
 
-        EventCollector.make(
-          ~name=Target.name->ComponentType.name(EventMapper.componentType),
-          ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
-          ~eventsHandler=EventCollectorHandler.eventCollectorEventsHandler,
+        let handler = SpecificEventCollector.makeHandler(
+          ~channel,
+          ~eventsHandler=EventCollectorHandler.handleJsonEvents,
+        )
+        let runtime = RuntimeEnvironment.make(
+          ~name=childName,
+          ~handler,
           ~memorySize,
           ~timeout,
-          ~policy1=Pulumi.Output.make(None),
-          ~policy2=Pulumi.Output.make(None),
+          ~opts,
+        )
+
+        SpecificEventCollector.make(
+          ~name=childName,
+          ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
+          ~channel,
+          ~runtime,
           ~opts=Some(opts),
         )
       }->Component.outputs
@@ -104,6 +116,6 @@ module Make = (
         ~timeout,
         ...
       ),
-      ~opts,
+      ~opts
     )
 }

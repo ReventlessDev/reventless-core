@@ -4,8 +4,17 @@
 var EventCollector_Builder$Reventless = require("@reventless/reventless/src/components/EventCollector/EventCollector_Builder.res.js");
 var SideEffectHandler_Builder$Reventless = require("@reventless/reventless/src/components/SideEffectHandler/SideEffectHandler_Builder.res.js");
 var EventCollectorChannel_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_SQS.res.js");
+var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 
-var include = SideEffectHandler_Builder$Reventless.Make(EventCollector_Builder$Reventless.Make(EventCollectorChannel_SQS$ReventlessAws));
+var partial_arg = EventCollector_Builder$Reventless.Make({
+      make: EventCollectorChannel_SQS$ReventlessAws.make
+    });
+
+var partial_arg$1 = SideEffectHandler_Builder$Reventless.Make;
+
+var include = (function (param) {
+      return partial_arg$1(partial_arg, param);
+    })(RuntimeEnvironment_Lambda$ReventlessAws);
 
 var make = include.make;
 

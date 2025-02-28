@@ -1,4 +1,7 @@
-module Make = (SpecificEventCollector: EventCollector.T): SideEffectHandler.T => {
+module Make = (
+  SpecificEventCollector: EventCollector.T,
+  RuntimeEnvironment: Runtime.Environment,
+): SideEffectHandler.T => {
   let construct = (
     ~sideEffects,
     ~allEventTopics,
@@ -6,8 +9,8 @@ module Make = (SpecificEventCollector: EventCollector.T): SideEffectHandler.T =>
     ~scheduler,
     ~memorySize,
     ~timeout,
-    ~policy1,
-    ~policy2,
+    ~policy1=?,
+    ~policy2=?,
     self,
     name,
   ) => {
@@ -22,14 +25,26 @@ module Make = (SpecificEventCollector: EventCollector.T): SideEffectHandler.T =>
       let sideEffects = sideEffects
       let queryEngine = queryEngine
     })
+    let channel = SpecificEventCollector.makeChannel(~name, ~opts)
+    let handler = SpecificEventCollector.makeHandler(
+      ~channel,
+      ~eventsHandler=Callback.eventsHandler,
+    )
+    let runtime = RuntimeEnvironment.make(
+      ~name,
+      ~handler,
+      ~memorySize,
+      ~timeout,
+      ~policy1?,
+      ~policy2?,
+      ~opts,
+    )
+
     let eventCollector = SpecificEventCollector.make(
       ~name,
       ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
-      ~eventsHandler=Callback.eventsHandler,
-      ~memorySize,
-      ~timeout,
-      ~policy1,
-      ~policy2,
+      ~channel,
+      ~runtime,
       ~opts=Some(opts),
     )
     let eventCollectorResources =
@@ -59,8 +74,8 @@ module Make = (SpecificEventCollector: EventCollector.T): SideEffectHandler.T =>
     ~scheduler,
     ~memorySize=2048,
     ~timeout=180,
-    ~policy1: Pulumi.Output.t<option<string>>,
-    ~policy2: Pulumi.Output.t<option<string>>,
+    ~policy1=?,
+    ~policy2=?,
     ~opts=?,
   ) => {
     Component.make(
@@ -73,11 +88,11 @@ module Make = (SpecificEventCollector: EventCollector.T): SideEffectHandler.T =>
         ~scheduler,
         ~memorySize,
         ~timeout,
-        ~policy1,
-        ~policy2,
+        ~policy1?,
+        ~policy2?,
         ...
       ),
-      ~opts=opts->Belt.Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions),
+      ~opts=opts->Belt.Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions)
     )
   }
 }

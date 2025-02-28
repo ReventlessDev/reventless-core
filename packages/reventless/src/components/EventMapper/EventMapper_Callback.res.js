@@ -213,7 +213,7 @@ function MakeEventCollectorHandler(Ops) {
       return await doCount(countItems);
     }
   };
-  var eventCollectorEventsHandler = async function (events$pJson) {
+  var handleJsonEvents = async function (events$pJson) {
     var match = await Ops.commonEventsHandler(events$pJson);
     var match$1 = Belt_Array.partition(match[1], (function (x) {
             if (x.TAG === "Count") {
@@ -242,7 +242,7 @@ function MakeEventCollectorHandler(Ops) {
     return await Ops.publishJsons(await match[0]);
   };
   return {
-          eventCollectorEventsHandler: eventCollectorEventsHandler
+          handleJsonEvents: handleJsonEvents
         };
 }
 

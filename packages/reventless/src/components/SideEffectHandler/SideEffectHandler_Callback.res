@@ -4,7 +4,7 @@ module type Spec = {
 }
 
 module type T = {
-  let eventsHandler: EventCollector.eventsHandler
+  let eventsHandler: EventCollector.jsonEventsHandler
 }
 
 module Make = (Spec: Spec): T => {

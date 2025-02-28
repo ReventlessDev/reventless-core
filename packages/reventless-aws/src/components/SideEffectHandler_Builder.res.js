@@ -3,9 +3,18 @@
 
 var EventCollector_Builder$Reventless = require("@reventless/reventless/src/components/EventCollector/EventCollector_Builder.res.js");
 var SideEffectHandler_Builder$Reventless = require("@reventless/reventless/src/components/SideEffectHandler/SideEffectHandler_Builder.res.js");
+var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 var EventCollectorChannel_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.js");
 
-var include = SideEffectHandler_Builder$Reventless.Make(EventCollector_Builder$Reventless.Make(EventCollectorChannel_DynamoDbStream$ReventlessAws));
+var partial_arg = EventCollector_Builder$Reventless.Make({
+      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+    });
+
+var partial_arg$1 = SideEffectHandler_Builder$Reventless.Make;
+
+var include = (function (param) {
+      return partial_arg$1(partial_arg, param);
+    })(RuntimeEnvironment_Lambda$ReventlessAws);
 
 var make = include.make;
 

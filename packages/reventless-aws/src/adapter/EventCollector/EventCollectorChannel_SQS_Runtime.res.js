@@ -5,7 +5,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 
-function handleCallbackEvent(handleEvents, queue) {
+function handleDynamoDbOrSqsEvent(queue, handleEvents) {
   return async function ($$event, param) {
     var records = $$event.Records;
     var jsons = Belt_Array.keepMap(records, (function (record) {
@@ -14,12 +14,12 @@ function handleCallbackEvent(handleEvents, queue) {
               case "aws:dynamodb" :
                   var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
                   if (typeof match !== "object") {
-                    console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
+                    console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: no NewImage included in Stream event !");
                     return ;
                   }
                   switch (match.TAG) {
                     case "OldImage" :
-                        console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: no NewImage included in Stream event !");
+                        console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: no NewImage included in Stream event !");
                         return ;
                     case "NewImage" :
                     case "NewAndOldImage" :
@@ -29,7 +29,7 @@ function handleCallbackEvent(handleEvents, queue) {
               case "aws:sqs" :
                   return Util_SQS_Runtime$ReventlessAws.parseSqsRecord(record);
               default:
-                console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleCallbackEvent: ignoring record from eventSource:", eventSource);
+                console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: ignoring record from eventSource:", eventSource);
                 return ;
             }
           }));
@@ -54,6 +54,35 @@ function handleCallbackEvent(handleEvents, queue) {
   };
 }
 
+function handleDynamoDbEvent(handleEvents) {
+  return async function ($$event, param) {
+    var records = $$event.Records;
+    var jsons = Belt_Array.keepMap(records, (function (record) {
+            var eventSource = record.eventSource;
+            if (eventSource === "aws:dynamodb") {
+              var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);
+              if (typeof match !== "object") {
+                console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: no NewImage included in Stream event !");
+                return ;
+              }
+              switch (match.TAG) {
+                case "OldImage" :
+                    console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: no NewImage included in Stream event !");
+                    return ;
+                case "NewImage" :
+                case "NewAndOldImage" :
+                    return match._1;
+                
+              }
+            } else {
+              console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".handleChannelEvent: ignoring record from eventSource:", eventSource);
+              return ;
+            }
+          }));
+    return await handleEvents(jsons);
+  };
+}
+
 function enqueueEvent(queue, delay, _id, messageBody) {
   var queueName = queue.name;
   console.log("EventCollectorChannel_SQS_Runtime-ReventlessAws" + ".enqueueEvent:", delay, messageBody, queueName);
@@ -66,7 +95,8 @@ function enqueueFifoEvent(queue, delay, id, messageBody) {
   return Util_SQS_Runtime$ReventlessAws.sendFifoMessage(queue, delay, id, messageBody);
 }
 
-exports.handleCallbackEvent = handleCallbackEvent;
+exports.handleDynamoDbOrSqsEvent = handleDynamoDbOrSqsEvent;
+exports.handleDynamoDbEvent = handleDynamoDbEvent;
 exports.enqueueEvent = enqueueEvent;
 exports.enqueueFifoEvent = enqueueFifoEvent;
 /* Util_SQS_Runtime-ReventlessAws Not a pure module */
