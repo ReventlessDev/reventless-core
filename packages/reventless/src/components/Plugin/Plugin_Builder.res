@@ -37,8 +37,6 @@ let getStorageResources = (allQueryDbs, pluginName, queryDbName) =>
   | Some(pluginName) => getRemoteStorageResources(pluginName, queryDbName)
   }
 
-let makeId = (name, version) => `${name}@${version}`
-
 type eventHandler = Plugin_Callback.eventHandler
 type eventHandlers = {
   outgoing?: eventHandler,
@@ -97,7 +95,7 @@ module Make = (
     self,
     name,
   ) => {
-    let id = makeId(name, version)
+    let id = Plugin.makeId(name, version)
 
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 

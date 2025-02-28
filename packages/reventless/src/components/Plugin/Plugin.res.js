@@ -2,7 +2,12 @@
 'use strict';
 
 
+function makeId(name, version) {
+  return name + "@" + version;
+}
+
 var componentType = "Plugin";
 
 exports.componentType = componentType;
+exports.makeId = makeId;
 /* No side effect */

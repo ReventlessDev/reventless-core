@@ -53,10 +53,6 @@ function getStorageResources(allQueryDbs, pluginName, queryDbName) {
   }
 }
 
-function makeId(name, version) {
-  return name + "@" + version;
-}
-
 function getIncomingEventHandler(eventHandlers) {
   return eventHandlers.incoming;
 }
@@ -86,7 +82,7 @@ function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEvent
 function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner, RuntimeEnvironment) {
   var make = function (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(Plugin$Reventless.componentType), name, (function (extra, extra$1) {
-                  var id = makeId(extra$1, version);
+                  var id = Plugin$Reventless.makeId(extra$1, version);
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
                   var opts = {
                     parent: opts_parent
@@ -377,7 +373,6 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
 
 exports.getRemoteStorageResources = getRemoteStorageResources;
 exports.getStorageResources = getStorageResources;
-exports.makeId = makeId;
 exports.getIncomingEventHandler = getIncomingEventHandler;
 exports.getOutgoingEventHandler = getOutgoingEventHandler;
 exports.serviceNameToEventHandlers = serviceNameToEventHandlers;

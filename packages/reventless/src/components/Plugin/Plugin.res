@@ -31,3 +31,5 @@ module type T = {
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }
+
+let makeId = (name, version) => `${name}@${version}`
