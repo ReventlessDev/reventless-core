@@ -2,39 +2,45 @@
 'use strict';
 
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Component$Reventless = require("../Component.res.js");
 var Heartbeat$Reventless = require("./Heartbeat.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var Heartbeat_Callback$Reventless = require("./Heartbeat_Callback.res.js");
 
-function Make(Runner) {
-  var construct = function (id, timeout, publishToCorePluginExtensionPoint, self, name) {
+function Make(Runner, RuntimeEnvironment) {
+  var construct = function (timeout, runtime, self, name) {
     var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {
       parent: opts_parent
     };
-    var Callback = Heartbeat_Callback$Reventless.Make({
-          publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
-          id: id,
-          timeout: timeout
-        });
-    var runnerResources = Runner.make(ComponentType$Reventless.name(name, Heartbeat$Reventless.componentType), timeout, Callback.heartbeat, opts).resources;
+    var runnerResources = Runner.make(ComponentType$Reventless.name(name, Heartbeat$Reventless.componentType), timeout, runtime, opts).resources;
     return Component$Reventless.setOutputs(self, {
                 name: name,
                 resources: runnerResources
               });
   };
-  var make = function (id, name, timeoutOpt, publishToCorePluginExtensionPoint, opts) {
+  var makeHandler = function (id, timeoutOpt, publishToCorePluginExtensionPoint) {
+    var timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
+    var Callback = Heartbeat_Callback$Reventless.Make({
+          publishToCorePluginExtensionPoint: publishToCorePluginExtensionPoint,
+          id: id,
+          timeout: timeout
+        });
+    return Pulumi.output(Callback.heartbeat);
+  };
+  var make = function (name, timeoutOpt, runtime, opts) {
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
     return Component$Reventless.make(ComponentType$Reventless.toString(Heartbeat$Reventless.componentType), name, (function (extra, extra$1) {
-                  return construct(id, timeout, publishToCorePluginExtensionPoint, extra, extra$1);
+                  return construct(timeout, runtime, extra, extra$1);
                 }), opts);
   };
   return {
           construct: construct,
+          makeHandler: makeHandler,
           make: make
         };
 }
 
 exports.Make = Make;
-/* Component-Reventless Not a pure module */
+/* @pulumi/pulumi Not a pure module */

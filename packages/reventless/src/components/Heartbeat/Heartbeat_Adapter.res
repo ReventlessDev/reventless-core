@@ -3,7 +3,7 @@ type runner = {resources: array<ReventlessSpec.Adapter.resource>}
 type runnerMaker = (
   ~name: string,
   ~timeout: int,
-  ~heartbeat: unit => promise<unit>,
+  ~runtime: Runtime.environment,
   ~opts: Pulumi.CustomResourceOptions.t,
 ) => runner
 

@@ -6,10 +6,11 @@ type t
 type component = Component.t<t, outputs, unit>
 
 module type T = {
-  let make: (
+  let makeHandler: (
     ~id: string,
-    ~name: string,
-    ~timeout: int,
+    ~timeout: int=?,
     ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
-  ) => component
+  ) => Pulumi.Output.t<Runtime.eventHandler<unit, 'context, unit>>
+
+  let make: (~name: string, ~timeout: int) => component
 }

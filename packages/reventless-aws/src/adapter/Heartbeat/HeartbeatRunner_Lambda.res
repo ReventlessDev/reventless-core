@@ -1,6 +1,4 @@
-let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~heartbeat, ~opts) => {
-  let heartBeatCallback: PulumiAws.Lambda.eventHandlerNoResult<unit> = (_, _) => heartbeat()
-
+let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime, ~opts) => {
   let cloudwatchEventRule = {
     open PulumiAws.Cloudwatch
     EventRule.make(
@@ -13,22 +11,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~heartbea
     )
   }
 
-  let heartbeatLambda = {
-    open PulumiAws.Lambda
-    CallbackFunction.make(
-      ~name,
-      ~args=CallbackFunction.Args.make(
-        ~callback=heartBeatCallback,
-        /* TODO: add deadLetterConfig after extraction to ReventlessAws:
-               ~deadLetterConfig=
-                 CallbackFunction.Args.DeadLetterConfig.make(
-                   ~targetArn=PulumiAws.Util_DeadLetterQueue.queue##arn,
-                 ),
- */
-      ),
-      ~opts,
-    )
-  }
+  let lambdaResource = runtime.resources->Util.Lambda.findResource
 
   let _cloudwatchEventTarget = {
     open PulumiAws.Cloudwatch
@@ -36,7 +19,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~heartbea
       ~name,
       ~args={
         rule: EventTarget.Rule.ofEventRule(cloudwatchEventRule),
-        arn: heartbeatLambda.arn->Pulumi.Output.asInput,
+        arn: lambdaResource.urn->Pulumi.Output.asInput,
       },
       ~opts,
     )
@@ -47,7 +30,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~heartbea
     Permission.make(
       ~name,
       ~args={
-        function: heartbeatLambda.arn->Pulumi.Output.asInput,
+        function: lambdaResource.urn->Pulumi.Output.asInput,
         action: "lambda:InvokeFunction",
         principal: "events.amazonaws.com",
         sourceArn: cloudwatchEventRule.arn->Pulumi.Output.asInput,
@@ -57,9 +40,6 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~heartbea
   }
 
   {
-    resources: [
-      heartbeatLambda->Util_Lambda.toResource,
-      cloudwatchEventRule->Util_Cloudwatch.EventRule.toResource,
-    ],
+    resources: [lambdaResource, cloudwatchEventRule->Util_Cloudwatch.EventRule.toResource],
   }
 }

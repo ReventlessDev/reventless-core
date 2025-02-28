@@ -429,12 +429,17 @@ module Make = (
             eventCollectorOutputs
           })
 
-        module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner)
-        let heartbeat = SpecificHeartbeat.make(
+        module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner, RuntimeEnvironment)
+        let handler = SpecificHeartbeat.makeHandler(
           ~id,
-          ~name=childName,
           ~timeout=heartbeatInterval,
           ~publishToCorePluginExtensionPoint,
+        )
+        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+        let heartbeat = SpecificHeartbeat.make(
+          ~name=childName,
+          ~timeout=heartbeatInterval,
+          ~runtime,
           ~opts,
         )
 

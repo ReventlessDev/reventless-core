@@ -299,8 +299,11 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                   });
                               return eventCollectorOutputs;
                             });
-                        var SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
-                        var heartbeat = SpecificHeartbeat.make(id, childName, heartbeatInterval, publishToCorePluginExtensionPoint, opts);
+                        var partial_arg = Heartbeat_Builder$Reventless.Make;
+                        var SpecificHeartbeat = partial_arg(HeartbeatRunner, RuntimeEnvironment);
+                        var handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
+                        var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, undefined, undefined, opts);
+                        var heartbeat = SpecificHeartbeat.make(childName, heartbeatInterval, runtime, opts);
                         return {
                                 id: id,
                                 version: version,

@@ -4,16 +4,12 @@
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var Util_Cloudwatch$ReventlessAws = require("../../util/Util_Cloudwatch.res.js");
 var Cloudwatch_EventRule$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.js");
 var Cloudwatch_EventTarget$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.js");
 
-function make(name, timeout, heartbeat, opts) {
-  var heartBeatCallback = function (param, param$1) {
-    return heartbeat();
-  };
+function make(name, timeout, runtime, opts) {
   var cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + name), {
         description: "Send a heartbeat to the Core Plugin ExtensionPoint",
         scheduleExpression: Caml_option.some(Cloudwatch_EventRule$PulumiAws.ScheduleExpression.every({
@@ -21,20 +17,20 @@ function make(name, timeout, heartbeat, opts) {
                   _0: timeout
                 }))
       }, opts);
-  var heartbeatLambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(heartBeatCallback, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts);
+  var lambdaResource = Util_Lambda$ReventlessAws.findResource(runtime.resources);
   new (Aws.cloudwatch.EventTarget)(name, {
         rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
-        arn: heartbeatLambda.arn
+        arn: lambdaResource.urn
       }, opts);
   new (Aws.lambda.Permission)(name, {
         action: "lambda:InvokeFunction",
-        function: heartbeatLambda.arn,
+        function: lambdaResource.urn,
         principal: "events.amazonaws.com",
         sourceArn: cloudwatchEventRule.arn
       }, opts);
   return {
           resources: [
-            Util_Lambda$ReventlessAws.toResource(heartbeatLambda),
+            lambdaResource,
             Util_Cloudwatch$ReventlessAws.EventRule.toResource(cloudwatchEventRule)
           ]
         };

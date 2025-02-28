@@ -5,7 +5,7 @@ var Message$Reventless = require("../../Message.res.js");
 var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-spec/src/core/plugin/PluginExtensionPointSpec.res.js");
 
 function Make(Spec) {
-  var heartbeat = function () {
+  var heartbeat = function (param, param$1) {
     var msgId = Message$Reventless.uuid();
     return Spec.publishToCorePluginExtensionPoint([{
                   id: Spec.id,

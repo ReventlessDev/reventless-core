@@ -5,7 +5,7 @@ module type Spec = {
 }
 
 module Make = (Spec: Spec) => {
-  let heartbeat = () => {
+  let heartbeat = (_, _) => {
     let msgId = Message.uuid()
     Spec.publishToCorePluginExtensionPoint([
       {
