@@ -1,0 +1,1 @@
+include Reventless.Scheduler_Builder.Make(ScheduledPublisher_CloudWatchEvents)
