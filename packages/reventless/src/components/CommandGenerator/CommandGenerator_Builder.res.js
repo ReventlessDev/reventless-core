@@ -27,7 +27,7 @@ function Make(Config, Spec, Behaviour, Resolvers) {
                     parent: opts_parent
                   };
                   var resolvers = Resolvers.make(ComponentType$Reventless.name(none$1, CommandGenerator$Reventless.componentType), api, Behaviour.resolverConfig.fields, runtime, opts);
-                  return Component$Reventless.setOutputs(none, {
+                  return Component$Reventless.registerOutputs(none, {
                               resources: resolvers.resources
                             });
                 }), opts);

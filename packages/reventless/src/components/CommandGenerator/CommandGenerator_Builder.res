@@ -15,7 +15,8 @@ module Make = (
       ~opts,
     )
 
-    self->Component.setOutputs({CommandGenerator.resources: resolvers.resources})
+    // self->Component.setOutputs({CommandGenerator.resources: resolvers.resources}) // NOTE: creates circular reference (promise leaks)
+    self->Component.registerOutputs({CommandGenerator.resources: resolvers.resources})
   }
 
   let makeHandler = (~publishJsons) => {
@@ -35,6 +36,6 @@ module Make = (
       ~componentType=CommandGenerator.componentType->ComponentType.toString,
       ~name,
       ~construct=construct(~api=Config.api, ~runtime, ...),
-      ~opts,
+      ~opts
     )
 }

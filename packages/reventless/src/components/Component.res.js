@@ -18,6 +18,10 @@ function setOutputs(self, outputs) {
   return self.registerOutputs(outputs);
 }
 
+function registerOutputs(prim0, prim1) {
+  return prim0.registerOutputs(prim1);
+}
+
 function outputs(prim) {
   return prim.outputs;
 }
@@ -34,6 +38,7 @@ function toPulumiResource(prim) {
   return prim;
 }
 
+exports.registerOutputs = registerOutputs;
 exports.setOutputs = setOutputs;
 exports.outputs = outputs;
 exports.wrappedOutputs = wrappedOutputs;

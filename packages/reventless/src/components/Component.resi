@@ -1,6 +1,7 @@
 type t<'component, 'outputs, 'operations>
 
 type constructed
+let registerOutputs: (t<'component, 'outputs, 'operations>, 'outputs) => constructed
 let setOutputs: (t<'component, 'outputs, 'operations>, 'outputs) => constructed
 let outputs: t<'component, 'outputs, 'operations> => 'outputs
 let wrappedOutputs: Pulumi.Output.t<t<'component, 'outputs, 'operations>> => Pulumi.Output.t<
