@@ -15,8 +15,7 @@ module Make = (
       ~opts,
     )
 
-    // self->Component.setOutputs({CommandGenerator.resources: resolvers.resources}) // NOTE: creates circular reference (promise leaks)
-    self->Component.registerOutputs({CommandGenerator.resources: resolvers.resources})
+    self->Component.setOutputs({CommandGenerator.resources: resolvers.resources})
   }
 
   let makeHandler = (~publishJsons) => {
