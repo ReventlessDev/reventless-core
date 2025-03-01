@@ -15,6 +15,7 @@ module Make = (
 
   let construct = (~allEventTopics, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    let name = name->ComponentType.name(ReadModel.componentType)
 
     module SpecificQueryDb = QueryDb_Builder.Make(Config, Spec, QueryDbStorage, QueryDbResolvers)
     let queryDb = SpecificQueryDb.make(~opts)
@@ -49,7 +50,6 @@ module Make = (
       queryDb
       ->Component.operations
       ->Pulumi.Output.apply(operations => {
-        let childName = name->ComponentType.name(ReadModel.componentType)
         module Callback = ReadModel_Callback.Make(
           Spec,
           Mappings,
@@ -58,14 +58,14 @@ module Make = (
             let operations = operations->toProjectionOperations
           },
         )
-        let channel = SpecificEventCollector.makeChannel(~name=childName, ~opts)
+        let channel = SpecificEventCollector.makeChannel(~name, ~opts)
         let handler = SpecificEventCollector.makeHandler(
           ~channel,
           ~eventsHandler=Callback.eventsHandler,
         )
-        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+        let runtime = RuntimeEnvironment.make(~name, ~handler, ~opts)
         SpecificEventCollector.make(
-          ~name=childName,
+          ~name,
           ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
           ~channel,
           ~runtime,

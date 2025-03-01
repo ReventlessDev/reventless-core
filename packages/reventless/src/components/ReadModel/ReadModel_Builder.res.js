@@ -20,6 +20,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                   var opts = {
                     parent: opts_parent
                   };
+                  var name = ComponentType$Reventless.name(extra$1, ReadModel$Reventless.componentType);
                   var partial_arg = QueryDb_Builder$Reventless.Make;
                   var partial_arg$1 = function (param, param$1) {
                     return partial_arg(Config, Spec, param, param$1);
@@ -70,7 +71,6 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                             })));
                   var SpecificEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                   var eventCollector = Component$Reventless.operations(queryDb).apply(function (operations) {
-                        var childName = ComponentType$Reventless.name(extra$1, ReadModel$Reventless.componentType);
                         var partial_arg = ReadModel_Callback$Reventless.Make;
                         var partial_arg$1 = function (param, param$1) {
                           return partial_arg(Spec, param, param$1);
@@ -80,10 +80,10 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                               ReadModelSpec: Spec,
                               operations: operations$1
                             });
-                        var channel = SpecificEventCollector.makeChannel(childName, opts);
+                        var channel = SpecificEventCollector.makeChannel(name, opts);
                         var handler = SpecificEventCollector.makeHandler(channel, Callback.eventsHandler);
-                        var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, undefined, undefined, opts);
-                        return SpecificEventCollector.make(childName, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), channel, runtime, opts);
+                        var runtime = RuntimeEnvironment.make(name, handler, undefined, undefined, undefined, undefined, opts);
+                        return SpecificEventCollector.make(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), channel, runtime, opts);
                       });
                   Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, (function (eventCollector) {
                                 return Component$Reventless.operations(eventCollector);
@@ -91,7 +91,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                             return param.enqueueEvent;
                           }));
                   return Component$Reventless.setOutputs(extra, {
-                              name: extra$1,
+                              name: name,
                               queryDb: Component$Reventless.outputs(queryDb),
                               eventCollector: Component$Reventless.wrappedOutputs(eventCollector),
                               sourceNames: Belt_SetString.toArray(sourceNames)

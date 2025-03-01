@@ -60,6 +60,6 @@ module Make = (Spec: CommandTopic.Spec, Channel: CommandTopic_Adapter.Channel): 
       ~componentType=CommandTopic.componentType->ComponentType.toString,
       ~name,
       ~construct=construct(~channel, ~runtime, ...),
-      ~opts,
+      ~opts
     )
 }

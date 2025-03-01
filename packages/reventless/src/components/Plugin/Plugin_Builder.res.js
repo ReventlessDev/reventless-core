@@ -13,10 +13,12 @@ var Plugin$Reventless = require("./Plugin.res.js");
 var QueryDb$Reventless = require("../QueryDb/QueryDb.res.js");
 var Aggregate$Reventless = require("../Aggregate/Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
+var Heartbeat$Reventless = require("../Heartbeat/Heartbeat.res.js");
 var ReadModel$Reventless = require("../ReadModel/ReadModel.res.js");
 var Interstack$Reventless = require("../../util/Interstack.res.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
+var EventCollector$Reventless = require("../EventCollector/EventCollector.res.js");
 var ExtensionPoint$Reventless = require("../ExtensionPoint/ExtensionPoint.res.js");
 var Util_StackRefs$Reventless = require("../../util/Util_StackRefs.res.js");
 var Plugin_Callback$Reventless = require("./Plugin_Callback.res.js");
@@ -287,7 +289,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                               var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                               var channel = PluginEventCollector.makeChannel(childName, opts);
                               var handler = PluginEventCollector.makeHandler(channel, Callback.eventsHandler);
-                              var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, undefined, undefined, opts);
+                              var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts);
                               var eventCollector = PluginEventCollector.make(childName, eventTopics, channel, runtime, opts);
                               var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
@@ -298,7 +300,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                         var partial_arg = Heartbeat_Builder$Reventless.Make;
                         var SpecificHeartbeat = partial_arg(HeartbeatRunner, RuntimeEnvironment);
                         var handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
-                        var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, undefined, undefined, opts);
+                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, Heartbeat$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts);
                         var heartbeat = SpecificHeartbeat.make(childName, heartbeatInterval, runtime, opts);
                         return {
                                 id: id,

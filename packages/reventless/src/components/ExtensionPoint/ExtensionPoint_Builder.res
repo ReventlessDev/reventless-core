@@ -26,12 +26,10 @@ module Make = (
     name,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
-
-    let childName =
-      name->Js.String2.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
+    let name = name->Js.String2.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
 
     module SpecificCommandTopic = CommandTopic_Builder.Make(SpecWithId, CommandTopicChannel)
-    let commandTopicChannel = SpecificCommandTopic.makeChannel(~name=childName, ~opts)
+    let commandTopicChannel = SpecificCommandTopic.makeChannel(~name, ~opts)
 
     let (commandTopic, eventTopic, outgoingEventHandler) =
       commandTopicChannel.resources
@@ -51,17 +49,17 @@ module Make = (
           ~channel=commandTopicChannel,
           ~commandsHandler=ExtensionPointCallback.handleIncomingCommands,
         )
-        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+        let runtime = RuntimeEnvironment.make(~name, ~handler, ~opts)
 
         let commandTopic = SpecificCommandTopic.make(
-          ~name=childName,
+          ~name,
           ~channel=commandTopicChannel,
           ~runtime,
           ~opts,
         )
 
         module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)
-        let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
+        let eventTopic = SpecificEventTopic.make(~name, ~storageResources=[], ~opts)
 
         eventTopic
         ->Component.operations
@@ -102,6 +100,6 @@ module Make = (
       ~componentType=ExtensionPoint.componentType->ComponentType.toString,
       ~name=Spec.name,
       ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine, ...),
-      ~opts,
+      ~opts
     )
 }

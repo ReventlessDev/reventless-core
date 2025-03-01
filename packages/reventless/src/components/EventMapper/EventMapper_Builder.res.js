@@ -14,15 +14,15 @@ var Util_EventTopic$Reventless = require("../../util/Util_EventTopic.res.js");
 var EventMapper_Callback$Reventless = require("./EventMapper_Callback.res.js");
 
 function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
-  var make = function (allEventTopics, queryEngine, publishJsons, memorySizeOpt, timeoutOpt, opts) {
+  var make = function (name, allEventTopics, queryEngine, publishJsons, memorySizeOpt, timeoutOpt, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
-    return Component$Reventless.make(ComponentType$Reventless.toString(EventMapper$Reventless.componentType), Target.name, (function (extra, extra$1) {
+    return Component$Reventless.make(ComponentType$Reventless.toString(EventMapper$Reventless.componentType), name, (function (extra, extra$1) {
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
                   var opts = {
                     parent: opts_parent
                   };
-                  var childName = ComponentType$Reventless.name(Target.name, EventMapper$Reventless.componentType);
+                  var name = ComponentType$Reventless.name(extra$1, EventMapper$Reventless.componentType);
                   var partial_arg = EventMapper_Callback$Reventless.MakeCounterHandler;
                   var partial_arg$1 = function (param, param$1) {
                     return partial_arg(Target, param, param$1);
@@ -42,7 +42,7 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                             }),
                         undefined
                       ], (function (Counter) {
-                          var counter = Counter.make(extra$1, CounterHandler.counterEventsHandler, undefined, opts);
+                          var counter = Counter.make(name, CounterHandler.counterEventsHandler, undefined, opts);
                           return [
                                   Component$Reventless.operations(counter),
                                   Component$Reventless.outputs(counter)
@@ -55,7 +55,7 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                               
                             })));
                   var eventCollector = match[0].apply(function (param) {
-                        var channel = SpecificEventCollector.makeChannel(childName, opts);
+                        var channel = SpecificEventCollector.makeChannel(name, opts);
                         var EventCollectorHandler = EventMapper_Callback$Reventless.MakeEventCollectorHandler({
                               publishJsons: publishJsons,
                               count: param.count,
@@ -63,11 +63,11 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                               commonEventsHandler: CounterHandler.commonEventsHandler
                             });
                         var handler = SpecificEventCollector.makeHandler(channel, EventCollectorHandler.handleJsonEvents);
-                        var runtime = RuntimeEnvironment.make(childName, handler, memorySize, timeout, undefined, undefined, opts);
-                        return Component$Reventless.outputs(SpecificEventCollector.make(childName, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), channel, runtime, opts));
+                        var runtime = RuntimeEnvironment.make(name, handler, memorySize, timeout, undefined, undefined, opts);
+                        return Component$Reventless.outputs(SpecificEventCollector.make(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), channel, runtime, opts));
                       });
                   return Component$Reventless.setOutputs(extra, {
-                              name: extra$1,
+                              name: name,
                               eventCollector: eventCollector,
                               counter: match[1]
                             });

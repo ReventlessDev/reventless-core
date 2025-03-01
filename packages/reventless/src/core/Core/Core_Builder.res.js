@@ -14,6 +14,7 @@ var Component$Reventless = require("../../components/Component.res.js");
 var ReadModel$Reventless = require("../../components/ReadModel/ReadModel.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var Core_Callback$Reventless = require("./Core_Callback.res.js");
+var EventCollector$Reventless = require("../../components/EventCollector/EventCollector.res.js");
 var EventCollector_Builder$Reventless = require("../../components/EventCollector/EventCollector_Builder.res.js");
 
 function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, RuntimeEnvironment) {
@@ -22,6 +23,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
     var opts = {
       parent: opts_parent
     };
+    var name = ComponentType$Reventless.toName(Core$Reventless.componentType);
     var addEventMapperFns = {};
     var publishToAggregates = {};
     var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (SpecificAggregate) {
@@ -82,16 +84,15 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                 eventCollector: "NOT-SET"
               };
               var eventCollectorOutputs = Pulumi.all(match[1]).apply(function (extensionPointsOutgoingEventHandlers) {
-                    var childName = ComponentType$Reventless.toName(Core$Reventless.componentType);
                     var Callback = Core_Callback$Reventless.Make({
                           pluginDefinition: fakePluginDefinition,
                           outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
                         });
                     var CoreEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
-                    var channel = CoreEventCollector.makeChannel(childName, opts);
+                    var channel = CoreEventCollector.makeChannel(name, opts);
                     var handler = CoreEventCollector.makeHandler(channel, Callback.eventsHandler);
-                    var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, undefined, undefined, opts);
-                    return Component$Reventless.outputs(CoreEventCollector.make(childName, Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), channel, runtime, opts));
+                    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts);
+                    return Component$Reventless.outputs(CoreEventCollector.make(name, Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), channel, runtime, opts));
                   });
               return [
                       extensionPointsOutputs,

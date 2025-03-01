@@ -409,7 +409,11 @@ module Make = (
               ~channel,
               ~eventsHandler=Callback.eventsHandler,
             )
-            let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+            let runtime = RuntimeEnvironment.make(
+              ~name=childName->ComponentType.name(EventCollector.componentType),
+              ~handler,
+              ~opts,
+            )
 
             let eventCollector = PluginEventCollector.make(
               ~name=childName,
@@ -433,7 +437,11 @@ module Make = (
           ~timeout=heartbeatInterval,
           ~publishToCorePluginExtensionPoint,
         )
-        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+        let runtime = RuntimeEnvironment.make(
+          ~name=childName->ComponentType.name(Heartbeat.componentType),
+          ~handler,
+          ~opts,
+        )
         let heartbeat = SpecificHeartbeat.make(
           ~name=childName,
           ~timeout=heartbeatInterval,

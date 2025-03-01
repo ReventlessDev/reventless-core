@@ -26,7 +26,7 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                   var opts = {
                     parent: opts_parent
                   };
-                  var childName = ComponentType$Reventless.name(extra$1.replace(".", ""), ExtensionPoint$Reventless.componentType);
+                  var name = ComponentType$Reventless.name(extra$1.replace(".", ""), ExtensionPoint$Reventless.componentType);
                   var partial_arg = {
                     Id: Id$ReventlessSpec.$$String,
                     command_encode: command_encode,
@@ -36,7 +36,7 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                   var SpecificCommandTopic = (function (param) {
                         return partial_arg$1(partial_arg, param);
                       })(CommandTopicChannel);
-                  var commandTopicChannel = SpecificCommandTopic.makeChannel(childName, opts);
+                  var commandTopicChannel = SpecificCommandTopic.makeChannel(name, opts);
                   var match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(Adapter$Reventless.resourcesToUnwrappedOutput(commandTopicChannel.resources), (function (commandTopicResources) {
                               var partial_arg = {
                                 publishToAggregates: publishToAggregates,
@@ -50,8 +50,8 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                               };
                               var ExtensionPointCallback = partial_arg$2(Spec, Mappings);
                               var handler = SpecificCommandTopic.makeHandler(commandTopicChannel, ExtensionPointCallback.handleIncomingCommands);
-                              var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, undefined, undefined, opts);
-                              var commandTopic = SpecificCommandTopic.make(childName, commandTopicChannel, runtime, opts);
+                              var runtime = RuntimeEnvironment.make(name, handler, undefined, undefined, undefined, undefined, opts);
+                              var commandTopic = SpecificCommandTopic.make(name, commandTopicChannel, runtime, opts);
                               var partial_arg$3 = {
                                 Id: Id$ReventlessSpec.$$String,
                                 event_encode: event_encode,
@@ -61,7 +61,7 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                               var SpecificEventTopic = (function (param) {
                                     return partial_arg$4(partial_arg$3, param);
                                   })(EventTopicAdapter);
-                              var eventTopic = SpecificEventTopic.make(childName, [], opts);
+                              var eventTopic = SpecificEventTopic.make(name, [], opts);
                               return Component$Reventless.operations(eventTopic).apply(function (param) {
                                           var OperationsSpec_publishToEventTopic = param.publishJson;
                                           var OperationsSpec = {
@@ -88,7 +88,7 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                                   };
                           }));
                   return Component$Reventless.setOutputs(extra, {
-                              name: extra$1,
+                              name: name,
                               aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
                                       return Belt_Option.map(Mapping.mapOutgoingEvent, (function (param) {
                                                     return Mapping.aggregateName;

@@ -13,6 +13,7 @@ type component = Component.t<t, outputs, unit>
 
 module type T = {
   let make: (
+    ~name: string,
     ~allEventTopics: EventTopic.allOutputs,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~publishJsons: CommandTopic.publishJsons,

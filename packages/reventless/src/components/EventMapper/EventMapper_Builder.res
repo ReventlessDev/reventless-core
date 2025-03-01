@@ -16,7 +16,7 @@ module Make = (
     name,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
-    let childName = Target.name->ComponentType.name(EventMapper.componentType)
+    let name = name->ComponentType.name(EventMapper.componentType)
 
     module CounterHandler = EventMapper_Callback.MakeCounterHandler(
       Target,
@@ -60,7 +60,7 @@ module Make = (
 
     let eventCollector = counterOperations->Pulumi.Output.apply(({count, addToCounterTarget}) =>
       {
-        let channel = SpecificEventCollector.makeChannel(~name=childName, ~opts)
+        let channel = SpecificEventCollector.makeChannel(~name, ~opts)
         module EventCollectorHandler = EventMapper_Callback.MakeEventCollectorHandler({
           let publishJsons = publishJsons
           let count = count
@@ -72,16 +72,10 @@ module Make = (
           ~channel,
           ~eventsHandler=EventCollectorHandler.handleJsonEvents,
         )
-        let runtime = RuntimeEnvironment.make(
-          ~name=childName,
-          ~handler,
-          ~memorySize,
-          ~timeout,
-          ~opts,
-        )
+        let runtime = RuntimeEnvironment.make(~name, ~handler, ~memorySize, ~timeout, ~opts)
 
         SpecificEventCollector.make(
-          ~name=childName,
+          ~name,
           ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
           ~channel,
           ~runtime,
@@ -98,6 +92,7 @@ module Make = (
   }
 
   let make = (
+    ~name,
     ~allEventTopics,
     ~queryEngine,
     ~publishJsons,
@@ -107,7 +102,7 @@ module Make = (
   ) =>
     Component.make(
       ~componentType=EventMapper.componentType->ComponentType.toString,
-      ~name=Target.name,
+      ~name,
       ~construct=construct(
         ~allEventTopics,
         ~queryEngine,

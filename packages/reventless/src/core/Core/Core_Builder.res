@@ -20,6 +20,7 @@ module Make = (
     _,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
+    let name = Core.componentType->ComponentType.toName
 
     let addEventMapperFns = Js.Dict.empty()
     let publishToAggregates = Js.Dict.empty()
@@ -104,21 +105,24 @@ module Make = (
           extensionPointsOutgoingEventHandlers
           ->Pulumi.Output.all
           ->Pulumi.Output.apply(extensionPointsOutgoingEventHandlers => {
-            let childName = Core.componentType->ComponentType.toName
             module Callback = Core_Callback.Make({
               let pluginDefinition = fakePluginDefinition
               let outgoingExtensionPointEventHandlers = extensionPointsOutgoingEventHandlers
             })
             module CoreEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
-            let channel = CoreEventCollector.makeChannel(~name=childName, ~opts)
+            let channel = CoreEventCollector.makeChannel(~name, ~opts)
             let handler = CoreEventCollector.makeHandler(
               ~channel,
               ~eventsHandler=Callback.eventsHandler,
             )
-            let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
+            let runtime = RuntimeEnvironment.make(
+              ~name=name->ComponentType.name(EventCollector.componentType),
+              ~handler,
+              ~opts,
+            )
 
             CoreEventCollector.make(
-              ~name=childName,
+              ~name,
               ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
               ~channel,
               ~runtime,

@@ -27,7 +27,13 @@ module Make = (
         component
         ->Component.operations
         ->Pulumi.Output.apply(({publishJsons}) =>
-          SpecificEventMapper.make(~allEventTopics, ~queryEngine, ~publishJsons, ~opts)
+          SpecificEventMapper.make(
+            ~name=Spec.name->ComponentType.name(Aggregate.componentType),
+            ~allEventTopics,
+            ~queryEngine,
+            ~publishJsons,
+            ~opts,
+          )
         )
       {
         ...outputs,
@@ -42,17 +48,17 @@ module Make = (
 
   let construct = (self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
-    let childName = name->ComponentType.name(Aggregate.componentType)
+    let name = name->ComponentType.name(Aggregate.componentType)
 
     module SpecificEventLog = EventLog_Builder.Make(Spec, EventLogStorage, EventTopicPublisher)
-    let eventLog = SpecificEventLog.make(~name=childName, ~opts)
+    let eventLog = SpecificEventLog.make(~name, ~opts)
 
     let commandTopic =
       eventLog
       ->Component.operations
       ->Pulumi.Output.apply(eventLogOps => {
         module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
-        let channel = SpecificCommandTopic.makeChannel(~name=childName, ~opts)
+        let channel = SpecificCommandTopic.makeChannel(~name, ~opts)
         module AggregateCallback = Aggregate_Callback.Make(
           Spec,
           Behaviour,
@@ -62,13 +68,16 @@ module Make = (
             let eventLog = eventLogOps
           },
         )
-        let handler = SpecificCommandTopic.makeHandler(
-          ~channel,
-          ~commandsHandler=AggregateCallback.handleCommands,
+        let runtime = RuntimeEnvironment.make(
+          ~name=name->ComponentType.name(CommandTopic.componentType),
+          ~handler=SpecificCommandTopic.makeHandler(
+            ~channel,
+            ~commandsHandler=AggregateCallback.handleCommands,
+          ),
+          ~opts,
         )
-        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts)
 
-        SpecificCommandTopic.make(~name=childName, ~channel, ~runtime, ~opts)
+        SpecificCommandTopic.make(~name, ~channel, ~runtime, ~opts)
       })
 
     let commandGenerator = commandTopic->Pulumi.Output.flatMap(commandTopic =>
@@ -82,11 +91,11 @@ module Make = (
           CommandGeneratorResolvers,
         )
         let runtime = RuntimeEnvironment.make(
-          ~name=childName,
+          ~name=name->ComponentType.name(CommandGenerator.componentType),
           ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
           ~opts,
         )
-        SpecificCommandGenerator.make(~name=childName, ~runtime, ~opts)->Component.outputs
+        SpecificCommandGenerator.make(~name, ~runtime, ~opts)->Component.outputs
       })
     )
 
