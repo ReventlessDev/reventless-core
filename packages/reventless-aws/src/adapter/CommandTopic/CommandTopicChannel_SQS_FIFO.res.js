@@ -19,7 +19,7 @@ var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("./CommandTopicChann
 
 function subscribe(name, channel, runtime, opts) {
   var opts$1 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
-  var queue = Util_SQS$ReventlessAws.fromResource(Util_SQS$ReventlessAws.findResource(channel.resources));
+  var queue = Util_SQS_FIFO$ReventlessAws.fromResource(Util_SQS_FIFO$ReventlessAws.findResource(channel.resources));
   var handler = Util_Lambda$ReventlessAws.fromResource(Util_Lambda$ReventlessAws.findResource(runtime.resources));
   return [Adapter$Reventless.outputToResource(Pulumi.all([
                       queue,

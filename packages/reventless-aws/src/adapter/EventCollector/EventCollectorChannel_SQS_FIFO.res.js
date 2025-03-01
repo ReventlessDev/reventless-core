@@ -26,7 +26,7 @@ var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorC
 
 function subscribe(name, eventTopics, channel, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
-  var queue = Util_SQS$ReventlessAws.fromResource(Util_SQS$ReventlessAws.findResource(channel.resources));
+  var queue = Util_SQS_FIFO$ReventlessAws.fromResource(Util_SQS_FIFO$ReventlessAws.findResource(channel.resources));
   var handler = Util_Lambda$ReventlessAws.fromResource(Util_Lambda$ReventlessAws.findResource(runtime.resources));
   var eventTopicResources = Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
             return Js_dict.map((function (eventTopic) {

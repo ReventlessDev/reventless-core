@@ -11,8 +11,8 @@ let subscribe = (
 
   let queue =
     channel.resources
-    ->Util.SQS.findResource
-    ->Util.SQS.fromResource
+    ->Util.SQS_FIFO.findResource
+    ->Util.SQS_FIFO.fromResource
 
   let handler =
     runtime.resources

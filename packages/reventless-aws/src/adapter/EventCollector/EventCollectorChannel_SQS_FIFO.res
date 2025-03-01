@@ -10,8 +10,8 @@ let subscribe = (
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
   let queue =
     channel.resources
-    ->Util.SQS.findResource
-    ->Util.SQS.fromResource
+    ->Util.SQS_FIFO.findResource
+    ->Util.SQS_FIFO.fromResource
   let handler =
     runtime.resources
     ->Util.Lambda.findResource
