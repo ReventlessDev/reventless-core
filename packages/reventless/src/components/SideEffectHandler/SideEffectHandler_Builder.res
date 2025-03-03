@@ -42,18 +42,19 @@ module Make = (
       ~opts,
     )
 
-    let _subscribeResources = SpecificEventCollector.subscribe(
+    SpecificEventCollector.subscribe(
       ~name,
       ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
       ~eventCollector,
       ~runtime,
       ~opts,
     )
-    let eventCollectorResources =
-      (eventCollector->Component.outputs).resources->Adapter.resourcesToUnwrappedOutput
 
     self->Component.setOperations(
-      (eventCollector->Component.operations, eventCollectorResources)
+      (
+        eventCollector->Component.operations,
+        (eventCollector->Component.outputs).resources->Adapter.resourcesToUnwrappedOutput,
+      )
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply((({enqueueEvent}, eventCollectorResources)) => {
         SideEffectHandler.enqueueEvent,

@@ -41,7 +41,7 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                   var commandTopicOpts = {
                     parent: commandTopicOpts_parent
                   };
-                  var match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(commandTopic).resources), (function (commandTopicResources) {
+                  var match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(Adapter$Reventless.resourcesToUnwrappedOutput(commandTopic.channel.resources), (function (commandTopicResources) {
                               var partial_arg = {
                                 publishToAggregates: publishToAggregates,
                                 commandTopicResources: commandTopicResources,

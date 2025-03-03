@@ -35,7 +35,7 @@ module Make = (
     }
 
     let (commandTopic, eventTopic, outgoingEventHandler) =
-      (commandTopic->Component.outputs).resources
+      (commandTopic->CommandTopic_Adapter.channel).resources
       ->Adapter.resourcesToUnwrappedOutput
       ->Pulumi.Output.flatMap(commandTopicResources => {
         module ExtensionPointCallback = ExtensionPoint_Callback.Make(

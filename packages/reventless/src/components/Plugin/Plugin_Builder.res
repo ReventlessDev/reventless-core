@@ -378,7 +378,6 @@ module Make = (
           )) => {
             module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
             let eventCollector = PluginEventCollector.make(~name=childName, ~opts)
-            let eventCollectorOutputs = eventCollector->Component.outputs
             let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
             module Callback = Plugin_Callback.Make({
@@ -426,6 +425,7 @@ module Make = (
               ~opts,
             )
 
+            let eventCollectorOutputs = eventCollector->Component.outputs
             let _ =
               (eventCollectorOutputs.resources->Array.getUnsafe(0)).urn->Pulumi.Output.apply(
                 urn => pluginDefinition.eventCollector = urn,

@@ -39,10 +39,9 @@ function Make(SpecificEventCollector, RuntimeEnvironment) {
                   var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                   var runtime = RuntimeEnvironment.make(extra$1, handler, memorySize, timeout, policy1, policy2, opts$1);
                   SpecificEventCollector.subscribe(extra$1, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollector, runtime, opts$1);
-                  var eventCollectorResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(eventCollector).resources);
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),
-                              eventCollectorResources
+                              Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(eventCollector).resources)
                             ]).apply(function (param) {
                             var eventCollectorResources = param[1];
                             return {
