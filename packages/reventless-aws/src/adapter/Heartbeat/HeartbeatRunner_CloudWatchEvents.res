@@ -1,4 +1,6 @@
 let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime, ~opts) => {
+  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+
   let cloudwatchEventRule = {
     open PulumiAws.Cloudwatch
     EventRule.make(

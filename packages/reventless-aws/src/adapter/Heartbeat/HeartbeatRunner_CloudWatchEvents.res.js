@@ -4,30 +4,32 @@
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
+var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var Util_Cloudwatch$ReventlessAws = require("../../util/Util_Cloudwatch.res.js");
 var Cloudwatch_EventRule$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.js");
 var Cloudwatch_EventTarget$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.js");
 
 function make(name, timeout, runtime, opts) {
+  var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + name), {
         description: "Send a heartbeat to the Core Plugin ExtensionPoint",
         scheduleExpression: Caml_option.some(Cloudwatch_EventRule$PulumiAws.ScheduleExpression.every({
                   TAG: "Minutes",
                   _0: timeout
                 }))
-      }, opts);
+      }, opts$1);
   var lambdaResource = Util_Lambda$ReventlessAws.findResource(runtime.resources);
   new (Aws.cloudwatch.EventTarget)(name, {
         rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
         arn: lambdaResource.urn
-      }, opts);
+      }, opts$1);
   new (Aws.lambda.Permission)(name, {
         action: "lambda:InvokeFunction",
         function: lambdaResource.urn,
         principal: "events.amazonaws.com",
         sourceArn: cloudwatchEventRule.arn
-      }, opts);
+      }, opts$1);
   return {
           resources: [
             lambdaResource,

@@ -434,6 +434,8 @@ module Make = (
           })
 
         module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner, RuntimeEnvironment)
+        let heartbeat = SpecificHeartbeat.make(~name=childName, ~opts)
+
         let handler = SpecificHeartbeat.makeHandler(
           ~id,
           ~timeout=heartbeatInterval,
@@ -444,9 +446,11 @@ module Make = (
           ~handler,
           ~opts,
         )
-        let heartbeat = SpecificHeartbeat.make(
+
+        SpecificHeartbeat.subscribe(
           ~name=childName,
           ~timeout=heartbeatInterval,
+          ~heartbeat,
           ~runtime,
           ~opts,
         )

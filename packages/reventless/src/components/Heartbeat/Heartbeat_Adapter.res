@@ -4,7 +4,7 @@ type runnerMaker = (
   ~name: string,
   ~timeout: int,
   ~runtime: Runtime.environment,
-  ~opts: Pulumi.CustomResourceOptions.t,
+  ~opts: Pulumi.ComponentResource.options,
 ) => runner
 
 module type Runner = {

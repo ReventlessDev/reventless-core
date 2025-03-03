@@ -1,1 +1,1 @@
-module Lambda = HeartbeatRunner_Lambda
+module Lambda = HeartbeatRunner_CloudWatchEvents

@@ -1,6 +1,8 @@
 module Make = (Runner: Heartbeat_Adapter.Runner, RuntimeEnvironment: Runtime.Environment) => {
-  let construct = (~timeout, ~runtime, self, name) => {
-    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
+  let construct = (_self, _name) => ()
+
+  let subscribe = (~name, ~timeout=10, ~heartbeat, ~runtime, ~opts) => {
+    let name = name->ComponentType.name(CommandTopic.componentType)
 
     // Heartbeat + HealthCheck
     // see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/RunLambdaSchedule.html
@@ -14,7 +16,10 @@ module Make = (Runner: Heartbeat_Adapter.Runner, RuntimeEnvironment: Runtime.Env
       ).resources
     }
 
-    self->Component.setOutputs({Heartbeat.name, resources: runnerResources})
+    let _ = heartbeat->Component.setOutputs({
+      name,
+      Heartbeat.resources: runnerResources,
+    })
   }
 
   let makeHandler = (~id, ~timeout=10, ~publishToCorePluginExtensionPoint) => {
@@ -26,11 +31,11 @@ module Make = (Runner: Heartbeat_Adapter.Runner, RuntimeEnvironment: Runtime.Env
     Callback.heartbeat->Pulumi.Output.make
   }
 
-  let make = (~name, ~timeout=10, ~runtime, ~opts=?): Heartbeat.component =>
+  let make = (~name, ~opts=?): Heartbeat.component =>
     Component.make(
       ~componentType=Heartbeat.componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~timeout, ~runtime, ...),
-      ~opts
+      ~construct,
+      ~opts,
     )
 }

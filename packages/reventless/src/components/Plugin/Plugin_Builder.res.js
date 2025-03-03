@@ -303,9 +303,10 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                             });
                         var partial_arg = Heartbeat_Builder$Reventless.Make;
                         var SpecificHeartbeat = partial_arg(HeartbeatRunner, RuntimeEnvironment);
+                        var heartbeat = SpecificHeartbeat.make(childName, opts);
                         var handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
                         var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, Heartbeat$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts);
-                        var heartbeat = SpecificHeartbeat.make(childName, heartbeatInterval, runtime, opts);
+                        SpecificHeartbeat.subscribe(childName, heartbeatInterval, heartbeat, runtime, opts);
                         return {
                                 id: id,
                                 version: version,
