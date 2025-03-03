@@ -56,16 +56,19 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                             })));
                   var eventCollector = match[0].apply(function (param) {
                         var eventCollector = SpecificEventCollector.make(name, opts);
-                        var channel = SpecificEventCollector.channel(eventCollector);
+                        var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
+                        var opts$1 = {
+                          parent: opts_parent
+                        };
                         var EventCollectorHandler = EventMapper_Callback$Reventless.MakeEventCollectorHandler({
                               publishJsons: publishJsons,
                               count: param.count,
                               addToCounterTarget: param.addToCounterTarget,
                               commonEventsHandler: CounterHandler.commonEventsHandler
                             });
-                        var handler = SpecificEventCollector.makeHandler(channel, EventCollectorHandler.handleJsonEvents);
-                        var runtime = RuntimeEnvironment.make(name, handler, memorySize, timeout, undefined, undefined, opts);
-                        return Component$Reventless.outputs((SpecificEventCollector.subscribe(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), channel, runtime, opts), eventCollector));
+                        var handler = SpecificEventCollector.makeHandler(eventCollector, EventCollectorHandler.handleJsonEvents);
+                        var runtime = RuntimeEnvironment.make(name, handler, memorySize, timeout, undefined, undefined, opts$1);
+                        return Component$Reventless.outputs((SpecificEventCollector.subscribe(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollector, runtime, opts$1), eventCollector));
                       });
                   return Component$Reventless.setOutputs(extra, {
                               name: name,

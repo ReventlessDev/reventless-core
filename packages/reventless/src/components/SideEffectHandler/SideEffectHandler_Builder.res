@@ -22,14 +22,14 @@ module Make = (
       ->Belt.Set.String.fromArray
 
     let eventCollector = SpecificEventCollector.make(~name, ~opts)
-    let channel = eventCollector->SpecificEventCollector.channel
+    let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
     module Callback = SideEffectHandler_Callback.Make({
       let sideEffects = sideEffects
       let queryEngine = queryEngine
     })
     let handler = SpecificEventCollector.makeHandler(
-      ~channel,
+      ~eventCollector,
       ~eventsHandler=Callback.eventsHandler,
     )
     let runtime = RuntimeEnvironment.make(
@@ -45,7 +45,7 @@ module Make = (
     let _subscribeResources = SpecificEventCollector.subscribe(
       ~name,
       ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
-      ~channel,
+      ~eventCollector,
       ~runtime,
       ~opts,
     )

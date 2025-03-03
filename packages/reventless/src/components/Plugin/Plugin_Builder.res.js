@@ -267,7 +267,11 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                               var pluginDefinition = param[0];
                               var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                               var eventCollector = PluginEventCollector.make(childName, opts);
-                              var channel = PluginEventCollector.channel(eventCollector);
+                              var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
+                              var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
+                              var opts$1 = {
+                                parent: opts_parent
+                              };
                               var outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(extensionPointsOutputs, (function (outputs) {
                                       return outputs.aggregateNames;
                                     }), param[3], getOutgoingEventHandler);
@@ -289,10 +293,9 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                     outgoingExtensionEventHandlers: outgoingExtensionEventHandlers,
                                     incomingExtensionEventHandlers: incomingExtensionEventHandlers
                                   });
-                              var handler = PluginEventCollector.makeHandler(channel, Callback.eventsHandler);
-                              var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts);
-                              PluginEventCollector.subscribe(childName, eventTopics, channel, runtime, opts);
-                              var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
+                              var handler = PluginEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
+                              var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts$1);
+                              PluginEventCollector.subscribe(childName, eventTopics, eventCollector, runtime, opts$1);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;
                                   });

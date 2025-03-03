@@ -28,14 +28,17 @@ function Make(SpecificEventCollector, RuntimeEnvironment) {
                               return SideEffect.Source.name;
                             })));
                   var eventCollector = SpecificEventCollector.make(extra$1, opts);
-                  var channel = SpecificEventCollector.channel(eventCollector);
+                  var opts_parent$1 = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
+                  var opts$1 = {
+                    parent: opts_parent$1
+                  };
                   var Callback = SideEffectHandler_Callback$Reventless.Make({
                         sideEffects: sideEffects,
                         queryEngine: queryEngine
                       });
-                  var handler = SpecificEventCollector.makeHandler(channel, Callback.eventsHandler);
-                  var runtime = RuntimeEnvironment.make(extra$1, handler, memorySize, timeout, policy1, policy2, opts);
-                  SpecificEventCollector.subscribe(extra$1, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), channel, runtime, opts);
+                  var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
+                  var runtime = RuntimeEnvironment.make(extra$1, handler, memorySize, timeout, policy1, policy2, opts$1);
+                  SpecificEventCollector.subscribe(extra$1, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollector, runtime, opts$1);
                   var eventCollectorResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(eventCollector).resources);
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),

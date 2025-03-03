@@ -1,42 +1,37 @@
 module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
   type callbackEvent = Channel.callbackEvent
-  type channel<'context> = EventCollector.channel<callbackEvent, 'context>
-
-  @set
-  external setChannel: (EventCollector.component, channel<'context>) => unit = "channel"
-  @get
-  external channel: EventCollector.component => channel<'context> = "channel"
 
   let construct = (self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(EventCollector.componentType)
 
     let channel = Channel.make(~name, ~opts)
-    self->setChannel(channel)
+    self->EventCollector.setChannel(channel)
 
     self->Component.setOperations(
       channel.enqueueEvent->Pulumi.Output.apply(enqueueEvent => {
         EventCollector.enqueueEvent: enqueueEvent,
       }),
     )
+  }
 
-    self->Component.setOutputs({
+  let subscribe = (~name, ~eventTopics, ~eventCollector, ~runtime, ~opts) => {
+    let name = name->ComponentType.name(EventCollector.componentType)
+    let channel = eventCollector->EventCollector.channel
+
+    let subscribeResources = channel.subscribe(~name, ~eventTopics, ~channel, ~runtime, ~opts)
+
+    let _ = eventCollector->Component.setOutputs({
       EventCollector.name,
-      resources: channel.resources,
+      resources: channel.resources->Belt.Array.concat(subscribeResources),
     })
   }
 
-  let subscribe = (~name, ~eventTopics, ~channel: channel<'context>, ~runtime, ~opts): array<
-    ReventlessSpec.Adapter.resource,
-  > => {
-    let name = name->ComponentType.name(EventCollector.componentType)
-    channel.subscribe(~name, ~eventTopics, ~channel, ~runtime, ~opts)
-  }
-
   let makeHandler = (
-    ~channel: channel<'context>,
+    ~eventCollector: EventCollector.component,
     ~eventsHandler: EventCollector.jsonEventsHandler,
   ) => {
+    let channel = eventCollector->EventCollector.channel
     channel.handleChannelEvent(eventsHandler)
   }
 

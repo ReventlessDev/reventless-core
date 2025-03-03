@@ -378,7 +378,8 @@ module Make = (
           )) => {
             module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
             let eventCollector = PluginEventCollector.make(~name=childName, ~opts)
-            let channel = eventCollector->PluginEventCollector.channel
+            let eventCollectorOutputs = eventCollector->Component.outputs
+            let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
             module Callback = Plugin_Callback.Make({
               let pluginDefinition = pluginDefinition
@@ -408,7 +409,7 @@ module Make = (
               )
             })
             let handler = PluginEventCollector.makeHandler(
-              ~channel,
+              ~eventCollector,
               ~eventsHandler=Callback.eventsHandler,
             )
             let runtime = RuntimeEnvironment.make(
@@ -417,14 +418,13 @@ module Make = (
               ~opts,
             )
 
-            let _subscribeResources = PluginEventCollector.subscribe(
+            PluginEventCollector.subscribe(
               ~name=childName,
               ~eventTopics,
-              ~channel,
+              ~eventCollector,
               ~runtime,
               ~opts,
             )
-            let eventCollectorOutputs = eventCollector->Component.outputs
 
             let _ =
               (eventCollectorOutputs.resources->Array.getUnsafe(0)).urn->Pulumi.Output.apply(

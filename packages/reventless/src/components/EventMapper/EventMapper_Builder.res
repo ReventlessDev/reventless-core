@@ -61,7 +61,7 @@ module Make = (
     let eventCollector = counterOperations->Pulumi.Output.apply(({count, addToCounterTarget}) =>
       {
         let eventCollector = SpecificEventCollector.make(~name, ~opts)
-        let channel = eventCollector->SpecificEventCollector.channel
+        let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
         module EventCollectorHandler = EventMapper_Callback.MakeEventCollectorHandler({
           let publishJsons = publishJsons
@@ -70,15 +70,15 @@ module Make = (
           let commonEventsHandler = CounterHandler.commonEventsHandler
         })
         let handler = SpecificEventCollector.makeHandler(
-          ~channel,
+          ~eventCollector,
           ~eventsHandler=EventCollectorHandler.handleJsonEvents,
         )
         let runtime = RuntimeEnvironment.make(~name, ~handler, ~memorySize, ~timeout, ~opts)
 
-        let _subscribeResources = SpecificEventCollector.subscribe(
+        SpecificEventCollector.subscribe(
           ~name,
           ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
-          ~channel,
+          ~eventCollector,
           ~runtime,
           ~opts,
         )

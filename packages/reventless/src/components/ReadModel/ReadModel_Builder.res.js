@@ -72,7 +72,10 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                   var SpecificEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                   var eventCollector = Component$Reventless.operations(queryDb).apply(function (operations) {
                         var eventCollector = SpecificEventCollector.make(name, opts);
-                        var channel = SpecificEventCollector.channel(eventCollector);
+                        var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
+                        var opts$1 = {
+                          parent: opts_parent
+                        };
                         var partial_arg = ReadModel_Callback$Reventless.Make;
                         var partial_arg$1 = function (param, param$1) {
                           return partial_arg(Spec, param, param$1);
@@ -82,9 +85,9 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                               ReadModelSpec: Spec,
                               operations: operations$1
                             });
-                        var handler = SpecificEventCollector.makeHandler(channel, Callback.eventsHandler);
-                        var runtime = RuntimeEnvironment.make(name, handler, undefined, undefined, undefined, undefined, opts);
-                        SpecificEventCollector.subscribe(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), channel, runtime, opts);
+                        var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
+                        var runtime = RuntimeEnvironment.make(name, handler, undefined, undefined, undefined, undefined, opts$1);
+                        SpecificEventCollector.subscribe(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), eventCollector, runtime, opts$1);
                         return eventCollector;
                       });
                   Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, (function (eventCollector) {

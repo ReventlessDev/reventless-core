@@ -86,15 +86,19 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
               var eventCollectorOutputs = Pulumi.all(match[1]).apply(function (extensionPointsOutgoingEventHandlers) {
                     var CoreEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                     var eventCollector = CoreEventCollector.make(name, opts);
-                    var channel = CoreEventCollector.channel(eventCollector);
+                    var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
+                    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
+                    var opts$1 = {
+                      parent: opts_parent
+                    };
                     var Callback = Core_Callback$Reventless.Make({
                           pluginDefinition: fakePluginDefinition,
                           outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
                         });
-                    var handler = CoreEventCollector.makeHandler(channel, Callback.eventsHandler);
-                    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts);
-                    CoreEventCollector.subscribe(name, Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), channel, runtime, opts);
-                    return Component$Reventless.outputs(eventCollector);
+                    var handler = CoreEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
+                    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts$1);
+                    CoreEventCollector.subscribe(name, Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventCollector, runtime, opts$1);
+                    return eventCollectorOutputs;
                   });
               return [
                       extensionPointsOutputs,

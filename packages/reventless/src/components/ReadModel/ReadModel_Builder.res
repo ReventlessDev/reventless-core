@@ -51,7 +51,7 @@ module Make = (
       ->Component.operations
       ->Pulumi.Output.apply(operations => {
         let eventCollector = SpecificEventCollector.make(~name, ~opts)
-        let channel = eventCollector->SpecificEventCollector.channel
+        let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
         module Callback = ReadModel_Callback.Make(
           Spec,
@@ -62,15 +62,15 @@ module Make = (
           },
         )
         let handler = SpecificEventCollector.makeHandler(
-          ~channel,
+          ~eventCollector,
           ~eventsHandler=Callback.eventsHandler,
         )
         let runtime = RuntimeEnvironment.make(~name, ~handler, ~opts)
 
-        let _subscribeResources = SpecificEventCollector.subscribe(
+        SpecificEventCollector.subscribe(
           ~name,
           ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
-          ~channel,
+          ~eventCollector,
           ~runtime,
           ~opts,
         )
