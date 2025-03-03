@@ -2,11 +2,17 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
   type callbackEvent = Channel.callbackEvent
   type channel<'context> = EventCollector.channel<callbackEvent, 'context>
 
-  let construct = (self, name, ~eventTopics, ~channel: channel<'context>, ~runtime) => {
+  @set
+  external setChannel: (EventCollector.component, channel<'context>) => unit = "channel"
+  @get
+  external channel: EventCollector.component => channel<'context> = "channel"
+
+  let construct = (self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(EventCollector.componentType)
 
-    let subscribeResources = channel.subscribe(~name, ~eventTopics, ~channel, ~runtime, ~opts)
+    let channel = Channel.make(~name, ~opts)
+    self->setChannel(channel)
 
     self->Component.setOperations(
       channel.enqueueEvent->Pulumi.Output.apply(enqueueEvent => {
@@ -16,13 +22,15 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
 
     self->Component.setOutputs({
       EventCollector.name,
-      resources: channel.resources->Belt.Array.concat(subscribeResources),
+      resources: channel.resources,
     })
   }
 
-  let makeChannel = (~name, ~opts): channel<'context> => {
+  let subscribe = (~name, ~eventTopics, ~channel: channel<'context>, ~runtime, ~opts): array<
+    ReventlessSpec.Adapter.resource,
+  > => {
     let name = name->ComponentType.name(EventCollector.componentType)
-    Channel.make(~name, ~opts)
+    channel.subscribe(~name, ~eventTopics, ~channel, ~runtime, ~opts)
   }
 
   let makeHandler = (
@@ -32,11 +40,11 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
     channel.handleChannelEvent(eventsHandler)
   }
 
-  let make = (~name, ~eventTopics, ~channel, ~runtime, ~opts): EventCollector.component =>
+  let make = (~name, ~opts): EventCollector.component =>
     Component.make(
       ~componentType=EventCollector.componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~eventTopics, ~channel, ~runtime, ...),
-      ~opts
+      ~construct,
+      ~opts=Some(opts),
     )
 }

@@ -376,6 +376,10 @@ module Make = (
             extensionPointsHandlers,
             connectPluginExtensionOutputs,
           )) => {
+            module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
+            let eventCollector = PluginEventCollector.make(~name=childName, ~opts)
+            let channel = eventCollector->PluginEventCollector.channel
+
             module Callback = Plugin_Callback.Make({
               let pluginDefinition = pluginDefinition
               let outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(
@@ -403,8 +407,6 @@ module Make = (
                 getIncomingEventHandler,
               )
             })
-            module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
-            let channel = PluginEventCollector.makeChannel(~name=childName, ~opts)
             let handler = PluginEventCollector.makeHandler(
               ~channel,
               ~eventsHandler=Callback.eventsHandler,
@@ -415,12 +417,12 @@ module Make = (
               ~opts,
             )
 
-            let eventCollector = PluginEventCollector.make(
+            let _subscribeResources = PluginEventCollector.subscribe(
               ~name=childName,
               ~eventTopics,
               ~channel,
               ~runtime,
-              ~opts=Some(opts),
+              ~opts,
             )
             let eventCollectorOutputs = eventCollector->Component.outputs
 

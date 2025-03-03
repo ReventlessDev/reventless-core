@@ -32,21 +32,20 @@ and channel<'callbackEvent, 'context> = {
 module type T = {
   type callbackEvent
 
-  let makeChannel: (
+  let subscribe: (
     ~name: string,
+    ~eventTopics: EventTopic.allOutputs,
+    ~channel: channel<callbackEvent, 'context>,
+    ~runtime: Runtime.environment,
     ~opts: Pulumi.ComponentResource.options,
-  ) => channel<callbackEvent, 'context>
+  ) => array<ReventlessSpec.Adapter.resource>
 
   let makeHandler: (
     ~channel: channel<callbackEvent, 'context>,
     ~eventsHandler: jsonEventsHandler,
   ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
 
-  let make: (
-    ~name: string,
-    ~eventTopics: EventTopic.allOutputs,
-    ~channel: channel<callbackEvent, 'context>,
-    ~runtime: Runtime.environment,
-    ~opts: option<Pulumi.ComponentResource.options>,
-  ) => component
+  let make: (~name: string, ~opts: Pulumi.ComponentResource.options) => component
+
+  let channel: component => channel<callbackEvent, 'context>
 }

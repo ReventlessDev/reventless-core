@@ -105,12 +105,14 @@ module Make = (
           extensionPointsOutgoingEventHandlers
           ->Pulumi.Output.all
           ->Pulumi.Output.apply(extensionPointsOutgoingEventHandlers => {
+            module CoreEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
+            let eventCollector = CoreEventCollector.make(~name, ~opts)
+            let channel = eventCollector->CoreEventCollector.channel
+
             module Callback = Core_Callback.Make({
               let pluginDefinition = fakePluginDefinition
               let outgoingExtensionPointEventHandlers = extensionPointsOutgoingEventHandlers
             })
-            module CoreEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
-            let channel = CoreEventCollector.makeChannel(~name, ~opts)
             let handler = CoreEventCollector.makeHandler(
               ~channel,
               ~eventsHandler=Callback.eventsHandler,
@@ -121,13 +123,14 @@ module Make = (
               ~opts,
             )
 
-            CoreEventCollector.make(
+            let _subscribeResources = CoreEventCollector.subscribe(
               ~name,
               ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
               ~channel,
               ~runtime,
-              ~opts=Some(opts),
-            )->Component.outputs
+              ~opts,
+            )
+            eventCollector->Component.outputs
           })
         (extensionPointsOutputs, eventCollectorOutputs)
       })

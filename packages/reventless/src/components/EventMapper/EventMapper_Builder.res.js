@@ -55,7 +55,8 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                               
                             })));
                   var eventCollector = match[0].apply(function (param) {
-                        var channel = SpecificEventCollector.makeChannel(name, opts);
+                        var eventCollector = SpecificEventCollector.make(name, opts);
+                        var channel = SpecificEventCollector.channel(eventCollector);
                         var EventCollectorHandler = EventMapper_Callback$Reventless.MakeEventCollectorHandler({
                               publishJsons: publishJsons,
                               count: param.count,
@@ -64,7 +65,7 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                             });
                         var handler = SpecificEventCollector.makeHandler(channel, EventCollectorHandler.handleJsonEvents);
                         var runtime = RuntimeEnvironment.make(name, handler, memorySize, timeout, undefined, undefined, opts);
-                        return Component$Reventless.outputs(SpecificEventCollector.make(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), channel, runtime, opts));
+                        return Component$Reventless.outputs((SpecificEventCollector.subscribe(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), channel, runtime, opts), eventCollector));
                       });
                   return Component$Reventless.setOutputs(extra, {
                               name: name,

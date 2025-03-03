@@ -265,6 +265,9 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                               ]).apply(function (param) {
                               var extensionsHandlers = param[2];
                               var pluginDefinition = param[0];
+                              var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
+                              var eventCollector = PluginEventCollector.make(childName, opts);
+                              var channel = PluginEventCollector.channel(eventCollector);
                               var outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(extensionPointsOutputs, (function (outputs) {
                                       return outputs.aggregateNames;
                                     }), param[3], getOutgoingEventHandler);
@@ -286,11 +289,9 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                     outgoingExtensionEventHandlers: outgoingExtensionEventHandlers,
                                     incomingExtensionEventHandlers: incomingExtensionEventHandlers
                                   });
-                              var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
-                              var channel = PluginEventCollector.makeChannel(childName, opts);
                               var handler = PluginEventCollector.makeHandler(channel, Callback.eventsHandler);
                               var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts);
-                              var eventCollector = PluginEventCollector.make(childName, eventTopics, channel, runtime, opts);
+                              PluginEventCollector.subscribe(childName, eventTopics, channel, runtime, opts);
                               var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;

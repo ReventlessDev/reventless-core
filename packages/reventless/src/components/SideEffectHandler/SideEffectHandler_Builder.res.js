@@ -27,14 +27,15 @@ function Make(SpecificEventCollector, RuntimeEnvironment) {
                   var aggregateNames = Belt_SetString.fromArray(Belt_Array.map(sideEffects, (function (SideEffect) {
                               return SideEffect.Source.name;
                             })));
+                  var eventCollector = SpecificEventCollector.make(extra$1, opts);
+                  var channel = SpecificEventCollector.channel(eventCollector);
                   var Callback = SideEffectHandler_Callback$Reventless.Make({
                         sideEffects: sideEffects,
                         queryEngine: queryEngine
                       });
-                  var channel = SpecificEventCollector.makeChannel(extra$1, opts);
                   var handler = SpecificEventCollector.makeHandler(channel, Callback.eventsHandler);
                   var runtime = RuntimeEnvironment.make(extra$1, handler, memorySize, timeout, policy1, policy2, opts);
-                  var eventCollector = SpecificEventCollector.make(extra$1, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), channel, runtime, opts);
+                  SpecificEventCollector.subscribe(extra$1, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), channel, runtime, opts);
                   var eventCollectorResources = Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(eventCollector).resources);
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),

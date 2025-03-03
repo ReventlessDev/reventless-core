@@ -50,6 +50,9 @@ module Make = (
       queryDb
       ->Component.operations
       ->Pulumi.Output.apply(operations => {
+        let eventCollector = SpecificEventCollector.make(~name, ~opts)
+        let channel = eventCollector->SpecificEventCollector.channel
+
         module Callback = ReadModel_Callback.Make(
           Spec,
           Mappings,
@@ -58,19 +61,20 @@ module Make = (
             let operations = operations->toProjectionOperations
           },
         )
-        let channel = SpecificEventCollector.makeChannel(~name, ~opts)
         let handler = SpecificEventCollector.makeHandler(
           ~channel,
           ~eventsHandler=Callback.eventsHandler,
         )
         let runtime = RuntimeEnvironment.make(~name, ~handler, ~opts)
-        SpecificEventCollector.make(
+
+        let _subscribeResources = SpecificEventCollector.subscribe(
           ~name,
           ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(sourceNames),
           ~channel,
           ~runtime,
-          ~opts=Some(opts),
+          ~opts,
         )
+        eventCollector
       })
 
     self->Component.setOperations(

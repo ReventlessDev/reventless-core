@@ -21,11 +21,13 @@ module Make = (
       ->Belt.Array.map((module(SideEffect: ReventlessSpec.SideEffect.T)) => SideEffect.Source.name)
       ->Belt.Set.String.fromArray
 
+    let eventCollector = SpecificEventCollector.make(~name, ~opts)
+    let channel = eventCollector->SpecificEventCollector.channel
+
     module Callback = SideEffectHandler_Callback.Make({
       let sideEffects = sideEffects
       let queryEngine = queryEngine
     })
-    let channel = SpecificEventCollector.makeChannel(~name, ~opts)
     let handler = SpecificEventCollector.makeHandler(
       ~channel,
       ~eventsHandler=Callback.eventsHandler,
@@ -40,12 +42,12 @@ module Make = (
       ~opts,
     )
 
-    let eventCollector = SpecificEventCollector.make(
+    let _subscribeResources = SpecificEventCollector.subscribe(
       ~name,
       ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
       ~channel,
       ~runtime,
-      ~opts=Some(opts),
+      ~opts,
     )
     let eventCollectorResources =
       (eventCollector->Component.outputs).resources->Adapter.resourcesToUnwrappedOutput
