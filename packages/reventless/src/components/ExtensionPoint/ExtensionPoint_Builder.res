@@ -29,10 +29,13 @@ module Make = (
     let name = name->Js.String2.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
 
     module SpecificCommandTopic = CommandTopic_Builder.Make(SpecWithId, CommandTopicChannel)
-    let commandTopicChannel = SpecificCommandTopic.makeChannel(~name, ~opts)
+    let commandTopic = SpecificCommandTopic.make(~name, ~opts)
+    let commandTopicOpts = {
+      Pulumi.ComponentResource.parent: commandTopic->Component.toPulumiResource,
+    }
 
     let (commandTopic, eventTopic, outgoingEventHandler) =
-      commandTopicChannel.resources
+      (commandTopic->Component.outputs).resources
       ->Adapter.resourcesToUnwrappedOutput
       ->Pulumi.Output.flatMap(commandTopicResources => {
         module ExtensionPointCallback = ExtensionPoint_Callback.Make(
@@ -46,17 +49,12 @@ module Make = (
           Mappings,
         )
         let handler = SpecificCommandTopic.makeHandler(
-          ~channel=commandTopicChannel,
+          ~commandTopic,
           ~commandsHandler=ExtensionPointCallback.handleIncomingCommands,
         )
-        let runtime = RuntimeEnvironment.make(~name, ~handler, ~opts)
+        let runtime = RuntimeEnvironment.make(~name, ~handler, ~opts=commandTopicOpts)
 
-        let commandTopic = SpecificCommandTopic.make(
-          ~name,
-          ~channel=commandTopicChannel,
-          ~runtime,
-          ~opts,
-        )
+        SpecificCommandTopic.subscribe(~name, ~commandTopic, ~runtime, ~opts=commandTopicOpts)
 
         module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)
         let eventTopic = SpecificEventTopic.make(~name, ~storageResources=[], ~opts)

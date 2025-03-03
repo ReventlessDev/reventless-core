@@ -52,7 +52,11 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
           var SpecificCommandTopic = (function (param) {
                 return partial_arg$1(partial_arg, param);
               })(CommandTopicChannel);
-          var channel = SpecificCommandTopic.makeChannel(name$1, opts);
+          var commandTopic = SpecificCommandTopic.make(name$1, opts);
+          var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(commandTopic));
+          var opts$1 = {
+            parent: opts_parent
+          };
           var partial_arg$2 = Aggregate_Callback$Reventless.Make;
           var partial_arg$3 = function (param, param$1) {
             return partial_arg$2(Spec, param, param$1);
@@ -62,8 +66,9 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                 EventLog: SpecificEventLog,
                 eventLog: eventLogOps
               });
-          var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandTopic$Reventless.componentType), SpecificCommandTopic.makeHandler(channel, AggregateCallback.handleCommands), undefined, undefined, undefined, undefined, opts);
-          return SpecificCommandTopic.make(name$1, channel, runtime, opts);
+          var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandTopic$Reventless.componentType), SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands), undefined, undefined, undefined, undefined, opts$1);
+          SpecificCommandTopic.subscribe(name$1, commandTopic, runtime, opts$1);
+          return commandTopic;
         });
     var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
             return Component$Reventless.operations(commandTopic).apply(function (param) {

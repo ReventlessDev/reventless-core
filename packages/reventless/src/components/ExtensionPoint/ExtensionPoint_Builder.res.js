@@ -36,8 +36,12 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                   var SpecificCommandTopic = (function (param) {
                         return partial_arg$1(partial_arg, param);
                       })(CommandTopicChannel);
-                  var commandTopicChannel = SpecificCommandTopic.makeChannel(name, opts);
-                  var match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(Adapter$Reventless.resourcesToUnwrappedOutput(commandTopicChannel.resources), (function (commandTopicResources) {
+                  var commandTopic = SpecificCommandTopic.make(name, opts);
+                  var commandTopicOpts_parent = Caml_option.some(Component$Reventless.toPulumiResource(commandTopic));
+                  var commandTopicOpts = {
+                    parent: commandTopicOpts_parent
+                  };
+                  var match = Output$Pulumi.unzip3(Output$Pulumi.flatMap(Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(commandTopic).resources), (function (commandTopicResources) {
                               var partial_arg = {
                                 publishToAggregates: publishToAggregates,
                                 commandTopicResources: commandTopicResources,
@@ -49,9 +53,9 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                                 return partial_arg$1(partial_arg, param, param$1);
                               };
                               var ExtensionPointCallback = partial_arg$2(Spec, Mappings);
-                              var handler = SpecificCommandTopic.makeHandler(commandTopicChannel, ExtensionPointCallback.handleIncomingCommands);
-                              var runtime = RuntimeEnvironment.make(name, handler, undefined, undefined, undefined, undefined, opts);
-                              var commandTopic = SpecificCommandTopic.make(name, commandTopicChannel, runtime, opts);
+                              var handler = SpecificCommandTopic.makeHandler(commandTopic, ExtensionPointCallback.handleIncomingCommands);
+                              var runtime = RuntimeEnvironment.make(name, handler, undefined, undefined, undefined, undefined, commandTopicOpts);
+                              SpecificCommandTopic.subscribe(name, commandTopic, runtime, commandTopicOpts);
                               var partial_arg$3 = {
                                 Id: Id$ReventlessSpec.$$String,
                                 event_encode: event_encode,

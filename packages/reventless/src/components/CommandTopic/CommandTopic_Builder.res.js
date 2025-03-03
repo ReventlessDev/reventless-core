@@ -10,11 +10,36 @@ var CommandTopic_Callback$Reventless = require("./CommandTopic_Callback.res.js")
 var CommandTopic_Operations$Reventless = require("./CommandTopic_Operations.res.js");
 
 function Make(Spec, Channel) {
-  var makeChannel = function (name, opts) {
+  var construct = function (self, name) {
+    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
+    var opts = {
+      parent: opts_parent
+    };
     var name$1 = ComponentType$Reventless.name(name, CommandTopic$Reventless.componentType);
-    return Channel.make(name$1, opts);
+    var channel = Channel.make(name$1, opts);
+    self.channel = channel;
+    Component$Reventless.setOperations(self, channel.publishJsons.apply(function (publishJsons) {
+              var Ops = {
+                publishJsons: publishJsons
+              };
+              var partial_arg = CommandTopic_Operations$Reventless.Make;
+              var Operations = partial_arg(Spec, Ops);
+              return {
+                      publish: Operations.publish,
+                      publishJsons: Operations.publishJsons
+                    };
+            }));
   };
-  var makeHandler = function (channel, commandsHandler) {
+  var subscribe = function (name, commandTopic, runtime, opts) {
+    var name$1 = ComponentType$Reventless.name(name, CommandTopic$Reventless.componentType);
+    var channel = commandTopic.channel;
+    var subscribeResources = channel.subscribe(name$1, channel, runtime, opts);
+    Component$Reventless.setOutputs(commandTopic, {
+          resources: Belt_Array.concat(channel.resources, subscribeResources)
+        });
+  };
+  var makeHandler = function (commandTopic, commandsHandler) {
+    var channel = commandTopic.channel;
     var partial_arg = CommandTopic_Callback$Reventless.Make;
     var Callback = partial_arg(Spec, {
           Spec: Spec,
@@ -22,33 +47,12 @@ function Make(Spec, Channel) {
         });
     return channel.handleChannelEvent(Callback.handleJsonCommands);
   };
-  var make = function (name, channel, runtime, opts) {
-    return Component$Reventless.make(ComponentType$Reventless.toString(CommandTopic$Reventless.componentType), name, (function (none, none$1) {
-                  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(none));
-                  var opts = {
-                    parent: opts_parent
-                  };
-                  var name = ComponentType$Reventless.name(none$1, CommandTopic$Reventless.componentType);
-                  var subscribeResources = channel.subscribe(name, channel, runtime, opts);
-                  Component$Reventless.setOperations(none, channel.publishJsons.apply(function (publishJsons) {
-                            var Ops = {
-                              publishJsons: publishJsons
-                            };
-                            var partial_arg = CommandTopic_Operations$Reventless.Make;
-                            var Operations = partial_arg(Spec, Ops);
-                            return {
-                                    publish: Operations.publish,
-                                    publishJsons: Operations.publishJsons
-                                  };
-                          }));
-                  return Component$Reventless.setOutputs(none, {
-                              resources: Belt_Array.concat(channel.resources, subscribeResources)
-                            });
-                }), opts);
+  var make = function (name, opts) {
+    return Component$Reventless.make(ComponentType$Reventless.toString(CommandTopic$Reventless.componentType), name, construct, opts);
   };
   return {
           Spec: Spec,
-          makeChannel: makeChannel,
+          subscribe: subscribe,
           makeHandler: makeHandler,
           make: make
         };

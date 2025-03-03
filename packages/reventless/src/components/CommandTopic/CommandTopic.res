@@ -28,21 +28,6 @@ type commandsHandler<'command> = array<topicItem<'command>> => Js.Promise.t<
   array<Belt.Result.t<string, string>>,
 >
 
-type rec subscribe<'callbackEvent, 'context> = (
-  ~name: string,
-  ~channel: channel<'callbackEvent, 'context>,
-  ~runtime: Runtime.environment,
-  ~opts: Pulumi.ComponentResource.options=?,
-) => array<ReventlessSpec.Adapter.resource>
-and channel<'callbackEvent, 'context> = {
-  resources: array<ReventlessSpec.Adapter.resource>,
-  publishJsons: Pulumi.Output.t<publishJsons>,
-  handleChannelEvent: jsonCommandsHandler => Pulumi.Output.t<
-    Runtime.eventHandler<'callbackEvent, 'context, unit>,
-  >,
-  subscribe: subscribe<'callbackEvent, 'context>,
-}
-
 module type Spec = {
   module Id: ReventlessSpec.Id.T
 
@@ -64,20 +49,17 @@ module type T = {
 
   type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 
-  let makeChannel: (
+  let subscribe: (
     ~name: string,
-    ~opts: Pulumi.ComponentResource.options=?,
-  ) => channel<callbackEvent, 'context>
+    ~commandTopic: component,
+    ~runtime: Runtime.environment,
+    ~opts: Pulumi.ComponentResource.options,
+  ) => unit
 
   let makeHandler: (
-    ~channel: channel<callbackEvent, 'context>,
+    ~commandTopic: component,
     ~commandsHandler: commandsHandler,
   ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
 
-  let make: (
-    ~name: string,
-    ~channel: channel<callbackEvent, 'context>,
-    ~runtime: Runtime.environment,
-    ~opts: Pulumi.ComponentResource.options=?,
-  ) => component
+  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }

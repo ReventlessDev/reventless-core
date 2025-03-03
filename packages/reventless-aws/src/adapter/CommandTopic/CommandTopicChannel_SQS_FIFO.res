@@ -2,12 +2,11 @@ type callbackEvent = PulumiAws.SQS.Queue.event
 
 let subscribe = (
   ~name,
-  ~channel: Reventless.CommandTopic.channel<callbackEvent, 'context>,
+  ~channel: Reventless.CommandTopic_Adapter.channel<callbackEvent, 'context>,
   ~runtime: Reventless.Runtime.environment,
-  ~opts=?,
+  ~opts,
 ) => {
-  let opts =
-    opts->Belt.Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
+  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let queue =
     channel.resources
@@ -23,7 +22,7 @@ let subscribe = (
     (queue, handler)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((queue, handler)) =>
-      queue->PulumiAws.SQS.Queue.onEvent(~name, ~handler, ~opts?)->Util.SQS.Subscription.toResource
+      queue->PulumiAws.SQS.Queue.onEvent(~name, ~handler, ~opts)->Util.SQS.Subscription.toResource
     )
     ->Reventless.Adapter.outputToResource
   [resource]

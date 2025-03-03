@@ -17,14 +17,14 @@ var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueu
 var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("./CommandTopicChannel_SQS_Runtime.res.js");
 
 function subscribe(name, channel, runtime, opts) {
-  var opts$1 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
+  var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = Util_SQS$ReventlessAws.fromResource(Util_SQS$ReventlessAws.findResource(channel.resources));
   var handler = Util_Lambda$ReventlessAws.fromResource(Util_Lambda$ReventlessAws.findResource(runtime.resources));
   return [Adapter$Reventless.outputToResource(Pulumi.all([
                       queue,
                       handler
                     ]).apply(function (param) {
-                    return Util_SQS$ReventlessAws.Subscription.toResource(param[0].onEvent(name, param[1], undefined, opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined));
+                    return Util_SQS$ReventlessAws.Subscription.toResource(param[0].onEvent(name, param[1], undefined, opts$1));
                   }))];
 }
 

@@ -58,7 +58,9 @@ module Make = (
       ->Component.operations
       ->Pulumi.Output.apply(eventLogOps => {
         module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
-        let channel = SpecificCommandTopic.makeChannel(~name, ~opts)
+        let commandTopic = SpecificCommandTopic.make(~name, ~opts)
+        let opts = {Pulumi.ComponentResource.parent: commandTopic->Component.toPulumiResource}
+
         module AggregateCallback = Aggregate_Callback.Make(
           Spec,
           Behaviour,
@@ -71,13 +73,14 @@ module Make = (
         let runtime = RuntimeEnvironment.make(
           ~name=name->ComponentType.name(CommandTopic.componentType),
           ~handler=SpecificCommandTopic.makeHandler(
-            ~channel,
+            ~commandTopic,
             ~commandsHandler=AggregateCallback.handleCommands,
           ),
           ~opts,
         )
 
-        SpecificCommandTopic.make(~name, ~channel, ~runtime, ~opts)
+        SpecificCommandTopic.subscribe(~name, ~commandTopic, ~runtime, ~opts)
+        commandTopic
       })
 
     let commandGenerator = commandTopic->Pulumi.Output.flatMap(commandTopic =>
