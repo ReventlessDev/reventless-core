@@ -6,7 +6,7 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
     let name = name->ComponentType.name(EventCollector.componentType)
 
     let channel = Channel.make(~name, ~opts)
-    self->EventCollector.setChannel(channel)
+    self->EventCollector_Adapter.setChannel(channel)
 
     self->Component.setOperations(
       channel.enqueueEvent->Pulumi.Output.apply(enqueueEvent => {
@@ -17,7 +17,7 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
 
   let subscribe = (~name, ~eventTopics, ~eventCollector, ~runtime, ~opts) => {
     let name = name->ComponentType.name(EventCollector.componentType)
-    let channel = eventCollector->EventCollector.channel
+    let channel = eventCollector->EventCollector_Adapter.channel
 
     let subscribeResources = channel.subscribe(~name, ~eventTopics, ~channel, ~runtime, ~opts)
 
@@ -31,7 +31,7 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
     ~eventCollector: EventCollector.component,
     ~eventsHandler: EventCollector.jsonEventsHandler,
   ) => {
-    let channel = eventCollector->EventCollector.channel
+    let channel = eventCollector->EventCollector_Adapter.channel
     channel.handleChannelEvent(eventsHandler)
   }
 

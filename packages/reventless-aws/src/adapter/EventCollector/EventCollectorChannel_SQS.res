@@ -3,7 +3,7 @@ type callbackEvent = PulumiAws.Lambda.CallbackFunction.event
 let subscribe = (
   ~name,
   ~eventTopics,
-  ~channel: Reventless.EventCollector.channel<callbackEvent, 'context>,
+  ~channel: Reventless.EventCollector_Adapter.channel<callbackEvent, 'context>,
   ~runtime: Reventless.Runtime.environment,
   ~opts,
 ) => {
@@ -102,7 +102,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context
   )
 
   {
-    Reventless.EventCollector.resources: [queue->Util_SQS.toResource],
+    Reventless.EventCollector_Adapter.resources: [queue->Util_SQS.toResource],
     enqueueEvent: queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>

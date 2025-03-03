@@ -13,27 +13,6 @@ type component = Component.t<t, outputs, operations>
 
 type jsonEventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
-type rec subscribe<'callbackEvent, 'context> = (
-  ~name: string,
-  ~eventTopics: EventTopic.allOutputs,
-  ~channel: channel<'callbackEvent, 'context>,
-  ~runtime: Runtime.environment,
-  ~opts: Pulumi.ComponentResource.options,
-) => array<ReventlessSpec.Adapter.resource>
-and channel<'callbackEvent, 'context> = {
-  resources: array<ReventlessSpec.Adapter.resource>,
-  enqueueEvent: Pulumi.Output.t<enqueueEvent>,
-  handleChannelEvent: jsonEventsHandler => Pulumi.Output.t<
-    Runtime.eventHandler<'callbackEvent, 'context, unit>,
-  >,
-  subscribe: subscribe<'callbackEvent, 'context>,
-}
-
-@set
-external setChannel: (component, channel<'callbackEvent, 'context>) => unit = "channel"
-@get
-external channel: component => channel<'callbackEvent, 'context> = "channel"
-
 module type T = {
   type callbackEvent
 

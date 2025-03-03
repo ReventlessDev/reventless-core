@@ -55,7 +55,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context
     Js.log4(__MODULE__ ++ " supports no enqueueEvent:", delay, id, messageBody)->Js.Promise.resolve
 
   {
-    Reventless.EventCollector.resources: [],
+    Reventless.EventCollector_Adapter.resources: [],
     enqueueEvent: enqueueEventNotSupported->Pulumi.Output.make,
     subscribe,
     handleChannelEvent: handleEvents =>
