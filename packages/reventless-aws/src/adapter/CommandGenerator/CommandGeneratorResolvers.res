@@ -1,2 +1,2 @@
-module AppSync_Lambda = CommandGeneratorResolvers_AppSync_Lambda
+module AppSync = CommandGeneratorResolvers_AppSync
 module AppSync_Runtime = CommandGeneratorResolvers_AppSync_Runtime

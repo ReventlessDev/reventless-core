@@ -5,7 +5,7 @@ type resolversMaker<'api> = (
   ~api: 'api,
   ~fields: array<string>,
   ~runtime: Runtime.environment,
-  ~opts: Pulumi.CustomResourceOptions.t,
+  ~opts: Pulumi.ComponentResource.options,
 ) => resolvers
 
 module type Resolvers = {

@@ -7,6 +7,7 @@ var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
+var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
@@ -19,19 +20,20 @@ function makeHandler(generateCommand) {
 }
 
 function make(name, api, fields, runtime, opts) {
+  var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var commandGeneratorArn = Util_Lambda$ReventlessAws.findResource(runtime.resources).urn;
   new (Aws.lambda.Permission)(name, {
         action: "lambda:InvokeFunction",
         function: commandGeneratorArn,
         principal: "appsync.amazonaws.com"
-      }, opts);
-  var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), opts);
+      }, opts$1);
+  var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), opts$1);
   new (Aws.iam.RolePolicy)(name + "DS", {
         policy: commandGeneratorArn.apply(function (commandGeneratorArn) {
               return IAM$PulumiAws.RolePolicy.generatePolicy([commandGeneratorArn], "lambda:InvokeFunction");
             }),
         role: dataSourceRole.id
-      }, opts);
+      }, opts$1);
   var dataSource = new (Aws.appsync.DataSource)(name, {
         type: "AWS_LAMBDA",
         apiId: Output$Pulumi.flatMap(api, (function (api) {
@@ -41,14 +43,14 @@ function make(name, api, fields, runtime, opts) {
           functionArn: commandGeneratorArn
         },
         serviceRoleArn: dataSourceRole.arn
-      }, opts);
+      }, opts$1);
   var invokeCommandGenerator = function (command) {
     return "\n      {\n        \"version\": \"2017-02-28\",\n        \"operation\": \"Invoke\",\n        \"payload\": {\n            \"command\": \"" + command + "\",\n            \"arguments\": $utils.toJson($context.arguments),\n            \"meta\": {\n              \"ip\": $util.toJson($context.identity.sourceIp),\n              \"user\": $util.toJson($context.identity.username)\n            }\n        }\n      }\n      ";
   };
   var resolvers = Belt_Array.map(fields, (function (field) {
           var match = field.split("_");
           var commandName = match.length !== 2 ? StringLabels.capitalize_ascii(field) : StringLabels.capitalize_ascii(match[1]);
-          return AppSync_Resolver$PulumiAws.makeUnitResolver(StringLabels.capitalize_ascii(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, opts);
+          return AppSync_Resolver$PulumiAws.makeUnitResolver(StringLabels.capitalize_ascii(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, opts$1);
         }));
   var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);
   return {

@@ -93,12 +93,15 @@ module Make = (
           Behaviour,
           CommandGeneratorResolvers,
         )
+        let commandGenerator = SpecificCommandGenerator.make(~name, ~opts)
+
         let runtime = RuntimeEnvironment.make(
           ~name=name->ComponentType.name(CommandGenerator.componentType),
           ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
           ~opts,
         )
-        SpecificCommandGenerator.make(~name, ~runtime, ~opts)->Component.outputs
+        SpecificCommandGenerator.subscribe(~name, ~commandGenerator, ~runtime, ~opts)
+        commandGenerator->Component.outputs
       })
     )
 

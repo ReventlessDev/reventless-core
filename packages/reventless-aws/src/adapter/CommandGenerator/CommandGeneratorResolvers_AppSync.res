@@ -7,9 +7,10 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
   ~name: string,
   ~api: api,
   ~fields,
-  ~runtime: Reventless.Runtime.environment,
-  ~opts: Pulumi.CustomResourceOptions.t,
+  ~runtime,
+  ~opts,
 ) => {
+  let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
   let commandGeneratorArn = (runtime.resources->Util.Lambda.findResource).urn
 
   let _commandGeneratorPermission = PulumiAws.Lambda.Permission.make(

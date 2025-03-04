@@ -4,18 +4,19 @@ module Make = (
   Behaviour: Behaviour.T with module Spec := Spec,
   Resolvers: CommandGenerator_Adapter.Resolvers with type api := Config.api,
 ): CommandGenerator.T => {
-  let construct = (self, name, ~api, ~runtime) => {
-    let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
+  let construct = (_self, _name) => ()
 
+  let subscribe = (~name, ~commandGenerator, ~runtime, ~opts) => {
     let resolvers = Resolvers.make(
       ~name=name->ComponentType.name(CommandGenerator.componentType),
-      ~api,
+      ~api=Config.api,
       ~fields=Behaviour.resolverConfig.fields,
       ~runtime,
       ~opts,
     )
 
-    self->Component.setOutputs({CommandGenerator.resources: resolvers.resources})
+    let _ =
+      commandGenerator->Component.setOutputs({CommandGenerator.resources: resolvers.resources})
   }
 
   let makeHandler = (~publishJsons) => {
@@ -30,11 +31,11 @@ module Make = (
     Resolvers.makeHandler(Callback.generateCommand)
   }
 
-  let make = (~name, ~runtime, ~opts=?): CommandGenerator.component =>
+  let make = (~name, ~opts=?): CommandGenerator.component =>
     Component.make(
       ~componentType=CommandGenerator.componentType->ComponentType.toString,
       ~name,
-      ~construct=construct(~api=Config.api, ~runtime, ...),
-      ~opts
+      ~construct,
+      ~opts,
     )
 }

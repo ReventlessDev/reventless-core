@@ -15,13 +15,16 @@ type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 type component = Component.t<t, outputs, unit>
 
 module type T = {
+  let subscribe: (
+    ~name: string,
+    ~commandGenerator: component,
+    ~runtime: Runtime.environment,
+    ~opts: Pulumi.ComponentResource.options,
+  ) => unit
+
   let makeHandler: (
     ~publishJsons: publishJsons,
   ) => Pulumi.Output.t<Runtime.eventHandler<payload, 'context, string>>
 
-  let make: (
-    ~name: string,
-    ~runtime: Runtime.environment,
-    ~opts: Pulumi.ComponentResource.options=?,
-  ) => component
+  let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }
