@@ -267,9 +267,9 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                               var pluginDefinition = param[0];
                               var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                               var eventCollector = PluginEventCollector.make(childName, opts);
-                              var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
-                              var opts$1 = {
-                                parent: opts_parent
+                              var eventCollectorOpts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
+                              var eventCollectorOpts = {
+                                parent: eventCollectorOpts_parent
                               };
                               var outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(extensionPointsOutputs, (function (outputs) {
                                       return outputs.aggregateNames;
@@ -293,8 +293,8 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                     incomingExtensionEventHandlers: incomingExtensionEventHandlers
                                   });
                               var handler = PluginEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
-                              var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts$1);
-                              PluginEventCollector.subscribe(childName, eventTopics, eventCollector, runtime, opts$1);
+                              var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, eventCollectorOpts);
+                              PluginEventCollector.subscribe(childName, eventTopics, eventCollector, runtime, eventCollectorOpts);
                               var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;
@@ -304,9 +304,13 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                         var partial_arg = Heartbeat_Builder$Reventless.Make;
                         var SpecificHeartbeat = partial_arg(HeartbeatRunner, RuntimeEnvironment);
                         var heartbeat = SpecificHeartbeat.make(childName, opts);
+                        var heartbeatOpts_parent = Caml_option.some(Component$Reventless.toPulumiResource(heartbeat));
+                        var heartbeatOpts = {
+                          parent: heartbeatOpts_parent
+                        };
                         var handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
-                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, Heartbeat$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts);
-                        SpecificHeartbeat.subscribe(childName, heartbeatInterval, heartbeat, runtime, opts);
+                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, Heartbeat$Reventless.componentType), handler, undefined, undefined, undefined, undefined, heartbeatOpts);
+                        SpecificHeartbeat.subscribe(childName, heartbeatInterval, heartbeat, runtime, heartbeatOpts);
                         return {
                                 id: id,
                                 version: version,

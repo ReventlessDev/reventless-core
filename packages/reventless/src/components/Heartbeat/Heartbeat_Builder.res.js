@@ -4,7 +4,6 @@
 var Pulumi = require("@pulumi/pulumi");
 var Component$Reventless = require("../Component.res.js");
 var Heartbeat$Reventless = require("./Heartbeat.res.js");
-var CommandTopic$Reventless = require("../CommandTopic/CommandTopic.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var Heartbeat_Callback$Reventless = require("./Heartbeat_Callback.res.js");
 
@@ -14,10 +13,9 @@ function Make(Runner, RuntimeEnvironment) {
   };
   var subscribe = function (name, timeoutOpt, heartbeat, runtime, opts) {
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
-    var name$1 = ComponentType$Reventless.name(name, CommandTopic$Reventless.componentType);
-    var runnerResources = Runner.make(ComponentType$Reventless.name(name$1, Heartbeat$Reventless.componentType), timeout, runtime, opts).resources;
+    var runnerResources = Runner.make(ComponentType$Reventless.name(name, Heartbeat$Reventless.componentType), timeout, runtime, opts).resources;
     Component$Reventless.setOutputs(heartbeat, {
-          name: name$1,
+          name: name,
           resources: runnerResources
         });
   };

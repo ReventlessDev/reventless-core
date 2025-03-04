@@ -378,7 +378,9 @@ module Make = (
           )) => {
             module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
             let eventCollector = PluginEventCollector.make(~name=childName, ~opts)
-            let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
+            let eventCollectorOpts = {
+              Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource,
+            }
 
             module Callback = Plugin_Callback.Make({
               let pluginDefinition = pluginDefinition
@@ -414,7 +416,7 @@ module Make = (
             let runtime = RuntimeEnvironment.make(
               ~name=childName->ComponentType.name(EventCollector.componentType),
               ~handler,
-              ~opts,
+              ~opts=eventCollectorOpts,
             )
 
             PluginEventCollector.subscribe(
@@ -422,7 +424,7 @@ module Make = (
               ~eventTopics,
               ~eventCollector,
               ~runtime,
-              ~opts,
+              ~opts=eventCollectorOpts,
             )
 
             let eventCollectorOutputs = eventCollector->Component.outputs
@@ -435,6 +437,7 @@ module Make = (
 
         module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner, RuntimeEnvironment)
         let heartbeat = SpecificHeartbeat.make(~name=childName, ~opts)
+        let heartbeatOpts = {Pulumi.ComponentResource.parent: heartbeat->Component.toPulumiResource}
 
         let handler = SpecificHeartbeat.makeHandler(
           ~id,
@@ -444,7 +447,7 @@ module Make = (
         let runtime = RuntimeEnvironment.make(
           ~name=childName->ComponentType.name(Heartbeat.componentType),
           ~handler,
-          ~opts,
+          ~opts=heartbeatOpts,
         )
 
         SpecificHeartbeat.subscribe(
@@ -452,7 +455,7 @@ module Make = (
           ~timeout=heartbeatInterval,
           ~heartbeat,
           ~runtime,
-          ~opts,
+          ~opts=heartbeatOpts,
         )
 
         {
