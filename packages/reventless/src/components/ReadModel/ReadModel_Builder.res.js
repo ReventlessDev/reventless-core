@@ -8,6 +8,7 @@ var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Component$Reventless = require("../Component.res.js");
 var ReadModel$Reventless = require("./ReadModel.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
+var EventCollector$Reventless = require("../EventCollector/EventCollector.res.js");
 var QueryDb_Builder$Reventless = require("../QueryDb/QueryDb_Builder.res.js");
 var Util_EventTopic$Reventless = require("../../util/Util_EventTopic.res.js");
 var ReadModel_Callback$Reventless = require("./ReadModel_Callback.res.js");
@@ -86,7 +87,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                               operations: operations$1
                             });
                         var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
-                        var runtime = RuntimeEnvironment.make(name, handler, undefined, undefined, undefined, undefined, opts$1);
+                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts$1);
                         SpecificEventCollector.subscribe(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), eventCollector, runtime, opts$1);
                         return eventCollector;
                       });

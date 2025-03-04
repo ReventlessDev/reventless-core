@@ -65,7 +65,11 @@ module Make = (
           ~eventCollector,
           ~eventsHandler=Callback.eventsHandler,
         )
-        let runtime = RuntimeEnvironment.make(~name, ~handler, ~opts)
+        let runtime = RuntimeEnvironment.make(
+          ~name=name->ComponentType.name(EventCollector.componentType),
+          ~handler,
+          ~opts,
+        )
 
         SpecificEventCollector.subscribe(
           ~name,
