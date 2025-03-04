@@ -78,8 +78,12 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                         };
                         var SpecificCommandGenerator = partial_arg$1(Behaviour, CommandGeneratorResolvers);
                         var commandGenerator = SpecificCommandGenerator.make(name$1, opts);
-                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandGenerator$Reventless.componentType), SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, undefined, undefined, opts);
-                        SpecificCommandGenerator.subscribe(name$1, commandGenerator, runtime, opts);
+                        var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(commandGenerator));
+                        var opts$1 = {
+                          parent: opts_parent
+                        };
+                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandGenerator$Reventless.componentType), SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, undefined, undefined, opts$1);
+                        SpecificCommandGenerator.subscribe(name$1, commandGenerator, runtime, opts$1);
                         return Component$Reventless.outputs(commandGenerator);
                       });
           }));

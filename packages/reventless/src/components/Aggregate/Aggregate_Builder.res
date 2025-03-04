@@ -94,6 +94,7 @@ module Make = (
           CommandGeneratorResolvers,
         )
         let commandGenerator = SpecificCommandGenerator.make(~name, ~opts)
+        let opts = {Pulumi.ComponentResource.parent: commandGenerator->Component.toPulumiResource}
 
         let runtime = RuntimeEnvironment.make(
           ~name=name->ComponentType.name(CommandGenerator.componentType),
