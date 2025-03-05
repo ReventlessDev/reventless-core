@@ -13,6 +13,11 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
         EventCollector.enqueueEvent: enqueueEvent,
       }),
     )
+
+    self->Component.setOutputs({
+      EventCollector.name,
+      resources: channel.resources,
+    })
   }
 
   let subscribe = (~name, ~eventTopics, ~eventCollector, ~runtime, ~opts) => {
@@ -21,10 +26,10 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
 
     let subscribeResources = channel.subscribe(~name, ~eventTopics, ~channel, ~runtime, ~opts)
 
-    let _ = eventCollector->Component.setOutputs({
-      EventCollector.name,
-      resources: channel.resources->Belt.Array.concat(subscribeResources),
-    })
+    // let _ = eventCollector->Component.setOutputs({
+    //   EventCollector.name,
+    //   resources: channel.resources->Belt.Array.concat(subscribeResources),
+    // })
   }
 
   let makeHandler = (

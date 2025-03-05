@@ -34,6 +34,10 @@ module Make = (Spec: CommandTopic.Spec, Channel: CommandTopic_Adapter.Channel): 
         }
       }),
     )
+
+    self->Component.setOutputs({
+      CommandTopic.resources: channel.resources,
+    })
   }
 
   let subscribe = (~name, ~commandTopic, ~runtime, ~opts) => {
@@ -42,9 +46,9 @@ module Make = (Spec: CommandTopic.Spec, Channel: CommandTopic_Adapter.Channel): 
 
     let subscribeResources = channel.subscribe(~name, ~channel, ~runtime, ~opts)
 
-    let _ = commandTopic->Component.setOutputs({
-      CommandTopic.resources: channel.resources->Belt.Array.concat(subscribeResources),
-    })
+    // let _ = commandTopic->Component.setOutputs({
+    //   CommandTopic.resources: channel.resources->Belt.Array.concat(subscribeResources),
+    // })
   }
 
   let makeHandler = (~commandTopic, ~commandsHandler: commandsHandler) => {
