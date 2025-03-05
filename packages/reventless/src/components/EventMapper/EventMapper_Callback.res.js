@@ -181,16 +181,16 @@ function MakeCounterHandler(Target, Mappings, Ops) {
             counterActions
           ];
   };
-  var counterEventsHandler = async function (events$pJson) {
+  var handleCounterEvents = async function (events$pJson) {
     var match = await commonEventsHandler(events$pJson);
     if (match[1].length !== 0) {
-      console.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!");
+      console.log("EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!");
     }
     return await Ops.publishJsons(await match[0]);
   };
   return {
           commonEventsHandler: commonEventsHandler,
-          counterEventsHandler: counterEventsHandler
+          handleCounterEvents: handleCounterEvents
         };
 }
 

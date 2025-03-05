@@ -58,10 +58,15 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
               })));
     var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
     var queryEngine = QueryEngineAdapter.make(allQueryDbs);
-    var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
-            return addEventMapperFn(allEventTopics, queryEngine);
-          }), addEventMapperFns);
-    var match = Output$Pulumi.unzip(Pulumi.all(publishToAggregates).apply(function (publishToAggregates) {
+    var match = Output$Pulumi.unzip3(Pulumi.all([
+                Pulumi.all(publishToAggregates),
+                queryEngine
+              ]).apply(function (param) {
+              var queryEngine = param[1];
+              var publishToAggregates = param[0];
+              var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
+                      return addEventMapperFn(allEventTopics, queryEngine);
+                    }), addEventMapperFns);
               var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
                           var extensionPoint = SpecificExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
                           return [
@@ -101,6 +106,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                     return eventCollectorOutputs;
                   });
               return [
+                      aggregatesOutputs,
                       extensionPointsOutputs,
                       eventCollectorOutputs
                     ];
@@ -110,10 +116,10 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
     var cloner = Cloner.make(opts);
     return Component$Reventless.setOutputs(self, {
                 version: version,
-                eventCollector: Output$Pulumi.flatMap(match[1], (function (eventCollectorOutputs) {
+                eventCollector: Output$Pulumi.flatMap(match[2], (function (eventCollectorOutputs) {
                         return eventCollectorOutputs;
                       })),
-                extensionPoints: match[0].apply(function (extensionPointsOutputs) {
+                extensionPoints: match[1].apply(function (extensionPointsOutputs) {
                       return Js_dict.fromArray(Belt_Array.map(extensionPointsOutputs, (function (ep) {
                                         return [
                                                 ep.name,
@@ -121,7 +127,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                                               ];
                                       })));
                     }),
-                aggregates: aggregatesOutputs,
+                aggregates: match[0],
                 readModels: readModelsOutputs,
                 cloner: Component$Reventless.outputs(cloner)
               });

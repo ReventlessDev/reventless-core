@@ -4,15 +4,15 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 
-function getLocalStorageResources(allQueryDbs, queryDbName) {
+function getRuntimeResource(allQueryDbs, queryDbName) {
   try {
-    return Belt_Option.getExn(Js_dict.get(allQueryDbs, queryDbName)).resources;
+    return Belt_Option.getExn(Js_dict.get(allQueryDbs, queryDbName));
   }
   catch (exn){
-    console.log("Util_QueryDbRuntime.getLocalStorageResources: Couldn't find QueryDb " + queryDbName + " in", allQueryDbs);
+    console.log("Util_QueryDbRuntime.getRuntimeResource: Couldn't find QueryDb " + queryDbName + " in", allQueryDbs);
     throw exn;
   }
 }
 
-exports.getLocalStorageResources = getLocalStorageResources;
+exports.getRuntimeResource = getRuntimeResource;
 /* No side effect */

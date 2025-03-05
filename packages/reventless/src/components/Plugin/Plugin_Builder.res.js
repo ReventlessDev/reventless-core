@@ -17,6 +17,7 @@ var Heartbeat$Reventless = require("../Heartbeat/Heartbeat.res.js");
 var ReadModel$Reventless = require("../ReadModel/ReadModel.res.js");
 var Interstack$Reventless = require("../../util/Interstack.res.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.res.js");
+var Util_QueryDb$Reventless = require("../../util/Util_QueryDb.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventCollector$Reventless = require("../EventCollector/EventCollector.res.js");
 var ExtensionPoint$Reventless = require("../ExtensionPoint/ExtensionPoint.res.js");
@@ -24,7 +25,6 @@ var Util_StackRefs$Reventless = require("../../util/Util_StackRefs.res.js");
 var Plugin_Callback$Reventless = require("./Plugin_Callback.res.js");
 var AdapterDeploytime$Reventless = require("../../adapter/AdapterDeploytime.res.js");
 var Heartbeat_Builder$Reventless = require("../Heartbeat/Heartbeat_Builder.res.js");
-var Util_QueryDbRuntime$Reventless = require("../../util/Util_QueryDbRuntime.res.js");
 var ExtensionMapping$ReventlessSpec = require("@reventless/reventless-spec/src/ExtensionMapping.res.js");
 var ResourceQueryRuntime$Reventless = require("../../util/ResourceQueryRuntime.res.js");
 var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
@@ -51,7 +51,7 @@ function getStorageResources(allQueryDbs, pluginName, queryDbName) {
   if (pluginName !== undefined) {
     return getRemoteStorageResources(pluginName, queryDbName);
   } else {
-    return Pulumi.output(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, queryDbName));
+    return Pulumi.output(Util_QueryDb$Reventless.getLocalStorageResources(allQueryDbs, queryDbName));
   }
 }
 
@@ -136,9 +136,6 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                             })));
                   var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
                   var queryEngine = QueryEngineAdapter.make(allQueryDbs);
-                  var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
-                          return addEventMapperFn(allEventTopics, queryEngine);
-                        }), addEventMapperFns);
                   var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
                           return coreStack.getOutput("extensionPoints");
                         }));
@@ -146,12 +143,17 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                           coreExtensionPoints,
                           Pulumi.all(publishToAggregates),
                           Pulumi.all(publishToReadModels),
-                          scheduler
+                          scheduler,
+                          queryEngine
                         ]).apply(function (param) {
+                        var queryEngine = param[4];
                         var scheduler = param[3];
                         var publishToReadModels = param[2];
                         var publishToAggregates = param[1];
                         var coreExtensionPoints = param[0];
+                        var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
+                                return addEventMapperFn(allEventTopics, queryEngine);
+                              }), addEventMapperFns);
                         var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
                                     var extensionPoint = SpecificExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
                                     return [
@@ -238,7 +240,6 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                         tasksOutputs.contents = Belt_Array.map(taskMakers, (function (taskMaker) {
                                 return Component$Reventless.outputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
                               }));
-                        var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
                         var resolvers = Belt_Array.concatMany(Belt_Array.map(QueryDb$Reventless.allResolversMakers(allQueryDbs), (function (resolverMaker) {
                                     return resolverMaker(allQueryDbs);
                                   })));

@@ -6,12 +6,13 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Logger$Reventless = require("@reventless/reventless/src/util/Logger.res.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
+var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
 var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.res.js");
-var OutputFailsafeRuntime$Reventless = require("@reventless/reventless/src/util/OutputFailsafeRuntime.res.js");
-var Util_DynamoDb_Runtime$ReventlessAws = require("../../util/Util_DynamoDb_Runtime.res.js");
 
 function toJson(x) {
   switch (x.TAG) {
@@ -227,17 +228,22 @@ async function scanByTableName(tableName, filterConfigs, limit) {
 }
 
 function make(allQueryDbs) {
-  var tableName = function (readModelName) {
-    return OutputFailsafeRuntime$Reventless.get(Util_DynamoDb_Runtime$ReventlessAws.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, readModelName)).name);
+  var allRuntimeQueryDbsOutputs = Pulumi.all(Js_dict.map((function (queryDb) {
+              return Adapter$Reventless.resourceToUnwrappedOutput(Util_DynamoDb$ReventlessAws.findResource(queryDb.resources));
+            }), allQueryDbs));
+  var tableName = function (allRuntimeQueryDbs, readModelName) {
+    return Util_QueryDbRuntime$Reventless.getRuntimeResource(allRuntimeQueryDbs, readModelName).name;
   };
-  return {
-          scan: (function (readModelName, filterConfigs, limit) {
-              return scanByTableName(tableName(readModelName), filterConfigs, limit);
-            }),
-          query: (function (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit) {
-              return queryByTableName(tableName(readModelName), key, id, subIdConfig, filterConfigs, ascending, limit);
-            })
-        };
+  return allRuntimeQueryDbsOutputs.apply(function (allRuntimeQueryDbs) {
+              return {
+                      scan: (function (readModelName, filterConfigs, limit) {
+                          return scanByTableName(tableName(allRuntimeQueryDbs, readModelName), filterConfigs, limit);
+                        }),
+                      query: (function (readModelName, key, id, subIdConfig, filterConfigs, ascending, limit) {
+                          return queryByTableName(tableName(allRuntimeQueryDbs, readModelName), key, id, subIdConfig, filterConfigs, ascending, limit);
+                        })
+                    };
+            });
 }
 
 exports.toJson = toJson;
@@ -246,4 +252,4 @@ exports.createFilterExprNamesValues = createFilterExprNamesValues;
 exports.queryByTableName = queryByTableName;
 exports.scanByTableName = scanByTableName;
 exports.make = make;
-/* Logger-Reventless Not a pure module */
+/* @pulumi/pulumi Not a pure module */

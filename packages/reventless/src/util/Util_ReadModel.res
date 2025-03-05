@@ -1,2 +1,2 @@
 let queryDbStorageResources = (queryDbs, readModelName) =>
-  queryDbs->Util_QueryDbRuntime.getLocalStorageResources(readModelName)
+  queryDbs->Util_QueryDb.getLocalStorageResources(readModelName)

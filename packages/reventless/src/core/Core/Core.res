@@ -4,7 +4,7 @@ type outputs = {
   version: string,
   eventCollector: Pulumi.Output.t<EventCollector.outputs>,
   extensionPoints: Pulumi.Output.t<dict<ExtensionPoint.outputs>>,
-  aggregates: dict<Aggregate.outputs>,
+  aggregates: Pulumi.Output.t<dict<Aggregate.outputs>>,
   readModels: dict<ReadModel.outputs>,
   cloner: Cloner.outputs,
 }

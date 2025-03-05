@@ -5,13 +5,13 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
+var Util_QueryDb$Reventless = require("@reventless/reventless/src/util/Util_QueryDb.res.js");
 var Plugin_Builder$Reventless = require("@reventless/reventless/src/components/Plugin/Plugin_Builder.res.js");
 var AppSync_Function$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Function.res.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
 var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
 var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_DataSource.res.js");
-var Util_QueryDbRuntime$Reventless = require("@reventless/reventless/src/util/Util_QueryDbRuntime.res.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
 
 function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, opts) {
@@ -30,7 +30,7 @@ function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolve
             var match = indexConfig.authorization;
             if (match !== undefined) {
               var group = match.group;
-              var authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$2 + "Auth", api, Util_DynamoDb$ReventlessAws.findResource(Util_QueryDbRuntime$Reventless.getLocalStorageResources(allQueryDbs, match.tableName)).name, apiRole, opts);
+              var authDataSource = AppSync_DataSource$PulumiAws.makeDynamoDBDataSourceWithTableName(name$2 + "Auth", api, Util_DynamoDb$ReventlessAws.findResource(Util_QueryDb$Reventless.getLocalStorageResources(allQueryDbs, match.tableName)).name, apiRole, opts);
               var authFunction = AppSync_Function$PulumiAws.make(name$2 + "Auth", api, authDataSource.name, AppSync_Resolver_Templates$PulumiAws.authorizeIndexedAccessRequest(index, group), AppSync_Resolver_Templates$PulumiAws.authorizeIndexedAccessResponse(group), opts);
               var queryFunction = AppSync_Function$PulumiAws.make(name$2, api, dataSourceName, AppSync_Resolver_Templates$PulumiAws.queryByIndexFiltered(index, idField), AppSync_Resolver_Templates$PulumiAws.result, opts);
               return AppSync_Resolver$PulumiAws.makePipelineResolver(name$2, api, "Query", StringLabels.uncapitalize_ascii(name$2), "{}", AppSync_Resolver_Templates$PulumiAws.result, [

@@ -18,6 +18,10 @@ var $$Promise;
 
 var Pulumi;
 
+var QueryDb;
+
+var QueryDbRuntime;
+
 var ReadModel;
 
 var VPC;
@@ -30,6 +34,8 @@ exports.EventTopic = EventTopic;
 exports.Logger = Logger;
 exports.$$Promise = $$Promise;
 exports.Pulumi = Pulumi;
+exports.QueryDb = QueryDb;
+exports.QueryDbRuntime = QueryDbRuntime;
 exports.ReadModel = ReadModel;
 exports.VPC = VPC;
 /* No side effect */

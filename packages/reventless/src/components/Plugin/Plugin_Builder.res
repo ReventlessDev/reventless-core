@@ -32,8 +32,7 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
 
 let getStorageResources = (allQueryDbs, pluginName, queryDbName) =>
   switch pluginName {
-  | None =>
-    Util_QueryDbRuntime.getLocalStorageResources(allQueryDbs, queryDbName)->Pulumi.Output.make
+  | None => Util_QueryDb.getLocalStorageResources(allQueryDbs, queryDbName)->Pulumi.Output.make
   | Some(pluginName) => getRemoteStorageResources(pluginName, queryDbName)
   }
 
@@ -157,11 +156,6 @@ module Make = (
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
-    let aggregatesOutputs = Js.Dict.map(
-      addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
-      addEventMapperFns,
-    )
-
     let pureOutputs = {
       let coreExtensionPoints =
         Interstack.coreStackReference->Belt.Option.mapWithDefault(
@@ -174,14 +168,21 @@ module Make = (
         publishToAggregates->Pulumi.Output.allDict,
         publishToReadModels->Pulumi.Output.allDict,
         scheduler,
+        queryEngine,
       )
-      ->Pulumi.Output.all4
+      ->Pulumi.Output.all5
       ->Pulumi.Output.apply(((
         coreExtensionPoints,
         publishToAggregates,
         publishToReadModels,
         scheduler,
+        queryEngine,
       )) => {
+        let aggregatesOutputs = Js.Dict.map(
+          addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
+          addEventMapperFns,
+        )
+
         let (extensionPointsOutputs, extensionPointsHandlers) =
           extensionPoints
           ->Belt.Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
@@ -322,7 +323,6 @@ module Make = (
             )->Component.outputs
           )
 
-        let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
         let resolvers =
           allQueryDbs
           ->QueryDb.allResolversMakers

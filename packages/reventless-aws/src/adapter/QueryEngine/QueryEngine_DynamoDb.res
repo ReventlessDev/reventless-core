@@ -141,17 +141,30 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   }
 }
 
-let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
-  let tableName = readModelName =>
-    (
-      allQueryDbs
-      ->Reventless.Util_QueryDbRuntime.getLocalStorageResources(readModelName)
-      ->Util_DynamoDb_Runtime.findResource
-    ).name->Reventless.OutputFailsafeRuntime.get
+// let toRuntimeQueryDbs = allQueryDbs =>
+//   Js.Dict.map((queryDb: Reventless.QueryDb.outputs) =>
+//     queryDb.resources
+//     ->Util.DynamoDb.findResource
+//     ->Adapter.resourceToUnwrappedOutput
+//   , allQueryDbs)
 
-  {
+let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
+  let allRuntimeQueryDbsOutputs = Js.Dict.map((queryDb: Reventless.QueryDb.outputs) =>
+    queryDb.resources
+    ->Util.DynamoDb.findResource
+    ->Reventless.Adapter.resourceToUnwrappedOutput
+  , allQueryDbs)->Pulumi.Output.allDict
+
+  let tableName = (allRuntimeQueryDbs, readModelName) =>
+    (allRuntimeQueryDbs->Reventless.Util_QueryDbRuntime.getRuntimeResource(readModelName)).name
+
+  allRuntimeQueryDbsOutputs->Pulumi.Output.apply(allRuntimeQueryDbs => {
     scan: (~readModelName, ~filterConfigs, ~limit) =>
-      scanByTableName(~tableName=tableName(readModelName), ~filterConfigs, ~limit),
+      scanByTableName(
+        ~tableName=allRuntimeQueryDbs->tableName(readModelName),
+        ~filterConfigs,
+        ~limit,
+      ),
     query: (
       ~readModelName,
       ~key=?,
@@ -162,7 +175,7 @@ let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
       ~limit=?,
     ) =>
       queryByTableName(
-        ~tableName=tableName(readModelName),
+        ~tableName=allRuntimeQueryDbs->tableName(readModelName),
         ~key?,
         ~id,
         ~subIdConfig?,
@@ -170,5 +183,5 @@ let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
         ~ascending?,
         ~limit?,
       ),
-  }
+  })
 }

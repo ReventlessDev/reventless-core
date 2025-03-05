@@ -42,7 +42,7 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                             }),
                         undefined
                       ], (function (Counter) {
-                          var counter = Counter.make(name, CounterHandler.counterEventsHandler, undefined, opts);
+                          var counter = Counter.make(name, CounterHandler.handleCounterEvents, undefined, opts);
                           return [
                                   Component$Reventless.operations(counter),
                                   Component$Reventless.outputs(counter)

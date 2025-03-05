@@ -39,7 +39,7 @@ module Make = (
       (module(Counter: Counter.T)) => {
         let counter = Counter.make(
           ~name,
-          ~counterEventsHandler=CounterHandler.counterEventsHandler,
+          ~counterEventsHandler=CounterHandler.handleCounterEvents,
           ~opts,
         )
         (counter->Component.operations, counter->Component.outputs->Some)

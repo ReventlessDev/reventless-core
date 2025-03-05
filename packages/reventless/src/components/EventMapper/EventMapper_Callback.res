@@ -8,7 +8,7 @@ module type CounterHandler = {
     promise<array<Reventless.Message.commandJson>>,
     array<Reventless.Counter.action>,
   )>
-  let counterEventsHandler: EventCollector.jsonEventsHandler
+  let handleCounterEvents: EventCollector.jsonEventsHandler
 }
 
 module MakeCounterHandler = (
@@ -152,10 +152,10 @@ module MakeCounterHandler = (
     (publisherEntries, counterActions)
   }
 
-  let counterEventsHandler = async events'Json => {
+  let handleCounterEvents = async events'Json => {
     let (publisherEntries, countActions) = await commonEventsHandler(events'Json)
     if countActions->Belt.Array.size > 0 {
-      Js.log("EventMapper.counterEventsHandler: Counter actions are not allowed in Count mapping!")
+      Js.log("EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!")
     }
     await Ops.publishJsons(await publisherEntries)
   }

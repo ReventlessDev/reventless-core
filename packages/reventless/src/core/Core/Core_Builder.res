@@ -58,15 +58,15 @@ module Make = (
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
-    let aggregatesOutputs = Js.Dict.map(
-      addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
-      addEventMapperFns,
-    )
+    let (aggregatesOutputs, extensionPointsOutputs, eventCollectorOutputs) =
+      (publishToAggregates->Pulumi.Output.allDict, queryEngine)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((publishToAggregates, queryEngine)) => {
+        let aggregatesOutputs = Js.Dict.map(
+          addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
+          addEventMapperFns,
+        )
 
-    let (extensionPointsOutputs, eventCollectorOutputs) =
-      publishToAggregates
-      ->Pulumi.Output.allDict
-      ->Pulumi.Output.apply(publishToAggregates => {
         let (extensionPointsOutputs, extensionPointsOutgoingEventHandlers) =
           extensionPoints
           ->Belt.Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
@@ -133,9 +133,9 @@ module Make = (
             )
             eventCollectorOutputs
           })
-        (extensionPointsOutputs, eventCollectorOutputs)
+        (aggregatesOutputs, extensionPointsOutputs, eventCollectorOutputs)
       })
-      ->Pulumi.Output.unzip
+      ->Pulumi.Output.unzip3
 
     module Cloner = Cloner.Make(Config, ClonerRunner)
     let cloner = Cloner.make(~opts)
