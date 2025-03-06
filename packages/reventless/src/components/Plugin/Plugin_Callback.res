@@ -10,7 +10,7 @@ module type Spec = {
 }
 
 module type T = {
-  let eventsHandler: array<Js.Json.t> => Js.Promise.t<unit>
+  let handleJsonEvents: array<Js.Json.t> => Js.Promise.t<unit>
 }
 
 module Make = (Spec: Spec): T => {
@@ -39,14 +39,14 @@ module Make = (Spec: Spec): T => {
       }
     )
 
-  let eventsHandler = events'Json => {
+  let handleJsonEvents = events'Json => {
     let id = Spec.pluginDefinition.id
     let count = events'Json->Belt.Array.size
     events'Json
     ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
       let idx = idx + 1
       event'Json->Logger.logEvent'Json(
-        `Plugin ${id} eventsHandler: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
+        `Plugin ${id} handleJsonEvents: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
       )
       detectUnhandledEvent(event'Json)
       switch await event'Json->handleEvent(Spec.incomingConnectExtensionEventHandlers) {

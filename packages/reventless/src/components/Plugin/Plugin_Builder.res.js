@@ -293,7 +293,7 @@ function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPoin
                                     outgoingExtensionEventHandlers: outgoingExtensionEventHandlers,
                                     incomingExtensionEventHandlers: incomingExtensionEventHandlers
                                   });
-                              var handler = PluginEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
+                              var handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
                               var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, eventCollectorOpts);
                               PluginEventCollector.subscribe(childName, eventTopics, eventCollector, runtime, eventCollectorOpts);
                               var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);

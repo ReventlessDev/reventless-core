@@ -411,7 +411,7 @@ module Make = (
             })
             let handler = PluginEventCollector.makeHandler(
               ~eventCollector,
-              ~eventsHandler=Callback.eventsHandler,
+              ~eventsHandler=Callback.handleJsonEvents,
             )
             let runtime = RuntimeEnvironment.make(
               ~name=childName->ComponentType.name(EventCollector.componentType),
