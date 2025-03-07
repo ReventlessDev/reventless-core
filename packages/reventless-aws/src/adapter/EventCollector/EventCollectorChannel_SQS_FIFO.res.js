@@ -21,7 +21,6 @@ var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.
 var Util_SqsQueuePolicy$ReventlessAws = require("../../util/Util_SqsQueuePolicy.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
-var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
 function subscribe(name, eventTopics, channel, runtime, opts) {
@@ -33,8 +32,8 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                           return eventTopic.resources;
                         }), __x);
           })(eventTopics), [
-        Util_DynamoDbStream_Runtime$ReventlessAws.service,
-        Util_SNS_FIFO$ReventlessAws.service
+        AWS$ReventlessAws.DynamoDbStream.service,
+        AWS$ReventlessAws.SNS_FIFO.service
       ]);
   var subscriptionResource = Pulumi.all([
           eventTopicResources,
@@ -49,7 +48,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
               Util_SqsQueuePolicy$ReventlessAws.allowAllSnsTopicsSendMessage(queue),
               Util_SqsQueuePolicy$ReventlessAws.allowCloudWatchEvents
             ], opts$1);
-        var match$1 = Util_Adapter$Reventless.partitionUnwrappedResourcesByService(match[0], Util_SNS_FIFO$ReventlessAws.service);
+        var match$1 = Util_Adapter$Reventless.partitionUnwrappedResourcesByService(match[0], AWS$ReventlessAws.SNS_FIFO.service);
         Belt_Array.map(match$1[0], (function (param) {
                 return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_SNS_FIFO$ReventlessAws.findTopicInUnwrappedResources(param[1])), opts$1);
               }));

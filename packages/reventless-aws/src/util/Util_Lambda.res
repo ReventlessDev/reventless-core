@@ -1,13 +1,11 @@
-let service = "Lambda"
-
-let findResource = resources => resources->Reventless.Util.Adapter.findResource(service)
+let findResource = resources => resources->Reventless.Util.Adapter.findResource(AWS.Lambda.service)
 
 let toResource: PulumiAws.Lambda.CallbackFunction.t => ReventlessSpec.Adapter.resource = ({
   id,
   name,
   arn,
 }) => {
-  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => service),
+  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => AWS.Lambda.service),
   name,
   id,
   urn: arn,

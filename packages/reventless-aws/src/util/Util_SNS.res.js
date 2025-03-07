@@ -3,9 +3,8 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Pulumi = require("@pulumi/pulumi");
+var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
-
-var service = "SNS";
 
 function toRuntimeTopicOutput(param) {
   return Pulumi.all([
@@ -31,17 +30,17 @@ function toResource(param) {
                 return "";
               }),
           service: name.apply(function (param) {
-                return service;
+                return AWS$ReventlessAws.SNS.service;
               })
         };
 }
 
 function findUnwrappedResource(resources) {
-  return Util_Adapter$Reventless.findUnwrappedResource(resources, service);
+  return Util_Adapter$Reventless.findUnwrappedResource(resources, AWS$ReventlessAws.SNS.service);
 }
 
 function findTopicInUnwrappedResources(resources) {
-  var resources$1 = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [service]);
+  var resources$1 = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [AWS$ReventlessAws.SNS.service]);
   if (resources$1.length !== 0) {
     return resources$1[0];
   }
@@ -50,7 +49,6 @@ function findTopicInUnwrappedResources(resources) {
   return Js_exn.raiseError(err);
 }
 
-exports.service = service;
 exports.toRuntimeTopicOutput = toRuntimeTopicOutput;
 exports.toResource = toResource;
 exports.findUnwrappedResource = findUnwrappedResource;

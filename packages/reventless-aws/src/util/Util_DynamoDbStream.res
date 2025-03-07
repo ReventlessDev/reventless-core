@@ -17,9 +17,7 @@ let streamArnFromDynamoDbTableResource = (resource: ReventlessSpec.Adapter.resou
   )
 
 let toResource = (table: PulumiAws.DynamoDb.Table.t) => {
-  ReventlessSpec.Adapter.service: table.name->Pulumi.Output.apply(_ =>
-    Util_DynamoDbStream_Runtime.service
-  ),
+  ReventlessSpec.Adapter.service: table.name->Pulumi.Output.apply(_ => AWS.DynamoDbStream.service),
   name: table.name,
   id: table.id,
   urn: table.arn,
@@ -31,7 +29,7 @@ let toStreamResource = (table: ReventlessSpec.Adapter.resource) => {
 
   {
     ReventlessSpec.Adapter.service: table.name->Pulumi.Output.apply(_ =>
-      Util_DynamoDbStream_Runtime.service
+      AWS.DynamoDbStream.service
     ),
     name: table.name,
     id: streamArn,
@@ -138,7 +136,7 @@ let makeTable = (
 }
 
 let findResource = resources =>
-  resources->Reventless.Util.Adapter.findResource(Util_DynamoDbStream_Runtime.service)
+  resources->Reventless.Util.Adapter.findResource(AWS.DynamoDbStream.service)
 
 let findUnwrappedResource = resources =>
-  resources->Reventless.Util.Adapter.findUnwrappedResource(Util_DynamoDbStream_Runtime.service)
+  resources->Reventless.Util.Adapter.findUnwrappedResource(AWS.DynamoDbStream.service)

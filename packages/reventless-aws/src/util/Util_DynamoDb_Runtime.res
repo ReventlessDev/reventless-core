@@ -1,7 +1,5 @@
 open AwsSdk.DynamoDb.DocumentClient
 
-let service = "DynamoDb"
-
 type runtimeTable = {
   id: string,
   name: string,
@@ -253,5 +251,3 @@ let toDeleteRequest: Js.Dict.t<Js.Json.t> => BatchWriteCommand.writeRequest = ke
 }
 
 let toTable = (writeRequests, tableName) => Js.Dict.fromArray([(tableName, writeRequests)])
-
-let findResource = resources => resources->Reventless.Util.AdapterRuntime.findResource(service)

@@ -1,7 +1,5 @@
-let service = "SNS_FIFO"
-
 let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) => {
-  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => service),
+  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => AWS.SNS_FIFO.service),
   name,
   id,
   urn: arn,
@@ -9,7 +7,9 @@ let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) => {
 }
 
 let findTopicInUnwrappedResources = resources =>
-  switch resources->Reventless.Util_Adapter.filterSupportedUnwrappedResources([service]) {
+  switch resources->Reventless.Util_Adapter.filterSupportedUnwrappedResources([
+    AWS.SNS_FIFO.service,
+  ]) {
   | [] =>
     let err = "Util.SQS_FIFO.findTopicNameInUnwrappedResources: Couldn't find SNS_FIFO Topic in resources"
     Js.log(err)

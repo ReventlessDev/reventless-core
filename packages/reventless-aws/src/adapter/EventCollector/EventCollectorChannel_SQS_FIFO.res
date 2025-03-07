@@ -20,8 +20,8 @@ let subscribe = (
     eventTopics
     ->(Js.Dict.map((eventTopic: Reventless.EventTopic.outputs) => eventTopic.resources, _))
     ->Reventless.Util.Adapter.partitionSupportedResources([
-      Util_DynamoDbStream_Runtime.service,
-      Util_SNS_FIFO.service,
+      AWS.DynamoDbStream.service,
+      AWS.SNS_FIFO.service,
     ])
 
   let subscriptionResource =
@@ -40,7 +40,7 @@ let subscribe = (
 
       let (snsFifoResources, otherResources) =
         supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
-          Util_SNS_FIFO.service,
+          AWS.SNS_FIFO.service,
         )
 
       let _snsFifoTopicSubscriptions = snsFifoResources->Belt.Array.map(((sourceName, topic)) =>

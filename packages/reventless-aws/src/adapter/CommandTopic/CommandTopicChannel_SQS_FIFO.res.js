@@ -47,7 +47,7 @@ function make(name, opts) {
   return {
           resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
           publishJsons: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
-                return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, Util_SQS_FIFO$ReventlessAws.service);
+                return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, "SQS_FIFO");
               }),
           handleChannelEvent: (function (handleCommands) {
               return Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {

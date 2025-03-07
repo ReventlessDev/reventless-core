@@ -2,17 +2,17 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var ComponentType$Reventless = require("@reventless/reventless/src/ComponentType.res.js");
 var Util_ReadModel$Reventless = require("@reventless/reventless/src/util/Util_ReadModel.res.js");
 var Util_DynamoDbStream$ReventlessAws = require("../../util/Util_DynamoDbStream.res.js");
-var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 
 function make(name, param, allQueryDbs) {
   var queryDbResource = Util_DynamoDbStream$ReventlessAws.findResource(Util_ReadModel$Reventless.queryDbStorageResources(allQueryDbs, name.substring(0, name.indexOf(ComponentType$Reventless.toName("ReadModel")))));
   return {
           resource: Adapter$Reventless.outputToResource(queryDbResource.service.apply(function (service) {
-                    if (service === Util_DynamoDbStream_Runtime$ReventlessAws.service) {
+                    if (service === AWS$ReventlessAws.DynamoDbStream.service) {
                       return Util_DynamoDbStream$ReventlessAws.toStreamResource(queryDbResource);
                     } else {
                       return Js_exn.raiseError("StateTopicPublisher_DynamoDbStream cannot connect to QueryDbStorage_" + service);
@@ -22,4 +22,4 @@ function make(name, param, allQueryDbs) {
 }
 
 exports.make = make;
-/* Adapter-Reventless Not a pure module */
+/* AWS-ReventlessAws Not a pure module */

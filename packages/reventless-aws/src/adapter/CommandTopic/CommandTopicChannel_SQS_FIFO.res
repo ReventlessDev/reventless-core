@@ -63,7 +63,7 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<callbackEvent, 'context> 
     publishJsons: queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>
-      runtimeQueue->(CommandTopicChannel_SQS_Runtime.publishJsons(Util_SQS_FIFO.service, ...))
+      runtimeQueue->(CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS_FIFO, ...))
     ),
     subscribe,
     handleChannelEvent: handleCommands =>

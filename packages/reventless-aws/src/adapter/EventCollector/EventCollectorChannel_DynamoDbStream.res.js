@@ -5,13 +5,12 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Pulumi = require("@pulumi/pulumi");
+var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
-var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
-var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
 function subscribe(name, eventTopics, param, runtime, opts) {
@@ -22,8 +21,8 @@ function subscribe(name, eventTopics, param, runtime, opts) {
                           return eventTopic.resources;
                         }), __x);
           })(eventTopics), [
-        Util_DynamoDbStream_Runtime$ReventlessAws.service,
-        Util_SNS_FIFO$ReventlessAws.service
+        AWS$ReventlessAws.DynamoDbStream.service,
+        AWS$ReventlessAws.SNS_FIFO.service
       ]);
   Pulumi.all([
           eventTopicResources,

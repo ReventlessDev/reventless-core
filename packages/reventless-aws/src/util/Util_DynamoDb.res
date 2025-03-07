@@ -20,7 +20,7 @@ let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
   })
 
 let toResource: table => resource = ({id, name, arn} as table) => {
-  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => Util_DynamoDb_Runtime.service),
+  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => AWS.DynamoDb.service),
   name,
   id,
   urn: arn,
@@ -193,10 +193,10 @@ let makeTable = (
 }
 
 let findResource = resources =>
-  resources->Reventless.Util.Adapter.findResource(Util_DynamoDb_Runtime.service)
+  resources->Reventless.Util.Adapter.findResource(AWS.DynamoDb.service)
 
 let findUnwrappedResource = resources =>
-  resources->Reventless.Util.Adapter.findUnwrappedResource(Util_DynamoDb_Runtime.service)
+  resources->Reventless.Util.Adapter.findUnwrappedResource(AWS.DynamoDb.service)
 
 let findResourceInOutput = resourcesOutput =>
-  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(Util_DynamoDb_Runtime.service)
+  resourcesOutput->Reventless.Util.Adapter.findResourceInOutput(AWS.DynamoDb.service)

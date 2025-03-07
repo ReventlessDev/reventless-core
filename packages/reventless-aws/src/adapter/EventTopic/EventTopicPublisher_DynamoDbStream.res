@@ -9,7 +9,7 @@ let make: Reventless.EventTopic_Adapter.publisherMaker = (
     resources: [
       storageResource.service
       ->Pulumi.Output.apply(service =>
-        if service == Util_DynamoDbStream_Runtime.service {
+        if service == AWS.DynamoDbStream.service {
           storageResource->Util_DynamoDbStream.toStreamResource
         } else {
           Js.Exn.raiseError(

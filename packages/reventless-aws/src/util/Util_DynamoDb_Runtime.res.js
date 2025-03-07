@@ -13,9 +13,6 @@ var LibDynamodb = require("@aws-sdk/lib-dynamodb");
 var Util_Error$Reventless = require("@reventless/reventless/src/util/Util_Error.res.js");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.res.js");
 var DynamoDb_DocumentClient$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DocumentClient.res.js");
-var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
-
-var service = "DynamoDb";
 
 function put(table, item) {
   return DynamoDb_DocumentClient$AwsSdk.PutCommand.send(new LibDynamodb.PutCommand({
@@ -309,11 +306,6 @@ function toTable(writeRequests, tableName) {
               ]]);
 }
 
-function findResource(resources) {
-  return Util_AdapterRuntime$Reventless.findResource(resources, service);
-}
-
-exports.service = service;
 exports.put = put;
 exports.putWithRetries = putWithRetries;
 exports.putIfNotExistsWithRetries = putIfNotExistsWithRetries;
@@ -331,5 +323,4 @@ exports.batchWriteWithRetries = batchWriteWithRetries;
 exports.toPutRequest = toPutRequest;
 exports.toDeleteRequest = toDeleteRequest;
 exports.toTable = toTable;
-exports.findResource = findResource;
 /* Message-Reventless Not a pure module */

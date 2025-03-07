@@ -8,6 +8,7 @@ var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
+var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var ClientDynamodb = require("@aws-sdk/client-dynamodb");
 var DynamoDb_DynamoDb$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_DynamoDb.res.js");
@@ -49,7 +50,7 @@ function toResource(table) {
           urn: table.arn,
           info: toInfo(table),
           service: name.apply(function (param) {
-                return Util_DynamoDb_Runtime$ReventlessAws.service;
+                return AWS$ReventlessAws.DynamoDb.service;
               })
         };
 }
@@ -206,15 +207,15 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, tags, opts
 }
 
 function findResource(resources) {
-  return Util_Adapter$Reventless.findResource(resources, Util_DynamoDb_Runtime$ReventlessAws.service);
+  return Util_Adapter$Reventless.findResource(resources, AWS$ReventlessAws.DynamoDb.service);
 }
 
 function findUnwrappedResource(resources) {
-  return Util_Adapter$Reventless.findUnwrappedResource(resources, Util_DynamoDb_Runtime$ReventlessAws.service);
+  return Util_Adapter$Reventless.findUnwrappedResource(resources, AWS$ReventlessAws.DynamoDb.service);
 }
 
 function findResourceInOutput(resourcesOutput) {
-  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, Util_DynamoDb_Runtime$ReventlessAws.service);
+  return Util_Adapter$Reventless.findResourceInOutput(resourcesOutput, AWS$ReventlessAws.DynamoDb.service);
 }
 
 exports.toInfo = toInfo;

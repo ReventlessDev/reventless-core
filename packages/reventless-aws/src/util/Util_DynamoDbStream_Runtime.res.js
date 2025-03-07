@@ -4,11 +4,10 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var DynamoDb_Util$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_Util.res.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
-
-var service = "DynamoDbStream";
 
 function buildEvent$pJson(dict) {
   return Js_dict.fromArray([
@@ -85,14 +84,13 @@ function parseDynamoDbStreamRecordState(record) {
 }
 
 function findResource(resources) {
-  return Util_AdapterRuntime$Reventless.findResource(resources, service);
+  return Util_AdapterRuntime$Reventless.findResource(resources, AWS$ReventlessAws.DynamoDbStream.service);
 }
 
-exports.service = service;
 exports.buildEvent$pJson = buildEvent$pJson;
 exports.buildStateJson = buildStateJson;
 exports.parseDynamoDbStreamRecord = parseDynamoDbStreamRecord;
 exports.parseDynamoDbStreamRecordEvent = parseDynamoDbStreamRecordEvent;
 exports.parseDynamoDbStreamRecordState = parseDynamoDbStreamRecordState;
 exports.findResource = findResource;
-/* Message-Reventless Not a pure module */
+/* AWS-ReventlessAws Not a pure module */

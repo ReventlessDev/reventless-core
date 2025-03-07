@@ -1,7 +1,5 @@
-let service = "SQS_FIFO"
-
 let toResource: PulumiAws.SQS_Queue.t => ReventlessSpec.Adapter.resource = ({id, name, arn}) => {
-  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => service),
+  ReventlessSpec.Adapter.service: name->Pulumi.Output.apply(_ => AWS.SQS_FIFO.service),
   name,
   id,
   urn: arn,
@@ -12,4 +10,5 @@ let fromResource = ({id, name}: ReventlessSpec.Adapter.resource) => {
   name->Pulumi.Output.apply(name => PulumiAws.SQS.Queue.get(~name, ~id=id->Pulumi.Output.asInput))
 }
 
-let findResource = resources => resources->Reventless.Util.Adapter.findResource(service)
+let findResource = resources =>
+  resources->Reventless.Util.Adapter.findResource(AWS.SQS_FIFO.service)

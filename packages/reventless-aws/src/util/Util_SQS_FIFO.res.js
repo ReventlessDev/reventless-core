@@ -2,9 +2,8 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
+var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
-
-var service = "SQS_FIFO";
 
 function toResource(param) {
   var name = param.name;
@@ -16,7 +15,7 @@ function toResource(param) {
                 return "";
               }),
           service: name.apply(function (param) {
-                return service;
+                return AWS$ReventlessAws.SQS_FIFO.service;
               })
         };
 }
@@ -29,10 +28,9 @@ function fromResource(param) {
 }
 
 function findResource(resources) {
-  return Util_Adapter$Reventless.findResource(resources, service);
+  return Util_Adapter$Reventless.findResource(resources, AWS$ReventlessAws.SQS_FIFO.service);
 }
 
-exports.service = service;
 exports.toResource = toResource;
 exports.fromResource = fromResource;
 exports.findResource = findResource;

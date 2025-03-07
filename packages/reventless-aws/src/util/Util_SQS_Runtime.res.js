@@ -9,7 +9,6 @@ var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var ClientSqs = require("@aws-sdk/client-sqs");
 var Util_Promise$Reventless = require("@reventless/reventless/src/util/Util_Promise.res.js");
-var Util_SQS_FIFO$ReventlessAws = require("./Util_SQS_FIFO.res.js");
 
 function toRuntimeQueue(param) {
   return {
@@ -32,7 +31,7 @@ async function send(queue, queueService, commandJson) {
   var messageBody = Message$Reventless.toMessageBody(commandJson);
   try {
     return await (
-            queueService === Util_SQS_FIFO$ReventlessAws.service ? sendFifoMessage(queue, delay, commandJson.id, messageBody) : sendMessage(queue, delay, messageBody)
+            queueService === "SQS_FIFO" ? sendFifoMessage(queue, delay, commandJson.id, messageBody) : sendMessage(queue, delay, messageBody)
           );
   }
   catch (raw_e){
@@ -52,7 +51,7 @@ function makeEntry(queueService, commandJson) {
   var delay = commandJson.delay;
   var messageId = commandJson.meta.msgId;
   var messageBody = Message$Reventless.toMessageBody(commandJson);
-  if (queueService === Util_SQS_FIFO$ReventlessAws.service) {
+  if (queueService === "SQS_FIFO") {
     return SQS$AwsSdk.makeBatchEntryFifo(commandJson.id, messageBody, messageId, delay);
   } else {
     return SQS$AwsSdk.makeBatchEntry(messageBody, messageId, delay);

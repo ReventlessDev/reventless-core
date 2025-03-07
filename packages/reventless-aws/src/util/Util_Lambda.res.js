@@ -2,12 +2,11 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
+var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 
-var service = "Lambda";
-
 function findResource(resources) {
-  return Util_Adapter$Reventless.findResource(resources, service);
+  return Util_Adapter$Reventless.findResource(resources, AWS$ReventlessAws.Lambda.service);
 }
 
 function toResource(param) {
@@ -20,7 +19,7 @@ function toResource(param) {
                 return "";
               }),
           service: name.apply(function (param) {
-                return service;
+                return AWS$ReventlessAws.Lambda.service;
               })
         };
 }
@@ -32,7 +31,6 @@ function fromResource(param) {
             });
 }
 
-exports.service = service;
 exports.findResource = findResource;
 exports.toResource = toResource;
 exports.fromResource = fromResource;

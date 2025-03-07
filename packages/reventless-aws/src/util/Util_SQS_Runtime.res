@@ -22,7 +22,7 @@ let sendFifoMessage = (queue, ~delay=?, ~messageGroupId, messageBody) =>
 let rec send = async (queue, queueService, {id, delay} as commandJson) => {
   let messageBody = commandJson->toMessageBody
   try await (
-    if queueService == Util_SQS_FIFO.service {
+    if queueService == AWS.SQS_FIFO {
       queue->sendFifoMessage(~messageGroupId=id, ~delay?, messageBody)
     } else {
       queue->sendMessage(~delay?, messageBody)
@@ -41,7 +41,7 @@ let makeEntry = (queueService, {id, meta: {msgId: messageId}, delay} as commandJ
   let messageBody = commandJson->toMessageBody
 
   // Js.log(`Publishing command to Aggregate ${service}: ${messageBody} id: ${CommandTopic: Published commands:id}`)
-  if queueService == Util_SQS_FIFO.service {
+  if queueService == AWS.SQS_FIFO {
     SQS.makeBatchEntryFifo(~groupId=id, ~messageId, ~messageBody, ~delay)
   } else {
     SQS.makeBatchEntry(~messageId, ~messageBody, ~delay)
