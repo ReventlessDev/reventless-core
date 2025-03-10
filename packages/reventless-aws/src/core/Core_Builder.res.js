@@ -5,6 +5,7 @@ var Core_Builder$Reventless = require("@reventless/reventless/src/core/Core/Core
 var ClonerRunner_Fargate$ReventlessAws = require("../adapter/Cloner/ClonerRunner_Fargate.res.js");
 var QueryEngine_DynamoDb$ReventlessAws = require("../adapter/QueryEngine/QueryEngine_DynamoDb.res.js");
 var EventCollectorChannel_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_SQS.res.js");
+var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 
 function Make(Config) {
   var partial_arg = ClonerRunner_Fargate$ReventlessAws;
@@ -15,9 +16,8 @@ function Make(Config) {
     make: EventCollectorChannel_SQS$ReventlessAws.make
   };
   var partial_arg$3 = Core_Builder$Reventless.Make;
-  return function (param) {
-    return partial_arg$3(Config, partial_arg$2, partial_arg$1, partial_arg, param);
-  };
+  var param = RuntimeEnvironment_Lambda$ReventlessAws;
+  return partial_arg$3(Config, partial_arg$2, partial_arg$1, partial_arg, param);
 }
 
 exports.Make = Make;

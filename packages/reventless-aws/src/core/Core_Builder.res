@@ -5,4 +5,5 @@ module Make = (
   EventCollectorChannel.SQS,
   QueryEngine.DynamoDb,
   ClonerRunner.Fargate,
+  RuntimeEnvironment_Lambda,
 )
