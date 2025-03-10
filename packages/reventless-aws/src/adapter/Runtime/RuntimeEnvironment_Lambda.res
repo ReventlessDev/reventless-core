@@ -23,7 +23,7 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result> = (
           ~policies,
           ~memorySize=memorySize->Pulumi.Input.make,
           ~timeout=timeout->Pulumi.Input.make,
-          ~tags=AWS.tags(~name, Reventless.CommandTopic.componentType),
+          ~tags=AWS.Tags.make(~name, Reventless.CommandTopic.componentType),
         ),
         ~opts?,
       )->Util_Lambda.toResource

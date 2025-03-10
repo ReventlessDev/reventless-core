@@ -5,9 +5,9 @@ var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
-var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
+var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var CommandTopic$Reventless = require("@reventless/reventless/src/components/CommandTopic/CommandTopic.res.js");
@@ -34,7 +34,7 @@ function make(name, opts) {
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
               return SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5);
             }),
-        tags: AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType),
+        tags: AWS_Tags$ReventlessAws.make(name, CommandTopic$Reventless.componentType),
         visibilityTimeoutSeconds: 180,
         sqsManagedSseEnabled: false
       }, opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined);

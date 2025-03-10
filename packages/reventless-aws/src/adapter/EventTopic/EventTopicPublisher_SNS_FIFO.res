@@ -6,7 +6,7 @@ let make: Reventless.EventTopic_Adapter.publisherMaker = (~name, ~storageResourc
     ~args={
       SNS.Topic.fifoTopic: true->Pulumi.Input.make,
       contentBasedDeduplication: true->Pulumi.Input.make,
-      tags: AWS.tags(~name, Reventless.EventTopic.componentType),
+      tags: AWS.Tags.make(~name, Reventless.EventTopic.componentType),
     },
     ~opts,
   )

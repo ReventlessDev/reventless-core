@@ -93,4 +93,4 @@ exports.parseDynamoDbStreamRecord = parseDynamoDbStreamRecord;
 exports.parseDynamoDbStreamRecordEvent = parseDynamoDbStreamRecordEvent;
 exports.parseDynamoDbStreamRecordState = parseDynamoDbStreamRecordState;
 exports.findResource = findResource;
-/* AWS-ReventlessAws Not a pure module */
+/* Message-Reventless Not a pure module */

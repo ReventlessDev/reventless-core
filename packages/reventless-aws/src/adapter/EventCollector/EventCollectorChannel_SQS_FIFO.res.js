@@ -9,6 +9,7 @@ var Pulumi = require("@pulumi/pulumi");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
+var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
@@ -72,7 +73,7 @@ function make(name, opts) {
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.fifoQueue.arn.apply(function (dlqArn) {
               return SQS_Queue$PulumiAws.RedrivePolicy.make(dlqArn, 5);
             }),
-        tags: AWS$ReventlessAws.tags(name, EventCollector$Reventless.componentType),
+        tags: AWS_Tags$ReventlessAws.make(name, EventCollector$Reventless.componentType),
         visibilityTimeoutSeconds: 30,
         deduplicationScope: "messageGroup",
         fifoThroughputLimit: "perMessageGroupId",

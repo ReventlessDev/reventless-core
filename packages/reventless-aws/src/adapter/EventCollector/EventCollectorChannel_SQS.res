@@ -96,7 +96,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context
       )
       ->Pulumi.Output.asInput,
       sqsManagedSseEnabled: false->Pulumi.Input.make,
-      tags: AWS.tags(~name, Reventless.EventCollector.componentType),
+      tags: AWS.Tags.make(~name, Reventless.EventCollector.componentType),
     },
     ~opts,
   )

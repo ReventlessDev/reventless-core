@@ -48,7 +48,7 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<callbackEvent, 'context> 
       sqsManagedSseEnabled: false->Pulumi.Input.make,
       deduplicationScope: MessageGroup,
       fifoThroughputLimit: PerMessageGroupId,
-      tags: AWS.tags(~name, Reventless.CommandTopic.componentType),
+      tags: AWS.Tags.make(~name, Reventless.CommandTopic.componentType),
     },
     ~opts?,
   )

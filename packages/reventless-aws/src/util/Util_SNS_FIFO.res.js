@@ -32,4 +32,4 @@ function findTopicInUnwrappedResources(resources) {
 
 exports.toResource = toResource;
 exports.findTopicInUnwrappedResources = findTopicInUnwrappedResources;
-/* AWS-ReventlessAws Not a pure module */
+/* Util_Adapter-Reventless Not a pure module */

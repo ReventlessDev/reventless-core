@@ -75,7 +75,7 @@ let make: Reventless.QueryDb_Adapter.storageMaker<api, role> = (
     ~rangeKey=?subIdField,
     ~globalSecondaryIndexes=indexes->globalSecondaryIndexes,
     ~ttl?,
-    ~tags=AWS.tags(~name, Reventless.QueryDb.componentType),
+    ~tags=AWS.Tags.make(~name, Reventless.QueryDb.componentType),
     ~opts,
   )
 

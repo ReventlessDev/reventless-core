@@ -23,4 +23,4 @@ var EventRule = {
 };
 
 exports.EventRule = EventRule;
-/* AWS-ReventlessAws Not a pure module */
+/* No side effect */

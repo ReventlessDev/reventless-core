@@ -6,8 +6,8 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
-var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
+var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var CommandTopic$Reventless = require("@reventless/reventless/src/components/CommandTopic/CommandTopic.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
@@ -20,7 +20,7 @@ function make(name, handler, memorySizeOpt, timeoutOpt, policy1, policy2, opts) 
               handler,
               Lambda$PulumiAws.Policy.customPolicies(policy1, policy2)
             ]).apply(function (param) {
-            return Util_Lambda$ReventlessAws.toResource(new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(param[0], undefined, param[1], undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS$ReventlessAws.tags(name, CommandTopic$Reventless.componentType), undefined), opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined));
+            return Util_Lambda$ReventlessAws.toResource(new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(param[0], undefined, param[1], undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(name, CommandTopic$Reventless.componentType), undefined), opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined));
           }));
   return {
           resources: [lambdaResource]

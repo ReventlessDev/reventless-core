@@ -45,7 +45,7 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<callbackEvent, 'context> 
       )
       ->Pulumi.Output.asInput,
       sqsManagedSseEnabled: false->Pulumi.Input.make,
-      tags: AWS.tags(~name, Reventless.CommandTopic.componentType),
+      tags: AWS.Tags.make(~name, Reventless.CommandTopic.componentType),
     },
     ~opts?,
   )

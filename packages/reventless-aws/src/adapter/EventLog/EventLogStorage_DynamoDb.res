@@ -3,7 +3,7 @@ let make: Reventless.EventLog_Adapter.storageMaker = (~name, ~opts) => {
     name,
     ~attributes=[{name: "id", type_: "S"}, {name: "sequenceNr", type_: "S"}],
     ~rangeKey="sequenceNr",
-    ~tags=AWS.tags(~name, Reventless.EventLog.componentType),
+    ~tags=AWS.Tags.make(~name, Reventless.EventLog.componentType),
     ~opts,
   )
 
