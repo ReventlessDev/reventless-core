@@ -1,8 +1,6 @@
-open ReventlessSpec.Adapter
-
 let componentType = ComponentType.Cloner
 
-type outputs = {resources: Pulumi.Output.t<array<resource>>}
+type outputs = {resources: Pulumi.Output.t<array<ReventlessSpec.Adapter.resource>>}
 
 type fullQualifiedStackName = {
   organization: string,
@@ -18,7 +16,7 @@ module type T = {
 }
 
 module Adapter = {
-  type runner = {resources: Pulumi.Output.t<array<resource>>}
+  type runner = {resources: Pulumi.Output.t<array<ReventlessSpec.Adapter.resource>>}
   type runnerMaker<'api> = (
     ~name: string,
     ~api: 'api,
@@ -38,25 +36,6 @@ module Adapter = {
 }
 
 module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.api): T => {
-  type constructed
-  type construct = (component, string) => constructed
-
-  @module("./Component") @new
-  external make: (
-    ~componentType: string,
-    ~name: string,
-    ~construct: construct,
-    ~opts: option<Pulumi.ComponentResource.options>,
-  ) => component = "default"
-
-  @send
-  external registerOutputs: (component, outputs) => constructed = "registerOutputs"
-  @send external setOutputs: (component, outputs) => unit = "setOutputs"
-  let setOutputs = (self, outputs) => {
-    self->setOutputs(outputs)
-    self->registerOutputs(outputs)
-  }
-
   let construct = (~api, self, name) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
@@ -85,14 +64,14 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
       Js.log("No ClonerRunner created because no secrets are configured in Pulumi config !")
       Adapter.noRunner
     }
-    self->setOutputs({resources: runner.resources})
+    self->Component.setOutputs({resources: runner.resources})
   }
 
   let make = (~opts=?) =>
-    make(
+    Component.make(
       ~componentType=componentType->ComponentType.toString,
       ~name=componentType->ComponentType.toString,
       ~construct=construct(~api=Config.api, ...),
-      ~opts,
+      ~opts
     )
 }
