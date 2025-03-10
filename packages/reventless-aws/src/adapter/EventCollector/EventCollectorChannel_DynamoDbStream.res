@@ -22,14 +22,6 @@ let subscribe = (
     let _eventSourceMappings: array<
       PulumiAws.EventSourceMapping.t,
     > = dynamoDbStreamResources->Belt.Array.map(((sourceName, sources)) => {
-      Js.log4("EventCollectorChannel_DynamoDbStream.subscribe:", name, sourceName, sources)
-      let _ =
-        handler->Pulumi.Output.apply(
-          ({arn}) =>
-            arn->Pulumi.Output.apply(
-              arn => Js.log2("EventCollectorChannel_DynamoDbStream.subscribe: lambda:", arn),
-            ),
-        )
       Util_EventSourceMapping.subscribe(
         ~batchSize=25,
         ~lambda=handler,

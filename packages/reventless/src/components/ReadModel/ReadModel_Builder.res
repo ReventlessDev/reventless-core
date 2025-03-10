@@ -72,13 +72,6 @@ module Make = (
         )
 
         let eventTopics = allEventTopics->Util.EventTopic.filterEventTopics(sourceNames)
-        Js.log3(
-          "ReadModel_Builder.construct: subscribe",
-          name,
-          sourceNames->Belt.Set.String.toArray,
-        )
-        allEventTopics->EventTopic.log("  allEventTopics:")
-        eventTopics->EventTopic.log("  eventTopics:")
         SpecificEventCollector.subscribe(~name, ~eventTopics, ~eventCollector, ~runtime, ~opts)
         eventCollector
       })
