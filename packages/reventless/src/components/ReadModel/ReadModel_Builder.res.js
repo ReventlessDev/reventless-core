@@ -90,7 +90,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                         var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                         var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts$1);
                         var eventTopics = Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames);
-                        console.log("ReadModel_Builder.construct: subscribe", name, sourceNames);
+                        console.log("ReadModel_Builder.construct: subscribe", name, Belt_SetString.toArray(sourceNames));
                         EventTopic$Reventless.log(allEventTopics, "  allEventTopics:");
                         EventTopic$Reventless.log(eventTopics, "  eventTopics:");
                         SpecificEventCollector.subscribe(name, eventTopics, eventCollector, runtime, opts$1);
