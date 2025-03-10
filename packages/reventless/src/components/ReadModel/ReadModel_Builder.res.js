@@ -7,6 +7,7 @@ var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Component$Reventless = require("../Component.res.js");
 var ReadModel$Reventless = require("./ReadModel.res.js");
+var EventTopic$Reventless = require("../EventTopic/EventTopic.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventCollector$Reventless = require("../EventCollector/EventCollector.res.js");
 var QueryDb_Builder$Reventless = require("../QueryDb/QueryDb_Builder.res.js");
@@ -88,7 +89,11 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                             });
                         var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                         var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts$1);
-                        SpecificEventCollector.subscribe(name, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames), eventCollector, runtime, opts$1);
+                        var eventTopics = Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames);
+                        console.log("ReadModel_Builder.construct: subscribe", name, sourceNames);
+                        EventTopic$Reventless.log(allEventTopics, "  allEventTopics:");
+                        EventTopic$Reventless.log(eventTopics, "  eventTopics:");
+                        SpecificEventCollector.subscribe(name, eventTopics, eventCollector, runtime, opts$1);
                         return eventCollector;
                       });
                   Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, (function (eventCollector) {

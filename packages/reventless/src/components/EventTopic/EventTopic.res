@@ -39,3 +39,14 @@ module type T = {
     ~opts: Pulumi.ComponentResource.options=?,
   ) => component
 }
+
+let log = (eventTopics, description) => {
+  let _ =
+    Js.Dict.map((eventTopic: outputs) => eventTopic.resources->Array.getUnsafe(0), eventTopics)
+    ->Js.Dict.entries
+    ->Belt.Array.map(((name, {service})) =>
+      service->Pulumi.Output.apply(service => `${name}(${service})`)
+    )
+    ->Pulumi.Output.all
+    ->Pulumi.Output.apply(topics => Js.log2(description, topics->Js.Array2.joinWith(", ")))
+}

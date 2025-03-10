@@ -75,13 +75,11 @@ module Make = (
         )
         let runtime = RuntimeEnvironment.make(~name, ~handler, ~memorySize, ~timeout, ~opts)
 
-        SpecificEventCollector.subscribe(
-          ~name,
-          ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
-          ~eventCollector,
-          ~runtime,
-          ~opts,
-        )
+        let eventTopics = allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames)
+        Js.log3("EventMapper_Builder.construct: subscribe", name, aggregateNames)
+        allEventTopics->EventTopic.log("  allEventTopics:")
+        eventTopics->EventTopic.log("  eventTopics:")
+        SpecificEventCollector.subscribe(~name, ~eventTopics, ~eventCollector, ~runtime, ~opts)
         eventCollector
       }->Component.outputs
     )
