@@ -20,25 +20,25 @@ function subscribe(name, eventTopics, param, runtime, opts) {
             return Js_dict.map((function (eventTopic) {
                           return eventTopic.resources;
                         }), __x);
-          })(eventTopics), [
-        AWS$ReventlessAws.DynamoDbStream.service,
-        AWS$ReventlessAws.SNS_FIFO.service
-      ]);
-  Pulumi.all([
-          eventTopicResources,
-          handler
-        ]).apply(function (param) {
-        var handler = param[1];
-        var match = param[0];
-        var errorResources = match[1];
-        Belt_Array.map(match[0], (function (param) {
-                return Util_EventSourceMapping$ReventlessAws.subscribe(25, Pulumi.output(handler), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1][0]), opts$1);
+          })(eventTopics), [AWS$ReventlessAws.DynamoDbStream.service]);
+  eventTopicResources.apply(function (param) {
+        var errorResources = param[1];
+        Belt_Array.map(param[0], (function (param) {
+                var sources = param[1];
+                var sourceName = param[0];
+                console.log("EventCollectorChannel_DynamoDbStream.subscribe:", name, sourceName, sources);
+                handler.apply(function (param) {
+                      return param.arn.apply(function (arn) {
+                                  console.log("EventCollectorChannel_DynamoDbStream.subscribe: lambda:", arn);
+                                });
+                    });
+                return Util_EventSourceMapping$ReventlessAws.subscribe(25, handler, name, sourceName, AdapterDeploytime$Reventless.unwrappedToResource(sources[0]), opts$1);
               }));
         if (errorResources.length === 0) {
           return ;
         }
         var eventTopicNames = errorResources.join(",");
-        Js_exn.raiseError("EventCollectorChannel_DynamoDbStream-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
+        Js_exn.raiseError("EventCollectorChannel_DynamoDbStream-ReventlessAws" + (".subscribe: cannot connect to EventTopic(s) " + eventTopicNames));
       });
   return [];
 }

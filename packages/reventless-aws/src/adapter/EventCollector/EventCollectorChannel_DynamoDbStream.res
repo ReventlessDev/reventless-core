@@ -16,32 +16,37 @@ let subscribe = (
   let eventTopicResources =
     eventTopics
     ->(Js.Dict.map((eventTopic: Reventless.EventTopic.outputs) => eventTopic.resources, _))
-    ->Reventless.Util.Adapter.partitionSupportedResources([
-      AWS.DynamoDbStream.service,
-      AWS.SNS_FIFO.service,
-    ])
+    ->Reventless.Util.Adapter.partitionSupportedResources([AWS.DynamoDbStream.service])
 
-  let _ =
-    (eventTopicResources, handler)
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.apply((((dynamoDbStreamResources, errorResources), handler)) => {
-      let _eventSourceMappings: array<PulumiAws.EventSourceMapping.t> =
-        dynamoDbStreamResources->Belt.Array.map(((sourceName, sources)) =>
-          Util_EventSourceMapping.subscribe(
-            ~batchSize=25,
-            ~lambda=handler->Pulumi.Output.make,
-            ~targetName=name,
-            ~sourceName,
-            ~source=sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource,
-            ~opts,
-          )
+  let _ = eventTopicResources->Pulumi.Output.apply(((dynamoDbStreamResources, errorResources)) => {
+    let _eventSourceMappings: array<
+      PulumiAws.EventSourceMapping.t,
+    > = dynamoDbStreamResources->Belt.Array.map(((sourceName, sources)) => {
+      Js.log4("EventCollectorChannel_DynamoDbStream.subscribe:", name, sourceName, sources)
+      let _ =
+        handler->Pulumi.Output.apply(
+          ({arn}) =>
+            arn->Pulumi.Output.apply(
+              arn => Js.log2("EventCollectorChannel_DynamoDbStream.subscribe: lambda:", arn),
+            ),
         )
-
-      if errorResources->Belt.Array.length > 0 {
-        let eventTopicNames = errorResources->Js.Array2.joinWith(",")
-        Js.Exn.raiseError(__MODULE__ ++ ` cannot connect to EventTopic(s) ${eventTopicNames}`)
-      }
+      Util_EventSourceMapping.subscribe(
+        ~batchSize=25,
+        ~lambda=handler,
+        ~targetName=name,
+        ~sourceName,
+        ~source=sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource,
+        ~opts,
+      )
     })
+
+    if errorResources->Belt.Array.length > 0 {
+      let eventTopicNames = errorResources->Js.Array2.joinWith(",")
+      Js.Exn.raiseError(
+        __MODULE__ ++ `.subscribe: cannot connect to EventTopic(s) ${eventTopicNames}`,
+      )
+    }
+  })
 
   []
 }
