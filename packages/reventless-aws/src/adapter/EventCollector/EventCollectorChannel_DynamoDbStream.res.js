@@ -24,15 +24,7 @@ function subscribe(name, eventTopics, param, runtime, opts) {
   eventTopicResources.apply(function (param) {
         var errorResources = param[1];
         Belt_Array.map(param[0], (function (param) {
-                var sources = param[1];
-                var sourceName = param[0];
-                console.log("EventCollectorChannel_DynamoDbStream.subscribe:", name, sourceName, sources);
-                handler.apply(function (param) {
-                      return param.arn.apply(function (arn) {
-                                  console.log("EventCollectorChannel_DynamoDbStream.subscribe: lambda:", arn);
-                                });
-                    });
-                return Util_EventSourceMapping$ReventlessAws.subscribe(25, handler, name, sourceName, AdapterDeploytime$Reventless.unwrappedToResource(sources[0]), opts$1);
+                return Util_EventSourceMapping$ReventlessAws.subscribe(25, handler, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1][0]), opts$1);
               }));
         if (errorResources.length === 0) {
           return ;

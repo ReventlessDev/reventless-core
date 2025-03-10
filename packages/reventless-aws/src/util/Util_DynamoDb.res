@@ -16,7 +16,7 @@ let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
     name,
     arn,
     hashKey,
-    rangeKey,
+    rangeKey: ?rangeKey->Belt.Option.map(Js.Nullable.return),
   })
 
 let toResource: table => resource = ({id, name, arn} as table) => {

@@ -5,7 +5,7 @@ type runtimeTable = {
   name: string,
   arn: string,
   hashKey: string,
-  rangeKey: option<string>,
+  rangeKey?: Js.Nullable.t<string>,
 }
 
 let put = (table, item) => {

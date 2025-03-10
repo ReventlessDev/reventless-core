@@ -37,7 +37,9 @@ function toRuntimeTableOutput(param) {
                       name: param[0],
                       arn: param[2],
                       hashKey: param[3],
-                      rangeKey: param[4]
+                      rangeKey: Belt_Option.map(param[4], (function (prim) {
+                              return prim;
+                            }))
                     };
             });
 }
