@@ -114,7 +114,7 @@ module Make = (
       ),
     )
     self->Component.setOutputs({
-      Aggregate.name,
+      Aggregate.name: Spec.name,
       commandGenerator,
       commandTopic: commandTopic->Component.wrappedOutputs,
       eventLog: eventLog->Component.outputs,

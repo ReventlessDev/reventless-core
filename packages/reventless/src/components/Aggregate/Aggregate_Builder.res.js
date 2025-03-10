@@ -95,7 +95,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                           });
               })));
     return Component$Reventless.setOutputs(self, {
-                name: name$1,
+                name: Spec.name,
                 commandGenerator: commandGenerator,
                 commandTopic: Component$Reventless.wrappedOutputs(commandTopic),
                 eventLog: Component$Reventless.outputs(eventLog),
