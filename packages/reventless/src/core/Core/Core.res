@@ -18,6 +18,6 @@ module type T = {
     ~extensionPoints: array<module(ExtensionPoint.T)>,
     ~aggregates: array<module(Aggregate.T)>,
     ~readModels: array<module(ReadModel.T)>,
-    ~scheduler: Scheduler.operations,
+    ~scheduler: Pulumi.Output.t<Scheduler.operations>,
   ) => component
 }

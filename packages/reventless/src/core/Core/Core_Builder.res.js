@@ -60,8 +60,10 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
     var queryEngine = QueryEngineAdapter.make(allQueryDbs);
     var match = Output$Pulumi.unzip3(Pulumi.all([
                 Pulumi.all(publishToAggregates),
-                queryEngine
+                queryEngine,
+                scheduler
               ]).apply(function (param) {
+              var scheduler = param[2];
               var queryEngine = param[1];
               var publishToAggregates = param[0];
               var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {

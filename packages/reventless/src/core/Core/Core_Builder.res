@@ -15,7 +15,7 @@ module Make = (
     ~extensionPoints: array<module(ExtensionPoint.T)>,
     ~aggregates: array<module(Aggregate.T)>,
     ~readModels: array<module(ReadModel.T)>,
-    ~scheduler: Scheduler.operations,
+    ~scheduler: Pulumi.Output.t<Scheduler.operations>,
     self,
     _,
   ) => {
@@ -59,9 +59,9 @@ module Make = (
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     let (aggregatesOutputs, extensionPointsOutputs, eventCollectorOutputs) =
-      (publishToAggregates->Pulumi.Output.allDict, queryEngine)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(((publishToAggregates, queryEngine)) => {
+      (publishToAggregates->Pulumi.Output.allDict, queryEngine, scheduler)
+      ->Pulumi.Output.all3
+      ->Pulumi.Output.apply(((publishToAggregates, queryEngine, scheduler)) => {
         let aggregatesOutputs = Js.Dict.map(
           addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
           addEventMapperFns,
