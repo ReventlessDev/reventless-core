@@ -45,13 +45,18 @@ let dataSource = (name, table, api, apiRole, opts) => {
       ~name,
       ~args={
         IAM.RolePolicy.policy: table.arn
-        ->Pulumi.Output.apply(tableArn =>
-          PolicyDocument.make(~statements=[{
-            effect: PolicyDocument.Allow,
-            actions: PolicyDocument.Action(tableArn ++ "*"),
-            resources: PolicyDocument.Resource("dynamodb:*")
-          }])->PolicyDocument.toJsonString
-        )
+        ->Pulumi.Output.apply(tableArn => {
+          open PolicyDocument
+          PolicyDocument.make(
+            ~statements=[
+              {
+                effect: Allow,
+                actions: Action(tableArn ++ "*"),
+                resources: Resource("dynamodb:*"),
+              },
+            ],
+          )->toJsonString
+        })
         ->Pulumi.Output.asInput,
         role: apiRole
         ->Pulumi.Output.flatMap((role: PulumiAws.IAM.Role.t) => role.id)

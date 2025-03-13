@@ -27,6 +27,7 @@ function fromCustomResourceOptions(x) {
 function sesPolicyDocument(identity, opts) {
   return Output$Pulumi.flatMap(identity.arn, (function (identityArn) {
                 return Pulumi.output(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                  Sid: "AllowSES",
                                   Principal: {
                                     AWS: "*"
                                   },

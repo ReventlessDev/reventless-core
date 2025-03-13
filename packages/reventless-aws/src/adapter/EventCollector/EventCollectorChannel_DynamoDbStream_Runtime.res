@@ -22,7 +22,6 @@ let handleStreamEvent: (
 
   try await handleEvents(jsons) catch {
   | err =>
-    //  Js.Exn.raiseError(err->Reventless.Util.Error.ofPromise##message)
     Js.log2("handleStreamEvent error:", err)
   }
 }

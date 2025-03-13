@@ -15,8 +15,3 @@ let toResource: PulumiAws.IAM.Role.t => ReventlessSpec.Adapter.resource = ({
 let fromResource = ({id, name}: ReventlessSpec.Adapter.resource) => {
   name->Pulumi.Output.apply(name => PulumiAws.IAM.Role.get(~name, ~id=id->Pulumi.Output.asInput))
 }
-/*let fromResource = ({id, name}: ReventlessSpec.Adapter.resource) => {
-  name->Pulumi.Output.apply(name =>
-    PulumiAws.Lambda.CallbackFunction.get(~name, ~id=id->Pulumi.Output.asInput)
-  )
-}*/

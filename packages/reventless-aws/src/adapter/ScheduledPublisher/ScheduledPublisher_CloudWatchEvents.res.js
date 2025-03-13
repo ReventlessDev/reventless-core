@@ -13,11 +13,13 @@ function make(param, opts) {
         policy: role.arn.apply(function (roleArn) {
               return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
                               {
+                                Sid: "AllowCloudWatchEvents",
                                 Effect: "Allow",
                                 Action: "events:*",
                                 Resource: "*"
                               },
                               {
+                                Sid: "AllowPassRole",
                                 Effect: "Allow",
                                 Action: "iam:PassRole",
                                 Resource: roleArn

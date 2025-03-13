@@ -23,14 +23,15 @@ function makeHandler(generateCommand) {
 
 function make(name, api, fields, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
-  var commandGeneratorArn = Util_Lambda$ReventlessAws.findResource(runtime.resources).urn;
-  var commandGeneratorRole = Util_IAM_Role$ReventlessAws.fromResource(Util_IAM_Role$ReventlessAws.findResource(runtime.resources));
+  var commandGeneratorLambdaArn = Util_Lambda$ReventlessAws.findResource(runtime.resources).urn;
+  var commandGeneratorLambdaRole = Util_IAM_Role$ReventlessAws.fromResource(Util_IAM_Role$ReventlessAws.findResource(runtime.resources));
   Pulumi.all([
-          commandGeneratorArn,
-          commandGeneratorRole
+          commandGeneratorLambdaArn,
+          commandGeneratorLambdaRole
         ]).apply(function (param) {
         var commandGeneratorPolicy = new (Aws.iam.Policy)(name + "Policy", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                          Sid: "AllowLambdaInvokeAppSync",
                           Principal: {
                             Service: "appsync.amazonaws.com"
                           },
@@ -45,9 +46,10 @@ function make(name, api, fields, runtime, opts) {
                   }, opts$1);
       });
   var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), opts$1);
-  commandGeneratorArn.apply(function (commandGeneratorArn) {
-        return new (Aws.iam.RolePolicy)(name + "DS", {
+  commandGeneratorLambdaArn.apply(function (commandGeneratorArn) {
+        return new (Aws.iam.RolePolicy)(name + "DataSourcePolicy", {
                     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                Sid: "AllowLambdaInvokeDataSource",
                                 Effect: "Allow",
                                 Action: "lambda:InvokeFunction",
                                 Resource: commandGeneratorArn
@@ -61,7 +63,7 @@ function make(name, api, fields, runtime, opts) {
                 return api.id;
               })),
         lambdaConfig: {
-          functionArn: commandGeneratorArn
+          functionArn: commandGeneratorLambdaArn
         },
         serviceRoleArn: dataSourceRole.arn
       }, opts$1);

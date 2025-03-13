@@ -29,21 +29,22 @@ let subscribe = (
         let source = sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource
         source.urn->Pulumi.Output.apply(
           sourceUrn => {
-            open PulumiAws
+            open PulumiAws.PolicyDocument
             {
               Util_DynamoDbStream.sourceName,
               source,
-              lambdaPolicyDocument: PolicyDocument.make(
+              lambdaPolicyDocument: PulumiAws.PolicyDocument.make(
                 ~statements=[
                   {
-                    effect: PolicyDocument.Allow,
-                    actions: PolicyDocument.Actions([
+                    sid: "AllowLambdaToReadStream" ++ sourceName,
+                    effect: Allow,
+                    actions: Actions([
                       "dynamodb:DescribeStream",
                       "dynamodb:GetRecords",
                       "dynamodb:GetShardIterator",
                       "dynamodb:ListStreams",
                     ]),
-                    resources: PolicyDocument.Resource(sourceUrn),
+                    resources: Resource(sourceUrn),
                   },
                 ],
               ),

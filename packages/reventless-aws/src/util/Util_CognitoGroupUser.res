@@ -13,20 +13,17 @@ let makeAddRemoveUserToGroupPolicy = (
   ~opts: option<Pulumi.CustomResourceOptions.t>=?,
 ) =>
   userPoolArn->Pulumi.Output.apply(userPoolArn => {
+    open PulumiAws.PolicyDocument
     PulumiAws.IAM.Policy.make(
       ~name=name ++ "AddRemoveUserToGroup",
       ~args={
         PulumiAws.IAM.Policy.policy: PulumiAws.PolicyDocument.make(
           ~statements=[
             {
-              effect: PulumiAws.PolicyDocument.Allow,
-              actions: PulumiAws.PolicyDocument.Action("cognito-idp:AdminAddUserToGroup"),
-              resources: PulumiAws.PolicyDocument.Resource(`${userPoolArn}`),
-            },
-            {
-              effect: PulumiAws.PolicyDocument.Allow,
-              actions: PulumiAws.PolicyDocument.Action("cognito-idp:AdminRemoveUserFromGroup"),
-              resources: PulumiAws.PolicyDocument.Resource(`${userPoolArn}`),
+              sid: "AllowAdminAddRemoveUserToGroup",
+              effect: Allow,
+              actions: Actions(["cognito-idp:AdminAddUserToGroup", "cognito-idp:AdminRemoveUserFromGroup"]),
+              resources: Resource(`${userPoolArn}`),
             },
           ],
         )

@@ -24,57 +24,68 @@ let subscribe = (
     (queue, handler, handlerRole)
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((queue, handler, handlerRole)) => {
-      open PulumiAws
+      open PulumiAws.PolicyDocument
 
       let queuePolicyDocument =
-        PolicyDocument.make(
+        PulumiAws.PolicyDocument.make(
           ~statements=[
             {
-              principal: PolicyDocument.Principals({
-                service: PolicyDocument.PrincipalId(AWS.Lambda.principal),
+              sid: "AllowLambdaToPublish",
+              principal: Principals({
+                service: PrincipalId(AWS.Lambda.principal),
               }),
-              effect: PolicyDocument.Allow,
-              actions: PolicyDocument.Actions(["sqs:SendMessage"]),
-              resources: PolicyDocument.Resource(handler.arn->Pulumi.Output.unwrap),
+              effect: Allow,
+              actions: Actions(["sqs:SendMessage"]),
+              resources: Resource(handler.arn->Pulumi.Output.unwrap),
               conditions: {
                 arnEquals: Js.Dict.fromArray([
                   (
                     "AWS:SourceArn",
-                    PolicyDocument.ConditionValue(handler.name->Pulumi.Output.unwrap),
+                    ConditionValue(handler.name->Pulumi.Output.unwrap),
                   ),
                 ]),
               },
             },
+            {
+              sid: "AllowCloudWatchEvents",
+              effect: Allow,
+              actions: Actions(["sqs:SendMessage"]),
+              resources: Resource(queue.arn->Pulumi.Output.unwrap),
+              principal: Principals({
+                service: PrincipalId(AWS.CloudwatchEventRule.principal),
+              }),
+            },
           ],
         )
-        ->PolicyDocument.toJsonString
+        ->PulumiAws.PolicyDocument.toJsonString
         ->Pulumi.Input.make
 
-      let allowSQSLambdaPolicyDocument = PolicyDocument.make(
+      let allowSQSLambdaPolicyDocument = PulumiAws.PolicyDocument.make(
         ~statements=[
           {
-            effect: PolicyDocument.Allow,
-            actions: PolicyDocument.Actions([
+            sid: "AllowSQSReceiveMessage",
+            effect: Allow,
+            actions: Actions([
               "sqs:ReceiveMessage",
               "sqs:DeleteMessage",
               "sqs:GetQueueAttributes",
             ]),
-            resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+            resources: Resource(queue.arn->Pulumi.Output.unwrap),
           },
         ],
       )
 
-      let lambdaPolicy = IAM.Policy.make(
+      let lambdaPolicy = PulumiAws.IAM.Policy.make(
         ~name,
         ~args={
-          policy: PolicyDocument.mergePolicyDocuments(
-            ~policyDocuments=[Lambda.defaultLoggingPolicyDocument, allowSQSLambdaPolicyDocument],
+          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
+            ~policyDocuments=[PulumiAws.Lambda.defaultLoggingPolicyDocument, allowSQSLambdaPolicyDocument],
           )->Pulumi.Output.asInput,
         },
         ~opts,
       )
 
-      let _attachLambdaPolicy = IAM.RolePolicyAttachment.make(
+      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicyAttachment.make(
         ~name,
         ~args={
           policyArn: lambdaPolicy.arn->Pulumi.Output.asInput,
@@ -82,7 +93,7 @@ let subscribe = (
         },
         ~opts=Some(opts),
       )
-      let _attachQueuePolicy = SQS.QueuePolicy.make(
+      let _attachQueuePolicy = PulumiAws.SQS.QueuePolicy.make(
         ~name,
         ~args={queueUrl: queue.arn->Pulumi.Output.asInput, policy: queuePolicyDocument},
         ~opts=Some(opts),
@@ -123,11 +134,6 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<callbackEvent, 'context> 
     },
     ~opts?,
   )
-
-  /* let _queuePolicy = {
-    open Util_SqsQueuePolicy
-    make(~name, ~queue, ~statements=[allowCloudWatchEvents], ~opts?)
-  }*/
 
   {
     resources: [queue->Util_SQS_FIFO.toResource],

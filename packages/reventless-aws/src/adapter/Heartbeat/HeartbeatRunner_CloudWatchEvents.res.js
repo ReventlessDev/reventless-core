@@ -7,6 +7,7 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
@@ -30,8 +31,9 @@ function make(name, timeout, runtime, opts) {
           cloudwatchEventRule.arn
         ]).apply(function (param) {
         var heartbeatLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                Sid: "AllowLambdaInvoke",
                 Principal: {
-                  Service: "events.amazonaws.com"
+                  Service: AWS$ReventlessAws.CloudwatchEventRule.principal
                 },
                 Effect: "Allow",
                 Action: "lambda:InvokeFunction",

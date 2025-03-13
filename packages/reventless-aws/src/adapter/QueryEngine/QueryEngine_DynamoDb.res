@@ -141,13 +141,6 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   }
 }
 
-// let toRuntimeQueryDbs = allQueryDbs =>
-//   Js.Dict.map((queryDb: Reventless.QueryDb.outputs) =>
-//     queryDb.resources
-//     ->Util.DynamoDb.findResource
-//     ->Adapter.resourceToUnwrappedOutput
-//   , allQueryDbs)
-
 let make: Reventless.QueryDb_Adapter.queryEngineMaker = allQueryDbs => {
   let allRuntimeQueryDbsOutputs = Js.Dict.map((queryDb: Reventless.QueryDb.outputs) =>
     queryDb.resources

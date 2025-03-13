@@ -24,31 +24,32 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime,
     (lambdaResource.urn, cloudwatchEventRule.arn)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((lambdaUrn, ruleArn)) => {
-      open PulumiAws
+      open PulumiAws.PolicyDocument
 
-      let heartbeatLambdaPolicyDocument = PolicyDocument.make(
+      let heartbeatLambdaPolicyDocument = PulumiAws.PolicyDocument.make(
         ~statements=[
           {
-            principal: PolicyDocument.Principals({
-              service: PolicyDocument.PrincipalId("events.amazonaws.com"),
+            sid: "AllowLambdaInvoke",
+            principal: Principals({
+              service: PrincipalId(AWS.CloudwatchEventRule.principal),
             }),
-            effect: PolicyDocument.Allow,
-            actions: PolicyDocument.Action("lambda:InvokeFunction"),
-            resources: PolicyDocument.Resource(lambdaUrn),
+            effect: Allow,
+            actions: Action("lambda:InvokeFunction"),
+            resources: Resource(lambdaUrn),
             conditions: {
               arnEquals: Js.Dict.fromArray([
-                ("AWS:SourceArn", PolicyDocument.ConditionValue(ruleArn)),
+                ("AWS:SourceArn", ConditionValue(ruleArn)),
               ]),
             },
           },
         ],
       )
 
-      IAM.RolePolicy.make(
+      PulumiAws.IAM.RolePolicy.make(
         ~name=name ++ "RolePolicy",
         ~args={
-          policy: PolicyDocument.mergePolicyDocuments(
-            ~policyDocuments=[Lambda.defaultLoggingPolicyDocument, heartbeatLambdaPolicyDocument]
+          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
+            ~policyDocuments=[PulumiAws.Lambda.defaultLoggingPolicyDocument, heartbeatLambdaPolicyDocument]
           )
           ->Pulumi.Output.asInput,
           role: heartbeatLambdaRole.id->Pulumi.Output.asInput,

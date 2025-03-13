@@ -63,32 +63,34 @@ let subscribe = (
       )
 
       let _queuePolicy = {
-        open PulumiAws
-        SQS.QueuePolicy.make(
+        open PulumiAws.PolicyDocument
+        PulumiAws.SQS.QueuePolicy.make(
           ~name=name ++ "Policy",
           ~args={
             queueUrl: queue.arn->Pulumi.Output.unwrap->Pulumi.Input.make,
-            policy: PolicyDocument.make(
+            policy: PulumiAws.PolicyDocument.make(
               ~statements=[
                 {
-                  principal: PolicyDocument.Principals({
-                    service: PolicyDocument.PrincipalId("sns.amazonaws.com"),
+                  sid: "AllowReceiveSNSMessages",
+                  principal: Principals({
+                    service: PrincipalId("sns.amazonaws.com"),
                   }),
-                  effect: PolicyDocument.Allow,
-                  actions: PolicyDocument.Actions(["sqs:SendMessage"]),
-                  resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+                  effect: Allow,
+                  actions: Actions(["sqs:SendMessage"]),
+                  resources: Resource(queue.arn->Pulumi.Output.unwrap),
                 },
                 {
-                  principal: PolicyDocument.Principals({
-                    service: PolicyDocument.PrincipalId("events.amazonaws.com"),
+                  sid: "AllowReceiveCloudWatchEvents",
+                  principal: Principals({
+                    service: PrincipalId("events.amazonaws.com"),
                   }),
-                  effect: PolicyDocument.Allow,
-                  actions: PolicyDocument.Actions(["sqs:SendMessage"]),
-                  resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+                  effect: Allow,
+                  actions: Actions(["sqs:SendMessage"]),
+                  resources: Resource(queue.arn->Pulumi.Output.unwrap),
                 },
               ],
             )
-            ->PolicyDocument.toJsonString
+            ->PulumiAws.PolicyDocument.toJsonString
             ->Pulumi.Input.make,
           },
           ~opts=Some(opts),
@@ -100,20 +102,21 @@ let subscribe = (
         sources,
       )) => {
         let source = sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource
-        source.urn->Pulumi.Output.apply(
-          sourceUrn => {
-            open PulumiAws
-            PolicyDocument.make(
+        (source.name, source.urn)->Pulumi.Output.all2->Pulumi.Output.apply(
+          ((sourceName, sourceUrn)) => {
+            open PulumiAws.PolicyDocument
+            PulumiAws.PolicyDocument.make(
               ~statements=[
                 {
-                  effect: PolicyDocument.Allow,
-                  actions: PolicyDocument.Actions([
+                  sid: "AllowLambdaToReadStream" ++ sourceName,
+                  effect: Allow,
+                  actions: Actions([
                     "dynamodb:DescribeStream",
                     "dynamodb:GetRecords",
                     "dynamodb:GetShardIterator",
                     "dynamodb:ListStreams",
                   ]),
-                  resources: PolicyDocument.Resource(sourceUrn),
+                  resources: Resource(sourceUrn),
                 },
               ],
             )
@@ -122,18 +125,18 @@ let subscribe = (
       })
 
       let lambdaQueuePolicyDocument = {
-        open PulumiAws
-        PolicyDocument.make(
+        open PulumiAws.PolicyDocument
+        PulumiAws.PolicyDocument.make(
           ~statements=[
             {
-              effect: PolicyDocument.Allow,
-              actions: PolicyDocument.Actions([
+              sid: "AllowLambdaReceiveSQSMessage",
+              effect: Allow,
+              actions: Actions([
                 "sqs:ReceiveMessage",
                 "sqs:DeleteMessage",
                 "sqs:GetQueueAttributes",
-                "sqs:ChangeMessageVisibility",
               ]),
-              resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+              resources: Resource(queue.arn->Pulumi.Output.unwrap),
             },
           ],
         )

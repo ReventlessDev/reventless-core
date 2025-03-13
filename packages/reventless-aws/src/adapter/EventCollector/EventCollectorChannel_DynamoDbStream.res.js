@@ -42,6 +42,7 @@ function subscribe(name, eventTopics, param, runtime, opts) {
                                     sourceName: sourceName,
                                     source: source,
                                     lambdaPolicyDocument: PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                            Sid: "AllowLambdaToReadStream" + sourceName,
                                             Effect: "Allow",
                                             Action: [
                                               "dynamodb:DescribeStream",

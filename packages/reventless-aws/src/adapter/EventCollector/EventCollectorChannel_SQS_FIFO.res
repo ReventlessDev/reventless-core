@@ -100,20 +100,21 @@ let subscribe = (
         sources,
       )) => {
         let source = sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource
-        source.urn->Pulumi.Output.apply(
-          sourceUrn => {
-            open PulumiAws
-            PolicyDocument.make(
+        (source.name,source.urn)->Pulumi.Output.all2->Pulumi.Output.apply(
+          ((sourceName, sourceUrn)) => {
+            open PulumiAws.PolicyDocument
+            PulumiAws.PolicyDocument.make(
               ~statements=[
                 {
-                  effect: PolicyDocument.Allow,
-                  actions: PolicyDocument.Actions([
+                  sid: "AllowLambdaToReadStream" ++ sourceName,
+                  effect: Allow,
+                  actions: Actions([
                     "dynamodb:DescribeStream",
                     "dynamodb:GetRecords",
                     "dynamodb:GetShardIterator",
                     "dynamodb:ListStreams",
                   ]),
-                  resources: PolicyDocument.Resource(sourceUrn),
+                  resources: Resource(sourceUrn),
                 },
               ],
             )
@@ -122,18 +123,18 @@ let subscribe = (
       })
 
       let lambdaQueuePolicyDocument = {
-        open PulumiAws
-        PolicyDocument.make(
+        open PulumiAws.PolicyDocument
+        PulumiAws.PolicyDocument.make(
           ~statements=[
             {
-              effect: PolicyDocument.Allow,
-              actions: PolicyDocument.Actions([
+              sid: "AllowLambdaReceiveSQSMessage",
+              effect: Allow,
+              actions: Actions([
                 "sqs:ReceiveMessage",
                 "sqs:DeleteMessage",
                 "sqs:GetQueueAttributes",
-                "sqs:ChangeMessageVisibility",
               ]),
-              resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+              resources: Resource(queue.arn->Pulumi.Output.unwrap),
             },
           ],
         )

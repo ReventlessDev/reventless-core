@@ -58,6 +58,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
         new (Aws.sqs.QueuePolicy)(name + "Policy", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
                         {
+                          Sid: "AllowReceiveSNSMessages",
                           Principal: {
                             Service: "sns.amazonaws.com"
                           },
@@ -66,6 +67,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                           Resource: queue.arn
                         },
                         {
+                          Sid: "AllowReceiveCloudWatchEvents",
                           Principal: {
                             Service: "events.amazonaws.com"
                           },
@@ -78,8 +80,12 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
             }, opts$1);
         var lambdaDynamoDbStreamPolicyDocument = Belt_Array.map(otherResources, (function (param) {
                 var source = AdapterDeploytime$Reventless.unwrappedToResource(param[1][0]);
-                return source.urn.apply(function (sourceUrn) {
+                return Pulumi.all([
+                              source.name,
+                              source.urn
+                            ]).apply(function (param) {
                             return PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                          Sid: "AllowLambdaToReadStream" + param[0],
                                           Effect: "Allow",
                                           Action: [
                                             "dynamodb:DescribeStream",
@@ -87,17 +93,17 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                                             "dynamodb:GetShardIterator",
                                             "dynamodb:ListStreams"
                                           ],
-                                          Resource: sourceUrn
+                                          Resource: param[1]
                                         }]);
                           });
               }));
         var lambdaQueuePolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                Sid: "AllowLambdaReceiveSQSMessage",
                 Effect: "Allow",
                 Action: [
                   "sqs:ReceiveMessage",
                   "sqs:DeleteMessage",
-                  "sqs:GetQueueAttributes",
-                  "sqs:ChangeMessageVisibility"
+                  "sqs:GetQueueAttributes"
                 ],
                 Resource: queue.arn
               }]);

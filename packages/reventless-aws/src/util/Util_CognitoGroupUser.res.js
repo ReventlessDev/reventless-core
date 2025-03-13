@@ -15,18 +15,15 @@ function addUserGroup(name, userPoolId) {
 function makeAddRemoveUserToGroupPolicy(name, userPoolArn, opts) {
   return userPoolArn.apply(function (userPoolArn) {
               return new (Aws.iam.Policy)(name + "AddRemoveUserToGroup", {
-                          policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
-                                    {
+                          policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                      Sid: "AllowAdminAddRemoveUserToGroup",
                                       Effect: "Allow",
-                                      Action: "cognito-idp:AdminAddUserToGroup",
+                                      Action: [
+                                        "cognito-idp:AdminAddUserToGroup",
+                                        "cognito-idp:AdminRemoveUserFromGroup"
+                                      ],
                                       Resource: userPoolArn
-                                    },
-                                    {
-                                      Effect: "Allow",
-                                      Action: "cognito-idp:AdminRemoveUserFromGroup",
-                                      Resource: userPoolArn
-                                    }
-                                  ]))
+                                    }]))
                         }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
             });
 }

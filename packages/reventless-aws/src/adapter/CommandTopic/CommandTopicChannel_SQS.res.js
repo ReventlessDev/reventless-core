@@ -32,7 +32,9 @@ function subscribe(name, channel, runtime, opts) {
         ]).apply(function (param) {
         var handler = param[1];
         var queue = param[0];
-        var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+        var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
+                  {
+                    Sid: "AllowLambdaToPublish",
                     Principal: {
                       Service: AWS$ReventlessAws.Lambda.principal
                     },
@@ -45,8 +47,19 @@ function subscribe(name, channel, runtime, opts) {
                               handler.name
                             ]])
                     }
-                  }]));
+                  },
+                  {
+                    Sid: "AllowReceiveCloudWatchEvents",
+                    Principal: {
+                      Service: "events.amazonaws.com"
+                    },
+                    Effect: "Allow",
+                    Action: ["sqs:SendMessage"],
+                    Resource: queue.arn
+                  }
+                ]));
         var allowSQSLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                Sid: "AllowSQSReceiveMessage",
                 Effect: "Allow",
                 Action: [
                   "sqs:ReceiveMessage",
@@ -88,20 +101,6 @@ function make(name, opts) {
         visibilityTimeoutSeconds: 180,
         sqsManagedSseEnabled: false
       }, opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined);
-  var queuePolicyDocument = queue.arn.apply(function (queueArn) {
-        return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
-                          Principal: {
-                            Service: "events.amazonaws.com"
-                          },
-                          Effect: "Allow",
-                          Action: "sqs:SendMessage",
-                          Resource: queueArn
-                        }]));
-      });
-  new (Aws.sqs.QueuePolicy)(name + "Policy", {
-        policy: queuePolicyDocument,
-        queueUrl: queue.arn
-      }, opts$1);
   return {
           resources: [Util_SQS$ReventlessAws.toResource(queue)],
           publishJsons: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {

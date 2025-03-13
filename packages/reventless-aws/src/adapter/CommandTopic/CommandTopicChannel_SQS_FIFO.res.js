@@ -33,7 +33,9 @@ function subscribe(name, channel, runtime, opts) {
         ]).apply(function (param) {
         var handler = param[1];
         var queue = param[0];
-        var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+        var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
+                  {
+                    Sid: "AllowLambdaToPublish",
                     Principal: {
                       Service: AWS$ReventlessAws.Lambda.principal
                     },
@@ -46,8 +48,19 @@ function subscribe(name, channel, runtime, opts) {
                               handler.name
                             ]])
                     }
-                  }]));
+                  },
+                  {
+                    Sid: "AllowCloudWatchEvents",
+                    Principal: {
+                      Service: AWS$ReventlessAws.CloudwatchEventRule.principal
+                    },
+                    Effect: "Allow",
+                    Action: ["sqs:SendMessage"],
+                    Resource: queue.arn
+                  }
+                ]));
         var allowSQSLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                Sid: "AllowSQSReceiveMessage",
                 Effect: "Allow",
                 Action: [
                   "sqs:ReceiveMessage",

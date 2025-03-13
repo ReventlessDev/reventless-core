@@ -18,14 +18,15 @@ let sesPolicyDocument: (
   ~opts: Pulumi.CustomResourceOptions.t=?,
 ) => Pulumi.Output.t<PulumiAws.PolicyDocument.t> = (~identity, ~opts=?) =>
   identity.arn->Pulumi.Output.flatMap(identityArn => {
-    open PulumiAws
-    PolicyDocument.make(
+    open PulumiAws.PolicyDocument
+    PulumiAws.PolicyDocument.make(
       ~statements=[
         {
-          principal: PolicyDocument.Principals({aws: PolicyDocument.PrincipalId("*")}),
-          effect: PolicyDocument.Allow,
-          actions: PolicyDocument.Actions(["SES:SendEmail", "SES:SendRawEmail"]),
-          resources: PolicyDocument.Resource(identityArn),
+          sid: "AllowSES",
+          principal: Principals({aws: PrincipalId("*")}),
+          effect: Allow,
+          actions: Actions(["SES:SendEmail", "SES:SendRawEmail"]),
+          resources: Resource(identityArn),
         },
       ],
     )->Pulumi.Output.make
