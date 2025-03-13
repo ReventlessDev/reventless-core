@@ -4,11 +4,15 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Aws = require("@pulumi/aws");
 var Pulumi = require("@pulumi/pulumi");
+var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
+var Util_IAM_Role$ReventlessAws = require("../../util/Util_IAM_Role.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
@@ -16,16 +20,56 @@ var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorC
 function subscribe(name, eventTopics, param, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var handler = Util_Lambda$ReventlessAws.fromResource(Util_Lambda$ReventlessAws.findResource(runtime.resources));
+  var handlerRole = Util_IAM_Role$ReventlessAws.fromResource(Util_IAM_Role$ReventlessAws.findResource(runtime.resources));
   var eventTopicResources = Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
             return Js_dict.map((function (eventTopic) {
                           return eventTopic.resources;
                         }), __x);
           })(eventTopics), [AWS$ReventlessAws.DynamoDbStream.service]);
-  eventTopicResources.apply(function (param) {
-        var errorResources = param[1];
-        Belt_Array.map(param[0], (function (param) {
-                return Util_EventSourceMapping$ReventlessAws.subscribe(25, handler, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1][0]), opts$1);
+  Pulumi.all([
+          eventTopicResources,
+          handler,
+          handlerRole
+        ]).apply(function (param) {
+        var handler = param[1];
+        var match = param[0];
+        var errorResources = match[1];
+        var streamSourceWithPolicy = Belt_Array.map(match[0], (function (param) {
+                var sourceName = param[0];
+                var source = AdapterDeploytime$Reventless.unwrappedToResource(param[1][0]);
+                return source.urn.apply(function (sourceUrn) {
+                            return {
+                                    sourceName: sourceName,
+                                    source: source,
+                                    lambdaPolicyDocument: PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                            Effect: "Allow",
+                                            Action: [
+                                              "dynamodb:DescribeStream",
+                                              "dynamodb:GetRecords",
+                                              "dynamodb:GetShardIterator",
+                                              "dynamodb:ListStreams"
+                                            ],
+                                            Resource: sourceUrn
+                                          }])
+                                  };
+                          });
               }));
+        Belt_Array.map(streamSourceWithPolicy, (function (dynamoDbStreamData) {
+                return dynamoDbStreamData.apply(function (streamData) {
+                            return Util_EventSourceMapping$ReventlessAws.subscribe(25, Pulumi.output(handler), name, streamData.sourceName, streamData.source, opts$1);
+                          });
+              }));
+        var lambdaPolicy = new (Aws.iam.Policy)(name, {
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(Belt_Array.concat([Lambda$PulumiAws.defaultLoggingPolicyDocument], Belt_Array.map(Belt_Array.map(streamSourceWithPolicy, (function (output) {
+                                  return output;
+                                })), (function (resource) {
+                              return resource.lambdaPolicyDocument;
+                            }))))
+            }, opts$1);
+        new (Aws.iam.RolePolicyAttachment)(name, {
+              policyArn: lambdaPolicy.arn,
+              role: param[2].arn
+            }, opts$1);
         if (errorResources.length === 0) {
           return ;
         }
@@ -51,4 +95,4 @@ function make(param, param$1) {
 
 exports.subscribe = subscribe;
 exports.make = make;
-/* @pulumi/pulumi Not a pure module */
+/* @pulumi/aws Not a pure module */

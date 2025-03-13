@@ -4,13 +4,25 @@
 var Aws = require("@pulumi/aws");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Pulumi = require("@pulumi/pulumi");
+var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws = require("./ScheduledPublisher_CloudWatchEvents_Runtime.res.js");
 
 function make(param, opts) {
   var role = IAM$PulumiAws.Role.makeWithDefaultPolicy("CloudWatchEventsRole", Pulumi.output("events.amazonaws.com"), opts);
   new (Aws.iam.Policy)("CloudWatchEventsPolicy", {
         policy: role.arn.apply(function (roleArn) {
-              return "{\n          \"Version\": \"2012-10-17\",\n          \"Statement\": [{\n            \"Effect\": \"Allow\",\n            \"Action\": \"events:*\",\n            \"Resource\": \"*\"\n          },{\n            \"Effect\": \"Allow\",\n            \"Action\": \"iam:PassRole\",\n            \"Resource\": \"" + roleArn + "\"\n        }]\n        }";
+              return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
+                              {
+                                Effect: "Allow",
+                                Action: "events:*",
+                                Resource: "*"
+                              },
+                              {
+                                Effect: "Allow",
+                                Action: "iam:PassRole",
+                                Resource: roleArn
+                              }
+                            ]));
             })
       }, opts);
   return {

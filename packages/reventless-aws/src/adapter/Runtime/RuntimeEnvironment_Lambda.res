@@ -5,22 +5,22 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result> = (
   ~handler,
   ~memorySize: int=1024,
   ~timeout: int=30,
-  ~policy1=?,
-  ~policy2=?,
   ~opts=?,
 ) => {
+  open PulumiAws
   let opts =
     opts->Belt.Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
+  let lambdaRole = IAM.Role.makeWithDefaultPolicy(~name=name++"Role", ~service="lambda.amazonaws.com"->Pulumi.Output.make) 
+
   let lambdaResource =
-    (handler, PulumiAws.Lambda.Policy.customPolicies(policy1, policy2))
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((handler, policies)) =>
-      PulumiAws.Lambda.CallbackFunction.make(
+    (handler)
+    ->Pulumi.Output.apply( handler =>
+      Lambda.CallbackFunction.make(
         ~name,
-        ~args=PulumiAws.Lambda.CallbackFunction.Args.make(
+        ~args=Lambda.CallbackFunction.Args.make(
           ~callback=handler,
-          ~policies,
+          ~role=lambdaRole,
           ~memorySize=memorySize->Pulumi.Input.make,
           ~timeout=timeout->Pulumi.Input.make,
           ~tags=AWS.Tags.make(~name, Reventless.CommandTopic.componentType),
@@ -31,6 +31,6 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result> = (
     ->Reventless.Adapter.outputToResource
 
   {
-    resources: [lambdaResource],
+    resources: [lambdaResource, Util_IAM_Role.toResource(lambdaRole)],
   }
 }

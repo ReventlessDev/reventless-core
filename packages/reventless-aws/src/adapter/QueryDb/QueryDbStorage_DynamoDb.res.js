@@ -4,10 +4,10 @@
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
-var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var QueryDb$Reventless = require("@reventless/reventless/src/components/QueryDb/QueryDb.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Util_DynamoDb$ReventlessAws = require("../../util/Util_DynamoDb.res.js");
 var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_DataSource.res.js");
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_DynamoDb_Runtime.res.js");
@@ -71,7 +71,11 @@ function attributes(sortField, indexes) {
 function dataSource(name, table, api, apiRole, opts) {
   new (Aws.iam.RolePolicy)(name, {
         policy: table.arn.apply(function (tableArn) {
-              return IAM$PulumiAws.RolePolicy.generatePolicy([tableArn + "*"], "dynamodb:*");
+              return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                Effect: "Allow",
+                                Action: tableArn + "*",
+                                Resource: "dynamodb:*"
+                              }]));
             }),
         role: Output$Pulumi.flatMap(apiRole, (function (role) {
                 return role.id;

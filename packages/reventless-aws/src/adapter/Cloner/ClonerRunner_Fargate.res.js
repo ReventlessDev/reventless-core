@@ -8,9 +8,9 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
-var Iam = require("@pulumi/aws/iam");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var Util_Vpc$Reventless = require("@reventless/reventless/src/util/Util_Vpc.res.js");
+var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
 var GetSecretVersion$PulumiAws = require("@reventless/bs-pulumi-aws/src/SecretsManager/GetSecretVersion.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
@@ -27,17 +27,29 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                 "logs:CreateLogStream"
               ])]
       });
-  var secretsManagerAccessPolicy = IAM$PulumiAws.Policy.makeForActions("secretsManagerAccess", [
-        "secretsmanager:GetRandomPassword",
-        "secretsmanager:GetResourcePolicy",
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:ListSecretVersionIds"
-      ]);
-  var taskRunnerPolicy = IAM$PulumiAws.Policy.makeForActions("taskRunner", [
-        "ecs:RunTask",
-        "iam:PassRole"
-      ]);
+  var secretsManagerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+          Effect: "Allow",
+          Action: [
+            "secretsmanager:GetRandomPassword",
+            "secretsmanager:GetResourcePolicy",
+            "secretsmanager:GetSecretValue",
+            "secretsmanager:DescribeSecret",
+            "secretsmanager:ListSecretVersionIds"
+          ]
+        }]);
+  var secretsManagerAccessPolicy = new (Aws.iam.Policy)("secretsManagerAccess", {
+        policy: PolicyDocument$PulumiAws.toJsonString(secretsManagerPolicyDocument)
+      });
+  var taskRunnerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+          Effect: "Allow",
+          Action: [
+            "ecs:RunTask",
+            "iam:PassRole"
+          ]
+        }]);
+  var taskRunnerPolicy = new (Aws.iam.Policy)("taskRunner", {
+        policy: PolicyDocument$PulumiAws.toJsonString(taskRunnerPolicyDocument)
+      });
   new (Aws.iam.RolePolicyAttachment)("ClonerTaskExecutionSecretsManagerAccess", {
         policyArn: secretsManagerAccessPolicy.arn,
         role: taskExecutionRole.name
@@ -94,24 +106,43 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               requiresCompatibilities: ["FARGATE"],
               executionRoleArn: taskExecutionRole.arn
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
+        var lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output("appsync.amazonaws.com"), undefined);
         var lambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
                     return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(taskDefinition.arn, cluster.arn, fullQualifiedStackName, {
                                 subnets: vpcConfig.subnetIds
                               }, extra, extra$1);
-                  }), undefined, [
-                  param[0],
-                  param[1],
-                  Iam.ManagedPolicy.LambdaFullAccess
-                ], undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
-        new (Aws.lambda.Permission)(name, {
-              action: "lambda:InvokeFunction",
-              function: lambda.arn,
-              principal: "appsync.amazonaws.com"
-            }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
+                  }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
+        lambda.arn.apply(function (arn) {
+              var appsyncInvokeLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                      Principal: {
+                        Service: "appsync.amazonaws.com"
+                      },
+                      Effect: "Allow",
+                      Action: "lambda:InvokeFunction",
+                      Resource: arn
+                    }]);
+              PolicyDocument$PulumiAws.mergePolicyDocuments([
+                    Lambda$PulumiAws.defaultLoggingPolicyDocument,
+                    appsyncInvokeLambdaPolicyDocument,
+                    secretsManagerPolicyDocument,
+                    taskRunnerPolicyDocument
+                  ]);
+              return lambdaRole.arn.apply(function (lambdaRoleArn) {
+                          new (Aws.iam.RolePolicy)(name + "LambdaRolePolicy", {
+                                policy: PolicyDocument$PulumiAws.toJsonString(appsyncInvokeLambdaPolicyDocument),
+                                role: lambdaRoleArn
+                              });
+                        });
+            });
         var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), opts);
         new (Aws.iam.RolePolicy)(name + "DS", {
               policy: lambda.arn.apply(function (lambdaArn) {
-                    return IAM$PulumiAws.RolePolicy.generatePolicy([lambdaArn], "lambda:InvokeFunction");
+                    return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                      Sid: "InvokeLambda",
+                                      Effect: "Allow",
+                                      Action: "lambda:InvokeFunction",
+                                      Resource: lambdaArn
+                                    }]));
                   }),
               role: dataSourceRole.id
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);

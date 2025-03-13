@@ -4,6 +4,8 @@
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Pulumi = require("@pulumi/pulumi");
+var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 
 function emailIdentity(name, email, opts) {
   return new (Aws.ses.EmailIdentity)("emailIdentity" + name, {
@@ -24,25 +26,17 @@ function fromCustomResourceOptions(x) {
 
 function sesPolicyDocument(identity, opts) {
   return Output$Pulumi.flatMap(identity.arn, (function (identityArn) {
-                var principal_identifiers = ["*"];
-                var principal = {
-                  identifiers: principal_identifiers,
-                  type: "AWS"
-                };
-                var actions = [
-                  "SES:SendEmail",
-                  "SES:SendRawEmail"
-                ];
-                var statement_principals = [principal];
-                var statement_resources = [identityArn];
-                var statement = {
-                  actions: actions,
-                  principals: statement_principals,
-                  resources: statement_resources
-                };
-                return Aws.iam.getPolicyDocument({
-                            statements: [statement]
-                          }, fromCustomResourceOptions(opts));
+                return Pulumi.output(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                  Principal: {
+                                    AWS: "*"
+                                  },
+                                  Effect: "Allow",
+                                  Action: [
+                                    "SES:SendEmail",
+                                    "SES:SendRawEmail"
+                                  ],
+                                  Resource: identityArn
+                                }]));
               }));
 }
 
@@ -51,7 +45,7 @@ function identityWithPolicy(name, email, opts) {
   return new (Aws.ses.IdentityPolicy)("identityPolicy" + name, {
               identity: identity.arn,
               policy: sesPolicyDocument(identity, opts).apply(function (policyDocument) {
-                    return policyDocument.json;
+                    return PolicyDocument$PulumiAws.toJsonString(policyDocument);
                   })
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
 }

@@ -3,6 +3,7 @@
 
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 
 function addUserGroup(name, userPoolId) {
   return new (Aws.cognito.UserGroup)("UserGroup-" + name, {
@@ -12,11 +13,22 @@ function addUserGroup(name, userPoolId) {
 }
 
 function makeAddRemoveUserToGroupPolicy(name, userPoolArn, opts) {
-  return new (Aws.iam.Policy)(name + "AddRemoveUserToGroup", {
-              policy: userPoolArn.apply(function (userPoolArn) {
-                    return "{\n            \"Version\": \"2012-10-17\",\n            \"Statement\": [\n              {\n                  \"Effect\": \"Allow\",\n                  \"Action\": [\n                      \"cognito-idp:AdminAddUserToGroup\"\n                  ],\n                  \"Resource\": \"" + userPoolArn + "\"\n              },\n              {\n                  \"Effect\": \"Allow\",\n                  \"Action\": \"cognito-idp:AdminRemoveUserFromGroup\",\n                  \"Resource\": \"" + userPoolArn + "\"\n              }\n            ]\n          }";
-                  })
-            }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
+  return userPoolArn.apply(function (userPoolArn) {
+              return new (Aws.iam.Policy)(name + "AddRemoveUserToGroup", {
+                          policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
+                                    {
+                                      Effect: "Allow",
+                                      Action: "cognito-idp:AdminAddUserToGroup",
+                                      Resource: userPoolArn
+                                    },
+                                    {
+                                      Effect: "Allow",
+                                      Action: "cognito-idp:AdminRemoveUserFromGroup",
+                                      Resource: userPoolArn
+                                    }
+                                  ]))
+                        }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
+            });
 }
 
 exports.addUserGroup = addUserGroup;

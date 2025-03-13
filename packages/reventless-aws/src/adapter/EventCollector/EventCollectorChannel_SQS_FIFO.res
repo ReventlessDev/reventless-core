@@ -8,14 +8,19 @@ let subscribe = (
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
+  
   let queue =
     channel.resources
     ->Util.SQS_FIFO.findResource
     ->Util.SQS_FIFO.fromResource
+
   let handler =
     runtime.resources
     ->Util.Lambda.findResource
     ->Util.Lambda.fromResource
+
+  let handlerRole = runtime.resources->Util.IAM_Role.findResource->Util.IAM_Role.fromResource
+
   let eventTopicResources =
     eventTopics
     ->(Js.Dict.map((eventTopic: Reventless.EventTopic.outputs) => eventTopic.resources, _))
@@ -28,16 +33,6 @@ let subscribe = (
     (eventTopicResources, queue, handler)
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply((((supportedResources, errorResources), queue, handler)) => {
-      let _queuePolicy = {
-        open Util_SqsQueuePolicy
-        make(
-          ~name,
-          ~queue,
-          ~statements=[allowAllSnsTopicsSendMessage(queue), allowCloudWatchEvents],
-          ~opts,
-        )
-      }
-
       let (snsFifoResources, otherResources) =
         supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
           AWS.SNS_FIFO.service,
@@ -66,6 +61,109 @@ let subscribe = (
           ~opts,
         )
       )
+
+      let _queuePolicy = {
+        open PulumiAws
+        SQS.QueuePolicy.make(
+          ~name=name ++ "Policy",
+          ~args={
+            queueUrl: queue.arn->Pulumi.Output.unwrap->Pulumi.Input.make,
+            policy: PolicyDocument.make(
+              ~statements=[
+                {
+                  principal: PolicyDocument.Principals({
+                    service: PolicyDocument.PrincipalId("sns.amazonaws.com"),
+                  }),
+                  effect: PolicyDocument.Allow,
+                  actions: PolicyDocument.Actions(["sqs:SendMessage"]),
+                  resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+                },
+                {
+                  principal: PolicyDocument.Principals({
+                    service: PolicyDocument.PrincipalId("events.amazonaws.com"),
+                  }),
+                  effect: PolicyDocument.Allow,
+                  actions: PolicyDocument.Actions(["sqs:SendMessage"]),
+                  resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+                },
+              ],
+            )
+            ->PolicyDocument.toJsonString
+            ->Pulumi.Input.make,
+          },
+          ~opts=Some(opts),
+        )
+      }
+
+      let lambdaDynamoDbStreamPolicyDocument = otherResources->Belt.Array.map(((
+        _sourceName,
+        sources,
+      )) => {
+        let source = sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource
+        source.urn->Pulumi.Output.apply(
+          sourceUrn => {
+            open PulumiAws
+            PolicyDocument.make(
+              ~statements=[
+                {
+                  effect: PolicyDocument.Allow,
+                  actions: PolicyDocument.Actions([
+                    "dynamodb:DescribeStream",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:ListStreams",
+                  ]),
+                  resources: PolicyDocument.Resource(sourceUrn),
+                },
+              ],
+            )
+          },
+        )
+      })
+
+      let lambdaQueuePolicyDocument = {
+        open PulumiAws
+        PolicyDocument.make(
+          ~statements=[
+            {
+              effect: PolicyDocument.Allow,
+              actions: PolicyDocument.Actions([
+                "sqs:ReceiveMessage",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes",
+                "sqs:ChangeMessageVisibility",
+              ]),
+              resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+            },
+          ],
+        )
+      }
+
+      let lambdaPolicy = PulumiAws.IAM.Policy.make(
+        ~name=name ++ "LambdaPolicy",
+        ~args={
+          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
+            ~policyDocuments=Belt.Array.concat(
+              [PulumiAws.Lambda.defaultLoggingPolicyDocument, lambdaQueuePolicyDocument],
+              lambdaDynamoDbStreamPolicyDocument
+              ->Belt.Array.map(output => output->Pulumi.Output.unwrap),
+            ),
+          )->Pulumi.Output.asInput,
+        },
+        ~opts,
+      )
+
+      let _attachLambdaPolicy = handlerRole->Pulumi.Output.apply(handlerRole => {
+        open PulumiAws
+        IAM.RolePolicyAttachment.make(
+          ~name=name ++ "LambdaPolicy",
+          ~args={
+            policyArn: lambdaPolicy.arn->Pulumi.Output.asInput,
+            role: handlerRole.arn->Pulumi.Output.asInput,
+          },
+          ~opts=Some(opts),
+        )
+      })
 
       if errorResources->Belt.Array.length > 0 {
         let eventTopicNames = errorResources->Js.Array2.joinWith(",")

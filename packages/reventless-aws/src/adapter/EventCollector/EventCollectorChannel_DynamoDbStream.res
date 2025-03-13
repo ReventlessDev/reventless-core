@@ -13,24 +13,83 @@ let subscribe = (
     runtime.resources
     ->Util.Lambda.findResource
     ->Util.Lambda.fromResource
+
+  let handlerRole = runtime.resources->Util.IAM_Role.findResource->Util.IAM_Role.fromResource
+
   let eventTopicResources =
     eventTopics
     ->(Js.Dict.map((eventTopic: Reventless.EventTopic.outputs) => eventTopic.resources, _))
     ->Reventless.Util.Adapter.partitionSupportedResources([AWS.DynamoDbStream.service])
 
-  let _ = eventTopicResources->Pulumi.Output.apply(((dynamoDbStreamResources, errorResources)) => {
-    let _eventSourceMappings: array<
-      PulumiAws.EventSourceMapping.t,
-    > = dynamoDbStreamResources->Belt.Array.map(((sourceName, sources)) => {
-      Util_EventSourceMapping.subscribe(
-        ~batchSize=25,
-        ~lambda=handler,
-        ~targetName=name,
-        ~sourceName,
-        ~source=sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource,
+  let _subscribeAndAttachPolicies =
+    (eventTopicResources, handler, handlerRole)
+    ->Pulumi.Output.all3
+    ->Pulumi.Output.apply((((dynamoDbStreamResources, errorResources), handler, handlerRole)) => {
+      let streamSourceWithPolicy = dynamoDbStreamResources->Belt.Array.map(((sourceName, sources)) => {
+        let source = sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource
+        source.urn->Pulumi.Output.apply(
+          sourceUrn => {
+            open PulumiAws
+            {
+              Util_DynamoDbStream.sourceName,
+              source,
+              lambdaPolicyDocument: PolicyDocument.make(
+                ~statements=[
+                  {
+                    effect: PolicyDocument.Allow,
+                    actions: PolicyDocument.Actions([
+                      "dynamodb:DescribeStream",
+                      "dynamodb:GetRecords",
+                      "dynamodb:GetShardIterator",
+                      "dynamodb:ListStreams",
+                    ]),
+                    resources: PolicyDocument.Resource(sourceUrn),
+                  },
+                ],
+              ),
+            }
+          },
+        )
+      })
+
+      let _subscribeEventStreams = streamSourceWithPolicy->Belt.Array.map(dynamoDbStreamData => {
+        dynamoDbStreamData->Pulumi.Output.apply(
+          streamData => {
+            Util_EventSourceMapping.subscribe(
+              ~batchSize=25,
+              ~lambda=handler->Pulumi.Output.make,
+              ~targetName=name,
+              ~sourceName=streamData.sourceName,
+              ~source=streamData.source,
+              ~opts,
+            )
+          },
+        )
+      })
+
+      let lambdaPolicy = PulumiAws.IAM.Policy.make(
+        ~name,
+        ~args={
+          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
+            ~policyDocuments=Belt.Array.concat(
+              [PulumiAws.Lambda.defaultLoggingPolicyDocument],
+              streamSourceWithPolicy
+              ->Belt.Array.map(output => output->Pulumi.Output.unwrap)
+              ->Belt.Array.map(resource => resource.lambdaPolicyDocument),
+            ),
+          )->Pulumi.Output.asInput,
+        },
         ~opts,
       )
-    })
+
+      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicyAttachment.make(
+        ~name,
+        ~args={
+          policyArn: lambdaPolicy.arn->Pulumi.Output.asInput,
+          role: handlerRole.arn->Pulumi.Output.asInput,
+        },
+        ~opts=Some(opts),
+      )
 
     if errorResources->Belt.Array.length > 0 {
       let eventTopicNames = errorResources->Js.Array2.joinWith(",")

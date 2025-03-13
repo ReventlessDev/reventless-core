@@ -9,8 +9,8 @@ let globalSecondaryIndexes = indexes =>
   indexes
   ->Belt.Array.map(({index, projectionType} as indexConfig) => {
     let (projectionType, includes) = switch projectionType {
-    | ALL as projection => (PulumiAws.DynamoDb.Table.ALL, None)
-    | KEYS_ONLY as projection => (KEYS_ONLY, None)
+    | ALL as _projection => (PulumiAws.DynamoDb.Table.ALL, None)
+    | KEYS_ONLY as _projection => (KEYS_ONLY, None)
     | INCLUDE(includes) => (INCLUDE, Some(includes))
     }
     {
@@ -46,7 +46,11 @@ let dataSource = (name, table, api, apiRole, opts) => {
       ~args={
         IAM.RolePolicy.policy: table.arn
         ->Pulumi.Output.apply(tableArn =>
-          IAM.RolePolicy.generatePolicy([tableArn ++ "*"], "dynamodb:*")
+          PolicyDocument.make(~statements=[{
+            effect: PolicyDocument.Allow,
+            actions: PolicyDocument.Action(tableArn ++ "*"),
+            resources: PolicyDocument.Resource("dynamodb:*")
+          }])->PolicyDocument.toJsonString
         )
         ->Pulumi.Output.asInput,
         role: apiRole

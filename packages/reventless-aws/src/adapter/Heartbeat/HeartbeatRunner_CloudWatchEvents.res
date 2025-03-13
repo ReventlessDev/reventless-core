@@ -13,7 +13,48 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime,
     )
   }
 
+  let heartbeatLambdaRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
+    ~name=name ++ "Role",
+    ~service="lambda.amazonaws.com"->Pulumi.Output.make,
+  )
+
   let lambdaResource = runtime.resources->Util.Lambda.findResource
+
+  let _attachHeartbeatLambdaRolePolicy =
+    (lambdaResource.urn, cloudwatchEventRule.arn)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((lambdaUrn, ruleArn)) => {
+      open PulumiAws
+
+      let heartbeatLambdaPolicyDocument = PolicyDocument.make(
+        ~statements=[
+          {
+            principal: PolicyDocument.Principals({
+              service: PolicyDocument.PrincipalId("events.amazonaws.com"),
+            }),
+            effect: PolicyDocument.Allow,
+            actions: PolicyDocument.Action("lambda:InvokeFunction"),
+            resources: PolicyDocument.Resource(lambdaUrn),
+            conditions: {
+              arnEquals: Js.Dict.fromArray([
+                ("AWS:SourceArn", PolicyDocument.ConditionValue(ruleArn)),
+              ]),
+            },
+          },
+        ],
+      )
+
+      IAM.RolePolicy.make(
+        ~name=name ++ "RolePolicy",
+        ~args={
+          policy: PolicyDocument.mergePolicyDocuments(
+            ~policyDocuments=[Lambda.defaultLoggingPolicyDocument, heartbeatLambdaPolicyDocument]
+          )
+          ->Pulumi.Output.asInput,
+          role: heartbeatLambdaRole.id->Pulumi.Output.asInput,
+        },
+      )
+    })
 
   let _cloudwatchEventTarget = {
     open PulumiAws.Cloudwatch
@@ -22,20 +63,6 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime,
       ~args={
         rule: EventTarget.Rule.ofEventRule(cloudwatchEventRule),
         arn: lambdaResource.urn->Pulumi.Output.asInput,
-      },
-      ~opts,
-    )
-  }
-
-  let _heartbeatLambdaPermission = {
-    open PulumiAws.Lambda
-    Permission.make(
-      ~name,
-      ~args={
-        function: lambdaResource.urn->Pulumi.Output.asInput,
-        action: "lambda:InvokeFunction",
-        principal: "events.amazonaws.com",
-        sourceArn: cloudwatchEventRule.arn->Pulumi.Output.asInput,
       },
       ~opts,
     )

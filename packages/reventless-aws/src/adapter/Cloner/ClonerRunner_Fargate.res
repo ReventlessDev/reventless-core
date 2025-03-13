@@ -30,20 +30,46 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
     },
   )
 
-  let secretsManagerAccessPolicy = IAM.Policy.makeForActions(
-    ~name="secretsManagerAccess",
-    ~actions=[
-      "secretsmanager:GetRandomPassword",
-      "secretsmanager:GetResourcePolicy",
-      "secretsmanager:GetSecretValue",
-      "secretsmanager:DescribeSecret",
-      "secretsmanager:ListSecretVersionIds",
+  let secretsManagerPolicyDocument = PolicyDocument.make(
+    ~statements=[
+      {
+        effect: PolicyDocument.Allow,
+        actions: PolicyDocument.Actions([
+          "secretsmanager:GetRandomPassword",
+          "secretsmanager:GetResourcePolicy",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecretVersionIds",
+        ]),
+      },
     ],
   )
 
-  let taskRunnerPolicy = IAM.Policy.makeForActions(
+  let secretsManagerAccessPolicy = IAM.Policy.make(
+    ~name="secretsManagerAccess",
+    ~args={
+      policy: secretsManagerPolicyDocument
+      ->PolicyDocument.toJsonString
+      ->Pulumi.Input.make,
+    },
+  )
+
+  let taskRunnerPolicyDocument = PolicyDocument.make(
+    ~statements=[
+      {
+        effect: PolicyDocument.Allow,
+        actions: PolicyDocument.Actions(["ecs:RunTask", "iam:PassRole"]),
+      },
+    ],
+  )
+
+  let taskRunnerPolicy = IAM.Policy.make(
     ~name="taskRunner",
-    ~actions=["ecs:RunTask", "iam:PassRole"],
+    ~args={
+      policy: taskRunnerPolicyDocument
+      ->PolicyDocument.toJsonString
+      ->Pulumi.Input.make,
+    },
   )
 
   let _ = {
@@ -124,34 +150,61 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
         ~opts?,
       )
 
+      let lambdaRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
+        ~name,
+        ~service="appsync.amazonaws.com"->Pulumi.Output.make,
+      )
+
       let lambda = Lambda.CallbackFunction.make(
         ~name,
         ~args=Lambda.CallbackFunction.Args.make(
-          ~policies=[
-            secretsManagerAccessPolicyArn,
-            taskRunnerPolicyArn,
-            PulumiAws.IAM.ManagedPolicies.lambdaFullAccess,
-          ],
           ~callback=ClonerRunner_Fargate_Runtime.clone(
             ~taskDefinition=taskDefinition.arn,
             ~cluster=cluster.arn,
             ~fullQualifiedStackName,
             ~subnets={subnets: vpcConfig.subnetIds},
             ...
-          ),
+          )
         ),
         ~opts?,
       )
+      let _ = lambda.arn->Pulumi.Output.apply(arn => {
+        let appsyncInvokeLambdaPolicyDocument = PulumiAws.PolicyDocument.make(
+          ~statements=[
+            {
+              effect: PulumiAws.PolicyDocument.Allow,
+              actions: PulumiAws.PolicyDocument.Action("lambda:InvokeFunction"),
+              resources: PulumiAws.PolicyDocument.Resource(arn),
+              principal: PulumiAws.PolicyDocument.Principals({
+                service: PulumiAws.PolicyDocument.PrincipalId("appsync.amazonaws.com"),
+              }),
+            },
+          ],
+        )
 
-      let _lambdaPermission = Lambda.Permission.make(
-        ~name,
-        ~args={
-          Lambda.Permission.action: "lambda:InvokeFunction",
-          function: lambda.arn->Pulumi.Output.asInput,
-          principal: "appsync.amazonaws.com",
-        },
-        ~opts?,
-      )
+        let lambdaPolicies = PulumiAws.PolicyDocument.mergePolicyDocuments(
+          ~policyDocuments=[
+            PulumiAws.Lambda.defaultLoggingPolicyDocument,
+            appsyncInvokeLambdaPolicyDocument,
+            secretsManagerPolicyDocument,
+            taskRunnerPolicyDocument,
+          ],
+        )
+
+        lambdaRole.arn->Pulumi.Output.apply(
+          lambdaRoleArn => {
+            let lambdaRolePolicy = PulumiAws.IAM.RolePolicy.make(
+              ~name=name ++ "LambdaRolePolicy",
+              ~args={
+                policy: appsyncInvokeLambdaPolicyDocument
+                ->PulumiAws.PolicyDocument.toJsonString
+                ->Pulumi.Input.make,
+                role: lambdaRoleArn->Pulumi.Input.make,
+              },
+            )
+          },
+        )
+      })
 
       let dataSourceRole = IAM.Role.makeWithDefaultPolicy(
         ~name=name ++ "DS",
@@ -164,9 +217,19 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
         RolePolicy.make(
           ~name=name ++ "DS",
           ~args={
-            RolePolicy.policy: lambda.arn
+            policy: lambda.arn
             ->Pulumi.Output.apply(lambdaArn =>
-              RolePolicy.generatePolicy([lambdaArn], "lambda:InvokeFunction")
+              //RolePolicy.generatePolicy([lambdaArn], "lambda:InvokeFunction")
+              PolicyDocument.make(
+                ~statements=[
+                  {
+                    sid: "InvokeLambda",
+                    effect: PolicyDocument.Allow,
+                    actions: PolicyDocument.Action("lambda:InvokeFunction"),
+                    resources: PolicyDocument.Resource(lambdaArn),
+                  },
+                ],
+              )->PolicyDocument.toJsonString
             )
             ->Pulumi.Output.asInput,
             role: dataSourceRole.id->Pulumi.Output.asInput,
