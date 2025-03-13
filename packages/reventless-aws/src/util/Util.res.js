@@ -42,7 +42,7 @@ var SQS_FIFO;
 
 var SQS_Runtime;
 
-var SqsQueuePolicy;
+var IAM_Role;
 
 exports.AppSync = AppSync;
 exports.Cognito_Runtime = Cognito_Runtime;
@@ -64,5 +64,5 @@ exports.SNS_Runtime = SNS_Runtime;
 exports.SQS = SQS;
 exports.SQS_FIFO = SQS_FIFO;
 exports.SQS_Runtime = SQS_Runtime;
-exports.SqsQueuePolicy = SqsQueuePolicy;
+exports.IAM_Role = IAM_Role;
 /* No side effect */

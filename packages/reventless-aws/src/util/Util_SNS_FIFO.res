@@ -3,7 +3,7 @@ let toResource = ({PulumiAws.SNS.Topic.id: id, name, arn}) => {
   name,
   id,
   urn: arn,
-  info: name->Pulumi.Output.apply(_ => ""),
+  info: name->Pulumi.Output.apply(_ => "")
 }
 
 let findTopicInUnwrappedResources = resources =>

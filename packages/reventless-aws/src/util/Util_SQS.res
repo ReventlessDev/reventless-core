@@ -14,7 +14,7 @@ let toResource = (queue: PulumiAws.SQS.Queue.t) => {
   name: queue.name,
   id: queue.id,
   urn: queue.arn,
-  info: queue.name->Pulumi.Output.apply(_ => ""),
+  info: queue.name->Pulumi.Output.apply(_ => "")
 }
 
 let fromResource = ({id, name}: ReventlessSpec.Adapter.resource) => {

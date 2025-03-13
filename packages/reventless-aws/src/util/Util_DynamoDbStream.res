@@ -1,3 +1,9 @@
+type sourceWithPolicy = {
+  sourceName: string,
+  source: ReventlessSpec.Adapter.resource,
+  lambdaPolicyDocument: PulumiAws.PolicyDocument.t,
+}
+
 let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
   (table.hashKey, table.rangeKey, table.streamArn)
   ->Pulumi.Output.all3

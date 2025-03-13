@@ -44,7 +44,7 @@ let rec putIfNotExistsWithRetries = async (
   | _ => Ok()
   | exception Js.Exn.Error(e) =>
     switch e->PutError.classify {
-    | ConditionCheckFailedException(err) => Error(`Stale State: id=${id}`)
+    | ConditionCheckFailedException(_err) => Error(`Stale State: id=${id}`)
     | _ =>
       let errorMsg = e->Reventless.Util.Error.message
       Js.log(

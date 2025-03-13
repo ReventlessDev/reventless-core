@@ -12,7 +12,7 @@ let toResource: PulumiAws.SNS.Topic.t => ReventlessSpec.Adapter.resource = ({id,
   name,
   id,
   urn: arn,
-  info: name->Pulumi.Output.apply(_ => ""),
+  info: name->Pulumi.Output.apply(_ => "")
 }
 
 let findUnwrappedResource = resources =>

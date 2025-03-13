@@ -65,8 +65,8 @@ async function putIfNotExistsWithRetries(retryOpt, maxRetriesOpt, idKey, sortKey
     var e = Caml_js_exceptions.internalToOCamlException(raw_e);
     if (e.RE_EXN_ID === Js_exn.$$Error) {
       var e$1 = e._1;
-      var err = DynamoDb_DocumentClient$AwsSdk.PutError.classify(e$1);
-      if (err.TAG === "ConditionCheckFailedException") {
+      var _err = DynamoDb_DocumentClient$AwsSdk.PutError.classify(e$1);
+      if (_err.TAG === "ConditionCheckFailedException") {
         return {
                 TAG: "Error",
                 _0: "Stale State: id=" + id
