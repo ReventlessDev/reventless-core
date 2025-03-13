@@ -87,7 +87,7 @@ function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCol
                               operations: operations$1
                             });
                         var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
-                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts$1);
+                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, opts$1);
                         var eventTopics = Util_EventTopic$Reventless.filterEventTopics(allEventTopics, sourceNames);
                         SpecificEventCollector.subscribe(name, eventTopics, eventCollector, runtime, opts$1);
                         return eventCollector;

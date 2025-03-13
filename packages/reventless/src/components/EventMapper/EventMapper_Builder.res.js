@@ -67,7 +67,7 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                               commonEventsHandler: CounterHandler.commonEventsHandler
                             });
                         var handler = SpecificEventCollector.makeHandler(eventCollector, EventCollectorHandler.handleJsonEvents);
-                        var runtime = RuntimeEnvironment.make(name, handler, memorySize, timeout, undefined, undefined, opts$1);
+                        var runtime = RuntimeEnvironment.make(name, handler, memorySize, timeout, opts$1);
                         var eventTopics = Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames);
                         return Component$Reventless.outputs((SpecificEventCollector.subscribe(name, eventTopics, eventCollector, runtime, opts$1), eventCollector));
                       });

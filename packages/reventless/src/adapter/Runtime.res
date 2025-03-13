@@ -7,8 +7,6 @@ type environmentMaker<'event, 'context, 'result> = (
   ~handler: Pulumi.Output.t<eventHandler<'event, 'context, 'result>>,
   ~memorySize: int=?,
   ~timeout: int=?,
-  ~policy1: Pulumi.Output.t<string>=?,
-  ~policy2: Pulumi.Output.t<string>=?,
   ~opts: Pulumi.ComponentResource.options=?,
 ) => environment
 

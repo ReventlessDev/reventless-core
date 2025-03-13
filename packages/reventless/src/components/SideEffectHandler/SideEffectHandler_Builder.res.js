@@ -16,7 +16,7 @@ var SideEffectHandler$Reventless = require("./SideEffectHandler.res.js");
 var SideEffectHandler_Callback$Reventless = require("./SideEffectHandler_Callback.res.js");
 
 function Make(SpecificEventCollector, RuntimeEnvironment) {
-  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, policy1, policy2, opts) {
+  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
     return Component$Reventless.make(ComponentType$Reventless.toString(SideEffectHandler$Reventless.componentType), name, (function (extra, extra$1) {
@@ -37,7 +37,7 @@ function Make(SpecificEventCollector, RuntimeEnvironment) {
                         queryEngine: queryEngine
                       });
                   var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
-                  var runtime = RuntimeEnvironment.make(extra$1, handler, memorySize, timeout, policy1, policy2, opts$1);
+                  var runtime = RuntimeEnvironment.make(extra$1, handler, memorySize, timeout, opts$1);
                   SpecificEventCollector.subscribe(extra$1, Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames), eventCollector, runtime, opts$1);
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),

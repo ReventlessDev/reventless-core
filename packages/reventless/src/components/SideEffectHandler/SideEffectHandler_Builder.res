@@ -9,8 +9,6 @@ module Make = (
     ~scheduler,
     ~memorySize,
     ~timeout,
-    ~policy1=?,
-    ~policy2=?,
     self,
     name,
   ) => {
@@ -37,8 +35,6 @@ module Make = (
       ~handler,
       ~memorySize,
       ~timeout,
-      ~policy1?,
-      ~policy2?,
       ~opts,
     )
 
@@ -77,8 +73,6 @@ module Make = (
     ~scheduler,
     ~memorySize=2048,
     ~timeout=180,
-    ~policy1=?,
-    ~policy2=?,
     ~opts=?,
   ) => {
     Component.make(
@@ -91,8 +85,6 @@ module Make = (
         ~scheduler,
         ~memorySize,
         ~timeout,
-        ~policy1?,
-        ~policy2?,
         ...
       ),
       ~opts=opts->Belt.Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions)

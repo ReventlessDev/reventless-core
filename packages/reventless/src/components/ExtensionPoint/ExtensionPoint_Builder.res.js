@@ -54,7 +54,7 @@ function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnv
                               };
                               var ExtensionPointCallback = partial_arg$2(Spec, Mappings);
                               var handler = SpecificCommandTopic.makeHandler(commandTopic, ExtensionPointCallback.handleIncomingCommands);
-                              var runtime = RuntimeEnvironment.make(name, handler, undefined, undefined, undefined, undefined, commandTopicOpts);
+                              var runtime = RuntimeEnvironment.make(name, handler, undefined, undefined, commandTopicOpts);
                               SpecificCommandTopic.subscribe(name, commandTopic, runtime, commandTopicOpts);
                               var partial_arg$3 = {
                                 Id: Id$ReventlessSpec.$$String,

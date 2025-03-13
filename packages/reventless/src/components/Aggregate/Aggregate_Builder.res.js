@@ -66,7 +66,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                 EventLog: SpecificEventLog,
                 eventLog: eventLogOps
               });
-          var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandTopic$Reventless.componentType), SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands), undefined, undefined, undefined, undefined, opts$1);
+          var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandTopic$Reventless.componentType), SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands), undefined, undefined, opts$1);
           SpecificCommandTopic.subscribe(name$1, commandTopic, runtime, opts$1);
           return commandTopic;
         });
@@ -82,7 +82,7 @@ function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers,
                         var opts$1 = {
                           parent: opts_parent
                         };
-                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandGenerator$Reventless.componentType), SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, undefined, undefined, opts$1);
+                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandGenerator$Reventless.componentType), SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, opts$1);
                         SpecificCommandGenerator.subscribe(name$1, commandGenerator, runtime, opts$1);
                         return Component$Reventless.outputs(commandGenerator);
                       });

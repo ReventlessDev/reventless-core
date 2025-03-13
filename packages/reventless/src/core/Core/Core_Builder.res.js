@@ -103,7 +103,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                           outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
                         });
                     var handler = CoreEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
-                    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, undefined, undefined, opts$1);
+                    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, opts$1);
                     CoreEventCollector.subscribe(name, Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventCollector, runtime, opts$1);
                     return eventCollectorOutputs;
                   });
