@@ -42,5 +42,6 @@
   "peerDependencies": {
     "@rescript/std": "^11.1.4",
     "rescript": "^11.1.4"
-  }
+  },
+  "gitHead": "ddea51534dc210635d7b11968089627b3b697ce2"
 }
