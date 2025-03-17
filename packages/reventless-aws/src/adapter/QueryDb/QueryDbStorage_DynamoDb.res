@@ -51,8 +51,8 @@ let dataSource = (name, table, api, apiRole, opts) => {
             ~statements=[
               {
                 effect: Allow,
-                actions: Action(tableArn ++ "*"),
-                resources: Resource("dynamodb:*"),
+                actions: Action("dynamodb:*"),
+                resources: Resource(tableArn),
               },
             ],
           )->toJsonString

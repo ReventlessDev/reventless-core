@@ -73,8 +73,8 @@ function dataSource(name, table, api, apiRole, opts) {
         policy: table.arn.apply(function (tableArn) {
               return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
                                 Effect: "Allow",
-                                Action: tableArn + "*",
-                                Resource: "dynamodb:*"
+                                Action: "dynamodb:*",
+                                Resource: tableArn
                               }]));
             }),
         role: Output$Pulumi.flatMap(apiRole, (function (role) {
