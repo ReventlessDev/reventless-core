@@ -34,37 +34,31 @@ function subscribe(name, eventTopics, param, runtime, opts) {
         var handler = param[1];
         var match = param[0];
         var errorResources = match[1];
-        var streamSourceWithPolicy = Belt_Array.map(match[0], (function (param) {
+        var streamSourcesWithPolicy = Belt_Array.map(match[0], (function (param) {
                 var sourceName = param[0];
-                var source = AdapterDeploytime$Reventless.unwrappedToResource(param[1][0]);
-                return source.urn.apply(function (sourceUrn) {
-                            return {
-                                    sourceName: sourceName,
-                                    source: source,
-                                    lambdaPolicyDocument: PolicyDocument$PulumiAws.make(undefined, undefined, [{
-                                            Sid: "AllowLambdaToReadStream" + sourceName,
-                                            Effect: "Allow",
-                                            Action: [
-                                              "dynamodb:DescribeStream",
-                                              "dynamodb:GetRecords",
-                                              "dynamodb:GetShardIterator",
-                                              "dynamodb:ListStreams"
-                                            ],
-                                            Resource: sourceUrn
-                                          }])
-                                  };
-                          });
+                var source = param[1][0];
+                return [
+                        sourceName,
+                        source,
+                        PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                                Sid: "AllowLambdaToReadStream" + sourceName,
+                                Effect: "Allow",
+                                Action: [
+                                  "dynamodb:DescribeStream",
+                                  "dynamodb:GetRecords",
+                                  "dynamodb:GetShardIterator",
+                                  "dynamodb:ListStreams"
+                                ],
+                                Resource: source.urn
+                              }])
+                      ];
               }));
-        Belt_Array.map(streamSourceWithPolicy, (function (dynamoDbStreamData) {
-                return dynamoDbStreamData.apply(function (streamData) {
-                            return Util_EventSourceMapping$ReventlessAws.subscribe(25, Pulumi.output(handler), name, streamData.sourceName, streamData.source, opts$1);
-                          });
+        Belt_Array.map(streamSourcesWithPolicy, (function (param) {
+                return Util_EventSourceMapping$ReventlessAws.subscribe(25, Pulumi.output(handler), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts$1);
               }));
         var lambdaPolicy = new (Aws.iam.Policy)(name, {
-              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(Belt_Array.concat([Lambda$PulumiAws.defaultLoggingPolicyDocument], Belt_Array.map(Belt_Array.map(streamSourceWithPolicy, (function (output) {
-                                  return output;
-                                })), (function (resource) {
-                              return resource.lambdaPolicyDocument;
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(Belt_Array.concat([Lambda$PulumiAws.defaultLoggingPolicyDocument], Belt_Array.map(streamSourcesWithPolicy, (function (param) {
+                              return param[2];
                             }))))
             }, opts$1);
         new (Aws.iam.RolePolicyAttachment)(name, {

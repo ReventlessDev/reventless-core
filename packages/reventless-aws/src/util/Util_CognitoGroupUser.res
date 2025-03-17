@@ -22,12 +22,15 @@ let makeAddRemoveUserToGroupPolicy = (
             {
               sid: "AllowAdminAddRemoveUserToGroup",
               effect: Allow,
-              actions: Actions(["cognito-idp:AdminAddUserToGroup", "cognito-idp:AdminRemoveUserFromGroup"]),
+              actions: Actions([
+                "cognito-idp:AdminAddUserToGroup",
+                "cognito-idp:AdminRemoveUserFromGroup",
+              ]),
               resources: Resource(`${userPoolArn}`),
             },
           ],
         )
-        ->PulumiAws.PolicyDocument.toJsonString
+        ->toJsonString
         ->Pulumi.Input.make,
       },
       ~opts?,

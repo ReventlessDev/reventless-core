@@ -21,9 +21,14 @@ let subscribe = (
   let handlerRole = runtime.resources->Util.IAM_Role.findResource->Util.IAM_Role.fromResource
 
   let _attachPolicies =
-    (queue, handler, handlerRole)
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((queue, handler, handlerRole)) => {
+    (
+      queue->Pulumi.Output.flatMap(queue => queue.arn),
+      handler->Pulumi.Output.flatMap(handler => handler.arn),
+      handler->Pulumi.Output.flatMap(handler => handler.name),
+      handlerRole,
+    )
+    ->Pulumi.Output.all4
+    ->Pulumi.Output.apply(((queueArn, handlerArn, handlerName, handlerRole)) => {
       open PulumiAws.PolicyDocument
 
       let queuePolicyDocument =
@@ -36,28 +41,23 @@ let subscribe = (
               }),
               effect: Allow,
               actions: Actions(["sqs:SendMessage"]),
-              resources: Resource(handler.arn->Pulumi.Output.unwrap),
+              resources: Resource(handlerArn),
               conditions: {
-                arnEquals: Js.Dict.fromArray([
-                  (
-                    "AWS:SourceArn",
-                    ConditionValue(handler.name->Pulumi.Output.unwrap),
-                  ),
-                ]),
+                arnEquals: Js.Dict.fromArray([("AWS:SourceArn", ConditionValue(handlerName))]),
               },
             },
             {
               sid: "AllowCloudWatchEvents",
               effect: Allow,
               actions: Actions(["sqs:SendMessage"]),
-              resources: Resource(queue.arn->Pulumi.Output.unwrap),
+              resources: Resource(queueArn),
               principal: Principals({
                 service: PrincipalId(AWS.CloudwatchEventRule.principal),
               }),
             },
           ],
         )
-        ->PulumiAws.PolicyDocument.toJsonString
+        ->toJsonString
         ->Pulumi.Input.make
 
       let allowSQSLambdaPolicyDocument = PulumiAws.PolicyDocument.make(
@@ -65,12 +65,8 @@ let subscribe = (
           {
             sid: "AllowSQSReceiveMessage",
             effect: Allow,
-            actions: Actions([
-              "sqs:ReceiveMessage",
-              "sqs:DeleteMessage",
-              "sqs:GetQueueAttributes",
-            ]),
-            resources: Resource(queue.arn->Pulumi.Output.unwrap),
+            actions: Actions(["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]),
+            resources: Resource(queueArn),
           },
         ],
       )
@@ -78,9 +74,10 @@ let subscribe = (
       let lambdaPolicy = PulumiAws.IAM.Policy.make(
         ~name,
         ~args={
-          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
-            ~policyDocuments=[PulumiAws.Lambda.defaultLoggingPolicyDocument, allowSQSLambdaPolicyDocument],
-          )->Pulumi.Output.asInput,
+          policy: PulumiAws.PolicyDocument.mergePolicyDocuments([
+            PulumiAws.Lambda.defaultLoggingPolicyDocument,
+            allowSQSLambdaPolicyDocument,
+          ])->Pulumi.Output.asInput,
         },
         ~opts,
       )
@@ -95,7 +92,7 @@ let subscribe = (
       )
       let _attachQueuePolicy = PulumiAws.SQS.QueuePolicy.make(
         ~name,
-        ~args={queueUrl: queue.arn->Pulumi.Output.asInput, policy: queuePolicyDocument},
+        ~args={queueUrl: queueArn->Pulumi.Input.make, policy: queuePolicyDocument},
         ~opts=Some(opts),
       )
     })

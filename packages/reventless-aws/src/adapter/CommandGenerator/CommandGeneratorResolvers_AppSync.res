@@ -31,7 +31,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
                 {
                   sid: "AllowLambdaInvokeAppSync",
                   principal: Principals({
-                    service: PrincipalId("appsync.amazonaws.com"),
+                    service: PrincipalId(AWS.AppSync.principal),
                   }),
                   effect: Allow,
                   actions: Action("lambda:InvokeFunction"),
@@ -39,7 +39,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
                 },
               ],
             )
-            ->PulumiAws.PolicyDocument.toJsonString
+            ->toJsonString
             ->Pulumi.Input.make,
           },
           ~opts,
@@ -58,7 +58,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
 
   let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "DS",
-    ~service="appsync.amazonaws.com"->Pulumi.Output.make,
+    ~service=AWS.AppSync.principal->Pulumi.Output.make,
     ~opts,
   )
 
@@ -77,7 +77,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
             },
           ],
         )
-        ->PulumiAws.PolicyDocument.toJsonString
+        ->toJsonString
         ->Pulumi.Input.make,
         role: dataSourceRole.id->Pulumi.Output.asInput,
       },

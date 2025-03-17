@@ -5,6 +5,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
@@ -41,9 +42,13 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
   var subscriptionResource = Pulumi.all([
           eventTopicResources,
           queue,
+          Output$Pulumi.flatMap(queue, (function (queue) {
+                  return queue.arn;
+                })),
           handler
         ]).apply(function (param) {
-        var handler = param[2];
+        var handler = param[3];
+        var queueArn = param[2];
         var queue = param[1];
         var match = param[0];
         var errorResources = match[1];
@@ -60,42 +65,37 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                         {
                           Sid: "AllowReceiveSNSMessages",
                           Principal: {
-                            Service: "sns.amazonaws.com"
+                            Service: AWS$ReventlessAws.SNS.principal
                           },
                           Effect: "Allow",
                           Action: ["sqs:SendMessage"],
-                          Resource: queue.arn
+                          Resource: queueArn
                         },
                         {
                           Sid: "AllowReceiveCloudWatchEvents",
                           Principal: {
-                            Service: "events.amazonaws.com"
+                            Service: AWS$ReventlessAws.CloudwatchEventRule.principal
                           },
                           Effect: "Allow",
                           Action: ["sqs:SendMessage"],
-                          Resource: queue.arn
+                          Resource: queueArn
                         }
                       ])),
-              queueUrl: queue.arn
+              queueUrl: queueArn
             }, opts$1);
-        var lambdaDynamoDbStreamPolicyDocument = Belt_Array.map(otherResources, (function (param) {
-                var source = AdapterDeploytime$Reventless.unwrappedToResource(param[1][0]);
-                return Pulumi.all([
-                              source.name,
-                              source.urn
-                            ]).apply(function (param) {
-                            return PolicyDocument$PulumiAws.make(undefined, undefined, [{
-                                          Sid: "AllowLambdaToReadStream" + param[0],
-                                          Effect: "Allow",
-                                          Action: [
-                                            "dynamodb:DescribeStream",
-                                            "dynamodb:GetRecords",
-                                            "dynamodb:GetShardIterator",
-                                            "dynamodb:ListStreams"
-                                          ],
-                                          Resource: param[1]
-                                        }]);
-                          });
+        var lambdaDynamoDbStreamPolicyDocuments = Belt_Array.map(otherResources, (function (param) {
+                var source = param[1][0];
+                return PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                              Sid: "AllowLambdaToReadStream" + source.name,
+                              Effect: "Allow",
+                              Action: [
+                                "dynamodb:DescribeStream",
+                                "dynamodb:GetRecords",
+                                "dynamodb:GetShardIterator",
+                                "dynamodb:ListStreams"
+                              ],
+                              Resource: source.urn
+                            }]);
               }));
         var lambdaQueuePolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
                 Sid: "AllowLambdaReceiveSQSMessage",
@@ -105,15 +105,13 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                   "sqs:DeleteMessage",
                   "sqs:GetQueueAttributes"
                 ],
-                Resource: queue.arn
+                Resource: queueArn
               }]);
         var lambdaPolicy = new (Aws.iam.Policy)(name + "LambdaPolicy", {
-              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(Belt_Array.concat([
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(Belt_Array.concat(lambdaDynamoDbStreamPolicyDocuments, [
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         lambdaQueuePolicyDocument
-                      ], Belt_Array.map(lambdaDynamoDbStreamPolicyDocument, (function (output) {
-                              return output;
-                            }))))
+                      ]))
             }, opts$1);
         handlerRole.apply(function (handlerRole) {
               return new (Aws.iam.RolePolicyAttachment)(name + "LambdaPolicy", {

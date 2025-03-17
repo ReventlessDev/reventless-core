@@ -8,7 +8,7 @@ let subscribe = (
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
-  
+
   let queue =
     channel.resources
     ->Util.SQS_FIFO.findResource
@@ -30,9 +30,9 @@ let subscribe = (
     ])
 
   let subscriptionResource =
-    (eventTopicResources, queue, handler)
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply((((supportedResources, errorResources), queue, handler)) => {
+    (eventTopicResources, queue, queue->Pulumi.Output.flatMap(queue => queue.arn), handler)
+    ->Pulumi.Output.all4
+    ->Pulumi.Output.apply((((supportedResources, errorResources), queue, queueArn, handler)) => {
       let (snsFifoResources, otherResources) =
         supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
           AWS.SNS_FIFO.service,
@@ -63,62 +63,58 @@ let subscribe = (
       )
 
       let _queuePolicy = {
-        open PulumiAws
-        SQS.QueuePolicy.make(
+        open PulumiAws.PolicyDocument
+        PulumiAws.SQS.QueuePolicy.make(
           ~name=name ++ "Policy",
           ~args={
-            queueUrl: queue.arn->Pulumi.Output.unwrap->Pulumi.Input.make,
-            policy: PolicyDocument.make(
+            queueUrl: queueArn->Pulumi.Input.make,
+            policy: PulumiAws.PolicyDocument.make(
               ~statements=[
                 {
-                  principal: PolicyDocument.Principals({
-                    service: PolicyDocument.PrincipalId("sns.amazonaws.com"),
+                  principal: Principals({
+                    service: PrincipalId(AWS.SNS.principal),
                   }),
-                  effect: PolicyDocument.Allow,
-                  actions: PolicyDocument.Actions(["sqs:SendMessage"]),
-                  resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+                  effect: Allow,
+                  actions: Actions(["sqs:SendMessage"]),
+                  resources: Resource(queueArn),
                 },
                 {
-                  principal: PolicyDocument.Principals({
-                    service: PolicyDocument.PrincipalId("events.amazonaws.com"),
+                  principal: Principals({
+                    service: PrincipalId(AWS.CloudwatchEventRule.principal),
                   }),
-                  effect: PolicyDocument.Allow,
-                  actions: PolicyDocument.Actions(["sqs:SendMessage"]),
-                  resources: PolicyDocument.Resource(queue.arn->Pulumi.Output.unwrap),
+                  effect: Allow,
+                  actions: Actions(["sqs:SendMessage"]),
+                  resources: Resource(queueArn),
                 },
               ],
             )
-            ->PolicyDocument.toJsonString
+            ->toJsonString
             ->Pulumi.Input.make,
           },
           ~opts=Some(opts),
         )
       }
 
-      let lambdaDynamoDbStreamPolicyDocument = otherResources->Belt.Array.map(((
+      let lambdaDynamoDbStreamPolicyDocuments = otherResources->Belt.Array.map(((
         _sourceName,
         sources,
       )) => {
-        let source = sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource
-        (source.name,source.urn)->Pulumi.Output.all2->Pulumi.Output.apply(
-          ((sourceName, sourceUrn)) => {
-            open PulumiAws.PolicyDocument
-            PulumiAws.PolicyDocument.make(
-              ~statements=[
-                {
-                  sid: "AllowLambdaToReadStream" ++ sourceName,
-                  effect: Allow,
-                  actions: Actions([
-                    "dynamodb:DescribeStream",
-                    "dynamodb:GetRecords",
-                    "dynamodb:GetShardIterator",
-                    "dynamodb:ListStreams",
-                  ]),
-                  resources: Resource(sourceUrn),
-                },
-              ],
-            )
-          },
+        let source = sources->Array.getUnsafe(0)
+        open PulumiAws.PolicyDocument
+        PulumiAws.PolicyDocument.make(
+          ~statements=[
+            {
+              sid: "AllowLambdaToReadStream" ++ source.name,
+              effect: Allow,
+              actions: Actions([
+                "dynamodb:DescribeStream",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:ListStreams",
+              ]),
+              resources: Resource(source.urn),
+            },
+          ],
         )
       })
 
@@ -134,7 +130,7 @@ let subscribe = (
                 "sqs:DeleteMessage",
                 "sqs:GetQueueAttributes",
               ]),
-              resources: Resource(queue.arn->Pulumi.Output.unwrap),
+              resources: Resource(queueArn),
             },
           ],
         )
@@ -144,11 +140,10 @@ let subscribe = (
         ~name=name ++ "LambdaPolicy",
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
-            ~policyDocuments=Belt.Array.concat(
-              [PulumiAws.Lambda.defaultLoggingPolicyDocument, lambdaQueuePolicyDocument],
-              lambdaDynamoDbStreamPolicyDocument
-              ->Belt.Array.map(output => output->Pulumi.Output.unwrap),
-            ),
+            lambdaDynamoDbStreamPolicyDocuments->Belt.Array.concat([
+              PulumiAws.Lambda.defaultLoggingPolicyDocument,
+              lambdaQueuePolicyDocument,
+            ]),
           )->Pulumi.Output.asInput,
         },
         ~opts,

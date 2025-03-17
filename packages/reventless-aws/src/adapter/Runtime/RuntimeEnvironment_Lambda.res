@@ -11,11 +11,14 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result> = (
   let opts =
     opts->Belt.Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
-  let lambdaRole = IAM.Role.makeWithDefaultPolicy(~name=name++"Role", ~service="lambda.amazonaws.com"->Pulumi.Output.make) 
+  let lambdaRole = IAM.Role.makeWithDefaultPolicy(
+    ~name=name ++ "Role",
+    ~service=AWS.Lambda.principal->Pulumi.Output.make,
+  )
 
   let lambdaResource =
-    (handler)
-    ->Pulumi.Output.apply( handler =>
+    handler
+    ->Pulumi.Output.apply(handler =>
       Lambda.CallbackFunction.make(
         ~name,
         ~args=Lambda.CallbackFunction.Args.make(

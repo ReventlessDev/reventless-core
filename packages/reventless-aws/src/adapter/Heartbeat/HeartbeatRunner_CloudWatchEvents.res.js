@@ -24,7 +24,7 @@ function make(name, timeout, runtime, opts) {
                   _0: timeout
                 }))
       }, opts$1);
-  var heartbeatLambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Role", Pulumi.output("lambda.amazonaws.com"), undefined);
+  var heartbeatLambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Role", Pulumi.output(AWS$ReventlessAws.Lambda.principal), undefined);
   var lambdaResource = Util_Lambda$ReventlessAws.findResource(runtime.resources);
   Pulumi.all([
           lambdaResource.urn,

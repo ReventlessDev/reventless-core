@@ -7,6 +7,7 @@ var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
+var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
@@ -33,7 +34,7 @@ function make(name, api, fields, runtime, opts) {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
                           Sid: "AllowLambdaInvokeAppSync",
                           Principal: {
-                            Service: "appsync.amazonaws.com"
+                            Service: AWS$ReventlessAws.AppSync.principal
                           },
                           Effect: "Allow",
                           Action: "lambda:InvokeFunction",
@@ -45,7 +46,7 @@ function make(name, api, fields, runtime, opts) {
                     role: param[1].arn
                   }, opts$1);
       });
-  var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output("appsync.amazonaws.com"), opts$1);
+  var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
   commandGeneratorLambdaArn.apply(function (commandGeneratorArn) {
         return new (Aws.iam.RolePolicy)(name + "DataSourcePolicy", {
                     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{

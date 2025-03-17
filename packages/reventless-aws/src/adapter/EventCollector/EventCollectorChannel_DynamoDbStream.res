@@ -25,46 +25,46 @@ let subscribe = (
     (eventTopicResources, handler, handlerRole)
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply((((dynamoDbStreamResources, errorResources), handler, handlerRole)) => {
-      let streamSourceWithPolicy = dynamoDbStreamResources->Belt.Array.map(((sourceName, sources)) => {
-        let source = sources->Array.getUnsafe(0)->Reventless.AdapterDeploytime.unwrappedToResource
-        source.urn->Pulumi.Output.apply(
-          sourceUrn => {
-            open PulumiAws.PolicyDocument
-            {
-              Util_DynamoDbStream.sourceName,
-              source,
-              lambdaPolicyDocument: PulumiAws.PolicyDocument.make(
-                ~statements=[
-                  {
-                    sid: "AllowLambdaToReadStream" ++ sourceName,
-                    effect: Allow,
-                    actions: Actions([
-                      "dynamodb:DescribeStream",
-                      "dynamodb:GetRecords",
-                      "dynamodb:GetShardIterator",
-                      "dynamodb:ListStreams",
-                    ]),
-                    resources: Resource(sourceUrn),
-                  },
-                ],
-              ),
-            }
-          },
+      let streamSourcesWithPolicy = dynamoDbStreamResources->Belt.Array.map(((
+        sourceName,
+        sources,
+      )) => {
+        let source = sources->Array.getUnsafe(0)
+        open PulumiAws.PolicyDocument
+
+        (
+          sourceName,
+          source,
+          PulumiAws.PolicyDocument.make(
+            ~statements=[
+              {
+                sid: "AllowLambdaToReadStream" ++ sourceName,
+                effect: Allow,
+                actions: Actions([
+                  "dynamodb:DescribeStream",
+                  "dynamodb:GetRecords",
+                  "dynamodb:GetShardIterator",
+                  "dynamodb:ListStreams",
+                ]),
+                resources: Resource(source.urn),
+              },
+            ],
+          ),
         )
       })
 
-      let _subscribeEventStreams = streamSourceWithPolicy->Belt.Array.map(dynamoDbStreamData => {
-        dynamoDbStreamData->Pulumi.Output.apply(
-          streamData => {
-            Util_EventSourceMapping.subscribe(
-              ~batchSize=25,
-              ~lambda=handler->Pulumi.Output.make,
-              ~targetName=name,
-              ~sourceName=streamData.sourceName,
-              ~source=streamData.source,
-              ~opts,
-            )
-          },
+      let _subscribeEventStreams = streamSourcesWithPolicy->Belt.Array.map(((
+        sourceName,
+        source,
+        _policy,
+      )) => {
+        Util_EventSourceMapping.subscribe(
+          ~batchSize=25,
+          ~lambda=handler->Pulumi.Output.make,
+          ~targetName=name,
+          ~sourceName,
+          ~source=source->Reventless.AdapterDeploytime.unwrappedToResource,
+          ~opts,
         )
       })
 
@@ -72,11 +72,8 @@ let subscribe = (
         ~name,
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
-            ~policyDocuments=Belt.Array.concat(
-              [PulumiAws.Lambda.defaultLoggingPolicyDocument],
-              streamSourceWithPolicy
-              ->Belt.Array.map(output => output->Pulumi.Output.unwrap)
-              ->Belt.Array.map(resource => resource.lambdaPolicyDocument),
+            [PulumiAws.Lambda.defaultLoggingPolicyDocument]->Belt.Array.concat(
+              streamSourcesWithPolicy->Belt.Array.map(((_, _, policyDocument)) => policyDocument),
             ),
           )->Pulumi.Output.asInput,
         },
@@ -92,13 +89,13 @@ let subscribe = (
         ~opts=Some(opts),
       )
 
-    if errorResources->Belt.Array.length > 0 {
-      let eventTopicNames = errorResources->Js.Array2.joinWith(",")
-      Js.Exn.raiseError(
-        __MODULE__ ++ `.subscribe: cannot connect to EventTopic(s) ${eventTopicNames}`,
-      )
-    }
-  })
+      if errorResources->Belt.Array.length > 0 {
+        let eventTopicNames = errorResources->Js.Array2.joinWith(",")
+        Js.Exn.raiseError(
+          __MODULE__ ++ `.subscribe: cannot connect to EventTopic(s) ${eventTopicNames}`,
+        )
+      }
+    })
 
   []
 }

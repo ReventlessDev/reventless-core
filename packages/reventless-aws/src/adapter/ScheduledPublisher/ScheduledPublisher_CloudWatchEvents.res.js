@@ -4,11 +4,12 @@
 var Aws = require("@pulumi/aws");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Pulumi = require("@pulumi/pulumi");
+var AWS$ReventlessAws = require("../AWS.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var ScheduledPublisher_CloudWatchEvents_Runtime$ReventlessAws = require("./ScheduledPublisher_CloudWatchEvents_Runtime.res.js");
 
 function make(param, opts) {
-  var role = IAM$PulumiAws.Role.makeWithDefaultPolicy("CloudWatchEventsRole", Pulumi.output("events.amazonaws.com"), opts);
+  var role = IAM$PulumiAws.Role.makeWithDefaultPolicy("CloudWatchEventsRole", Pulumi.output(AWS$ReventlessAws.CloudwatchEventRule.principal), opts);
   new (Aws.iam.Policy)("CloudWatchEventsPolicy", {
         policy: role.arn.apply(function (roleArn) {
               return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
