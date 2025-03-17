@@ -27,7 +27,7 @@ function toResource(param) {
 function fromResource(param) {
   var id = param.id;
   return param.name.apply(function (name) {
-              return Aws.iam.getRole(name, id);
+              return Aws.iam.Role.get(name, id);
             });
 }
 
