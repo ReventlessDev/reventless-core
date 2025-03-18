@@ -52,7 +52,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
         ~name=name ++ "PolicyAttachment",
         ~args={
           policyArn: commandGeneratorPolicy.arn->Pulumi.Output.asInput,
-          role: role.arn->Pulumi.Output.asInput,
+          role: role.id->Pulumi.Output.asInput,
         },
         ~opts=Some(opts),
       )*/

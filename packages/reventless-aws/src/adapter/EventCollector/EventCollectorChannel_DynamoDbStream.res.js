@@ -63,7 +63,7 @@ function subscribe(name, eventTopics, param, runtime, opts) {
             }, opts$1);
         new (Aws.iam.RolePolicyAttachment)(name, {
               policyArn: lambdaPolicy.arn,
-              role: param[2].arn
+              role: param[2].id
             }, opts$1);
         if (errorResources.length === 0) {
           return ;

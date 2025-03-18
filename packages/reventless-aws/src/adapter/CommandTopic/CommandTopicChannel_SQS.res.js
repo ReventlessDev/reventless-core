@@ -83,7 +83,7 @@ function subscribe(name, channel, runtime, opts) {
             }, opts$1);
         new (Aws.iam.RolePolicyAttachment)(name, {
               policyArn: lambdaPolicy.arn,
-              role: param[3].arn
+              role: param[3].id
             }, opts$1);
         new (Aws.sqs.QueuePolicy)(name, {
               policy: queuePolicyDocument,

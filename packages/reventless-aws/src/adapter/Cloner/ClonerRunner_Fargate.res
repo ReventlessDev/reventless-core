@@ -81,7 +81,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
       ~name="ClonerTaskExecutionSecretsManagerAccess",
       ~args={
         policyArn: secretsManagerAccessPolicy.arn->Pulumi.Output.asInput,
-        role: taskExecutionRole.name->Pulumi.Output.asInput,
+        role: taskExecutionRole.id->Pulumi.Output.asInput,
       },
       ~opts,
     )

@@ -116,7 +116,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
         handlerRole.apply(function (handlerRole) {
               return new (Aws.iam.RolePolicyAttachment)(name + "LambdaPolicy", {
                           policyArn: lambdaPolicy.arn,
-                          role: handlerRole.arn
+                          role: handlerRole.id
                         }, opts$1);
             });
         if (errorResources.length !== 0) {

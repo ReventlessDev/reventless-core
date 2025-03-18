@@ -53,7 +53,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
       });
   new (Aws.iam.RolePolicyAttachment)("ClonerTaskExecutionSecretsManagerAccess", {
         policyArn: secretsManagerAccessPolicy.arn,
-        role: taskExecutionRole.name
+        role: taskExecutionRole.id
       }, opts);
   var vpcStackName = Belt_Option.getExn(new Pulumi.Config("vpc").get("stack"));
   var vpcConfig = Util_Vpc$Reventless.getVpcConfig(vpcStackName, "vpc");

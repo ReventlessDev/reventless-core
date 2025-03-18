@@ -161,7 +161,7 @@ let subscribe = (
           ~name=name ++ "LambdaPolicy",
           ~args={
             policyArn: lambdaPolicy.arn->Pulumi.Output.asInput,
-            role: handlerRole.arn->Pulumi.Output.asInput,
+            role: handlerRole.id->Pulumi.Output.asInput,
           },
           ~opts=Some(opts),
         )
