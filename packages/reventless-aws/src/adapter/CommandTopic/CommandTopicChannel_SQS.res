@@ -24,11 +24,10 @@ let subscribe = (
     (
       queue->Pulumi.Output.flatMap(queue => queue.arn),
       handler->Pulumi.Output.flatMap(handler => handler.arn),
-      handler->Pulumi.Output.flatMap(handler => handler.name),
       handlerRole,
     )
-    ->Pulumi.Output.all4
-    ->Pulumi.Output.apply(((queueArn, handlerArn, handlerName, handlerRole)) => {
+    ->Pulumi.Output.all3
+    ->Pulumi.Output.apply(((queueArn, handlerArn, handlerRole)) => {
       open PulumiAws.PolicyDocument
 
       let queuePolicyDocument =
@@ -36,25 +35,29 @@ let subscribe = (
           ~id=name ++ "QueuePolicy",
           ~statements=[
             {
-              sid: "AllowLambdaToPublish",
-              principal: Principals({
-                service: PrincipalId(AWS.Lambda.principal),
-              }),
+              sid: "AllowLambdaToAccessQueue",
               effect: Allow,
-              actions: Actions(["sqs:SendMessage"]),
-              resources: Resource(handlerArn),
+              principal: Principals({
+                service: PrincipalId("lambda.amazonaws.com"),
+              }),
+              actions: Actions([
+                "sqs:ReceiveMessage",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes",
+              ]),
+              resources: Resource(queueArn),
               conditions: {
-                arnEquals: Js.Dict.fromArray([("AWS:SourceArn", ConditionValue(handlerName))]),
+                arnEquals: Js.Dict.fromArray([("AWS:SourceArn", ConditionValue(handlerArn))]),
               },
             },
             {
-              sid: "AllowReceiveCloudWatchEvents",
+              sid: "AllowCloudWatchEventsToSendToQueue",
               effect: Allow,
+              principal: Principals({
+                service: PrincipalId("events.amazonaws.com"),
+              }),
               actions: Actions(["sqs:SendMessage"]),
               resources: Resource(queueArn),
-              principal: Principals({
-                service: PrincipalId(AWS.CloudwatchEventRule.principal),
-              }),
             },
           ],
         )
@@ -65,9 +68,14 @@ let subscribe = (
         ~id=name ++ "SQSLambdaPolicy",
         ~statements=[
           {
-            sid: "AllowSQSReceiveMessage",
+            sid: "AllowLambdaSendAndReceiveMessage",
             effect: Allow,
-            actions: Actions(["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]),
+            actions: Actions([
+              "sqs:ReceiveMessage",
+              "sqs:DeleteMessage",
+              "sqs:GetQueueAttributes",
+              "sqs:ChangeMessageVisibility",
+            ]),
             resources: Resource(queueArn),
           },
         ],

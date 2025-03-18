@@ -8,7 +8,6 @@ var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
-var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
@@ -33,32 +32,33 @@ function subscribe(name, channel, runtime, opts) {
           Output$Pulumi.flatMap(handler, (function (handler) {
                   return handler.arn;
                 })),
-          Output$Pulumi.flatMap(handler, (function (handler) {
-                  return handler.name;
-                })),
           handlerRole
         ]).apply(function (param) {
         var queueArn = param[0];
         var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
                   {
-                    Sid: "AllowLambdaToPublish",
+                    Sid: "AllowLambdaToAccessQueue",
                     Principal: {
-                      Service: AWS$ReventlessAws.Lambda.principal
+                      Service: "lambda.amazonaws.com"
                     },
                     Effect: "Allow",
-                    Action: ["sqs:SendMessage"],
-                    Resource: param[1],
+                    Action: [
+                      "sqs:ReceiveMessage",
+                      "sqs:DeleteMessage",
+                      "sqs:GetQueueAttributes"
+                    ],
+                    Resource: queueArn,
                     Condition: {
                       ArnEquals: Js_dict.fromArray([[
                               "AWS:SourceArn",
-                              param[2]
+                              param[1]
                             ]])
                     }
                   },
                   {
-                    Sid: "AllowReceiveCloudWatchEvents",
+                    Sid: "AllowCloudWatchEventsToSendToQueue",
                     Principal: {
-                      Service: AWS$ReventlessAws.CloudwatchEventRule.principal
+                      Service: "events.amazonaws.com"
                     },
                     Effect: "Allow",
                     Action: ["sqs:SendMessage"],
@@ -66,12 +66,13 @@ function subscribe(name, channel, runtime, opts) {
                   }
                 ]));
         var allowSQSLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSLambdaPolicy", [{
-                Sid: "AllowSQSReceiveMessage",
+                Sid: "AllowLambdaSendAndReceiveMessage",
                 Effect: "Allow",
                 Action: [
                   "sqs:ReceiveMessage",
                   "sqs:DeleteMessage",
-                  "sqs:GetQueueAttributes"
+                  "sqs:GetQueueAttributes",
+                  "sqs:ChangeMessageVisibility"
                 ],
                 Resource: queueArn
               }]);
@@ -83,7 +84,7 @@ function subscribe(name, channel, runtime, opts) {
             }, opts$1);
         new (Aws.iam.RolePolicyAttachment)(name, {
               policyArn: lambdaPolicy.arn,
-              role: param[3].id
+              role: param[2].id
             }, opts$1);
         new (Aws.sqs.QueuePolicy)(name, {
               policy: queuePolicyDocument,

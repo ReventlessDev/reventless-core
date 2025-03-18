@@ -27,7 +27,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
           ~name=name ++ "CommandGeneratorPolicy",
           ~args={
             policy: PulumiAws.PolicyDocument.make(
-              ~id = name ++ "CommandGeneratorPolicy",
+              ~id=name ++ "CommandGeneratorPolicy",
               ~statements=[
                 {
                   sid: "AllowLambdaInvokeAppSync",
@@ -47,15 +47,6 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
           ~opts,
         )
       }
-
-      /*PulumiAws.IAM.RolePolicyAttachment.make(
-        ~name=name ++ "PolicyAttachment",
-        ~args={
-          policyArn: commandGeneratorPolicy.arn->Pulumi.Output.asInput,
-          role: role.id->Pulumi.Output.asInput,
-        },
-        ~opts=Some(opts),
-      )*/
     })
 
   let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
@@ -64,29 +55,30 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
     ~opts,
   )
 
-  let _dataSourcePolicy = commandGeneratorLambdaArn->Pulumi.Output.apply(commandGeneratorArn => {
-    open PulumiAws.PolicyDocument
-    PulumiAws.IAM.RolePolicy.make(
-      ~name=name ++ "DataSourcePolicy",
-      ~args={
-        PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
-          ~id = name ++ "DataSourcePolicy",
-          ~statements=[
-            {
-              sid: "AllowLambdaInvokeDataSource",
-              effect: Allow,
-              actions: Action("lambda:InvokeFunction"),
-              resources: Resource(commandGeneratorArn),
-            },
-          ],
-        )
-        ->toJsonString
-        ->Pulumi.Input.make,
-        role: dataSourceRole.id->Pulumi.Output.asInput,
-      },
-      ~opts,
-    )
-  })
+  let _attachDataSourcePolicy =
+    commandGeneratorLambdaArn->Pulumi.Output.apply(commandGeneratorArn => {
+      open PulumiAws.PolicyDocument
+      PulumiAws.IAM.RolePolicy.make(
+        ~name=name ++ "DataSourcePolicy",
+        ~args={
+          PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
+            ~id=name ++ "DataSourcePolicy",
+            ~statements=[
+              {
+                sid: "AllowLambdaInvokeDataSource",
+                effect: Allow,
+                actions: Action("lambda:InvokeFunction"),
+                resources: Resource(commandGeneratorArn),
+              },
+            ],
+          )
+          ->toJsonString
+          ->Pulumi.Input.make,
+          role: dataSourceRole.id->Pulumi.Output.asInput,
+        },
+        ~opts,
+      )
+    })
 
   let dataSource = PulumiAws.AppSync.DataSource.make(
     ~name,
