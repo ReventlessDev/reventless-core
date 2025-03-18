@@ -62,7 +62,7 @@ let subscribe = (
         )
       )
 
-      let _queuePolicy = {
+      let _attachQueuePolicy = {
         open PulumiAws.PolicyDocument
         PulumiAws.SQS.QueuePolicy.make(
           ~name=name ++ "Policy",

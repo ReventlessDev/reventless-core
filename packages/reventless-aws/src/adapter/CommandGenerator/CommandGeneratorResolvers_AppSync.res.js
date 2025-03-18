@@ -7,6 +7,7 @@ var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
+var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
@@ -26,28 +27,22 @@ function make(name, api, fields, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var commandGeneratorLambdaArn = Util_Lambda$ReventlessAws.findResource(runtime.resources).urn;
   var commandGeneratorLambdaRole = Util_IAM_Role$ReventlessAws.fromResource(Util_IAM_Role$ReventlessAws.findResource(runtime.resources));
-  Pulumi.all([
-          commandGeneratorLambdaArn,
-          commandGeneratorLambdaRole
-        ]).apply(function (param) {
+  commandGeneratorLambdaRole.apply(function (role) {
         new (Aws.iam.RolePolicy)(name + "CommandGeneratorPolicy", {
-              policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "CommandGeneratorPolicy", [{
-                          Sid: "AllowLambdaInvokeAppSync",
-                          Principal: {
-                            Service: AWS$ReventlessAws.AppSync.principal
-                          },
-                          Effect: "Allow",
-                          Action: "lambda:InvokeFunction",
-                          Resource: param[0]
-                        }])),
-              role: param[1].id
+              policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
+              role: role.id
+            }, opts$1);
+        new (Aws.lambda.Permission)("AllowLambdaInvokeFromCloudWatchEvents", {
+              action: "lambda:InvokeFunction",
+              function: commandGeneratorLambdaArn,
+              principal: AWS$ReventlessAws.CloudwatchEventRule.principal
             }, opts$1);
       });
-  var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
+  var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
   commandGeneratorLambdaArn.apply(function (commandGeneratorArn) {
         return new (Aws.iam.RolePolicy)(name + "DataSourcePolicy", {
                     policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "DataSourcePolicy", [{
-                                Sid: "AllowLambdaInvokeDataSource",
+                                Sid: "AllowCloudWatchDataSourceInvokeLambda",
                                 Effect: "Allow",
                                 Action: "lambda:InvokeFunction",
                                 Resource: commandGeneratorArn
