@@ -40,7 +40,7 @@ function subscribe(name, eventTopics, param, runtime, opts) {
                 return [
                         sourceName,
                         source,
-                        PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                        PolicyDocument$PulumiAws.make(undefined, name + "Policy", [{
                                 Sid: "AllowLambdaToReadStream" + sourceName,
                                 Effect: "Allow",
                                 Action: [
@@ -57,7 +57,7 @@ function subscribe(name, eventTopics, param, runtime, opts) {
                 return Util_EventSourceMapping$ReventlessAws.subscribe(25, Pulumi.output(handler), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts$1);
               }));
         var lambdaPolicy = new (Aws.iam.Policy)(name, {
-              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(Belt_Array.concat([Lambda$PulumiAws.defaultLoggingPolicyDocument], Belt_Array.map(streamSourcesWithPolicy, (function (param) {
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Belt_Array.concat([Lambda$PulumiAws.defaultLoggingPolicyDocument], Belt_Array.map(streamSourcesWithPolicy, (function (param) {
                               return param[2];
                             }))))
             }, opts$1);

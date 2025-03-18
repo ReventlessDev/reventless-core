@@ -36,6 +36,7 @@ let subscribe = (
           sourceName,
           source,
           PulumiAws.PolicyDocument.make(
+            ~id=name ++ "Policy",
             ~statements=[
               {
                 sid: "AllowLambdaToReadStream" ++ sourceName,
@@ -72,6 +73,7 @@ let subscribe = (
         ~name,
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
+            name ++ "LambdaPolicy",
             [PulumiAws.Lambda.defaultLoggingPolicyDocument]->Belt.Array.concat(
               streamSourcesWithPolicy->Belt.Array.map(((_, _, policyDocument)) => policyDocument),
             ),

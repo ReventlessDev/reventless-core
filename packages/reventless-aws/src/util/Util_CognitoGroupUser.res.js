@@ -15,7 +15,7 @@ function addUserGroup(name, userPoolId) {
 function makeAddRemoveUserToGroupPolicy(name, userPoolArn, opts) {
   return userPoolArn.apply(function (userPoolArn) {
               return new (Aws.iam.Policy)(name + "AddRemoveUserToGroup", {
-                          policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                          policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "UserPoolPolicy", [{
                                       Sid: "AllowAdminAddRemoveUserToGroup",
                                       Effect: "Allow",
                                       Action: [

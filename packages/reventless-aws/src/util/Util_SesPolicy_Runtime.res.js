@@ -24,9 +24,9 @@ function fromCustomResourceOptions(x) {
   }
 }
 
-function sesPolicyDocument(identity, opts) {
+function sesPolicyDocument(name, identity, opts) {
   return Output$Pulumi.flatMap(identity.arn, (function (identityArn) {
-                return Pulumi.output(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                return Pulumi.output(PolicyDocument$PulumiAws.make(undefined, name + "SESPolicy", [{
                                   Sid: "AllowSES",
                                   Principal: {
                                     AWS: "*"
@@ -45,7 +45,7 @@ function identityWithPolicy(name, email, opts) {
   var identity = emailIdentity(name, email, opts);
   return new (Aws.ses.IdentityPolicy)("identityPolicy" + name, {
               identity: identity.arn,
-              policy: sesPolicyDocument(identity, opts).apply(function (policyDocument) {
+              policy: sesPolicyDocument(name, identity, opts).apply(function (policyDocument) {
                     return PolicyDocument$PulumiAws.toJsonString(policyDocument);
                   })
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);

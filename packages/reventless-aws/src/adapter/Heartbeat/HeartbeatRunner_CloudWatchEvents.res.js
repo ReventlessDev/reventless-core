@@ -30,7 +30,7 @@ function make(name, timeout, runtime, opts) {
           lambdaResource.urn,
           cloudwatchEventRule.arn
         ]).apply(function (param) {
-        var heartbeatLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+        var heartbeatLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "HeartbeatLambdaPolicy", [{
                 Sid: "AllowLambdaInvoke",
                 Principal: {
                   Service: AWS$ReventlessAws.CloudwatchEventRule.principal
@@ -46,7 +46,7 @@ function make(name, timeout, runtime, opts) {
                 }
               }]);
         return new (Aws.iam.RolePolicy)(name + "RolePolicy", {
-                    policy: PolicyDocument$PulumiAws.mergePolicyDocuments([
+                    policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "RolePolicy", [
                           Lambda$PulumiAws.defaultLoggingPolicyDocument,
                           heartbeatLambdaPolicyDocument
                         ]),

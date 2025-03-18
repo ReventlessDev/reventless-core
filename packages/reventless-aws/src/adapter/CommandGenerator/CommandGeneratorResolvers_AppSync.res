@@ -24,9 +24,10 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
       let commandGeneratorPolicy = {
         open PulumiAws.PolicyDocument
         PulumiAws.IAM.Policy.make(
-          ~name=name ++ "Policy",
+          ~name=name ++ "CommandGeneratorPolicy",
           ~args={
             policy: PulumiAws.PolicyDocument.make(
+              ~id = name ++ "CommandGeneratorPolicy",
               ~statements=[
                 {
                   sid: "AllowLambdaInvokeAppSync",
@@ -58,7 +59,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
 
   let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "DS",
-    ~service=AWS.AppSync.principal->Pulumi.Output.make,
+    ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
     ~opts,
   )
 
@@ -68,6 +69,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
       ~name=name ++ "DataSourcePolicy",
       ~args={
         PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
+          ~id = name ++ "DataSourcePolicy",
           ~statements=[
             {
               sid: "AllowLambdaInvokeDataSource",

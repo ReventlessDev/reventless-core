@@ -39,7 +39,7 @@ function subscribe(name, channel, runtime, opts) {
           handlerRole
         ]).apply(function (param) {
         var queueArn = param[0];
-        var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
+        var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
                   {
                     Sid: "AllowLambdaToPublish",
                     Principal: {
@@ -65,7 +65,7 @@ function subscribe(name, channel, runtime, opts) {
                     Resource: queueArn
                   }
                 ]));
-        var allowSQSLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+        var allowSQSLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSLambdaPolicy", [{
                 Sid: "AllowSQSReceiveMessage",
                 Effect: "Allow",
                 Action: [
@@ -76,7 +76,7 @@ function subscribe(name, channel, runtime, opts) {
                 Resource: queueArn
               }]);
         var lambdaPolicy = new (Aws.iam.Policy)(name, {
-              policy: PolicyDocument$PulumiAws.mergePolicyDocuments([
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", [
                     Lambda$PulumiAws.defaultLoggingPolicyDocument,
                     allowSQSLambdaPolicyDocument
                   ])

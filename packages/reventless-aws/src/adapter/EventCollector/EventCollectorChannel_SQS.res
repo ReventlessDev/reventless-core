@@ -69,6 +69,7 @@ let subscribe = (
           ~args={
             queueUrl: queueArn->Pulumi.Input.make,
             policy: PulumiAws.PolicyDocument.make(
+              ~id=name ++ "QueuePolicy",
               ~statements=[
                 {
                   sid: "AllowReceiveSNSMessages",
@@ -104,6 +105,7 @@ let subscribe = (
         let source = sources->Array.getUnsafe(0)
         open PulumiAws.PolicyDocument
         PulumiAws.PolicyDocument.make(
+          ~id=name ++ source.name ++ "Policy",
           ~statements=[
             {
               sid: "AllowLambdaToReadStream" ++ source.name,
@@ -123,6 +125,7 @@ let subscribe = (
       let lambdaQueuePolicyDocument = {
         open PulumiAws.PolicyDocument
         PulumiAws.PolicyDocument.make(
+          ~id=name ++ "SQSPolicy",
           ~statements=[
             {
               sid: "AllowLambdaReceiveSQSMessage",
@@ -142,6 +145,7 @@ let subscribe = (
         ~name=name ++ "LambdaPolicy",
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
+            name ++ "LambdaPolicy",
             lambdaDynamoDbStreamPolicyDocuments->Belt.Array.concat([
               PulumiAws.Lambda.defaultLoggingPolicyDocument,
               lambdaQueuePolicyDocument,

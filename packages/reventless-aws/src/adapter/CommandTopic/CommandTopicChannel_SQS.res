@@ -33,6 +33,7 @@ let subscribe = (
 
       let queuePolicyDocument =
         PulumiAws.PolicyDocument.make(
+          ~id=name ++ "QueuePolicy",
           ~statements=[
             {
               sid: "AllowLambdaToPublish",
@@ -61,6 +62,7 @@ let subscribe = (
         ->Pulumi.Input.make
 
       let allowSQSLambdaPolicyDocument = PulumiAws.PolicyDocument.make(
+        ~id=name ++ "SQSLambdaPolicy",
         ~statements=[
           {
             sid: "AllowSQSReceiveMessage",
@@ -74,10 +76,10 @@ let subscribe = (
       let lambdaPolicy = PulumiAws.IAM.Policy.make(
         ~name,
         ~args={
-          policy: PulumiAws.PolicyDocument.mergePolicyDocuments([
-            PulumiAws.Lambda.defaultLoggingPolicyDocument,
-            allowSQSLambdaPolicyDocument,
-          ])->Pulumi.Output.asInput,
+          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
+            name ++ "LambdaPolicy",
+            [PulumiAws.Lambda.defaultLoggingPolicyDocument, allowSQSLambdaPolicyDocument],
+          )->Pulumi.Output.asInput,
         },
         ~opts,
       )

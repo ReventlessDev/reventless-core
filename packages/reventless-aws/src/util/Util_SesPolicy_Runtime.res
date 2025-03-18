@@ -14,12 +14,14 @@ let fromCustomResourceOptions: option<
   }
 
 let sesPolicyDocument: (
+  ~name: string,
   ~identity: PulumiAws.SES.EmailIdentity.t,
   ~opts: Pulumi.CustomResourceOptions.t=?,
-) => Pulumi.Output.t<PulumiAws.PolicyDocument.t> = (~identity, ~opts=?) =>
+) => Pulumi.Output.t<PulumiAws.PolicyDocument.t> = (~name,~identity, ~opts=?) =>
   identity.arn->Pulumi.Output.flatMap(identityArn => {
     open PulumiAws.PolicyDocument
     PulumiAws.PolicyDocument.make(
+      ~id = name ++ "SESPolicy",
       ~statements=[
         {
           sid: "AllowSES",
@@ -43,7 +45,7 @@ let identityWithPolicy: (
     ~name="identityPolicy" ++ name,
     ~args={
       identity: identity.arn->Pulumi.Output.asInput,
-      policy: sesPolicyDocument(~identity, ~opts?)
+      policy: sesPolicyDocument(~name, ~identity, ~opts?)
       ->Pulumi.Output.apply(policyDocument => policyDocument->PulumiAws.PolicyDocument.toJsonString)
       ->Pulumi.Output.asInput,
     },

@@ -48,6 +48,7 @@ let dataSource = (name, table, api, apiRole, opts) => {
         ->Pulumi.Output.apply(tableArn => {
           open PolicyDocument
           PolicyDocument.make(
+            ~id = name ++ "DataSourcePolicy",
             ~statements=[
               {
                 effect: Allow,

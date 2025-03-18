@@ -21,14 +21,14 @@ var ClonerRunner_Fargate_Runtime$ReventlessAws = require("./ClonerRunner_Fargate
 function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUrns, opts) {
   var cluster = new (Aws.ecs.Cluster)(name, undefined, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
   var taskExecutionRole = new (Aws.iam.Role)(name + "TaskExecution", {
-        assumeRolePolicy: IAM$PulumiAws.Policy.assumeRolePolicy("ecs-tasks.amazonaws.com"),
+        assumeRolePolicy: IAM$PulumiAws.Policy.assumeRolePolicy(name, "ecs-tasks.amazonaws.com"),
         inlinePolicies: [IAM$PulumiAws.InlinePolicy.makeForActions("clonerTask", [
                 "logs:PutLogEvents",
                 "logs:CreateLogGroup",
                 "logs:CreateLogStream"
               ])]
       });
-  var secretsManagerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+  var secretsManagerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SecretsManagerPolicy", [{
           Effect: "Allow",
           Action: [
             "secretsmanager:GetRandomPassword",
@@ -41,7 +41,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
   var secretsManagerAccessPolicy = new (Aws.iam.Policy)("secretsManagerAccess", {
         policy: PolicyDocument$PulumiAws.toJsonString(secretsManagerPolicyDocument)
       });
-  var taskRunnerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+  var taskRunnerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "TaskRunnerPolicy", [{
           Effect: "Allow",
           Action: [
             "ecs:RunTask",
@@ -114,7 +114,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                               }, extra, extra$1);
                   }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
         lambda.arn.apply(function (arn) {
-              var appsyncInvokeLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+              var appsyncInvokeLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "AppSyncInvokePolicy", [{
                       Principal: {
                         Service: AWS$ReventlessAws.AppSync.principal
                       },
@@ -122,7 +122,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                       Action: "lambda:InvokeFunction",
                       Resource: arn
                     }]);
-              var lambdaPolicyDocument = PolicyDocument$PulumiAws.mergePolicyDocuments([
+              var lambdaPolicyDocument = PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", [
                     Lambda$PulumiAws.defaultLoggingPolicyDocument,
                     appsyncInvokeLambdaPolicyDocument,
                     secretsManagerPolicyDocument,
@@ -140,7 +140,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts);
         new (Aws.iam.RolePolicy)(name + "DS", {
               policy: lambda.arn.apply(function (lambdaArn) {
-                    return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                    return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "LambdaPolicy", [{
                                       Sid: "InvokeLambda",
                                       Effect: "Allow",
                                       Action: "lambda:InvokeFunction",

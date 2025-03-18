@@ -62,7 +62,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                 return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(handler), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts$1);
               }));
         new (Aws.sqs.QueuePolicy)(name + "Policy", {
-              policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, undefined, [
+              policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
                         {
                           Principal: {
                             Service: AWS$ReventlessAws.SNS.principal
@@ -84,7 +84,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
             }, opts$1);
         var lambdaDynamoDbStreamPolicyDocuments = Belt_Array.map(otherResources, (function (param) {
                 var source = param[1][0];
-                return PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                return PolicyDocument$PulumiAws.make(undefined, name + source.name + "Policy", [{
                               Sid: "AllowLambdaToReadStream" + source.name,
                               Effect: "Allow",
                               Action: [
@@ -96,7 +96,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                               Resource: source.urn
                             }]);
               }));
-        var lambdaQueuePolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+        var lambdaQueuePolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSLambdaPolicy", [{
                 Sid: "AllowLambdaReceiveSQSMessage",
                 Effect: "Allow",
                 Action: [
@@ -107,7 +107,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                 Resource: queueArn
               }]);
         var lambdaPolicy = new (Aws.iam.Policy)(name + "LambdaPolicy", {
-              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(Belt_Array.concat(lambdaDynamoDbStreamPolicyDocuments, [
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Belt_Array.concat(lambdaDynamoDbStreamPolicyDocuments, [
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         lambdaQueuePolicyDocument
                       ]))

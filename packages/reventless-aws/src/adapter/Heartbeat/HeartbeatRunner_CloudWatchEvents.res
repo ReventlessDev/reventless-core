@@ -15,7 +15,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime,
 
   let heartbeatLambdaRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "Role",
-    ~service=AWS.Lambda.principal->Pulumi.Output.make,
+    ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
   )
 
   let lambdaResource = runtime.resources->Util.Lambda.findResource
@@ -27,6 +27,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime,
       open PulumiAws.PolicyDocument
 
       let heartbeatLambdaPolicyDocument = PulumiAws.PolicyDocument.make(
+        ~id = name ++ "HeartbeatLambdaPolicy",
         ~statements=[
           {
             sid: "AllowLambdaInvoke",
@@ -46,7 +47,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime,
       PulumiAws.IAM.RolePolicy.make(
         ~name=name ++ "RolePolicy",
         ~args={
-          policy: PulumiAws.PolicyDocument.mergePolicyDocuments([
+          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(name ++ "RolePolicy", [
             PulumiAws.Lambda.defaultLoggingPolicyDocument,
             heartbeatLambdaPolicyDocument,
           ])->Pulumi.Output.asInput,
