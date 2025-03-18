@@ -196,15 +196,15 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
           ],
         )
 
-        lambdaRole.arn->Pulumi.Output.apply(
-          lambdaRoleArn => {
+        lambdaRole.id->Pulumi.Output.apply(
+          lambdaRoleId => {
             let _lambdaRolePolicy = PulumiAws.IAM.RolePolicy.make(
               ~name=name ++ "LambdaRolePolicy",
               ~args={
                 policy: lambdaPolicyDocument
                 ->Pulumi.Output.apply(lambdaPolicyDocument => lambdaPolicyDocument)
                 ->Pulumi.Output.asInput,
-                role: lambdaRoleArn->Pulumi.Input.make,
+                role: lambdaRoleId->Pulumi.Input.make,
               },
             )
           },

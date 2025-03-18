@@ -128,12 +128,12 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                     secretsManagerPolicyDocument,
                     taskRunnerPolicyDocument
                   ]);
-              return lambdaRole.arn.apply(function (lambdaRoleArn) {
+              return lambdaRole.id.apply(function (lambdaRoleId) {
                           new (Aws.iam.RolePolicy)(name + "LambdaRolePolicy", {
                                 policy: lambdaPolicyDocument.apply(function (lambdaPolicyDocument) {
                                       return lambdaPolicyDocument;
                                     }),
-                                role: lambdaRoleArn
+                                role: lambdaRoleId
                               });
                         });
             });

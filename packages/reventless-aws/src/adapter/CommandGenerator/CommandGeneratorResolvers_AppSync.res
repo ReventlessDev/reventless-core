@@ -42,7 +42,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
             )
             ->toJsonString
             ->Pulumi.Input.make,
-            role: role.arn->Pulumi.Output.asInput,
+            role: role.id->Pulumi.Output.asInput,
           },
           ~opts,
         )

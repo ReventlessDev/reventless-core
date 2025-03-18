@@ -40,7 +40,7 @@ function make(name, api, fields, runtime, opts) {
                           Action: "lambda:InvokeFunction",
                           Resource: param[0]
                         }])),
-              role: param[1].arn
+              role: param[1].id
             }, opts$1);
       });
   var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
