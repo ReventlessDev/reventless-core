@@ -46,9 +46,12 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
           Output$Pulumi.flatMap(queue, (function (queue) {
                   return queue.arn;
                 })),
+          Output$Pulumi.flatMap(queue, (function (queue) {
+                  return queue.id;
+                })),
           handler
         ]).apply(function (param) {
-        var handler = param[3];
+        var handler = param[4];
         var queueArn = param[2];
         var queue = param[1];
         var match = param[0];
@@ -80,7 +83,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                           Resource: queueArn
                         }
                       ])),
-              queueUrl: queueArn
+              queueUrl: param[3]
             }, opts$1);
         var lambdaDynamoDbStreamPolicyDocuments = Belt_Array.map(otherResources, (function (param) {
                 var source = param[1][0];

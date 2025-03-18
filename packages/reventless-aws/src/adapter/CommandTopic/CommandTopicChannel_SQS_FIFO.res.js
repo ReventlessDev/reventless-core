@@ -30,6 +30,9 @@ function subscribe(name, channel, runtime, opts) {
           Output$Pulumi.flatMap(queue, (function (queue) {
                   return queue.arn;
                 })),
+          Output$Pulumi.flatMap(queue, (function (queue) {
+                  return queue.id;
+                })),
           Output$Pulumi.flatMap(handler, (function (handler) {
                   return handler.arn;
                 })),
@@ -52,7 +55,7 @@ function subscribe(name, channel, runtime, opts) {
                     Condition: {
                       ArnEquals: Js_dict.fromArray([[
                               "AWS:SourceArn",
-                              param[1]
+                              param[2]
                             ]])
                     }
                   },
@@ -85,11 +88,11 @@ function subscribe(name, channel, runtime, opts) {
             }, opts$1);
         new (Aws.iam.RolePolicyAttachment)(name, {
               policyArn: lambdaPolicy.arn,
-              role: param[2].id
+              role: param[3].id
             }, opts$1);
         new (Aws.sqs.QueuePolicy)(name, {
               policy: queuePolicyDocument,
-              queueUrl: queueArn
+              queueUrl: param[1]
             }, opts$1);
       });
   return [Adapter$Reventless.outputToResource(Pulumi.all([

@@ -30,9 +30,9 @@ let subscribe = (
     ])
 
   let subscriptionResource =
-    (eventTopicResources, queue, queue->Pulumi.Output.flatMap(queue => queue.arn), handler)
-    ->Pulumi.Output.all4
-    ->Pulumi.Output.apply((((supportedResources, errorResources), queue, queueArn, handler)) => {
+    (eventTopicResources, queue, queue->Pulumi.Output.flatMap(queue => queue.arn), queue->Pulumi.Output.flatMap(queue => queue.id), handler)
+    ->Pulumi.Output.all5
+    ->Pulumi.Output.apply((((supportedResources, errorResources), queue, queueArn, queueId, handler)) => {
       let (snsFifoResources, otherResources) =
         supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
           AWS.SNS_FIFO.service,
@@ -67,7 +67,7 @@ let subscribe = (
         PulumiAws.SQS.QueuePolicy.make(
           ~name=name ++ "Policy",
           ~args={
-            queueUrl: queueArn->Pulumi.Input.make,
+            queueUrl: queueId->Pulumi.Input.make,
             policy: PulumiAws.PolicyDocument.make(
               ~id=name ++ "QueuePolicy",
               ~statements=[

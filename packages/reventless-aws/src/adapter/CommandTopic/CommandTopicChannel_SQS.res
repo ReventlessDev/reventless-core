@@ -23,11 +23,12 @@ let subscribe = (
   let _attachPolicies =
     (
       queue->Pulumi.Output.flatMap(queue => queue.arn),
+      queue->Pulumi.Output.flatMap(queue => queue.id),
       handler->Pulumi.Output.flatMap(handler => handler.arn),
       handlerRole,
     )
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((queueArn, handlerArn, handlerRole)) => {
+    ->Pulumi.Output.all4
+    ->Pulumi.Output.apply(((queueArn, queueId, handlerArn, handlerRole)) => {
       open PulumiAws.PolicyDocument
 
       let queuePolicyDocument =
@@ -102,7 +103,7 @@ let subscribe = (
       )
       let _attachQueuePolicy = PulumiAws.SQS.QueuePolicy.make(
         ~name,
-        ~args={queueUrl: queueArn->Pulumi.Input.make, policy: queuePolicyDocument},
+        ~args={queueUrl: queueId->Pulumi.Input.make, policy: queuePolicyDocument},
         ~opts=Some(opts),
       )
     })
