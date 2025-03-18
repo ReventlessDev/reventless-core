@@ -30,7 +30,7 @@ function make(name, api, fields, runtime, opts) {
           commandGeneratorLambdaArn,
           commandGeneratorLambdaRole
         ]).apply(function (param) {
-        var commandGeneratorPolicy = new (Aws.iam.Policy)(name + "CommandGeneratorPolicy", {
+        new (Aws.iam.RolePolicy)(name + "CommandGeneratorPolicy", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "CommandGeneratorPolicy", [{
                           Sid: "AllowLambdaInvokeAppSync",
                           Principal: {
@@ -39,12 +39,9 @@ function make(name, api, fields, runtime, opts) {
                           Effect: "Allow",
                           Action: "lambda:InvokeFunction",
                           Resource: param[0]
-                        }]))
+                        }])),
+              role: param[1].arn
             }, opts$1);
-        return new (Aws.iam.RolePolicyAttachment)(name + "PolicyAttachment", {
-                    policyArn: commandGeneratorPolicy.arn,
-                    role: param[1].arn
-                  }, opts$1);
       });
   var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DS", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
   commandGeneratorLambdaArn.apply(function (commandGeneratorArn) {

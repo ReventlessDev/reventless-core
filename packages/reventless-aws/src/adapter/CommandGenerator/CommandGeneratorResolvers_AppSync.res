@@ -21,9 +21,9 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
     (commandGeneratorLambdaArn, commandGeneratorLambdaRole)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((lambdaArn, role)) => {
-      let commandGeneratorPolicy = {
+      let _commandGeneratorPolicy = {
         open PulumiAws.PolicyDocument
-        PulumiAws.IAM.Policy.make(
+        PulumiAws.IAM.RolePolicy.make(
           ~name=name ++ "CommandGeneratorPolicy",
           ~args={
             policy: PulumiAws.PolicyDocument.make(
@@ -42,19 +42,20 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
             )
             ->toJsonString
             ->Pulumi.Input.make,
+            role: role.arn->Pulumi.Output.asInput,
           },
           ~opts,
         )
       }
 
-      PulumiAws.IAM.RolePolicyAttachment.make(
+      /*PulumiAws.IAM.RolePolicyAttachment.make(
         ~name=name ++ "PolicyAttachment",
         ~args={
           policyArn: commandGeneratorPolicy.arn->Pulumi.Output.asInput,
           role: role.arn->Pulumi.Output.asInput,
         },
         ~opts=Some(opts),
-      )
+      )*/
     })
 
   let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
