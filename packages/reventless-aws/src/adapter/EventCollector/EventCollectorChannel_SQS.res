@@ -120,7 +120,7 @@ let subscribe = (
           ~id=name ++ source.name ++ "Policy",
           ~statements=[
             {
-              sid: "AllowLambdaToReadStream" ++ source.name,
+              sid: "AllowLambdaToReadStream" ++ source.name->String.split("-")->Array.getUnsafe(0),
               effect: Allow,
               actions: Actions([
                 "dynamodb:DescribeStream",

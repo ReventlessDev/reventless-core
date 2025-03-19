@@ -88,7 +88,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
         var lambdaDynamoDbStreamPolicyDocuments = Belt_Array.map(otherResources, (function (param) {
                 var source = param[1][0];
                 return PolicyDocument$PulumiAws.make(undefined, name + source.name + "Policy", [{
-                              Sid: "AllowLambdaToReadStream" + source.name,
+                              Sid: "AllowLambdaToReadStream" + source.name.split("-")[0],
                               Effect: "Allow",
                               Action: [
                                 "dynamodb:DescribeStream",

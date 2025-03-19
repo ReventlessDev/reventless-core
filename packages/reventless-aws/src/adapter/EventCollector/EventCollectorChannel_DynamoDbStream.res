@@ -31,7 +31,6 @@ let subscribe = (
       )) => {
         let source = sources->Array.getUnsafe(0)
         open PulumiAws.PolicyDocument
-
         (
           sourceName,
           source,
@@ -39,7 +38,7 @@ let subscribe = (
             ~id=name ++ "Policy",
             ~statements=[
               {
-                sid: "AllowLambdaToReadStream" ++ sourceName,
+                sid: "AllowLambdaToReadStream" ++ sourceName->String.split("-")->Array.getUnsafe(0),
                 effect: Allow,
                 actions: Actions([
                   "dynamodb:DescribeStream",
