@@ -55,7 +55,7 @@ Pulumi.all([
       ]).apply(function (param) {
       var handlerArn = param[4];
       var queueArn = param[1];
-      var createQueuePolicyDocument = function (queue, handler) {
+      var createQueuePolicyDocument = function (name, queue, handler) {
         return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
                           Sid: "AllowLambdaToAccessQueue",
                           Principal: {
@@ -98,11 +98,11 @@ Pulumi.all([
             role: lambdaRole.id
           }, opts);
       new (Aws.sqs.QueuePolicy)(name, {
-            policy: createQueuePolicyDocument(queue, handler),
+            policy: createQueuePolicyDocument(name, queue, handler),
             queueUrl: param[0]
           }, opts);
-      new (Aws.sqs.QueuePolicy)(name, {
-            policy: createQueuePolicyDocument(fifoQueue, handler),
+      new (Aws.sqs.QueuePolicy)(nameFifo, {
+            policy: createQueuePolicyDocument(nameFifo, fifoQueue, handler),
             queueUrl: param[3]
           }, opts);
     });

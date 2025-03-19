@@ -47,6 +47,7 @@ let _ =
   ->Pulumi.Output.apply(((queueId, queueArn, fifoQueueArn, fifoQueueId, handlerArn)) => {
     open PulumiAws.PolicyDocument
     let createQueuePolicyDocument = (
+      name,
       queue: PulumiAws.SQS.Queue.t,
       handler: PulumiAws.Lambda.CallbackFunction.t,
     ) =>
@@ -103,15 +104,15 @@ let _ =
       ~name,
       ~args={
         queueUrl: queueId->Pulumi.Input.make,
-        policy: createQueuePolicyDocument(queue, handler),
+        policy: createQueuePolicyDocument(name, queue, handler),
       },
       ~opts=Some(opts),
     )
     let _attachFifoQueuePolicy = PulumiAws.SQS.QueuePolicy.make(
-      ~name,
+      ~name=nameFifo,
       ~args={
         queueUrl: fifoQueueId->Pulumi.Input.make,
-        policy: createQueuePolicyDocument(fifoQueue, handler),
+        policy: createQueuePolicyDocument(nameFifo, fifoQueue, handler),
       },
       ~opts=Some(opts),
     )
