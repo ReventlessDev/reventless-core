@@ -33,7 +33,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
     }
 
     let _addCommandGeneratorPermission = PulumiAws.Lambda.Permission.make(
-      ~name="AllowLambdaInvokeFromCloudWatchEvents",
+      ~name=name ++ "Permission",
       ~args={
         action: "lambda:InvokeFunction",
         function: commandGeneratorLambdaArn->Pulumi.Output.asInput,

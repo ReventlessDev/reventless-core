@@ -79,7 +79,7 @@ let subscribe = (
       let _attachQueuePolicy = {
         open PulumiAws.PolicyDocument
         PulumiAws.SQS.QueuePolicy.make(
-          ~name=name ++ "Policy",
+          ~name=name ++ "QueuePolicy",
           ~args={
             queueUrl: queueId->Pulumi.Input.make,
             policy: PulumiAws.PolicyDocument.make(
@@ -139,7 +139,7 @@ let subscribe = (
       let lambdaQueuePolicyDocument = {
         open PulumiAws.PolicyDocument
         PulumiAws.PolicyDocument.make(
-          ~id=name ++ "SQSPolicy",
+          ~id=name ++ "LambdaSQSPolicy",
           ~statements=[
             {
               sid: "AllowLambdaReceiveSQSMessage",

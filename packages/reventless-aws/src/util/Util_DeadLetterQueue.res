@@ -72,7 +72,7 @@ let _ =
       ->Pulumi.Input.make
 
     let lambdaPolicyDocument = PulumiAws.PolicyDocument.make(
-      ~id=name ++ "SQSLambdaPolicy",
+      ~id=name ++ "SQSPolicy",
       ~statements=[
         {
           sid: "AllowLambdaSendAndReceiveMessage",

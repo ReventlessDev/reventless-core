@@ -76,7 +76,7 @@ Pulumi.all([
                           }
                         }]));
       };
-      var lambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSLambdaPolicy", [{
+      var lambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSPolicy", [{
               Sid: "AllowLambdaSendAndReceiveMessage",
               Effect: "Allow",
               Action: [

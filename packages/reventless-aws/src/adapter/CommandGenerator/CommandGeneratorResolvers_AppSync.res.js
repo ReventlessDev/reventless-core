@@ -32,7 +32,7 @@ function make(name, api, fields, runtime, opts) {
               policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
               role: role.id
             }, opts$1);
-        new (Aws.lambda.Permission)("AllowLambdaInvokeFromCloudWatchEvents", {
+        new (Aws.lambda.Permission)(name + "Permission", {
               action: "lambda:InvokeFunction",
               function: commandGeneratorLambdaArn,
               principal: AWS$ReventlessAws.CloudwatchEventRule.principal

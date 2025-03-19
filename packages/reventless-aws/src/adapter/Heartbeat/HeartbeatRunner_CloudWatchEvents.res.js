@@ -29,7 +29,7 @@ function make(name, timeout, runtime, opts) {
           lambdaResource.urn,
           cloudwatchEventRule.arn
         ]).apply(function (param) {
-        new (Aws.lambda.Permission)("AllowLambdaInvokeFromCloudWatchEvents", {
+        new (Aws.lambda.Permission)(name + "Permission", {
               action: "lambda:InvokeFunction",
               function: lambdaResource.urn,
               principal: AWS$ReventlessAws.CloudwatchEventRule.principal

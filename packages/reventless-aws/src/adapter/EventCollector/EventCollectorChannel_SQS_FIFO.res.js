@@ -65,7 +65,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
         Belt_Array.map(otherResources, (function (param) {
                 return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(handler), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts$1);
               }));
-        new (Aws.sqs.QueuePolicy)(name + "Policy", {
+        new (Aws.sqs.QueuePolicy)(name + "QueuePolicy", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
                         {
                           Principal: {
