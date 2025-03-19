@@ -79,14 +79,11 @@ function subscribe(name, channel, runtime, opts) {
                 ],
                 Resource: queueArn
               }]);
-        var lambdaPolicy = new (Aws.iam.Policy)(name, {
+        new (Aws.iam.RolePolicy)(name, {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", [
                     Lambda$PulumiAws.defaultLoggingPolicyDocument,
                     allowSQSLambdaPolicyDocument
-                  ])
-            }, opts$1);
-        new (Aws.iam.RolePolicyAttachment)(name, {
-              policyArn: lambdaPolicy.arn,
+                  ]),
               role: param[3].id
             }, opts$1);
         new (Aws.sqs.QueuePolicy)(name, {

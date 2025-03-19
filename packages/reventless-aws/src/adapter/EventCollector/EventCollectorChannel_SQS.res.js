@@ -48,7 +48,8 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
           Output$Pulumi.flatMap(queue, (function (queue) {
                   return queue.id;
                 })),
-          handler
+          handler,
+          handlerRole
         ]).apply(function (param) {
         var handler = param[4];
         var queueArn = param[2];
@@ -110,18 +111,13 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                 ],
                 Resource: queueArn
               }]);
-        var lambdaPolicy = new (Aws.iam.Policy)(name + "LambdaPolicy", {
+        new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Belt_Array.concat(lambdaDynamoDbStreamPolicyDocuments, [
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         lambdaQueuePolicyDocument
-                      ]))
+                      ])),
+              role: param[5].id
             }, opts$1);
-        handlerRole.apply(function (handlerRole) {
-              return new (Aws.iam.RolePolicyAttachment)(name + "LambdaPolicy", {
-                          policyArn: lambdaPolicy.arn,
-                          role: handlerRole.id
-                        }, opts$1);
-            });
         if (errorResources.length !== 0) {
           var eventTopicNames = errorResources.join(",");
           Js_exn.raiseError("EventCollectorChannel_SQS-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));

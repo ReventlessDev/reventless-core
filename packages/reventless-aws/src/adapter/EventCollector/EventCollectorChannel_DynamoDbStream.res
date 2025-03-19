@@ -68,7 +68,7 @@ let subscribe = (
         )
       })
 
-      let lambdaPolicy = PulumiAws.IAM.Policy.make(
+      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
         ~name,
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
@@ -77,17 +77,9 @@ let subscribe = (
               streamSourcesWithPolicy->Belt.Array.map(((_, _, policyDocument)) => policyDocument),
             ),
           )->Pulumi.Output.asInput,
-        },
-        ~opts,
-      )
-
-      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicyAttachment.make(
-        ~name,
-        ~args={
-          policyArn: lambdaPolicy.arn->Pulumi.Output.asInput,
           role: handlerRole.id->Pulumi.Output.asInput,
         },
-        ~opts=Some(opts),
+        ~opts,
       )
 
       if errorResources->Belt.Array.length > 0 {

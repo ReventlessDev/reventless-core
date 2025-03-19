@@ -36,14 +36,16 @@ let subscribe = (
       queue->Pulumi.Output.flatMap(queue => queue.arn),
       queue->Pulumi.Output.flatMap(queue => queue.id),
       handler,
+      handlerRole,
     )
-    ->Pulumi.Output.all5
+    ->Pulumi.Output.all6
     ->Pulumi.Output.apply(((
       (supportedResources, errorResources),
       queue,
       queueArn,
       queueId,
       handler,
+      handlerRole,
     )) => {
       let (snsResources, otherResources) =
         supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
@@ -153,7 +155,7 @@ let subscribe = (
         )
       }
 
-      let lambdaPolicy = PulumiAws.IAM.Policy.make(
+      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
         ~name=name ++ "LambdaPolicy",
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
@@ -163,21 +165,10 @@ let subscribe = (
               lambdaQueuePolicyDocument,
             ]),
           )->Pulumi.Output.asInput,
+          role: handlerRole.id->Pulumi.Output.asInput,
         },
         ~opts,
       )
-
-      let _attachLambdaPolicy = handlerRole->Pulumi.Output.apply(handlerRole => {
-        open PulumiAws
-        IAM.RolePolicyAttachment.make(
-          ~name=name ++ "LambdaPolicy",
-          ~args={
-            policyArn: lambdaPolicy.arn->Pulumi.Output.asInput,
-            role: handlerRole.id->Pulumi.Output.asInput,
-          },
-          ~opts=Some(opts),
-        )
-      })
 
       if errorResources->Belt.Array.length > 0 {
         let eventTopicNames = errorResources->Js.Array2.joinWith(",")
