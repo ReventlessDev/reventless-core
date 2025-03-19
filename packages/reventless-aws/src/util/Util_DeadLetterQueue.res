@@ -44,7 +44,7 @@ let fifoSubscription = fifoQueue->SQS.Queue.onEvent(~name=nameFifo, ~handler)
 let _ =
   (queue.id, queue.arn, fifoQueue.id, fifoQueue.arn, handler.arn)
   ->Pulumi.Output.all5
-  ->Pulumi.Output.apply(((queueId, queueArn, fifoQueueArn, fifoQueueId, handlerArn)) => {
+  ->Pulumi.Output.apply(((queueId, queueArn, fifoQueueId, fifoQueueArn, handlerArn)) => {
     open PulumiAws.PolicyDocument
     let createQueuePolicyDocument = (
       name,

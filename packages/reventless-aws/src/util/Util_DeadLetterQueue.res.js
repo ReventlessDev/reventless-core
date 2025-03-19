@@ -87,7 +87,7 @@ Pulumi.all([
               ],
               Resource: [
                 queueArn,
-                param[2]
+                param[3]
               ]
             }]);
       new (Aws.iam.RolePolicy)(name, {
@@ -103,7 +103,7 @@ Pulumi.all([
           }, opts);
       new (Aws.sqs.QueuePolicy)(nameFifo, {
             policy: createQueuePolicyDocument(nameFifo, fifoQueue, handler),
-            queueUrl: param[3]
+            queueUrl: param[2]
           }, opts);
     });
 
