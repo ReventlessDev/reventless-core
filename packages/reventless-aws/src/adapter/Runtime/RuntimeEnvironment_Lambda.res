@@ -14,6 +14,7 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result> = (
   let lambdaRole = IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "Role",
     ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+    ~opts?
   )
 
   let lambdaResource =

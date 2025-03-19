@@ -156,6 +156,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
       let lambdaRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
         ~name,
         ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
+        ~opts?
       )
 
       let lambda = Lambda.CallbackFunction.make(

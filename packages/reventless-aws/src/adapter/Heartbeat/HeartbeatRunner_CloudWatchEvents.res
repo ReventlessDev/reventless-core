@@ -16,6 +16,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime,
   let heartbeatLambdaRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "Role",
     ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
+    ~opts
   )
 
   let lambdaResource = runtime.resources->Util.Lambda.findResource

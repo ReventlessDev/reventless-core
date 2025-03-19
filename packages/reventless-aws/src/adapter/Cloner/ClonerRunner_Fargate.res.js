@@ -107,7 +107,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               requiresCompatibilities: ["FARGATE"],
               executionRoleArn: taskExecutionRole.arn
             }, opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
-        var lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.AppSync.principal), undefined);
+        var lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name, Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts);
         var lambda = new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make((function (extra, extra$1) {
                     return ClonerRunner_Fargate_Runtime$ReventlessAws.clone(taskDefinition.arn, cluster.arn, fullQualifiedStackName, {
                                 subnets: vpcConfig.subnetIds
