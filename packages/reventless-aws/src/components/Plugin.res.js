@@ -8,23 +8,23 @@ var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/Runtim
 var CommandTopicRemoteChannel_SQS$ReventlessAws = require("../adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res.js");
 var HeartbeatRunner_CloudWatchEvents$ReventlessAws = require("../adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res.js");
 
-var partial_arg = HeartbeatRunner_CloudWatchEvents$ReventlessAws;
+var partial_arg = CommandTopicRemoteChannel_SQS$ReventlessAws;
 
-var partial_arg$1 = CommandTopicRemoteChannel_SQS$ReventlessAws;
-
-var partial_arg$2 = {
+var partial_arg$1 = {
   make: QueryEngine_DynamoDb$ReventlessAws.make
 };
 
-var partial_arg$3 = {
+var partial_arg$2 = {
   make: EventCollectorChannel_SQS$ReventlessAws.make
 };
+
+var partial_arg$3 = RuntimeEnvironment_Lambda$ReventlessAws;
 
 var partial_arg$4 = Plugin_Builder$Reventless.Make;
 
 var include = (function (param) {
       return partial_arg$4(partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
-    })(RuntimeEnvironment_Lambda$ReventlessAws);
+    })(HeartbeatRunner_CloudWatchEvents$ReventlessAws);
 
 var make = include.make;
 

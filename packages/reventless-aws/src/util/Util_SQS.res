@@ -1,5 +1,7 @@
 open PulumiAws
 
+type channelParts = {queue: PulumiAws.SQS.Queue.t}
+
 let toRuntimeQueueOutput = ({name, id, arn}: PulumiAws.SQS.Queue.t) =>
   (name, id, arn)
   ->Pulumi.Output.all3
@@ -14,7 +16,7 @@ let toResource = (queue: PulumiAws.SQS.Queue.t) => {
   name: queue.name,
   id: queue.id,
   urn: queue.arn,
-  info: queue.name->Pulumi.Output.apply(_ => "")
+  info: queue.name->Pulumi.Output.apply(_ => ""),
 }
 
 let fromResource = ({id, name}: ReventlessSpec.Adapter.resource) => {

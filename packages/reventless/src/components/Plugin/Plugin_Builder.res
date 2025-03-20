@@ -71,11 +71,12 @@ let serviceNameToEventHandlers: (
 }
 
 module Make = (
-  EventCollectorChannel: EventCollector_Adapter.Channel,
+  RuntimeEnvironment: Runtime.Environment,
+  EventCollectorChannel: EventCollector_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   CorePluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
-  HeartbeatRunner: Heartbeat_Adapter.Runner,
-  RuntimeEnvironment: Runtime.Environment,
+  HeartbeatRunner: Heartbeat_Adapter.Runner with type runtimeParts = RuntimeEnvironment.parts,
 ): Plugin.T => {
   type readModel = {
     module_: module(ReadModel.T),

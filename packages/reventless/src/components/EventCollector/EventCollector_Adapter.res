@@ -1,31 +1,41 @@
-type rec subscribe<'callbackEvent, 'context> = (
+type rec subscribe<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~name: string,
   ~eventTopics: EventTopic.allOutputs,
-  ~channel: channel<'callbackEvent, 'context>,
-  ~runtime: Runtime.environment,
+  ~channel: channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
+  ~runtime: Runtime.environment<'runtimeParts>,
   ~opts: Pulumi.ComponentResource.options,
 ) => array<ReventlessSpec.Adapter.resource>
-and channel<'callbackEvent, 'context> = {
+and channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = {
+  parts: 'channelParts,
   resources: array<ReventlessSpec.Adapter.resource>,
   enqueueEvent: Pulumi.Output.t<EventCollector.enqueueEvent>,
   handleChannelEvent: EventCollector.jsonEventsHandler => Pulumi.Output.t<
     Runtime.eventHandler<'callbackEvent, 'context, unit>,
   >,
-  subscribe: subscribe<'callbackEvent, 'context>,
+  subscribe: subscribe<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
 }
 
 @set
-external setChannel: (EventCollector.component, channel<'callbackEvent, 'context>) => unit =
-  "channel"
+external setChannel: (
+  EventCollector.component,
+  channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
+) => unit = "channel"
 @get
-external channel: EventCollector.component => channel<'callbackEvent, 'context> = "channel"
+external channel: EventCollector.component => channel<
+  'callbackEvent,
+  'context,
+  'channelParts,
+  'runtimeParts,
+> = "channel"
 
-type channelMaker<'callbackEvent, 'context> = (
+type channelMaker<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~name: string,
   ~opts: Pulumi.ComponentResource.options,
-) => channel<'callbackEvent, 'context>
+) => channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>
 
 module type Channel = {
   type callbackEvent
-  let make: channelMaker<callbackEvent, 'context>
+  type channelParts
+  type runtimeParts
+  let make: channelMaker<callbackEvent, 'context, channelParts, runtimeParts>
 }

@@ -6,8 +6,8 @@ module Make = (
   Config,
   Spec,
   Mappings,
+  RuntimeEnvironment_Lambda,
   QueryDbStorage.DynamoDb,
   QueryDbResolvers.AppSync,
   EventCollectorChannel.SQS,
-  RuntimeEnvironment_Lambda,
 )

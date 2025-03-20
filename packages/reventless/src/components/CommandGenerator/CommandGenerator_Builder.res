@@ -3,7 +3,7 @@ module Make = (
   Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := Spec,
   Resolvers: CommandGenerator_Adapter.Resolvers with type api := Config.api,
-): CommandGenerator.T => {
+): (CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts) => {
   let construct = (_self, _name) => ()
 
   let subscribe = (~name, ~commandGenerator, ~runtime, ~opts) => {

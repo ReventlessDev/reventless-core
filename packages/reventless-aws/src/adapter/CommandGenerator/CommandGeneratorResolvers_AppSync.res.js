@@ -11,7 +11,6 @@ var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
-var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
 var Util_IAM_Role$ReventlessAws = require("../../util/Util_IAM_Role.res.js");
@@ -25,7 +24,7 @@ function makeHandler(generateCommand) {
 
 function make(name, api, fields, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
-  var commandGeneratorLambdaArn = Util_Lambda$ReventlessAws.findResource(runtime.resources).urn;
+  var commandGeneratorLambdaArn = runtime.parts.lambda.arn;
   var commandGeneratorLambdaRole = Util_IAM_Role$ReventlessAws.fromResource(Util_IAM_Role$ReventlessAws.findResource(runtime.resources));
   commandGeneratorLambdaRole.apply(function (role) {
         new (Aws.iam.RolePolicy)(name + "CommandGeneratorPolicy", {

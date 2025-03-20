@@ -8,10 +8,10 @@ module Make = (
   Spec,
   Behaviour,
   EventMappings,
+  RuntimeEnvironment_Lambda,
   CommandGeneratorResolvers.AppSync,
   CommandTopicChannel.SQS_FIFO,
   EventLogStorage.DynamoDbStream,
   EventTopicPublisher.DynamoDbStream,
   EventCollectorChannel_DynamoDbStream,
-  RuntimeEnvironment_Lambda,
 )

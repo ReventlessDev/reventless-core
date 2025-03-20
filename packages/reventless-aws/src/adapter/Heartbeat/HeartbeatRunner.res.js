@@ -2,7 +2,7 @@
 'use strict';
 
 
-var Lambda;
+var CloudwatchEvents;
 
-exports.Lambda = Lambda;
+exports.CloudwatchEvents = CloudwatchEvents;
 /* No side effect */

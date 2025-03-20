@@ -52,7 +52,7 @@ module type T = {
   let subscribe: (
     ~name: string,
     ~commandTopic: component,
-    ~runtime: Runtime.environment,
+    ~runtime: Runtime.environment<'runtimeParts>,
     ~opts: Pulumi.ComponentResource.options,
   ) => unit
 

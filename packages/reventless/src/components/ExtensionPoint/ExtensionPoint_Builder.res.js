@@ -15,7 +15,7 @@ var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Buil
 var ExtensionPoint_Callback$Reventless = require("./ExtensionPoint_Callback.res.js");
 var ExtensionPoint_Operations$Reventless = require("./ExtensionPoint_Operations.res.js");
 
-function Make(Spec, Mappings, CommandTopicChannel, EventTopicAdapter, RuntimeEnvironment) {
+function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopicAdapter) {
   var command_encode = Spec.command_encode;
   var command_decode = Spec.command_decode;
   var event_encode = Spec.event_encode;

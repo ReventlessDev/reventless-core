@@ -81,7 +81,7 @@ function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEvent
   return dict;
 }
 
-function Make(EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner, RuntimeEnvironment) {
+function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner) {
   var make = function (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(Plugin$Reventless.componentType), name, (function (extra, extra$1) {
                   var id = Plugin$Reventless.makeId(extra$1, version);

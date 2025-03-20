@@ -1,9 +1,10 @@
 module Make = (
   Spec: ReventlessSpec.ExtensionPointMapping.Spec,
   Mappings: ExtensionPoint.Mappings with module Spec := Spec,
-  CommandTopicChannel: CommandTopic_Adapter.Channel,
-  EventTopicAdapter: EventTopic_Adapter.Publisher,
   RuntimeEnvironment: Runtime.Environment,
+  CommandTopicChannel: CommandTopic_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
+  EventTopicAdapter: EventTopic_Adapter.Publisher,
 ): ExtensionPoint.T => {
   module Spec = Spec
 

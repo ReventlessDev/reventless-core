@@ -7,12 +7,12 @@ var EventTopicPublisher_SNS$ReventlessAws = require("../adapter/EventTopic/Event
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 
 function Make(Spec, Mappings) {
-  var partial_arg = EventTopicPublisher_SNS$ReventlessAws;
-  var partial_arg$1 = {
+  var partial_arg = {
     make: CommandTopicChannel_SQS$ReventlessAws.make
   };
+  var partial_arg$1 = RuntimeEnvironment_Lambda$ReventlessAws;
   var partial_arg$2 = ExtensionPoint_Builder$Reventless.Make;
-  var param = RuntimeEnvironment_Lambda$ReventlessAws;
+  var param = EventTopicPublisher_SNS$ReventlessAws;
   return partial_arg$2(Spec, Mappings, partial_arg$1, partial_arg, param);
 }
 

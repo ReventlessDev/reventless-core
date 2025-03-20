@@ -20,7 +20,7 @@ module type T = {
     ~name: string,
     ~eventTopics: EventTopic.allOutputs,
     ~eventCollector: component,
-    ~runtime: Runtime.environment,
+    ~runtime: Runtime.environment<'runtimeParts>,
     ~opts: Pulumi.ComponentResource.options,
   ) => unit
 

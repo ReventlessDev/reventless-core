@@ -10,17 +10,17 @@ var EventTopicPublisher_DynamoDbStream$ReventlessAws = require("../adapter/Event
 var EventCollectorChannel_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.js");
 
 function Make(Config, Spec, Behaviour, EventMappings) {
-  var partial_arg = {
-    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
-  };
-  var partial_arg$1 = EventTopicPublisher_DynamoDbStream$ReventlessAws;
-  var partial_arg$2 = EventLogStorage_DynamoDbStream$ReventlessAws;
-  var partial_arg$3 = {
+  var partial_arg = EventTopicPublisher_DynamoDbStream$ReventlessAws;
+  var partial_arg$1 = EventLogStorage_DynamoDbStream$ReventlessAws;
+  var partial_arg$2 = {
     make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
   };
-  var partial_arg$4 = CommandGeneratorResolvers_AppSync$ReventlessAws;
+  var partial_arg$3 = CommandGeneratorResolvers_AppSync$ReventlessAws;
+  var partial_arg$4 = RuntimeEnvironment_Lambda$ReventlessAws;
   var partial_arg$5 = Aggregate_Builder$Reventless.Make;
-  var param = RuntimeEnvironment_Lambda$ReventlessAws;
+  var param = {
+    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+  };
   return partial_arg$5(Config, Spec, Behaviour, EventMappings, partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
 }
 

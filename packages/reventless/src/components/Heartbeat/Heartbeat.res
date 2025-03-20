@@ -10,7 +10,7 @@ module type T = {
     ~name: string,
     ~timeout: int=?,
     ~heartbeat: component,
-    ~runtime: Runtime.environment,
+    ~runtime: Runtime.environment<'runtimeParts>,
     ~opts: Pulumi.ComponentResource.options,
   ) => unit
 

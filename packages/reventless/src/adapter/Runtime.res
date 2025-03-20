@@ -1,16 +1,20 @@
 type eventHandler<'event, 'context, 'result> = ('event, 'context) => promise<'result>
 
-type environment = {resources: array<ReventlessSpec.Adapter.resource>}
+type environment<'parts> = {
+  parts: 'parts,
+  resources: array<ReventlessSpec.Adapter.resource>,
+}
 
-type environmentMaker<'event, 'context, 'result> = (
+type environmentMaker<'event, 'context, 'result, 'parts> = (
   ~name: string,
   ~handler: Pulumi.Output.t<eventHandler<'event, 'context, 'result>>,
   ~memorySize: int=?,
   ~timeout: int=?,
   ~opts: Pulumi.ComponentResource.options=?,
-) => environment
+) => environment<'parts>
 
 module type Environment = {
   type context
-  let make: environmentMaker<'event, context, 'result>
+  type parts
+  let make: environmentMaker<'event, context, 'result, parts>
 }

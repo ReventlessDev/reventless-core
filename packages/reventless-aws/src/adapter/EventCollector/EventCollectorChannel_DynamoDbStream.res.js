@@ -11,30 +11,22 @@ var AWS$ReventlessAws = require("../AWS.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
-var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
-var Util_IAM_Role$ReventlessAws = require("../../util/Util_IAM_Role.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
 function subscribe(name, eventTopics, param, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
-  var handler = Util_Lambda$ReventlessAws.fromResource(Util_Lambda$ReventlessAws.findResource(runtime.resources));
-  var handlerRole = Util_IAM_Role$ReventlessAws.fromResource(Util_IAM_Role$ReventlessAws.findResource(runtime.resources));
+  var lambda = runtime.parts.lambda;
+  var lambdaRole = runtime.parts.lambdaRole;
   var eventTopicResources = Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
             return Js_dict.map((function (eventTopic) {
                           return eventTopic.resources;
                         }), __x);
           })(eventTopics), [AWS$ReventlessAws.DynamoDbStream.service]);
-  Pulumi.all([
-          eventTopicResources,
-          handler,
-          handlerRole
-        ]).apply(function (param) {
-        var handler = param[1];
-        var match = param[0];
-        var errorResources = match[1];
-        var streamSourcesWithPolicy = Belt_Array.map(match[0], (function (param) {
+  eventTopicResources.apply(function (param) {
+        var errorResources = param[1];
+        var streamSourcesWithPolicy = Belt_Array.map(param[0], (function (param) {
                 var sourceName = param[0];
                 var source = param[1][0];
                 return [
@@ -54,13 +46,13 @@ function subscribe(name, eventTopics, param, runtime, opts) {
                       ];
               }));
         Belt_Array.map(streamSourcesWithPolicy, (function (param) {
-                return Util_EventSourceMapping$ReventlessAws.subscribe(25, Pulumi.output(handler), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts$1);
+                return Util_EventSourceMapping$ReventlessAws.subscribe(25, Pulumi.output(lambda), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts$1);
               }));
         new (Aws.iam.RolePolicy)(name, {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Belt_Array.concat([Lambda$PulumiAws.defaultLoggingPolicyDocument], Belt_Array.map(streamSourcesWithPolicy, (function (param) {
                               return param[2];
                             })))),
-              role: param[2].id
+              role: lambdaRole.id
             }, opts$1);
         if (errorResources.length === 0) {
           return ;
@@ -76,6 +68,7 @@ function make(param, param$1) {
     return Promise.resolve((console.log("EventCollectorChannel_DynamoDbStream-ReventlessAws" + " supports no enqueueEvent:", delay, id, messageBody), undefined));
   };
   return {
+          parts: undefined,
           resources: [],
           enqueueEvent: Pulumi.output(enqueueEventNotSupported),
           handleChannelEvent: (function (handleEvents) {

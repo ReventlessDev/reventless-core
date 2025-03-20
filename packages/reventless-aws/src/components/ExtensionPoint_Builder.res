@@ -4,7 +4,7 @@ module Make = (
 ): Reventless.ExtensionPoint.T => Reventless.ExtensionPoint_Builder.Make(
   Spec,
   Mappings,
+  RuntimeEnvironment_Lambda,
   CommandTopicChannel.SQS,
   EventTopicPublisher.SNS,
-  RuntimeEnvironment_Lambda,
 )

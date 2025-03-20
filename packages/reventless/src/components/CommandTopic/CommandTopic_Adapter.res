@@ -1,37 +1,42 @@
-type rec subscribe<'callbackEvent, 'context> = (
+type rec subscribe<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~name: string,
-  ~channel: channel<'callbackEvent, 'context>,
-  ~runtime: Runtime.environment,
+  ~channel: channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
+  ~runtime: Runtime.environment<'runtimeParts>,
   ~opts: Pulumi.ComponentResource.options,
 ) => array<ReventlessSpec.Adapter.resource>
-and channel<'callbackEvent, 'context> = {
+and channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = {
+  parts: 'channelParts,
   resources: array<ReventlessSpec.Adapter.resource>,
   publishJsons: Pulumi.Output.t<CommandTopic.publishJsons>,
   handleChannelEvent: CommandTopic.jsonCommandsHandler => Pulumi.Output.t<
     Runtime.eventHandler<'callbackEvent, 'context, unit>,
   >,
-  subscribe: subscribe<'callbackEvent, 'context>,
+  subscribe: subscribe<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
 }
 
 @set
 external setChannel: (
   Component.t<CommandTopic.t, CommandTopic.outputs, 'operations>,
-  channel<'callbackEvent, 'context>,
+  channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
 ) => unit = "channel"
 @get
 external channel: Component.t<CommandTopic.t, CommandTopic.outputs, 'operations> => channel<
   'callbackEvent,
   'context,
+  'channelParts,
+  'runtimeParts,
 > = "channel"
 
-type channelMaker<'callbackEvent, 'context> = (
+type channelMaker<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~name: string,
   ~opts: Pulumi.ComponentResource.options=?,
-) => channel<'callbackEvent, 'context>
+) => channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>
 
 module type Channel = {
   type callbackEvent
-  let make: channelMaker<callbackEvent, 'context>
+  type runtimeParts
+  type channelParts
+  let make: channelMaker<callbackEvent, 'context, channelParts, runtimeParts>
 }
 
 type remoteChannel = {remotePublish: CommandTopic.publishJsons}

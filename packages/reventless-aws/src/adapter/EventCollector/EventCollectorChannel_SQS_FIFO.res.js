@@ -5,7 +5,6 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
@@ -17,8 +16,6 @@ var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector/EventCollector.res.js");
-var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
-var Util_IAM_Role$ReventlessAws = require("../../util/Util_IAM_Role.res.js");
 var Util_SNS_FIFO$ReventlessAws = require("../../util/Util_SNS_FIFO.res.js");
 var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
@@ -29,9 +26,9 @@ var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorC
 
 function subscribe(name, eventTopics, channel, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
-  var queue = Util_SQS_FIFO$ReventlessAws.fromResource(Util_SQS_FIFO$ReventlessAws.findResource(channel.resources));
-  var handler = Util_Lambda$ReventlessAws.fromResource(Util_Lambda$ReventlessAws.findResource(runtime.resources));
-  var handlerRole = Util_IAM_Role$ReventlessAws.fromResource(Util_IAM_Role$ReventlessAws.findResource(runtime.resources));
+  var queue = channel.parts.queue;
+  var lambda = runtime.parts.lambda;
+  var lambdaRole = runtime.parts.lambdaRole;
   var eventTopicResources = Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
             return Js_dict.map((function (eventTopic) {
                           return eventTopic.resources;
@@ -42,19 +39,10 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
       ]);
   var subscriptionResource = Pulumi.all([
           eventTopicResources,
-          queue,
-          Output$Pulumi.flatMap(queue, (function (queue) {
-                  return queue.arn;
-                })),
-          Output$Pulumi.flatMap(queue, (function (queue) {
-                  return queue.id;
-                })),
-          handler,
-          handlerRole
+          queue.arn,
+          queue.id
         ]).apply(function (param) {
-        var handler = param[4];
-        var queueArn = param[2];
-        var queue = param[1];
+        var queueArn = param[1];
         var match = param[0];
         var errorResources = match[1];
         var match$1 = Util_Adapter$Reventless.partitionUnwrappedResourcesByService(match[0], AWS$ReventlessAws.SNS_FIFO.service);
@@ -63,7 +51,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                 return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_SNS_FIFO$ReventlessAws.findTopicInUnwrappedResources(param[1])), opts$1);
               }));
         Belt_Array.map(otherResources, (function (param) {
-                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(handler), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts$1);
+                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(lambda), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts$1);
               }));
         new (Aws.sqs.QueuePolicy)(name + "QueuePolicy", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
@@ -84,7 +72,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                           Resource: queueArn
                         }
                       ])),
-              queueUrl: param[3]
+              queueUrl: param[2]
             }, opts$1);
         var lambdaDynamoDbStreamPolicyDocuments = Belt_Array.map(otherResources, (function (param) {
                 var source = param[1][0];
@@ -115,13 +103,13 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         lambdaQueuePolicyDocument
                       ])),
-              role: param[5].id
+              role: lambdaRole.id
             }, opts$1);
         if (errorResources.length !== 0) {
           var eventTopicNames = errorResources.join(",");
           Js_exn.raiseError("EventCollectorChannel_SQS_FIFO-ReventlessAws" + (" cannot connect to EventTopic(s) " + eventTopicNames));
         }
-        return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, handler, undefined, opts$1));
+        return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts$1));
       });
   return [Adapter$Reventless.outputToResource(subscriptionResource)];
 }
@@ -141,6 +129,9 @@ function make(name, opts) {
         sqsManagedSseEnabled: false
       }, opts$1);
   return {
+          parts: {
+            queue: queue
+          },
           resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
           enqueueEvent: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
                 return function (extra, extra$1, extra$2) {

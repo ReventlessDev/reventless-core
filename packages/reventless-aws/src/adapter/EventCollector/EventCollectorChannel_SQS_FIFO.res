@@ -1,25 +1,24 @@
 type callbackEvent = PulumiAws.Lambda.CallbackFunction.event
+type channelParts = Util.SQS.channelParts
+type runtimeParts = Util.Lambda.runtimeParts
 
 let subscribe = (
   ~name,
   ~eventTopics,
-  ~channel: Reventless.EventCollector_Adapter.channel<callbackEvent, 'context>,
-  ~runtime: Reventless.Runtime.environment,
+  ~channel: Reventless.EventCollector_Adapter.channel<
+    callbackEvent,
+    'context,
+    channelParts,
+    runtimeParts,
+  >,
+  ~runtime: Reventless.Runtime.environment<runtimeParts>,
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
-  let queue =
-    channel.resources
-    ->Util.SQS_FIFO.findResource
-    ->Util.SQS_FIFO.fromResource
-
-  let handler =
-    runtime.resources
-    ->Util.Lambda.findResource
-    ->Util.Lambda.fromResource
-
-  let handlerRole = runtime.resources->Util.IAM_Role.findResource->Util.IAM_Role.fromResource
+  let queue = channel.parts.queue
+  let lambda = runtime.parts.lambda
+  let lambdaRole = runtime.parts.lambdaRole
 
   let eventTopicResources =
     eventTopics
@@ -30,23 +29,9 @@ let subscribe = (
     ])
 
   let subscriptionResource =
-    (
-      eventTopicResources,
-      queue,
-      queue->Pulumi.Output.flatMap(queue => queue.arn),
-      queue->Pulumi.Output.flatMap(queue => queue.id),
-      handler,
-      handlerRole,
-    )
-    ->Pulumi.Output.all6
-    ->Pulumi.Output.apply(((
-      (supportedResources, errorResources),
-      queue,
-      queueArn,
-      queueId,
-      handler,
-      handlerRole,
-    )) => {
+    (eventTopicResources, queue.arn, queue.id)
+    ->Pulumi.Output.all3
+    ->Pulumi.Output.apply((((supportedResources, errorResources), queueArn, queueId)) => {
       let (snsFifoResources, otherResources) =
         supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
           AWS.SNS_FIFO.service,
@@ -66,7 +51,7 @@ let subscribe = (
 
       let _eventSourceMappings = otherResources->Belt.Array.map(((sourceName, resources)) =>
         Util_EventSourceMapping.subscribe(
-          ~lambda=handler->Pulumi.Output.make,
+          ~lambda=lambda->Pulumi.Output.make,
           ~targetName=name,
           ~sourceName,
           ~source=resources
@@ -163,7 +148,7 @@ let subscribe = (
               lambdaQueuePolicyDocument,
             ]),
           )->Pulumi.Output.asInput,
-          role: handlerRole.id->Pulumi.Output.asInput,
+          role: lambdaRole.id->Pulumi.Output.asInput,
         },
         ~opts,
       )
@@ -174,17 +159,19 @@ let subscribe = (
       }
 
       queue
-      ->PulumiAws.SQS.Queue.onEvent(~name, ~handler, ~opts)
+      ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
       ->Util.SQS.Subscription.toResource
     })
 
   [subscriptionResource->Reventless.Adapter.outputToResource]
 }
 
-let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context> = (
-  ~name,
-  ~opts,
-) => {
+let make: Reventless.EventCollector_Adapter.channelMaker<
+  callbackEvent,
+  'context,
+  channelParts,
+  runtimeParts,
+> = (~name, ~opts) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let queue = PulumiAws.SQS.Queue.make(
@@ -207,7 +194,8 @@ let make: Reventless.EventCollector_Adapter.channelMaker<callbackEvent, 'context
   )
 
   {
-    Reventless.EventCollector_Adapter.resources: [queue->Util_SQS_FIFO.toResource],
+    Reventless.EventCollector_Adapter.parts: {queue: queue},
+    resources: [queue->Util_SQS_FIFO.toResource],
     enqueueEvent: queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>

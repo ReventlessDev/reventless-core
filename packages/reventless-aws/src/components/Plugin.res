@@ -1,7 +1,7 @@
 include Reventless.Plugin_Builder.Make(
+  RuntimeEnvironment_Lambda,
   EventCollectorChannel.SQS,
   QueryEngine.DynamoDb,
   CommandTopicRemoteChannel.SQS,
-  HeartbeatRunner.Lambda,
-  RuntimeEnvironment_Lambda,
+  HeartbeatRunner.CloudwatchEvents,
 )

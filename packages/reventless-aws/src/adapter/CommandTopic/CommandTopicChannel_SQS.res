@@ -1,34 +1,28 @@
 type callbackEvent = PulumiAws.SQS.Queue.event
+type runtimeParts = Util.Lambda.runtimeParts
+type channelParts = Util.SQS.channelParts
 
 let subscribe = (
   ~name,
-  ~channel: Reventless.CommandTopic_Adapter.channel<callbackEvent, 'context>,
-  ~runtime: Reventless.Runtime.environment,
+  ~channel: Reventless.CommandTopic_Adapter.channel<
+    callbackEvent,
+    'context,
+    Util.SQS.channelParts,
+    runtimeParts,
+  >,
+  ~runtime: Reventless.Runtime.environment<runtimeParts>,
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
-  let queue =
-    channel.resources
-    ->Util.SQS.findResource
-    ->Util.SQS.fromResource
-
-  let handler =
-    runtime.resources
-    ->Util.Lambda.findResource
-    ->Util.Lambda.fromResource
-
-  let handlerRole = runtime.resources->Util.IAM_Role.findResource->Util.IAM_Role.fromResource
+  let queue = channel.parts.queue
+  let lambda = runtime.parts.lambda
+  let lambdaRole = runtime.parts.lambdaRole
 
   let _attachPolicies =
-    (
-      queue->Pulumi.Output.flatMap(queue => queue.arn),
-      queue->Pulumi.Output.flatMap(queue => queue.id),
-      handler->Pulumi.Output.flatMap(handler => handler.arn),
-      handlerRole,
-    )
-    ->Pulumi.Output.all4
-    ->Pulumi.Output.apply(((queueArn, queueId, handlerArn, handlerRole)) => {
+    (queue.arn, queue.id, lambda.arn)
+    ->Pulumi.Output.all3
+    ->Pulumi.Output.apply(((queueArn, queueId, handlerArn)) => {
       open PulumiAws.PolicyDocument
 
       let queuePolicyDocument =
@@ -89,7 +83,7 @@ let subscribe = (
             name ++ "LambdaPolicy",
             [PulumiAws.Lambda.defaultLoggingPolicyDocument, allowSQSLambdaPolicyDocument],
           )->Pulumi.Output.asInput,
-          role: handlerRole.id->Pulumi.Output.asInput
+          role: lambdaRole.id->Pulumi.Output.asInput,
         },
         ~opts,
       )
@@ -102,19 +96,18 @@ let subscribe = (
     })
 
   let resource =
-    (queue, handler)
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((queue, handler)) =>
-      queue->PulumiAws.SQS.Queue.onEvent(~name, ~handler, ~opts)->Util.SQS.Subscription.toResource
-    )
-    ->Reventless.Adapter.outputToResource
+    queue
+    ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
+    ->Util.SQS.Subscription.toResource
   [resource]
 }
 
-let make: Reventless.CommandTopic_Adapter.channelMaker<callbackEvent, 'context> = (
-  ~name,
-  ~opts=?,
-) => {
+let make: Reventless.CommandTopic_Adapter.channelMaker<
+  callbackEvent,
+  'context,
+  Util.SQS.channelParts,
+  Util.Lambda.runtimeParts,
+> = (~name, ~opts=?) => {
   let opts =
     opts->Belt.Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
@@ -134,7 +127,8 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<callbackEvent, 'context> 
   )
 
   {
-    Reventless.CommandTopic_Adapter.resources: [queue->Util_SQS.toResource],
+    Reventless.CommandTopic_Adapter.parts: {queue: queue},
+    resources: [queue->Util_SQS.toResource],
     publishJsons: queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>

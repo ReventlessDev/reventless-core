@@ -1,5 +1,6 @@
 module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
   type callbackEvent = Channel.callbackEvent
+  type runtimeParts = Channel.runtimeParts
 
   let construct = (self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}

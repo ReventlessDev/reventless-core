@@ -1,4 +1,11 @@
-let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime, ~opts) => {
+type runtimeParts = Util.Lambda.runtimeParts
+
+let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
+  ~name,
+  ~timeout,
+  ~runtime,
+  ~opts,
+) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let cloudwatchEventRule = {
@@ -16,7 +23,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker = (~name, ~timeout, ~runtime,
   let heartbeatLambdaRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "Role",
     ~servicePrincipal=AWS.Lambda.principal->Pulumi.Output.make,
-    ~opts
+    ~opts,
   )
 
   let lambdaResource = runtime.resources->Util.Lambda.findResource

@@ -14,7 +14,7 @@ var Util_EventTopic$Reventless = require("../../util/Util_EventTopic.res.js");
 var ReadModel_Callback$Reventless = require("./ReadModel_Callback.res.js");
 var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
 
-function Make(Config, Spec, Mappings, QueryDbStorage, QueryDbResolvers, EventCollectorChannel, RuntimeEnvironment) {
+function Make(Config, Spec, Mappings, RuntimeEnvironment, QueryDbStorage, QueryDbResolvers, EventCollectorChannel) {
   var make = function (allEventTopics, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(ReadModel$Reventless.componentType), Spec.name, (function (extra, extra$1) {
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));

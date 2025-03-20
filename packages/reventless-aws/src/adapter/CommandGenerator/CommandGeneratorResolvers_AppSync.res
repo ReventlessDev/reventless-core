@@ -1,9 +1,10 @@
 type api = Pulumi.Output.t<PulumiAws.AppSync.GraphQLApi.t>
+type runtimeParts = Util.Lambda.runtimeParts
 
 let makeHandler = (generateCommand: Reventless.CommandGenerator.commandGenerator) =>
   Pulumi.Output.make((event, _) => event->generateCommand)
 
-let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
+let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.runtimeParts> = (
   ~name: string,
   ~api: api,
   ~fields,
@@ -12,7 +13,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api> = (
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
-  let commandGeneratorLambdaArn = (runtime.resources->Util.Lambda.findResource).urn
+  let commandGeneratorLambdaArn = runtime.parts.lambda.arn
 
   let commandGeneratorLambdaRole =
     runtime.resources->Util.IAM_Role.findResource->Util.IAM_Role.fromResource

@@ -16,7 +16,7 @@ var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Buil
 var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
 var CommandGenerator_Builder$Reventless = require("../CommandGenerator/CommandGenerator_Builder.res.js");
 
-function Make(Config, Spec, Behaviour, EventMappings, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorChannel, RuntimeEnvironment) {
+function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorChannel) {
   var construct = function (self, name) {
     var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
     var opts = {

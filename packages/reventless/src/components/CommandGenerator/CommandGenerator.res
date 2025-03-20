@@ -15,10 +15,11 @@ type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 type component = Component.t<t, outputs, unit>
 
 module type T = {
+  type runtimeParts
   let subscribe: (
     ~name: string,
     ~commandGenerator: component,
-    ~runtime: Runtime.environment,
+    ~runtime: Runtime.environment<runtimeParts>,
     ~opts: Pulumi.ComponentResource.options,
   ) => unit
 

@@ -5,37 +5,26 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
-var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var CommandTopic$Reventless = require("@reventless/reventless/src/components/CommandTopic/CommandTopic.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
-var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
-var Util_IAM_Role$ReventlessAws = require("../../util/Util_IAM_Role.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
 var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("./CommandTopicChannel_SQS_Runtime.res.js");
 
 function subscribe(name, channel, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
-  var queue = Util_SQS$ReventlessAws.fromResource(Util_SQS$ReventlessAws.findResource(channel.resources));
-  var handler = Util_Lambda$ReventlessAws.fromResource(Util_Lambda$ReventlessAws.findResource(runtime.resources));
-  var handlerRole = Util_IAM_Role$ReventlessAws.fromResource(Util_IAM_Role$ReventlessAws.findResource(runtime.resources));
+  var queue = channel.parts.queue;
+  var lambda = runtime.parts.lambda;
+  var lambdaRole = runtime.parts.lambdaRole;
   Pulumi.all([
-          Output$Pulumi.flatMap(queue, (function (queue) {
-                  return queue.arn;
-                })),
-          Output$Pulumi.flatMap(queue, (function (queue) {
-                  return queue.id;
-                })),
-          Output$Pulumi.flatMap(handler, (function (handler) {
-                  return handler.arn;
-                })),
-          handlerRole
+          queue.arn,
+          queue.id,
+          lambda.arn
         ]).apply(function (param) {
         var queueArn = param[0];
         var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
@@ -84,19 +73,14 @@ function subscribe(name, channel, runtime, opts) {
                     Lambda$PulumiAws.defaultLoggingPolicyDocument,
                     allowSQSLambdaPolicyDocument
                   ]),
-              role: param[3].id
+              role: lambdaRole.id
             }, opts$1);
         new (Aws.sqs.QueuePolicy)(name, {
               policy: queuePolicyDocument,
               queueUrl: param[1]
             }, opts$1);
       });
-  return [Adapter$Reventless.outputToResource(Pulumi.all([
-                      queue,
-                      handler
-                    ]).apply(function (param) {
-                    return Util_SQS$ReventlessAws.Subscription.toResource(param[0].onEvent(name, param[1], undefined, opts$1));
-                  }))];
+  return [Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts$1))];
 }
 
 function make(name, opts) {
@@ -110,6 +94,9 @@ function make(name, opts) {
         sqsManagedSseEnabled: false
       }, opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined);
   return {
+          parts: {
+            queue: queue
+          },
           resources: [Util_SQS$ReventlessAws.toResource(queue)],
           publishJsons: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
                 return CommandTopicChannel_SQS_Runtime$ReventlessAws.publishJsons(runtimeQueue, "SQS");
