@@ -40,37 +40,33 @@ let handler = PulumiAws.Lambda.CallbackFunction.make(
 
 let subscription = queue->SQS.Queue.onEvent(~name, ~handler)
 let fifoSubscription = fifoQueue->SQS.Queue.onEvent(~name=nameFifo, ~handler)
+let createQueuePolicyDocument = (name, queueArn: string, handlerArn: string) => {
+  open PulumiAws.PolicyDocument
+  PulumiAws.PolicyDocument.make(
+    ~id=name ++ "QueuePolicy",
+    ~statements=[
+      {
+        sid: "AllowLambdaToAccessQueue",
+        effect: Allow,
+        principal: Principals({
+          service: PrincipalId(AWS.Lambda.principal),
+        }),
+        actions: Actions(["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]),
+        resources: Resource(queueArn),
+        conditions: {
+          arnEquals: Js.Dict.fromArray([("AWS:SourceArn", ConditionValue(handlerArn))]),
+        },
+      },
+    ],
+  )
+  ->PulumiAws.PolicyDocument.toJsonString
+  ->Pulumi.Input.make
+}
 
 let _ =
   (queue.id, queue.arn, fifoQueue.id, fifoQueue.arn, handler.arn)
   ->Pulumi.Output.all5
   ->Pulumi.Output.apply(((queueId, queueArn, fifoQueueId, fifoQueueArn, handlerArn)) => {
-    open PulumiAws.PolicyDocument
-    let createQueuePolicyDocument = (
-      name,
-      queue: PulumiAws.SQS.Queue.t,
-      handler: PulumiAws.Lambda.CallbackFunction.t,
-    ) =>
-      PulumiAws.PolicyDocument.make(
-        ~id=name ++ "QueuePolicy",
-        ~statements=[
-          {
-            sid: "AllowLambdaToAccessQueue",
-            effect: Allow,
-            principal: Principals({
-              service: PrincipalId(AWS.Lambda.principal),
-            }),
-            actions: Actions(["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]),
-            resources: Resource(queueArn),
-            conditions: {
-              arnEquals: Js.Dict.fromArray([("AWS:SourceArn", ConditionValue(handlerArn))]),
-            },
-          },
-        ],
-      )
-      ->PulumiAws.PolicyDocument.toJsonString
-      ->Pulumi.Input.make
-
     let lambdaPolicyDocument = PulumiAws.PolicyDocument.make(
       ~id=name ++ "SQSPolicy",
       ~statements=[
@@ -104,7 +100,7 @@ let _ =
       ~name,
       ~args={
         queueUrl: queueId->Pulumi.Input.make,
-        policy: createQueuePolicyDocument(name, queue, handler),
+        policy: createQueuePolicyDocument(name, queueArn, handlerArn),
       },
       ~opts=Some(opts),
     )
@@ -112,7 +108,7 @@ let _ =
       ~name=nameFifo,
       ~args={
         queueUrl: fifoQueueId->Pulumi.Input.make,
-        policy: createQueuePolicyDocument(nameFifo, fifoQueue, handler),
+        policy: createQueuePolicyDocument(nameFifo, fifoQueueArn, handlerArn),
       },
       ~opts=Some(opts),
     )

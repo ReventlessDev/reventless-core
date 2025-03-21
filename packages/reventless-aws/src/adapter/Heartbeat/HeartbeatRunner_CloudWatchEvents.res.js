@@ -3,7 +3,6 @@
 
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
-var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
@@ -23,29 +22,30 @@ function make(name, timeout, runtime, opts) {
                   _0: timeout
                 }))
       }, opts$1);
-  var heartbeatLambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Role", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
-  var lambdaResource = Util_Lambda$ReventlessAws.findResource(runtime.resources);
+  var heartbeatLambda = runtime.parts.lambda;
+  var heartbeatLambdaRole = runtime.parts.lambdaRole;
   Pulumi.all([
-          lambdaResource.urn,
-          cloudwatchEventRule.arn
+          heartbeatLambda.arn,
+          heartbeatLambdaRole.id
         ]).apply(function (param) {
+        var heartbeatLambdaArn = param[0];
         new (Aws.lambda.Permission)(name + "Permission", {
               action: "lambda:InvokeFunction",
-              function: param[0],
+              function: heartbeatLambdaArn,
               principal: AWS$ReventlessAws.CloudwatchEventRule.principal
             }, opts$1);
-        return new (Aws.iam.RolePolicy)(name + "RolePolicy", {
-                    policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
-                    role: heartbeatLambdaRole.id
-                  });
+        new (Aws.iam.RolePolicy)(name + "RolePolicy", {
+              policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
+              role: param[1]
+            });
+        new (Aws.cloudwatch.EventTarget)(name, {
+              rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
+              arn: heartbeatLambdaArn
+            }, opts$1);
       });
-  new (Aws.cloudwatch.EventTarget)(name, {
-        rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
-        arn: lambdaResource.urn
-      }, opts$1);
   return {
           resources: [
-            lambdaResource,
+            Util_Lambda$ReventlessAws.toResource(heartbeatLambda),
             Util_Cloudwatch$ReventlessAws.EventRule.toResource(cloudwatchEventRule)
           ]
         };

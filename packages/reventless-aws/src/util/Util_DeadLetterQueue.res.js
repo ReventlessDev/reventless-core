@@ -46,6 +46,28 @@ var subscription = queue.onEvent(name, handler);
 
 var fifoSubscription = fifoQueue.onEvent(nameFifo, handler);
 
+function createQueuePolicyDocument(name, queueArn, handlerArn) {
+  return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
+                    Sid: "AllowLambdaToAccessQueue",
+                    Principal: {
+                      Service: AWS$ReventlessAws.Lambda.principal
+                    },
+                    Effect: "Allow",
+                    Action: [
+                      "sqs:ReceiveMessage",
+                      "sqs:DeleteMessage",
+                      "sqs:GetQueueAttributes"
+                    ],
+                    Resource: queueArn,
+                    Condition: {
+                      ArnEquals: Js_dict.fromArray([[
+                              "AWS:SourceArn",
+                              handlerArn
+                            ]])
+                    }
+                  }]));
+}
+
 Pulumi.all([
         queue.id,
         queue.arn,
@@ -54,28 +76,8 @@ Pulumi.all([
         handler.arn
       ]).apply(function (param) {
       var handlerArn = param[4];
+      var fifoQueueArn = param[3];
       var queueArn = param[1];
-      var createQueuePolicyDocument = function (name, queue, handler) {
-        return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
-                          Sid: "AllowLambdaToAccessQueue",
-                          Principal: {
-                            Service: AWS$ReventlessAws.Lambda.principal
-                          },
-                          Effect: "Allow",
-                          Action: [
-                            "sqs:ReceiveMessage",
-                            "sqs:DeleteMessage",
-                            "sqs:GetQueueAttributes"
-                          ],
-                          Resource: queueArn,
-                          Condition: {
-                            ArnEquals: Js_dict.fromArray([[
-                                    "AWS:SourceArn",
-                                    handlerArn
-                                  ]])
-                          }
-                        }]));
-      };
       var lambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSPolicy", [{
               Sid: "AllowLambdaSendAndReceiveMessage",
               Effect: "Allow",
@@ -87,7 +89,7 @@ Pulumi.all([
               ],
               Resource: [
                 queueArn,
-                param[3]
+                fifoQueueArn
               ]
             }]);
       new (Aws.iam.RolePolicy)(name, {
@@ -98,11 +100,11 @@ Pulumi.all([
             role: lambdaRole.id
           }, opts);
       new (Aws.sqs.QueuePolicy)(name, {
-            policy: createQueuePolicyDocument(name, queue, handler),
+            policy: createQueuePolicyDocument(name, queueArn, handlerArn),
             queueUrl: param[0]
           }, opts);
       new (Aws.sqs.QueuePolicy)(nameFifo, {
-            policy: createQueuePolicyDocument(nameFifo, fifoQueue, handler),
+            policy: createQueuePolicyDocument(nameFifo, fifoQueueArn, handlerArn),
             queueUrl: param[2]
           }, opts);
     });
@@ -117,4 +119,5 @@ exports.lambdaRole = lambdaRole;
 exports.handler = handler;
 exports.subscription = subscription;
 exports.fifoSubscription = fifoSubscription;
+exports.createQueuePolicyDocument = createQueuePolicyDocument;
 /* queue Not a pure module */
