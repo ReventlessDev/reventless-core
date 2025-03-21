@@ -23,9 +23,9 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
   )
 
   let _addPermissions =
-    (lambda.arn, lambdaRole.id)
-    ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((commandGeneratorArn, commandGeneratorRoleId)) => {
+    (lambda.arn, lambda.name, lambdaRole.id)
+    ->Pulumi.Output.all3
+    ->Pulumi.Output.apply(((commandGeneratorArn, commandGeneratorName, commandGeneratorRoleId)) => {
       open PulumiAws.PolicyDocument
 
       let _addCommandGeneratorPermissions = {
@@ -46,7 +46,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
           ~name=name ++ "Permission",
           ~args={
             action: "lambda:InvokeFunction",
-            function: commandGeneratorArn->Pulumi.Input.make,
+            function: commandGeneratorName->Pulumi.Input.make,
             principal: AWS.CloudwatchEventRule.principal,
           },
           ~opts,

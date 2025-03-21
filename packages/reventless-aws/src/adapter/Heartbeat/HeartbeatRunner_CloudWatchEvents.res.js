@@ -26,21 +26,21 @@ function make(name, timeout, runtime, opts) {
   var heartbeatLambdaRole = runtime.parts.lambdaRole;
   Pulumi.all([
           heartbeatLambda.arn,
+          heartbeatLambda.name,
           heartbeatLambdaRole.id
         ]).apply(function (param) {
-        var heartbeatLambdaArn = param[0];
         new (Aws.lambda.Permission)(name + "Permission", {
               action: "lambda:InvokeFunction",
-              function: heartbeatLambdaArn,
+              function: param[1],
               principal: AWS$ReventlessAws.CloudwatchEventRule.principal
             }, opts$1);
         new (Aws.iam.RolePolicy)(name + "RolePolicy", {
               policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
-              role: param[1]
+              role: param[2]
             });
         new (Aws.cloudwatch.EventTarget)(name, {
               rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
-              arn: heartbeatLambdaArn
+              arn: param[0]
             }, opts$1);
       });
   return {
