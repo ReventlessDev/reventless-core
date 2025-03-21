@@ -28,7 +28,7 @@ let subscribe = (
       AWS.SNS_FIFO.service,
     ])
 
-  let subscriptionResource =
+  let attachPolicies =
     (eventTopicResources, queue.arn, queue.id)
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply((((supportedResources, errorResources), queueArn, queueId)) => {
@@ -61,7 +61,7 @@ let subscribe = (
         )
       )
 
-      let _attachQueuePolicy = {
+      let attachQueuePolicy = {
         open PulumiAws.PolicyDocument
         PulumiAws.SQS.QueuePolicy.make(
           ~name=name ++ "QueuePolicy",
@@ -138,7 +138,7 @@ let subscribe = (
         )
       }
 
-      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
+      let attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
         ~name=name ++ "LambdaPolicy",
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
@@ -158,12 +158,23 @@ let subscribe = (
         Js.Exn.raiseError(__MODULE__ ++ ` cannot connect to EventTopic(s) ${eventTopicNames}`)
       }
 
-      queue
-      ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
-      ->Util.SQS.Subscription.toResource
+      (attachLambdaPolicy, attachQueuePolicy)
     })
 
-  [subscriptionResource->Reventless.Adapter.outputToResource]
+  let resource =
+    attachPolicies
+    ->Pulumi.Output.flatMap(((attachLambdaPolicy, attachQueuePolicy)) =>
+      (attachLambdaPolicy.id, attachQueuePolicy.id)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(_ => {
+        queue
+        ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
+        ->Util.SQS.Subscription.toResource
+      })
+    )
+    ->Reventless.Adapter.outputToResource
+
+  [resource]
 }
 
 let make: Reventless.EventCollector_Adapter.channelMaker<

@@ -19,7 +19,7 @@ let subscribe = (
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
 
-  let _attachPolicies =
+  let attachPolicies =
     (queue.arn, queue.id, lambda.arn)
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((queueArn, queueId, handlerArn)) => {
@@ -76,7 +76,7 @@ let subscribe = (
         ],
       )
 
-      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
+      let attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
         ~name,
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
@@ -88,17 +88,28 @@ let subscribe = (
         ~opts,
       )
 
-      let _attachQueuePolicy = PulumiAws.SQS.QueuePolicy.make(
+      let attachQueuePolicy = PulumiAws.SQS.QueuePolicy.make(
         ~name,
         ~args={queueUrl: queueId->Pulumi.Input.make, policy: queuePolicyDocument},
         ~opts=Some(opts),
       )
+
+      (attachLambdaPolicy, attachQueuePolicy)
     })
 
   let resource =
-    queue
-    ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
-    ->Util.SQS.Subscription.toResource
+    attachPolicies
+    ->Pulumi.Output.flatMap(((attachLambdaPolicy, attachQueuePolicy)) =>
+      (attachLambdaPolicy.id, attachQueuePolicy.id)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(_ => {
+        queue
+        ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
+        ->Util.SQS.Subscription.toResource
+      })
+    )
+    ->Reventless.Adapter.outputToResource
+
   [resource]
 }
 

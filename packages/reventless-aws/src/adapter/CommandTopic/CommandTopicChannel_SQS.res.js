@@ -5,8 +5,10 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
@@ -21,7 +23,7 @@ function subscribe(name, channel, runtime, opts) {
   var queue = channel.parts.queue;
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
-  Pulumi.all([
+  var attachPolicies = Pulumi.all([
           queue.arn,
           queue.id,
           lambda.arn
@@ -68,19 +70,30 @@ function subscribe(name, channel, runtime, opts) {
                 ],
                 Resource: queueArn
               }]);
-        new (Aws.iam.RolePolicy)(name, {
+        var attachLambdaPolicy = new (Aws.iam.RolePolicy)(name, {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", [
                     Lambda$PulumiAws.defaultLoggingPolicyDocument,
                     allowSQSLambdaPolicyDocument
                   ]),
               role: lambdaRole.id
             }, opts$1);
-        new (Aws.sqs.QueuePolicy)(name, {
+        var attachQueuePolicy = new (Aws.sqs.QueuePolicy)(name, {
               policy: queuePolicyDocument,
               queueUrl: param[1]
             }, opts$1);
+        return [
+                attachLambdaPolicy,
+                attachQueuePolicy
+              ];
       });
-  return [Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts$1))];
+  return [Adapter$Reventless.outputToResource(Output$Pulumi.flatMap(attachPolicies, (function (param) {
+                      return Pulumi.all([
+                                    param[0].id,
+                                    param[1].id
+                                  ]).apply(function (param) {
+                                  return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts$1));
+                                });
+                    })))];
 }
 
 function make(name, opts) {
