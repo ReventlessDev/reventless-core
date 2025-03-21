@@ -16,61 +16,64 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
 
-  let _addCommandGeneratorPermissions = {
-    let _commandGeneratorPolicy = {
-      open PulumiAws
-      PulumiAws.IAM.RolePolicy.make(
-        ~name=name ++ "CommandGeneratorPolicy",
-        ~args={
-          policy: PulumiAws.Lambda.defaultLoggingPolicyDocument
-          ->PolicyDocument.toJsonString
-          ->Pulumi.Input.make,
-          role: lambdaRole.id->Pulumi.Output.asInput,
-        },
-        ~opts,
-      )
-    }
-
-    let _addCommandGeneratorPermission = PulumiAws.Lambda.Permission.make(
-      ~name=name ++ "Permission",
-      ~args={
-        action: "lambda:InvokeFunction",
-        function: lambda.arn->Pulumi.Output.asInput,
-        principal: AWS.CloudwatchEventRule.principal,
-      },
-      ~opts,
-    )
-  }
-
   let dataSourceRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "DataSource",
     ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
     ~opts,
   )
 
-  let _attachDataSourcePolicy = lambda.arn->Pulumi.Output.apply(commandGeneratorArn => {
-    open PulumiAws.PolicyDocument
-    PulumiAws.IAM.RolePolicy.make(
-      ~name=name ++ "DataSourcePolicy",
-      ~args={
-        PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
-          ~id=name ++ "DataSourcePolicy",
-          ~statements=[
-            {
-              sid: "AllowCloudWatchDataSourceInvokeLambda",
-              effect: Allow,
-              actions: Action("lambda:InvokeFunction"),
-              resources: Resource(commandGeneratorArn),
+  let _addPermissions =
+    (lambda.arn, lambdaRole.id)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply(((commandGeneratorArn, commandGeneratorRoleId)) => {
+      open PulumiAws.PolicyDocument
+
+      let _addCommandGeneratorPermissions = {
+        let _commandGeneratorPolicy = {
+          PulumiAws.IAM.RolePolicy.make(
+            ~name=name ++ "CommandGeneratorPolicy",
+            ~args={
+              policy: PulumiAws.Lambda.defaultLoggingPolicyDocument
+              ->toJsonString
+              ->Pulumi.Input.make,
+              role: commandGeneratorRoleId->Pulumi.Input.make,
             },
-          ],
+            ~opts,
+          )
+        }
+
+        let _addCommandGeneratorPermission = PulumiAws.Lambda.Permission.make(
+          ~name=name ++ "Permission",
+          ~args={
+            action: "lambda:InvokeFunction",
+            function: commandGeneratorArn->Pulumi.Input.make,
+            principal: AWS.CloudwatchEventRule.principal,
+          },
+          ~opts,
         )
-        ->toJsonString
-        ->Pulumi.Input.make,
-        role: dataSourceRole.id->Pulumi.Output.asInput,
-      },
-      ~opts,
-    )
-  })
+
+        let _attachDataSourcePolicy = PulumiAws.IAM.RolePolicy.make(
+          ~name=name ++ "DataSourcePolicy",
+          ~args={
+            PulumiAws.IAM.RolePolicy.policy: PulumiAws.PolicyDocument.make(
+              ~id=name ++ "DataSourcePolicy",
+              ~statements=[
+                {
+                  sid: "AllowCloudWatchDataSourceInvokeLambda",
+                  effect: Allow,
+                  actions: Action("lambda:InvokeFunction"),
+                  resources: Resource(commandGeneratorArn),
+                },
+              ],
+            )
+            ->toJsonString
+            ->Pulumi.Input.make,
+            role: dataSourceRole.id->Pulumi.Output.asInput,
+          },
+          ~opts,
+        )
+      }
+    })
 
   let dataSource = PulumiAws.AppSync.DataSource.make(
     ~name,

@@ -25,26 +25,30 @@ function make(name, api, fields, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
-  new (Aws.iam.RolePolicy)(name + "CommandGeneratorPolicy", {
-        policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
-        role: lambdaRole.id
-      }, opts$1);
-  new (Aws.lambda.Permission)(name + "Permission", {
-        action: "lambda:InvokeFunction",
-        function: lambda.arn,
-        principal: AWS$ReventlessAws.CloudwatchEventRule.principal
-      }, opts$1);
   var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
-  lambda.arn.apply(function (commandGeneratorArn) {
-        return new (Aws.iam.RolePolicy)(name + "DataSourcePolicy", {
-                    policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "DataSourcePolicy", [{
-                                Sid: "AllowCloudWatchDataSourceInvokeLambda",
-                                Effect: "Allow",
-                                Action: "lambda:InvokeFunction",
-                                Resource: commandGeneratorArn
-                              }])),
-                    role: dataSourceRole.id
-                  }, opts$1);
+  Pulumi.all([
+          lambda.arn,
+          lambdaRole.id
+        ]).apply(function (param) {
+        var commandGeneratorArn = param[0];
+        new (Aws.iam.RolePolicy)(name + "CommandGeneratorPolicy", {
+              policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
+              role: param[1]
+            }, opts$1);
+        new (Aws.lambda.Permission)(name + "Permission", {
+              action: "lambda:InvokeFunction",
+              function: commandGeneratorArn,
+              principal: AWS$ReventlessAws.CloudwatchEventRule.principal
+            }, opts$1);
+        new (Aws.iam.RolePolicy)(name + "DataSourcePolicy", {
+              policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "DataSourcePolicy", [{
+                          Sid: "AllowCloudWatchDataSourceInvokeLambda",
+                          Effect: "Allow",
+                          Action: "lambda:InvokeFunction",
+                          Resource: commandGeneratorArn
+                        }])),
+              role: dataSourceRole.id
+            }, opts$1);
       });
   var dataSource = new (Aws.appsync.DataSource)(name, {
         type: "AWS_LAMBDA",

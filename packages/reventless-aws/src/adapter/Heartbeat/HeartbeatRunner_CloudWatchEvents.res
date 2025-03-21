@@ -31,14 +31,14 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   let _attachHeartbeatLambdaRolePolicy =
     (lambdaResource.urn, cloudwatchEventRule.arn)
     ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((lambdaUrn, ruleArn)) => {
+    ->Pulumi.Output.apply(((lambdaUrn, _ruleArn)) => {
       open PulumiAws.PolicyDocument
 
       let _addHeartbeatLambdaPermission = PulumiAws.Lambda.Permission.make(
         ~name=name++"Permission",
         ~args={
           action: "lambda:InvokeFunction",
-          function: lambdaResource.urn->Pulumi.Output.asInput,
+          function: lambdaUrn->Pulumi.Input.make,
           principal: AWS.CloudwatchEventRule.principal,
         },
         ~opts,

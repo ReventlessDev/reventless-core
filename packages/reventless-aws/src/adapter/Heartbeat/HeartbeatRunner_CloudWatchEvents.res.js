@@ -31,7 +31,7 @@ function make(name, timeout, runtime, opts) {
         ]).apply(function (param) {
         new (Aws.lambda.Permission)(name + "Permission", {
               action: "lambda:InvokeFunction",
-              function: lambdaResource.urn,
+              function: param[0],
               principal: AWS$ReventlessAws.CloudwatchEventRule.principal
             }, opts$1);
         return new (Aws.iam.RolePolicy)(name + "RolePolicy", {
