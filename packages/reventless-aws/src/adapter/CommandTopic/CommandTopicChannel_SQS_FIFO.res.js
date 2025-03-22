@@ -23,6 +23,7 @@ function subscribe(name, channel, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = channel.parts.queue;
   var lambda = runtime.parts.lambda;
+  console.log("CommandTopicChannel_SQS_FIFO: lambda:", lambda);
   var lambdaRole = runtime.parts.lambdaRole;
   var attachPolicies = Pulumi.all([
           queue.arn,

@@ -17,6 +17,7 @@ let subscribe = (
 
   let queue = channel.parts.queue
   let lambda = runtime.parts.lambda
+  Js.log2("CommandTopicChannel_SQS_FIFO: lambda:", lambda)
   let lambdaRole = runtime.parts.lambdaRole
 
   let attachPolicies =

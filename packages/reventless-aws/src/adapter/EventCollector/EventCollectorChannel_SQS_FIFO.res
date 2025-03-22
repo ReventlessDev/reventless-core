@@ -18,6 +18,7 @@ let subscribe = (
 
   let queue = channel.parts.queue
   let lambda = runtime.parts.lambda
+  Js.log2("EventCollectorChannel_SQS_FIFO: lambda:", lambda)
   let lambdaRole = runtime.parts.lambdaRole
 
   let eventTopicResources =

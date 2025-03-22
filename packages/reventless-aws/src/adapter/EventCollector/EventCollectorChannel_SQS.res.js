@@ -28,6 +28,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = channel.parts.queue;
   var lambda = runtime.parts.lambda;
+  console.log("EventCollectorChannel_SQS: lambda:", lambda);
   var lambdaRole = runtime.parts.lambdaRole;
   var eventTopicResources = Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
             return Js_dict.map((function (eventTopic) {
