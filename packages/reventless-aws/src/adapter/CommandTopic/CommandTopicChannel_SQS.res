@@ -17,7 +17,10 @@ let subscribe = (
 
   let queue = channel.parts.queue
   let lambda = runtime.parts.lambda
-  Js.log2("CommandTopicChannel_SQS: lambda:", lambda)
+  let _ =
+    lambda.name->Pulumi.Output.apply(lambdaName =>
+      Js.log2("CommandTopicChannel_SQS: lambdaName:", lambdaName)
+    )
   let lambdaRole = runtime.parts.lambdaRole
 
   let attachPolicies =
