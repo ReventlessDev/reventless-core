@@ -95,7 +95,7 @@ function subscribe(name, channel, runtime, opts) {
                                     param[0].id,
                                     param[1].id
                                   ]).apply(function (param) {
-                                  return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts$1));
+                                  return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda));
                                 });
                     })))];
 }

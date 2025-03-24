@@ -108,7 +108,7 @@ let subscribe = (
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply(_ => {
         queue
-        ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
+        ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda /* , ~opts */)
         ->Util.SQS.Subscription.toResource
       })
     )
