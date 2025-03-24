@@ -215,7 +215,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                       eventCollector: ""
                                     };
                             });
+                        console.log("pluginDefinition:", pluginDefinition);
                         var match$2 = Output$Pulumi.unzip(Pulumi.all(Belt_Array.map(extensionPointsOutputs, ExtensionPoint$Reventless.toUnwrappedOutputs)).apply(function (extensionPointsOutputs) {
+                                  console.log("connectPluginExtension: extensionPointsOutputs:", extensionPointsOutputs);
                                   var ConnectPluginExtension = PluginConnectExtension_Builder$Reventless.Make({
                                         pluginDefinition: pluginDefinition,
                                         extensionPointsOutputs: extensionPointsOutputs,
@@ -223,6 +225,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                       });
                                   var connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
                                   var connectPluginExtensionOutputs = Component$Reventless.outputs(connectPluginExtension);
+                                  console.log("connectPluginExtensionOutputs:", connectPluginExtensionOutputs);
                                   var connectPluginExtensionIncomingEventHandler = Component$Reventless.operations(connectPluginExtension).apply(function (param) {
                                         return param.incomingEventHandler;
                                       });
@@ -240,9 +243,11 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         tasksOutputs.contents = Belt_Array.map(taskMakers, (function (taskMaker) {
                                 return Component$Reventless.outputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
                               }));
+                        console.log("tasksOutputs:", tasksOutputs.contents.length);
                         var resolvers = Belt_Array.concatMany(Belt_Array.map(QueryDb$Reventless.allResolversMakers(allQueryDbs), (function (resolverMaker) {
                                     return resolverMaker(allQueryDbs);
                                   })));
+                        console.log("resolvers:", resolvers.length);
                         var collectAggregateNames = function (ex) {
                           return Belt_SetString.remove(Belt_SetString.fromArray(ex), ExtensionMapping$ReventlessSpec.NoAggregate.name);
                         };

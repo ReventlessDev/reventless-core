@@ -280,12 +280,14 @@ module Make = (
             extensions: extensionsDefinitions,
             eventCollector: "",
           })
+        Js.log2("pluginDefinition:", pluginDefinition)
 
         let (connectPluginExtensionOutputs, connectPluginExtensionIncomingEventHandler) =
           extensionPointsOutputs
           ->Belt.Array.map(ExtensionPoint.toUnwrappedOutputs)
           ->Pulumi.Output.all
           ->Pulumi.Output.apply(extensionPointsOutputs => {
+            Js.log2("connectPluginExtension: extensionPointsOutputs:", extensionPointsOutputs)
             module ConnectPluginExtension = PluginConnectExtension_Builder.Make({
               let pluginDefinition = pluginDefinition
               let extensionPointsOutputs = extensionPointsOutputs
@@ -300,6 +302,7 @@ module Make = (
               ~opts=Some(opts),
             )
             let connectPluginExtensionOutputs = connectPluginExtension->Component.outputs
+            Js.log2("connectPluginExtensionOutputs:", connectPluginExtensionOutputs)
             let connectPluginExtensionIncomingEventHandler =
               connectPluginExtension
               ->Component.operations
@@ -323,12 +326,14 @@ module Make = (
               ~opts=Some(opts),
             )->Component.outputs
           )
+        Js.log2("tasksOutputs:", tasksOutputs.contents->Belt.Array.size)
 
         let resolvers =
           allQueryDbs
           ->QueryDb.allResolversMakers
           ->Belt.Array.map(resolverMaker => resolverMaker(allQueryDbs))
           ->Belt.Array.concatMany
+        Js.log2("resolvers:", resolvers->Belt.Array.size)
 
         module Set = Belt.Set.String
 
