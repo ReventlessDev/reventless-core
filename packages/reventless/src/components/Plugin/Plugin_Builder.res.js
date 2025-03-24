@@ -134,9 +134,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                       Component$Reventless.outputs(param[1].readModel)
                                     ];
                             })));
-                  console.log("readModels:", Js_dict.entries(readModelsOutputs).length);
+                  console.log("====== readModels:", Js_dict.entries(readModelsOutputs).length);
                   var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
-                  console.log("allQueryDbs:", Js_dict.entries(allQueryDbs).length);
+                  console.log("====== allQueryDbs:", Js_dict.entries(allQueryDbs).length);
                   var queryEngine = QueryEngineAdapter.make(allQueryDbs);
                   var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
                           return coreStack.getOutput("extensionPoints");
@@ -169,9 +169,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                   })));
                         var extensionPointsOutputs = match[0];
                         var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
-                        console.log("coreExtensionPoints:", coreExtensionPoints$1);
+                        console.log("====== coreExtensionPoints:", coreExtensionPoints$1);
                         var corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
-                        console.log("corePluginExtensionPointUnwrapped:", corePluginExtensionPointUnwrapped);
+                        console.log("====== corePluginExtensionPointUnwrapped:", corePluginExtensionPointUnwrapped);
                         var corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources);
                         var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
                         var match$1 = Belt_Array.unzip(Belt_Array.map(extensions, (function (SpecificExtension) {
@@ -219,9 +219,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                       eventCollector: ""
                                     };
                             });
-                        console.log("pluginDefinition:", pluginDefinition);
+                        console.log("====== pluginDefinition:", pluginDefinition);
                         var match$2 = Output$Pulumi.unzip(Pulumi.all(Belt_Array.map(extensionPointsOutputs, ExtensionPoint$Reventless.toUnwrappedOutputs)).apply(function (extensionPointsOutputs) {
-                                  console.log("connectPluginExtension: extensionPointsOutputs:", extensionPointsOutputs);
+                                  console.log("====== connectPluginExtension: extensionPointsOutputs:", extensionPointsOutputs);
                                   var ConnectPluginExtension = PluginConnectExtension_Builder$Reventless.Make({
                                         pluginDefinition: pluginDefinition,
                                         extensionPointsOutputs: extensionPointsOutputs,
@@ -229,7 +229,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                       });
                                   var connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
                                   var connectPluginExtensionOutputs = Component$Reventless.outputs(connectPluginExtension);
-                                  console.log("connectPluginExtensionOutputs:", connectPluginExtensionOutputs);
+                                  console.log("====== connectPluginExtensionOutputs:", connectPluginExtensionOutputs);
                                   var connectPluginExtensionIncomingEventHandler = Component$Reventless.operations(connectPluginExtension).apply(function (param) {
                                         return param.incomingEventHandler;
                                       });
@@ -247,11 +247,11 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         tasksOutputs.contents = Belt_Array.map(taskMakers, (function (taskMaker) {
                                 return Component$Reventless.outputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
                               }));
-                        console.log("tasksOutputs:", tasksOutputs.contents.length);
+                        console.log("====== tasksOutputs:", tasksOutputs.contents.length);
                         var resolvers = Belt_Array.concatMany(Belt_Array.map(QueryDb$Reventless.allResolversMakers(allQueryDbs), (function (resolverMaker) {
                                     return resolverMaker(allQueryDbs);
                                   })));
-                        console.log("resolvers:", resolvers.length);
+                        console.log("====== resolvers:", resolvers.length);
                         var collectAggregateNames = function (ex) {
                           return Belt_SetString.remove(Belt_SetString.fromArray(ex), ExtensionMapping$ReventlessSpec.NoAggregate.name);
                         };
