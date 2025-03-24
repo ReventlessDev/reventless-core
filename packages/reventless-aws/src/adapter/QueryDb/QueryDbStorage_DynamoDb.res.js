@@ -72,6 +72,7 @@ function dataSource(name, table, api, apiRole, opts) {
   new (Aws.iam.RolePolicy)(name, {
         policy: table.arn.apply(function (tableArn) {
               return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "DataSourcePolicy", [{
+                                Sid: "AllowDynamoDbActions",
                                 Effect: "Allow",
                                 Action: "dynamodb:*",
                                 Resource: tableArn

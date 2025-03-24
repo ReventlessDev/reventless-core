@@ -71,18 +71,9 @@ let subscribe = (
               ~id=name ++ "QueuePolicy",
               ~statements=[
                 {
-                  sid: "AllowReceiveSNSMessages",
+                  sid: "AllowReceiveEvents",
                   principal: Principals({
-                    service: PrincipalId(AWS.SNS.principal),
-                  }),
-                  effect: Allow,
-                  actions: Actions(["sqs:SendMessage"]),
-                  resources: Resource(queueArn),
-                },
-                {
-                  sid: "AllowReceiveCloudWatchEvents",
-                  principal: Principals({
-                    service: PrincipalId(AWS.CloudwatchEventRule.principal),
+                    service: PrincipalIds([AWS.CloudwatchEventRule.principal, AWS.Lambda.principal, AWS.SNS.principal]),
                   }),
                   effect: Allow,
                   actions: Actions(["sqs:SendMessage"]),

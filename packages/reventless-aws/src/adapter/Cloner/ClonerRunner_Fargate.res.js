@@ -29,6 +29,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
               ])]
       });
   var secretsManagerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SecretsManagerPolicy", [{
+          Sid: "AllowManageSecrets",
           Effect: "Allow",
           Action: [
             "secretsmanager:GetRandomPassword",
@@ -42,6 +43,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         policy: PolicyDocument$PulumiAws.toJsonString(secretsManagerPolicyDocument)
       });
   var taskRunnerPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "TaskRunnerPolicy", [{
+          Sid: "AllowRunTask",
           Effect: "Allow",
           Action: [
             "ecs:RunTask",
@@ -115,6 +117,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
                   }), undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined), opts !== undefined ? Caml_option.valFromOption(opts) : undefined);
         lambda.arn.apply(function (arn) {
               var appsyncInvokeLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "AppSyncInvokePolicy", [{
+                      Sid: "AllowAppSyncInvoke",
                       Principal: {
                         Service: AWS$ReventlessAws.AppSync.principal
                       },
@@ -141,7 +144,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         new (Aws.iam.RolePolicy)(name + "DS", {
               policy: lambda.arn.apply(function (lambdaArn) {
                     return PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "LambdaPolicy", [{
-                                      Sid: "InvokeLambda",
+                                      Sid: "AllowInvokeLambda",
                                       Effect: "Allow",
                                       Action: "lambda:InvokeFunction",
                                       Resource: lambdaArn

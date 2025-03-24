@@ -51,6 +51,7 @@ let dataSource = (name, table, api, apiRole, opts) => {
             ~id = name ++ "DataSourcePolicy",
             ~statements=[
               {
+                sid: "AllowDynamoDbActions",
                 effect: Allow,
                 actions: Action("dynamodb:*"),
                 resources: Resource(tableArn),

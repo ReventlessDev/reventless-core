@@ -54,26 +54,19 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                 return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts$1);
               }));
         var attachQueuePolicy = new (Aws.sqs.QueuePolicy)(name + "QueuePolicy", {
-              policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
-                        {
-                          Sid: "AllowReceiveSNSMessages",
+              policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
+                          Sid: "AllowReceiveEvents",
                           Principal: {
-                            Service: AWS$ReventlessAws.SNS.principal
+                            Service: [
+                              AWS$ReventlessAws.CloudwatchEventRule.principal,
+                              AWS$ReventlessAws.Lambda.principal,
+                              AWS$ReventlessAws.SNS.principal
+                            ]
                           },
                           Effect: "Allow",
                           Action: ["sqs:SendMessage"],
                           Resource: queueArn
-                        },
-                        {
-                          Sid: "AllowReceiveCloudWatchEvents",
-                          Principal: {
-                            Service: AWS$ReventlessAws.CloudwatchEventRule.principal
-                          },
-                          Effect: "Allow",
-                          Action: ["sqs:SendMessage"],
-                          Resource: queueArn
-                        }
-                      ])),
+                        }])),
               queueUrl: param[2]
             }, opts$1);
         var lambdaDynamoDbStreamPolicyDocuments = Belt_Array.map(otherResources, (function (param) {

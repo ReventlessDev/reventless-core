@@ -35,6 +35,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
     ~id=name ++ "SecretsManagerPolicy",
     ~statements=[
       {
+        sid: "AllowManageSecrets",
         effect: PolicyDocument.Allow,
         actions: PolicyDocument.Actions([
           "secretsmanager:GetRandomPassword",
@@ -60,6 +61,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
     ~id=name ++ "TaskRunnerPolicy",
     ~statements=[
       {
+        sid: "AllowRunTask",
         effect: PolicyDocument.Allow,
         actions: PolicyDocument.Actions(["ecs:RunTask", "iam:PassRole"]),
       },
@@ -177,6 +179,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
           ~id=name ++ "AppSyncInvokePolicy",
           ~statements=[
             {
+              sid: "AllowAppSyncInvoke",
               effect: PulumiAws.PolicyDocument.Allow,
               actions: PulumiAws.PolicyDocument.Action("lambda:InvokeFunction"),
               resources: PulumiAws.PolicyDocument.Resource(arn),
@@ -230,7 +233,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
                 ~id=name ++ "LambdaPolicy",
                 ~statements=[
                   {
-                    sid: "InvokeLambda",
+                    sid: "AllowInvokeLambda",
                     effect: PolicyDocument.Allow,
                     actions: PolicyDocument.Action("lambda:InvokeFunction"),
                     resources: PolicyDocument.Resource(lambdaArn),
