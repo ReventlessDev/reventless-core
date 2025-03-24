@@ -35,20 +35,28 @@ function make(name, timeout, runtime, opts) {
                 })),
           lambdaRole.id
         ]).apply(function (param) {
+        var lambdaArn = param[0];
         new (Aws.lambda.Permission)(name + "Permission", {
               action: "lambda:InvokeFunction",
               function: param[1],
               principal: AWS$ReventlessAws.CloudwatchEventRule.principal
             }, opts$1);
+        var heartbeatLambdaSendMessagePolicyDocument = PolicyDocument$PulumiAws.make(undefined, undefined, [{
+                Sid: "AllowLambdaToSendSQS",
+                Effect: "Allow",
+                Action: "sqs:SendMessage",
+                Resource: lambdaArn
+              }]);
         new (Aws.iam.RolePolicy)(name + "RolePolicy", {
-              policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "Policy", [
+                    Lambda$PulumiAws.defaultLoggingPolicyDocument,
+                    heartbeatLambdaSendMessagePolicyDocument
+                  ]),
               role: param[2]
             });
         new (Aws.cloudwatch.EventTarget)(name, {
               rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
-              arn: Output$Pulumi.flatMap(lambda, (function (lambda) {
-                      return lambda.arn;
-                    }))
+              arn: lambdaArn
             }, opts$1);
       });
   return {

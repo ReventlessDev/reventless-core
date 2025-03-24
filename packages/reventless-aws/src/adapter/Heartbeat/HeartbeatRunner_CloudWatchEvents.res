@@ -43,10 +43,30 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
         ~opts,
       )
 
+      let heartbeatLambdaSendMessagePolicyDocument = {
+        open PulumiAws.PolicyDocument
+        PulumiAws.PolicyDocument.make(
+          ~statements=[
+            {
+              sid: "AllowLambdaToSendSQS",
+              effect: Allow,
+              actions: Action("sqs:SendMessage"),
+              resources: Resource(lambdaArn),
+            },
+          ],
+        )
+      }
+
       let _attachHeartbeatLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
         ~name=name ++ "RolePolicy",
         ~args={
-          policy: PulumiAws.Lambda.defaultLoggingPolicyDocument->toJsonString->Pulumi.Input.make,
+          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
+            name ++ "Policy",
+            [
+              PulumiAws.Lambda.defaultLoggingPolicyDocument,
+              heartbeatLambdaSendMessagePolicyDocument,
+            ],
+          )->Pulumi.Output.asInput,
           role: heartbeatRoleId->Pulumi.Input.make,
         },
       )
@@ -57,7 +77,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
           ~name,
           ~args={
             rule: EventTarget.Rule.ofEventRule(cloudwatchEventRule),
-            arn: lambda->Pulumi.Output.flatMap(lambda => lambda.arn)->Pulumi.Output.asInput,
+            arn: lambdaArn->Pulumi.Input.make,
           },
           ~opts,
         )
