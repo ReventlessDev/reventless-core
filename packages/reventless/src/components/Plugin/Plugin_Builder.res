@@ -210,7 +210,7 @@ module Make = (
             "No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
           )
         }
-        Js.log2("====== coreExtensionPoints:", coreExtensionPoints)
+        Js.log2("====== coreExtensionPoints:", coreExtensionPoints->Js.Json.stringifyAny)
         let corePluginExtensionPointUnwrapped: ExtensionPoint.unwrappedOutputs =
           coreExtensionPoints->Pulumi.StackReference.get(
             ReventlessSpec.PluginExtensionPointSpec.name,

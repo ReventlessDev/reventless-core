@@ -169,7 +169,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                   })));
                         var extensionPointsOutputs = match[0];
                         var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
-                        console.log("====== coreExtensionPoints:", coreExtensionPoints$1);
+                        console.log("====== coreExtensionPoints:", JSON.stringify(coreExtensionPoints$1));
                         var corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
                         console.log("====== corePluginExtensionPointUnwrapped:", corePluginExtensionPointUnwrapped);
                         var corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources);
