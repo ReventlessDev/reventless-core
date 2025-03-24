@@ -153,9 +153,7 @@ module Make = (
       ->Js.Dict.entries
       ->Belt.Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
       ->Js.Dict.fromArray
-    Js.log2("====== readModels:", readModelsOutputs->Js.Dict.entries->Belt.Array.size)
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
-    Js.log2("====== allQueryDbs:", allQueryDbs->Js.Dict.entries->Belt.Array.size)
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     let pureOutputs = {
@@ -210,12 +208,10 @@ module Make = (
             "No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!",
           )
         }
-        Js.log2("====== coreExtensionPoints:", coreExtensionPoints->Js.Json.stringifyAny)
         let corePluginExtensionPointUnwrapped: ExtensionPoint.unwrappedOutputs =
           coreExtensionPoints->Pulumi.StackReference.get(
             ReventlessSpec.PluginExtensionPointSpec.name,
           )
-        Js.log2("====== corePluginExtensionPointUnwrapped:", corePluginExtensionPointUnwrapped)
         let corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(
           corePluginExtensionPointUnwrapped.commandTopic.resources,
         )
@@ -282,17 +278,12 @@ module Make = (
             extensions: extensionsDefinitions,
             eventCollector: "",
           })
-        Js.log2("====== pluginDefinition:", pluginDefinition)
 
         let (connectPluginExtensionOutputs, connectPluginExtensionIncomingEventHandler) =
           extensionPointsOutputs
           ->Belt.Array.map(ExtensionPoint.toUnwrappedOutputs)
           ->Pulumi.Output.all
           ->Pulumi.Output.apply(extensionPointsOutputs => {
-            Js.log2(
-              "====== connectPluginExtension: extensionPointsOutputs:",
-              extensionPointsOutputs,
-            )
             module ConnectPluginExtension = PluginConnectExtension_Builder.Make({
               let pluginDefinition = pluginDefinition
               let extensionPointsOutputs = extensionPointsOutputs
@@ -307,7 +298,6 @@ module Make = (
               ~opts=Some(opts),
             )
             let connectPluginExtensionOutputs = connectPluginExtension->Component.outputs
-            Js.log2("====== connectPluginExtensionOutputs:", connectPluginExtensionOutputs)
             let connectPluginExtensionIncomingEventHandler =
               connectPluginExtension
               ->Component.operations
@@ -331,14 +321,12 @@ module Make = (
               ~opts=Some(opts),
             )->Component.outputs
           )
-        Js.log2("====== tasksOutputs:", tasksOutputs.contents->Belt.Array.size)
 
         let resolvers =
           allQueryDbs
           ->QueryDb.allResolversMakers
           ->Belt.Array.map(resolverMaker => resolverMaker(allQueryDbs))
           ->Belt.Array.concatMany
-        Js.log2("====== resolvers:", resolvers->Belt.Array.size)
 
         module Set = Belt.Set.String
 
