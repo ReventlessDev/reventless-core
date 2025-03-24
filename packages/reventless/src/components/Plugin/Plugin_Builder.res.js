@@ -134,7 +134,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                       Component$Reventless.outputs(param[1].readModel)
                                     ];
                             })));
+                  console.log("readModels:", Js_dict.entries(readModelsOutputs).length);
                   var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
+                  console.log("allQueryDbs:", Js_dict.entries(allQueryDbs).length);
                   var queryEngine = QueryEngineAdapter.make(allQueryDbs);
                   var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
                           return coreStack.getOutput("extensionPoints");
@@ -167,7 +169,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                   })));
                         var extensionPointsOutputs = match[0];
                         var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
+                        console.log("coreExtensionPoints:", coreExtensionPoints$1);
                         var corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
+                        console.log("corePluginExtensionPointUnwrapped:", corePluginExtensionPointUnwrapped);
                         var corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources);
                         var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
                         var match$1 = Belt_Array.unzip(Belt_Array.map(extensions, (function (SpecificExtension) {
