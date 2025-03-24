@@ -20,20 +20,24 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
     )
   }
 
-  let heartbeatLambda = runtime.parts.lambda
-  let heartbeatLambdaRole = runtime.parts.lambdaRole
+  let lambda = runtime.parts.lambda
+  let lambdaRole = runtime.parts.lambdaRole
 
   let _attachPoliciesAndSetEventTarget =
-    (heartbeatLambda.arn, heartbeatLambda.name, heartbeatLambdaRole.id)
+    (
+      lambda->Pulumi.Output.flatMap(lambda => lambda.arn),
+      lambda->Pulumi.Output.flatMap(lambda => lambda.name),
+      lambdaRole.id,
+    )
     ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((heartbeatLambdaArn, heartbeatLambdaName, heartbeatRoleId)) => {
+    ->Pulumi.Output.apply(((lambdaArn, lambdaName, heartbeatRoleId)) => {
       open PulumiAws.PolicyDocument
 
       let _addHeartbeatLambdaPermission = PulumiAws.Lambda.Permission.make(
         ~name=name ++ "Permission",
         ~args={
           action: "lambda:InvokeFunction",
-          function: heartbeatLambdaName->Pulumi.Input.make,
+          function: lambdaName->Pulumi.Input.make,
           principal: AWS.CloudwatchEventRule.principal,
         },
         ~opts,
@@ -53,7 +57,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
           ~name,
           ~args={
             rule: EventTarget.Rule.ofEventRule(cloudwatchEventRule),
-            arn: heartbeatLambdaArn->Pulumi.Input.make,
+            arn: lambda->Pulumi.Output.flatMap(lambda => lambda.arn)->Pulumi.Output.asInput,
           },
           ~opts,
         )
@@ -62,7 +66,9 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 
   {
     resources: [
-      heartbeatLambda->Util_Lambda.toResource,
+      lambda
+      ->Pulumi.Output.apply(lambda => lambda->Util_Lambda.toResource)
+      ->Reventless.Adapter.outputToResource,
       cloudwatchEventRule->Util_Cloudwatch.EventRule.toResource,
     ],
   }

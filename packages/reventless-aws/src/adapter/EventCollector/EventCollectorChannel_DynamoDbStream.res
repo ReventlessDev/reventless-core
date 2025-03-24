@@ -58,7 +58,7 @@ let subscribe = (
     )) => {
       Util_EventSourceMapping.subscribe(
         ~batchSize=25,
-        ~lambda=lambda->Pulumi.Output.make,
+        ~lambda,
         ~targetName=name,
         ~sourceName,
         ~source=source->Reventless.AdapterDeploytime.unwrappedToResource,

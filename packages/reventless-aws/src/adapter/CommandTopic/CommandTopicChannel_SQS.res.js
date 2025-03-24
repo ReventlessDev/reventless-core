@@ -22,14 +22,13 @@ function subscribe(name, channel, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = channel.parts.queue;
   var lambda = runtime.parts.lambda;
-  lambda.name.apply(function (lambdaName) {
-        console.log("CommandTopicChannel_SQS: lambdaName:", lambdaName);
-      });
   var lambdaRole = runtime.parts.lambdaRole;
   var attachPolicies = Pulumi.all([
           queue.arn,
           queue.id,
-          lambda.arn
+          Output$Pulumi.flatMap(lambda, (function (lambda) {
+                  return lambda.arn;
+                }))
         ]).apply(function (param) {
         var queueArn = param[0];
         var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
@@ -92,9 +91,10 @@ function subscribe(name, channel, runtime, opts) {
   return [Adapter$Reventless.outputToResource(Output$Pulumi.flatMap(attachPolicies, (function (param) {
                       return Pulumi.all([
                                     param[0].id,
-                                    param[1].id
+                                    param[1].id,
+                                    lambda
                                   ]).apply(function (param) {
-                                  return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts$1));
+                                  return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, param[2], undefined, opts$1));
                                 });
                     })))];
 }

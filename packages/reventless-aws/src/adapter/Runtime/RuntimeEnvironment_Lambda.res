@@ -19,8 +19,7 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> =
   )
 
   let lambda =
-    handler
-    ->Pulumi.Output.apply(handler =>
+    handler->Pulumi.Output.apply(handler =>
       Lambda.CallbackFunction.make(
         ~name,
         ~args=Lambda.CallbackFunction.Args.make(
@@ -33,10 +32,14 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> =
         ~opts?,
       )
     )
-    ->Util.Lambda.fromOutput
 
   {
     parts: {lambda, lambdaRole},
-    resources: [lambda->Util.Lambda.toResource, Util_IAM_Role.toResource(lambdaRole)],
+    resources: [
+      lambda
+      ->Pulumi.Output.apply(lambda => lambda->Util.Lambda.toResource)
+      ->Reventless.Adapter.outputToResource,
+      Util_IAM_Role.toResource(lambdaRole),
+    ],
   }
 }

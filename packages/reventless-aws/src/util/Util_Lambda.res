@@ -1,4 +1,7 @@
-type runtimeParts = {lambda: PulumiAws.Lambda.CallbackFunction.t, lambdaRole: PulumiAws.IAM.Role.t}
+type runtimeParts = {
+  lambda: Pulumi.Output.t<PulumiAws.Lambda.CallbackFunction.t>,
+  lambdaRole: PulumiAws.IAM.Role.t,
+}
 
 let findResource = resources => resources->Reventless.Util.Adapter.findResource(AWS.Lambda.service)
 

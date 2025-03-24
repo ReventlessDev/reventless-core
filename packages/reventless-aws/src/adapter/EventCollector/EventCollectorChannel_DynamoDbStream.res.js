@@ -46,7 +46,7 @@ function subscribe(name, eventTopics, param, runtime, opts) {
                       ];
               }));
         Belt_Array.map(streamSourcesWithPolicy, (function (param) {
-                return Util_EventSourceMapping$ReventlessAws.subscribe(25, Pulumi.output(lambda), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts$1);
+                return Util_EventSourceMapping$ReventlessAws.subscribe(25, lambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(param[1]), opts$1);
               }));
         new (Aws.iam.RolePolicy)(name, {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Belt_Array.concat([Lambda$PulumiAws.defaultLoggingPolicyDocument], Belt_Array.map(streamSourcesWithPolicy, (function (param) {

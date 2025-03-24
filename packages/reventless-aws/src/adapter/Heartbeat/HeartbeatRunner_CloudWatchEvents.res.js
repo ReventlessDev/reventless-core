@@ -3,9 +3,11 @@
 
 var Aws = require("@pulumi/aws");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
@@ -22,12 +24,16 @@ function make(name, timeout, runtime, opts) {
                   _0: timeout
                 }))
       }, opts$1);
-  var heartbeatLambda = runtime.parts.lambda;
-  var heartbeatLambdaRole = runtime.parts.lambdaRole;
+  var lambda = runtime.parts.lambda;
+  var lambdaRole = runtime.parts.lambdaRole;
   Pulumi.all([
-          heartbeatLambda.arn,
-          heartbeatLambda.name,
-          heartbeatLambdaRole.id
+          Output$Pulumi.flatMap(lambda, (function (lambda) {
+                  return lambda.arn;
+                })),
+          Output$Pulumi.flatMap(lambda, (function (lambda) {
+                  return lambda.name;
+                })),
+          lambdaRole.id
         ]).apply(function (param) {
         new (Aws.lambda.Permission)(name + "Permission", {
               action: "lambda:InvokeFunction",
@@ -40,12 +46,16 @@ function make(name, timeout, runtime, opts) {
             });
         new (Aws.cloudwatch.EventTarget)(name, {
               rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
-              arn: param[0]
+              arn: Output$Pulumi.flatMap(lambda, (function (lambda) {
+                      return lambda.arn;
+                    }))
             }, opts$1);
       });
   return {
           resources: [
-            Util_Lambda$ReventlessAws.toResource(heartbeatLambda),
+            Adapter$Reventless.outputToResource(lambda.apply(function (lambda) {
+                      return Util_Lambda$ReventlessAws.toResource(lambda);
+                    })),
             Util_Cloudwatch$ReventlessAws.EventRule.toResource(cloudwatchEventRule)
           ]
         };

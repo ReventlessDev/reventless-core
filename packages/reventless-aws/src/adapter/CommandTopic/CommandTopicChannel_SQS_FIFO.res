@@ -17,14 +17,10 @@ let subscribe = (
 
   let queue = channel.parts.queue
   let lambda = runtime.parts.lambda
-  let _ =
-    lambda.name->Pulumi.Output.apply(lambdaName =>
-      Js.log2("CommandTopicChannel_SQS_FIFO: lambdaName:", lambdaName)
-    )
   let lambdaRole = runtime.parts.lambdaRole
 
   let attachPolicies =
-    (queue.arn, queue.id, lambda.arn)
+    (queue.arn, queue.id, lambda->Pulumi.Output.flatMap(lambda => lambda.arn))
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((queueArn, queueId, handlerArn)) => {
       open PulumiAws.PolicyDocument
@@ -104,11 +100,11 @@ let subscribe = (
   let resource =
     attachPolicies
     ->Pulumi.Output.flatMap(((attachLambdaPolicy, attachQueuePolicy)) =>
-      (attachLambdaPolicy.id, attachQueuePolicy.id)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(_ => {
+      (attachLambdaPolicy.id, attachQueuePolicy.id, lambda)
+      ->Pulumi.Output.all3
+      ->Pulumi.Output.apply(((_, _, lambda)) => {
         queue
-        ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda /* , ~opts */)
+        ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
         ->Util.SQS.Subscription.toResource
       })
     )

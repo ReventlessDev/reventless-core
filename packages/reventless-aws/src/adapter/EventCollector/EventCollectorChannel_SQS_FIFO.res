@@ -18,10 +18,6 @@ let subscribe = (
 
   let queue = channel.parts.queue
   let lambda = runtime.parts.lambda
-  let _ =
-    lambda.name->Pulumi.Output.apply(lambdaName =>
-      Js.log2("EventCollectorChannel_SQS_FIFO: lambdaName:", lambdaName)
-    )
   let lambdaRole = runtime.parts.lambdaRole
 
   let eventTopicResources =
@@ -55,7 +51,7 @@ let subscribe = (
 
       let _eventSourceMappings = otherResources->Belt.Array.map(((sourceName, resources)) =>
         Util_EventSourceMapping.subscribe(
-          ~lambda=lambda->Pulumi.Output.make,
+          ~lambda,
           ~targetName=name,
           ~sourceName,
           ~source=resources
@@ -168,9 +164,9 @@ let subscribe = (
   let resource =
     attachPolicies
     ->Pulumi.Output.flatMap(((attachLambdaPolicy, attachQueuePolicy)) =>
-      (attachLambdaPolicy.id, attachQueuePolicy.id)
-      ->Pulumi.Output.all2
-      ->Pulumi.Output.apply(_ => {
+      (attachLambdaPolicy.id, attachQueuePolicy.id, lambda)
+      ->Pulumi.Output.all3
+      ->Pulumi.Output.apply(((_, _, lambda)) => {
         queue
         ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
         ->Util.SQS.Subscription.toResource

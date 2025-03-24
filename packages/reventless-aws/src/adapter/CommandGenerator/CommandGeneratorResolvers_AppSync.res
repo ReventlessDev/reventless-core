@@ -23,7 +23,11 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
   )
 
   let _addPermissions =
-    (lambda.arn, lambda.name, lambdaRole.id)
+    (
+      lambda->Pulumi.Output.flatMap(lambda => lambda.arn),
+      lambda->Pulumi.Output.flatMap(lambda => lambda.name),
+      lambdaRole.id,
+    )
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((commandGeneratorArn, commandGeneratorName, commandGeneratorRoleId)) => {
       open PulumiAws.PolicyDocument
@@ -81,7 +85,9 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
       type_: AWS_LAMBDA,
       apiId: api->Pulumi.Output.flatMap(api => api.id)->Pulumi.Output.asInput,
       lambdaConfig: {
-        PulumiAws.AppSync.DataSource.functionArn: lambda.arn->Pulumi.Output.asInput,
+        PulumiAws.AppSync.DataSource.functionArn: lambda
+        ->Pulumi.Output.flatMap(lambda => lambda.arn)
+        ->Pulumi.Output.asInput,
       }->Pulumi.Input.make,
       serviceRoleArn: dataSourceRole.arn->Pulumi.Output.asInput,
     },

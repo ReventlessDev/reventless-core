@@ -29,9 +29,6 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = channel.parts.queue;
   var lambda = runtime.parts.lambda;
-  lambda.name.apply(function (lambdaName) {
-        console.log("EventCollectorChannel_SQS_FIFO: lambdaName:", lambdaName);
-      });
   var lambdaRole = runtime.parts.lambdaRole;
   var eventTopicResources = Util_Adapter$Reventless.partitionSupportedResources((function (__x) {
             return Js_dict.map((function (eventTopic) {
@@ -55,7 +52,7 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
                 return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_SNS_FIFO$ReventlessAws.findTopicInUnwrappedResources(param[1])), opts$1);
               }));
         Belt_Array.map(otherResources, (function (param) {
-                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, Pulumi.output(lambda), name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts$1);
+                return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, param[0], AdapterDeploytime$Reventless.unwrappedToResource(Util_DynamoDbStream$ReventlessAws.findUnwrappedResource(param[1])), opts$1);
               }));
         var attachQueuePolicy = new (Aws.sqs.QueuePolicy)(name + "QueuePolicy", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
@@ -121,9 +118,10 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
   return [Adapter$Reventless.outputToResource(Output$Pulumi.flatMap(attachPolicies, (function (param) {
                       return Pulumi.all([
                                     param[0].id,
-                                    param[1].id
+                                    param[1].id,
+                                    lambda
                                   ]).apply(function (param) {
-                                  return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts$1));
+                                  return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, param[2], undefined, opts$1));
                                 });
                     })))];
 }

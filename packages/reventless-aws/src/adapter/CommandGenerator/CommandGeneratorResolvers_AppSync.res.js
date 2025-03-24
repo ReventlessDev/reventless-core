@@ -27,8 +27,12 @@ function make(name, api, fields, runtime, opts) {
   var lambdaRole = runtime.parts.lambdaRole;
   var dataSourceRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "DataSource", Pulumi.output(AWS$ReventlessAws.AppSync.principal), opts$1);
   Pulumi.all([
-          lambda.arn,
-          lambda.name,
+          Output$Pulumi.flatMap(lambda, (function (lambda) {
+                  return lambda.arn;
+                })),
+          Output$Pulumi.flatMap(lambda, (function (lambda) {
+                  return lambda.name;
+                })),
           lambdaRole.id
         ]).apply(function (param) {
         new (Aws.iam.RolePolicy)(name + "CommandGeneratorPolicy", {
@@ -56,7 +60,9 @@ function make(name, api, fields, runtime, opts) {
                 return api.id;
               })),
         lambdaConfig: {
-          functionArn: lambda.arn
+          functionArn: Output$Pulumi.flatMap(lambda, (function (lambda) {
+                  return lambda.arn;
+                }))
         },
         serviceRoleArn: dataSourceRole.arn
       }, opts$1);
