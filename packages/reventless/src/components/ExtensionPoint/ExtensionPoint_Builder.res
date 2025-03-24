@@ -26,6 +26,7 @@ module Make = (
     self,
     name,
   ) => {
+    Js.log2("ExtensionPoint name:", name)
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let childName =
       name->Js.String2.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
@@ -88,6 +89,7 @@ module Make = (
       }),
     )
 
+    Js.log2("ExtensionPoint output name:", name)
     self->Component.setOutputs({
       ExtensionPoint.name,
       aggregateNames: Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>

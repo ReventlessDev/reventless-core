@@ -22,6 +22,7 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
   var event_decode = Spec.event_decode;
   var make = function (publishToAggregates, scheduler, queryEngine, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(ExtensionPoint$Reventless.componentType), Spec.name, (function (extra, extra$1) {
+                  console.log("ExtensionPoint name:", extra$1);
                   var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
                   var opts = {
                     parent: opts_parent
@@ -91,6 +92,7 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
                                     outgoingEventHandler: outgoingEventHandler
                                   };
                           }));
+                  console.log("ExtensionPoint output name:", extra$1);
                   return Component$Reventless.setOutputs(extra, {
                               name: extra$1,
                               aggregateNames: Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
