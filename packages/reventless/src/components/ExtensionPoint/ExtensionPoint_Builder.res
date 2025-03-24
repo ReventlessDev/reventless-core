@@ -27,10 +27,11 @@ module Make = (
     name,
   ) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
-    let name = name->Js.String2.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
+    let childName =
+      name->Js.String2.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
 
     module SpecificCommandTopic = CommandTopic_Builder.Make(SpecWithId, CommandTopicChannel)
-    let commandTopic = SpecificCommandTopic.make(~name, ~opts)
+    let commandTopic = SpecificCommandTopic.make(~name=childName, ~opts)
     let commandTopicOpts = {
       Pulumi.ComponentResource.parent: commandTopic->Component.toPulumiResource,
     }
@@ -53,12 +54,17 @@ module Make = (
           ~commandTopic,
           ~commandsHandler=ExtensionPointCallback.handleIncomingCommands,
         )
-        let runtime = RuntimeEnvironment.make(~name, ~handler, ~opts=commandTopicOpts)
+        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts=commandTopicOpts)
 
-        SpecificCommandTopic.subscribe(~name, ~commandTopic, ~runtime, ~opts=commandTopicOpts)
+        SpecificCommandTopic.subscribe(
+          ~name=childName,
+          ~commandTopic,
+          ~runtime,
+          ~opts=commandTopicOpts,
+        )
 
         module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)
-        let eventTopic = SpecificEventTopic.make(~name, ~storageResources=[], ~opts)
+        let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
 
         eventTopic
         ->Component.operations
