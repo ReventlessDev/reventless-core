@@ -23,6 +23,7 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
 
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
+  let coreSqsQueue = remoteChannel.resources->Util_SQS.findUnwrappedResource
 
   let _attachPoliciesAndSetEventTarget =
     (
@@ -45,14 +46,13 @@ let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
       )
 
       let heartbeatLambdaSendMessagePolicyDocument = {
-        open PulumiAws.PolicyDocument
         PulumiAws.PolicyDocument.make(
           ~statements=[
             {
               sid: "AllowLambdaToSendSQS",
               effect: Allow,
               actions: Action("sqs:SendMessage"),
-              resources: Resource(lambdaArn),
+              resources: Resource(coreSqsQueue.urn),
             },
           ],
         )

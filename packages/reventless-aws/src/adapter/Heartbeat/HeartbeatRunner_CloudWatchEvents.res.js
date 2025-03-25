@@ -9,6 +9,7 @@ var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.
 var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
+var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Util_Lambda$ReventlessAws = require("../../util/Util_Lambda.res.js");
 var Util_Cloudwatch$ReventlessAws = require("../../util/Util_Cloudwatch.res.js");
@@ -26,6 +27,7 @@ function make(name, remoteChannel, timeout, runtime, opts) {
       }, opts$1);
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
+  var coreSqsQueue = Util_SQS$ReventlessAws.findUnwrappedResource(remoteChannel.resources);
   Pulumi.all([
           Output$Pulumi.flatMap(lambda, (function (lambda) {
                   return lambda.arn;
@@ -35,7 +37,6 @@ function make(name, remoteChannel, timeout, runtime, opts) {
                 })),
           lambdaRole.id
         ]).apply(function (param) {
-        var lambdaArn = param[0];
         new (Aws.lambda.Permission)(name + "Permission", {
               action: "lambda:InvokeFunction",
               function: param[1],
@@ -45,7 +46,7 @@ function make(name, remoteChannel, timeout, runtime, opts) {
                 Sid: "AllowLambdaToSendSQS",
                 Effect: "Allow",
                 Action: "sqs:SendMessage",
-                Resource: lambdaArn
+                Resource: coreSqsQueue.urn
               }]);
         new (Aws.iam.RolePolicy)(name + "RolePolicy", {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "Policy", [
@@ -56,7 +57,7 @@ function make(name, remoteChannel, timeout, runtime, opts) {
             });
         new (Aws.cloudwatch.EventTarget)(name, {
               rule: Cloudwatch_EventTarget$PulumiAws.Rule.ofEventRule(cloudwatchEventRule),
-              arn: lambdaArn
+              arn: param[0]
             }, opts$1);
       });
   return {
