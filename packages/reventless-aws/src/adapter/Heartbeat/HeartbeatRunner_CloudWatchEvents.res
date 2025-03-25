@@ -2,6 +2,7 @@ type runtimeParts = Util.Lambda.runtimeParts
 
 let make: Reventless.Heartbeat_Adapter.runnerMaker<runtimeParts> = (
   ~name,
+  ~remoteChannel,
   ~timeout,
   ~runtime,
   ~opts,

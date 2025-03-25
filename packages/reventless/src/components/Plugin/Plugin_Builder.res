@@ -451,6 +451,7 @@ module Make = (
 
         SpecificHeartbeat.subscribe(
           ~name=childName,
+          ~remoteChannel=corePluginExtensionPointCommandTopicRemoteChannel,
           ~timeout=heartbeatInterval,
           ~heartbeat,
           ~runtime,

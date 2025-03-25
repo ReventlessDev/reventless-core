@@ -1,13 +1,14 @@
 module Make = (Runner: Heartbeat_Adapter.Runner, RuntimeEnvironment: Runtime.Environment) => {
   let construct = (_self, _name) => ()
 
-  let subscribe = (~name, ~timeout=10, ~heartbeat, ~runtime, ~opts) => {
+  let subscribe = (~name, ~timeout=10, ~heartbeat, ~remoteChannel, ~runtime, ~opts) => {
     // Heartbeat + HealthCheck
     // see: https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/RunLambdaSchedule.html
 
     let runnerResources = {
       Runner.make(
         ~name=name->ComponentType.name(Heartbeat.componentType),
+        ~remoteChannel,
         ~timeout,
         ~runtime,
         ~opts,

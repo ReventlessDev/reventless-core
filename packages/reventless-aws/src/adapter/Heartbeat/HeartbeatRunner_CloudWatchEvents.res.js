@@ -15,7 +15,7 @@ var Util_Cloudwatch$ReventlessAws = require("../../util/Util_Cloudwatch.res.js")
 var Cloudwatch_EventRule$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventRule.res.js");
 var Cloudwatch_EventTarget$PulumiAws = require("@reventless/bs-pulumi-aws/src/Cloudwatch/Cloudwatch_EventTarget.res.js");
 
-function make(name, timeout, runtime, opts) {
+function make(name, remoteChannel, timeout, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var cloudwatchEventRule = new (Aws.cloudwatch.EventRule)(Pulumi.getStack() + ("-" + name), {
         description: "Send a heartbeat to the Core Plugin ExtensionPoint",
