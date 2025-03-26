@@ -19,11 +19,12 @@ module Make = (
     module Id = ReventlessSpec.Id.String
   }
 
-  let filterAggregateResources = aggregateResources =>
-    // TODO filter
+  let filterAggregateResources = (aggregateResources, aggregateNames) =>
     aggregateResources
     ->Js.Dict.entries
-    // ->Belt.Array.keep(((name, _)) => aggregateNames->Belt.Array.has(name))
+    ->Belt.Array.keep(((name, _)) =>
+      aggregateNames->Belt.Array.some(aggregateName => aggregateName == name)
+    )
     ->Belt.Array.map(((_, resources)) => resources)
     ->Belt.Array.concatMany
 
@@ -35,7 +36,6 @@ module Make = (
     self,
     name,
   ) => {
-    Js.log2("ExtensionPoint name:", name)
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let childName =
       name->Js.String2.replace(".", "")->ComponentType.name(ExtensionPoint.componentType)
@@ -45,6 +45,11 @@ module Make = (
     let commandTopicOpts = {
       Pulumi.ComponentResource.parent: commandTopic->Component.toPulumiResource,
     }
+
+    let aggregateNames =
+      Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
+        Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
+      )
 
     let commandTopicResources =
       (commandTopic->CommandTopic_Adapter.channel).resources->Adapter.resourcesToUnwrappedOutput
@@ -72,10 +77,9 @@ module Make = (
           ~name=childName,
           ~commandTopic,
           ~runtime,
-          ~resources=aggregateResources->filterAggregateResources,
+          ~resources=aggregateResources->filterAggregateResources(aggregateNames),
           ~opts=commandTopicOpts,
         )
-        // subscribe(~name=childName, ~aggregateChannels, ~runtime, ~opts=commandTopicOpts)
 
         module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)
         let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
@@ -102,12 +106,9 @@ module Make = (
       }),
     )
 
-    Js.log2("ExtensionPoint output name:", name)
     self->Component.setOutputs({
       ExtensionPoint.name,
-      aggregateNames: Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
-        Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
-      ),
+      aggregateNames,
       commandTopic: commandTopic->Pulumi.Output.apply(commandTopic =>
         commandTopic->Component.outputs
       ),

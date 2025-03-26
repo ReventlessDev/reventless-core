@@ -2,6 +2,7 @@
 'use strict';
 
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Aggregate$Reventless = require("./Aggregate.res.js");
@@ -67,7 +68,11 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                 eventLog: eventLogOps
               });
           var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandTopic$Reventless.componentType), SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands), undefined, undefined, opts$1);
-          var resources = Component$Reventless.outputs(eventLog).eventTopic.resources;
+          var eventLog$1 = Component$Reventless.outputs(eventLog);
+          var resources = Belt_Array.concatMany([
+                eventLog$1.resources,
+                eventLog$1.eventTopic.resources
+              ]);
           SpecificCommandTopic.subscribe(name$1, commandTopic, runtime, resources, opts$1);
           return commandTopic;
         });
