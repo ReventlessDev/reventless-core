@@ -31,12 +31,6 @@ let subscribe = (
     ->Pulumi.Output.apply(((queueArn, queueId, handlerArn, resources)) => {
       open PulumiAws.PolicyDocument
 
-      let sqsResources =
-        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
-          AWS.SQS.service,
-          AWS.SQS_FIFO.service,
-        ])
-
       let queuePolicyDocument =
         PulumiAws.PolicyDocument.make(
           ~id=name ++ "QueuePolicy",
@@ -71,11 +65,35 @@ let subscribe = (
         ->toJsonString
         ->Pulumi.Input.make
 
+      let sqsResources =
+        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.SQS.service,
+          AWS.SQS_FIFO.service,
+        ])
+
+      let allowSQSSendLambdaPolicyDocument = switch sqsResources->Array.length > 0 {
+      | true =>
+        Some(
+          PulumiAws.PolicyDocument.make(
+            ~id=name ++ "RemoteSQSLambdaPolicy",
+            ~statements=[
+              {
+                sid: "AllowLambdaSendMessageSQS",
+                effect: Allow,
+                actions: Action("sqs:SendMessage"),
+                resources: Resources(sqsResources->Array.map(sqsResource => sqsResource.urn)),
+              },
+            ],
+          ),
+        )
+      | false => None
+      }
+
       let allowSQSLambdaPolicyDocument = PulumiAws.PolicyDocument.make(
         ~id=name ++ "SQSLambdaPolicy",
         ~statements=[
           {
-            sid: "AllowLambdaSendAndReceiveMessage",
+            sid: "AllowLambdaReceiveMessage",
             effect: Allow,
             actions: Actions([
               "sqs:ReceiveMessage",
@@ -93,7 +111,11 @@ let subscribe = (
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
             name ++ "LambdaPolicy",
-            [PulumiAws.Lambda.defaultLoggingPolicyDocument, allowSQSLambdaPolicyDocument],
+            [
+              Some(PulumiAws.Lambda.defaultLoggingPolicyDocument),
+              Some(allowSQSLambdaPolicyDocument),
+              allowSQSSendLambdaPolicyDocument,
+            ]->Belt.Array.keepMap(policy => policy),
           )->Pulumi.Output.asInput,
           role: lambdaRole.id->Pulumi.Output.asInput,
         },

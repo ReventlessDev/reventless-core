@@ -2,18 +2,21 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
+var AWS$ReventlessAws = require("../AWS.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var CommandTopic$Reventless = require("@reventless/reventless/src/components/CommandTopic/CommandTopic.res.js");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
@@ -63,6 +66,18 @@ function subscribe(name, channel, runtime, resources, opts) {
                     Resource: queueArn
                   }
                 ]));
+        var sqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(param[3], [
+              AWS$ReventlessAws.SQS.service,
+              AWS$ReventlessAws.SQS_FIFO.service
+            ]);
+        var allowSQSSendLambdaPolicyDocument = sqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "RemoteSQSLambdaPolicy", [{
+                  Sid: "AllowLambdaSendMessageSQS",
+                  Effect: "Allow",
+                  Action: "sqs:SendMessage",
+                  Resource: sqsResources.map(function (sqsResource) {
+                        return sqsResource.urn;
+                      })
+                }]) : undefined;
         var allowSQSLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSLambdaPolicy", [{
                 Sid: "AllowLambdaSendAndReceiveMessage",
                 Effect: "Allow",
@@ -75,10 +90,13 @@ function subscribe(name, channel, runtime, resources, opts) {
                 Resource: queueArn
               }]);
         var attachLambdaPolicy = new (Aws.iam.RolePolicy)(name, {
-              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", [
-                    Lambda$PulumiAws.defaultLoggingPolicyDocument,
-                    allowSQSLambdaPolicyDocument
-                  ]),
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Belt_Array.keepMap([
+                        Lambda$PulumiAws.defaultLoggingPolicyDocument,
+                        allowSQSLambdaPolicyDocument,
+                        allowSQSSendLambdaPolicyDocument
+                      ], (function (x) {
+                          return x;
+                        }))),
               role: lambdaRole.id
             }, opts$1);
         var attachQueuePolicy = new (Aws.sqs.QueuePolicy)(name, {

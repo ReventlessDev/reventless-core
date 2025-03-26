@@ -2,6 +2,7 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
@@ -34,10 +35,6 @@ function subscribe(name, channel, runtime, resources, opts) {
           Adapter$Reventless.resourcesToUnwrappedOutput(resources)
         ]).apply(function (param) {
         var queueArn = param[0];
-        Util_Adapter$Reventless.filterSupportedUnwrappedResources(param[3], [
-              AWS$ReventlessAws.SQS.service,
-              AWS$ReventlessAws.SQS_FIFO.service
-            ]);
         var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
                   {
                     Sid: "AllowLambdaToAccessQueue",
@@ -68,8 +65,20 @@ function subscribe(name, channel, runtime, resources, opts) {
                     Resource: queueArn
                   }
                 ]));
+        var sqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(param[3], [
+              AWS$ReventlessAws.SQS.service,
+              AWS$ReventlessAws.SQS_FIFO.service
+            ]);
+        var allowSQSSendLambdaPolicyDocument = sqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "RemoteSQSLambdaPolicy", [{
+                  Sid: "AllowLambdaSendMessageSQS",
+                  Effect: "Allow",
+                  Action: "sqs:SendMessage",
+                  Resource: sqsResources.map(function (sqsResource) {
+                        return sqsResource.urn;
+                      })
+                }]) : undefined;
         var allowSQSLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSLambdaPolicy", [{
-                Sid: "AllowLambdaSendAndReceiveMessage",
+                Sid: "AllowLambdaReceiveMessage",
                 Effect: "Allow",
                 Action: [
                   "sqs:ReceiveMessage",
@@ -80,10 +89,13 @@ function subscribe(name, channel, runtime, resources, opts) {
                 Resource: queueArn
               }]);
         var attachLambdaPolicy = new (Aws.iam.RolePolicy)(name, {
-              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", [
-                    Lambda$PulumiAws.defaultLoggingPolicyDocument,
-                    allowSQSLambdaPolicyDocument
-                  ]),
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Belt_Array.keepMap([
+                        Lambda$PulumiAws.defaultLoggingPolicyDocument,
+                        allowSQSLambdaPolicyDocument,
+                        allowSQSSendLambdaPolicyDocument
+                      ], (function (policy) {
+                          return policy;
+                        }))),
               role: lambdaRole.id
             }, opts$1);
         var attachQueuePolicy = new (Aws.sqs.QueuePolicy)(name, {
