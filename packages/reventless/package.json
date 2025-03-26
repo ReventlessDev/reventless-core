@@ -1,6 +1,6 @@
 {
     "name": "@reventless/reventless",
-    "version": "2.0.3-policies.24",
+    "version": "2.0.3-policies.25",
     "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
     "author": "Atos",
     "license": "proprietary",
