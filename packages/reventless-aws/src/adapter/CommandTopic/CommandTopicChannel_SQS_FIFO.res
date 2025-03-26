@@ -95,7 +95,7 @@ let subscribe = (
       | false => None
       }
 
-      let allowLambdaToAccessDynamoDb = switch sqsResources->Array.length > 0 {
+      let allowLambdaToAccessDynamoDb = switch dynamoDbResources->Array.length > 0 {
       | true =>
         Some(
           PulumiAws.PolicyDocument.make(

@@ -82,7 +82,7 @@ function subscribe(name, channel, runtime, resources, opts) {
                         return sqsResource.urn;
                       })
                 }]) : undefined;
-        var allowLambdaToAccessDynamoDb = sqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbAccessPolicy", [{
+        var allowLambdaToAccessDynamoDb = dynamoDbResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbAccessPolicy", [{
                   Sid: "AllowLambdaReadWriteDynamoDb",
                   Effect: "Allow",
                   Action: [
