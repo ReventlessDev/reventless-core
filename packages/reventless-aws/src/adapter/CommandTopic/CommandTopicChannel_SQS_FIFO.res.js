@@ -89,6 +89,18 @@ function subscribe(name, channel, runtime, resources, opts) {
                 ],
                 Resource: "*"
               }]);
+        var allowLambdaPassRoleToEvents = PolicyDocument$PulumiAws.make(undefined, name + "LambdaPassRoleToCloudWatchEventsRule", [{
+                Sid: "AllowLambdaPassRoleToEvents",
+                Effect: "Allow",
+                Action: "iam:PassRole",
+                Resource: "*",
+                Condition: {
+                  StringEquals: Js_dict.fromArray([[
+                          "iam:PassedToService",
+                          "events.amazonaws.com"
+                        ]])
+                }
+              }]);
         var allowSQSLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSLambdaPolicy", [{
                 Sid: "AllowLambdaSendAndReceiveMessage",
                 Effect: "Allow",
@@ -105,6 +117,7 @@ function subscribe(name, channel, runtime, resources, opts) {
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         allowSQSLambdaPolicyDocument,
                         allowLambdaToTriggerCloudWatchEvents,
+                        allowLambdaPassRoleToEvents,
                         allowSQSSendLambdaPolicyDocument
                       ], (function (x) {
                           return x;

@@ -106,6 +106,23 @@ let subscribe = (
         ],
       )
 
+      let allowLambdaPassRoleToEvents = PulumiAws.PolicyDocument.make(
+        ~id=name ++ "LambdaPassRoleToCloudWatchEventsRule",
+        ~statements=[
+          {
+            sid: "AllowLambdaPassRoleToEvents",
+            effect: Allow,
+            actions: Action("iam:PassRole"),
+            resources: Resource("*"),
+            conditions: {
+              stringEquals: Js.Dict.fromArray([
+                ("iam:PassedToService", ConditionValue("events.amazonaws.com")),
+              ]),
+            },
+          },
+        ],
+      )
+
       let allowSQSLambdaPolicyDocument = PulumiAws.PolicyDocument.make(
         ~id=name ++ "SQSLambdaPolicy",
         ~statements=[
@@ -132,6 +149,7 @@ let subscribe = (
               Some(PulumiAws.Lambda.defaultLoggingPolicyDocument),
               Some(allowSQSLambdaPolicyDocument),
               Some(allowLambdaToTriggerCloudWatchEvents),
+              Some(allowLambdaPassRoleToEvents),
               allowSQSSendLambdaPolicyDocument,
             ]->Belt_Array.keepMap(x => x),
           )->Pulumi.Output.asInput,

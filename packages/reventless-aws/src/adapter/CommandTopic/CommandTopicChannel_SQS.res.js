@@ -99,11 +99,24 @@ function subscribe(name, channel, runtime, resources, opts) {
                 ],
                 Resource: queueArn
               }]);
+        var allowLambdaPassRoleToEvents = PolicyDocument$PulumiAws.make(undefined, name + "LambdaPassRoleToCloudWatchEventsRule", [{
+                Sid: "AllowLambdaPassRoleToEvents",
+                Effect: "Allow",
+                Action: "iam:PassRole",
+                Resource: "*",
+                Condition: {
+                  StringEquals: Js_dict.fromArray([[
+                          "iam:PassedToService",
+                          "events.amazonaws.com"
+                        ]])
+                }
+              }]);
         var attachLambdaPolicy = new (Aws.iam.RolePolicy)(name, {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Belt_Array.keepMap([
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         allowSQSLambdaPolicyDocument,
                         allowLambdaToTriggerCloudWatchEvents,
+                        allowLambdaPassRoleToEvents,
                         allowSQSSendLambdaPolicyDocument
                       ], (function (policy) {
                           return policy;
