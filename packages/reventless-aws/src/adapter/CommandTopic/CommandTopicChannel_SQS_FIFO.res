@@ -71,6 +71,12 @@ let subscribe = (
           AWS.SQS_FIFO.service,
         ])
 
+      let dynamoDbResources =
+        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.DynamoDb.service,
+          AWS.DynamoDbStream.service,
+        ])
+
       let allowSQSSendLambdaPolicyDocument = switch sqsResources->Array.length > 0 {
       | true =>
         Some(
@@ -108,7 +114,9 @@ let subscribe = (
                   "dynamodb:DeleteItem",
                   "dynamodb:BatchWriteItem",
                 ]),
-                resources: Resources(sqsResources->Array.map(sqsResource => sqsResource.urn)),
+                resources: Resources(
+                  dynamoDbResources->Array.map(dynamoDbResource => dynamoDbResource.urn),
+                ),
               },
             ],
           ),

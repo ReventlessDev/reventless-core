@@ -70,7 +70,7 @@ function subscribe(name, channel, runtime, resources, opts) {
               AWS$ReventlessAws.SQS.service,
               AWS$ReventlessAws.SQS_FIFO.service
             ]);
-        Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+        var dynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
               AWS$ReventlessAws.DynamoDb.service,
               AWS$ReventlessAws.DynamoDbStream.service
             ]);
@@ -95,8 +95,8 @@ function subscribe(name, channel, runtime, resources, opts) {
                     "dynamodb:DeleteItem",
                     "dynamodb:BatchWriteItem"
                   ],
-                  Resource: sqsResources.map(function (sqsResource) {
-                        return sqsResource.urn;
+                  Resource: dynamoDbResources.map(function (dynamoDbResource) {
+                        return dynamoDbResource.urn;
                       })
                 }]) : undefined;
         var allowLambdaToTriggerCloudWatchEvents = PolicyDocument$PulumiAws.make(undefined, name + "LambdaCloudWatchEventsPolicy", [{

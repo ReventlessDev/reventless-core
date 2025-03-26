@@ -114,7 +114,9 @@ let subscribe = (
                   "dynamodb:DeleteItem",
                   "dynamodb:BatchWriteItem",
                 ]),
-                resources: Resources(sqsResources->Array.map(sqsResource => sqsResource.urn)),
+                resources: Resources(
+                  dynamoDbResources->Array.map(dynamoDbResource => dynamoDbResource.urn),
+                ),
               },
             ],
           ),
