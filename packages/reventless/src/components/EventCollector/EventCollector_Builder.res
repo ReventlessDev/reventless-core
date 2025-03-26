@@ -21,11 +21,27 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
     })
   }
 
-  let subscribe = (~name, ~eventTopics, ~eventCollector, ~runtime, ~opts) => {
+  let subscribe = (
+    ~name,
+    ~eventTopics,
+    ~eventCollector,
+    ~runtime,
+    ~sourceResources,
+    ~targetResources,
+    ~opts,
+  ) => {
     let name = name->ComponentType.name(EventCollector.componentType)
     let channel = eventCollector->EventCollector_Adapter.channel
 
-    let subscribeResources = channel.subscribe(~name, ~eventTopics, ~channel, ~runtime, ~opts)
+    let subscribeResources = channel.subscribe(
+      ~name,
+      ~eventTopics,
+      ~channel,
+      ~runtime,
+      ~sourceResources,
+      ~targetResources,
+      ~opts,
+    )
 
     // let _ = eventCollector->Component.setOutputs({
     //   EventCollector.name,

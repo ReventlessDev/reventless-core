@@ -12,6 +12,7 @@ var Cloner$Reventless = require("../../components/Cloner.res.js");
 var Aggregate$Reventless = require("../../components/Aggregate/Aggregate.res.js");
 var Component$Reventless = require("../../components/Component.res.js");
 var ReadModel$Reventless = require("../../components/ReadModel/ReadModel.res.js");
+var EventTopic$Reventless = require("../../components/EventTopic/EventTopic.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var Core_Callback$Reventless = require("./Core_Callback.res.js");
 var EventCollector$Reventless = require("../../components/EventCollector/EventCollector.res.js");
@@ -90,6 +91,15 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
               var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPointOutputs) {
                           return Belt_SetString.fromArray(extensionPointOutputs.aggregateNames);
                         })), undefined, Belt_SetString.union);
+              var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames);
+              var sourceResources = EventTopic$Reventless.allOutputsToResources(eventTopics);
+              var targetResources = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
+                            return extensionPoint.eventTopic;
+                          }))).apply(function (eventTopics) {
+                    return Belt_Array.concatMany(Belt_Array.map(eventTopics, (function (eventTopic) {
+                                      return eventTopic.resources;
+                                    })));
+                  });
               var fakePluginDefinition = {
                 id: "Core@FAKE",
                 name: "Core",
@@ -98,7 +108,10 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                 extensions: [],
                 eventCollector: "NOT-SET"
               };
-              var eventCollectorOutputs = Pulumi.all(match[1]).apply(function (extensionPointsOutgoingEventHandlers) {
+              var eventCollectorOutputs = Pulumi.all([
+                      Pulumi.all(match[1]),
+                      targetResources
+                    ]).apply(function (param) {
                     var CoreEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                     var eventCollector = CoreEventCollector.make(name, opts);
                     var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
@@ -108,11 +121,11 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                     };
                     var Callback = Core_Callback$Reventless.Make({
                           pluginDefinition: fakePluginDefinition,
-                          outgoingExtensionPointEventHandlers: extensionPointsOutgoingEventHandlers
+                          outgoingExtensionPointEventHandlers: param[0]
                         });
                     var handler = CoreEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                     var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, opts$1);
-                    CoreEventCollector.subscribe(name, Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames), eventCollector, runtime, opts$1);
+                    CoreEventCollector.subscribe(name, eventTopics, eventCollector, runtime, sourceResources, param[1], opts$1);
                     return eventCollectorOutputs;
                   });
               return [

@@ -5,6 +5,7 @@ var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Pulumi = require("@pulumi/pulumi");
 var Aggregate$Reventless = require("./Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
 var CommandTopic$Reventless = require("../CommandTopic/CommandTopic.res.js");
@@ -126,8 +127,11 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                     if (EventMappings.mappings.length === 0) {
                       return outputs;
                     }
-                    var eventMapper = Component$Reventless.operations(self).apply(function (param) {
-                          return SpecificEventMapper.make(ComponentType$Reventless.name(Spec.name, Aggregate$Reventless.componentType), none, none$1, param.publishJsons, undefined, undefined, opts);
+                    var eventMapper = Pulumi.all([
+                            Component$Reventless.operations(self),
+                            Component$Reventless.outputs(self).commandTopic
+                          ]).apply(function (param) {
+                          return SpecificEventMapper.make(ComponentType$Reventless.name(Spec.name, Aggregate$Reventless.componentType), none, none$1, param[0].publishJsons, param[1].resources, undefined, undefined, opts);
                         });
                     var newrecord = Caml_obj.obj_dup(outputs);
                     newrecord.eventMapper = eventMapper.apply(function (eventMapper) {

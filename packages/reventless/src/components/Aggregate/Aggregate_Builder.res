@@ -15,7 +15,7 @@ module Make = (
 ): Aggregate.T => {
   module Spec = Spec
 
-  let addEventMapperFn = (component: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
+  let addEventMapperFn = (aggregate: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
     module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
     module SpecificEventMapper = EventMapper_Builder.Make(
       Spec,
@@ -24,17 +24,18 @@ module Make = (
       RuntimeEnvironment,
     )
 
-    let outputs = component->Component.outputs
+    let outputs = aggregate->Component.outputs
     if EventMappings.mappings->Belt.Array.length > 0 {
       let eventMapper =
-        component
-        ->Component.operations
-        ->Pulumi.Output.apply(({publishJsons}) =>
+        (aggregate->Component.operations, (aggregate->Component.outputs).commandTopic)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply((({publishJsons}, commandTopic)) =>
           SpecificEventMapper.make(
             ~name=Spec.name->ComponentType.name(Aggregate.componentType),
             ~allEventTopics,
             ~queryEngine,
             ~publishJsons,
+            ~resources=commandTopic.resources,
             ~opts,
           )
         )

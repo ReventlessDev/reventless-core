@@ -3,6 +3,8 @@ type rec subscribe<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~eventTopics: EventTopic.allOutputs,
   ~channel: channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
   ~runtime: Runtime.environment<'runtimeParts>,
+  ~sourceResources: array<ReventlessSpec.Adapter.resource>,
+  ~targetResources: array<ReventlessSpec.Adapter.resource>,
   ~opts: Pulumi.ComponentResource.options,
 ) => array<ReventlessSpec.Adapter.resource>
 and channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = {

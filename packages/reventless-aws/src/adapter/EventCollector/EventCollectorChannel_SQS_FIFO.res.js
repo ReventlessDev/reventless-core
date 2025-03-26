@@ -25,7 +25,7 @@ var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueu
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
-function subscribe(name, eventTopics, channel, runtime, opts) {
+function subscribe(name, eventTopics, channel, runtime, sourceResources, targetResources, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = channel.parts.queue;
   var lambda = runtime.parts.lambda;
@@ -41,7 +41,9 @@ function subscribe(name, eventTopics, channel, runtime, opts) {
   var attachPolicies = Pulumi.all([
           eventTopicResources,
           queue.arn,
-          queue.id
+          queue.id,
+          Adapter$Reventless.resourcesToUnwrappedOutput(sourceResources),
+          Adapter$Reventless.resourcesToUnwrappedOutput(targetResources)
         ]).apply(function (param) {
         var queueArn = param[1];
         var match = param[0];

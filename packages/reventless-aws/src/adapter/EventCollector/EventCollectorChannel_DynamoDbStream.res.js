@@ -8,6 +8,7 @@ var Aws = require("@pulumi/aws");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
@@ -15,7 +16,7 @@ var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/A
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
-function subscribe(name, eventTopics, param, runtime, opts) {
+function subscribe(name, eventTopics, param, runtime, sourceResources, targetResources, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
@@ -24,9 +25,14 @@ function subscribe(name, eventTopics, param, runtime, opts) {
                           return eventTopic.resources;
                         }), __x);
           })(eventTopics), [AWS$ReventlessAws.DynamoDbStream.service]);
-  eventTopicResources.apply(function (param) {
-        var errorResources = param[1];
-        var streamSourcesWithPolicy = Belt_Array.map(param[0], (function (param) {
+  Pulumi.all([
+          eventTopicResources,
+          Adapter$Reventless.resourcesToUnwrappedOutput(sourceResources),
+          Adapter$Reventless.resourcesToUnwrappedOutput(targetResources)
+        ]).apply(function (param) {
+        var match = param[0];
+        var errorResources = match[1];
+        var streamSourcesWithPolicy = Belt_Array.map(match[0], (function (param) {
                 var sourceName = param[0];
                 var source = param[1][0];
                 return [

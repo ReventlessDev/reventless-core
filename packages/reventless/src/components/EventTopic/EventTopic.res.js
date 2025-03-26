@@ -15,6 +15,12 @@ function toUnwrappedOutputs(outputs) {
             });
 }
 
+function allOutputsToResources(allOutputs) {
+  return Belt_Array.concatMany(Belt_Array.map(Js_dict.values(allOutputs), (function (eventTopic) {
+                    return eventTopic.resources;
+                  })));
+}
+
 var NotPublishedToPublisher = /* @__PURE__ */Caml_exceptions.create("EventTopic-Reventless.NotPublishedToPublisher");
 
 function log(eventTopics, description) {
@@ -34,6 +40,7 @@ var componentType = "EventTopic";
 
 exports.componentType = componentType;
 exports.toUnwrappedOutputs = toUnwrappedOutputs;
+exports.allOutputsToResources = allOutputsToResources;
 exports.NotPublishedToPublisher = NotPublishedToPublisher;
 exports.log = log;
 /* @pulumi/pulumi Not a pure module */

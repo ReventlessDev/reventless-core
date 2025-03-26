@@ -11,6 +11,11 @@ let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =
     let unwrappedOutputs: unwrappedOutputs = {resources: resources}
     unwrappedOutputs
   })
+let allOutputsToResources = allOutputs =>
+  allOutputs
+  ->Js.Dict.values
+  ->Belt.Array.map((eventTopic: outputs) => eventTopic.resources)
+  ->Belt.Array.concatMany
 
 type t
 

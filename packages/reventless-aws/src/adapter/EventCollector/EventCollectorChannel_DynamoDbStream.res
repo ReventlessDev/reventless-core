@@ -7,6 +7,8 @@ let subscribe = (
   ~eventTopics,
   ~channel as _,
   ~runtime: Reventless.Runtime.environment<runtimeParts>,
+  ~sourceResources: array<ReventlessSpec.Adapter.resource>,
+  ~targetResources: array<ReventlessSpec.Adapter.resource>,
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
@@ -19,74 +21,82 @@ let subscribe = (
     ->(Js.Dict.map((eventTopic: Reventless.EventTopic.outputs) => eventTopic.resources, _))
     ->Reventless.Util.Adapter.partitionSupportedResources([AWS.DynamoDbStream.service])
 
-  let _subscribeAndAttachPolicies = eventTopicResources->Pulumi.Output.apply(((
-    dynamoDbStreamResources,
-    errorResources,
-  )) => {
-    let streamSourcesWithPolicy = dynamoDbStreamResources->Belt.Array.map(((
-      sourceName,
-      sources,
+  let _subscribeAndAttachPolicies =
+    (
+      eventTopicResources,
+      sourceResources->Reventless.Adapter.resourcesToUnwrappedOutput,
+      targetResources->Reventless.Adapter.resourcesToUnwrappedOutput,
+    )
+    ->Pulumi.Output.all3
+    ->Pulumi.Output.apply(((
+      (dynamoDbStreamResources, errorResources),
+      sourceResources,
+      targetResources,
     )) => {
-      let source = sources->Array.getUnsafe(0)
-      open PulumiAws.PolicyDocument
-      (
+      let streamSourcesWithPolicy = dynamoDbStreamResources->Belt.Array.map(((
+        sourceName,
+        sources,
+      )) => {
+        let source = sources->Array.getUnsafe(0)
+        open PulumiAws.PolicyDocument
+        (
+          sourceName,
+          source,
+          PulumiAws.PolicyDocument.make(
+            ~id=name ++ "Policy",
+            ~statements=[
+              {
+                sid: "AllowLambdaToReadStream" ++ sourceName->String.split("-")->Array.getUnsafe(0),
+                effect: Allow,
+                actions: Actions([
+                  "dynamodb:DescribeStream",
+                  "dynamodb:GetRecords",
+                  "dynamodb:GetShardIterator",
+                  "dynamodb:ListStreams",
+                ]),
+                resources: Resource(source.urn),
+              },
+            ],
+          ),
+        )
+      })
+
+      let _subscribeEventStreams = streamSourcesWithPolicy->Belt.Array.map(((
         sourceName,
         source,
-        PulumiAws.PolicyDocument.make(
-          ~id=name ++ "Policy",
-          ~statements=[
-            {
-              sid: "AllowLambdaToReadStream" ++ sourceName->String.split("-")->Array.getUnsafe(0),
-              effect: Allow,
-              actions: Actions([
-                "dynamodb:DescribeStream",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
-                "dynamodb:ListStreams",
-              ]),
-              resources: Resource(source.urn),
-            },
-          ],
-        ),
-      )
-    })
+        _policy,
+      )) => {
+        Util_EventSourceMapping.subscribe(
+          ~batchSize=25,
+          ~lambda,
+          ~targetName=name,
+          ~sourceName,
+          ~source=source->Reventless.AdapterDeploytime.unwrappedToResource,
+          ~opts,
+        )
+      })
 
-    let _subscribeEventStreams = streamSourcesWithPolicy->Belt.Array.map(((
-      sourceName,
-      source,
-      _policy,
-    )) => {
-      Util_EventSourceMapping.subscribe(
-        ~batchSize=25,
-        ~lambda,
-        ~targetName=name,
-        ~sourceName,
-        ~source=source->Reventless.AdapterDeploytime.unwrappedToResource,
+      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
+        ~name,
+        ~args={
+          policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
+            name ++ "LambdaPolicy",
+            [PulumiAws.Lambda.defaultLoggingPolicyDocument]->Belt.Array.concat(
+              streamSourcesWithPolicy->Belt.Array.map(((_, _, policyDocument)) => policyDocument),
+            ),
+          )->Pulumi.Output.asInput,
+          role: lambdaRole.id->Pulumi.Output.asInput,
+        },
         ~opts,
       )
+
+      if errorResources->Belt.Array.length > 0 {
+        let eventTopicNames = errorResources->Js.Array2.joinWith(",")
+        Js.Exn.raiseError(
+          __MODULE__ ++ `.subscribe: cannot connect to EventTopic(s) ${eventTopicNames}`,
+        )
+      }
     })
-
-    let _attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
-      ~name,
-      ~args={
-        policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
-          name ++ "LambdaPolicy",
-          [PulumiAws.Lambda.defaultLoggingPolicyDocument]->Belt.Array.concat(
-            streamSourcesWithPolicy->Belt.Array.map(((_, _, policyDocument)) => policyDocument),
-          ),
-        )->Pulumi.Output.asInput,
-        role: lambdaRole.id->Pulumi.Output.asInput,
-      },
-      ~opts,
-    )
-
-    if errorResources->Belt.Array.length > 0 {
-      let eventTopicNames = errorResources->Js.Array2.joinWith(",")
-      Js.Exn.raiseError(
-        __MODULE__ ++ `.subscribe: cannot connect to EventTopic(s) ${eventTopicNames}`,
-      )
-    }
-  })
 
   []
 }

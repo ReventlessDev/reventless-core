@@ -10,6 +10,7 @@ module Make = (
     ~allEventTopics,
     ~queryEngine,
     ~publishJsons,
+    ~resources,
     ~memorySize,
     ~timeout,
     self,
@@ -76,7 +77,18 @@ module Make = (
         let runtime = RuntimeEnvironment.make(~name, ~handler, ~memorySize, ~timeout, ~opts)
 
         let eventTopics = allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames)
-        SpecificEventCollector.subscribe(~name, ~eventTopics, ~eventCollector, ~runtime, ~opts)
+        let sourceResources = eventTopics->EventTopic.allOutputsToResources
+        let targetResources = resources
+
+        SpecificEventCollector.subscribe(
+          ~name,
+          ~eventTopics,
+          ~eventCollector,
+          ~runtime,
+          ~sourceResources,
+          ~targetResources,
+          ~opts,
+        )
         eventCollector
       }->Component.outputs
     )
@@ -93,6 +105,7 @@ module Make = (
     ~allEventTopics,
     ~queryEngine,
     ~publishJsons,
+    ~resources,
     ~memorySize=2048,
     ~timeout=180,
     ~opts=?,
@@ -104,6 +117,7 @@ module Make = (
         ~allEventTopics,
         ~queryEngine,
         ~publishJsons,
+        ~resources,
         ~memorySize,
         ~timeout,
         ...

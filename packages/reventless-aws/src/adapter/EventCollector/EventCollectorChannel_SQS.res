@@ -12,6 +12,8 @@ let subscribe = (
     runtimeParts,
   >,
   ~runtime: Reventless.Runtime.environment<runtimeParts>,
+  ~sourceResources: array<ReventlessSpec.Adapter.resource>,
+  ~targetResources: array<ReventlessSpec.Adapter.resource>,
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
@@ -29,9 +31,21 @@ let subscribe = (
     ])
 
   let attachPolicies =
-    (eventTopicResources, queue.arn, queue.id)
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply((((supportedResources, errorResources), queueArn, queueId)) => {
+    (
+      eventTopicResources,
+      queue.arn,
+      queue.id,
+      sourceResources->Reventless.Adapter.resourcesToUnwrappedOutput,
+      targetResources->Reventless.Adapter.resourcesToUnwrappedOutput,
+    )
+    ->Pulumi.Output.all5
+    ->Pulumi.Output.apply(((
+      (supportedResources, errorResources),
+      queueArn,
+      queueId,
+      sourceResources,
+      targetResources,
+    )) => {
       let (snsResources, otherResources) =
         supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
           AWS.SNS.service,
@@ -73,7 +87,11 @@ let subscribe = (
                 {
                   sid: "AllowReceiveEvents",
                   principal: Principals({
-                    service: PrincipalIds([AWS.CloudwatchEventRule.principal, AWS.Lambda.principal, AWS.SNS.principal]),
+                    service: PrincipalIds([
+                      AWS.CloudwatchEventRule.principal,
+                      AWS.Lambda.principal,
+                      AWS.SNS.principal,
+                    ]),
                   }),
                   effect: Allow,
                   actions: Actions(["sqs:SendMessage"]),

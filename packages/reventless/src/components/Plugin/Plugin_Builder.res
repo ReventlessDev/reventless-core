@@ -366,6 +366,17 @@ module Make = (
           },
         )
 
+        let sourceResources = eventTopics->EventTopic.allOutputsToResources
+        let targetResources =
+          extensionPointsOutputs
+          ->Belt.Array.map(extensionPoint => extensionPoint.eventTopic)
+          ->Pulumi.Output.all
+          ->Pulumi.Output.apply(eventTopics =>
+            eventTopics
+            ->Belt.Array.map(eventTopic => eventTopic.resources)
+            ->Belt.Array.concatMany
+          )
+
         let childName = name->ComponentType.name(Plugin.componentType)
         let eventCollectorOutputs =
           (
@@ -374,14 +385,16 @@ module Make = (
             extensionsHandlers->Pulumi.Output.all,
             extensionPointsHandlers->Pulumi.Output.all,
             connectPluginExtensionOutputs,
+            targetResources,
           )
-          ->Pulumi.Output.all5
+          ->Pulumi.Output.all6
           ->Pulumi.Output.apply(((
             pluginDefinition,
             connectPluginExtensionIncomingEventHandler,
             extensionsHandlers,
             extensionPointsHandlers,
             connectPluginExtensionOutputs,
+            targetResources,
           )) => {
             module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
             let eventCollector = PluginEventCollector.make(~name=childName, ~opts)
@@ -431,6 +444,8 @@ module Make = (
               ~eventTopics,
               ~eventCollector,
               ~runtime,
+              ~sourceResources,
+              ~targetResources,
               ~opts=eventCollectorOpts,
             )
 

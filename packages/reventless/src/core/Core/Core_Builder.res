@@ -103,6 +103,18 @@ module Make = (
           )
           ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union)
 
+        let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
+        let sourceResources = eventTopics->EventTopic.allOutputsToResources
+        let targetResources =
+          extensionPointsOutputs
+          ->Belt.Array.map(extensionPoint => extensionPoint.eventTopic)
+          ->Pulumi.Output.all
+          ->Pulumi.Output.apply(eventTopics =>
+            eventTopics
+            ->Belt.Array.map(eventTopic => eventTopic.resources)
+            ->Belt.Array.concatMany
+          )
+
         let fakePluginDefinition: ReventlessSpec.Plugin.pluginDefinition = {
           id: "Core@FAKE",
           name: "Core",
@@ -113,9 +125,9 @@ module Make = (
         }
 
         let eventCollectorOutputs =
-          extensionPointsOutgoingEventHandlers
-          ->Pulumi.Output.all
-          ->Pulumi.Output.apply(extensionPointsOutgoingEventHandlers => {
+          (extensionPointsOutgoingEventHandlers->Pulumi.Output.all, targetResources)
+          ->Pulumi.Output.all2
+          ->Pulumi.Output.apply(((extensionPointsOutgoingEventHandlers, targetResources)) => {
             module CoreEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
             let eventCollector = CoreEventCollector.make(~name, ~opts)
             let eventCollectorOutputs = eventCollector->Component.outputs
@@ -137,9 +149,11 @@ module Make = (
 
             CoreEventCollector.subscribe(
               ~name,
-              ~eventTopics=aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames),
+              ~eventTopics,
               ~eventCollector,
               ~runtime,
+              ~sourceResources,
+              ~targetResources,
               ~opts,
             )
             eventCollectorOutputs

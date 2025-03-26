@@ -30,19 +30,19 @@ module Make = (
       ~eventCollector,
       ~eventsHandler=Callback.eventsHandler,
     )
-    let runtime = RuntimeEnvironment.make(
-      ~name,
-      ~handler,
-      ~memorySize,
-      ~timeout,
-      ~opts,
-    )
+    let runtime = RuntimeEnvironment.make(~name, ~handler, ~memorySize, ~timeout, ~opts)
+
+    let eventTopics = allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames)
+    let sourceResources = eventTopics->EventTopic.allOutputsToResources
+    let targetResources = [] // TODO
 
     SpecificEventCollector.subscribe(
       ~name,
-      ~eventTopics=allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames),
+      ~eventTopics,
       ~eventCollector,
       ~runtime,
+      ~sourceResources,
+      ~targetResources,
       ~opts,
     )
 

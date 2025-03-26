@@ -15,6 +15,7 @@ var Aggregate$Reventless = require("../Aggregate/Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
 var Heartbeat$Reventless = require("../Heartbeat/Heartbeat.res.js");
 var ReadModel$Reventless = require("../ReadModel/ReadModel.res.js");
+var EventTopic$Reventless = require("../EventTopic/EventTopic.res.js");
 var Interstack$Reventless = require("../../util/Interstack.res.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.res.js");
 var Util_QueryDb$Reventless = require("../../util/Util_QueryDb.res.js");
@@ -264,13 +265,22 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
                           resources: Belt_Array.map(corePluginExtensionPointUnwrapped.eventTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource)
                         };
+                        var sourceResources = EventTopic$Reventless.allOutputsToResources(eventTopics);
+                        var targetResources = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
+                                      return extensionPoint.eventTopic;
+                                    }))).apply(function (eventTopics) {
+                              return Belt_Array.concatMany(Belt_Array.map(eventTopics, (function (eventTopic) {
+                                                return eventTopic.resources;
+                                              })));
+                            });
                         var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
                         var eventCollectorOutputs = Pulumi.all([
                                 pluginDefinition,
                                 match$2[1],
                                 Pulumi.all(match$1[1]),
                                 Pulumi.all(match[1]),
-                                match$2[0]
+                                match$2[0],
+                                targetResources
                               ]).apply(function (param) {
                               var extensionsHandlers = param[2];
                               var pluginDefinition = param[0];
@@ -303,7 +313,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                   });
                               var handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
                               var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, eventCollectorOpts);
-                              PluginEventCollector.subscribe(childName, eventTopics, eventCollector, runtime, eventCollectorOpts);
+                              PluginEventCollector.subscribe(childName, eventTopics, eventCollector, runtime, sourceResources, param[5], eventCollectorOpts);
                               var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;

@@ -21,6 +21,8 @@ module type T = {
     ~eventTopics: EventTopic.allOutputs,
     ~eventCollector: component,
     ~runtime: Runtime.environment<'runtimeParts>,
+    ~sourceResources: array<ReventlessSpec.Adapter.resource>,
+    ~targetResources: array<ReventlessSpec.Adapter.resource>,
     ~opts: Pulumi.ComponentResource.options,
   ) => unit
 
