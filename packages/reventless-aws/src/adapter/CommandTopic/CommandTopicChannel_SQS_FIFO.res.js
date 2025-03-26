@@ -78,6 +78,23 @@ function subscribe(name, channel, runtime, resources, opts) {
                         return sqsResource.urn;
                       })
                 }]) : undefined;
+        var allowLambdaToAccessDynamoDb = sqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbAccessPolicy", [{
+                  Sid: "AllowLambdaReadWriteDynamoDb",
+                  Effect: "Allow",
+                  Action: [
+                    "dynamodb:GetItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:BatchWriteItem"
+                  ],
+                  Resource: sqsResources.map(function (sqsResource) {
+                        return sqsResource.urn;
+                      })
+                }]) : undefined;
         var allowLambdaToTriggerCloudWatchEvents = PolicyDocument$PulumiAws.make(undefined, name + "LambdaCloudWatchEventsPolicy", [{
                 Sid: "AllowLambdaTriggerCloudWatchEvents",
                 Effect: "Allow",
@@ -118,6 +135,7 @@ function subscribe(name, channel, runtime, resources, opts) {
                         allowSQSLambdaPolicyDocument,
                         allowLambdaToTriggerCloudWatchEvents,
                         allowLambdaPassRoleToEvents,
+                        allowLambdaToAccessDynamoDb,
                         allowSQSSendLambdaPolicyDocument
                       ], (function (x) {
                           return x;

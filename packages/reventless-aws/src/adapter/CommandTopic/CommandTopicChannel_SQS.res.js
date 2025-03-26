@@ -34,6 +34,7 @@ function subscribe(name, channel, runtime, resources, opts) {
                 })),
           Adapter$Reventless.resourcesToUnwrappedOutput(resources)
         ]).apply(function (param) {
+        var resources = param[3];
         var queueArn = param[0];
         var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [
                   {
@@ -65,14 +66,35 @@ function subscribe(name, channel, runtime, resources, opts) {
                     Resource: queueArn
                   }
                 ]));
-        var sqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(param[3], [
+        var sqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
               AWS$ReventlessAws.SQS.service,
               AWS$ReventlessAws.SQS_FIFO.service
+            ]);
+        Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+              AWS$ReventlessAws.DynamoDb.service,
+              AWS$ReventlessAws.DynamoDbStream.service
             ]);
         var allowSQSSendLambdaPolicyDocument = sqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "RemoteSQSLambdaPolicy", [{
                   Sid: "AllowLambdaSendMessageSQS",
                   Effect: "Allow",
                   Action: "sqs:SendMessage",
+                  Resource: sqsResources.map(function (sqsResource) {
+                        return sqsResource.urn;
+                      })
+                }]) : undefined;
+        var allowLambdaToAccessDynamoDb = sqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbAccessPolicy", [{
+                  Sid: "AllowLambdaReadWriteDynamoDb",
+                  Effect: "Allow",
+                  Action: [
+                    "dynamodb:GetItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan",
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:BatchWriteItem"
+                  ],
                   Resource: sqsResources.map(function (sqsResource) {
                         return sqsResource.urn;
                       })
@@ -117,6 +139,7 @@ function subscribe(name, channel, runtime, resources, opts) {
                         allowSQSLambdaPolicyDocument,
                         allowLambdaToTriggerCloudWatchEvents,
                         allowLambdaPassRoleToEvents,
+                        allowLambdaToAccessDynamoDb,
                         allowSQSSendLambdaPolicyDocument
                       ], (function (policy) {
                           return policy;

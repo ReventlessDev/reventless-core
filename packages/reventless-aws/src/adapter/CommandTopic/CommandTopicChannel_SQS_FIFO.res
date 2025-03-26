@@ -89,6 +89,33 @@ let subscribe = (
       | false => None
       }
 
+      let allowLambdaToAccessDynamoDb = switch sqsResources->Array.length > 0 {
+      | true =>
+        Some(
+          PulumiAws.PolicyDocument.make(
+            ~id=name ++ "LambdaDynamoDbAccessPolicy",
+            ~statements=[
+              {
+                sid: "AllowLambdaReadWriteDynamoDb",
+                effect: Allow,
+                actions: Actions([
+                  "dynamodb:GetItem",
+                  "dynamodb:Query",
+                  "dynamodb:Scan",
+                  "dynamodb:BatchGetItem",
+                  "dynamodb:PutItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:BatchWriteItem",
+                ]),
+                resources: Resources(sqsResources->Array.map(sqsResource => sqsResource.urn)),
+              },
+            ],
+          ),
+        )
+      | false => None
+      }
+
       let allowLambdaToTriggerCloudWatchEvents = PulumiAws.PolicyDocument.make(
         ~id=name ++ "LambdaCloudWatchEventsPolicy",
         ~statements=[
@@ -150,6 +177,7 @@ let subscribe = (
               Some(allowSQSLambdaPolicyDocument),
               Some(allowLambdaToTriggerCloudWatchEvents),
               Some(allowLambdaPassRoleToEvents),
+              allowLambdaToAccessDynamoDb,
               allowSQSSendLambdaPolicyDocument,
             ]->Belt_Array.keepMap(x => x),
           )->Pulumi.Output.asInput,
