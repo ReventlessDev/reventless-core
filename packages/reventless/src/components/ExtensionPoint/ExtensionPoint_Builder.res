@@ -19,7 +19,16 @@ module Make = (
     module Id = ReventlessSpec.Id.String
   }
 
+  let filterAggregateResources = aggregateResources =>
+    // TODO filter
+    aggregateResources
+    ->Js.Dict.entries
+    // ->Belt.Array.keep(((name, _)) => aggregateNames->Belt.Array.has(name))
+    ->Belt.Array.map(((_, resources)) => resources)
+    ->Belt.Array.concatMany
+
   let construct = (
+    ~aggregateResources,
     ~publishToAggregates,
     ~scheduler: Scheduler.operations,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
@@ -37,9 +46,11 @@ module Make = (
       Pulumi.ComponentResource.parent: commandTopic->Component.toPulumiResource,
     }
 
+    let commandTopicResources =
+      (commandTopic->CommandTopic_Adapter.channel).resources->Adapter.resourcesToUnwrappedOutput
+
     let (commandTopic, eventTopic, outgoingEventHandler) =
-      (commandTopic->CommandTopic_Adapter.channel).resources
-      ->Adapter.resourcesToUnwrappedOutput
+      commandTopicResources
       ->Pulumi.Output.flatMap(commandTopicResources => {
         module ExtensionPointCallback = ExtensionPoint_Callback.Make(
           {
@@ -61,8 +72,10 @@ module Make = (
           ~name=childName,
           ~commandTopic,
           ~runtime,
+          ~resources=aggregateResources->filterAggregateResources,
           ~opts=commandTopicOpts,
         )
+        // subscribe(~name=childName, ~aggregateChannels, ~runtime, ~opts=commandTopicOpts)
 
         module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)
         let eventTopic = SpecificEventTopic.make(~name=childName, ~storageResources=[], ~opts)
@@ -102,11 +115,17 @@ module Make = (
     })
   }
 
-  let make = (~publishToAggregates, ~scheduler, ~queryEngine, ~opts) =>
+  let make = (~aggregateResources, ~publishToAggregates, ~scheduler, ~queryEngine, ~opts) =>
     Component.make(
       ~componentType=ExtensionPoint.componentType->ComponentType.toString,
       ~name=Spec.name,
-      ~construct=construct(~publishToAggregates, ~scheduler, ~queryEngine, ...),
+      ~construct=construct(
+        ~aggregateResources,
+        ~publishToAggregates,
+        ~scheduler,
+        ~queryEngine,
+        ...
+      ),
       ~opts
     )
 }

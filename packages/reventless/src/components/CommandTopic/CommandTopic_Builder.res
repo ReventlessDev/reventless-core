@@ -40,11 +40,11 @@ module Make = (Spec: CommandTopic.Spec, Channel: CommandTopic_Adapter.Channel): 
     })
   }
 
-  let subscribe = (~name, ~commandTopic, ~runtime, ~opts) => {
+  let subscribe = (~name, ~commandTopic, ~runtime, ~resources, ~opts) => {
     let name = name->ComponentType.name(CommandTopic.componentType)
     let channel = commandTopic->CommandTopic_Adapter.channel
 
-    let subscribeResources = channel.subscribe(~name, ~channel, ~runtime, ~opts)
+    let subscribeResources = channel.subscribe(~name, ~channel, ~runtime, ~resources, ~opts)
 
     // let _ = commandTopic->Component.setOutputs({
     //   CommandTopic.resources: channel.resources->Belt.Array.concat(subscribeResources),

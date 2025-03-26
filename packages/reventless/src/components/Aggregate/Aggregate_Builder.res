@@ -82,7 +82,9 @@ module Make = (
           ~opts,
         )
 
-        SpecificCommandTopic.subscribe(~name, ~commandTopic, ~runtime, ~opts)
+        let eventLog = eventLog->Component.outputs
+        let resources = [eventLog.resources, eventLog.eventTopic.resources]->Belt.Array.concatMany
+        SpecificCommandTopic.subscribe(~name, ~commandTopic, ~runtime, ~resources, ~opts)
         commandTopic
       })
 

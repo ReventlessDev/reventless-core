@@ -90,13 +90,19 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                     parent: opts_parent
                   };
                   var addEventMapperFns = {};
+                  var aggregateResources = {};
                   var publishToAggregates = {};
                   var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (SpecificAggregate) {
                                   var aggregate = SpecificAggregate.make(opts);
                                   addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
-                                  publishToAggregates[SpecificAggregate.Spec.name] = Component$Reventless.operations(aggregate).apply(function (param) {
+                                  var resources = Component$Reventless.outputs(aggregate).commandTopic.apply(function (commandTopic) {
+                                        return commandTopic.resources;
+                                      });
+                                  aggregateResources[SpecificAggregate.Spec.name] = resources;
+                                  var publishJsons = Component$Reventless.operations(aggregate).apply(function (param) {
                                         return param.publishJsons;
                                       });
+                                  publishToAggregates[SpecificAggregate.Spec.name] = publishJsons;
                                   return Component$Reventless.outputs(aggregate);
                                 })), (function (aggregate) {
                               return [
@@ -141,21 +147,23 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         }));
                   var pureOutputs = Pulumi.all([
                           coreExtensionPoints,
+                          Pulumi.all(aggregateResources),
                           Pulumi.all(publishToAggregates),
                           Pulumi.all(publishToReadModels),
                           scheduler,
                           queryEngine
                         ]).apply(function (param) {
-                        var queryEngine = param[4];
-                        var scheduler = param[3];
-                        var publishToReadModels = param[2];
-                        var publishToAggregates = param[1];
+                        var queryEngine = param[5];
+                        var scheduler = param[4];
+                        var publishToReadModels = param[3];
+                        var publishToAggregates = param[2];
+                        var aggregateResources = param[1];
                         var coreExtensionPoints = param[0];
                         var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
                                 return addEventMapperFn(allEventTopics, queryEngine);
                               }), addEventMapperFns);
                         var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
-                                    var extensionPoint = SpecificExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
+                                    var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
                                     return [
                                             Component$Reventless.outputs(extensionPoint),
                                             Component$Reventless.operations(extensionPoint).apply(function (param) {

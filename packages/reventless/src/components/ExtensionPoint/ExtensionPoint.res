@@ -36,7 +36,8 @@ module type T = {
   type component = Component.t<t, outputs, operations>
 
   let make: (
-    ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
+    ~aggregateResources: dict<array<ReventlessSpec.Adapter.resource>>,
+    ~publishToAggregates: dict<CommandTopic.publishJsons>,
     ~scheduler: Scheduler.operations,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~opts: option<Pulumi.ComponentResource.options>,

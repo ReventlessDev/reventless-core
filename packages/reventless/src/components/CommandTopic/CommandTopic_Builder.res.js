@@ -32,10 +32,10 @@ function Make(Spec, Channel) {
                 resources: channel.resources
               });
   };
-  var subscribe = function (name, commandTopic, runtime, opts) {
+  var subscribe = function (name, commandTopic, runtime, resources, opts) {
     var name$1 = ComponentType$Reventless.name(name, CommandTopic$Reventless.componentType);
     var channel = commandTopic.channel;
-    channel.subscribe(name$1, channel, runtime, opts);
+    channel.subscribe(name$1, channel, runtime, resources, opts);
   };
   var makeHandler = function (commandTopic, commandsHandler) {
     var channel = commandTopic.channel;

@@ -11,6 +11,7 @@ let subscribe = (
     runtimeParts,
   >,
   ~runtime: Reventless.Runtime.environment<runtimeParts>,
+  ~resources: array<ReventlessSpec.Adapter.resource>,
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
@@ -20,10 +21,21 @@ let subscribe = (
   let lambdaRole = runtime.parts.lambdaRole
 
   let attachPolicies =
-    (queue.arn, queue.id, lambda->Pulumi.Output.flatMap(lambda => lambda.arn))
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((queueArn, queueId, handlerArn)) => {
+    (
+      queue.arn,
+      queue.id,
+      lambda->Pulumi.Output.flatMap(lambda => lambda.arn),
+      resources->Reventless.Adapter.resourcesToUnwrappedOutput,
+    )
+    ->Pulumi.Output.all4
+    ->Pulumi.Output.apply(((queueArn, queueId, handlerArn, resources)) => {
       open PulumiAws.PolicyDocument
+
+      let sqsResources =
+        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.SQS.service,
+          AWS.SQS_FIFO.service,
+        ])
 
       let queuePolicyDocument =
         PulumiAws.PolicyDocument.make(

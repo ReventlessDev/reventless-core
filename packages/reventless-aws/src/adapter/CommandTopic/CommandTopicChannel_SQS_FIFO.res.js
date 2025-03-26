@@ -19,7 +19,7 @@ var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
 var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("./CommandTopicChannel_SQS_Runtime.res.js");
 
-function subscribe(name, channel, runtime, opts) {
+function subscribe(name, channel, runtime, resources, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = channel.parts.queue;
   var lambda = runtime.parts.lambda;
@@ -29,7 +29,8 @@ function subscribe(name, channel, runtime, opts) {
           queue.id,
           Output$Pulumi.flatMap(lambda, (function (lambda) {
                   return lambda.arn;
-                }))
+                })),
+          Adapter$Reventless.resourcesToUnwrappedOutput(resources)
         ]).apply(function (param) {
         var queueArn = param[0];
         var queuePolicyDocument = PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [

@@ -67,7 +67,8 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                 eventLog: eventLogOps
               });
           var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandTopic$Reventless.componentType), SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands), undefined, undefined, opts$1);
-          SpecificCommandTopic.subscribe(name$1, commandTopic, runtime, opts$1);
+          var resources = Component$Reventless.outputs(eventLog).eventTopic.resources;
+          SpecificCommandTopic.subscribe(name$1, commandTopic, runtime, resources, opts$1);
           return commandTopic;
         });
     var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {

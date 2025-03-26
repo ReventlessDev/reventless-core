@@ -23,6 +23,7 @@ module Make = (
     let name = Core.componentType->ComponentType.toName
 
     let addEventMapperFns = Js.Dict.empty()
+    let aggregateResources = Js.Dict.empty()
     let publishToAggregates = Js.Dict.empty()
 
     let aggregatesWithoutEventMappers =
@@ -33,10 +34,14 @@ module Make = (
           SpecificAggregate.Spec.name,
           (aggregate->Component.outputs).addEventMapper,
         )
-        publishToAggregates->Js.Dict.set(
-          SpecificAggregate.Spec.name,
-          aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons),
-        )
+        let resources =
+          (aggregate->Component.outputs).commandTopic->Pulumi.Output.apply(commandTopic =>
+            commandTopic.resources
+          )
+        aggregateResources->Js.Dict.set(SpecificAggregate.Spec.name, resources)
+        let publishJsons =
+          aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons)
+        publishToAggregates->Js.Dict.set(SpecificAggregate.Spec.name, publishJsons)
         aggregate->Component.outputs
       })
       ->Belt.Array.map(aggregate => {(aggregate.name, aggregate)})
@@ -59,9 +64,14 @@ module Make = (
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
 
     let (aggregatesOutputs, extensionPointsOutputs, eventCollectorOutputs) =
-      (publishToAggregates->Pulumi.Output.allDict, queryEngine, scheduler)
-      ->Pulumi.Output.all3
-      ->Pulumi.Output.apply(((publishToAggregates, queryEngine, scheduler)) => {
+      (
+        aggregateResources->Pulumi.Output.allDict,
+        publishToAggregates->Pulumi.Output.allDict,
+        queryEngine,
+        scheduler,
+      )
+      ->Pulumi.Output.all4
+      ->Pulumi.Output.apply(((aggregateResources, publishToAggregates, queryEngine, scheduler)) => {
         let aggregatesOutputs = Js.Dict.map(
           addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
           addEventMapperFns,
@@ -71,6 +81,7 @@ module Make = (
           extensionPoints
           ->Belt.Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
             let extensionPoint = SpecificExtensionPoint.make(
+              ~aggregateResources,
               ~publishToAggregates,
               ~scheduler,
               ~queryEngine,

@@ -25,13 +25,19 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
     };
     var name = ComponentType$Reventless.toName(Core$Reventless.componentType);
     var addEventMapperFns = {};
+    var aggregateResources = {};
     var publishToAggregates = {};
     var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (SpecificAggregate) {
                     var aggregate = SpecificAggregate.make(opts);
                     addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
-                    publishToAggregates[SpecificAggregate.Spec.name] = Component$Reventless.operations(aggregate).apply(function (param) {
+                    var resources = Component$Reventless.outputs(aggregate).commandTopic.apply(function (commandTopic) {
+                          return commandTopic.resources;
+                        });
+                    aggregateResources[SpecificAggregate.Spec.name] = resources;
+                    var publishJsons = Component$Reventless.operations(aggregate).apply(function (param) {
                           return param.publishJsons;
                         });
+                    publishToAggregates[SpecificAggregate.Spec.name] = publishJsons;
                     return Component$Reventless.outputs(aggregate);
                   })), (function (aggregate) {
                 return [
@@ -59,18 +65,20 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
     var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
     var queryEngine = QueryEngineAdapter.make(allQueryDbs);
     var match = Output$Pulumi.unzip3(Pulumi.all([
+                Pulumi.all(aggregateResources),
                 Pulumi.all(publishToAggregates),
                 queryEngine,
                 scheduler
               ]).apply(function (param) {
-              var scheduler = param[2];
-              var queryEngine = param[1];
-              var publishToAggregates = param[0];
+              var scheduler = param[3];
+              var queryEngine = param[2];
+              var publishToAggregates = param[1];
+              var aggregateResources = param[0];
               var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
                       return addEventMapperFn(allEventTopics, queryEngine);
                     }), addEventMapperFns);
               var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
-                          var extensionPoint = SpecificExtensionPoint.make(publishToAggregates, scheduler, queryEngine, opts);
+                          var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
                           return [
                                   Component$Reventless.outputs(extensionPoint),
                                   Component$Reventless.operations(extensionPoint).apply(function (param) {

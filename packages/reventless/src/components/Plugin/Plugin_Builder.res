@@ -100,6 +100,7 @@ module Make = (
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
 
     let addEventMapperFns = Js.Dict.empty()
+    let aggregateResources = Js.Dict.empty()
     let publishToAggregates = Js.Dict.empty()
 
     let aggregatesWithoutEventMappers =
@@ -110,10 +111,14 @@ module Make = (
           SpecificAggregate.Spec.name,
           (aggregate->Component.outputs).addEventMapper,
         )
-        publishToAggregates->Js.Dict.set(
-          SpecificAggregate.Spec.name,
-          aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons),
-        )
+        let resources =
+          (aggregate->Component.outputs).commandTopic->Pulumi.Output.apply(commandTopic =>
+            commandTopic.resources
+          )
+        aggregateResources->Js.Dict.set(SpecificAggregate.Spec.name, resources)
+        let publishJsons =
+          aggregate->Component.operations->Pulumi.Output.apply(({publishJsons}) => publishJsons)
+        publishToAggregates->Js.Dict.set(SpecificAggregate.Spec.name, publishJsons)
         aggregate->Component.outputs
       })
       ->Belt.Array.map(aggregate => {(aggregate.name, aggregate)})
@@ -165,14 +170,16 @@ module Make = (
 
       (
         coreExtensionPoints,
+        aggregateResources->Pulumi.Output.allDict,
         publishToAggregates->Pulumi.Output.allDict,
         publishToReadModels->Pulumi.Output.allDict,
         scheduler,
         queryEngine,
       )
-      ->Pulumi.Output.all5
+      ->Pulumi.Output.all6
       ->Pulumi.Output.apply(((
         coreExtensionPoints,
+        aggregateResources,
         publishToAggregates,
         publishToReadModels,
         scheduler,
@@ -187,6 +194,7 @@ module Make = (
           extensionPoints
           ->Belt.Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
             let extensionPoint = SpecificExtensionPoint.make(
+              ~aggregateResources,
               ~publishToAggregates,
               ~scheduler,
               ~queryEngine,
