@@ -89,6 +89,23 @@ let subscribe = (
       | false => None
       }
 
+      let allowLambdaToTriggerCloudWatchEvents = PulumiAws.PolicyDocument.make(
+        ~id=name ++ "LambdaCloudWatchEventsPolicy",
+        ~statements=[
+          {
+            sid: "AllowLambdaTriggerCloudWatchEvents",
+            effect: Allow,
+            actions: Actions([
+              "events:PutRule",
+              "events:PutTargets",
+              "events:DeleteRule",
+              "events:RemoveTargets",
+            ]),
+            resources: Resource("*"),
+          },
+        ],
+      )
+
       let allowSQSLambdaPolicyDocument = PulumiAws.PolicyDocument.make(
         ~id=name ++ "SQSLambdaPolicy",
         ~statements=[
@@ -114,6 +131,7 @@ let subscribe = (
             [
               Some(PulumiAws.Lambda.defaultLoggingPolicyDocument),
               Some(allowSQSLambdaPolicyDocument),
+              Some(allowLambdaToTriggerCloudWatchEvents),
               allowSQSSendLambdaPolicyDocument,
             ]->Belt.Array.keepMap(policy => policy),
           )->Pulumi.Output.asInput,

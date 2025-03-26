@@ -78,6 +78,17 @@ function subscribe(name, channel, runtime, resources, opts) {
                         return sqsResource.urn;
                       })
                 }]) : undefined;
+        var allowLambdaToTriggerCloudWatchEvents = PolicyDocument$PulumiAws.make(undefined, name + "LambdaCloudWatchEventsPolicy", [{
+                Sid: "AllowLambdaTriggerCloudWatchEvents",
+                Effect: "Allow",
+                Action: [
+                  "events:PutRule",
+                  "events:PutTargets",
+                  "events:DeleteRule",
+                  "events:RemoveTargets"
+                ],
+                Resource: "*"
+              }]);
         var allowSQSLambdaPolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "SQSLambdaPolicy", [{
                 Sid: "AllowLambdaSendAndReceiveMessage",
                 Effect: "Allow",
@@ -93,6 +104,7 @@ function subscribe(name, channel, runtime, resources, opts) {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Belt_Array.keepMap([
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         allowSQSLambdaPolicyDocument,
+                        allowLambdaToTriggerCloudWatchEvents,
                         allowSQSSendLambdaPolicyDocument
                       ], (function (x) {
                           return x;
