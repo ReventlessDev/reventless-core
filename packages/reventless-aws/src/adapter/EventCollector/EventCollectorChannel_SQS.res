@@ -41,7 +41,7 @@ let subscribe = (
           AWS.SNS.service,
           AWS.SNS_FIFO.service,
         ])
-      let dynamoDbResources =
+      let dynamoDbStreamResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.DynamoDbStream.service,
         ])
@@ -57,28 +57,6 @@ let subscribe = (
           AWS.DynamoDb.service,
           AWS.DynamoDbStream.service,
         ])
-
-      let _snsTopicSubscriptions =
-        snsFifoResources->Array.map(snsFifoResource =>
-          Util_SQS.subscribeToSnsTopic(
-            ~queue,
-            ~targetName=name,
-            ~sourceName=snsFifoResource.name,
-            ~topic=snsFifoResource->Reventless.AdapterDeploytime.unwrappedToResource,
-            ~opts,
-          )
-        )
-
-      let _eventSourceMappings =
-        dynamoDbResources->Array.map(dynamoDbResource =>
-          Util_EventSourceMapping.subscribe(
-            ~lambda,
-            ~targetName=name,
-            ~sourceName=dynamoDbResource.name,
-            ~source=dynamoDbResource->Reventless.AdapterDeploytime.unwrappedToResource,
-            ~opts,
-          )
-        )
 
       let attachQueuePolicy = {
         open PulumiAws.PolicyDocument
@@ -112,7 +90,7 @@ let subscribe = (
       }
 
       let lambdaDynamoDbStreamPolicyDocuments =
-        dynamoDbResources->Array.length > 0
+        dynamoDbStreamResources->Array.length > 0
           ? {
               open PulumiAws.PolicyDocument
               Some(
@@ -129,7 +107,9 @@ let subscribe = (
                         "dynamodb:ListStreams",
                       ]),
                       resources: Resources(
-                        dynamoDbResources->Array.map(dynamoDbResource => dynamoDbResource.urn),
+                        dynamoDbStreamResources->Array.map(dynamoDbResource =>
+                          dynamoDbResource.urn
+                        ),
                       ),
                     },
                   ],
@@ -223,6 +203,28 @@ let subscribe = (
         },
         ~opts,
       )
+
+      let _snsTopicSubscriptions =
+        snsFifoResources->Array.map(snsFifoResource =>
+          Util_SQS.subscribeToSnsTopic(
+            ~queue,
+            ~targetName=name,
+            ~sourceName=snsFifoResource.name,
+            ~topic=snsFifoResource->Reventless.AdapterDeploytime.unwrappedToResource,
+            ~opts,
+          )
+        )
+
+      let _eventSourceMappings =
+        dynamoDbStreamResources->Array.map(dynamoDbResource =>
+          Util_EventSourceMapping.subscribe(
+            ~lambda,
+            ~targetName=name,
+            ~sourceName=dynamoDbResource.name,
+            ~source=dynamoDbResource->Reventless.AdapterDeploytime.unwrappedToResource,
+            ~opts,
+          )
+        )
 
       (attachLambdaPolicy, attachQueuePolicy)
     })

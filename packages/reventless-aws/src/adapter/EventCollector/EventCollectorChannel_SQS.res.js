@@ -42,7 +42,7 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
               AWS$ReventlessAws.SNS.service,
               AWS$ReventlessAws.SNS_FIFO.service
             ]);
-        var dynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
+        var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
         var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
               AWS$ReventlessAws.SNS.service,
               AWS$ReventlessAws.SNS_FIFO.service
@@ -51,12 +51,6 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
               AWS$ReventlessAws.DynamoDb.service,
               AWS$ReventlessAws.DynamoDbStream.service
             ]);
-        snsFifoResources.map(function (snsFifoResource) {
-              return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
-            });
-        dynamoDbResources.map(function (dynamoDbResource) {
-              return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbResource), opts$1);
-            });
         var attachQueuePolicy = new (Aws.sqs.QueuePolicy)(name + "QueuePolicy", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
                           Sid: "AllowReceiveEvents",
@@ -73,7 +67,7 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
                         }])),
               queueUrl: param[2]
             }, opts$1);
-        var lambdaDynamoDbStreamPolicyDocuments = dynamoDbResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbStreamPolicy", [{
+        var lambdaDynamoDbStreamPolicyDocuments = dynamoDbStreamResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbStreamPolicy", [{
                   Sid: "AllowLambdaToReadStream",
                   Effect: "Allow",
                   Action: [
@@ -82,7 +76,7 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
                     "dynamodb:GetShardIterator",
                     "dynamodb:ListStreams"
                   ],
-                  Resource: dynamoDbResources.map(function (dynamoDbResource) {
+                  Resource: dynamoDbStreamResources.map(function (dynamoDbResource) {
                         return dynamoDbResource.urn;
                       })
                 }]) : undefined;
@@ -131,6 +125,12 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
                       ])),
               role: lambdaRole.id
             }, opts$1);
+        snsFifoResources.map(function (snsFifoResource) {
+              return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
+            });
+        dynamoDbStreamResources.map(function (dynamoDbResource) {
+              return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbResource), opts$1);
+            });
         return [
                 attachLambdaPolicy,
                 attachQueuePolicy

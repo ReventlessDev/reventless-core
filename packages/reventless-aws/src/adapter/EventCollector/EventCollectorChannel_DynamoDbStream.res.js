@@ -27,7 +27,15 @@ function subscribe(name, eventTopics, param, runtime, resources, opts) {
           Adapter$Reventless.resourcesToUnwrappedOutput(resources)
         ]).apply(function (param) {
         var resources = param[1];
-        var dynamoDbStreamResources = param[0];
+        var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(param[0], [AWS$ReventlessAws.DynamoDbStream.service]);
+        var targetDynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+              AWS$ReventlessAws.DynamoDb.service,
+              AWS$ReventlessAws.DynamoDbStream.service
+            ]);
+        var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+              AWS$ReventlessAws.SNS.service,
+              AWS$ReventlessAws.SNS_FIFO.service
+            ]);
         var streamSourcesWithPolicy = dynamoDbStreamResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "Policy", [{
                   Sid: "AllowLambdaToReadStream",
                   Effect: "Allow",
@@ -41,14 +49,6 @@ function subscribe(name, eventTopics, param, runtime, resources, opts) {
                         return dynamoDbStreamResource.urn;
                       })
                 }]) : undefined;
-        var targetDynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.DynamoDb.service,
-              AWS$ReventlessAws.DynamoDbStream.service
-            ]);
-        var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.SNS.service,
-              AWS$ReventlessAws.SNS_FIFO.service
-            ]);
         var lambdaWriteDynamoDbPolicyDocument = targetDynamoDbResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaAllowDynamoDbWrite", [{
                   Sid: "AllowLambdaReadWriteDynamoDb",
                   Effect: "Allow",

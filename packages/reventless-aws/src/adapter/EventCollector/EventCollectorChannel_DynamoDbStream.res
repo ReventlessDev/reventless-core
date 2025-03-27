@@ -24,7 +24,24 @@ let subscribe = (
   let _subscribeAndAttachPolicies =
     (eventTopicResources, resources->Reventless.Adapter.resourcesToUnwrappedOutput)
     ->Pulumi.Output.all2
-    ->Pulumi.Output.apply(((dynamoDbStreamResources, resources)) => {
+    ->Pulumi.Output.apply(((eventTopicResources, resources)) => {
+      let dynamoDbStreamResources =
+        eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.DynamoDbStream.service,
+        ])
+
+      let targetDynamoDbResources =
+        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.DynamoDb.service,
+          AWS.DynamoDbStream.service,
+        ])
+
+      let targetSnsResources =
+        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.SNS.service,
+          AWS.SNS_FIFO.service,
+        ])
+
       open PulumiAws.PolicyDocument
       let streamSourcesWithPolicy =
         dynamoDbStreamResources->Array.length > 0
@@ -51,18 +68,6 @@ let subscribe = (
               ),
             )
           : None
-
-      let targetDynamoDbResources =
-        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
-          AWS.DynamoDb.service,
-          AWS.DynamoDbStream.service,
-        ])
-
-      let targetSnsResources =
-        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
-          AWS.SNS.service,
-          AWS.SNS_FIFO.service,
-        ])
 
       let lambdaWriteDynamoDbPolicyDocument =
         targetDynamoDbResources->Array.length > 0
