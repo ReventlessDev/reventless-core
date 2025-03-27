@@ -16,7 +16,7 @@ var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/A
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
-function subscribe(name, eventTopics, param, runtime, sourceResources, targetResources, opts) {
+function subscribe(name, eventTopics, param, runtime, resources, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
@@ -27,8 +27,7 @@ function subscribe(name, eventTopics, param, runtime, sourceResources, targetRes
           })(eventTopics), [AWS$ReventlessAws.DynamoDbStream.service]);
   Pulumi.all([
           eventTopicResources,
-          Adapter$Reventless.resourcesToUnwrappedOutput(sourceResources),
-          Adapter$Reventless.resourcesToUnwrappedOutput(targetResources)
+          Adapter$Reventless.resourcesToUnwrappedOutput(resources)
         ]).apply(function (param) {
         var match = param[0];
         var errorResources = match[1];

@@ -9,7 +9,6 @@ var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Adapter$Reventless = require("../../adapter/Adapter.res.js");
 var Schedule$Reventless = require("../../util/Schedule.res.js");
 var Component$Reventless = require("../Component.res.js");
-var EventTopic$Reventless = require("../EventTopic/EventTopic.res.js");
 var Util_Pulumi$Reventless = require("../../util/Util_Pulumi.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var Util_EventTopic$Reventless = require("../../util/Util_EventTopic.res.js");
@@ -40,9 +39,8 @@ function Make(SpecificEventCollector, RuntimeEnvironment) {
                   var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                   var runtime = RuntimeEnvironment.make(extra$1, handler, memorySize, timeout, opts$1);
                   var eventTopics = Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames);
-                  var sourceResources = EventTopic$Reventless.allOutputsToResources(eventTopics);
-                  var targetResources = [];
-                  SpecificEventCollector.subscribe(extra$1, eventTopics, eventCollector, runtime, sourceResources, targetResources, opts$1);
+                  var resources = [];
+                  SpecificEventCollector.subscribe(extra$1, eventTopics, eventCollector, runtime, resources, opts$1);
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),
                               Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(eventCollector).resources)

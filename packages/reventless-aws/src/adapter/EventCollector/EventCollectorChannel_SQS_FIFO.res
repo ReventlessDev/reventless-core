@@ -12,8 +12,7 @@ let subscribe = (
     runtimeParts,
   >,
   ~runtime: Reventless.Runtime.environment<runtimeParts>,
-  ~sourceResources: array<ReventlessSpec.Adapter.resource>,
-  ~targetResources: array<ReventlessSpec.Adapter.resource>,
+  ~resources: array<ReventlessSpec.Adapter.resource>,
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
@@ -35,16 +34,14 @@ let subscribe = (
       eventTopicResources,
       queue.arn,
       queue.id,
-      sourceResources->Reventless.Adapter.resourcesToUnwrappedOutput,
-      targetResources->Reventless.Adapter.resourcesToUnwrappedOutput,
+      resources->Reventless.Adapter.resourcesToUnwrappedOutput,
     )
-    ->Pulumi.Output.all5
+    ->Pulumi.Output.all4
     ->Pulumi.Output.apply(((
       (supportedResources, errorResources),
       queueArn,
       queueId,
-      sourceResources,
-      targetResources,
+      resources,
     )) => {
       let (snsFifoResources, otherResources) =
         supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(

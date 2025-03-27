@@ -7,8 +7,7 @@ let subscribe = (
   ~eventTopics,
   ~channel as _,
   ~runtime: Reventless.Runtime.environment<runtimeParts>,
-  ~sourceResources: array<ReventlessSpec.Adapter.resource>,
-  ~targetResources: array<ReventlessSpec.Adapter.resource>,
+  ~resources: array<ReventlessSpec.Adapter.resource>,
   ~opts,
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
@@ -22,17 +21,9 @@ let subscribe = (
     ->Reventless.Util.Adapter.partitionSupportedResources([AWS.DynamoDbStream.service])
 
   let _subscribeAndAttachPolicies =
-    (
-      eventTopicResources,
-      sourceResources->Reventless.Adapter.resourcesToUnwrappedOutput,
-      targetResources->Reventless.Adapter.resourcesToUnwrappedOutput,
-    )
-    ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((
-      (dynamoDbStreamResources, errorResources),
-      sourceResources,
-      targetResources,
-    )) => {
+    (eventTopicResources, resources->Reventless.Adapter.resourcesToUnwrappedOutput)
+    ->Pulumi.Output.all2
+    ->Pulumi.Output.apply((((dynamoDbStreamResources, errorResources), resources)) => {
       let streamSourcesWithPolicy = dynamoDbStreamResources->Belt.Array.map(((
         sourceName,
         sources,

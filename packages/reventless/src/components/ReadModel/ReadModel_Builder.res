@@ -73,16 +73,14 @@ module Make = (
         )
 
         let eventTopics = allEventTopics->Util.EventTopic.filterEventTopics(sourceNames)
-        let sourceResources = eventTopics->EventTopic.allOutputsToResources
-        let targetResources = (queryDb->Component.outputs).resources
+        let resources = (queryDb->Component.outputs).resources
 
         SpecificEventCollector.subscribe(
           ~name,
           ~eventTopics,
           ~eventCollector,
           ~runtime,
-          ~sourceResources,
-          ~targetResources,
+          ~resources,
           ~opts,
         )
         eventCollector

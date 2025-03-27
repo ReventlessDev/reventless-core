@@ -104,8 +104,7 @@ module Make = (
           ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union)
 
         let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
-        let sourceResources = eventTopics->EventTopic.allOutputsToResources
-        let targetResources =
+        let resources =
           extensionPointsOutputs
           ->Belt.Array.map(extensionPoint => extensionPoint.eventTopic)
           ->Pulumi.Output.all
@@ -125,9 +124,9 @@ module Make = (
         }
 
         let eventCollectorOutputs =
-          (extensionPointsOutgoingEventHandlers->Pulumi.Output.all, targetResources)
+          (extensionPointsOutgoingEventHandlers->Pulumi.Output.all, resources)
           ->Pulumi.Output.all2
-          ->Pulumi.Output.apply(((extensionPointsOutgoingEventHandlers, targetResources)) => {
+          ->Pulumi.Output.apply(((extensionPointsOutgoingEventHandlers, resources)) => {
             module CoreEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
             let eventCollector = CoreEventCollector.make(~name, ~opts)
             let eventCollectorOutputs = eventCollector->Component.outputs
@@ -152,8 +151,7 @@ module Make = (
               ~eventTopics,
               ~eventCollector,
               ~runtime,
-              ~sourceResources,
-              ~targetResources,
+              ~resources,
               ~opts,
             )
             eventCollectorOutputs
