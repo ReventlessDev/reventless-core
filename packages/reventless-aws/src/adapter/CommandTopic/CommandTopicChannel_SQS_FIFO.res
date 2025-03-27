@@ -77,52 +77,50 @@ let subscribe = (
           AWS.DynamoDbStream.service,
         ])
 
-      let allowSQSSendLambdaPolicyDocument = switch sqsResources->Array.length > 0 {
-      | true =>
-        Some(
-          PulumiAws.PolicyDocument.make(
-            ~id=name ++ "RemoteSQSLambdaPolicy",
-            ~statements=[
-              {
-                sid: "AllowLambdaSendMessageSQS",
-                effect: Allow,
-                actions: Action("sqs:SendMessage"),
-                resources: Resources(sqsResources->Array.map(sqsResource => sqsResource.urn)),
-              },
-            ],
-          ),
-        )
-      | false => None
-      }
+      let allowSQSSendLambdaPolicyDocument =
+        sqsResources->Array.length > 0
+          ? Some(
+              PulumiAws.PolicyDocument.make(
+                ~id=name ++ "RemoteSQSLambdaPolicy",
+                ~statements=[
+                  {
+                    sid: "AllowLambdaSendMessageSQS",
+                    effect: Allow,
+                    actions: Action("sqs:SendMessage"),
+                    resources: Resources(sqsResources->Array.map(sqsResource => sqsResource.urn)),
+                  },
+                ],
+              ),
+            )
+          : None
 
-      let allowLambdaToAccessDynamoDb = switch dynamoDbResources->Array.length > 0 {
-      | true =>
-        Some(
-          PulumiAws.PolicyDocument.make(
-            ~id=name ++ "LambdaDynamoDbAccessPolicy",
-            ~statements=[
-              {
-                sid: "AllowLambdaReadWriteDynamoDb",
-                effect: Allow,
-                actions: Actions([
-                  "dynamodb:GetItem",
-                  "dynamodb:Query",
-                  "dynamodb:Scan",
-                  "dynamodb:BatchGetItem",
-                  "dynamodb:PutItem",
-                  "dynamodb:UpdateItem",
-                  "dynamodb:DeleteItem",
-                  "dynamodb:BatchWriteItem",
-                ]),
-                resources: Resources(
-                  dynamoDbResources->Array.map(dynamoDbResource => dynamoDbResource.urn),
-                ),
-              },
-            ],
-          ),
-        )
-      | false => None
-      }
+      let allowLambdaToAccessDynamoDb =
+        dynamoDbResources->Array.length > 0
+          ? Some(
+              PulumiAws.PolicyDocument.make(
+                ~id=name ++ "LambdaDynamoDbAccessPolicy",
+                ~statements=[
+                  {
+                    sid: "AllowLambdaReadWriteDynamoDb",
+                    effect: Allow,
+                    actions: Actions([
+                      "dynamodb:GetItem",
+                      "dynamodb:Query",
+                      "dynamodb:Scan",
+                      "dynamodb:BatchGetItem",
+                      "dynamodb:PutItem",
+                      "dynamodb:UpdateItem",
+                      "dynamodb:DeleteItem",
+                      "dynamodb:BatchWriteItem",
+                    ]),
+                    resources: Resources(
+                      dynamoDbResources->Array.map(dynamoDbResource => dynamoDbResource.urn),
+                    ),
+                  },
+                ],
+              ),
+            )
+          : None
 
       let allowLambdaToTriggerCloudWatchEvents = PulumiAws.PolicyDocument.make(
         ~id=name ++ "LambdaCloudWatchEventsPolicy",
