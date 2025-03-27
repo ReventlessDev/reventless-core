@@ -43,7 +43,6 @@ let subscribe = (
         ])
       let dynamoDbResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
-          AWS.DynamoDb.service,
           AWS.DynamoDbStream.service,
         ])
 

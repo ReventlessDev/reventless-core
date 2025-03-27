@@ -43,10 +43,7 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
               AWS$ReventlessAws.SNS.service,
               AWS$ReventlessAws.SNS_FIFO.service
             ]);
-        var dynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [
-              AWS$ReventlessAws.DynamoDb.service,
-              AWS$ReventlessAws.DynamoDbStream.service
-            ]);
+        var dynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
         var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
               AWS$ReventlessAws.SNS.service,
               AWS$ReventlessAws.SNS_FIFO.service
