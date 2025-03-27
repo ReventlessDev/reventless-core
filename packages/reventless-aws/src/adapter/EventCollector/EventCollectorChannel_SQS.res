@@ -4,7 +4,7 @@ type runtimeParts = Util.Lambda.runtimeParts
 
 let subscribe = (
   ~name,
-  ~eventTopics,
+  ~eventTopics: dict<Reventless.EventTopic.outputs>,
   ~channel: Reventless.EventCollector_Adapter.channel<
     callbackEvent,
     'context,
@@ -23,11 +23,9 @@ let subscribe = (
 
   let eventTopicResources =
     eventTopics
-    ->(Js.Dict.map((eventTopic: Reventless.EventTopic.outputs) => eventTopic.resources, _))
-    ->Reventless.Util.Adapter.partitionSupportedResources([
-      AWS.DynamoDbStream.service,
-      AWS.SNS.service,
-    ])
+    ->Js.Dict.values
+    ->Array.flatMap(outputs => outputs.resources)
+    ->Reventless.Adapter.resourcesToUnwrappedOutput
 
   let attachPolicies =
     (
@@ -37,40 +35,51 @@ let subscribe = (
       resources->Reventless.Adapter.resourcesToUnwrappedOutput,
     )
     ->Pulumi.Output.all4
-    ->Pulumi.Output.apply(((
-      (supportedResources, errorResources),
-      queueArn,
-      queueId,
-      resources,
-    )) => {
-      let (snsResources, otherResources) =
-        supportedResources->Reventless.Util.Adapter.partitionUnwrappedResourcesByService(
+    ->Pulumi.Output.apply(((eventTopicResources, queueArn, queueId, resources)) => {
+      let snsFifoResources =
+        eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.SNS.service,
+          AWS.SNS_FIFO.service,
+        ])
+      let dynamoDbResources =
+        eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.DynamoDb.service,
+          AWS.DynamoDbStream.service,
+        ])
+
+      let targetSnsResources =
+        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.SNS.service,
+          AWS.SNS_FIFO.service,
+        ])
+
+      let targetDynamoDbResources =
+        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.DynamoDb.service,
+          AWS.DynamoDbStream.service,
+        ])
+
+      let _snsTopicSubscriptions =
+        snsFifoResources->Array.map(snsFifoResource =>
+          Util_SQS.subscribeToSnsTopic(
+            ~queue,
+            ~targetName=name,
+            ~sourceName=snsFifoResource.name,
+            ~topic=snsFifoResource->Reventless.AdapterDeploytime.unwrappedToResource,
+            ~opts,
+          )
         )
 
-      let _snsTopicSubscriptions = snsResources->Belt.Array.map(((sourceName, topic)) =>
-        Util_SQS.subscribeToSnsTopic(
-          ~queue,
-          ~targetName=name,
-          ~sourceName,
-          ~topic=topic
-          ->Util.SNS.findTopicInUnwrappedResources
-          ->Reventless.AdapterDeploytime.unwrappedToResource,
-          ~opts,
+      let _eventSourceMappings =
+        dynamoDbResources->Array.map(dynamoDbResource =>
+          Util_EventSourceMapping.subscribe(
+            ~lambda,
+            ~targetName=name,
+            ~sourceName=dynamoDbResource.name,
+            ~source=dynamoDbResource->Reventless.AdapterDeploytime.unwrappedToResource,
+            ~opts,
+          )
         )
-      )
-
-      let _eventSourceMappings = otherResources->Belt.Array.map(((sourceName, resources)) =>
-        Util_EventSourceMapping.subscribe(
-          ~lambda,
-          ~targetName=name,
-          ~sourceName,
-          ~source=resources
-          ->Util.DynamoDbStream.findUnwrappedResource
-          ->Reventless.AdapterDeploytime.unwrappedToResource,
-          ~opts,
-        )
-      )
 
       let attachQueuePolicy = {
         open PulumiAws.PolicyDocument
@@ -103,29 +112,81 @@ let subscribe = (
         )
       }
 
-      let lambdaDynamoDbStreamPolicyDocuments = otherResources->Belt.Array.map(((
-        _sourceName,
-        sources,
-      )) => {
-        let source = sources->Array.getUnsafe(0)
-        open PulumiAws.PolicyDocument
-        PulumiAws.PolicyDocument.make(
-          ~id=name ++ source.name ++ "Policy",
-          ~statements=[
-            {
-              sid: "AllowLambdaToReadStream" ++ source.name->String.split("-")->Array.getUnsafe(0),
-              effect: Allow,
-              actions: Actions([
-                "dynamodb:DescribeStream",
-                "dynamodb:GetRecords",
-                "dynamodb:GetShardIterator",
-                "dynamodb:ListStreams",
-              ]),
-              resources: Resource(source.urn),
-            },
-          ],
-        )
-      })
+      let lambdaDynamoDbStreamPolicyDocuments =
+        dynamoDbResources->Array.length > 0
+          ? {
+              open PulumiAws.PolicyDocument
+              Some(
+                PulumiAws.PolicyDocument.make(
+                  ~id=name ++ "LambdaDynamoDbStreamPolicy",
+                  ~statements=[
+                    {
+                      sid: "AllowLambdaToReadStream",
+                      effect: Allow,
+                      actions: Actions([
+                        "dynamodb:DescribeStream",
+                        "dynamodb:GetRecords",
+                        "dynamodb:GetShardIterator",
+                        "dynamodb:ListStreams",
+                      ]),
+                      resources: Resources(
+                        dynamoDbResources->Array.map(dynamoDbResource => dynamoDbResource.urn),
+                      ),
+                    },
+                  ],
+                ),
+              )
+            }
+          : None
+
+      let lambdaWriteDynamoDbPolicyDocument =
+        targetDynamoDbResources->Array.length > 0
+          ? Some(
+              PulumiAws.PolicyDocument.make(
+                ~id=name ++ "LambdaAllowDynamoDbWrite",
+                ~statements=[
+                  {
+                    sid: "AllowLambdaReadWriteDynamoDb",
+                    effect: Allow,
+                    actions: Actions([
+                      "dynamodb:GetItem",
+                      "dynamodb:Query",
+                      "dynamodb:Scan",
+                      "dynamodb:BatchGetItem",
+                      "dynamodb:PutItem",
+                      "dynamodb:UpdateItem",
+                      "dynamodb:DeleteItem",
+                      "dynamodb:BatchWriteItem",
+                    ]),
+                    resources: Resources(
+                      targetDynamoDbResources->Array.map(dynamoDbResource => dynamoDbResource.urn),
+                    ),
+                  },
+                ],
+              ),
+            )
+          : None
+
+      let lambdaSnsPublishNotificationPolicyDocument =
+        targetSnsResources->Array.length > 0
+          ? {
+              Some(
+                PulumiAws.PolicyDocument.make(
+                  ~id=name ++ "PublishSNS",
+                  ~statements=[
+                    {
+                      sid: "LambdaAllowPublishSNS",
+                      effect: Allow,
+                      actions: Action("sns:Publish"),
+                      resources: Resources(
+                        targetSnsResources->Array.map(snsResource => snsResource.urn),
+                      ),
+                    },
+                  ],
+                ),
+              )
+            }
+          : None
 
       let lambdaQueuePolicyDocument = {
         open PulumiAws.PolicyDocument
@@ -151,20 +212,18 @@ let subscribe = (
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
             name ++ "LambdaPolicy",
-            lambdaDynamoDbStreamPolicyDocuments->Belt.Array.concat([
-              PulumiAws.Lambda.defaultLoggingPolicyDocument,
-              lambdaQueuePolicyDocument,
-            ]),
+            [
+              Some(PulumiAws.Lambda.defaultLoggingPolicyDocument),
+              Some(lambdaQueuePolicyDocument),
+              lambdaDynamoDbStreamPolicyDocuments,
+              lambdaWriteDynamoDbPolicyDocument,
+              lambdaSnsPublishNotificationPolicyDocument,
+            ]->Array.keepSome,
           )->Pulumi.Output.asInput,
           role: lambdaRole.id->Pulumi.Output.asInput,
         },
         ~opts,
       )
-
-      if errorResources->Belt.Array.length > 0 {
-        let eventTopicNames = errorResources->Js.Array2.joinWith(",")
-        Js.Exn.raiseError(__MODULE__ ++ ` cannot connect to EventTopic(s) ${eventTopicNames}`)
-      }
 
       (attachLambdaPolicy, attachQueuePolicy)
     })
