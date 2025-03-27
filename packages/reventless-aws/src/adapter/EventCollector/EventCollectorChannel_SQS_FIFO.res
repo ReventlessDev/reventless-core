@@ -41,7 +41,7 @@ let subscribe = (
           AWS.SNS.service,
           AWS.SNS_FIFO.service,
         ])
-      let dynamoDbResources =
+      let dynamoDbStreamResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.DynamoDbStream.service,
         ])
@@ -90,7 +90,7 @@ let subscribe = (
       }
 
       let lambdaDynamoDbStreamPolicyDocument =
-        dynamoDbResources->Array.length > 0
+        dynamoDbStreamResources->Array.length > 0
           ? {
               open PulumiAws.PolicyDocument
               Some(
@@ -107,7 +107,9 @@ let subscribe = (
                         "dynamodb:ListStreams",
                       ]),
                       resources: Resources(
-                        dynamoDbResources->Array.map(dynamoDbResource => dynamoDbResource.name),
+                        dynamoDbStreamResources->Array.map(dynamoDbResource =>
+                          dynamoDbResource.name
+                        ),
                       ),
                     },
                   ],
@@ -214,12 +216,12 @@ let subscribe = (
         )
 
       let _eventSourceMappings =
-        dynamoDbResources->Array.map(dynamoDbResource =>
+        dynamoDbStreamResources->Array.map(dynamoDbStreamResource =>
           Util_EventSourceMapping.subscribe(
             ~lambda,
             ~targetName=name,
-            ~sourceName=dynamoDbResource.name,
-            ~source=dynamoDbResource->Reventless.AdapterDeploytime.unwrappedToResource,
+            ~sourceName=dynamoDbStreamResource.name,
+            ~source=dynamoDbStreamResource->Reventless.AdapterDeploytime.unwrappedToResource,
             ~opts,
           )
         )

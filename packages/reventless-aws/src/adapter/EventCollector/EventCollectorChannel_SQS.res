@@ -216,12 +216,12 @@ let subscribe = (
         )
 
       let _eventSourceMappings =
-        dynamoDbStreamResources->Array.map(dynamoDbResource =>
+        dynamoDbStreamResources->Array.map(dynamoDbStreamResource =>
           Util_EventSourceMapping.subscribe(
             ~lambda,
             ~targetName=name,
-            ~sourceName=dynamoDbResource.name,
-            ~source=dynamoDbResource->Reventless.AdapterDeploytime.unwrappedToResource,
+            ~sourceName=dynamoDbStreamResource.name,
+            ~source=dynamoDbStreamResource->Reventless.AdapterDeploytime.unwrappedToResource,
             ~opts,
           )
         )

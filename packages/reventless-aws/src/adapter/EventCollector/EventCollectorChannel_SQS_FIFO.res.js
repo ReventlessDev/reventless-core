@@ -43,7 +43,7 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
               AWS$ReventlessAws.SNS.service,
               AWS$ReventlessAws.SNS_FIFO.service
             ]);
-        var dynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
+        var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
         var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
               AWS$ReventlessAws.SNS.service,
               AWS$ReventlessAws.SNS_FIFO.service
@@ -68,7 +68,7 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
                         }])),
               queueUrl: param[2]
             }, opts$1);
-        var lambdaDynamoDbStreamPolicyDocument = dynamoDbResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbStreamPolicy", [{
+        var lambdaDynamoDbStreamPolicyDocument = dynamoDbStreamResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbStreamPolicy", [{
                   Sid: "AllowLambdaToReadStream",
                   Effect: "Allow",
                   Action: [
@@ -77,7 +77,7 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
                     "dynamodb:GetShardIterator",
                     "dynamodb:ListStreams"
                   ],
-                  Resource: dynamoDbResources.map(function (dynamoDbResource) {
+                  Resource: dynamoDbStreamResources.map(function (dynamoDbResource) {
                         return dynamoDbResource.name;
                       })
                 }]) : undefined;
@@ -129,8 +129,8 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
         snsFifoResources.map(function (snsFifoResource) {
               return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
             });
-        dynamoDbResources.map(function (dynamoDbResource) {
-              return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbResource), opts$1);
+        dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
+              return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts$1);
             });
         return [
                 attachLambdaPolicy,

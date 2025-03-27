@@ -128,8 +128,8 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
         snsFifoResources.map(function (snsFifoResource) {
               return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
             });
-        dynamoDbStreamResources.map(function (dynamoDbResource) {
-              return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbResource), opts$1);
+        dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
+              return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts$1);
             });
         return [
                 attachLambdaPolicy,

@@ -83,8 +83,8 @@ function subscribe(name, eventTopics, param, runtime, resources, opts) {
                       ])),
               role: lambdaRole.id
             }, opts$1);
-        targetDynamoDbResources.map(function (resource) {
-              return Util_EventSourceMapping$ReventlessAws.subscribe(25, lambda, name, resource.name, AdapterDeploytime$Reventless.unwrappedToResource(resource), opts$1);
+        dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
+              return Util_EventSourceMapping$ReventlessAws.subscribe(25, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts$1);
             });
       });
   return [];
