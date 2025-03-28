@@ -27,7 +27,10 @@ function subscribe(name, eventTopics, param, runtime, resources, opts) {
           Adapter$Reventless.resourcesToUnwrappedOutput(resources)
         ]).apply(function (param) {
         var resources = param[1];
-        var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(param[0], [AWS$ReventlessAws.DynamoDbStream.service]);
+        var eventTopicResources = param[0];
+        console.log("EventTopicResources for ", name + ": ", eventTopicResources);
+        console.log("Resources for ", name + ": ", resources);
+        var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
         var targetDynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
               AWS$ReventlessAws.DynamoDb.service,
               AWS$ReventlessAws.DynamoDbStream.service

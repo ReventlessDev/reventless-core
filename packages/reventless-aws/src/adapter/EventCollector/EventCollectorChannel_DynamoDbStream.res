@@ -25,6 +25,10 @@ let subscribe = (
     (eventTopicResources, resources->Reventless.Adapter.resourcesToUnwrappedOutput)
     ->Pulumi.Output.all2
     ->Pulumi.Output.apply(((eventTopicResources, resources)) => {
+      let _logAllResources = {
+        Js.Console.log3("EventTopicResources for ", name ++ ": ", eventTopicResources)
+        Js.Console.log3("Resources for ", name ++ ": ", resources)
+      }
       let dynamoDbStreamResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.DynamoDbStream.service,
