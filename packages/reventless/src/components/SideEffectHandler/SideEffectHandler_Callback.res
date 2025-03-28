@@ -40,7 +40,7 @@ module Make = (Spec: Spec): T => {
       | Some((eventObj, eventMeta, sideEffect)) =>
         module SideEffect = unpack(sideEffect)
         let sourceName = SideEffect.Source.name
-        event'Json->Logger.logEvent'Json(
+        event'Json->Logger.logJsonEvent(
           `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
         )
         let idDecoded = eventObj->Js.Dict.get("id")->Belt.Option.map(SideEffect.Source.Id.t_decode)

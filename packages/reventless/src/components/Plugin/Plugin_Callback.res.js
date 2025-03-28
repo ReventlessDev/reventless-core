@@ -32,12 +32,12 @@ function Make(Spec) {
             }
           }));
   };
-  var handleJsonEvents = function (events$pJson) {
+  var handleJsonEvents = function (jsonEvents) {
     var id = Spec.pluginDefinition.id;
-    var count = events$pJson.length;
-    return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
+    var count = jsonEvents.length;
+    return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(jsonEvents, (async function (idx, event$pJson) {
                           var idx$1 = idx + 1 | 0;
-                          Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "Plugin " + id + " handleJsonEvents: incoming event " + String(idx$1) + "/" + String(count) + ":");
+                          Logger$Reventless.logJsonEvent(undefined, undefined, event$pJson, "Plugin " + id + " handleJsonEvents: incoming event " + String(idx$1) + "/" + String(count) + ":");
                           detectUnhandledEvent(event$pJson);
                           await handleEvent(event$pJson, Spec.incomingConnectExtensionEventHandlers);
                           return Promise.all([

@@ -18,14 +18,14 @@ module Make = (Spec: Spec, EventTopicSpec: EventTopic.Spec) => {
 
       switch await Spec.publishJson(id->EventTopicSpec.Id.toString, event'.meta, event'Json) {
       | exception e =>
-        event'Json->Logger.logEvent'Json(
+        event'Json->Logger.logJsonEvent(
           ~loc=__LOC__,
           ~level=Error,
           `Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
         )
         raise(e)
       | _ =>
-        event'Json->Logger.logEvent'Json(
+        event'Json->Logger.logJsonEvent(
           ~loc=__LOC__,
           `Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
         )

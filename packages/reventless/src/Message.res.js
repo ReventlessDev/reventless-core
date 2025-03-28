@@ -8,6 +8,7 @@ var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Js_option = require("@rescript/std/lib/js/js_option.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.res.js");
 
@@ -85,7 +86,7 @@ function eventNameOfEvent$pJson(json) {
   if (dict !== undefined) {
     return variantNameOfJson(dict["event"]);
   } else {
-    return "unknown";
+    return "unknownEventName";
   }
 }
 
@@ -97,15 +98,19 @@ function idOfEvent$pJson(json) {
 
 function idMetaEventOfEvent$pJson(json) {
   var dict = Js_json.decodeObject(json);
-  var id = Belt_Option.getWithDefault(Belt_Option.map(dict, (function (dict) {
-              return Belt_Option.getWithDefault(Js_json.decodeString(dict["id"]), "unknown");
-            })), "");
-  var meta = Belt_Option.getWithDefault(Belt_Option.map(dict, (function (dict) {
-              return JSON.stringify(dict["meta"]);
-            })), "");
-  var $$event = Belt_Option.getWithDefault(Belt_Option.map(dict, (function (dict) {
-              return JSON.stringify(dict["event"]);
-            })), "");
+  var id = Belt_Option.getWithDefault(Core__Option.flatMap(dict, (function (dict) {
+              return Core__Option.flatMap(dict["id"], Js_json.decodeString);
+            })), "unknownId");
+  var meta = Belt_Option.getWithDefault(Core__Option.flatMap(dict, (function (dict) {
+              return Core__Option.map(dict["meta"], (function (metaStr) {
+                            return JSON.stringify(metaStr);
+                          }));
+            })), "noMeta");
+  var $$event = Belt_Option.getWithDefault(Belt_Option.flatMap(dict, (function (dict) {
+              return Core__Option.map(dict["event"], (function (eventStr) {
+                            return JSON.stringify(eventStr);
+                          }));
+            })), "noEvent");
   return [
           id,
           meta,

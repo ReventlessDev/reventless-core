@@ -112,6 +112,7 @@ async function deleteMessages(entries, queue) {
 
 function parseSqsRecord(record) {
   var eventStr = record.body;
+  console.log("parseSqsRecord: eventStr:", eventStr);
   var json;
   try {
     json = JSON.parse(eventStr);

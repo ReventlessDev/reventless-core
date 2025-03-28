@@ -114,6 +114,6 @@ let event'JsonToLogMessage = event'Json => {
   `${eventName}(${id}): ${event'Str}`
 }
 
-let logEvent'Json = (~loc=?, ~level=Level.Info, event'Json, desc) => {
-  event'JsonToLogMessage(event'Json)->log(~loc?, ~level, desc, _)
+let logJsonEvent = (~loc=?, ~level=Level.Info, event'Json, desc) => {
+  event'JsonToLogMessage(event'Json)->(log(~loc?, ~level, desc, _))
 }

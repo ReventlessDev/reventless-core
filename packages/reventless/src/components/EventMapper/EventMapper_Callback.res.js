@@ -121,12 +121,12 @@ function MakeCounterHandler(Target, Mappings, Ops) {
                   }
                 }));
   };
-  var commonEventsHandler = async function (events$pJson) {
-    var eventsCount = events$pJson.length;
-    var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(events$pJson, (function (idx, event$pJson) {
+  var commonEventsHandler = async function (jsonEvents) {
+    var eventsCount = jsonEvents.length;
+    var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(jsonEvents, (function (idx, jsonEvent) {
                         var idx$1 = idx + 1 | 0;
-                        Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
-                        var event$p = Js_json.decodeObject(event$pJson);
+                        Logger$Reventless.logJsonEvent(undefined, undefined, jsonEvent, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
+                        var event$p = Js_json.decodeObject(jsonEvent);
                         var match = findMapping(Mappings.mappings, event$p);
                         if (match === undefined) {
                           return ;

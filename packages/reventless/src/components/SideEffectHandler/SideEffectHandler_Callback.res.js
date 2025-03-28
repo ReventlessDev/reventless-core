@@ -45,7 +45,7 @@ function Make(Spec) {
                           var sideEffect = match[2];
                           var eventObj = match[0];
                           var sourceName = sideEffect.Source.name;
-                          Logger$Reventless.logEvent$pJson(undefined, undefined, event$pJson, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
+                          Logger$Reventless.logJsonEvent(undefined, undefined, event$pJson, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
                           var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
                           var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
                           if (idDecoded !== undefined) {

@@ -72,7 +72,7 @@ let variantNameOfJson = json =>
 let eventNameOfEvent'Json = json => {
   switch json->Js.Json.decodeObject {
   | Some(dict) => dict->Js.Dict.unsafeGet("event")->variantNameOfJson
-  | _ => "unknown"
+  | _ => "unknownEventName"
   }
 }
 
@@ -86,18 +86,21 @@ let idMetaEventOfEvent'Json = json => {
   let dict = json->Js.Json.decodeObject
   let id =
     dict
-    ->Belt.Option.map(dict =>
-      dict->Js.Dict.unsafeGet("id")->Js.Json.decodeString->Belt.Option.getWithDefault("unknown")
-    )
-    ->Belt.Option.getWithDefault("")
+    ->Option.flatMap(dict => dict->Dict.get("id")->Option.flatMap(id => id->Js.Json.decodeString))
+    ->Belt.Option.getWithDefault("unknownId")
   let meta =
     dict
-    ->Belt.Option.map(dict => dict->Js.Dict.unsafeGet("meta")->Js.Json.stringify)
-    ->Belt.Option.getWithDefault("")
+    ->Option.flatMap(dict =>
+      dict->Dict.get("meta")->Option.map(metaStr => metaStr->Js.Json.stringify)
+    )
+    ->Belt.Option.getWithDefault("noMeta")
   let event =
     dict
-    ->Belt.Option.map(dict => dict->Js.Dict.unsafeGet("event")->Js.Json.stringify)
-    ->Belt.Option.getWithDefault("")
+    ->Belt.Option.flatMap(dict =>
+      dict->Dict.get("event")->Option.map(eventStr => eventStr->Js.Json.stringify)
+    )
+    ->Belt.Option.getWithDefault("noEvent")
+
   (id, meta, event)
 }
 

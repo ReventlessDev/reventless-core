@@ -91,16 +91,16 @@ module MakeCounterHandler = (
       }
     )
 
-  let commonEventsHandler = async events'Json => {
-    let eventsCount = events'Json->Belt.Array.size
+  let commonEventsHandler = async jsonEvents => {
+    let eventsCount = jsonEvents->Belt.Array.size
     let (publisherActions, counterActions) =
-      events'Json
-      ->Belt.Array.mapWithIndex((idx, event'Json) => {
+      jsonEvents
+      ->Belt.Array.mapWithIndex((idx, jsonEvent) => {
         let idx = idx + 1
-        event'Json->Logger.logEvent'Json(
+        jsonEvent->Logger.logJsonEvent(
           `EventMapper.eventsHandler: incoming event ${idx->Belt.Int.toString}/${eventsCount->Belt.Int.toString}:`,
         )
-        let event' = event'Json->Js.Json.decodeObject
+        let event' = jsonEvent->Js.Json.decodeObject
         switch findMapping(Mappings.mappings, event') {
         // TODO: support multiple mappings for the same source
         | Some((eventObj, eventMeta, mapping)) =>

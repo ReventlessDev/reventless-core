@@ -39,13 +39,13 @@ module Make = (Spec: Spec): T => {
       }
     )
 
-  let handleJsonEvents = events'Json => {
+  let handleJsonEvents = jsonEvents => {
     let id = Spec.pluginDefinition.id
-    let count = events'Json->Belt.Array.size
-    events'Json
+    let count = jsonEvents->Belt.Array.size
+    jsonEvents
     ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
       let idx = idx + 1
-      event'Json->Logger.logEvent'Json(
+      event'Json->Logger.logJsonEvent(
         `Plugin ${id} handleJsonEvents: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
       )
       detectUnhandledEvent(event'Json)

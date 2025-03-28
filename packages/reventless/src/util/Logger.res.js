@@ -150,7 +150,7 @@ function event$pJsonToLogMessage(event$pJson) {
   return eventName + "(" + id + "): " + event$pStr;
 }
 
-function logEvent$pJson(loc, levelOpt, event$pJson, desc) {
+function logJsonEvent(loc, levelOpt, event$pJson, desc) {
   var level = levelOpt !== undefined ? levelOpt : "Info";
   var __x = event$pJsonToLogMessage(event$pJson);
   log(loc, undefined, undefined, level, desc, __x);
@@ -168,5 +168,5 @@ exports.commandJsonsToLogMessages = commandJsonsToLogMessages;
 exports.logCmdJson = logCmdJson;
 exports.logCmdJsons = logCmdJsons;
 exports.event$pJsonToLogMessage = event$pJsonToLogMessage;
-exports.logEvent$pJson = logEvent$pJson;
+exports.logJsonEvent = logJsonEvent;
 /* Message-Reventless Not a pure module */

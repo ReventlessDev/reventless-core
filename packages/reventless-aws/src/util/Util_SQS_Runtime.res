@@ -98,6 +98,7 @@ let rec deleteMessages = async (entries, queue) =>
 
 let parseSqsRecord = (record: PulumiAws.SQS.Queue.record) => {
   let eventStr = record.body
+  Js.log2("parseSqsRecord: eventStr:", eventStr)
   switch eventStr->Js.Json.parseExn {
   | json => Some(json)
   | exception err =>
