@@ -69,7 +69,7 @@ function serviceNameOfMsg(msgJson) {
     console.log("Message.serviceNameOfMsg: Invalid JSON object");
     return ;
   } else {
-    console.log("Message.serviceNameOfMsg:", msgJson);
+    console.log("Message.serviceNameOfMsg: couldn't decodeObject:", msgJson);
     return ;
   }
 }

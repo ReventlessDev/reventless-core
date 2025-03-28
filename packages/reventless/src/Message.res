@@ -56,7 +56,7 @@ let serviceNameOfMsg = msgJson =>
     )
 
   | None =>
-    Js.log2("Message.serviceNameOfMsg:", msgJson)
+    Js.log2("Message.serviceNameOfMsg: couldn't decodeObject:", msgJson)
     None
   }
 
@@ -102,7 +102,7 @@ let idMetaEventOfEvent'Json = json => {
 }
 
 type eventsHandler<'id, 'event> = (
-  . 'id,
+  'id,
   array<ReventlessSpec.Message.event'<'id, 'event>>,
 ) => Js.Promise.t<unit>
 
