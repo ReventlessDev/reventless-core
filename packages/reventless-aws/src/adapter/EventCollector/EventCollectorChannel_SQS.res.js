@@ -129,7 +129,11 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
               role: lambdaRole.id
             }, opts$1);
         snsResources.map(function (snsFifoResource) {
-              return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
+              console.log("EventCollectorChannel_SQS: subscribeToSnsTopic:", snsFifoResource);
+              var subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
+              return subscription.id.apply(function (id) {
+                          console.log("EventCollectorChannel_SQS: created SNS subscription:", id, name);
+                        });
             });
         if (snsResources.length === 0) {
           console.warn("No SNS topics are present for EventCollectorChannel ", name);
