@@ -248,6 +248,8 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         tasksOutputs.contents = Belt_Array.map(taskMakers, (function (taskMaker) {
                                 return Component$Reventless.outputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
                               }));
+                        console.log("Plugin_Builder: taskMakers", taskMakers.length);
+                        console.log("Plugin_Builder: tasksOutputs", tasksOutputs);
                         var resolvers = Belt_Array.concatMany(Belt_Array.map(QueryDb$Reventless.allResolversMakers(allQueryDbs), (function (resolverMaker) {
                                     return resolverMaker(allQueryDbs);
                                   })));
