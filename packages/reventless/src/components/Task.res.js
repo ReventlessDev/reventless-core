@@ -16,9 +16,7 @@ function construct(setup, queryBucketName, scheduler, publishToAggregates, query
   var publishCommands = function (aggregateName, cmdJsons) {
     return Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName))(cmdJsons);
   };
-  return Aggregate$Reventless.allCommandTopics(allAggregates).apply(function (allCommandTopics) {
-              return Component$Reventless.setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, Aggregate$Reventless.allEventTopics(allAggregates), allCommandTopics, opts));
-            });
+  return Component$Reventless.setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, Aggregate$Reventless.allEventTopics(allAggregates), Aggregate$Reventless.allCommandTopics(allAggregates), opts));
 }
 
 function make(name, setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, opts) {
