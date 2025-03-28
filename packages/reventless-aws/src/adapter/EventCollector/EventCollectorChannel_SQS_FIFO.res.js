@@ -168,21 +168,23 @@ function make(name, opts) {
         fifoThroughputLimit: "perMessageGroupId",
         sqsManagedSseEnabled: false
       }, opts$1);
+  var enqueueEvent = Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
+        return function (extra, extra$1, extra$2) {
+          return EventCollectorChannel_SQS_Runtime$ReventlessAws.enqueueEvent(runtimeQueue, extra, extra$1, extra$2);
+        };
+      });
+  var handleChannelEvent = function (handleEvents) {
+    return Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
+                return EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbOrSqsEvent(runtimeQueue, handleEvents);
+              });
+  };
   return {
           parts: {
             queue: queue
           },
           resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
-          enqueueEvent: Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
-                return function (extra, extra$1, extra$2) {
-                  return EventCollectorChannel_SQS_Runtime$ReventlessAws.enqueueEvent(runtimeQueue, extra, extra$1, extra$2);
-                };
-              }),
-          handleChannelEvent: (function (handleEvents) {
-              return Util_SQS$ReventlessAws.toRuntimeQueueOutput(queue).apply(function (runtimeQueue) {
-                          return EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbOrSqsEvent(runtimeQueue, handleEvents);
-                        });
-            }),
+          enqueueEvent: enqueueEvent,
+          handleChannelEvent: handleChannelEvent,
           subscribe: subscribe
         };
 }

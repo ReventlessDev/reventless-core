@@ -286,22 +286,25 @@ let make: Reventless.EventCollector_Adapter.channelMaker<
     ~opts,
   )
 
-  {
-    Reventless.EventCollector_Adapter.parts: {queue: queue},
-    resources: [queue->Util_SQS_FIFO.toResource],
-    enqueueEvent: queue
+  let enqueueEvent =
+    queue
     ->Util_SQS.toRuntimeQueueOutput
     ->Pulumi.Output.apply(runtimeQueue =>
       EventCollectorChannel_SQS_Runtime.enqueueEvent(runtimeQueue, ...)
-    ),
+    )
+
+  let handleChannelEvent = handleEvents =>
+    queue
+    ->Util_SQS.toRuntimeQueueOutput
+    ->Pulumi.Output.apply(runtimeQueue =>
+      runtimeQueue->(EventCollectorChannel_SQS_Runtime.handleDynamoDbOrSqsEvent(handleEvents, ...))
+    )
+
+  {
+    Reventless.EventCollector_Adapter.parts: {queue: queue},
+    resources: [queue->Util_SQS_FIFO.toResource],
+    enqueueEvent,
     subscribe,
-    handleChannelEvent: handleEvents =>
-      queue
-      ->Util_SQS.toRuntimeQueueOutput
-      ->Pulumi.Output.apply(runtimeQueue =>
-        runtimeQueue->(
-          EventCollectorChannel_SQS_Runtime.handleDynamoDbOrSqsEvent(handleEvents, ...)
-        )
-      ),
+    handleChannelEvent,
   }
 }

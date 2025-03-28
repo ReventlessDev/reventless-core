@@ -97,13 +97,14 @@ function make(param, param$1) {
   var enqueueEventNotSupported = function (delay, id, messageBody) {
     return Promise.resolve((console.log("EventCollectorChannel_DynamoDbStream-ReventlessAws" + " supports no enqueueEvent:", delay, id, messageBody), undefined));
   };
+  var handleChannelEvent = function (handleEvents) {
+    return Pulumi.output(EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbEvent(handleEvents));
+  };
   return {
           parts: undefined,
           resources: [],
           enqueueEvent: Pulumi.output(enqueueEventNotSupported),
-          handleChannelEvent: (function (handleEvents) {
-              return Pulumi.output(EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbEvent(handleEvents));
-            }),
+          handleChannelEvent: handleChannelEvent,
           subscribe: subscribe
         };
 }

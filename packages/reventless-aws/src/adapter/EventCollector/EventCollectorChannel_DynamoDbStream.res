@@ -164,12 +164,14 @@ let make: Reventless.EventCollector_Adapter.channelMaker<
     // TODO: can we check this at deploy time ?
     Js.log4(__MODULE__ ++ " supports no enqueueEvent:", delay, id, messageBody)->Js.Promise.resolve
 
+  let handleChannelEvent = handleEvents =>
+    (EventCollectorChannel_SQS_Runtime.handleDynamoDbEvent(handleEvents, ...))->Pulumi.Output.make
+
   {
     Reventless.EventCollector_Adapter.parts: (),
     resources: [],
     enqueueEvent: enqueueEventNotSupported->Pulumi.Output.make,
     subscribe,
-    handleChannelEvent: handleEvents =>
-      Pulumi.Output.make(EventCollectorChannel_SQS_Runtime.handleDynamoDbEvent(handleEvents, ...)),
+    handleChannelEvent,
   }
 }
