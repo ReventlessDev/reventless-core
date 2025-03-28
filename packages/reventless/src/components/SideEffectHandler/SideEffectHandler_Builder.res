@@ -34,23 +34,25 @@ module Make = (
     )
     let runtime = RuntimeEnvironment.make(~name, ~handler, ~memorySize, ~timeout, ~opts)
 
-    let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
-    let commandTopics =
-      targets
-      ->Option.map(targets =>
-        allCommandTopics->CommandTopic.filter(targets->Set.fromArray)->Dict.valuesToArray
-      )
-      ->Option.getOr([])
-    let resources = commandTopics->Array.flatMap(commandTopic => commandTopic.resources)
+    let _ = allCommandTopics->Pulumi.Output.apply(allCommandTopics => {
+      let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
+      let commandTopics =
+        targets
+        ->Option.map(targets =>
+          allCommandTopics->CommandTopic.filter(targets->Set.fromArray)->Dict.valuesToArray
+        )
+        ->Option.getOr([])
+      let resources = commandTopics->Array.flatMap(commandTopic => commandTopic.resources)
 
-    SpecificEventCollector.subscribe(
-      ~name,
-      ~eventTopics,
-      ~eventCollector,
-      ~runtime,
-      ~resources,
-      ~opts,
-    )
+      SpecificEventCollector.subscribe(
+        ~name,
+        ~eventTopics,
+        ~eventCollector,
+        ~runtime,
+        ~resources,
+        ~opts,
+      )
+    })
 
     self->Component.setOperations(
       (

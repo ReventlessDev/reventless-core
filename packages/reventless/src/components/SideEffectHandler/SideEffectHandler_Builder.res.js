@@ -40,14 +40,16 @@ function Make(SpecificEventCollector, RuntimeEnvironment) {
                       });
                   var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                   var runtime = RuntimeEnvironment.make(extra$1, handler, memorySize, timeout, opts$1);
-                  var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
-                  var commandTopics = Core__Option.getOr(Core__Option.map(targets, (function (targets) {
-                              return Object.values(CommandTopic$Reventless.filter(allCommandTopics, new Set(targets)));
-                            })), []);
-                  var resources = commandTopics.flatMap(function (commandTopic) {
-                        return commandTopic.resources;
+                  allCommandTopics.apply(function (allCommandTopics) {
+                        var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
+                        var commandTopics = Core__Option.getOr(Core__Option.map(targets, (function (targets) {
+                                    return Object.values(CommandTopic$Reventless.filter(allCommandTopics, new Set(targets)));
+                                  })), []);
+                        var resources = commandTopics.flatMap(function (commandTopic) {
+                              return commandTopic.resources;
+                            });
+                        SpecificEventCollector.subscribe(extra$1, eventTopics, eventCollector, runtime, resources, opts$1);
                       });
-                  SpecificEventCollector.subscribe(extra$1, eventTopics, eventCollector, runtime, resources, opts$1);
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),
                               Adapter$Reventless.resourcesToUnwrappedOutput(Component$Reventless.outputs(eventCollector).resources)
