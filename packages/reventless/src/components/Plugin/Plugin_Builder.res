@@ -329,8 +329,6 @@ module Make = (
               ~opts=Some(opts),
             )->Component.outputs
           )
-        Js.log2("Plugin_Builder: taskMakers", taskMakers->Array.length)
-        Js.log2("Plugin_Builder: tasksOutputs", tasksOutputs)
 
         let resolvers =
           allQueryDbs
