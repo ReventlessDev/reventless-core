@@ -38,10 +38,9 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
         var resources = param[3];
         var queueArn = param[1];
         var eventTopicResources = param[0];
-        var snsFifoResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [
-              AWS$ReventlessAws.SNS.service,
-              AWS$ReventlessAws.SNS_FIFO.service
-            ]);
+        console.log("EventTopicResources for ", name + ": ", eventTopicResources);
+        console.log("Resources for ", name + ": ", resources);
+        var snsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.SNS.service]);
         var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
         var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
               AWS$ReventlessAws.SNS.service,
@@ -55,15 +54,19 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
                           Sid: "AllowReceiveEvents",
                           Principal: {
-                            Service: [
-                              AWS$ReventlessAws.CloudwatchEventRule.principal,
-                              AWS$ReventlessAws.Lambda.principal,
-                              AWS$ReventlessAws.SNS.principal
-                            ]
+                            Service: [AWS$ReventlessAws.SNS.principal]
                           },
                           Effect: "Allow",
                           Action: ["sqs:SendMessage"],
-                          Resource: queueArn
+                          Resource: queueArn,
+                          Condition: {
+                            ArnEquals: Js_dict.fromArray([[
+                                    "aws:SourceArn",
+                                    snsResources.map(function (snsResource) {
+                                          return snsResource.urn;
+                                        })
+                                  ]])
+                          }
                         }])),
               queueUrl: param[2]
             }, opts$1);
@@ -125,9 +128,12 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
                       ])),
               role: lambdaRole.id
             }, opts$1);
-        snsFifoResources.map(function (snsFifoResource) {
+        snsResources.map(function (snsFifoResource) {
               return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
             });
+        if (snsResources.length === 0) {
+          console.warn("No SNS topics are present for EventCollectorChannel ", name);
+        }
         dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
               return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts$1);
             });

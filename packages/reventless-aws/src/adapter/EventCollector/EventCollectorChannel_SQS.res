@@ -36,11 +36,15 @@ let subscribe = (
     )
     ->Pulumi.Output.all4
     ->Pulumi.Output.apply(((eventTopicResources, queueArn, queueId, resources)) => {
-      let snsFifoResources =
+      let _logAllResources = {
+        Js.Console.log3("EventTopicResources for ", name ++ ": ", eventTopicResources)
+        Js.Console.log3("Resources for ", name ++ ": ", resources)
+      }
+      let snsResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.SNS.service,
-          AWS.SNS_FIFO.service,
         ])
+
       let dynamoDbStreamResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.DynamoDbStream.service,
@@ -70,15 +74,19 @@ let subscribe = (
                 {
                   sid: "AllowReceiveEvents",
                   principal: Principals({
-                    service: PrincipalIds([
-                      AWS.CloudwatchEventRule.principal,
-                      AWS.Lambda.principal,
-                      AWS.SNS.principal,
-                    ]),
+                    service: PrincipalIds([AWS.SNS.principal]),
                   }),
                   effect: Allow,
                   actions: Actions(["sqs:SendMessage"]),
                   resources: Resource(queueArn),
+                  conditions: {
+                    arnEquals: Js.Dict.fromArray([
+                      (
+                        "aws:SourceArn",
+                        ConditionValues(snsResources->Array.map(snsResource => snsResource.urn)),
+                      ),
+                    ]),
+                  },
                 },
               ],
             )
@@ -205,7 +213,7 @@ let subscribe = (
       )
 
       let _snsTopicSubscriptions =
-        snsFifoResources->Array.map(snsFifoResource =>
+        snsResources->Array.map(snsFifoResource =>
           Util_SQS.subscribeToSnsTopic(
             ~queue,
             ~targetName=name,
@@ -214,6 +222,10 @@ let subscribe = (
             ~opts,
           )
         )
+
+      let _printWarningForEmptySnsTopic = if snsResources->Array.length == 0 {
+        Js.Console.warn2("No SNS topics are present for EventCollectorChannel ", name)
+      }
 
       let _eventSourceMappings =
         dynamoDbStreamResources->Array.map(dynamoDbStreamResource =>
