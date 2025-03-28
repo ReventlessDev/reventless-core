@@ -76,8 +76,7 @@ module Make = (
         )
         let runtime = RuntimeEnvironment.make(~name, ~handler, ~memorySize, ~timeout, ~opts)
 
-        let eventTopics = allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames)
-        let resources = resources
+        let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
 
         SpecificEventCollector.subscribe(
           ~name,

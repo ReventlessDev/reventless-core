@@ -5,6 +5,8 @@ module Make = (
   let construct = (
     ~sideEffects,
     ~allEventTopics,
+    ~allCommandTopics,
+    ~targets=?,
     ~queryEngine,
     ~scheduler,
     ~memorySize,
@@ -32,8 +34,14 @@ module Make = (
     )
     let runtime = RuntimeEnvironment.make(~name, ~handler, ~memorySize, ~timeout, ~opts)
 
-    let eventTopics = allEventTopics->Util.EventTopic.filterEventTopics(aggregateNames)
-    let resources = [] // TODO
+    let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
+    let commandTopics =
+      targets
+      ->Option.map(targets =>
+        allCommandTopics->CommandTopic.filter(targets->Set.fromArray)->Dict.valuesToArray
+      )
+      ->Option.getOr([])
+    let resources = commandTopics->Array.flatMap(commandTopic => commandTopic.resources)
 
     SpecificEventCollector.subscribe(
       ~name,
@@ -67,6 +75,8 @@ module Make = (
     ~name,
     ~sideEffects,
     ~allEventTopics,
+    ~allCommandTopics,
+    ~targets=?,
     ~queryEngine,
     ~scheduler,
     ~memorySize=2048,
@@ -79,6 +89,8 @@ module Make = (
       ~construct=construct(
         ~sideEffects,
         ~allEventTopics,
+        ~allCommandTopics,
+        ~targets?,
         ~queryEngine,
         ~scheduler,
         ~memorySize,

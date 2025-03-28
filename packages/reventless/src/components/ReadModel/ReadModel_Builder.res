@@ -72,7 +72,7 @@ module Make = (
           ~opts,
         )
 
-        let eventTopics = allEventTopics->Util.EventTopic.filterEventTopics(sourceNames)
+        let eventTopics = allEventTopics->EventTopic.filter(sourceNames)
         let resources = (queryDb->Component.outputs).resources
 
         SpecificEventCollector.subscribe(

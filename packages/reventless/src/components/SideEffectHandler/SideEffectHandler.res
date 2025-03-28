@@ -18,6 +18,8 @@ module type T = {
     ~name: string,
     ~sideEffects: sideEffects,
     ~allEventTopics: EventTopic.allOutputs,
+    ~allCommandTopics: CommandTopic.allOutputs,
+    ~targets: array<string>=?,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~scheduler: Scheduler.operations,
     ~memorySize: int=?,

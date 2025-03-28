@@ -2,7 +2,7 @@
 let componentType = ComponentType.Task
 
 type publishCommands = (
-  . /* ~aggregateName: */ string,
+  /* ~aggregateName: */ string,
   array<Message.commandJson>,
 ) => Js.Promise.t<unit>
 
@@ -32,6 +32,7 @@ type setup = (
   publishCommands,
   queryBucketName,
   EventTopic.allOutputs,
+  CommandTopic.allOutputs,
   Pulumi.CustomResourceOptions.t,
 ) => outputs
 
@@ -51,15 +52,20 @@ let construct = (
     (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(cmdJsons)
   }
 
-  self->Component.setOutputs(
-    setup(
-      queryEngine,
-      scheduler,
-      publishCommands,
-      queryBucketName,
-      Aggregate.allEventTopics(allAggregates),
-      opts,
-    ),
+  allAggregates
+  ->Aggregate.allCommandTopics
+  ->Pulumi.Output.apply(allCommandTopics =>
+    self->Component.setOutputs(
+      setup(
+        queryEngine,
+        scheduler,
+        publishCommands,
+        queryBucketName,
+        allAggregates->Aggregate.allEventTopics,
+        allCommandTopics,
+        opts,
+      ),
+    )
   )
 }
 
@@ -85,5 +91,5 @@ let make = (
       ~allAggregates,
       ...
     ),
-    ~opts,
+    ~opts
   )

@@ -8,9 +8,9 @@ var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Counter$Reventless = require("../Counter/Counter.res.js");
 var Component$Reventless = require("../Component.res.js");
+var EventTopic$Reventless = require("../EventTopic/EventTopic.res.js");
 var EventMapper$Reventless = require("./EventMapper.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
-var Util_EventTopic$Reventless = require("../../util/Util_EventTopic.res.js");
 var EventMapper_Callback$Reventless = require("./EventMapper_Callback.res.js");
 
 function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
@@ -68,7 +68,7 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                             });
                         var handler = SpecificEventCollector.makeHandler(eventCollector, EventCollectorHandler.handleJsonEvents);
                         var runtime = RuntimeEnvironment.make(name, handler, memorySize, timeout, opts$1);
-                        var eventTopics = Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames);
+                        var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
                         return Component$Reventless.outputs((SpecificEventCollector.subscribe(name, eventTopics, eventCollector, runtime, resources, opts$1), eventCollector));
                       });
                   return Component$Reventless.setOutputs(extra, {

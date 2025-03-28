@@ -4,19 +4,21 @@
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Adapter$Reventless = require("../../adapter/Adapter.res.js");
 var Schedule$Reventless = require("../../util/Schedule.res.js");
 var Component$Reventless = require("../Component.res.js");
+var EventTopic$Reventless = require("../EventTopic/EventTopic.res.js");
 var Util_Pulumi$Reventless = require("../../util/Util_Pulumi.res.js");
+var CommandTopic$Reventless = require("../CommandTopic/CommandTopic.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
-var Util_EventTopic$Reventless = require("../../util/Util_EventTopic.res.js");
 var SideEffectHandler$Reventless = require("./SideEffectHandler.res.js");
 var SideEffectHandler_Callback$Reventless = require("./SideEffectHandler_Callback.res.js");
 
 function Make(SpecificEventCollector, RuntimeEnvironment) {
-  var make = function (name, sideEffects, allEventTopics, queryEngine, scheduler, memorySizeOpt, timeoutOpt, opts) {
+  var make = function (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, memorySizeOpt, timeoutOpt, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
     return Component$Reventless.make(ComponentType$Reventless.toString(SideEffectHandler$Reventless.componentType), name, (function (extra, extra$1) {
@@ -38,8 +40,13 @@ function Make(SpecificEventCollector, RuntimeEnvironment) {
                       });
                   var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                   var runtime = RuntimeEnvironment.make(extra$1, handler, memorySize, timeout, opts$1);
-                  var eventTopics = Util_EventTopic$Reventless.filterEventTopics(allEventTopics, aggregateNames);
-                  var resources = [];
+                  var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
+                  var commandTopics = Core__Option.getOr(Core__Option.map(targets, (function (targets) {
+                              return Object.values(CommandTopic$Reventless.filter(allCommandTopics, new Set(targets)));
+                            })), []);
+                  var resources = commandTopics.flatMap(function (commandTopic) {
+                        return commandTopic.resources;
+                      });
                   SpecificEventCollector.subscribe(extra$1, eventTopics, eventCollector, runtime, resources, opts$1);
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),

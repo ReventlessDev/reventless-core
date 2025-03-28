@@ -4,12 +4,19 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 
 function allEventTopics(allAggregates) {
   return Js_dict.map((function (aggregate) {
                 return aggregate.eventLog.eventTopic;
               }), allAggregates);
+}
+
+function allCommandTopics(allAggregates) {
+  return Pulumi.all(Js_dict.map((function (aggregate) {
+                    return aggregate.commandTopic;
+                  }), allAggregates));
 }
 
 function filterEventTopics(allAggregates, aggregateNames) {
@@ -27,5 +34,6 @@ var componentType = "Aggregate";
 
 exports.componentType = componentType;
 exports.allEventTopics = allEventTopics;
+exports.allCommandTopics = allCommandTopics;
 exports.filterEventTopics = filterEventTopics;
-/* No side effect */
+/* @pulumi/pulumi Not a pure module */

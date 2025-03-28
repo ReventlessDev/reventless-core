@@ -2,20 +2,7 @@ let componentType = ComponentType.EventTopic
 
 type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
-type allOutputs = Js.Dict.t<outputs>
-
-let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =>
-  outputs.resources
-  ->Adapter.resourcesToUnwrappedOutput
-  ->Pulumi.Output.apply(resources => {
-    let unwrappedOutputs: unwrappedOutputs = {resources: resources}
-    unwrappedOutputs
-  })
-let allOutputsToResources = allOutputs =>
-  allOutputs
-  ->Js.Dict.values
-  ->Belt.Array.map((eventTopic: outputs) => eventTopic.resources)
-  ->Belt.Array.concatMany
+type allOutputs = dict<outputs>
 
 type t
 
@@ -45,11 +32,33 @@ module type T = {
   ) => component
 }
 
+let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =>
+  outputs.resources
+  ->Adapter.resourcesToUnwrappedOutput
+  ->Pulumi.Output.apply(resources => {
+    let unwrappedOutputs: unwrappedOutputs = {resources: resources}
+    unwrappedOutputs
+  })
+let allOutputsToResources = allOutputs =>
+  allOutputs
+  ->Dict.valuesToArray
+  ->Belt.Array.map((eventTopic: outputs) => eventTopic.resources)
+  ->Belt.Array.concatMany
+
+let filter = (allEventTopics: allOutputs, sourceNames) =>
+  sourceNames
+  ->Belt.Set.String.toArray
+  ->Belt.Array.keepMap(sourceName =>
+    allEventTopics->Dict.get(sourceName)->Belt.Option.map(eventTopic => (sourceName, eventTopic))
+  )
+  ->Dict.fromArray
+
 let log = (eventTopics, description) => {
   let _ =
-    Js.Dict.map((eventTopic: outputs) => eventTopic.resources->Array.getUnsafe(0), eventTopics)
-    ->Js.Dict.entries
-    ->Belt.Array.map(((name, {service})) =>
+    eventTopics
+    ->Dict.mapValues((eventTopic: outputs) => eventTopic.resources->Array.getUnsafe(0))
+    ->Dict.toArray
+    ->Array.map(((name, {service})) =>
       service->Pulumi.Output.apply(service => `${name}(${service})`)
     )
     ->Pulumi.Output.all

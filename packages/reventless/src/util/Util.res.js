@@ -10,8 +10,6 @@ var $$Array;
 
 var $$Error;
 
-var EventTopic;
-
 var Logger;
 
 var $$Promise;
@@ -30,7 +28,6 @@ exports.Adapter = Adapter;
 exports.AdapterRuntime = AdapterRuntime;
 exports.$$Array = $$Array;
 exports.$$Error = $$Error;
-exports.EventTopic = EventTopic;
 exports.Logger = Logger;
 exports.$$Promise = $$Promise;
 exports.Pulumi = Pulumi;

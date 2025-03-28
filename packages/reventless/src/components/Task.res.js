@@ -16,7 +16,9 @@ function construct(setup, queryBucketName, scheduler, publishToAggregates, query
   var publishCommands = function (aggregateName, cmdJsons) {
     return Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName))(cmdJsons);
   };
-  return Component$Reventless.setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, Aggregate$Reventless.allEventTopics(allAggregates), opts));
+  return Aggregate$Reventless.allCommandTopics(allAggregates).apply(function (allCommandTopics) {
+              return Component$Reventless.setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, Aggregate$Reventless.allEventTopics(allAggregates), allCommandTopics, opts));
+            });
 }
 
 function make(name, setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, opts) {
@@ -30,4 +32,4 @@ var componentType = "Task";
 exports.componentType = componentType;
 exports.construct = construct;
 exports.make = make;
-/* Component-Reventless Not a pure module */
+/* Aggregate-Reventless Not a pure module */

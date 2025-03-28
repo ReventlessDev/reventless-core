@@ -18,6 +18,8 @@ type name = string
 
 let allEventTopics = allAggregates =>
   Js.Dict.map(aggregate => aggregate.eventLog.eventTopic, allAggregates)
+let allCommandTopics = allAggregates =>
+  Js.Dict.map(aggregate => aggregate.commandTopic, allAggregates)->Pulumi.Output.allDict
 
 let filterEventTopics = (allAggregates, aggregateNames) =>
   aggregateNames

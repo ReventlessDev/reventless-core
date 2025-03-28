@@ -2,14 +2,7 @@ let componentType = ComponentType.CommandTopic
 
 type unwrappedOutputs = {resources: array<Adapter.unwrappedResource>}
 type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
-
-let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =>
-  outputs.resources
-  ->Adapter.resourcesToUnwrappedOutput
-  ->Pulumi.Output.apply(resources => {
-    let unwrappedOutputs: unwrappedOutputs = {resources: resources}
-    unwrappedOutputs
-  })
+type allOutputs = dict<outputs>
 
 type t
 
@@ -64,3 +57,20 @@ module type T = {
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }
+
+let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =>
+  outputs.resources
+  ->Adapter.resourcesToUnwrappedOutput
+  ->Pulumi.Output.apply(resources => {
+    let unwrappedOutputs: unwrappedOutputs = {resources: resources}
+    unwrappedOutputs
+  })
+
+let filter = (allCommandTopics: allOutputs, names) =>
+  names
+  ->Set.values
+  ->Iterator.toArray
+  ->Belt.Array.keepMap(name =>
+    allCommandTopics->Dict.get(name)->Option.map(commandTopic => (name, commandTopic))
+  )
+  ->Dict.fromArray
