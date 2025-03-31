@@ -37,30 +37,38 @@ let subscribe = (
     ->Pulumi.Output.all4
     ->Pulumi.Output.apply(((eventTopicResources, queueArn, queueId, resources)) => {
       let _logAllResources = {
-        Js.Console.log3("EventTopicResources for ", name ++ ": ", eventTopicResources)
-        Js.Console.log3("Resources for ", name ++ ": ", resources)
+        Js.Console.log3(
+          "EventCollectorChannel_SQS: EventTopicResources for ",
+          name ++ ": ",
+          eventTopicResources,
+        )
+        Js.Console.log3("EventCollectorChannel_SQS: Resources for ", name ++ ": ", resources)
       }
       let snsResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.SNS.service,
         ])
-
       let dynamoDbStreamResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.DynamoDbStream.service,
         ])
-
       let targetSnsResources =
         resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.SNS.service,
           AWS.SNS_FIFO.service,
         ])
-
+      let targetSqsResources =
+        resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
+          AWS.SQS.service,
+          AWS.SQS_FIFO.service,
+        ])
       let targetDynamoDbResources =
         resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.DynamoDb.service,
           AWS.DynamoDbStream.service,
         ])
+      let urns = resources =>
+        resources->Array.map((resource: Reventless.Adapter.unwrappedResource) => resource.urn)
 
       let attachQueuePolicy = {
         open PulumiAws.PolicyDocument
@@ -72,7 +80,7 @@ let subscribe = (
               ~id=name ++ "QueuePolicy",
               ~statements=[
                 {
-                  sid: "AllowReceiveEvents",
+                  sid: "AllowReceiveSnsEvents",
                   principal: Principals({
                     service: PrincipalIds([AWS.SNS.principal]),
                   }),
@@ -80,12 +88,9 @@ let subscribe = (
                   actions: Actions(["sqs:SendMessage"]),
                   resources: Resource(queueArn),
                   conditions: {
-                    arnEquals: Js.Dict.fromArray([
-                      (
-                        "aws:SourceArn",
-                        ConditionValues(snsResources->Array.map(snsResource => snsResource.urn)),
-                      ),
-                    ]),
+                    arnEquals: [
+                      ("aws:SourceArn", ConditionValues(snsResources->urns)),
+                    ]->Js.Dict.fromArray,
                   },
                 },
               ],
@@ -100,7 +105,6 @@ let subscribe = (
       let lambdaDynamoDbStreamPolicyDocuments =
         dynamoDbStreamResources->Array.length > 0
           ? {
-              open PulumiAws.PolicyDocument
               Some(
                 PulumiAws.PolicyDocument.make(
                   ~id=name ++ "LambdaDynamoDbStreamPolicy",
@@ -114,11 +118,7 @@ let subscribe = (
                         "dynamodb:GetShardIterator",
                         "dynamodb:ListStreams",
                       ]),
-                      resources: Resources(
-                        dynamoDbStreamResources->Array.map(dynamoDbResource =>
-                          dynamoDbResource.urn
-                        ),
-                      ),
+                      resources: Resources(dynamoDbStreamResources->urns),
                     },
                   ],
                 ),
@@ -145,9 +145,7 @@ let subscribe = (
                       "dynamodb:DeleteItem",
                       "dynamodb:BatchWriteItem",
                     ]),
-                    resources: Resources(
-                      targetDynamoDbResources->Array.map(dynamoDbResource => dynamoDbResource.urn),
-                    ),
+                    resources: Resources(targetDynamoDbResources->urns),
                   },
                 ],
               ),
@@ -165,9 +163,26 @@ let subscribe = (
                       sid: "LambdaAllowPublishSNS",
                       effect: Allow,
                       actions: Action("sns:Publish"),
-                      resources: Resources(
-                        targetSnsResources->Array.map(snsResource => snsResource.urn),
-                      ),
+                      resources: Resources(targetSnsResources->urns),
+                    },
+                  ],
+                ),
+              )
+            }
+          : None
+
+      let lambdaSqsSendPolicyDocument =
+        targetSqsResources->Array.length > 0
+          ? {
+              Some(
+                PulumiAws.PolicyDocument.make(
+                  ~id=name ++ "SendSQS",
+                  ~statements=[
+                    {
+                      sid: "LambdaAllowSendSQS",
+                      effect: Allow,
+                      actions: Action("sqs:SendMessage"),
+                      resources: Resources(targetSqsResources->urns),
                     },
                   ],
                 ),
@@ -176,7 +191,6 @@ let subscribe = (
           : None
 
       let lambdaQueuePolicyDocument = {
-        open PulumiAws.PolicyDocument
         PulumiAws.PolicyDocument.make(
           ~id=name ++ "LambdaSQSPolicy",
           ~statements=[
@@ -205,6 +219,7 @@ let subscribe = (
               lambdaDynamoDbStreamPolicyDocuments,
               lambdaWriteDynamoDbPolicyDocument,
               lambdaSnsPublishNotificationPolicyDocument,
+              lambdaSqsSendPolicyDocument,
             ]->Array.keepSome,
           )->Pulumi.Output.asInput,
           role: lambdaRole.id->Pulumi.Output.asInput,
