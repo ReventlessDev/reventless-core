@@ -51,6 +51,7 @@ module Make = (
   let applyEventAction = async action =>
     switch action {
     | ExtensionPointMapping.AbstractPublishEvent(id, meta, eventJson) =>
+      Js.log2("ExtensionPoint_Operations.applyEventAction:", eventJson->Js.Json.stringify)
       try await Spec.publishToEventTopic(id, meta, eventJson) catch {
       | err => err->Js.log2("ExtensionPoint: Error on publishToEventTopic command:")
       }
@@ -69,6 +70,7 @@ module Make = (
     }
 
   let outgoingEventHandler = async (eventJson', _pluginDef) => {
+    Js.log2("ExtensionPoint_Operations.outgoingEventHandler:", eventJson'->Js.Json.stringify)
     let eventActions = mapOutgoingEvent(
       eventJson',
       Mappings.mappings,

@@ -34,8 +34,10 @@ function Make(Spec, MappingSpec, Mappings) {
   var applyEventAction = async function (action) {
     switch (action.TAG) {
       case "AbstractPublishEvent" :
+          var eventJson = action._2;
+          console.log("ExtensionPoint_Operations.applyEventAction:", JSON.stringify(eventJson));
           try {
-            return await Spec.publishToEventTopic(action._0, action._1, action._2);
+            return await Spec.publishToEventTopic(action._0, action._1, eventJson);
           }
           catch (raw_err){
             var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -68,6 +70,7 @@ function Make(Spec, MappingSpec, Mappings) {
     }
   };
   var outgoingEventHandler = async function (eventJson$p, _pluginDef) {
+    console.log("ExtensionPoint_Operations.outgoingEventHandler:", JSON.stringify(eventJson$p));
     var eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Spec.scheduler, Spec.commandTopicResources, Spec.queryEngine);
     return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventActions, applyEventAction)));
   };
