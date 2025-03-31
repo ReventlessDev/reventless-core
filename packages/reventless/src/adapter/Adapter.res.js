@@ -50,6 +50,22 @@ function resourcesOutputToResource(resourcesOutput) {
   }
 }
 
+function unwrappedToResource(param) {
+  return {
+          name: Pulumi.output(param.name),
+          id: Pulumi.output(param.id),
+          urn: Pulumi.output(param.urn),
+          info: Pulumi.output(param.info),
+          service: Pulumi.output(param.service)
+        };
+}
+
+function unwrappedToResources(unwrapped) {
+  return Belt_Array.map(unwrapped, (function (unwrapped) {
+                return unwrappedToResource(unwrapped);
+              }));
+}
+
 function unwrappedOutputToResource(unwrappedResource) {
   return {
           name: unwrappedResource.apply(function (r) {
@@ -108,6 +124,8 @@ function unwrappedToString(resources) {
 
 exports.outputToResource = outputToResource;
 exports.resourcesOutputToResource = resourcesOutputToResource;
+exports.unwrappedToResource = unwrappedToResource;
+exports.unwrappedToResources = unwrappedToResources;
 exports.unwrappedOutputToResource = unwrappedOutputToResource;
 exports.resourceToUnwrappedOutput = resourceToUnwrappedOutput;
 exports.resourcesToUnwrappedOutput = resourcesToUnwrappedOutput;

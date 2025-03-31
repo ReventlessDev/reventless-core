@@ -29,6 +29,19 @@ let resourcesOutputToResource: Pulumi.Output.t<array<ReventlessSpec.Adapter.reso
   | _ => None
   }
 
+let unwrappedToResource = (
+  {id, name, urn, info, service}: unwrappedResource,
+): ReventlessSpec.Adapter.resource => {
+  id: id->Pulumi.Output.make,
+  name: name->Pulumi.Output.make,
+  urn: urn->Pulumi.Output.make,
+  info: info->Pulumi.Output.make,
+  service: service->Pulumi.Output.make,
+}
+
+let unwrappedToResources = (unwrapped: array<unwrappedResource>) =>
+  unwrapped->Belt.Array.map(unwrapped => unwrapped->unwrappedToResource)
+
 let unwrappedOutputToResource: Pulumi.Output.t<
   unwrappedResource,
 > => ReventlessSpec.Adapter.resource = unwrappedResource => {

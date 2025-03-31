@@ -374,6 +374,9 @@ module Make = (
             eventTopics
             ->Belt.Array.map(eventTopic => eventTopic.resources)
             ->Belt.Array.concatMany
+            ->Array.concat(
+              corePluginExtensionPointUnwrapped.commandTopic.resources->Adapter.unwrappedToResources,
+            )
           )
 
         let childName = name->ComponentType.name(Plugin.componentType)

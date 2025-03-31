@@ -10,6 +10,7 @@ var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Plugin$Reventless = require("./Plugin.res.js");
+var Adapter$Reventless = require("../../adapter/Adapter.res.js");
 var QueryDb$Reventless = require("../QueryDb/QueryDb.res.js");
 var Aggregate$Reventless = require("../Aggregate/Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
@@ -268,8 +269,8 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                       return extensionPoint.eventTopic;
                                     }))).apply(function (eventTopics) {
                               return Belt_Array.concatMany(Belt_Array.map(eventTopics, (function (eventTopic) {
-                                                return eventTopic.resources;
-                                              })));
+                                                  return eventTopic.resources;
+                                                }))).concat(Adapter$Reventless.unwrappedToResources(corePluginExtensionPointUnwrapped.commandTopic.resources));
                             });
                         var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
                         var eventCollectorOutputs = Pulumi.all([
