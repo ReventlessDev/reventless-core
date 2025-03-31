@@ -10,18 +10,18 @@ function Make(Spec, EventTopicSpec) {
   var publish = async function (events$p) {
     var eventCount = events$p.length;
     return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$p, (async function (idx, event$p) {
-                          var event$pJson = Message$Reventless.event$p_encode(EventTopicSpec.Id.t_encode, EventTopicSpec.event_encode, event$p);
+                          var eventJson$p = Message$Reventless.event$p_encode(EventTopicSpec.Id.t_encode, EventTopicSpec.event_encode, event$p);
                           var id = event$p.id;
                           var idx$1 = idx + 1 | 0;
                           var val;
                           try {
-                            val = await Spec.publishJson(EventTopicSpec.Id.toString(id), event$p.meta, event$pJson);
+                            val = await Spec.publishJson(EventTopicSpec.Id.toString(id), event$p.meta, eventJson$p);
                           }
                           catch (e){
-                            Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 22, characters 15-22", "Error", event$pJson, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
+                            Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 22, characters 15-22", "Error", eventJson$p, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
                             throw e;
                           }
-                          return Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 29, characters 15-22", undefined, event$pJson, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
+                          return Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 29, characters 15-22", undefined, eventJson$p, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
                         }))));
   };
   return {

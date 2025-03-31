@@ -23,13 +23,13 @@ module Make = (
       )
     ) // TODO: handle multiple mappings for same Aggregate name
 
-  let mapOutgoingEvent = (event'Json, mappings, scheduler, queue, queryEngine) =>
-    switch event'Json->Message.serviceNameOfMsg->findOutgoingMapping(mappings) {
+  let mapOutgoingEvent = (eventJson', mappings, scheduler, queue, queryEngine) =>
+    switch eventJson'->Message.serviceNameOfMsg->findOutgoingMapping(mappings) {
     | Some(module(Mapping)) =>
       switch Mapping.mapOutgoingEvent {
       | Some(mapOutgoingEvent) =>
         mapOutgoingEvent(
-          event'Json,
+          eventJson',
           Schedule.create(scheduler, queue),
           Schedule.delete(scheduler, queue),
           queryEngine,
@@ -44,7 +44,7 @@ module Make = (
       }
     | None =>
       Js.Exn.raiseError(
-        "ExtensionPoint.Mapping: Missing mapping for " ++ event'Json->Js.Json.stringify,
+        "ExtensionPoint.Mapping: Missing mapping for " ++ eventJson'->Js.Json.stringify,
       )
     }
 
@@ -68,9 +68,9 @@ module Make = (
       }
     }
 
-  let outgoingEventHandler = async (event'Json, _pluginDef) => {
+  let outgoingEventHandler = async (eventJson', _pluginDef) => {
     let eventActions = mapOutgoingEvent(
-      event'Json,
+      eventJson',
       Mappings.mappings,
       Spec.scheduler,
       Spec.commandTopicResources,

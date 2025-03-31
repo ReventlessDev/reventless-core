@@ -18,14 +18,14 @@ function Make(Spec, MappingSpec, Mappings) {
                               }));
                 }));
   };
-  var mapOutgoingEvent = function (event$pJson, mappings, scheduler, queue, queryEngine) {
-    var Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(event$pJson), mappings);
+  var mapOutgoingEvent = function (eventJson$p, mappings, scheduler, queue, queryEngine) {
+    var Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(eventJson$p), mappings);
     if (Mapping === undefined) {
-      return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$pJson));
+      return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(eventJson$p));
     }
     var mapOutgoingEvent$1 = Mapping.mapOutgoingEvent;
     if (mapOutgoingEvent$1 !== undefined) {
-      return mapOutgoingEvent$1(event$pJson, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
+      return mapOutgoingEvent$1(eventJson$p, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
     } else {
       Logger$Reventless.error("File \"ExtensionPoint_Operations.res\", line 39, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return [];
@@ -67,8 +67,8 @@ function Make(Spec, MappingSpec, Mappings) {
       
     }
   };
-  var outgoingEventHandler = async function (event$pJson, _pluginDef) {
-    var eventActions = mapOutgoingEvent(event$pJson, Mappings.mappings, Spec.scheduler, Spec.commandTopicResources, Spec.queryEngine);
+  var outgoingEventHandler = async function (eventJson$p, _pluginDef) {
+    var eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Spec.scheduler, Spec.commandTopicResources, Spec.queryEngine);
     return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventActions, applyEventAction)));
   };
   return {

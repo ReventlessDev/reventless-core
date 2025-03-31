@@ -121,12 +121,12 @@ function MakeCounterHandler(Target, Mappings, Ops) {
                   }
                 }));
   };
-  var commonEventsHandler = async function (jsonEvents) {
-    var eventsCount = jsonEvents.length;
-    var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(jsonEvents, (function (idx, jsonEvent) {
+  var commonEventsHandler = async function (eventsJson) {
+    var eventsCount = eventsJson.length;
+    var match = Belt_Array.partition(Belt_Array.concatMany(Belt_Array.keepMap(Belt_Array.mapWithIndex(eventsJson, (function (idx, eventJson) {
                         var idx$1 = idx + 1 | 0;
-                        Logger$Reventless.logJsonEvent(undefined, undefined, jsonEvent, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
-                        var event$p = Js_json.decodeObject(jsonEvent);
+                        Logger$Reventless.logJsonEvent(undefined, undefined, eventJson, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
+                        var event$p = Js_json.decodeObject(eventJson);
                         var match = findMapping(Mappings.mappings, event$p);
                         if (match === undefined) {
                           return ;
@@ -181,8 +181,8 @@ function MakeCounterHandler(Target, Mappings, Ops) {
             counterActions
           ];
   };
-  var handleCounterEvents = async function (events$pJson) {
-    var match = await commonEventsHandler(events$pJson);
+  var handleCounterEvents = async function (eventsJson$p) {
+    var match = await commonEventsHandler(eventsJson$p);
     if (match[1].length !== 0) {
       console.log("EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!");
     }
@@ -213,8 +213,8 @@ function MakeEventCollectorHandler(Ops) {
       return await doCount(countItems);
     }
   };
-  var handleJsonEvents = async function (events$pJson) {
-    var match = await Ops.commonEventsHandler(events$pJson);
+  var handleJsonEvents = async function (eventsJson$p) {
+    var match = await Ops.commonEventsHandler(eventsJson$p);
     var match$1 = Belt_Array.partition(match[1], (function (x) {
             if (x.TAG === "Count") {
               return true;

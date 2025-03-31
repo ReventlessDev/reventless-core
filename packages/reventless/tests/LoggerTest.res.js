@@ -90,7 +90,7 @@ Jest.describe("Logger", (function () {
               }));
         Jest.describe("event'JsonToLogMessage", (function () {
                 Jest.test("simple", (function () {
-                        var event$pJson = (function (__x) {
+                        var eventJson$p = (function (__x) {
                               return Message$Reventless.event$p_encode(Decco.stringToJson, PluginSpec$Reventless.event_encode, __x);
                             })({
                               id: "testId",
@@ -104,7 +104,7 @@ Jest.describe("Logger", (function () {
                               },
                               event: "UnknownPluginDetected"
                             });
-                        var msg = Logger$Reventless.event$pJsonToLogMessage(event$pJson);
+                        var msg = Logger$Reventless.event$pJsonToLogMessage(eventJson$p);
                         return Jest.Expect.toEqual(Jest.Expect.expect(msg), "UnknownPluginDetected(testId): {\"event\":[\"UnknownPluginDetected\"],\"meta\":{\"service\":\"testService\",\"time\":\"testTime\",\"ip\":\"testIp\",\"user\":\"testUser\",\"msgId\":\"testMsgId\",\"correlationId\":\"testCorrelationId\"},\"id\":\"testId\"}");
                       }));
               }));

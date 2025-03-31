@@ -7,7 +7,7 @@ module Make = (Spec: Spec, EventTopicSpec: EventTopic.Spec) => {
     let eventCount = events'->Belt.Array.length
     await events'
     ->Belt.Array.mapWithIndex(async (idx, event') => {
-      let event'Json = Message.event'_encode(
+      let eventJson' = Message.event'_encode(
         EventTopicSpec.Id.t_encode,
         EventTopicSpec.event_encode,
         event',
@@ -16,16 +16,16 @@ module Make = (Spec: Spec, EventTopicSpec: EventTopic.Spec) => {
       let id = event'.id
       let idx = idx + 1
 
-      switch await Spec.publishJson(id->EventTopicSpec.Id.toString, event'.meta, event'Json) {
+      switch await Spec.publishJson(id->EventTopicSpec.Id.toString, event'.meta, eventJson') {
       | exception e =>
-        event'Json->Logger.logJsonEvent(
+        eventJson'->Logger.logJsonEvent(
           ~loc=__LOC__,
           ~level=Error,
           `Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
         )
         raise(e)
       | _ =>
-        event'Json->Logger.logJsonEvent(
+        eventJson'->Logger.logJsonEvent(
           ~loc=__LOC__,
           `Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
         )

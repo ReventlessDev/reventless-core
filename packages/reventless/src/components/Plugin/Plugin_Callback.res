@@ -14,19 +14,19 @@ module type T = {
 }
 
 module Make = (Spec: Spec): T => {
-  let handleEvent = async (event'Json, eventHandlersByService) =>
-    await event'Json
+  let handleEvent = async (eventJson', eventHandlersByService) =>
+    await eventJson'
     ->Message.serviceNameOfMsg
     ->Belt.Option.flatMap(serviceName => eventHandlersByService->Js.Dict.get(serviceName))
     ->Belt.Option.mapWithDefault(Js.Promise.resolve(), async eventHandlers => {
       await eventHandlers
-      ->Belt.Array.map(eventHandler => eventHandler(event'Json, Spec.pluginDefinition))
+      ->Belt.Array.map(eventHandler => eventHandler(eventJson', Spec.pluginDefinition))
       ->Js.Promise.all
       ->Util.Promise.toUnit
     })
 
-  let detectUnhandledEvent = event'Json =>
-    event'Json
+  let detectUnhandledEvent = eventJson' =>
+    eventJson'
     ->Message.serviceNameOfMsg
     ->Belt.Option.mapWithDefault((), serviceName =>
       switch (
@@ -39,22 +39,22 @@ module Make = (Spec: Spec): T => {
       }
     )
 
-  let handleJsonEvents = jsonEvents => {
+  let handleJsonEvents = eventsJson => {
     let id = Spec.pluginDefinition.id
-    let count = jsonEvents->Belt.Array.size
-    jsonEvents
-    ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
+    let count = eventsJson->Belt.Array.size
+    eventsJson
+    ->Belt.Array.mapWithIndex(async (idx, eventJson') => {
       let idx = idx + 1
-      event'Json->Logger.logJsonEvent(
+      eventJson'->Logger.logJsonEvent(
         `Plugin ${id} handleJsonEvents: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
       )
-      detectUnhandledEvent(event'Json)
-      switch await event'Json->handleEvent(Spec.incomingConnectExtensionEventHandlers) {
+      detectUnhandledEvent(eventJson')
+      switch await eventJson'->handleEvent(Spec.incomingConnectExtensionEventHandlers) {
       | _ =>
         [
-          event'Json->handleEvent(Spec.outgoingExtensionPointEventHandlers),
-          event'Json->handleEvent(Spec.outgoingExtensionEventHandlers),
-          event'Json->handleEvent(Spec.incomingExtensionEventHandlers),
+          eventJson'->handleEvent(Spec.outgoingExtensionPointEventHandlers),
+          eventJson'->handleEvent(Spec.outgoingExtensionEventHandlers),
+          eventJson'->handleEvent(Spec.incomingExtensionEventHandlers),
         ]->Js.Promise.all
       }
     })

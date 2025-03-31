@@ -11,8 +11,8 @@ var Message$Reventless = require("../../Message.res.js");
 var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function Make(Spec) {
-  var findSideEffect = function (sideEffects, event$pJson) {
-    return Belt_Option.flatMapU(Js_json.decodeObject(event$pJson), (function (eventObj$p) {
+  var findSideEffect = function (sideEffects, eventJson$p) {
+    return Belt_Option.flatMapU(Js_json.decodeObject(eventJson$p), (function (eventObj$p) {
                   var meta = Belt_Option.map(Js_dict.get(eventObj$p, "meta"), Message$Reventless.meta_decode);
                   if (meta !== undefined) {
                     if (meta.TAG === "Ok") {
@@ -36,16 +36,16 @@ function Make(Spec) {
                   console.log("SideEffects.map: Invalid JSON object");
                 }));
   };
-  var eventsHandler = function (events$pJson) {
-    return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(events$pJson, (async function (event$pJson) {
-                          var match = findSideEffect(Spec.sideEffects, event$pJson);
+  var eventsHandler = function (eventsJson$p) {
+    return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventsJson$p, (async function (eventJson$p) {
+                          var match = findSideEffect(Spec.sideEffects, eventJson$p);
                           if (match === undefined) {
                             return ;
                           }
                           var sideEffect = match[2];
                           var eventObj = match[0];
                           var sourceName = sideEffect.Source.name;
-                          Logger$Reventless.logJsonEvent(undefined, undefined, event$pJson, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
+                          Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
                           var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
                           var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
                           if (idDecoded !== undefined) {

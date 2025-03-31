@@ -80,9 +80,9 @@ function Make(Spec, Ops) {
     }
   };
   var replay = async function (id) {
-    var jsonEvents = await Ops.storage.replay(Spec.Id.toString(id));
+    var eventsJson = await Ops.storage.replay(Spec.Id.toString(id));
     var id$1 = Spec.Id.toString(id);
-    return Belt_Array.map(jsonEvents, (function (json) {
+    return Belt_Array.map(eventsJson, (function (json) {
                   var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
                                   return Js_dict.get(dict, "event");
                                 })), (function (json) {

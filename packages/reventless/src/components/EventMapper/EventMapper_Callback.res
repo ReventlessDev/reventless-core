@@ -91,16 +91,16 @@ module MakeCounterHandler = (
       }
     )
 
-  let commonEventsHandler = async jsonEvents => {
-    let eventsCount = jsonEvents->Belt.Array.size
+  let commonEventsHandler = async eventsJson => {
+    let eventsCount = eventsJson->Belt.Array.size
     let (publisherActions, counterActions) =
-      jsonEvents
-      ->Belt.Array.mapWithIndex((idx, jsonEvent) => {
+      eventsJson
+      ->Belt.Array.mapWithIndex((idx, eventJson) => {
         let idx = idx + 1
-        jsonEvent->Logger.logJsonEvent(
+        eventJson->Logger.logJsonEvent(
           `EventMapper.eventsHandler: incoming event ${idx->Belt.Int.toString}/${eventsCount->Belt.Int.toString}:`,
         )
-        let event' = jsonEvent->Js.Json.decodeObject
+        let event' = eventJson->Js.Json.decodeObject
         switch findMapping(Mappings.mappings, event') {
         // TODO: support multiple mappings for the same source
         | Some((eventObj, eventMeta, mapping)) =>
@@ -152,8 +152,8 @@ module MakeCounterHandler = (
     (publisherEntries, counterActions)
   }
 
-  let handleCounterEvents = async events'Json => {
-    let (publisherEntries, countActions) = await commonEventsHandler(events'Json)
+  let handleCounterEvents = async eventsJson' => {
+    let (publisherEntries, countActions) = await commonEventsHandler(eventsJson')
     if countActions->Belt.Array.size > 0 {
       Js.log("EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!")
     }
@@ -191,8 +191,8 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
       }
     }
 
-  let handleJsonEvents = async events'Json => {
-    let (publisherEntries, counterActions) = await Ops.commonEventsHandler(events'Json)
+  let handleJsonEvents = async eventsJson' => {
+    let (publisherEntries, counterActions) = await Ops.commonEventsHandler(eventsJson')
     let (countActions, addToCounterTargetActions) = counterActions->Belt.Array.partition(x =>
       switch x {
       | Counter.Count(_) => true

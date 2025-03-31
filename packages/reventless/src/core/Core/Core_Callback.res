@@ -6,17 +6,17 @@ module type Spec = {
 }
 
 module Make = (Spec: Spec) => {
-  let eventsHandler = events'Json => {
-    let count = events'Json->Belt.Array.size
-    events'Json
-    ->Belt.Array.mapWithIndex(async (idx, event'Json) => {
+  let eventsHandler = eventsJson' => {
+    let count = eventsJson'->Belt.Array.size
+    eventsJson'
+    ->Belt.Array.mapWithIndex(async (idx, eventJson') => {
       let idx = idx + 1
-      event'Json->Logger.logJsonEvent(
+      eventJson'->Logger.logJsonEvent(
         `Core eventHandler: outgoing event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
       )
       Spec.outgoingExtensionPointEventHandlers
       ->Belt.Array.map(handleEvent => {
-        handleEvent(event'Json, Spec.pluginDefinition)
+        handleEvent(eventJson', Spec.pluginDefinition)
       })
       ->Js.Promise.all
       ->Util.Promise.toUnit

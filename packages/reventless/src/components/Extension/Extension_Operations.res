@@ -41,11 +41,11 @@ module Make = (
     )
     ->Belt.Array.concatMany
 
-  let mapOutgoingEvent = (event'Json, pluginDef) =>
-    switch event'Json->Message.serviceNameOfMsg->findOutgoingMapping(Mappings.mappings) {
+  let mapOutgoingEvent = (eventJson', pluginDef) =>
+    switch eventJson'->Message.serviceNameOfMsg->findOutgoingMapping(Mappings.mappings) {
     | Some(module(Mapping)) =>
       switch Mapping.mapOutgoingEvent {
-      | Some(mapOutgoingEvent) => mapOutgoingEvent(event'Json, pluginDef)
+      | Some(mapOutgoingEvent) => mapOutgoingEvent(eventJson', pluginDef)
       | None =>
         Logger.error(
           ~loc=__LOC__,
@@ -56,7 +56,7 @@ module Make = (
       }
     | None =>
       Js.Exn.raiseError(
-        "ExtensionPoint.Mapping: Missing mapping for " ++ event'Json->Js.Json.stringify,
+        "ExtensionPoint.Mapping: Missing mapping for " ++ eventJson'->Js.Json.stringify,
       )
     }
 
@@ -131,11 +131,11 @@ module Make = (
     | AbstractCall(handler) => handler->handle
     }
 
-  let incomingEventHandler = async (event'Json, pluginDef) => {
+  let incomingEventHandler = async (eventJson', pluginDef) => {
     let event' = Message.event'_decode(
       ReventlessSpec.Id.StringPure.t_decode,
       MappingSpec.event_decode,
-      event'Json,
+      eventJson',
     )
 
     switch event' {
@@ -157,7 +157,7 @@ module Make = (
           Spec.publishToReadModels
           ->Js.Dict.get(readModelName)
           ->Belt.Option.map(
-            enqueueEvent => enqueueEvent(0, event'.id, event'Json->Js.Json.stringify),
+            enqueueEvent => enqueueEvent(0, event'.id, eventJson'->Js.Json.stringify),
           )
         ) // FIXME Error handling
         ->Js.Promise.all
@@ -171,8 +171,8 @@ module Make = (
     }
   }
 
-  let outgoingEventHandler = (event'Json, pluginDef) => {
-    let commandActions = mapOutgoingEvent(event'Json, pluginDef)
+  let outgoingEventHandler = (eventJson', pluginDef) => {
+    let commandActions = mapOutgoingEvent(eventJson', pluginDef)
     commandActions
     ->Belt.Array.map(applyOutgoingCommandAction)
     ->Js.Promise.all

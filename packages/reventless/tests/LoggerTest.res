@@ -110,9 +110,9 @@ describe("Logger", () => {
           },
           event: UnknownPluginDetected,
         }
-        let event'Json: Js.Json.t =
-          event'->Message.event'_encode(Decco.stringToJson, event_encode, _)
-        let msg = event'JsonToLogMessage(event'Json)
+        let eventJson': Js.Json.t =
+          event'->(Message.event'_encode(Decco.stringToJson, event_encode, _))
+        let msg = event'JsonToLogMessage(eventJson')
 
         let expected = `UnknownPluginDetected(testId): {"event":["UnknownPluginDetected"],"meta":{"service":"testService","time":"testTime","ip":"testIp","user":"testUser","msgId":"testMsgId","correlationId":"testCorrelationId"},"id":"testId"}`
 

@@ -104,7 +104,7 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
   let decodeEvents = (jsons, id) => jsons->Belt.Array.map(json => decodeEvent(id, json))
 
   let replay = async id => {
-    let jsonEvents = await Ops.storage.replay(id->Spec.Id.toString)
-    jsonEvents->decodeEvents(id->Spec.Id.toString)
+    let eventsJson = await Ops.storage.replay(id->Spec.Id.toString)
+    eventsJson->decodeEvents(id->Spec.Id.toString)
   }
 }

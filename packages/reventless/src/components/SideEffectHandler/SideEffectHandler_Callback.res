@@ -8,8 +8,8 @@ module type T = {
 }
 
 module Make = (Spec: Spec): T => {
-  let findSideEffect = (sideEffects, event'Json) =>
-    event'Json
+  let findSideEffect = (sideEffects, eventJson') =>
+    eventJson'
     ->Js.Json.decodeObject
     ->Belt.Option.flatMapU(eventObj' => {
       let meta = eventObj'->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
@@ -33,14 +33,14 @@ module Make = (Spec: Spec): T => {
       }
     })
 
-  let eventsHandler = events'Json => {
-    events'Json
-    ->Belt.Array.map(async event'Json =>
-      switch Spec.sideEffects->findSideEffect(event'Json) {
+  let eventsHandler = eventsJson' => {
+    eventsJson'
+    ->Belt.Array.map(async eventJson' =>
+      switch Spec.sideEffects->findSideEffect(eventJson') {
       | Some((eventObj, eventMeta, sideEffect)) =>
         module SideEffect = unpack(sideEffect)
         let sourceName = SideEffect.Source.name
-        event'Json->Logger.logJsonEvent(
+        eventJson'->Logger.logJsonEvent(
           `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
         )
         let idDecoded = eventObj->Js.Dict.get("id")->Belt.Option.map(SideEffect.Source.Id.t_decode)

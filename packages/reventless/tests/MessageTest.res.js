@@ -42,8 +42,8 @@ Jest.describe("Message should", (function () {
                 var variantName = Message$Reventless.variantNameOfJson(variantJson);
                 return Jest.Expect.toBe(Jest.Expect.expect(variantName), "Connect");
               }));
-        Jest.test("get event name of event'Json", (function () {
-                var event$pJson = (function (__x) {
+        Jest.test("get event name of eventJson'", (function () {
+                var eventJson$p = (function (__x) {
                       return Message$Reventless.event$p_encode(Decco.stringToJson, PluginSpec$Reventless.event_encode, __x);
                     })({
                       id: "testId",
@@ -57,11 +57,11 @@ Jest.describe("Message should", (function () {
                       },
                       event: "UnknownPluginDetected"
                     });
-                var eventName = Message$Reventless.eventNameOfEvent$pJson(event$pJson);
+                var eventName = Message$Reventless.eventNameOfEvent$pJson(eventJson$p);
                 return Jest.Expect.toBe(Jest.Expect.expect(eventName), "UnknownPluginDetected");
               }));
-        Jest.test("get id of event'Json", (function () {
-                var event$pJson = (function (__x) {
+        Jest.test("get id of eventJson'", (function () {
+                var eventJson$p = (function (__x) {
                       return Message$Reventless.event$p_encode(Decco.stringToJson, PluginSpec$Reventless.event_encode, __x);
                     })({
                       id: "testId",
@@ -75,7 +75,7 @@ Jest.describe("Message should", (function () {
                       },
                       event: "UnknownPluginDetected"
                     });
-                var eventId = Belt_Option.getExn(Message$Reventless.idOfEvent$pJson(event$pJson));
+                var eventId = Belt_Option.getExn(Message$Reventless.idOfEvent$pJson(eventJson$p));
                 return Jest.Expect.toBe(Jest.Expect.expect(eventId), "testId");
               }));
       }));

@@ -6,13 +6,13 @@ var Logger$Reventless = require("../../util/Logger.res.js");
 var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function Make(Spec) {
-  var eventsHandler = function (events$pJson) {
-    var count = events$pJson.length;
-    return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(events$pJson, (async function (idx, event$pJson) {
+  var eventsHandler = function (eventsJson$p) {
+    var count = eventsJson$p.length;
+    return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(eventsJson$p, (async function (idx, eventJson$p) {
                           var idx$1 = idx + 1 | 0;
-                          Logger$Reventless.logJsonEvent(undefined, undefined, event$pJson, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
+                          Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
                           return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(Spec.outgoingExtensionPointEventHandlers, (function (handleEvent) {
-                                                return handleEvent(event$pJson, Spec.pluginDefinition);
+                                                return handleEvent(eventJson$p, Spec.pluginDefinition);
                                               }))));
                         }))));
   };

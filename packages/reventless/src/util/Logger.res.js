@@ -142,17 +142,17 @@ function logCmdJsons(loc, levelOpt, cmdJsons, desc) {
         }));
 }
 
-function event$pJsonToLogMessage(event$pJson) {
-  var eventName = Message$Reventless.eventNameOfEvent$pJson(event$pJson);
-  var match = Message$Reventless.idMetaEventOfEvent$pJson(event$pJson);
+function event$pJsonToLogMessage(eventJson$p) {
+  var eventName = Message$Reventless.eventNameOfEvent$pJson(eventJson$p);
+  var match = Message$Reventless.idMetaEventOfEvent$pJson(eventJson$p);
   var id = match[0];
   var event$pStr = "{\"event\":" + match[2] + ",\"meta\":" + match[1] + ",\"id\":\"" + id + "\"}";
   return eventName + "(" + id + "): " + event$pStr;
 }
 
-function logJsonEvent(loc, levelOpt, event$pJson, desc) {
+function logJsonEvent(loc, levelOpt, eventJson$p, desc) {
   var level = levelOpt !== undefined ? levelOpt : "Info";
-  var __x = event$pJsonToLogMessage(event$pJson);
+  var __x = event$pJsonToLogMessage(eventJson$p);
   log(loc, undefined, undefined, level, desc, __x);
 }
 

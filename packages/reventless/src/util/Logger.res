@@ -107,13 +107,13 @@ let logCmdJsons = (~loc=?, ~level=Level.Info, cmdJsons, desc) => {
   })
 }
 
-let event'JsonToLogMessage = event'Json => {
-  let eventName = event'Json->Message.eventNameOfEvent'Json
-  let (id, metaStr, eventStr) = event'Json->Message.idMetaEventOfEvent'Json
+let event'JsonToLogMessage = eventJson' => {
+  let eventName = eventJson'->Message.eventNameOfEvent'Json
+  let (id, metaStr, eventStr) = eventJson'->Message.idMetaEventOfEvent'Json
   let event'Str = `{"event":${eventStr},"meta":${metaStr},"id":"${id}"}`
   `${eventName}(${id}): ${event'Str}`
 }
 
-let logJsonEvent = (~loc=?, ~level=Level.Info, event'Json, desc) => {
-  event'JsonToLogMessage(event'Json)->(log(~loc?, ~level, desc, _))
+let logJsonEvent = (~loc=?, ~level=Level.Info, eventJson', desc) => {
+  event'JsonToLogMessage(eventJson')->(log(~loc?, ~level, desc, _))
 }

@@ -26,14 +26,14 @@ function Make(Spec, MappingSpec, Mappings) {
                       return Mapping.mapIncomingEvent(event$p, pluginDef, queryEngine);
                     })));
   };
-  var mapOutgoingEvent = function (event$pJson, pluginDef) {
-    var Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(event$pJson), Mappings.mappings);
+  var mapOutgoingEvent = function (eventJson$p, pluginDef) {
+    var Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(eventJson$p), Mappings.mappings);
     if (Mapping === undefined) {
-      return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(event$pJson));
+      return Js_exn.raiseError("ExtensionPoint.Mapping: Missing mapping for " + JSON.stringify(eventJson$p));
     }
     var mapOutgoingEvent$1 = Mapping.mapOutgoingEvent;
     if (mapOutgoingEvent$1 !== undefined) {
-      return mapOutgoingEvent$1(event$pJson, pluginDef);
+      return mapOutgoingEvent$1(eventJson$p, pluginDef);
     } else {
       Logger$Reventless.error("File \"Extension_Operations.res\", line 51, characters 15-22", undefined, undefined, "mapOutgoingEvent", "shouldn't be called, because Plugin EventCollector shouldn't subscribe to EventLog stream not having mapOutgoingEvent() !");
       return [];
@@ -137,8 +137,8 @@ function Make(Spec, MappingSpec, Mappings) {
       
     }
   };
-  var incomingEventHandler = async function (event$pJson, pluginDef) {
-    var event$p = Message$Reventless.event$p_decode(Id$ReventlessSpec.StringPure.t_decode, MappingSpec.event_decode, event$pJson);
+  var incomingEventHandler = async function (eventJson$p, pluginDef) {
+    var event$p = Message$Reventless.event$p_decode(Id$ReventlessSpec.StringPure.t_decode, MappingSpec.event_decode, eventJson$p);
     if (event$p.TAG === "Ok") {
       var event$p$1 = event$p._0;
       var commandActions = mapIncomingEvent(event$p$1, pluginDef, Spec.queryEngine);
@@ -149,7 +149,7 @@ function Make(Spec, MappingSpec, Mappings) {
       var p = Belt_Option.map(Js_dict.get(Spec.readModelNamesForSourceName, event$p$1.meta.service), (function (readModelNames) {
               return Promise.all(Belt_Array.keepMap(readModelNames, (function (readModelName) {
                                 return Belt_Option.map(Js_dict.get(Spec.publishToReadModels, readModelName), (function (enqueueEvent) {
-                                              return enqueueEvent(0, event$p$1.id, JSON.stringify(event$pJson));
+                                              return enqueueEvent(0, event$p$1.id, JSON.stringify(eventJson$p));
                                             }));
                               })));
             }));
@@ -162,8 +162,8 @@ function Make(Spec, MappingSpec, Mappings) {
     }
     console.log("Could not decode event':", event$p._0);
   };
-  var outgoingEventHandler = function (event$pJson, pluginDef) {
-    var commandActions = mapOutgoingEvent(event$pJson, pluginDef);
+  var outgoingEventHandler = function (eventJson$p, pluginDef) {
+    var commandActions = mapOutgoingEvent(eventJson$p, pluginDef);
     return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction)));
   };
   return {
