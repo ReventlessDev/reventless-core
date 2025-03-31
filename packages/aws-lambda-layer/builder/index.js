@@ -1,7 +1,7 @@
-import {join as joinPath, resolve as resolvePath, dirname} from 'node:path';
-import {fileURLToPath} from 'node:url'
-import {build as buildLayer} from '../lib/index.js';
-import {decco, moment, bsMoment, objectAssign, rescriptDependent, reventless, bsPlatformDependent} from './postprocess.js';
+import { join as joinPath, resolve as resolvePath, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url'
+import { build as buildLayer } from '../lib/index.js';
+import { decco, moment, bsMoment, objectAssign, rescriptDependent, reventless, bsPlatformDependent, rescriptCore } from './postprocess.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pathToLayerData = resolvePath(__dirname, 'layer/');
@@ -24,6 +24,7 @@ const opt = {
         "object-assign": objectAssign,
         "moment": moment,
         "bs-moment": (node, cwd) => bsMoment(node, cwd, dependenciesPath),
+        "@rescript/core": (node, cwd) => rescriptCore(node, cwd, dependenciesPath)
     }
 };
 

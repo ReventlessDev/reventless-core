@@ -28,15 +28,17 @@ const pathToPrecompiled = resolvePath(__dirname, 'precompiled/');
 const npmPackages = ['npm-bundled', 'npm-install-checks', 'npm-normalize-package-bin', 'npm-package-arg',
   'npm-packlist', 'npm-pick-manifest', 'npm-registry-fetch', 'npm-run-path']
 
+//Precompiled Modules override modules that will be present.
+//IncludePrecompiledModules are ones that are required for applications and therefore are not in reventless. 
 const options = {
   sourcePackageName: '@reventless/reventless-aws',
-  sourcePackageVersion: '2.0.3-runtime.15',
+  sourcePackageVersion: '2.0.3-policies.58',
   pathToLayerData,
   pathToSavedDependencies,
   pathToPrecompiled,
-  precompiledModules: { '@rescript-labs/decco': '@rescript-labs/decco@2.0.4' },
+  precompiledModules: { '@rescript-labs/decco': '@rescript-labs/decco@2.0.4', '@rescript/core': '@rescript/core' },
   includePrecompiledModules: { '@reventless/rescript-moment': 'bs-moment@0.8.0' },
-  excludeScopes: ['@pulumi', '@types', '@opentelemetry', '@aws-sdk', '@smithy', '@protobufjs', '@npmcli', '@sigstore'],
+  excludeScopes: ['@pulumi', '@types', '@opentelemetry', '@aws-sdk', 'aws-sdk' ,'@smithy', '@protobufjs', '@npmcli', '@sigstore'],
   excludeModules: ['rescript', 'treeverse', 'pacote', ...npmPackages],
   excludedFileFormats: ['.res', '.resi', '.ts', '.cts'],
   gitlabOpts: {
