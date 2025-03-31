@@ -109,8 +109,13 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       aggregateEvent'Json,
     ) {
     | Ok({id, meta, event}) =>
-      mapOutgoingEventImpl(id->Aggregate.Id.toString, event, meta, queryEngine)->Belt.Array.map(x =>
-        switch x {
+      mapOutgoingEventImpl(
+        id->Aggregate.Id.toString,
+        event,
+        meta,
+        queryEngine,
+      )->Belt.Array.map(eventAction =>
+        switch eventAction {
         | PublishEvent(id, event) =>
           let eventJson = event->Spec.event_encode
           Js.log(
@@ -121,7 +126,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
             service: Spec.name,
             msgId: Message.uuid(),
           }
-          AbstractPublishEvent(id, meta, eventJson)
+          let eventJson' = Message.composeEventJson'(id, meta, eventJson)
+          AbstractPublishEvent(id, meta, eventJson')
         | PublishEventAsync(promise) =>
           let toEvent' = async promise => {
             let (id, event) = await promise
@@ -129,7 +135,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
             Js.log(
               `ExtensionPointMapping: async outgoing from Aggregate ${aggregateName} to ExtensionPoint ${extensionPointName}: Publishing event: ${eventJson->Js.Json.stringify} id: ${id}`,
             )
-            (id, meta, eventJson)
+            let eventJson' = Message.composeEventJson'(id, meta, eventJson) // TODO: check if meta is correct
+            (id, meta, eventJson')
           }
           AbstractPublishEventAsync(promise->toEvent')
         | Call(handler, msg) =>

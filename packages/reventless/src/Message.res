@@ -149,6 +149,15 @@ let generateMeta = (~service, ~ip="", ~user="unknown") => {
 let decomposeMeta = meta =>
   meta->meta_encode->Js.Json.decodeObject->Js.Option.getExn->Js.Dict.entries
 
+let composeEventJson' = (id, meta, eventJson) =>
+  [
+    ("id", id->Js.Json.string),
+    ("meta", meta->ReventlessSpec.Message.meta_encode),
+    ("event", eventJson),
+  ]
+  ->Js.Dict.fromArray
+  ->Js.Json.object_
+
 let string = x =>
   switch x {
   | Some(ip) if ip == Js.Json.null => ""->Js.Json.string

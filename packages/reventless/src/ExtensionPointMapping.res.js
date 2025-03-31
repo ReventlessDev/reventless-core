@@ -60,11 +60,11 @@ function Make(Spec, MappingImpl) {
             if (err.TAG === "Ok") {
               var match = err._0;
               var meta = match.meta;
-              return Belt_Array.map(mapOutgoingEventImpl(Aggregate.Id.toString(match.id), match.event, meta, extra$3), (function (x) {
-                            switch (x.TAG) {
+              return Belt_Array.map(mapOutgoingEventImpl(Aggregate.Id.toString(match.id), match.event, meta, extra$3), (function (eventAction) {
+                            switch (eventAction.TAG) {
                               case "PublishEvent" :
-                                  var id = x._0;
-                                  var eventJson = Spec.event_encode(x._1);
+                                  var id = eventAction._0;
+                                  var eventJson = Spec.event_encode(eventAction._1);
                                   console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + JSON.stringify(eventJson) + " id: " + id);
                                   var meta_service = Spec.name;
                                   var meta_time = meta.time;
@@ -80,11 +80,12 @@ function Make(Spec, MappingImpl) {
                                     msgId: meta_msgId,
                                     correlationId: meta_correlationId
                                   };
+                                  var eventJson$p = Message$Reventless.composeEventJson$p(id, meta$1, eventJson);
                                   return {
                                           TAG: "AbstractPublishEvent",
                                           _0: id,
                                           _1: meta$1,
-                                          _2: eventJson
+                                          _2: eventJson$p
                                         };
                               case "PublishEventAsync" :
                                   var toEvent$p = async function (promise) {
@@ -92,19 +93,20 @@ function Make(Spec, MappingImpl) {
                                     var id = match[0];
                                     var eventJson = Spec.event_encode(match[1]);
                                     console.log("ExtensionPointMapping: async outgoing from Aggregate " + aggregateName + " to ExtensionPoint " + extensionPointName + ": Publishing event: " + JSON.stringify(eventJson) + " id: " + id);
+                                    var eventJson$p = Message$Reventless.composeEventJson$p(id, meta, eventJson);
                                     return [
                                             id,
                                             meta,
-                                            eventJson
+                                            eventJson$p
                                           ];
                                   };
                                   return {
                                           TAG: "AbstractPublishEventAsync",
-                                          _0: toEvent$p(x._0)
+                                          _0: toEvent$p(eventAction._0)
                                         };
                               case "Call" :
-                                  var msg = x._1;
-                                  var handler = x._0;
+                                  var msg = eventAction._1;
+                                  var handler = eventAction._0;
                                   console.log("ExtensionPointMapping: outgoing from Aggregate " + aggregateName + ": Handling call command", JSON.stringify(Spec.callCommand_encode(msg)));
                                   return {
                                           TAG: "AbstractCall",

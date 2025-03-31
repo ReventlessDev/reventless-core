@@ -151,6 +151,23 @@ function decomposeMeta(meta) {
   return Js_dict.entries(Js_option.getExn(Js_json.decodeObject(Message$ReventlessSpec.meta_encode(meta))));
 }
 
+function composeEventJson$p(id, meta, eventJson) {
+  return Js_dict.fromArray([
+              [
+                "id",
+                id
+              ],
+              [
+                "meta",
+                Message$ReventlessSpec.meta_encode(meta)
+              ],
+              [
+                "event",
+                eventJson
+              ]
+            ]);
+}
+
 function string(x) {
   if (x !== undefined && !Caml_obj.equal(x, null)) {
     return x;
@@ -257,6 +274,7 @@ exports.log = log;
 exports.hrtimeToString = hrtimeToString;
 exports.generateMeta = generateMeta;
 exports.decomposeMeta = decomposeMeta;
+exports.composeEventJson$p = composeEventJson$p;
 exports.string = string;
 exports.composeMeta = composeMeta;
 exports.commandJsonOfCommand$p = commandJsonOfCommand$p;
