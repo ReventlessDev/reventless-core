@@ -123,7 +123,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                         });
                     var handler = CoreEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                     var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, opts$1);
-                    CoreEventCollector.subscribe(name, eventTopics, eventCollector, runtime, param[1], opts$1);
+                    CoreEventCollector.connect(name, eventTopics, eventCollector, runtime, param[1], opts$1);
                     return eventCollectorOutputs;
                   });
               return [

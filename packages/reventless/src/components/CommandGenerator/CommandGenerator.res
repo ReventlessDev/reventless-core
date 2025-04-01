@@ -16,7 +16,7 @@ type component = Component.t<t, outputs, unit>
 
 module type T = {
   type runtimeParts
-  let subscribe: (
+  let connect: (
     ~name: string,
     ~commandGenerator: component,
     ~runtime: Runtime.environment<runtimeParts>,

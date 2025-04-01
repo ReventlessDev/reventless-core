@@ -85,7 +85,7 @@ module Make = (
 
         let eventLog = eventLog->Component.outputs
         let resources = [eventLog.resources, eventLog.eventTopic.resources]->Belt.Array.concatMany
-        SpecificCommandTopic.subscribe(~name, ~commandTopic, ~runtime, ~resources, ~opts)
+        SpecificCommandTopic.connect(~name, ~commandTopic, ~runtime, ~resources, ~opts)
         commandTopic
       })
 
@@ -108,7 +108,7 @@ module Make = (
           ~opts,
         )
         let resources = (commandTopic->Component.outputs).resources
-        SpecificCommandGenerator.subscribe(~name, ~commandGenerator, ~runtime, ~resources, ~opts)
+        SpecificCommandGenerator.connect(~name, ~commandGenerator, ~runtime, ~resources, ~opts)
         commandGenerator->Component.outputs
       })
     )

@@ -44,7 +44,7 @@ module Make = (
         ->Option.getOr([])
       let resources = commandTopics->Array.flatMap(commandTopic => commandTopic.resources)
 
-      SpecificEventCollector.subscribe(
+      SpecificEventCollector.connect(
         ~name,
         ~eventTopics,
         ~eventCollector,

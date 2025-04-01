@@ -1,4 +1,4 @@
-type rec subscribe<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
+type rec connect<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~name: string,
   ~eventTopics: EventTopic.allOutputs,
   ~channel: channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
@@ -13,7 +13,7 @@ and channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = {
   handleChannelEvent: EventCollector.jsonEventsHandler => Pulumi.Output.t<
     Runtime.eventHandler<'callbackEvent, 'context, unit>,
   >,
-  subscribe: subscribe<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
+  connect: connect<'callbackEvent, 'context, 'channelParts, 'runtimeParts>,
 }
 
 @set

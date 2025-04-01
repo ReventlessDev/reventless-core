@@ -146,7 +146,7 @@ module Make = (
               ~opts,
             )
 
-            CoreEventCollector.subscribe(
+            CoreEventCollector.connect(
               ~name,
               ~eventTopics,
               ~eventCollector,

@@ -21,7 +21,7 @@ var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueu
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
-function subscribe(name, eventTopics, channel, runtime, resources, opts) {
+function connect(name, eventTopics, channel, runtime, resources, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = channel.parts.queue;
   var lambda = runtime.parts.lambda;
@@ -177,10 +177,10 @@ function make(name, opts) {
           resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
           enqueueEvent: enqueueEvent,
           handleChannelEvent: handleChannelEvent,
-          subscribe: subscribe
+          connect: connect
         };
 }
 
-exports.subscribe = subscribe;
+exports.connect = connect;
 exports.make = make;
 /* @pulumi/aws Not a pure module */

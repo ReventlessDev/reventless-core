@@ -2,7 +2,7 @@ type callbackEvent = PulumiAws.Lambda.CallbackFunction.event
 type channelParts = Util.SQS.channelParts
 type runtimeParts = Util.Lambda.runtimeParts
 
-let subscribe = (
+let connect = (
   ~name,
   ~eventTopics: dict<Reventless.EventTopic.outputs>,
   ~channel: Reventless.EventCollector_Adapter.channel<
@@ -309,7 +309,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<
     Reventless.EventCollector_Adapter.parts: {queue: queue},
     resources: [queue->Util_SQS.toResource],
     enqueueEvent,
-    subscribe,
+    connect,
     handleChannelEvent,
   }
 }

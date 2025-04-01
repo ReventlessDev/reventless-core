@@ -2,7 +2,7 @@ type callbackEvent = PulumiAws.Lambda.CallbackFunction.event
 type channelParts = unit
 type runtimeParts = Util.Lambda.runtimeParts
 
-let subscribe = (
+let connect = (
   ~name,
   ~eventTopics: dict<Reventless.EventTopic.outputs>,
   ~channel as _,
@@ -195,7 +195,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<
     Reventless.EventCollector_Adapter.parts: (),
     resources: [],
     enqueueEvent: enqueueEventNotSupported->Pulumi.Output.make,
-    subscribe,
+    connect,
     handleChannelEvent,
   }
 }

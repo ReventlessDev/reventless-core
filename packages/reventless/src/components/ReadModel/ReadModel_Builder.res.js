@@ -90,7 +90,7 @@ function Make(Config, Spec, Mappings, RuntimeEnvironment, QueryDbStorage, QueryD
                         var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, opts$1);
                         var eventTopics = EventTopic$Reventless.filter(allEventTopics, sourceNames);
                         var resources = Component$Reventless.outputs(queryDb).resources;
-                        SpecificEventCollector.subscribe(name, eventTopics, eventCollector, runtime, resources, opts$1);
+                        SpecificEventCollector.connect(name, eventTopics, eventCollector, runtime, resources, opts$1);
                         return eventCollector;
                       });
                   Component$Reventless.setOperations(extra, Output$Pulumi.flatMap(eventCollector, (function (eventCollector) {

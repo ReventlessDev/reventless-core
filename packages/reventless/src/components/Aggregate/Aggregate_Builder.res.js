@@ -74,7 +74,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                 eventLog$1.resources,
                 eventLog$1.eventTopic.resources
               ]);
-          SpecificCommandTopic.subscribe(name$1, commandTopic, runtime, resources, opts$1);
+          SpecificCommandTopic.connect(name$1, commandTopic, runtime, resources, opts$1);
           return commandTopic;
         });
     var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
@@ -91,7 +91,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                         };
                         var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandGenerator$Reventless.componentType), SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, opts$1);
                         var resources = Component$Reventless.outputs(commandTopic).resources;
-                        SpecificCommandGenerator.subscribe(name$1, commandGenerator, runtime, resources, opts$1);
+                        SpecificCommandGenerator.connect(name$1, commandGenerator, runtime, resources, opts$1);
                         return Component$Reventless.outputs(commandGenerator);
                       });
           }));

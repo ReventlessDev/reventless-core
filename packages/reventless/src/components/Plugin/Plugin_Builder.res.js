@@ -317,7 +317,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                 parent: eventCollectorOpts_parent
                               };
                               var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, eventCollectorOpts);
-                              PluginEventCollector.subscribe(childName, eventTopics, eventCollector, runtime, param[5], eventCollectorOpts);
+                              PluginEventCollector.connect(childName, eventTopics, eventCollector, runtime, param[5], eventCollectorOpts);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;
                                   });
@@ -332,7 +332,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         };
                         var handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
                         var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, Heartbeat$Reventless.componentType), handler, undefined, undefined, heartbeatOpts);
-                        SpecificHeartbeat.subscribe(childName, heartbeatInterval, heartbeat, corePluginExtensionPointCommandTopicRemoteChannel, runtime, heartbeatOpts);
+                        SpecificHeartbeat.connect(childName, heartbeatInterval, heartbeat, corePluginExtensionPointCommandTopicRemoteChannel, runtime, heartbeatOpts);
                         return {
                                 id: id,
                                 version: version,

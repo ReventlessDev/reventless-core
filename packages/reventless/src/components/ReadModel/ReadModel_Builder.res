@@ -75,7 +75,7 @@ module Make = (
         let eventTopics = allEventTopics->EventTopic.filter(sourceNames)
         let resources = (queryDb->Component.outputs).resources
 
-        SpecificEventCollector.subscribe(
+        SpecificEventCollector.connect(
           ~name,
           ~eventTopics,
           ~eventCollector,

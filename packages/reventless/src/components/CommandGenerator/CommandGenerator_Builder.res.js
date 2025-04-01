@@ -10,7 +10,7 @@ function Make(Config, Spec, Behaviour, Resolvers) {
   var construct = function (_self, _name) {
     
   };
-  var subscribe = function (name, commandGenerator, runtime, resources, opts) {
+  var connect = function (name, commandGenerator, runtime, resources, opts) {
     var resolvers = Resolvers.make(ComponentType$Reventless.name(name, CommandGenerator$Reventless.componentType), Config.api, Behaviour.resolverConfig.fields, runtime, resources, opts);
     Component$Reventless.setOutputs(commandGenerator, {
           resources: resolvers.resources
@@ -31,7 +31,7 @@ function Make(Config, Spec, Behaviour, Resolvers) {
     return Component$Reventless.make(ComponentType$Reventless.toString(CommandGenerator$Reventless.componentType), name, construct, opts);
   };
   return {
-          subscribe: subscribe,
+          connect: connect,
           makeHandler: makeHandler,
           make: make
         };

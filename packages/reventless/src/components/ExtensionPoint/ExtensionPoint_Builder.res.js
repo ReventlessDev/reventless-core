@@ -72,7 +72,7 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
                               var ExtensionPointCallback = partial_arg$2(Spec, Mappings);
                               var handler = SpecificCommandTopic.makeHandler(commandTopic, ExtensionPointCallback.handleIncomingCommands);
                               var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, commandTopicOpts);
-                              SpecificCommandTopic.subscribe(childName, commandTopic, runtime, filterAggregateResources(aggregateResources, aggregateNames), commandTopicOpts);
+                              SpecificCommandTopic.connect(childName, commandTopic, runtime, filterAggregateResources(aggregateResources, aggregateNames), commandTopicOpts);
                               var partial_arg$3 = {
                                 Id: Id$ReventlessSpec.$$String,
                                 event_encode: event_encode,

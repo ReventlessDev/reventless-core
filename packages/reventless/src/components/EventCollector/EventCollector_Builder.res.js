@@ -25,10 +25,10 @@ function Make(Channel) {
                 resources: channel.resources
               });
   };
-  var subscribe = function (name, eventTopics, eventCollector, runtime, resources, opts) {
+  var connect = function (name, eventTopics, eventCollector, runtime, resources, opts) {
     var name$1 = ComponentType$Reventless.name(name, EventCollector$Reventless.componentType);
     var channel = eventCollector.channel;
-    channel.subscribe(name$1, eventTopics, channel, runtime, resources, opts);
+    channel.connect(name$1, eventTopics, channel, runtime, resources, opts);
   };
   var makeHandler = function (eventCollector, eventsHandler) {
     var channel = eventCollector.channel;
@@ -38,7 +38,7 @@ function Make(Channel) {
     return Component$Reventless.make(ComponentType$Reventless.toString(EventCollector$Reventless.componentType), name, construct, opts);
   };
   return {
-          subscribe: subscribe,
+          connect: connect,
           makeHandler: makeHandler,
           make: make
         };

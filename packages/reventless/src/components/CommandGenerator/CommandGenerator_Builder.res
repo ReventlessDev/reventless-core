@@ -6,7 +6,7 @@ module Make = (
 ): (CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts) => {
   let construct = (_self, _name) => ()
 
-  let subscribe = (~name, ~commandGenerator, ~runtime, ~resources, ~opts) => {
+  let connect = (~name, ~commandGenerator, ~runtime, ~resources, ~opts) => {
     let resolvers = Resolvers.make(
       ~name=name->ComponentType.name(CommandGenerator.componentType),
       ~api=Config.api,

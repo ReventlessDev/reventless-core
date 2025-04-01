@@ -42,7 +42,7 @@ module type T = {
 
   type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 
-  let subscribe: (
+  let connect: (
     ~name: string,
     ~commandTopic: component,
     ~runtime: Runtime.environment<'runtimeParts>,

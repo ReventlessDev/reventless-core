@@ -11,7 +11,7 @@ function Make(Runner, RuntimeEnvironment) {
   var construct = function (_self, _name) {
     
   };
-  var subscribe = function (name, timeoutOpt, heartbeat, remoteChannel, runtime, opts) {
+  var connect = function (name, timeoutOpt, heartbeat, remoteChannel, runtime, opts) {
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 10;
     var runnerResources = Runner.make(ComponentType$Reventless.name(name, Heartbeat$Reventless.componentType), remoteChannel, timeout, runtime, opts).resources;
     Component$Reventless.setOutputs(heartbeat, {
@@ -33,7 +33,7 @@ function Make(Runner, RuntimeEnvironment) {
   };
   return {
           construct: construct,
-          subscribe: subscribe,
+          connect: connect,
           makeHandler: makeHandler,
           make: make
         };

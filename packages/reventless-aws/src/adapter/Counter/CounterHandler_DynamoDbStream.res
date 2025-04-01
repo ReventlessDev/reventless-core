@@ -22,7 +22,7 @@ let make: Reventless.Counter_Adapter.handlerMaker = (
         ~countsStream,
         ~counterHandler,
         ...
-      ),
+      )
     ),
     ~opts,
   )

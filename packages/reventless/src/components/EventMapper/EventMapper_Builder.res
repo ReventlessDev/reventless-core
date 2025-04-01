@@ -78,7 +78,7 @@ module Make = (
 
         let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
 
-        SpecificEventCollector.subscribe(
+        SpecificEventCollector.connect(
           ~name,
           ~eventTopics,
           ~eventCollector,

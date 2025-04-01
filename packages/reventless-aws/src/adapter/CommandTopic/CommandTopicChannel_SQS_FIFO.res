@@ -2,7 +2,7 @@ type callbackEvent = PulumiAws.SQS.Queue.event
 type runtimeParts = Util.Lambda.runtimeParts
 type channelParts = Util.SQS.channelParts
 
-let subscribe = (
+let connect = (
   ~name,
   ~channel: Reventless.CommandTopic_Adapter.channel<
     callbackEvent,
@@ -252,7 +252,7 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<
     ->Pulumi.Output.apply(runtimeQueue =>
       runtimeQueue->(CommandTopicChannel_SQS_Runtime.publishJsons(AWS.SQS_FIFO, ...))
     ),
-    subscribe,
+    connect,
     handleChannelEvent: handleCommands =>
       queue
       ->Util_SQS.toRuntimeQueueOutput

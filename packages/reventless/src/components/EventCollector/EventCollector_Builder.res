@@ -1,6 +1,5 @@
 module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
   type callbackEvent = Channel.callbackEvent
-  type runtimeParts = Channel.runtimeParts
 
   let construct = (self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
@@ -21,11 +20,11 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
     })
   }
 
-  let subscribe = (~name, ~eventTopics, ~eventCollector, ~runtime, ~resources, ~opts) => {
+  let connect = (~name, ~eventTopics, ~eventCollector, ~runtime, ~resources, ~opts) => {
     let name = name->ComponentType.name(EventCollector.componentType)
     let channel = eventCollector->EventCollector_Adapter.channel
 
-    let subscribeResources = channel.subscribe(
+    let _connectResources = channel.connect(
       ~name,
       ~eventTopics,
       ~channel,
@@ -36,7 +35,7 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
 
     // let _ = eventCollector->Component.setOutputs({
     //   EventCollector.name,
-    //   resources: channel.resources->Belt.Array.concat(subscribeResources),
+    //   resources: channel.resources->Belt.Array.concat(connectResources),
     // })
   }
 

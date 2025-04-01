@@ -459,7 +459,7 @@ module Make = (
               ~opts=eventCollectorOpts,
             )
 
-            PluginEventCollector.subscribe(
+            PluginEventCollector.connect(
               ~name=childName,
               ~eventTopics,
               ~eventCollector,
@@ -490,7 +490,7 @@ module Make = (
           ~opts=heartbeatOpts,
         )
 
-        SpecificHeartbeat.subscribe(
+        SpecificHeartbeat.connect(
           ~name=childName,
           ~remoteChannel=corePluginExtensionPointCommandTopicRemoteChannel,
           ~timeout=heartbeatInterval,

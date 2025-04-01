@@ -22,7 +22,7 @@ var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
 var CommandTopicChannel_SQS_Runtime$ReventlessAws = require("./CommandTopicChannel_SQS_Runtime.res.js");
 
-function subscribe(name, channel, runtime, resources, opts) {
+function connect(name, channel, runtime, resources, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = channel.parts.queue;
   var lambda = runtime.parts.lambda;
@@ -194,10 +194,10 @@ function make(name, opts) {
                           return CommandTopicChannel_SQS_Runtime$ReventlessAws.handleQueueEvent(runtimeQueue, handleCommands);
                         });
             }),
-          subscribe: subscribe
+          connect: connect
         };
 }
 
-exports.subscribe = subscribe;
+exports.connect = connect;
 exports.make = make;
 /* @pulumi/aws Not a pure module */

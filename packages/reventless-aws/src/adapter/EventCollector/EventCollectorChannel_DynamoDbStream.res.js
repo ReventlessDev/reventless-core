@@ -15,7 +15,7 @@ var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/A
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
-function subscribe(name, eventTopics, param, runtime, resources, opts) {
+function connect(name, eventTopics, param, runtime, resources, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
@@ -110,10 +110,10 @@ function make(param, param$1) {
           resources: [],
           enqueueEvent: Pulumi.output(enqueueEventNotSupported),
           handleChannelEvent: handleChannelEvent,
-          subscribe: subscribe
+          connect: connect
         };
 }
 
-exports.subscribe = subscribe;
+exports.connect = connect;
 exports.make = make;
 /* @pulumi/aws Not a pure module */

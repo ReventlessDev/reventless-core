@@ -16,7 +16,7 @@ type jsonEventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 module type T = {
   type callbackEvent
 
-  let subscribe: (
+  let connect: (
     ~name: string,
     ~eventTopics: EventTopic.allOutputs,
     ~eventCollector: component,

@@ -73,7 +73,7 @@ module Make = (
         )
         let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts=commandTopicOpts)
 
-        SpecificCommandTopic.subscribe(
+        SpecificCommandTopic.connect(
           ~name=childName,
           ~commandTopic,
           ~runtime,

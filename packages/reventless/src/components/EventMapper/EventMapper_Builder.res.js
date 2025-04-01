@@ -69,7 +69,7 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeEnvironment) {
                         var handler = SpecificEventCollector.makeHandler(eventCollector, EventCollectorHandler.handleJsonEvents);
                         var runtime = RuntimeEnvironment.make(name, handler, memorySize, timeout, opts$1);
                         var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
-                        return Component$Reventless.outputs((SpecificEventCollector.subscribe(name, eventTopics, eventCollector, runtime, resources, opts$1), eventCollector));
+                        return Component$Reventless.outputs((SpecificEventCollector.connect(name, eventTopics, eventCollector, runtime, resources, opts$1), eventCollector));
                       });
                   return Component$Reventless.setOutputs(extra, {
                               name: name,

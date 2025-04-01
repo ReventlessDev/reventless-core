@@ -6,7 +6,7 @@ type t
 type component = Component.t<t, outputs, unit>
 
 module type T = {
-  let subscribe: (
+  let connect: (
     ~name: string,
     ~timeout: int=?,
     ~heartbeat: component,

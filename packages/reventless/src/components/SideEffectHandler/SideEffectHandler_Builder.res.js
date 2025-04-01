@@ -48,7 +48,7 @@ function Make(SpecificEventCollector, RuntimeEnvironment) {
                         var resources = commandTopics.flatMap(function (commandTopic) {
                               return commandTopic.resources;
                             });
-                        SpecificEventCollector.subscribe(extra$1, eventTopics, eventCollector, runtime, resources, opts$1);
+                        SpecificEventCollector.connect(extra$1, eventTopics, eventCollector, runtime, resources, opts$1);
                       });
                   Component$Reventless.setOperations(extra, Pulumi.all([
                               Component$Reventless.operations(eventCollector),
