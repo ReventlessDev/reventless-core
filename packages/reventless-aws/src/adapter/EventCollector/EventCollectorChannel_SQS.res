@@ -27,7 +27,7 @@ let subscribe = (
     ->Array.flatMap(outputs => outputs.resources)
     ->Reventless.Adapter.resourcesToUnwrappedOutput
 
-  let attachPolicies =
+  let _ =
     (
       eventTopicResources,
       queue.arn,
@@ -70,7 +70,7 @@ let subscribe = (
           AWS.DynamoDbStream.service,
         ])
 
-      let attachQueuePolicy = {
+      let _attachQueuePolicy = {
         PulumiAws.SQS.QueuePolicy.make(
           ~name=name ++ "QueuePolicy",
           ~args={
@@ -207,7 +207,7 @@ let subscribe = (
         )
       }
 
-      let attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
+      let _attachLambdaPolicy = PulumiAws.IAM.RolePolicy.make(
         ~name=name ++ "LambdaPolicy",
         ~args={
           policy: PulumiAws.PolicyDocument.mergePolicyDocuments(
@@ -254,21 +254,15 @@ let subscribe = (
             ~opts,
           )
         )
-
-      (attachLambdaPolicy, attachQueuePolicy)
     })
 
   let resource =
-    attachPolicies
-    ->Pulumi.Output.flatMap(((attachLambdaPolicy, attachQueuePolicy)) =>
-      (attachLambdaPolicy.id, attachQueuePolicy.id, lambda)
-      ->Pulumi.Output.all3
-      ->Pulumi.Output.apply(((_, _, lambda)) => {
-        queue
-        ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
-        ->Util.SQS.Subscription.toResource
-      })
-    )
+    lambda
+    ->Pulumi.Output.apply(lambda => {
+      queue
+      ->PulumiAws.SQS.Queue.onEvent(~name, ~handler=lambda, ~opts)
+      ->Util.SQS.Subscription.toResource
+    })
     ->Reventless.Adapter.outputToResource
 
   [resource]

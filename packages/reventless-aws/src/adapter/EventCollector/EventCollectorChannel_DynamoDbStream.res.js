@@ -28,12 +28,16 @@ function subscribe(name, eventTopics, param, runtime, resources, opts) {
         ]).apply(function (param) {
         var resources = param[1];
         var eventTopicResources = param[0];
-        console.log("EventTopicResources for ", name + ": ", eventTopicResources);
-        console.log("Resources for ", name + ": ", resources);
+        console.log("EventCollectorChannel_DynamoDbStream: EventTopicResources for ", name + ": ", eventTopicResources);
+        console.log("EventCollectorChannel_DynamoDbStream: Resources for ", name + ": ", resources);
         var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
         var targetDynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
               AWS$ReventlessAws.DynamoDb.service,
               AWS$ReventlessAws.DynamoDbStream.service
+            ]);
+        var targetSqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+              AWS$ReventlessAws.SQS.service,
+              AWS$ReventlessAws.SQS_FIFO.service
             ]);
         var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
               AWS$ReventlessAws.SNS.service,
@@ -48,9 +52,7 @@ function subscribe(name, eventTopics, param, runtime, resources, opts) {
                     "dynamodb:GetShardIterator",
                     "dynamodb:ListStreams"
                   ],
-                  Resource: dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
-                        return dynamoDbStreamResource.urn;
-                      })
+                  Resource: Adapter$Reventless.urns(dynamoDbStreamResources)
                 }]) : undefined;
         var lambdaWriteDynamoDbPolicyDocument = targetDynamoDbResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaAllowDynamoDbWrite", [{
                   Sid: "AllowLambdaReadWriteDynamoDb",
@@ -65,24 +67,27 @@ function subscribe(name, eventTopics, param, runtime, resources, opts) {
                     "dynamodb:DeleteItem",
                     "dynamodb:BatchWriteItem"
                   ],
-                  Resource: targetDynamoDbResources.map(function (dynamoDbResource) {
-                        return dynamoDbResource.urn;
-                      })
+                  Resource: Adapter$Reventless.urns(targetDynamoDbResources)
                 }]) : undefined;
         var lambdaSnsPublishNotificationPolicyDocument = targetSnsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "PublishSNS", [{
                   Sid: "LambdaAllowPublishSNS",
                   Effect: "Allow",
                   Action: "sns:Publish",
-                  Resource: targetSnsResources.map(function (snsResource) {
-                        return snsResource.urn;
-                      })
+                  Resource: Adapter$Reventless.urns(targetSnsResources)
+                }]) : undefined;
+        var lambdaSqsSendPolicyDocument = targetSqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "SendSQS", [{
+                  Sid: "LambdaAllowSendSQS",
+                  Effect: "Allow",
+                  Action: "sqs:SendMessage",
+                  Resource: Adapter$Reventless.urns(targetSqsResources)
                 }]) : undefined;
         new (Aws.iam.RolePolicy)(name, {
               policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Core__Array.keepSome([
                         Lambda$PulumiAws.defaultLoggingPolicyDocument,
                         streamSourcesWithPolicy,
                         lambdaWriteDynamoDbPolicyDocument,
-                        lambdaSnsPublishNotificationPolicyDocument
+                        lambdaSnsPublishNotificationPolicyDocument,
+                        lambdaSqsSendPolicyDocument
                       ])),
               role: lambdaRole.id
             }, opts$1);
