@@ -71,3 +71,5 @@ let unwrappedToString = (resources: array<unwrappedResource>) => {
   ->Belt.Array.keepMap(resource => resource->Js.Json.stringifyAny)
   ->Js.Array2.joinWith(", ")
 }
+
+let urns = resources => resources->Array.map((resource: unwrappedResource) => resource.urn)

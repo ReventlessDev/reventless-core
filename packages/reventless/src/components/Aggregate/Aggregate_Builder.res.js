@@ -90,7 +90,8 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                           parent: opts_parent
                         };
                         var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandGenerator$Reventless.componentType), SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, opts$1);
-                        SpecificCommandGenerator.subscribe(name$1, commandGenerator, runtime, opts$1);
+                        var resources = Component$Reventless.outputs(commandTopic).resources;
+                        SpecificCommandGenerator.subscribe(name$1, commandGenerator, runtime, resources, opts$1);
                         return Component$Reventless.outputs(commandGenerator);
                       });
           }));

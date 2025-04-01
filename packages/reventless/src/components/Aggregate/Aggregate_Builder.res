@@ -107,7 +107,8 @@ module Make = (
           ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
           ~opts,
         )
-        SpecificCommandGenerator.subscribe(~name, ~commandGenerator, ~runtime, ~opts)
+        let resources = (commandTopic->Component.outputs).resources
+        SpecificCommandGenerator.subscribe(~name, ~commandGenerator, ~runtime, ~resources, ~opts)
         commandGenerator->Component.outputs
       })
     )

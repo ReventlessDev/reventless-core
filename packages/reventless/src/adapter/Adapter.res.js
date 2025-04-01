@@ -122,6 +122,12 @@ function unwrappedToString(resources) {
                 })).join(", ");
 }
 
+function urns(resources) {
+  return resources.map(function (resource) {
+              return resource.urn;
+            });
+}
+
 exports.outputToResource = outputToResource;
 exports.resourcesOutputToResource = resourcesOutputToResource;
 exports.unwrappedToResource = unwrappedToResource;
@@ -131,4 +137,5 @@ exports.resourceToUnwrappedOutput = resourceToUnwrappedOutput;
 exports.resourcesToUnwrappedOutput = resourcesToUnwrappedOutput;
 exports.logResource = logResource;
 exports.unwrappedToString = unwrappedToString;
+exports.urns = urns;
 /* Output-Pulumi Not a pure module */

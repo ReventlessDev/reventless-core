@@ -3,13 +3,16 @@
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Aws = require("@pulumi/aws");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
 var AWS$ReventlessAws = require("../AWS.res.js");
+var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
+var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver.res.js");
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
@@ -21,7 +24,7 @@ function makeHandler(generateCommand) {
             });
 }
 
-function make(name, api, fields, runtime, opts) {
+function make(name, api, fields, runtime, resources, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
@@ -33,10 +36,26 @@ function make(name, api, fields, runtime, opts) {
           Output$Pulumi.flatMap(lambda, (function (lambda) {
                   return lambda.name;
                 })),
-          lambdaRole.id
+          lambdaRole.id,
+          Adapter$Reventless.resourcesToUnwrappedOutput(resources)
         ]).apply(function (param) {
-        new (Aws.iam.RolePolicy)(name + "CommandGeneratorPolicy", {
-              policy: PolicyDocument$PulumiAws.toJsonString(Lambda$PulumiAws.defaultLoggingPolicyDocument),
+        var resources = param[3];
+        console.log("CommandGeneratorResolvers_AppSync: Resources for ", name + ": ", resources);
+        var targetSqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+              AWS$ReventlessAws.SQS.service,
+              AWS$ReventlessAws.SQS_FIFO.service
+            ]);
+        var lambdaSqsSendPolicyDocument = targetSqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "SendSQS", [{
+                  Sid: "LambdaAllowSendSQS",
+                  Effect: "Allow",
+                  Action: "sqs:SendMessage",
+                  Resource: Adapter$Reventless.urns(targetSqsResources)
+                }]) : undefined;
+        new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
+              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Core__Array.keepSome([
+                        Lambda$PulumiAws.defaultLoggingPolicyDocument,
+                        lambdaSqsSendPolicyDocument
+                      ])),
               role: param[2]
             }, opts$1);
         new (Aws.lambda.Permission)(name + "Permission", {
@@ -74,9 +93,9 @@ function make(name, api, fields, runtime, opts) {
           var commandName = match.length !== 2 ? StringLabels.capitalize_ascii(field) : StringLabels.capitalize_ascii(match[1]);
           return AppSync_Resolver$PulumiAws.makeUnitResolver(StringLabels.capitalize_ascii(field), api, dataSource.name, "Mutation", field, invokeCommandGenerator(commandName), AppSync_Resolver_Templates$PulumiAws.result, opts$1);
         }));
-  var resources = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);
+  var resources$1 = Belt_Array.map(resolvers, Util_AppSync$ReventlessAws.toResource);
   return {
-          resources: resources
+          resources: resources$1
         };
 }
 

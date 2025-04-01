@@ -36,14 +36,16 @@ let subscribe = (
     )
     ->Pulumi.Output.all4
     ->Pulumi.Output.apply(((eventTopicResources, queueArn, queueId, resources)) => {
-      let _logAllResources = {
-        Js.Console.log3(
-          "EventCollectorChannel_SQS: EventTopicResources for ",
-          name ++ ": ",
-          eventTopicResources,
-        )
-        Js.Console.log3("EventCollectorChannel_SQS: Resources for ", name ++ ": ", resources)
-      }
+      open PulumiAws.PolicyDocument
+      open Reventless.Adapter
+
+      Js.Console.log3(
+        "EventCollectorChannel_SQS: EventTopicResources for ",
+        name ++ ": ",
+        eventTopicResources,
+      )
+      Js.Console.log3("EventCollectorChannel_SQS: Resources for ", name ++ ": ", resources)
+
       let snsResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
           AWS.SNS.service,
@@ -67,11 +69,8 @@ let subscribe = (
           AWS.DynamoDb.service,
           AWS.DynamoDbStream.service,
         ])
-      let urns = resources =>
-        resources->Array.map((resource: Reventless.Adapter.unwrappedResource) => resource.urn)
 
       let attachQueuePolicy = {
-        open PulumiAws.PolicyDocument
         PulumiAws.SQS.QueuePolicy.make(
           ~name=name ++ "QueuePolicy",
           ~args={

@@ -10,8 +10,8 @@ function Make(Config, Spec, Behaviour, Resolvers) {
   var construct = function (_self, _name) {
     
   };
-  var subscribe = function (name, commandGenerator, runtime, opts) {
-    var resolvers = Resolvers.make(ComponentType$Reventless.name(name, CommandGenerator$Reventless.componentType), Config.api, Behaviour.resolverConfig.fields, runtime, opts);
+  var subscribe = function (name, commandGenerator, runtime, resources, opts) {
+    var resolvers = Resolvers.make(ComponentType$Reventless.name(name, CommandGenerator$Reventless.componentType), Config.api, Behaviour.resolverConfig.fields, runtime, resources, opts);
     Component$Reventless.setOutputs(commandGenerator, {
           resources: resolvers.resources
         });

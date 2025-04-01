@@ -66,9 +66,7 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
                           Condition: {
                             ArnEquals: Js_dict.fromArray([[
                                     "aws:SourceArn",
-                                    snsResources.map(function (resource) {
-                                          return resource.urn;
-                                        })
+                                    Adapter$Reventless.urns(snsResources)
                                   ]])
                           }
                         }])),
@@ -83,9 +81,7 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
                     "dynamodb:GetShardIterator",
                     "dynamodb:ListStreams"
                   ],
-                  Resource: dynamoDbStreamResources.map(function (resource) {
-                        return resource.urn;
-                      })
+                  Resource: Adapter$Reventless.urns(dynamoDbStreamResources)
                 }]) : undefined;
         var lambdaWriteDynamoDbPolicyDocument = targetDynamoDbResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaAllowDynamoDbWrite", [{
                   Sid: "AllowLambdaReadWriteDynamoDb",
@@ -100,25 +96,19 @@ function subscribe(name, eventTopics, channel, runtime, resources, opts) {
                     "dynamodb:DeleteItem",
                     "dynamodb:BatchWriteItem"
                   ],
-                  Resource: targetDynamoDbResources.map(function (resource) {
-                        return resource.urn;
-                      })
+                  Resource: Adapter$Reventless.urns(targetDynamoDbResources)
                 }]) : undefined;
         var lambdaSnsPublishNotificationPolicyDocument = targetSnsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "PublishSNS", [{
                   Sid: "LambdaAllowPublishSNS",
                   Effect: "Allow",
                   Action: "sns:Publish",
-                  Resource: targetSnsResources.map(function (resource) {
-                        return resource.urn;
-                      })
+                  Resource: Adapter$Reventless.urns(targetSnsResources)
                 }]) : undefined;
         var lambdaSqsSendPolicyDocument = targetSqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "SendSQS", [{
                   Sid: "LambdaAllowSendSQS",
                   Effect: "Allow",
                   Action: "sqs:SendMessage",
-                  Resource: targetSqsResources.map(function (resource) {
-                        return resource.urn;
-                      })
+                  Resource: Adapter$Reventless.urns(targetSqsResources)
                 }]) : undefined;
         var lambdaQueuePolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "LambdaSQSPolicy", [{
                 Sid: "AllowLambdaReceiveSQSMessage",

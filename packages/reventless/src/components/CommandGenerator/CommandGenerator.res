@@ -20,6 +20,7 @@ module type T = {
     ~name: string,
     ~commandGenerator: component,
     ~runtime: Runtime.environment<runtimeParts>,
+    ~resources: array<ReventlessSpec.Adapter.resource>,
     ~opts: Pulumi.ComponentResource.options,
   ) => unit
 

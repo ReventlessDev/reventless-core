@@ -5,6 +5,7 @@ type resolversMaker<'api, 'runtimeParts> = (
   ~api: 'api,
   ~fields: array<string>,
   ~runtime: Runtime.environment<'runtimeParts>,
+  ~resources: array<ReventlessSpec.Adapter.resource>,
   ~opts: Pulumi.ComponentResource.options,
 ) => resolvers
 
