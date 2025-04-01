@@ -277,21 +277,39 @@ module Make = (
           extensionPointName: extensionOutputs.extensionPointName,
         })
 
-        let pluginDefinition =
-          extensionPointsDefinitions->Pulumi.Output.apply(extensionPointsDefinitions => {
-            ReventlessSpec.Plugin.id,
-            name,
-            version,
-            extensionPoints: extensionPointsDefinitions,
-            extensions: extensionsDefinitions,
-            eventCollector: "",
-          })
+        module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
+        let childName = name->ComponentType.name(Plugin.componentType)
+        let eventCollector = PluginEventCollector.make(~name=childName, ~opts)
+        let eventCollectorOutputs = eventCollector->Component.outputs
+        let eventCollectorUrn = (eventCollectorOutputs.resources->Array.getUnsafe(0)).urn //FIXME
 
-        let (connectPluginExtensionOutputs, connectPluginExtensionIncomingEventHandler) =
-          extensionPointsOutputs
-          ->Belt.Array.map(ExtensionPoint.toUnwrappedOutputs)
-          ->Pulumi.Output.all
-          ->Pulumi.Output.apply(extensionPointsOutputs => {
+        let (
+          connectPluginExtensionOutputs,
+          connectPluginExtensionIncomingEventHandler,
+          pluginDefinition,
+        ) =
+          (
+            extensionPointsOutputs
+            ->Belt.Array.map(ExtensionPoint.toUnwrappedOutputs)
+            ->Pulumi.Output.all,
+            extensionPointsDefinitions,
+            eventCollectorUrn,
+          )
+          ->Pulumi.Output.all3
+          ->Pulumi.Output.apply(((
+            extensionPointsOutputs,
+            extensionPointsDefinitions,
+            eventCollectorUrn,
+          )) => {
+            let pluginDefinition = {
+              ReventlessSpec.Plugin.id,
+              name,
+              version,
+              extensionPoints: extensionPointsDefinitions,
+              extensions: extensionsDefinitions,
+              eventCollector: eventCollectorUrn,
+            }
+
             module ConnectPluginExtension = PluginConnectExtension_Builder.Make({
               let pluginDefinition = pluginDefinition
               let extensionPointsOutputs = extensionPointsOutputs
@@ -310,9 +328,13 @@ module Make = (
               connectPluginExtension
               ->Component.operations
               ->Pulumi.Output.apply(({incomingEventHandler}) => incomingEventHandler)
-            (connectPluginExtensionOutputs, connectPluginExtensionIncomingEventHandler)
+            (
+              connectPluginExtensionOutputs,
+              connectPluginExtensionIncomingEventHandler,
+              pluginDefinition,
+            )
           })
-          ->Pulumi.Output.unzip
+          ->Pulumi.Output.unzip3
 
         let tasksOutputs = ref([])
         let queryBucketName = taskName =>
@@ -379,7 +401,6 @@ module Make = (
             )
           )
 
-        let childName = name->ComponentType.name(Plugin.componentType)
         let eventCollectorOutputs =
           (
             pluginDefinition,
@@ -398,12 +419,6 @@ module Make = (
             connectPluginExtensionOutputs,
             resources,
           )) => {
-            module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
-            let eventCollector = PluginEventCollector.make(~name=childName, ~opts)
-            let eventCollectorOpts = {
-              Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource,
-            }
-
             module Callback = Plugin_Callback.Make({
               let pluginDefinition = pluginDefinition
               let outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(
@@ -435,6 +450,9 @@ module Make = (
               ~eventCollector,
               ~eventsHandler=Callback.handleJsonEvents,
             )
+            let eventCollectorOpts = {
+              Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource,
+            }
             let runtime = RuntimeEnvironment.make(
               ~name=childName->ComponentType.name(EventCollector.componentType),
               ~handler,
@@ -450,7 +468,6 @@ module Make = (
               ~opts=eventCollectorOpts,
             )
 
-            let eventCollectorOutputs = eventCollector->Component.outputs
             let _ =
               (eventCollectorOutputs.resources->Array.getUnsafe(0)).urn->Pulumi.Output.apply(
                 urn => pluginDefinition.eventCollector = urn,

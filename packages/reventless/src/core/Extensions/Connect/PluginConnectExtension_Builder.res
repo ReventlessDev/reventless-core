@@ -1,5 +1,5 @@
 module type Spec = {
-  let pluginDefinition: Pulumi.Output.t<ReventlessSpec.Plugin.pluginDefinition>
+  let pluginDefinition: ReventlessSpec.Plugin.pluginDefinition
   let extensionPointsOutputs: array<ExtensionPoint.unwrappedOutputs>
   let extensionsOutputs: array<Extension.outputs>
 }
@@ -48,7 +48,7 @@ module Make = (Spec: Spec) => {
   }
 
   let callHandler = async command => {
-    let pluginDefinition = Spec.pluginDefinition->Pulumi.Output.get
+    let pluginDefinition = Spec.pluginDefinition
     let id = pluginDefinition.id
 
     switch command {
@@ -174,7 +174,7 @@ module Make = (Spec: Spec) => {
         ReventlessSpec.PluginExtensionPointSpec.command,
         ReventlessSpec.PluginExtensionPointSpec.callCommand,
       > = (pluginId, event, _meta, _pluginDef, _queryEngine) => {
-        let pluginDefinition = Spec.pluginDefinition->Pulumi.Output.get
+        let pluginDefinition = Spec.pluginDefinition
         let id = pluginDefinition.id
 
         switch event {

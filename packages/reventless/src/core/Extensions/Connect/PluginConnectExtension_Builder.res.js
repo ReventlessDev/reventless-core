@@ -54,7 +54,7 @@ function Make(Spec) {
     console.log("Success: " + action + ": " + extensionPointName + "->" + pluginId + " (" + eventTopicName + "->" + eventCollectorName + ")");
   };
   var callHandler = async function (command) {
-    var pluginDefinition = Spec.pluginDefinition.get();
+    var pluginDefinition = Spec.pluginDefinition;
     var id = pluginDefinition.id;
     switch (command.TAG) {
       case "DoConnectPlugin" :
@@ -118,7 +118,7 @@ function Make(Spec) {
   };
   var partial_arg$1 = ExtensionMapping$Reventless.Make;
   var mapIncomingEvent = function (pluginId, $$event, _meta, _pluginDef, _queryEngine) {
-    var pluginDefinition = Spec.pluginDefinition.get();
+    var pluginDefinition = Spec.pluginDefinition;
     var id = pluginDefinition.id;
     if (typeof $$event !== "object") {
       if (pluginId === id) {

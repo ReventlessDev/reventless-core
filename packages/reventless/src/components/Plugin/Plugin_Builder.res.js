@@ -214,20 +214,27 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                         extensionPointName: extensionOutputs.extensionPointName
                                       };
                               }));
-                        var pluginDefinition = extensionPointsDefinitions.apply(function (extensionPointsDefinitions) {
-                              return {
-                                      id: id,
-                                      name: extra$1,
-                                      version: version,
-                                      extensionPoints: extensionPointsDefinitions,
-                                      extensions: extensionsDefinitions,
-                                      eventCollector: ""
-                                    };
-                            });
-                        var match$2 = Output$Pulumi.unzip(Pulumi.all(Belt_Array.map(extensionPointsOutputs, ExtensionPoint$Reventless.toUnwrappedOutputs)).apply(function (extensionPointsOutputs) {
+                        var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
+                        var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
+                        var eventCollector = PluginEventCollector.make(childName, opts);
+                        var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
+                        var eventCollectorUrn = eventCollectorOutputs.resources[0].urn;
+                        var match$2 = Output$Pulumi.unzip3(Pulumi.all([
+                                    Pulumi.all(Belt_Array.map(extensionPointsOutputs, ExtensionPoint$Reventless.toUnwrappedOutputs)),
+                                    extensionPointsDefinitions,
+                                    eventCollectorUrn
+                                  ]).apply(function (param) {
+                                  var pluginDefinition = {
+                                    id: id,
+                                    name: extra$1,
+                                    version: version,
+                                    extensionPoints: param[1],
+                                    extensions: extensionsDefinitions,
+                                    eventCollector: param[2]
+                                  };
                                   var ConnectPluginExtension = PluginConnectExtension_Builder$Reventless.Make({
                                         pluginDefinition: pluginDefinition,
-                                        extensionPointsOutputs: extensionPointsOutputs,
+                                        extensionPointsOutputs: param[0],
                                         extensionsOutputs: extensionsOutputs
                                       });
                                   var connectPluginExtension = ConnectPluginExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
@@ -237,7 +244,8 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                       });
                                   return [
                                           connectPluginExtensionOutputs,
-                                          connectPluginExtensionIncomingEventHandler
+                                          connectPluginExtensionIncomingEventHandler,
+                                          pluginDefinition
                                         ];
                                 }));
                         var tasksOutputs = {
@@ -272,9 +280,8 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                                   return eventTopic.resources;
                                                 }))).concat(Adapter$Reventless.unwrappedToResources(corePluginExtensionPointUnwrapped.commandTopic.resources));
                             });
-                        var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
-                        var eventCollectorOutputs = Pulumi.all([
-                                pluginDefinition,
+                        var eventCollectorOutputs$1 = Pulumi.all([
+                                match$2[2],
                                 match$2[1],
                                 Pulumi.all(match$1[1]),
                                 Pulumi.all(match[1]),
@@ -283,12 +290,6 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                               ]).apply(function (param) {
                               var extensionsHandlers = param[2];
                               var pluginDefinition = param[0];
-                              var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
-                              var eventCollector = PluginEventCollector.make(childName, opts);
-                              var eventCollectorOpts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
-                              var eventCollectorOpts = {
-                                parent: eventCollectorOpts_parent
-                              };
                               var outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(extensionPointsOutputs, (function (outputs) {
                                       return outputs.aggregateNames;
                                     }), param[3], getOutgoingEventHandler);
@@ -311,9 +312,12 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                     incomingExtensionEventHandlers: incomingExtensionEventHandlers
                                   });
                               var handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
+                              var eventCollectorOpts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
+                              var eventCollectorOpts = {
+                                parent: eventCollectorOpts_parent
+                              };
                               var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, eventCollectorOpts);
                               PluginEventCollector.subscribe(childName, eventTopics, eventCollector, runtime, param[5], eventCollectorOpts);
-                              var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;
                                   });
@@ -333,7 +337,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                 id: id,
                                 version: version,
                                 heartbeatInterval: heartbeatInterval,
-                                eventCollector: eventCollectorOutputs,
+                                eventCollector: eventCollectorOutputs$1,
                                 extensionPoints: Js_dict.fromArray(Belt_Array.map(extensionPointsOutputs, (function (el) {
                                             return [
                                                     el.name,
