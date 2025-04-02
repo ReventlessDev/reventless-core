@@ -26,7 +26,7 @@ let handleQueueEvent = (queue, handleCommands) => async (event: PulumiAws.SQS.Qu
     )
   | results =>
     switch await results
-    ->Belt.Array.mapWithIndex((idx, result) =>
+    ->Array.mapWithIndex((result, idx) =>
       switch result {
       | Belt.Result.Ok(reference) =>
         let deleteMessageBatchEntry: AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry = {

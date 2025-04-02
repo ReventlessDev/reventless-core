@@ -50,15 +50,15 @@ function handleQueueEvent(queue, handleCommands) {
       var exit$1 = 0;
       var val;
       try {
-        val = await Util_SQS_Runtime$ReventlessAws.deleteMessages(Belt_Array.keepMap(Belt_Array.mapWithIndex(results, (function (idx, result) {
-                        if (result.TAG === "Ok") {
-                          return {
-                                  Id: String(idx),
-                                  ReceiptHandle: result._0
-                                };
-                        }
-                        console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
-                      })), (function (x) {
+        val = await Util_SQS_Runtime$ReventlessAws.deleteMessages(Belt_Array.keepMap(results.map(function (result, idx) {
+                      if (result.TAG === "Ok") {
+                        return {
+                                Id: String(idx),
+                                ReceiptHandle: result._0
+                              };
+                      }
+                      console.log("CommandTopicChannel_SQS_Runtime-ReventlessAws" + ".handleQueueEvent: Error: Couldn't handle command with ReceiptHandle:", result._0);
+                    }), (function (x) {
                     return x;
                   })), queue);
         exit$1 = 2;

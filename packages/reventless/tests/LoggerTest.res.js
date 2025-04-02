@@ -3,7 +3,6 @@
 
 var Jest = require("@glennsl/rescript-jest/src/jest.res.js");
 var Decco = require("@rescript-labs/decco/src/Decco.res.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Logger$Reventless = require("../src/util/Logger.res.js");
 var Message$Reventless = require("../src/Message.res.js");
 var PluginSpec$Reventless = require("../src/core/Aggregates/Plugin/PluginSpec.res.js");
@@ -30,14 +29,14 @@ Jest.describe("Logger", (function () {
                           correlationId: "testCorrelationId"
                         };
                         var metaStr = JSON.stringify(Message$Reventless.meta_encode(meta));
-                        var arr = Belt_Array.mapWithIndex(commands, (function (id, command) {
-                                return {
-                                        id: String(id),
-                                        meta: meta,
-                                        commandJson: PluginSpec$Reventless.command_encode(command),
-                                        delay: undefined
-                                      };
-                              }));
+                        var arr = commands.map(function (command, idx) {
+                              return {
+                                      id: String(idx),
+                                      meta: meta,
+                                      commandJson: PluginSpec$Reventless.command_encode(command),
+                                      delay: undefined
+                                    };
+                            });
                         var expected = "1/1: Heartbeat(0): {\"command\":[\"Heartbeat\"],\"meta\":" + metaStr + ",\"id\":0}";
                         return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.commandJsonsToLogMessages(arr)), [expected]);
                       }));
@@ -72,14 +71,14 @@ Jest.describe("Logger", (function () {
                           correlationId: "testCorrelationId"
                         };
                         var metaStr = JSON.stringify(Message$Reventless.meta_encode(meta));
-                        var arr = Belt_Array.mapWithIndex(commands, (function (id, command) {
-                                return {
-                                        id: String(id),
-                                        meta: meta,
-                                        commandJson: PluginSpec$Reventless.command_encode(command),
-                                        delay: undefined
-                                      };
-                              }));
+                        var arr = commands.map(function (command, idx) {
+                              return {
+                                      id: String(idx),
+                                      meta: meta,
+                                      commandJson: PluginSpec$Reventless.command_encode(command),
+                                      delay: undefined
+                                    };
+                            });
                         var expected1 = "1/2: Heartbeat(0): {\"command\":[\"Heartbeat\"],\"meta\":" + metaStr + ",\"id\":0}";
                         var expected2 = "2/2: Connect(1): {\"command\":[\"Connect\",{\"id\":\"id\",\"name\":\"testName\",\"version\":\"testVersion\",\"extensionPoints\":[{\"name\":\"testExtensionPoint\",\"commandTopic\":\"testCommandTopic\",\"eventTopic\":\"testEventTopic\"}],\"extensions\":[{\"name\":\"testExtension\",\"extensionPointName\":\"testExtensionPoint\"}],\"eventCollector\":\"testEventCollector\"}],\"meta\":" + metaStr + ",\"id\":1}";
                         return Jest.Expect.toEqual(Jest.Expect.expect(Logger$Reventless.commandJsonsToLogMessages(arr)), [

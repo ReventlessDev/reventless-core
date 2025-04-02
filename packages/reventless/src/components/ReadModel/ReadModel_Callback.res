@@ -13,7 +13,7 @@ module Make = (
   let eventsHandler = jsons => {
     let eventCount = jsons->Belt.Array.length
     jsons
-    ->Belt.Array.mapWithIndex((idx, json) => {
+    ->Array.mapWithIndex((json, idx) => {
       let idx = idx + 1
       let sourceName =
         json

@@ -9,7 +9,7 @@ module Make = (Spec: Spec) => {
   let eventsHandler = eventsJson' => {
     let count = eventsJson'->Belt.Array.size
     eventsJson'
-    ->Belt.Array.mapWithIndex(async (idx, eventJson') => {
+    ->Array.mapWithIndex(async (eventJson', idx) => {
       let idx = idx + 1
       eventJson'->Logger.logJsonEvent(
         `Core eventHandler: outgoing event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,

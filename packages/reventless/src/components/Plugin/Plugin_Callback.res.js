@@ -35,17 +35,17 @@ function Make(Spec) {
   var handleJsonEvents = function (eventsJson) {
     var id = Spec.pluginDefinition.id;
     var count = eventsJson.length;
-    return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(eventsJson, (async function (idx, eventJson$p) {
-                          var idx$1 = idx + 1 | 0;
-                          Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "Plugin " + id + " handleJsonEvents: incoming event " + String(idx$1) + "/" + String(count) + ":");
-                          detectUnhandledEvent(eventJson$p);
-                          await handleEvent(eventJson$p, Spec.incomingConnectExtensionEventHandlers);
-                          return Promise.all([
-                                      handleEvent(eventJson$p, Spec.outgoingExtensionPointEventHandlers),
-                                      handleEvent(eventJson$p, Spec.outgoingExtensionEventHandlers),
-                                      handleEvent(eventJson$p, Spec.incomingExtensionEventHandlers)
-                                    ]);
-                        }))));
+    return Util_Promise$Reventless.toUnit(Promise.all(eventsJson.map(async function (eventJson$p, idx) {
+                        var idx$1 = idx + 1 | 0;
+                        Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "Plugin " + id + " handleJsonEvents: incoming event " + String(idx$1) + "/" + String(count) + ":");
+                        detectUnhandledEvent(eventJson$p);
+                        await handleEvent(eventJson$p, Spec.incomingConnectExtensionEventHandlers);
+                        return Promise.all([
+                                    handleEvent(eventJson$p, Spec.outgoingExtensionPointEventHandlers),
+                                    handleEvent(eventJson$p, Spec.outgoingExtensionEventHandlers),
+                                    handleEvent(eventJson$p, Spec.incomingExtensionEventHandlers)
+                                  ]);
+                      })));
   };
   return {
           handleJsonEvents: handleJsonEvents

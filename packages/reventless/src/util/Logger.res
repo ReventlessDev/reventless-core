@@ -90,7 +90,7 @@ let commandJsonToLogMessage: Message.commandJson => string = ({id, meta, command
 }
 let commandJsonsToLogMessages: array<Message.commandJson> => array<string> = cmds => {
   let count = cmds->Belt.Array.size->Belt.Int.toString
-  cmds->Belt.Array.mapWithIndex((idx, cmd) => {
+  cmds->Array.mapWithIndex((cmd, idx) => {
     let idx = (idx + 1)->Belt.Int.toString
     `${idx}/${count}: ${cmd->commandJsonToLogMessage}`
   })

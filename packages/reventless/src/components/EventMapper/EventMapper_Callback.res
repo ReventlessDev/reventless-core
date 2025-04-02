@@ -91,7 +91,7 @@ module MakeCounterHandler = (
     let eventsCount = eventsJson->Belt.Array.size
     let (publisherActions, counterActions) =
       eventsJson
-      ->Belt.Array.mapWithIndex((idx, eventJson) => {
+      ->Array.mapWithIndex((eventJson, idx) => {
         let idx = idx + 1
         eventJson->Logger.logJsonEvent(
           `EventMapper.eventsHandler: incoming event ${idx->Belt.Int.toString}/${eventsCount->Belt.Int.toString}:`,

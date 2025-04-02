@@ -34,19 +34,19 @@ function handleDynamoDbOrSqsEvent(queue, handleEvents) {
             }
           }));
     await handleEvents(jsons);
-    var entries = Belt_Array.mapWithIndex(Belt_Array.keep(records, (function (record) {
-                var match = record.eventSource;
-                if (match === "aws:sqs") {
-                  return true;
-                } else {
-                  return false;
-                }
-              })), (function (idx, record) {
-            return {
-                    Id: String(idx),
-                    ReceiptHandle: record.receiptHandle
-                  };
-          }));
+    var entries = Belt_Array.keep(records, (function (record) {
+              var match = record.eventSource;
+              if (match === "aws:sqs") {
+                return true;
+              } else {
+                return false;
+              }
+            })).map(function (record, idx) {
+          return {
+                  Id: String(idx),
+                  ReceiptHandle: record.receiptHandle
+                };
+        });
     if (entries.length !== 0) {
       return await Util_SQS_Runtime$ReventlessAws.deleteMessages(entries, queue);
     }

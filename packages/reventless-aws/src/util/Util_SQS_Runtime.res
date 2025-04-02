@@ -86,7 +86,7 @@ let rec deleteMessages = async (entries, queue) =>
         let id = idx->Js.Int.toString
         failedIds->Belt.Array.some(failedId => failedId == id)
       })
-      ->Belt.Array.mapWithIndex((idx, entry) => {
+      ->Array.mapWithIndex((entry, idx) => {
         AwsSdk.SQS.DeleteMessageBatchCommand.id: idx->Js.Int.toString,
         receiptHandle: entry.receiptHandle,
       })

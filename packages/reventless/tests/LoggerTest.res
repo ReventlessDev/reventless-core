@@ -34,10 +34,10 @@ describe("Logger", () => {
           correlationId: "testCorrelationId",
         }
         let metaStr = meta->Message.meta_encode->Js.Json.stringify
-        let arr: array<Message.commandJson> = commands->Belt.Array.mapWithIndex(
-          (id, command) => {
+        let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
+          (command, idx) => {
             {
-              Message.id: id->Belt.Int.toString,
+              Message.id: idx->Belt.Int.toString,
               meta,
               commandJson: command->PluginSpec.command_encode,
               delay: None,
@@ -77,10 +77,10 @@ describe("Logger", () => {
           correlationId: "testCorrelationId",
         }
         let metaStr = meta->Message.meta_encode->Js.Json.stringify
-        let arr: array<Message.commandJson> = commands->Belt.Array.mapWithIndex(
-          (id, command) => {
+        let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
+          (command, idx) => {
             {
-              Message.id: id->Belt.Int.toString,
+              Message.id: idx->Belt.Int.toString,
               meta,
               commandJson: command->PluginSpec.command_encode,
               delay: None,

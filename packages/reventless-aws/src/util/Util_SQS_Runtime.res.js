@@ -93,17 +93,17 @@ async function deleteMessages(entries, queue) {
   }
   var failedIds$1 = failedIds._0;
   console.log("Util.SQS_Runtime.deleteMessages: Error: failed ids:", failedIds$1);
-  var entriesToRetry = Belt_Array.mapWithIndex(Belt_Array.keepWithIndex(entries, (function (param, idx) {
-              var id = idx.toString();
-              return Belt_Array.some(failedIds$1, (function (failedId) {
-                            return failedId === id;
-                          }));
-            })), (function (idx, entry) {
-          return {
-                  Id: idx.toString(),
-                  ReceiptHandle: entry.ReceiptHandle
-                };
-        }));
+  var entriesToRetry = Belt_Array.keepWithIndex(entries, (function (param, idx) {
+            var id = idx.toString();
+            return Belt_Array.some(failedIds$1, (function (failedId) {
+                          return failedId === id;
+                        }));
+          })).map(function (entry, idx) {
+        return {
+                Id: idx.toString(),
+                ReceiptHandle: entry.ReceiptHandle
+              };
+      });
   var timeout = Js_math.random_int(3000, 7000);
   await Util_Promise$Reventless.finishTimeout(timeout);
   console.log("Retry deleteMessages after " + timeout.toString() + " ms:", entriesToRetry);

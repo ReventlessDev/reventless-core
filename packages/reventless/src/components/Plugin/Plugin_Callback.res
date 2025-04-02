@@ -43,7 +43,7 @@ module Make = (Spec: Spec): T => {
     let id = Spec.pluginDefinition.id
     let count = eventsJson->Belt.Array.size
     eventsJson
-    ->Belt.Array.mapWithIndex(async (idx, eventJson') => {
+    ->Array.mapWithIndex(async (eventJson', idx) => {
       let idx = idx + 1
       eventJson'->Logger.logJsonEvent(
         `Plugin ${id} handleJsonEvents: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,

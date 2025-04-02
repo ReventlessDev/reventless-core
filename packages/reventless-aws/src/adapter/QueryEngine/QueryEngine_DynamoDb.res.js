@@ -70,60 +70,60 @@ function createSubIdExprNamesValues(subIdConfig) {
 }
 
 function createFilterExprNamesValues(filterConfigs) {
-  return Belt_Array.unzip(Belt_Array.mapWithIndex(filterConfigs, (function (idx, param) {
-                    var fieldName = param[0];
-                    var valueName = fieldName + String(idx);
-                    var tmp;
-                    switch (param[1]) {
-                      case "Equal" :
-                          tmp = "#" + fieldName + " = :" + valueName;
-                          break;
-                      case "Unequal" :
-                          tmp = "#" + fieldName + " <> :" + valueName;
-                          break;
-                      case "LessOrEqual" :
-                          tmp = "#" + fieldName + " <= :" + valueName;
-                          break;
-                      case "Less" :
-                          tmp = "#" + fieldName + " < :" + valueName;
-                          break;
-                      case "GreaterOrEqual" :
-                          tmp = "#" + fieldName + " >= :" + valueName;
-                          break;
-                      case "Greater" :
-                          tmp = "#" + fieldName + " > :" + valueName;
-                          break;
-                      case "Exists" :
-                          tmp = "attribute_exists( #" + fieldName + " )";
-                          break;
-                      case "NotExists" :
-                          tmp = "attribute_not_exists( #" + fieldName + " )";
-                          break;
-                      case "Contains" :
-                          tmp = "contains( #" + fieldName + ", :" + valueName + " )";
-                          break;
-                      case "NotContains" :
-                          tmp = "NOT contains( #" + fieldName + ", :" + valueName + " )";
-                          break;
-                      case "BeginsWith" :
-                          tmp = "begins_with( #" + fieldName + ", :" + valueName + " )";
-                          break;
-                      
-                    }
-                    return [
-                            tmp,
+  return Belt_Array.unzip(filterConfigs.map(function (param, idx) {
+                  var fieldName = param[0];
+                  var valueName = fieldName + String(idx);
+                  var tmp;
+                  switch (param[1]) {
+                    case "Equal" :
+                        tmp = "#" + fieldName + " = :" + valueName;
+                        break;
+                    case "Unequal" :
+                        tmp = "#" + fieldName + " <> :" + valueName;
+                        break;
+                    case "LessOrEqual" :
+                        tmp = "#" + fieldName + " <= :" + valueName;
+                        break;
+                    case "Less" :
+                        tmp = "#" + fieldName + " < :" + valueName;
+                        break;
+                    case "GreaterOrEqual" :
+                        tmp = "#" + fieldName + " >= :" + valueName;
+                        break;
+                    case "Greater" :
+                        tmp = "#" + fieldName + " > :" + valueName;
+                        break;
+                    case "Exists" :
+                        tmp = "attribute_exists( #" + fieldName + " )";
+                        break;
+                    case "NotExists" :
+                        tmp = "attribute_not_exists( #" + fieldName + " )";
+                        break;
+                    case "Contains" :
+                        tmp = "contains( #" + fieldName + ", :" + valueName + " )";
+                        break;
+                    case "NotContains" :
+                        tmp = "NOT contains( #" + fieldName + ", :" + valueName + " )";
+                        break;
+                    case "BeginsWith" :
+                        tmp = "begins_with( #" + fieldName + ", :" + valueName + " )";
+                        break;
+                    
+                  }
+                  return [
+                          tmp,
+                          [
                             [
-                              [
-                                "#" + fieldName,
-                                fieldName
-                              ],
-                              [
-                                ":" + valueName,
-                                toJson(param[2])
-                              ]
+                              "#" + fieldName,
+                              fieldName
+                            ],
+                            [
+                              ":" + valueName,
+                              toJson(param[2])
                             ]
-                          ];
-                  })));
+                          ]
+                        ];
+                }));
 }
 
 async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfigsOpt, ascendingOpt, limitOpt) {

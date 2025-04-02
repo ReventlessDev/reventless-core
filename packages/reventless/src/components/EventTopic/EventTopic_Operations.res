@@ -6,7 +6,7 @@ module Make = (Spec: Spec, EventTopicSpec: EventTopic.Spec) => {
   let publish = async events' => {
     let eventCount = events'->Belt.Array.length
     await events'
-    ->Belt.Array.mapWithIndex(async (idx, event') => {
+    ->Array.mapWithIndex(async (event', idx) => {
       let eventJson' = Message.event'_encode(
         EventTopicSpec.Id.t_encode,
         EventTopicSpec.event_encode,

@@ -82,7 +82,7 @@ let writeMultiple = async (writeRequests, op, ids, table) => {
   | results =>
     let errors =
       results
-      ->Belt.Array.mapWithIndex((batchNr, result) => {
+      ->Array.mapWithIndex((result, batchNr) => {
         let batchIds = ids->sliceBatch(batchNr)
         let count = batchIds->Belt.Array.size->Js.Int.toString
         let batchIdsStr = batchIds->Js.Array2.joinWith(", ")

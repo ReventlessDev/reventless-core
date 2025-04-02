@@ -2,7 +2,7 @@ type result<'a> = {status: string, value: option<'a>, reason: option<Js.Promise.
 
 let filterRejected = results =>
   results
-  ->Belt.Array.mapWithIndex((idx, result) => (idx, result))
+  ->Array.mapWithIndex((result, idx) => (idx, result))
   ->Belt.Array.keep(((_, result)) => result.status == "rejected")
   ->Array.map(((idx, result)) => (
     idx,

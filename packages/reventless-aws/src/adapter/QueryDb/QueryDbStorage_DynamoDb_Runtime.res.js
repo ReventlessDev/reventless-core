@@ -124,21 +124,21 @@ async function writeMultiple(writeRequests, op, ids, table) {
     }
     throw e;
   }
-  var errors = Belt_Array.keepMap(Belt_Array.mapWithIndex(results$1, (function (batchNr, result) {
-              var batchIds = sliceBatch(ids, batchNr);
-              var count = batchIds.length.toString();
-              var batchIdsStr = batchIds.join(", ");
-              var match = result.value;
-              var match$1 = result.reason;
-              if (match !== undefined && match.TAG !== "Ok") {
-                return "Batch " + String(batchNr) + ": " + count + " ids:" + batchIdsStr + ": " + match._0;
-              }
-              if (match$1 === undefined) {
-                return ;
-              }
-              var error = Caml_option.valFromOption(match$1).message;
-              return "Batch " + String(batchNr) + ": " + count + " ids:" + batchIdsStr + ": " + error;
-            })), (function (x) {
+  var errors = Belt_Array.keepMap(results$1.map(function (result, batchNr) {
+            var batchIds = sliceBatch(ids, batchNr);
+            var count = batchIds.length.toString();
+            var batchIdsStr = batchIds.join(", ");
+            var match = result.value;
+            var match$1 = result.reason;
+            if (match !== undefined && match.TAG !== "Ok") {
+              return "Batch " + String(batchNr) + ": " + count + " ids:" + batchIdsStr + ": " + match._0;
+            }
+            if (match$1 === undefined) {
+              return ;
+            }
+            var error = Caml_option.valFromOption(match$1).message;
+            return "Batch " + String(batchNr) + ": " + count + " ids:" + batchIdsStr + ": " + error;
+          }), (function (x) {
           return x;
         }));
   if (errors.length !== 0) {

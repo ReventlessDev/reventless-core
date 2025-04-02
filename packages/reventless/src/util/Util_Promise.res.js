@@ -8,12 +8,12 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 
 function filterRejected(results) {
-  return Belt_Array.keep(Belt_Array.mapWithIndex(results, (function (idx, result) {
-                      return [
-                              idx,
-                              result
-                            ];
-                    })), (function (param) {
+  return Belt_Array.keep(results.map(function (result, idx) {
+                    return [
+                            idx,
+                            result
+                          ];
+                  }), (function (param) {
                   return param[1].status === "rejected";
                 })).map(function (param) {
               return [

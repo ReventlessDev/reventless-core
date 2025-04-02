@@ -124,10 +124,10 @@ function commandJsonToLogMessage(param) {
 
 function commandJsonsToLogMessages(cmds) {
   var count = String(cmds.length);
-  return Belt_Array.mapWithIndex(cmds, (function (idx, cmd) {
-                var idx$1 = String(idx + 1 | 0);
-                return idx$1 + "/" + count + ": " + commandJsonToLogMessage(cmd);
-              }));
+  return cmds.map(function (cmd, idx) {
+              var idx$1 = String(idx + 1 | 0);
+              return idx$1 + "/" + count + ": " + commandJsonToLogMessage(cmd);
+            });
 }
 
 function logCmdJson(loc, levelOpt, cmdJson, desc) {

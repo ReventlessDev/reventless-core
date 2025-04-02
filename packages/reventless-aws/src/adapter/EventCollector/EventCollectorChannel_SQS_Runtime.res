@@ -33,9 +33,9 @@ let handleDynamoDbOrSqsEvent = (queue, handleEvents) => async (
         | _ => false
         }
       )
-      ->Belt.Array.mapWithIndex((
-        idx,
+      ->Array.mapWithIndex((
         record,
+        idx,
       ): AwsSdk.SQS.DeleteMessageBatchCommand.deleteMessageBatchEntry => {
         id: idx->string_of_int,
         receiptHandle: (record->PulumiAws.SQS.Queue.asRecord).receiptHandle,
