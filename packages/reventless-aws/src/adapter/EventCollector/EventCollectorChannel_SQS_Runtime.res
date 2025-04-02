@@ -3,7 +3,7 @@ let handleDynamoDbOrSqsEvent = (queue, handleEvents) => async (
   _,
 ) => {
   let records = event.records
-  let jsons = records->Belt.Array.keepMap(record =>
+  let jsons = records->Array.filterMap(record =>
     switch record.eventSource {
     | "aws:sqs" => record->PulumiAws.SQS.Queue.asRecord->Util.SQS_Runtime.parseSqsRecord
     | "aws:dynamodb" =>
@@ -52,7 +52,7 @@ let handleDynamoDbEvent = handleEvents => async (
   _,
 ) => {
   let records = event.records
-  let jsons = records->Belt.Array.keepMap(record =>
+  let jsons = records->Array.filterMap(record =>
     switch record.eventSource {
     | "aws:dynamodb" =>
       switch record

@@ -7,6 +7,7 @@ var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
@@ -123,7 +124,7 @@ function MakeCounterHandler(Target, Mappings, Ops) {
   };
   var commonEventsHandler = async function (eventsJson) {
     var eventsCount = eventsJson.length;
-    var match = Belt_Array.partition(Belt_Array.keepMap(eventsJson.map(function (eventJson, idx) {
+    var match = Belt_Array.partition(Core__Array.filterMap(eventsJson.map(function (eventJson, idx) {
                     var idx$1 = idx + 1 | 0;
                     Logger$Reventless.logJsonEvent(undefined, undefined, eventJson, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
                     var event$p = Js_json.decodeObject(eventJson);
@@ -223,7 +224,7 @@ function MakeEventCollectorHandler(Ops) {
             }
           }));
     var addToCounterTargetActions = match$1[1];
-    var countItems = Belt_Array.keepMap(match$1[0], (function (countAction) {
+    var countItems = Core__Array.filterMap(match$1[0], (function (countAction) {
             if (countAction.TAG === "Count") {
               return countAction._0;
             }

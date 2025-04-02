@@ -1,6 +1,6 @@
 let handleQueueEvent = (queue, handleCommands) => async (event: PulumiAws.SQS.Queue.event, _) => {
   let records = event.records
-  let jsons = records->Belt.Array.keepMap(record => {
+  let jsons = records->Array.filterMap(record => {
     let commandStr = record.body
     switch Js.Json.parseExn(commandStr) {
     | json => Some(json)
@@ -42,7 +42,7 @@ let handleQueueEvent = (queue, handleCommands) => async (event: PulumiAws.SQS.Qu
         None
       }
     )
-    ->Belt.Array.keepMap(x => x)
+    ->Array.filterMap(x => x)
     ->Util.SQS_Runtime.deleteMessages(queue) {
     | () =>
       Reventless.Logger.debug(~loc=__LOC__, "handleQueueEvent:", "Deleted all commands from queue")

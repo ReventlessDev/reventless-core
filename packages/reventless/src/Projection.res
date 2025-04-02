@@ -55,7 +55,7 @@ let applyChanges = async (
   let addedStates = afterStates->Belt.Array.keep(state => addedSubIds->Set.has(state->getSubId))
   let addedCount = addedStates->Array.length
 
-  let changedStates = beforeStates->Belt.Array.keepMap(before => {
+  let changedStates = beforeStates->Array.filterMap(before => {
     let beforeSubId = before->getSubId
     afterStates->Array.find(after => after->getSubId == beforeSubId && after != before)
   })
@@ -227,9 +227,7 @@ let groupActionsById = actions => {
   ->Belt.Set.String.toArray
   ->Array.map(id => (
     id,
-    allActionsWithId->Belt.Array.keepMap(((actionId, action)) =>
-      actionId == id ? Some(action) : None
-    ),
+    allActionsWithId->Array.filterMap(((actionId, action)) => actionId == id ? Some(action) : None),
   ))
 }
 
@@ -386,7 +384,7 @@ let handleActions = async (actions, operations, subIdConfig) => {
     ->groupActionsById
     ->Array.map(((id, actions)) => actions->handleActionsForId(id))
     ->Js.Promise.all
-  let errors = results->Belt.Array.keepMap(x =>
+  let errors = results->Array.filterMap(x =>
     switch x {
     | Belt.Result.Error(err) => Some(err)
     | _ => None

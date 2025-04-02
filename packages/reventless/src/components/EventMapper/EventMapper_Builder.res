@@ -50,7 +50,7 @@ module Make = (
     module Set = Belt.Set.String
     let aggregateNames =
       Mappings.mappings
-      ->Belt.Array.keepMap((module(Mapping: Mappings.Mapping)) =>
+      ->Array.filterMap((module(Mapping: Mappings.Mapping)) =>
         if Mapping.Source.name != Counter.Source.name {
           Some(Mapping.Source.name)
         } else {

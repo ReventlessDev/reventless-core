@@ -3,7 +3,7 @@ let handleStreamEvent: (
   PulumiAws.DynamoDb.Stream.event,
   _,
 ) => Js.Promise.t<unit> = async (handleEvents, streamEvent, _) => {
-  let jsons = streamEvent.records->Belt.Array.keepMap(record =>
+  let jsons = streamEvent.records->Array.filterMap(record =>
     switch record.eventSource {
     | "aws:dynamodb" =>
       switch record->Util.DynamoDbStream_Runtime.parseDynamoDbStreamRecordEvent {
@@ -21,7 +21,6 @@ let handleStreamEvent: (
   )
 
   try await handleEvents(jsons) catch {
-  | err =>
-    Js.log2("handleStreamEvent error:", err)
+  | err => Js.log2("handleStreamEvent error:", err)
   }
 }

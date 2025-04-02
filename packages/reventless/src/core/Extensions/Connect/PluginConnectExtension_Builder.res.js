@@ -5,6 +5,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SNS$AwsSdk = require("@reventless/bs-aws-sdk/src/SNS.res.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var AWS$Reventless = require("../../../util/AWS.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../../Message.res.js");
@@ -62,7 +63,7 @@ function Make(Spec) {
           var otherPluginExtensions = match.extensions;
           var otherPluginId = match.id;
           var otherPluginEventCollector = match.eventCollector;
-          var connectToExtensionPoints = Belt_Array.keepMap(Message$Reventless.log(match.extensionPoints, "otherPluginExtensionPoints:"), (function (param) {
+          var connectToExtensionPoints = Core__Array.filterMap(Message$Reventless.log(match.extensionPoints, "otherPluginExtensionPoints:"), (function (param) {
                   var extensionPointName = param.name;
                   if (Message$Reventless.log(Belt_Array.keep(Spec.extensionsOutputs, (function (extension) {
                                 return extension.extensionPointName === extensionPointName;
@@ -71,7 +72,7 @@ function Make(Spec) {
                   }
                   
                 }));
-          var connectToExtensions = Belt_Array.keepMap(Message$Reventless.log(Spec.extensionPointsOutputs, "extensionPoints:"), (function (extensionPoint) {
+          var connectToExtensions = Core__Array.filterMap(Message$Reventless.log(Spec.extensionPointsOutputs, "extensionPoints:"), (function (extensionPoint) {
                   if (Message$Reventless.log(Belt_Array.keep(otherPluginExtensions, (function (param) {
                                 return extensionPoint.name === param.extensionPointName;
                               })), "matching otherPluginExtensions:").length > 0) {
@@ -85,7 +86,7 @@ function Make(Spec) {
           var pluginExtensions = match$1.extensions;
           var pluginId = match$1.id;
           var pluginEventCollector = match$1.eventCollector;
-          var disconnectFromExtensionPoints = Belt_Array.keepMap(match$1.extensionPoints, (function (param) {
+          var disconnectFromExtensionPoints = Core__Array.filterMap(match$1.extensionPoints, (function (param) {
                   var extensionPointName = param.name;
                   if (Belt_Array.keep(Spec.extensionsOutputs, (function (extension) {
                             return extension.extensionPointName === extensionPointName;
@@ -94,7 +95,7 @@ function Make(Spec) {
                   }
                   
                 }));
-          var disconnectFromExtensions = Belt_Array.keepMap(Spec.extensionPointsOutputs, (function (extensionPoint) {
+          var disconnectFromExtensions = Core__Array.filterMap(Spec.extensionPointsOutputs, (function (extensionPoint) {
                   if (Belt_Array.keep(pluginExtensions, (function (param) {
                             return extensionPoint.name === param.extensionPointName;
                           })).length > 0) {

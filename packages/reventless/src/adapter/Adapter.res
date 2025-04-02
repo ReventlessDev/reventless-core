@@ -68,7 +68,7 @@ let logResource = r => {
 
 let unwrappedToString = (resources: array<unwrappedResource>) => {
   resources
-  ->Belt.Array.keepMap(resource => resource->Js.Json.stringifyAny)
+  ->Array.filterMap(resource => resource->Js.Json.stringifyAny)
   ->Js.Array2.joinWith(", ")
 }
 

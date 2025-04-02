@@ -2,7 +2,7 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
@@ -10,7 +10,7 @@ var Message$Reventless = require("../../Message.res.js");
 function Make(Spec, Ops) {
   var handleJsonCommands = async function (jsonItems) {
     Logger$Reventless.debug("File \"CommandTopic_Callback.res\", line 12, characters 22-29", undefined, undefined, "starting handleCommands. Command count", jsonItems.length);
-    var topicItems = Belt_Array.keepMap(jsonItems, (function (param) {
+    var topicItems = Core__Array.filterMap(jsonItems, (function (param) {
             var json = param.command;
             var command$p = (function (__x) {
                   return Message$Reventless.command$p_decode(Spec.Id.t_decode, Spec.command_decode, __x);

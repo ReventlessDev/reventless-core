@@ -5,6 +5,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 
 function makeGenericMap(decode, map) {
@@ -27,7 +28,7 @@ function Mapper(Spec, Target, Mappings) {
                 }));
   };
   var map = function (sourceName, json) {
-    return Belt_Array.keepMap(findMappings(sourceName, Mappings.mappings), (function (Mapping) {
+    return Core__Array.filterMap(findMappings(sourceName, Mappings.mappings), (function (Mapping) {
                   try {
                     return Caml_option.some(Mapping.map(json));
                   }

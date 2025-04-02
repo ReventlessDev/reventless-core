@@ -19,7 +19,7 @@ let getOutputs = name =>
   stackDependencies
   ->Array.map(stackRef => stackRef->Pulumi.StackReference.getOutput(name))
   ->Pulumi.Output.all
-  ->Pulumi.Output.apply(outputs => outputs->Belt.Array.keepMap(x => x))
+  ->Pulumi.Output.apply(outputs => outputs->Array.filterMap(x => x))
 
 let stackDependenciesTasks: Pulumi.Output.t<array<Task.outputs>> = getOutputs("tasks")
 

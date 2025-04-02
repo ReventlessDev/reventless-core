@@ -153,7 +153,7 @@ module Make = (
       ->Js.Dict.get(event'.meta.service)
       ->Belt.Option.map(readModelNames =>
         readModelNames
-        ->Belt.Array.keepMap(readModelName =>
+        ->Array.filterMap(readModelName =>
           Spec.publishToReadModels
           ->Js.Dict.get(readModelName)
           ->Belt.Option.map(

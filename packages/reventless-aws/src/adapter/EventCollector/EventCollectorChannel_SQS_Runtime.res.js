@@ -2,13 +2,14 @@
 'use strict';
 
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
 var Util_DynamoDbStream_Runtime$ReventlessAws = require("../../util/Util_DynamoDbStream_Runtime.res.js");
 
 function handleDynamoDbOrSqsEvent(queue, handleEvents) {
   return async function ($$event, param) {
     var records = $$event.Records;
-    var jsons = Belt_Array.keepMap(records, (function (record) {
+    var jsons = Core__Array.filterMap(records, (function (record) {
             var eventSource = record.eventSource;
             switch (eventSource) {
               case "aws:dynamodb" :
@@ -57,7 +58,7 @@ function handleDynamoDbOrSqsEvent(queue, handleEvents) {
 function handleDynamoDbEvent(handleEvents) {
   return async function ($$event, param) {
     var records = $$event.Records;
-    var jsons = Belt_Array.keepMap(records, (function (record) {
+    var jsons = Core__Array.filterMap(records, (function (record) {
             var eventSource = record.eventSource;
             if (eventSource === "aws:dynamodb") {
               var match = Util_DynamoDbStream_Runtime$ReventlessAws.parseDynamoDbStreamRecordEvent(record);

@@ -95,7 +95,7 @@ let writeMultiple = async (writeRequests, op, ids, table) => {
         | _ => None
         }
       })
-      ->Belt.Array.keepMap(x => x)
+      ->Array.filterMap(x => x)
     switch errors {
     | [] =>
       Js.log(__MODULE__ ++ `.writeBatch: ${op} ${count} states: ${tableName}, ids:${allIdsStr}`)

@@ -68,7 +68,7 @@ module Make = (Spec: Spec) => {
       let connectToExtensionPoints =
         otherPluginExtensionPoints
         ->Message.log("otherPluginExtensionPoints:")
-        ->Belt.Array.keepMap(({name: extensionPointName, eventTopic}) =>
+        ->Array.filterMap(({name: extensionPointName, eventTopic}) =>
           Spec.extensionsOutputs
           ->Belt.Array.keep((extension: Extension.outputs) =>
             extension.extensionPointName == extensionPointName
@@ -90,7 +90,7 @@ module Make = (Spec: Spec) => {
       let connectToExtensions =
         Spec.extensionPointsOutputs
         ->Message.log("extensionPoints:")
-        ->Belt.Array.keepMap(extensionPoint =>
+        ->Array.filterMap(extensionPoint =>
           otherPluginExtensions
           ->Belt.Array.keep(({extensionPointName}) => extensionPoint.name == extensionPointName)
           ->Message.log("matching otherPluginExtensions:")
@@ -118,7 +118,7 @@ module Make = (Spec: Spec) => {
         extensions: pluginExtensions,
         eventCollector: pluginEventCollector,
       }) =>
-      let disconnectFromExtensionPoints = pluginExtensionPoints->Belt.Array.keepMap(({
+      let disconnectFromExtensionPoints = pluginExtensionPoints->Array.filterMap(({
         name: extensionPointName,
         eventTopic,
       }) =>
@@ -137,22 +137,21 @@ module Make = (Spec: Spec) => {
           : None
       )
 
-      let disconnectFromExtensions =
-        Spec.extensionPointsOutputs->Belt.Array.keepMap(extensionPoint =>
-          pluginExtensions
-          ->Belt.Array.keep(({extensionPointName}) => extensionPoint.name == extensionPointName)
-          ->Array.length > 0
-            ? Some(
-                unsubscribe(
-                  "disconnectFromExtensions",
-                  extensionPoint.name,
-                  (extensionPoint.eventTopic.resources->Array.getUnsafe(0)).id, // FIXME
-                  pluginId,
-                  pluginEventCollector,
-                ),
-              )
-            : None
-        )
+      let disconnectFromExtensions = Spec.extensionPointsOutputs->Array.filterMap(extensionPoint =>
+        pluginExtensions
+        ->Belt.Array.keep(({extensionPointName}) => extensionPoint.name == extensionPointName)
+        ->Array.length > 0
+          ? Some(
+              unsubscribe(
+                "disconnectFromExtensions",
+                extensionPoint.name,
+                (extensionPoint.eventTopic.resources->Array.getUnsafe(0)).id, // FIXME
+                pluginId,
+                pluginEventCollector,
+              ),
+            )
+          : None
+      )
 
       await disconnectFromExtensionPoints
       ->Array.concat(disconnectFromExtensions)

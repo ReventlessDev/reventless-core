@@ -4,7 +4,6 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -127,7 +126,7 @@ async function writeMultiple(writeRequests, op, ids, table) {
     }
     throw e;
   }
-  var errors = Belt_Array.keepMap(results$1.map(function (result, batchNr) {
+  var errors = Core__Array.filterMap(results$1.map(function (result, batchNr) {
             var batchIds = sliceBatch(ids, batchNr);
             var count = batchIds.length.toString();
             var batchIdsStr = batchIds.join(", ");

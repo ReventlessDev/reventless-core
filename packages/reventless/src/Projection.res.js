@@ -55,7 +55,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
           return Belt_SetString.has(addedSubIds, getSubId(state));
         }));
   var addedCount = addedStates.length;
-  var changedStates = Belt_Array.keepMap(beforeStates, (function (before) {
+  var changedStates = Core__Array.filterMap(beforeStates, (function (before) {
           var beforeSubId = getSubId(before);
           return afterStates.find(function (after) {
                       if (getSubId(after) === beforeSubId) {
@@ -374,7 +374,7 @@ function groupActionsById(actions) {
   return Belt_SetString.toArray(Belt_SetString.fromArray(ids)).map(function (id) {
               return [
                       id,
-                      Belt_Array.keepMap(allActionsWithId, (function (param) {
+                      Core__Array.filterMap(allActionsWithId, (function (param) {
                               if (param[0] === id) {
                                 return param[1];
                               }
@@ -626,7 +626,7 @@ async function handleActions(actions, operations, subIdConfig) {
                   }), (async function (p, action) {
                   var err = await p;
                   if (err.TAG !== "Ok") {
-                    Logger$Reventless.error("File \"Projection.res\", line 375, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
+                    Logger$Reventless.error("File \"Projection.res\", line 373, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
                   }
                   return await handleAction(action, operations, subIdConfig);
                 }));
@@ -634,7 +634,7 @@ async function handleActions(actions, operations, subIdConfig) {
   var results = await Promise.all(groupActionsById(actions).map(function (param) {
             return handleActionsForId(param[1], param[0]);
           }));
-  var errors = Belt_Array.keepMap(results, (function (x) {
+  var errors = Core__Array.filterMap(results, (function (x) {
           if (x.TAG === "Ok") {
             return ;
           } else {

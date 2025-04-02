@@ -75,7 +75,7 @@ let handleStreamEvent = (
   let (referenceRecords, countRecords) =
     dynamoDbRecords->Belt.Array.partition(record => record.eventSourceARN == referencesARN)
 
-  let references = referenceRecords->Belt.Array.keepMap(record =>
+  let references = referenceRecords->Array.filterMap(record =>
     switch record->parseDynamoDbStreamRecordState {
     | NewImage(id, newImage) =>
       let inc = switch newImage->referencesView_decode {
@@ -92,7 +92,7 @@ let handleStreamEvent = (
     }
   )
 
-  let counts = countRecords->Belt.Array.keepMap(record =>
+  let counts = countRecords->Array.filterMap(record =>
     switch record->parseDynamoDbStreamRecordState {
     | NewImage(_, newImage)
     | NewAndOldImage(_, newImage, _) =>

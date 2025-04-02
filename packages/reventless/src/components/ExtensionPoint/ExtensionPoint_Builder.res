@@ -47,7 +47,7 @@ module Make = (
     }
 
     let aggregateNames =
-      Mappings.mappings->Belt.Array.keepMap((module(Mapping)) =>
+      Mappings.mappings->Array.filterMap((module(Mapping)) =>
         Mapping.mapOutgoingEvent->Belt.Option.map(_ => Mapping.aggregateName)
       )
 

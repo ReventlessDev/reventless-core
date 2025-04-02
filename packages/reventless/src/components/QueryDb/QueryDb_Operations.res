@@ -33,7 +33,7 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
     }
 
   let saveBatch = async items => {
-    let batch = items->Belt.Array.keepMap(((id, state, ttl)) =>
+    let batch = items->Array.filterMap(((id, state, ttl)) =>
       switch state->ReadModelSpec.state_encode->Js.Json.decodeObject {
       | Some(dict) =>
         dict->Js.Dict.set("id", ReadModelSpec.Id.t_encode(id))

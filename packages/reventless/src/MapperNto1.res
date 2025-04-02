@@ -3,8 +3,8 @@ type mapImpl<'msg, 'action> = 'msg => 'action
 
 let makeGenericMap: (Mapper.decode<'msg>, mapImpl<'msg, 'action>) => mapGeneric<'action> = (
   decode,
-  map
-) => (json) => 
+  map,
+) => json =>
   switch json->decode {
   | Ok(msg) => msg->map
   | Error(err) =>
@@ -63,7 +63,7 @@ module Mapper = (
     findMappings(
       sourceName,
       Mappings.mappings,
-    )->Belt.Array.keepMap((module(Mapping: Mappings.Mapping)) =>
+    )->Array.filterMap((module(Mapping: Mappings.Mapping)) =>
       try Some(json->Mapping.map) catch {
       | exn =>
         Js.log2("Mapping failed:", exn->Js.Exn.asJsExn->Belt.Option.map(Js.Exn.message))

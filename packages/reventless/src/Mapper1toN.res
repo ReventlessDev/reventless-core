@@ -93,7 +93,7 @@
 //       );
 //     let map = (~targetName, json) =>
 //       findMappings(targetName, Mappings.mappings)
-//       ->Belt.Array.keepMap((module Mapping: Mappings.Mapping) =>
+//       ->Array.filterMap((module Mapping: Mappings.Mapping) =>
 //           try (Some(json->Mapping.map)) {
 //           | exn =>
 //             Js.log2(

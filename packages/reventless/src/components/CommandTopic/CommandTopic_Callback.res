@@ -10,7 +10,7 @@ module type T = {
 module Make = (Spec: CommandTopic.Spec, Ops: Ops with module Spec = Spec): T => {
   let handleJsonCommands = async jsonItems => {
     Logger.debug(~loc=__LOC__, "starting handleCommands. Command count", jsonItems->Array.length)
-    let topicItems = jsonItems->Belt.Array.keepMap(({
+    let topicItems = jsonItems->Array.filterMap(({
       CommandTopic.reference: reference,
       command: json,
     }) =>

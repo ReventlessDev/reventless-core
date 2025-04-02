@@ -70,7 +70,7 @@ let filter = (allCommandTopics: allOutputs, names) =>
   names
   ->Set.values
   ->Iterator.toArray
-  ->Belt.Array.keepMap(name =>
+  ->Array.filterMap(name =>
     allCommandTopics->Dict.get(name)->Option.map(commandTopic => (name, commandTopic))
   )
   ->Dict.fromArray

@@ -43,7 +43,7 @@ module Make = (Spec: Spec) => {
     // TODO error handling
 
     await Spec.counterEventsHandler(
-      counts->Belt.Array.keepMap(state =>
+      counts->Array.filterMap(state =>
         switch state->countsState_decode {
         | Ok({id, count}) if count == 0 =>
           let (counterId, _) = id->Counter.unmakeId

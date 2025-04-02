@@ -2,9 +2,9 @@
 'use strict';
 
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 
 function Make(ReadModelSpec, Spec) {
   var decode = function (id, item) {
@@ -40,7 +40,7 @@ function Make(ReadModelSpec, Spec) {
     }
   };
   var saveBatch = async function (items) {
-    var batch = Belt_Array.keepMap(items, (function (param) {
+    var batch = Core__Array.filterMap(items, (function (param) {
             var state = param[1];
             var id = param[0];
             var dict = Js_json.decodeObject(ReadModelSpec.state_encode(state));

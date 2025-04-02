@@ -5,6 +5,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Adapter$Reventless = require("../../adapter/Adapter.res.js");
@@ -52,7 +53,7 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
                   var commandTopicOpts = {
                     parent: commandTopicOpts_parent
                   };
-                  var aggregateNames = Belt_Array.keepMap(Mappings.mappings, (function (Mapping) {
+                  var aggregateNames = Core__Array.filterMap(Mappings.mappings, (function (Mapping) {
                           return Belt_Option.map(Mapping.mapOutgoingEvent, (function (param) {
                                         return Mapping.aggregateName;
                                       }));

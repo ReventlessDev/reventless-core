@@ -120,7 +120,7 @@ module MakeCounterHandler = (
         | None => None
         }
       })
-      ->Belt.Array.keepMap(entry => entry)
+      ->Array.filterMap(entry => entry)
       ->Array.flat
       ->Belt.Array.partition(resultType =>
         switch resultType {
@@ -196,7 +196,7 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
       }
     )
 
-    let countItems = countActions->Belt.Array.keepMap(countAction =>
+    let countItems = countActions->Array.filterMap(countAction =>
       switch countAction {
       | Count(countItem) => Some(countItem)
       | _ => None

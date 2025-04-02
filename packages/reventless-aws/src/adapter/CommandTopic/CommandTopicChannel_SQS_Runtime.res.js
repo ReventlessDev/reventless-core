@@ -3,6 +3,7 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Logger$Reventless = require("@reventless/reventless/src/util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js");
@@ -10,7 +11,7 @@ var Util_SQS_Runtime$ReventlessAws = require("../../util/Util_SQS_Runtime.res.js
 function handleQueueEvent(queue, handleCommands) {
   return async function ($$event, param) {
     var records = $$event.Records;
-    var jsons = Belt_Array.keepMap(records, (function (record) {
+    var jsons = Core__Array.filterMap(records, (function (record) {
             var commandStr = record.body;
             var json;
             try {
@@ -50,7 +51,7 @@ function handleQueueEvent(queue, handleCommands) {
       var exit$1 = 0;
       var val;
       try {
-        val = await Util_SQS_Runtime$ReventlessAws.deleteMessages(Belt_Array.keepMap(results.map(function (result, idx) {
+        val = await Util_SQS_Runtime$ReventlessAws.deleteMessages(Core__Array.filterMap(results.map(function (result, idx) {
                       if (result.TAG === "Ok") {
                         return {
                                 Id: String(idx),
