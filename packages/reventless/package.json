@@ -1,6 +1,6 @@
 {
     "name": "@reventless/reventless",
-    "version": "2.0.3-policies.37",
+    "version": "2.0.3-policies.38",
     "description": "Toolkit for event-sourced CQRS applications on serverless infrastructure written in ReasonML.",
     "author": "Atos",
     "license": "proprietary",
@@ -38,15 +38,15 @@
         "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
     },
     "dependencies": {
-        "@reventless/bs-aws-sdk": "^2.0.1-policies.0",
-        "@reventless/bs-fast-csv": "^1.0.0",
+        "@reventless/bs-aws-sdk": "^2.0.1-policies.1",
+        "@reventless/bs-fast-csv": "^1.0.1-policies.0",
         "@reventless/bs-hash-obj": "^1.0.0",
         "@reventless/bs-node-streams": "^1.0.0",
-        "@reventless/bs-pulumi-aws": "^2.0.1-policies.19",
-        "@reventless/bs-pulumi-pulumi": "^2.0.1-runtime.1",
+        "@reventless/bs-pulumi-aws": "^2.0.1-policies.20",
+        "@reventless/bs-pulumi-pulumi": "^2.0.1-policies.0",
         "@reventless/bs-ssh2": "^1.0.0",
         "@reventless/bs-uuid": "^1.0.0",
-        "@reventless/reventless-spec": "^2.0.1-runtime.5"
+        "@reventless/reventless-spec": "^2.0.1-policies.0"
     },
     "devDependencies": {
         "@glennsl/rescript-jest": "^0.11.0",
