@@ -13,7 +13,7 @@ let stackDependencies =
     open Pulumi.StackReference
     make(stackName)
   })
-  ->Belt.Array.concat(coreStackReference->Belt.Option.mapWithDefault([], coreStack => [coreStack]))
+  ->Array.concat(coreStackReference->Belt.Option.mapWithDefault([], coreStack => [coreStack]))
 
 let getOutputs = name =>
   stackDependencies
@@ -30,7 +30,7 @@ let stackDependenciesEventMappers: Pulumi.Output.t<array<EventMapper.outputs>> =
 let mergeMany: (Pulumi.Output.t<array<'a>>, array<'a>) => Pulumi.Output.t<array<'a>> = (
   dependencies,
   locals,
-) => dependencies->Pulumi.Output.apply(dependencies => locals->Belt.Array.concat(dependencies))
+) => dependencies->Pulumi.Output.apply(dependencies => locals->Array.concat(dependencies))
 
 let mergeTasks = mergeMany(stackDependenciesTasks, ...)
 let mergeEventMappers = mergeMany(stackDependenciesEventMappers, ...)

@@ -47,7 +47,7 @@ module Make = (Spec: CommandTopic.Spec, Channel: CommandTopic_Adapter.Channel): 
     let subscribeResources = channel.connect(~name, ~channel, ~runtime, ~resources, ~opts)
 
     // let _ = commandTopic->Component.setOutputs({
-    //   CommandTopic.resources: channel.resources->Belt.Array.concat(subscribeResources),
+    //   CommandTopic.resources: channel.resources->Array.concat(subscribeResources),
     // })
   }
 

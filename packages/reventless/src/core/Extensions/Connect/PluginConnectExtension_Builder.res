@@ -108,7 +108,7 @@ module Make = (Spec: Spec) => {
         )
 
       await connectToExtensionPoints
-      ->Belt.Array.concat(connectToExtensions)
+      ->Array.concat(connectToExtensions)
       ->Js.Promise.all
       ->Util.Promise.toUnit
 
@@ -155,7 +155,7 @@ module Make = (Spec: Spec) => {
         )
 
       await disconnectFromExtensionPoints
-      ->Belt.Array.concat(disconnectFromExtensions)
+      ->Array.concat(disconnectFromExtensions)
       ->Js.Promise.all
       ->Util.Promise.toUnit
 

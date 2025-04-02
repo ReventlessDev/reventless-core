@@ -25,7 +25,7 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
       ),
       ("event", event'.ReventlessSpec.Message.event->Spec.event_encode),
     ]
-    ->Belt.Array.concat(event'.meta->Message.decomposeMeta)
+    ->Array.concat(event'.meta->Message.decomposeMeta)
     ->Js.Dict.fromArray
     ->Js.Json.object_
 

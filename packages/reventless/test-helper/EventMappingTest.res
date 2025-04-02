@@ -79,7 +79,7 @@ module MakeAggregate = (
   let errors = ref([])
 
   let errorHandler: Message.errorHandler<Spec.error, Spec.command, Spec.event> = (error, _, _) => {
-    errors := Belt.Array.concat(errors.contents, [error])
+    errors := Array.concat(errors.contents, [error])
     []
   }
 
@@ -198,11 +198,11 @@ module Make = (
         targetHistories
         ->Js.Dict.get(id)
         ->Belt.Option.getWithDefault([])
-        ->Belt.Array.concat(targetEvents->Js.Dict.get(id)->Belt.Option.getWithDefault([]))
+        ->Array.concat(targetEvents->Js.Dict.get(id)->Belt.Option.getWithDefault([]))
       let newEvents = TargetAggregate.exec({...TestFixtures.context, id}, command, targetHistory)
       targetEvents->Js.Dict.set(
         id,
-        targetEvents->Js.Dict.get(id)->Belt.Option.getWithDefault([])->Belt.Array.concat(newEvents),
+        targetEvents->Js.Dict.get(id)->Belt.Option.getWithDefault([])->Array.concat(newEvents),
       )
       targetEvents
     })

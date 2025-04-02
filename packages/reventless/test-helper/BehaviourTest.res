@@ -45,7 +45,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   let errors = ref([])
 
   let errorHandler: Message.errorHandler<Spec.error, Spec.command, Spec.event> = (error, _, _) => {
-    errors := Belt.Array.concat(errors.contents, [error])
+    errors := Array.concat(errors.contents, [error])
     []
   }
 

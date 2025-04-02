@@ -20,7 +20,7 @@ function MakeAggregate(Spec, Behaviour) {
     contents: []
   };
   var errorHandler = function (error, param, param$1) {
-    errors.contents = Belt_Array.concat(errors.contents, [error]);
+    errors.contents = errors.contents.concat([error]);
     return [];
   };
   var exec = function (context, command, history) {
@@ -73,7 +73,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     contents: []
   };
   var errorHandler = function (error, param, param$1) {
-    errors.contents = Belt_Array.concat(errors.contents, [error]);
+    errors.contents = errors.contents.concat([error]);
     return [];
   };
   var exec = function (context, command, history) {
@@ -114,7 +114,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     contents: []
   };
   var errorHandler$1 = function (error, param, param$1) {
-    errors$1.contents = Belt_Array.concat(errors$1.contents, [error]);
+    errors$1.contents = errors$1.contents.concat([error]);
     return [];
   };
   var exec$1 = function (context, command, history) {
@@ -177,12 +177,12 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
                 })));
     return Belt_Array.reduce(commands, {}, (function (targetEvents, param) {
                   var id = Target.Id.toString(param[0]);
-                  var targetHistory = Belt_Array.concat(Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), []), Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []));
+                  var targetHistory = Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), []).concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []));
                   var newEvents = exec$1({
                         id: id,
                         meta: TestFixtures$Reventless.context.meta
                       }, param[1], targetHistory);
-                  targetEvents[id] = Belt_Array.concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []), newEvents);
+                  targetEvents[id] = Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []).concat(newEvents);
                   return targetEvents;
                 }));
   };

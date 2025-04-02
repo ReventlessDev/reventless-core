@@ -66,7 +66,7 @@ function groupCountItemsByCounterId(countItems) {
   Belt_Array.forEach(countItems, (function (param) {
           var counterId = param.counterId;
           var currentReferences = Belt_Option.getWithDefault(Js_dict.get(dict, counterId), []);
-          dict[counterId] = Belt_Array.concat(currentReferences, [param.reference]);
+          dict[counterId] = currentReferences.concat([param.reference]);
         }));
   return Js_dict.entries(dict);
 }

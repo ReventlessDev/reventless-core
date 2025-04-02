@@ -9,9 +9,9 @@ var coreStackReference = Belt_Option.map(new Pulumi.Config("core").get("stack"),
         return new Pulumi.StackReference(stack);
       }));
 
-var stackDependencies = Belt_Array.concat(Belt_Option.getWithDefault(new Pulumi.Config("interstack").getObject("dependencies"), []).map(function (stackName) {
-          return new Pulumi.StackReference(stackName);
-        }), Belt_Option.mapWithDefault(coreStackReference, [], (function (coreStack) {
+var stackDependencies = Belt_Option.getWithDefault(new Pulumi.Config("interstack").getObject("dependencies"), []).map(function (stackName) {
+        return new Pulumi.StackReference(stackName);
+      }).concat(Belt_Option.mapWithDefault(coreStackReference, [], (function (coreStack) {
             return [coreStack];
           })));
 
@@ -31,7 +31,7 @@ var stackDependenciesEventMappers = getOutputs("eventMappers");
 
 function mergeMany(dependencies, locals) {
   return dependencies.apply(function (dependencies) {
-              return Belt_Array.concat(locals, dependencies);
+              return locals.concat(dependencies);
             });
 }
 

@@ -134,7 +134,7 @@ function Make(Projection) {
                           states(store, id),
                           [state]
                         ];
-                      store[id] = Belt_Array.concat(match[0], match[1]);
+                      store[id] = match[0].concat(match[1]);
                     }));
               return Promise.resolve({
                           TAG: "Ok",

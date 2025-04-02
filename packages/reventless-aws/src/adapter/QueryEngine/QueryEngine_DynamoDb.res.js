@@ -137,9 +137,9 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
       ]);
   var match$1 = createFilterExprNamesValues(filterConfigs);
   var filterExpressions = match$1[0];
-  var keyConditionExpression = Belt_Array.concat(["#key = :value"], match[0]).join(" AND ");
+  var keyConditionExpression = ["#key = :value"].concat(match[0]).join(" AND ");
   var filterExpression = filterExpressions.length !== 0 ? filterExpressions.join(" AND ") : undefined;
-  var match$2 = Belt_Array.unzip(Belt_Array.concat(match[1], match$1[1]));
+  var match$2 = Belt_Array.unzip(match[1].concat(match$1[1]));
   var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromArray(Belt_Array.concatMany([
                     [[
                         ":value",

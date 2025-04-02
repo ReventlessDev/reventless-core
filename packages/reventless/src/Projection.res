@@ -61,8 +61,7 @@ let applyChanges = async (
   })
   let changedCount = changedStates->Belt.Array.size
 
-  let batchToSave =
-    addedStates->Belt.Array.concat(changedStates)->Array.map(state => (id, state, None))
+  let batchToSave = addedStates->Array.concat(changedStates)->Array.map(state => (id, state, None))
 
   let deletedSubIds = beforeSubIds->Set.diff(afterSubIds)->Set.toArray
   let batchToDelete = deletedSubIds->Array.map(subId => (id, Some((subIdField, subId))))
@@ -251,18 +250,18 @@ let optimizeActions = actions => {
       switch (lastAction, action) {
       // SINGLE STATES
       | (Create(id1, state1), Update(id2, f)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([Create(id1, f(state1))])
+        previousActions->Array.concat([Create(id1, f(state1))])
       | (Create(id1, state1), UpdateWithDefault(id2, _defaultState2, f)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([Create(id1, f(state1))])
+        previousActions->Array.concat([Create(id1, f(state1))])
       | (Update(id1, f), Update(id2, g)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([Update(id1, state => g(f(state)))])
+        previousActions->Array.concat([Update(id1, state => g(f(state)))])
       | (UpdateWithDefault(id1, defaultState1, f), UpdateWithDefault(id2, _defaultState2, g))
         if id1 == id2 =>
-        previousActions->Belt.Array.concat([
+        previousActions->Array.concat([
           UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
         ])
       | (Update(id1, f), UpdateWithDefault(id2, defaultState2, g)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([
+        previousActions->Array.concat([
           UpdateWithDefault(
             id1,
             /* if no state exists before the first upate, it is ignored */
@@ -271,58 +270,58 @@ let optimizeActions = actions => {
           ),
         ])
       | (UpdateWithDefault(id1, defaultState1, f), Update(id2, g)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([
+        previousActions->Array.concat([
           UpdateWithDefault(id1, g(defaultState1), state => g(f(state))),
         ])
       | (UpdateWithDefault(id1, defaultState1, f), Create(id2, _state2)) if id1 == id2 =>
         Js.Console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create")
-        previousActions->Belt.Array.concat([UpdateWithDefault(id1, defaultState1, f)])
+        previousActions->Array.concat([UpdateWithDefault(id1, defaultState1, f)])
       | (Create(id1, state1), Create(id2, state2)) if id1 == id2 =>
         Js.Console.warn2(
           "optimizing 2 sequential Create actions, therefore ignoring the second one:",
           state2->Js.Json.stringifyAny,
         )
-        previousActions->Belt.Array.concat([Create(id1, state1)])
+        previousActions->Array.concat([Create(id1, state1)])
       | (Create(id1, state1), Delete(id2)) if id1 == id2 =>
         Js.Console.warn2("optimizing Delete after Create, therefore ignoring the Create:", state1)
-        previousActions->Belt.Array.concat([Delete(id1)])
+        previousActions->Array.concat([Delete(id1)])
       | (Update(id1, _f), Delete(id2)) if id1 == id2 =>
         Js.Console.warn("optimizing Delete after Update, therefore ignoring the Update")
-        previousActions->Belt.Array.concat([Delete(id1)])
+        previousActions->Array.concat([Delete(id1)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Delete(id2)) if id1 == id2 =>
         Js.Console.warn(
           "optimizing Delete after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
         )
-        previousActions->Belt.Array.concat([Delete(id1)])
+        previousActions->Array.concat([Delete(id1)])
       | (Delete(id1), Create(id2, state2)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([Set(id1, state2)])
+        previousActions->Array.concat([Set(id1, state2)])
       | (Create(id1, state1), Set(id2, state2)) if id1 == id2 =>
         Js.Console.warn2("optimizing Set after Create, therefore ignoring the Create:", state1)
-        previousActions->Belt.Array.concat([Set(id1, state2)])
+        previousActions->Array.concat([Set(id1, state2)])
       | (Update(id1, _f), Set(id2, state2)) if id1 == id2 =>
         Js.Console.warn("optimizing Set after Update, therefore ignoring the Update")
-        previousActions->Belt.Array.concat([Set(id1, state2)])
+        previousActions->Array.concat([Set(id1, state2)])
       | (UpdateWithDefault(id1, _defaultState1, _f), Set(id2, state2)) if id1 == id2 =>
         Js.Console.warn(
           "optimizing Set after UpdateWithDefault, therefore ignoring the UpdateWithDefault",
         )
-        previousActions->Belt.Array.concat([Set(id1, state2)])
+        previousActions->Array.concat([Set(id1, state2)])
       // MULTI STATES
       /*
       | (CreateMultiState(id1, states1), UpdateMultiState(id2, f)) if id1 == id2 =>
-        THIS IS FALSE: previousActions->Belt.Array.concat([CreateMultiState(id1, f(states1))])
+        THIS IS FALSE: previousActions->Array.concat([CreateMultiState(id1, f(states1))])
         suggestion: UpdateMultiState with following updateFunction:
             - apply f to states1 and states of UpdateMultiState separately
             - concat unique states of both results
  */
       | (UpdateMultiState(id1, f), UpdateMultiState(id2, g)) if id1 == id2 =>
-        previousActions->Belt.Array.concat([UpdateMultiState(id1, state => g(f(state)))])
+        previousActions->Array.concat([UpdateMultiState(id1, state => g(f(state)))])
       /*
       | (UpdateMultiState(id1, _f), CreateMultiState(id2, states2)) if id1 == id2 =>
         Js.Console.warn(
           "optimizing CreateMultiState after UpdateMultiState, therefore ignoring the UpdateMultiState",
         )
-        THIS IS FALSE: previousActions->Belt.Array.concat([CreateMultiState(id1, states2)])
+        THIS IS FALSE: previousActions->Array.concat([CreateMultiState(id1, states2)])
         suggestion: UpdateMultiState with following updateFunction:
             - apply f to states of UpdateMultiState 
             - concat unique states of update results and states2
@@ -334,7 +333,7 @@ let optimizeActions = actions => {
           "optimizing 2 sequential CreateMultiState actions, therefore ignoring the first one:",
           states1->Js.Json.stringifyAny,
         )
-        THIS IS FALSE: previousActions->Belt.Array.concat([CreateMultiState(id1, states2)])
+        THIS IS FALSE: previousActions->Array.concat([CreateMultiState(id1, states2)])
         suggestion: CreateMultiState with following updateFunction:
             - concatenate states1 & states2
             - if duplicates exist, prefer states2
@@ -346,7 +345,7 @@ let optimizeActions = actions => {
           lastAction->Js.Json.stringifyAny,
           action->Js.Json.stringifyAny,
         )
-        optimizedActions->Belt.Array.concat([action])
+        optimizedActions->Array.concat([action])
       }
     }
   })

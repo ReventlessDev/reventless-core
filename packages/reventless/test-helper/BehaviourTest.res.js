@@ -21,7 +21,7 @@ function Make(Spec, Behaviour) {
     contents: []
   };
   var errorHandler = function (error, param, param$1) {
-    errors.contents = Belt_Array.concat(errors.contents, [error]);
+    errors.contents = errors.contents.concat([error]);
     return [];
   };
   var exec = function (history, context, command) {

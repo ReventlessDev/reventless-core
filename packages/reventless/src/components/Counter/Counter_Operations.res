@@ -8,7 +8,7 @@ let groupCountItemsByCounterId = countItems => {
   let dict = Js.Dict.empty()
   countItems->Belt.Array.forEach(({Counter.counterId: counterId, reference}) => {
     let currentReferences = dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault([])
-    dict->Js.Dict.set(counterId, currentReferences->Belt.Array.concat([reference]))
+    dict->Js.Dict.set(counterId, currentReferences->Array.concat([reference]))
   })
   dict->Js.Dict.entries
 }

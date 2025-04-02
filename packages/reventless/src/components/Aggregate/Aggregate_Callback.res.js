@@ -82,7 +82,7 @@ function Make(Spec, Behaviour, Ops) {
                                       TAG: "Ok",
                                       _0: [
                                         Belt_Array.reduce(generatedEvents, stateO, apply$p),
-                                        Belt_Array.concat(events, [[
+                                        events.concat([[
                                                 generatedEvents,
                                                 updateMeta(command$p)
                                               ]])
@@ -97,7 +97,7 @@ function Make(Spec, Behaviour, Ops) {
                                     TAG: "Ok",
                                     _0: [
                                       Belt_Array.reduce(generatedEvents$1, undefined, apply$p),
-                                      Belt_Array.concat(events, [[
+                                      events.concat([[
                                               generatedEvents$1,
                                               updateMeta(command$p)
                                             ]])

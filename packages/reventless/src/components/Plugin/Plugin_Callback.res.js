@@ -53,9 +53,9 @@ function Make(Spec) {
 }
 
 function addStatement(policy, sid, queueArn, topicArn) {
-  var newStatements = Belt_Array.concat(Belt_Array.keep(policy.Statement, (function (statement) {
-              return statement.Sid !== sid;
-            })), [{
+  var newStatements = Belt_Array.keep(policy.Statement, (function (statement) {
+            return statement.Sid !== sid;
+          })).concat([{
           Sid: sid,
           Effect: "Allow",
           Principal: "*",

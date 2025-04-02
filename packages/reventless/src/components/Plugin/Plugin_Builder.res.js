@@ -72,7 +72,7 @@ function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEvent
                   Belt_Array.forEach(getServiceNames(outputs), (function (serviceName) {
                           var eventHandlers = Js_dict.get(dict, serviceName);
                           if (eventHandlers !== undefined) {
-                            dict[serviceName] = Belt_Array.concat(eventHandlers, [eventHandler]);
+                            dict[serviceName] = eventHandlers.concat([eventHandler]);
                           } else {
                             dict[serviceName] = [eventHandler];
                           }
@@ -119,7 +119,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         Belt_Array.forEach(Component$Reventless.outputs(readModel).sourceNames, (function (sourceName) {
                                 var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
                                 if (readModelNames !== undefined) {
-                                  readModelNamesForSourceName[sourceName] = Belt_Array.concat(readModelNames, [SpecificReadModel.Spec.name]);
+                                  readModelNamesForSourceName[sourceName] = readModelNames.concat([SpecificReadModel.Spec.name]);
                                 } else {
                                   readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
                                 }

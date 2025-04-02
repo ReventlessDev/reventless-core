@@ -61,7 +61,7 @@ let serviceNameToEventHandlers: (
         serviceName =>
           switch dict->Js.Dict.get(serviceName) {
           | Some(eventHandlers) =>
-            Js.Dict.set(dict, serviceName, eventHandlers->Belt.Array.concat([eventHandler]))
+            Js.Dict.set(dict, serviceName, eventHandlers->Array.concat([eventHandler]))
           | None => Js.Dict.set(dict, serviceName, [eventHandler])
           },
       )
@@ -136,7 +136,7 @@ module Make = (
         | Some(readModelNames) =>
           readModelNamesForSourceName->Js.Dict.set(
             sourceName,
-            readModelNames->Belt.Array.concat([SpecificReadModel.Spec.name]),
+            readModelNames->Array.concat([SpecificReadModel.Spec.name]),
           )
         | None =>
           Js.Dict.set(readModelNamesForSourceName, sourceName, [SpecificReadModel.Spec.name])

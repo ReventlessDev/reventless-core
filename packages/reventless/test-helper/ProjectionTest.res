@@ -93,7 +93,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
         : (store->states(id), [state])
     | None => (store->states(id), [state])
     }
-    store->Js.Dict.set(id, Belt.Array.concat(updatedStates, newStates))
+    store->Js.Dict.set(id, Array.concat(updatedStates, newStates))
   }
   let deleteStates = (store, id) => store->Js.Dict.set(id, [])
   let deleteSubState = (store, id, subId, getSubId) =>

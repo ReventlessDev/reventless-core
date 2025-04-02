@@ -79,7 +79,7 @@ function Make(Spec) {
                   }
                   
                 }));
-          return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.concat(connectToExtensionPoints, connectToExtensions)));
+          return await Util_Promise$Reventless.toUnit(Promise.all(connectToExtensionPoints.concat(connectToExtensions)));
       case "DoDisconnectPlugin" :
           var match$1 = command._0;
           var pluginExtensions = match$1.extensions;
@@ -102,7 +102,7 @@ function Make(Spec) {
                   }
                   
                 }));
-          return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.concat(disconnectFromExtensionPoints, disconnectFromExtensions)));
+          return await Util_Promise$Reventless.toUnit(Promise.all(disconnectFromExtensionPoints.concat(disconnectFromExtensions)));
       default:
         return ;
     }

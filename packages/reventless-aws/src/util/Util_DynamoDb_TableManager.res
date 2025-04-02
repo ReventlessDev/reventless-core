@@ -17,7 +17,7 @@ let getDependencies = () => {
   let registerResource = ref(_ => ())
   let promise = Js.Promise.make((~resolve, ~reject as _) => registerResource := resolve)
 
-  dependencies := dependencies.contents->Belt.Array.concat([promise])
+  dependencies := dependencies.contents->Array.concat([promise])
 
   (deps, registerResource.contents)
 }

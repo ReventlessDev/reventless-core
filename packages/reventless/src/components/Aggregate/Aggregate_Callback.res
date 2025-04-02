@@ -89,7 +89,7 @@ module Make = (
               }
               Ok((
                 updateState(stateO, generatedEvents),
-                Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
+                Array.concat(events, [(generatedEvents, command'->updateMeta)]),
               ))
             | None =>
               let generatedEvents = Behaviour.create(
@@ -102,7 +102,7 @@ module Make = (
               )
               Ok((
                 updateState(None, generatedEvents),
-                Belt.Array.concat(events, [(generatedEvents, command'->updateMeta)]),
+                Array.concat(events, [(generatedEvents, command'->updateMeta)]),
               ))
             }
 

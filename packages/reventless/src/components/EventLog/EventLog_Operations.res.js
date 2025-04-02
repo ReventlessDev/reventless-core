@@ -4,7 +4,6 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -14,20 +13,20 @@ var Util_Error$Reventless = require("../../util/Util_Error.res.js");
 function Make(Spec, Ops) {
   var eventsToJson = function (events$p, id) {
     return events$p.map(function ($$event) {
-                return Js_dict.fromArray(Belt_Array.concat([
-                                [
-                                  "id",
-                                  Spec.Id.t_encode(id)
-                                ],
-                                [
-                                  "sequenceNr",
-                                  Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now())
-                                ],
-                                [
-                                  "event",
-                                  Spec.event_encode($$event.event)
-                                ]
-                              ], Message$Reventless.decomposeMeta($$event.meta)));
+                return Js_dict.fromArray([
+                              [
+                                "id",
+                                Spec.Id.t_encode(id)
+                              ],
+                              [
+                                "sequenceNr",
+                                Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now())
+                              ],
+                              [
+                                "event",
+                                Spec.event_encode($$event.event)
+                              ]
+                            ].concat(Message$Reventless.decomposeMeta($$event.meta)));
               });
   };
   var publishToEventTopic = async function (id, events$p) {

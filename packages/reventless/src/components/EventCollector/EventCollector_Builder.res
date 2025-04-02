@@ -35,7 +35,7 @@ module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
 
     // let _ = eventCollector->Component.setOutputs({
     //   EventCollector.name,
-    //   resources: channel.resources->Belt.Array.concat(connectResources),
+    //   resources: channel.resources->Array.concat(connectResources),
     // })
   }
 

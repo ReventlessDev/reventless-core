@@ -64,13 +64,13 @@ let queryByTableName = async (
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilterExprNamesValues
 
   let keyConditionExpression =
-    ["#key = :value"]->Belt.Array.concat(subIdExpressions)->Js.Array2.joinWith(" AND ")
+    ["#key = :value"]->Array.concat(subIdExpressions)->Js.Array2.joinWith(" AND ")
   let filterExpression = switch filterExpressions {
   | [] => None
   | filterExpressions => Some(filterExpressions->Js.Array2.joinWith(" AND "))
   }
 
-  let (names, values) = subIdNamesValues->Belt.Array.concat(filterNamesValues)->Belt.Array.unzip
+  let (names, values) = subIdNamesValues->Array.concat(filterNamesValues)->Belt.Array.unzip
   let attributeValues =
     Belt.Array.concatMany([[(":value", id->toJson)], values])
     ->Js.Dict.fromArray

@@ -65,7 +65,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
                       }));
         }));
   var changedCount = changedStates.length;
-  var batchToSave = Belt_Array.concat(addedStates, changedStates).map(function (state) {
+  var batchToSave = addedStates.concat(changedStates).map(function (state) {
         return [
                 id,
                 state,
@@ -401,7 +401,7 @@ function optimizeActions(actions) {
                             case "Create" :
                                 if (Caml_obj.equal(id1, action._0)) {
                                   console.warn("optimizing 2 sequential Create actions, therefore ignoring the second one:", JSON.stringify(action._1));
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Create",
                                                 _0: id1,
                                                 _1: state1
@@ -410,7 +410,7 @@ function optimizeActions(actions) {
                                 break;
                             case "Update" :
                                 if (Caml_obj.equal(id1, action._0)) {
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Create",
                                                 _0: id1,
                                                 _1: action._1(state1)
@@ -419,7 +419,7 @@ function optimizeActions(actions) {
                                 break;
                             case "UpdateWithDefault" :
                                 if (Caml_obj.equal(id1, action._0)) {
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Create",
                                                 _0: id1,
                                                 _1: action._2(state1)
@@ -429,7 +429,7 @@ function optimizeActions(actions) {
                             case "Set" :
                                 if (Caml_obj.equal(id1, action._0)) {
                                   console.warn("optimizing Set after Create, therefore ignoring the Create:", state1);
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Set",
                                                 _0: id1,
                                                 _1: action._1
@@ -439,7 +439,7 @@ function optimizeActions(actions) {
                             case "Delete" :
                                 if (Caml_obj.equal(id1, action._0)) {
                                   console.warn("optimizing Delete after Create, therefore ignoring the Create:", state1);
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Delete",
                                                 _0: id1
                                               }]);
@@ -458,7 +458,7 @@ function optimizeActions(actions) {
                             case "Update" :
                                 if (Caml_obj.equal(id1$1, action._0)) {
                                   var g = action._1;
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Update",
                                                 _0: id1$1,
                                                 _1: (function (state) {
@@ -470,7 +470,7 @@ function optimizeActions(actions) {
                             case "UpdateWithDefault" :
                                 if (Caml_obj.equal(id1$1, action._0)) {
                                   var g$1 = action._2;
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "UpdateWithDefault",
                                                 _0: id1$1,
                                                 _1: action._1,
@@ -483,7 +483,7 @@ function optimizeActions(actions) {
                             case "Set" :
                                 if (Caml_obj.equal(id1$1, action._0)) {
                                   console.warn("optimizing Set after Update, therefore ignoring the Update");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Set",
                                                 _0: id1$1,
                                                 _1: action._1
@@ -493,7 +493,7 @@ function optimizeActions(actions) {
                             case "Delete" :
                                 if (Caml_obj.equal(id1$1, action._0)) {
                                   console.warn("optimizing Delete after Update, therefore ignoring the Update");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Delete",
                                                 _0: id1$1
                                               }]);
@@ -513,7 +513,7 @@ function optimizeActions(actions) {
                             case "Create" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   console.warn("optimizing Create after UpdateWithDefault, therefore ignoring the Create");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "UpdateWithDefault",
                                                 _0: id1$2,
                                                 _1: defaultState1,
@@ -524,7 +524,7 @@ function optimizeActions(actions) {
                             case "Update" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   var g$2 = action._1;
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "UpdateWithDefault",
                                                 _0: id1$2,
                                                 _1: g$2(defaultState1),
@@ -537,7 +537,7 @@ function optimizeActions(actions) {
                             case "UpdateWithDefault" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   var g$3 = action._2;
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "UpdateWithDefault",
                                                 _0: id1$2,
                                                 _1: g$3(defaultState1),
@@ -550,7 +550,7 @@ function optimizeActions(actions) {
                             case "Set" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   console.warn("optimizing Set after UpdateWithDefault, therefore ignoring the UpdateWithDefault");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Set",
                                                 _0: id1$2,
                                                 _1: action._1
@@ -560,7 +560,7 @@ function optimizeActions(actions) {
                             case "Delete" :
                                 if (Caml_obj.equal(id1$2, action._0)) {
                                   console.warn("optimizing Delete after UpdateWithDefault, therefore ignoring the UpdateWithDefault");
-                                  return Belt_Array.concat(previousActions, [{
+                                  return previousActions.concat([{
                                                 TAG: "Delete",
                                                 _0: id1$2
                                               }]);
@@ -575,7 +575,7 @@ function optimizeActions(actions) {
                         if (typeof action === "object" && action.TAG === "Create") {
                           var id1$3 = lastAction._0;
                           if (Caml_obj.equal(id1$3, action._0)) {
-                            return Belt_Array.concat(previousActions, [{
+                            return previousActions.concat([{
                                           TAG: "Set",
                                           _0: id1$3,
                                           _1: action._1
@@ -590,7 +590,7 @@ function optimizeActions(actions) {
                           if (Caml_obj.equal(id1$4, action._0)) {
                             var g$4 = action._1;
                             var f$2 = lastAction._1;
-                            return Belt_Array.concat(previousActions, [{
+                            return previousActions.concat([{
                                           TAG: "UpdateMultiState",
                                           _0: id1$4,
                                           _1: (function (state) {
@@ -606,7 +606,7 @@ function optimizeActions(actions) {
                   }
                 }
                 console.warn("actions not optimized: ", JSON.stringify(lastAction), JSON.stringify(action));
-                return Belt_Array.concat(optimizedActions, [action]);
+                return optimizedActions.concat([action]);
               }));
 }
 
@@ -625,7 +625,7 @@ async function handleActions(actions, operations, subIdConfig) {
                   }), (async function (p, action) {
                   var err = await p;
                   if (err.TAG !== "Ok") {
-                    Logger$Reventless.error("File \"Projection.res\", line 376, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
+                    Logger$Reventless.error("File \"Projection.res\", line 375, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
                   }
                   return await handleAction(action, operations, subIdConfig);
                 }));

@@ -67,7 +67,7 @@ let addStatement = (policy: AwsSdk.IAM.Policy.t, sid, queueArn, topicArn) => {
   let newStatements =
     policy.statement
     ->Belt.Array.keep(statement => statement.sid != sid)
-    ->Belt.Array.concat([
+    ->Array.concat([
       {
         AwsSdk.IAM.Policy.sid,
         effect: "Allow",
