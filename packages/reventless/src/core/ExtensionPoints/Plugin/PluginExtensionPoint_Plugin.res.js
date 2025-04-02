@@ -53,9 +53,9 @@ async function forwardCommand(_id, command, extensionPointName, queryEngine) {
                                 return ;
                               }
                               console.log("ForwardCommand: Couldn't find ExtensionPoint", extensionPointName, plugin$1);
-                            })(Belt_Array.getBy(plugin$1.extensionPoints, (function (extensionPoint) {
-                                    return extensionPoint.name === extensionPointName;
-                                  })));
+                            })(plugin$1.extensionPoints.find(function (extensionPoint) {
+                                  return extensionPoint.name === extensionPointName;
+                                }));
                 }
                 console.log("ForwardCommand: Couldn't decode Plugin", plugin, result._0);
               })(PluginReadModelSpec$Reventless.state_decode(plugin));

@@ -3,7 +3,7 @@ open InterstackResourceQuery
 
 let bucketNameOfAllTasks: (array<Task.outputs>, string) => option<string> = (tasks, taskName) =>
   tasks
-  ->Belt.Array.getBy(task => task.name == taskName)
+  ->Array.find(task => task.name == taskName)
   ->Belt.Option.flatMap(task => task.bucket)
   ->Belt.Option.map(bucket => bucket.bucket->OutputFailsafeRuntime.get)
 

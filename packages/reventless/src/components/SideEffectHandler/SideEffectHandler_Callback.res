@@ -17,7 +17,7 @@ module Make = (Spec: Spec): T => {
       switch meta {
       | Some(Belt.Result.Ok(eventMeta)) =>
         let sideEffect =
-          sideEffects->Belt.Array.getBy((module(SideEffect: ReventlessSpec.SideEffect.T)) =>
+          sideEffects->Array.find((module(SideEffect: ReventlessSpec.SideEffect.T)) =>
             SideEffect.Source.name == eventMeta.service
           )
         switch sideEffect {

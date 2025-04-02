@@ -56,13 +56,13 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
   var addedCount = addedStates.length;
   var changedStates = Belt_Array.keepMap(beforeStates, (function (before) {
           var beforeSubId = getSubId(before);
-          return Belt_Array.getBy(afterStates, (function (after) {
-                        if (getSubId(after) === beforeSubId) {
-                          return Caml_obj.notequal(after, before);
-                        } else {
-                          return false;
-                        }
-                      }));
+          return afterStates.find(function (after) {
+                      if (getSubId(after) === beforeSubId) {
+                        return Caml_obj.notequal(after, before);
+                      } else {
+                        return false;
+                      }
+                    });
         }));
   var changedCount = changedStates.length;
   var batchToSave = addedStates.concat(changedStates).map(function (state) {

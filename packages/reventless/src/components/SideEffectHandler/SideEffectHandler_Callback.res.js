@@ -3,7 +3,6 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -17,9 +16,9 @@ function Make(Spec) {
                   if (meta !== undefined) {
                     if (meta.TAG === "Ok") {
                       var eventMeta = meta._0;
-                      var sideEffect = Belt_Array.getBy(sideEffects, (function (SideEffect) {
-                              return SideEffect.Source.name === eventMeta.service;
-                            }));
+                      var sideEffect = sideEffects.find(function (SideEffect) {
+                            return SideEffect.Source.name === eventMeta.service;
+                          });
                       if (sideEffect !== undefined) {
                         return [
                                 eventObj$p,

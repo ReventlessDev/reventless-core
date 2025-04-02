@@ -27,7 +27,7 @@ let forwardCommand = async (
           switch result {
           | Belt.Result.Ok(plugin: PluginReadModelSpec.state) =>
             await plugin.extensionPoints
-            ->Belt.Array.getBy(extensionPoint => extensionPoint.name == extensionPointName)
+            ->Array.find(extensionPoint => extensionPoint.name == extensionPointName)
             ->(
               async extensionPoint =>
                 switch extensionPoint {
@@ -77,11 +77,11 @@ let callHandler = async (
         meta: Message.generateMeta(~service="Core.Plugin", ~user="Scheduler"),
         command: ReventlessSpec.PluginExtensionPointSpec.DisconnectPlugin,
       }
-      ->Message.command'_encode(
+      ->(Message.command'_encode(
         Decco.stringToJson,
         ReventlessSpec.PluginExtensionPointSpec.command_encode,
         _,
-      )
+      ))
       ->Js.Json.stringify,
     })
   | DeleteDisconnectSchedule(id) => await deleteSchedule(id)

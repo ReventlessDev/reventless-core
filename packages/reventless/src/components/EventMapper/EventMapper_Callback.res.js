@@ -21,9 +21,9 @@ function MakeCounterHandler(Target, Mappings, Ops) {
                     if (meta.TAG === "Ok") {
                       var eventMeta = meta._0;
                       var source = eventMeta.service;
-                      var mapping = Belt_Array.getBy(mappings, (function (Mapping) {
-                              return Mapping.Source.name === source;
-                            }));
+                      var mapping = mappings.find(function (Mapping) {
+                            return Mapping.Source.name === source;
+                          });
                       if (mapping !== undefined) {
                         var source$1 = mapping.Source.name;
                         console.log("EventMapper.map: found mapping " + source$1 + " -> " + target);

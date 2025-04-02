@@ -57,7 +57,7 @@ let applyChanges = async (
 
   let changedStates = beforeStates->Belt.Array.keepMap(before => {
     let beforeSubId = before->getSubId
-    afterStates->Belt.Array.getBy(after => after->getSubId == beforeSubId && after != before)
+    afterStates->Array.find(after => after->getSubId == beforeSubId && after != before)
   })
   let changedCount = changedStates->Belt.Array.size
 

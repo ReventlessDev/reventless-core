@@ -18,7 +18,7 @@ module Make = (
 ) => {
   let findOutgoingMapping = (aggregateNameOpt, mappings) =>
     aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
-      mappings->Belt.Array.getBy((module(Mapping: Mappings.Mapping)) =>
+      mappings->Array.find((module(Mapping: Mappings.Mapping)) =>
         Mapping.aggregateName == aggregateName
       )
     ) // TODO: handle multiple mappings for same Aggregate name

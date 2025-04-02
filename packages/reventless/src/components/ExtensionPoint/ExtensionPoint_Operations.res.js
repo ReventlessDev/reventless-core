@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -13,9 +12,9 @@ var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 function Make(Spec, MappingSpec, Mappings) {
   var findOutgoingMapping = function (aggregateNameOpt, mappings) {
     return Belt_Option.flatMap(aggregateNameOpt, (function (aggregateName) {
-                  return Belt_Array.getBy(mappings, (function (Mapping) {
-                                return Mapping.aggregateName === aggregateName;
-                              }));
+                  return mappings.find(function (Mapping) {
+                              return Mapping.aggregateName === aggregateName;
+                            });
                 }));
   };
   var mapOutgoingEvent = function (eventJson$p, mappings, scheduler, queue, queryEngine) {

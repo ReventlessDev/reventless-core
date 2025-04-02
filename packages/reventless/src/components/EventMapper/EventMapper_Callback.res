@@ -26,9 +26,7 @@ module MakeCounterHandler = (
       | Some(Belt.Result.Ok(eventMeta)) =>
         let source = eventMeta.service
         let mapping =
-          mappings->Belt.Array.getBy((module(Mapping: Mappings.Mapping)) =>
-            Mapping.Source.name == source
-          )
+          mappings->Array.find((module(Mapping: Mappings.Mapping)) => Mapping.Source.name == source)
         switch mapping {
         | None =>
           Js.log(`EventMapper.map: No mapping ${source} -> ${target} found`)
