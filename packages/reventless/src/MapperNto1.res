@@ -54,7 +54,7 @@ module Mapper = (
     and type action<'id, 'state> := Spec.action<string, Target.t>
 ) => {
   let findMappings = (sourceNameOpt, mappings) =>
-    sourceNameOpt->Belt.Option.mapWithDefault([], sourceName =>
+    sourceNameOpt->Option.mapOr([], sourceName =>
       mappings->Array.filter((module(Mapping: Mappings.Mapping)) =>
         Mapping.sourceName == sourceName
       )

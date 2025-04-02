@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
@@ -21,7 +20,7 @@ function makeGenericMap(decode, map) {
 
 function Mapper(Spec, Target, Mappings) {
   var findMappings = function (sourceNameOpt, mappings) {
-    return Belt_Option.mapWithDefault(sourceNameOpt, [], (function (sourceName) {
+    return Core__Option.mapOr(sourceNameOpt, [], (function (sourceName) {
                   return mappings.filter(function (Mapping) {
                               return Mapping.sourceName === sourceName;
                             });

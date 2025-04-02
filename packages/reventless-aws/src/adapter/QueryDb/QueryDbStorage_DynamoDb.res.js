@@ -2,7 +2,6 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var QueryDb$Reventless = require("@reventless/reventless/src/components/QueryDb/QueryDb.res.js");
@@ -45,7 +44,7 @@ function attributes(sortField, indexes) {
                 name: "id",
                 type: "S"
               }],
-            Belt_Option.mapWithDefault(sortField, [], (function (sortField) {
+            Core__Option.mapOr(sortField, [], (function (sortField) {
                     return [{
                               name: sortField,
                               type: "S"
@@ -57,7 +56,7 @@ function attributes(sortField, indexes) {
                                   name: indexConfig.index,
                                   type: indexConfig.type_
                                 }],
-                              Belt_Option.mapWithDefault(indexConfig.subIdField, [], (function (sortField) {
+                              Core__Option.mapOr(indexConfig.subIdField, [], (function (sortField) {
                                       return [{
                                                 name: sortField,
                                                 type: "S"

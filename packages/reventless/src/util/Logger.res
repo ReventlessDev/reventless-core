@@ -52,12 +52,10 @@ let log: (
   let (descStr, itemStr) = if stringify {
     let itemStr = itemMapped->Js.Json.stringifyAny
     let descStringified =
-      itemStr->Belt.Option.mapWithDefault(
-        desc ++ " [ERROR: Couldn't stringify, displaying raw value!]",
-        _ => desc,
+      itemStr->Option.mapOr(desc ++ " [ERROR: Couldn't stringify, displaying raw value!]", _ =>
+        desc
       )
-    let itemStrWithDefault =
-      itemStr->Belt.Option.mapWithDefault(itemMapped->logItem, i => i->logItem)
+    let itemStrWithDefault = itemStr->Option.mapOr(itemMapped->logItem, i => i->logItem)
     (descStringified, itemStrWithDefault)
   } else {
     (desc, itemMapped->logItem)

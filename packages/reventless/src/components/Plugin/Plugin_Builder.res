@@ -163,9 +163,8 @@ module Make = (
 
     let pureOutputs = {
       let coreExtensionPoints =
-        Interstack.coreStackReference->Belt.Option.mapWithDefault(
-          Pulumi.Output.make(None),
-          coreStack => coreStack->Pulumi.StackReference.getOutput("extensionPoints"),
+        Interstack.coreStackReference->Option.mapOr(Pulumi.Output.make(None), coreStack =>
+          coreStack->Pulumi.StackReference.getOutput("extensionPoints")
         )
 
       (

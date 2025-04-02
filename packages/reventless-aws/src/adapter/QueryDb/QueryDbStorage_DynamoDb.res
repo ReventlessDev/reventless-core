@@ -26,14 +26,12 @@ let globalSecondaryIndexes = indexes =>
 let attributes = (sortField, indexes) =>
   [
     [{name: "id", type_: "S"}],
-    sortField->Belt.Option.mapWithDefault([], sortField => [{name: sortField, type_: "S"}]),
+    sortField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
     indexes
     ->Array.map(({index, type_} as indexConfig) =>
       [
         [{name: index, type_}],
-        indexConfig.subIdField->Belt.Option.mapWithDefault([], sortField => [
-          {name: sortField, type_: "S"},
-        ]),
+        indexConfig.subIdField->Option.mapOr([], sortField => [{name: sortField, type_: "S"}]),
       ]->Array.flat
     )
     ->Array.flat,

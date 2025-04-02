@@ -18,7 +18,7 @@ module Make = (Spec: Spec): T => {
     await eventJson'
     ->Message.serviceNameOfMsg
     ->Option.flatMap(serviceName => eventHandlersByService->Js.Dict.get(serviceName))
-    ->Belt.Option.mapWithDefault(Js.Promise.resolve(), async eventHandlers => {
+    ->Option.mapOr(Js.Promise.resolve(), async eventHandlers => {
       await eventHandlers
       ->Array.map(eventHandler => eventHandler(eventJson', Spec.pluginDefinition))
       ->Js.Promise.all
@@ -28,7 +28,7 @@ module Make = (Spec: Spec): T => {
   let detectUnhandledEvent = eventJson' =>
     eventJson'
     ->Message.serviceNameOfMsg
-    ->Belt.Option.mapWithDefault((), serviceName =>
+    ->Option.mapOr((), serviceName =>
       switch (
         Spec.outgoingExtensionPointEventHandlers->Js.Dict.get(serviceName),
         Spec.outgoingExtensionEventHandlers->Js.Dict.get(serviceName),

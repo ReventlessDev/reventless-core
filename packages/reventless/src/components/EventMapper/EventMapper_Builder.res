@@ -28,7 +28,7 @@ module Make = (
       },
     )
 
-    let (counterOperations, counterOutputs) = Mappings.counter->Belt.Option.mapWithDefault(
+    let (counterOperations, counterOutputs) = Mappings.counter->Option.mapOr(
       (
         Pulumi.Output.make({
           Counter.count: async _items => Js.log("No counter deployed, but trying to use count"),

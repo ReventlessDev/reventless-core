@@ -44,7 +44,7 @@ module Make = (
         Spec.publishToAggregates
         ->Js.Dict.get(aggregateName)
         ->Option.map((publishJsons: CommandTopic.publishJsons) => publishJsons([cmdJson]))
-        ->Belt.Option.mapWithDefault(
+        ->Option.mapOr(
           () =>
             Js.Exn.raiseError(
               `ExtensionPoint.applyCommandAction: Aggregate ${aggregateName} doesn't exist`,

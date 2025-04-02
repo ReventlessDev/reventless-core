@@ -144,7 +144,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                           }));
                   var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
                   var queryEngine = QueryEngineAdapter.make(allQueryDbs);
-                  var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
+                  var coreExtensionPoints = Core__Option.mapOr(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
                           return coreStack.getOutput("extensionPoints");
                         }));
                   var pureOutputs = Pulumi.all([

@@ -3,7 +3,6 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Schedule$Reventless = require("../../util/Schedule.res.js");
@@ -19,7 +18,7 @@ function Make(Spec, MappingSpec, Mappings) {
       var cmdJson = action._2;
       var reference = action._1;
       var aggregateName = action._0;
-      var result = Belt_Option.mapWithDefault(Core__Option.map(Js_dict.get(Spec.publishToAggregates, aggregateName), (function (publishJsons) {
+      var result = Core__Option.mapOr(Core__Option.map(Js_dict.get(Spec.publishToAggregates, aggregateName), (function (publishJsons) {
                   return publishJsons([cmdJson]);
                 })), (function () {
               return Js_exn.raiseError("ExtensionPoint.applyCommandAction: Aggregate " + aggregateName + " doesn't exist");

@@ -86,7 +86,7 @@
 //          )
 //          : (Mapper with module Spec := Spec) => {
 //     let findMappings = (targetNameOpt, mappings) =>
-//       targetNameOpt->Belt.Option.mapWithDefault([||], targetName =>
+//       targetNameOpt->Option.mapOr([||], targetName =>
 //         mappings->Array.filter((module Mapping: Mappings.Mapping) =>
 //           Mapping.targetName == targetName
 //         )

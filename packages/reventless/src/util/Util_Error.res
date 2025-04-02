@@ -5,4 +5,4 @@ external ofPromise: Js.Promise.error => t = "%identity"
 
 let message = (~loc=?, exn) =>
   exn->Js.Exn.message->Option.getOr("unspecified error") ++
-    loc->Belt.Option.mapWithDefault("", loc => ` at ${loc}`)
+    loc->Option.mapOr("", loc => ` at ${loc}`)

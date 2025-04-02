@@ -114,7 +114,7 @@ let insertTtl: (Js.Json.t, option<int>) => Js.Json.t = (json, ttl) =>
     (
       json
       ->Js.Json.decodeObject
-      ->Belt.Option.mapWithDefault(
+      ->Option.mapOr(
         // TODO: extract mapWithSideEffect to Util module
         () => {
           Js.log2(__MODULE__ ++ ".insertTtl: Error: Couldn't decode JSON", json->Js.Json.stringify)
@@ -141,7 +141,7 @@ let batchWrite = itemRequestMap => {
 }
 
 let hasUnprocessedItems = writeOutput =>
-  writeOutput.BatchWriteCommand.unprocessedItems->Belt.Option.mapWithDefault(0, items =>
+  writeOutput.BatchWriteCommand.unprocessedItems->Option.mapOr(0, items =>
     items->Js.Dict.keys->Array.length
   ) > 0
 

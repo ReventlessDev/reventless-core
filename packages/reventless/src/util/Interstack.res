@@ -13,7 +13,7 @@ let stackDependencies =
     open Pulumi.StackReference
     make(stackName)
   })
-  ->Array.concat(coreStackReference->Belt.Option.mapWithDefault([], coreStack => [coreStack]))
+  ->Array.concat(coreStackReference->Option.mapOr([], coreStack => [coreStack]))
 
 let getOutputs = name =>
   stackDependencies
