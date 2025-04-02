@@ -40,7 +40,7 @@ let findResource = (resources, service) =>
           Js.log2(err, resourcesStr)
         })
       Js.Exn.raiseError(err)
-    | matching => matching->Belt.Array.getUnsafe(0)
+    | matching => matching->Array.getUnsafe(0)
     }
   )
   ->Adapter.outputToResource
@@ -51,7 +51,7 @@ let findUnwrappedResource = (resources, service) =>
     let err = `Util.Adapter.findUnwrappedResource: Couldn't find service ${service} in resources: ${resources->Adapter.unwrappedToString}`
     Js.log(err)
     Js.Exn.raiseError(err)
-  | matching => matching->Belt.Array.getUnsafe(0)
+  | matching => matching->Array.getUnsafe(0)
   }
 
 let findResourceInOutput = (resourcesOutput, service) =>
