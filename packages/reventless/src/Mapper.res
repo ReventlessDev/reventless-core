@@ -1,5 +1,5 @@
 type encode<'a> = 'a => Js.Json.t
-type decode<'a> = Js.Json.t => Belt.Result.t<'a, Decco.decodeError>
+type decode<'a> = Js.Json.t => result<'a, Decco.decodeError>
 
 module type GenericSource = {
   let name: string
@@ -28,7 +28,7 @@ module MakeGenericSourceFromEventSource = (EventSource: ReventlessSpec.Projectio
   type t = Message.event'<string, EventSource.sourceEvent>
   let decode = json =>
     json
-    ->Message.event'_decode(EventSource.SourceId.t_decode, EventSource.sourceEvent_decode, _)
+    ->(Message.event'_decode(EventSource.SourceId.t_decode, EventSource.sourceEvent_decode, _))
     ->Belt.Result.map(({id, meta, event}) => {
       ReventlessSpec.Message.id: id->EventSource.SourceId.toString,
       meta,
@@ -39,7 +39,7 @@ module MakeGenericSourceFromEventSource = (EventSource: ReventlessSpec.Projectio
 module type CommandTarget = {
   let name: string
   type command
-  let command_decode: Js.Json.t => Belt.Result.t<command, Decco.decodeError> // TODO: is it possible to remove Decco here?
+  let command_decode: Js.Json.t => result<command, Decco.decodeError> // TODO: is it possible to remove Decco here?
   let command_encode: command => Js.Json.t
 }
 

@@ -1,7 +1,7 @@
 module Spec = Projection_Spec
 
 type encode<'a> = 'a => Js.Json.t
-type decode<'a> = Js.Json.t => Belt.Result.t<'a, Decco.decodeError>
+type decode<'a> = Js.Json.t => result<'a, Decco.decodeError>
 module type Mapping = {
   //module Source: Projection_Spec.Source
   //module Target: Projection_Spec.Target // NOTE: to be destructive substituted

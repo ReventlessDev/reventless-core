@@ -15,28 +15,28 @@ type saveMode =
   | Any
 
 type load<'id, 'state> = 'id => Js.Promise.t<
-  Belt.Result.t<array<'state>, ReventlessSpec.QueryDb.storageError>,
+  result<array<'state>, ReventlessSpec.QueryDb.storageError>,
 >
 type save<'id, 'state> = (
   'id,
   'state,
   saveMode,
   option<int>,
-) => Js.Promise.t<Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>>
+) => Js.Promise.t<result<unit, ReventlessSpec.QueryDb.storageError>>
 type saveBatch<'id, 'state> = array<('id, 'state, option<int>)> => Js.Promise.t<
-  Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>,
+  result<unit, ReventlessSpec.QueryDb.storageError>,
 >
 type count<'id> = (
   'id,
   string,
   int,
-) => Js.Promise.t<Belt.Result.t<int, ReventlessSpec.QueryDb.storageError>>
+) => Js.Promise.t<result<int, ReventlessSpec.QueryDb.storageError>>
 type delete<'id> = (
   'id,
   option<(string, string)>,
-) => Js.Promise.t<Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>>
+) => Js.Promise.t<result<unit, ReventlessSpec.QueryDb.storageError>>
 type deleteBatch<'id> = array<('id, option<(string, string)>)> => Js.Promise.t<
-  Belt.Result.t<unit, ReventlessSpec.QueryDb.storageError>,
+  result<unit, ReventlessSpec.QueryDb.storageError>,
 >
 
 type operations<'id, 'state> = {

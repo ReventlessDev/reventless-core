@@ -177,7 +177,7 @@ let composeMeta = (dict: Js.Dict.t<Js.Json.t>) =>
   ->Js.Dict.fromArray
   ->Js.Json.object_
 
-type decoder<'a> = Js.Json.t => Belt.Result.t<'a, Decco.decodeError>
+type decoder<'a> = Js.Json.t => result<'a, Decco.decodeError>
 type encoder<'a> = 'a => Js.Json.t
 
 let commandJsonOfCommand': (

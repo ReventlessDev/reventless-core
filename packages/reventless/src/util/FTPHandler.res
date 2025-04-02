@@ -39,7 +39,7 @@ type ftpAction =
 let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
   let {host, port, userName, secret, path, readyTimeout} = connectionParams
   let (promise, resolve, _reject) = Util.Promise.make()
-  let result: ref<Belt.Result.t<bool, string>> = ref(Error("Stream ended before action handling!"))
+  let result: ref<result<bool, string>> = ref(Error("Stream ended before action handling!"))
   let client = FTP.Client.make()
 
   client

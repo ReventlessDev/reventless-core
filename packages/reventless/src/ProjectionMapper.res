@@ -4,7 +4,7 @@ module Spec = ReventlessSpec.Projection.Spec
 module type StateTarget = {
   let name: string
   type state
-  let state_decode: Js.Json.t => Belt.Result.t<state, Decco.decodeError> // TODO: is it possible to remove Decco here?
+  let state_decode: Js.Json.t => result<state, Decco.decodeError> // TODO: is it possible to remove Decco here?
   let state_encode: state => Js.Json.t
 }
 

@@ -18,7 +18,7 @@ type publishJsons = array<Message.commandJson> => Js.Promise.t<unit>
 
 type jsonCommandsHandler = array<topicItem<Js.Json.t>> => promise<array<result<string, string>>>
 type commandsHandler<'command> = array<topicItem<'command>> => Js.Promise.t<
-  array<Belt.Result.t<string, string>>,
+  array<result<string, string>>,
 >
 
 module type Spec = {

@@ -8,7 +8,7 @@ type t
 
 exception ReplayError(string)
 
-type append<'id, 'event> = (int, 'id, array<'event>) => promise<Belt.Result.t<unit, string>>
+type append<'id, 'event> = (int, 'id, array<'event>) => promise<result<unit, string>>
 type replay<'id, 'event> = 'id => promise<array<'event>>
 
 module type Spec = {

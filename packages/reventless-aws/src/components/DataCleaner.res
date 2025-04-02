@@ -5,7 +5,7 @@ open ReventlessSpec.Adapter
 type tableConfig = {name: string, id: string, sort: option<string>}
 type event = {tables: Js.nullable<array<tableConfig>>}
 
-let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<Belt.Result.t<'a, 'b>> = async p =>
+let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<result<'a, 'b>> = async p =>
   switch await p {
   | res => Belt.Result.Ok(res)
   | exception err => Belt.Result.Error(err)
@@ -70,8 +70,8 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
 
 let handleScanResult = async (
   tableConfig: tableConfig,
-  scanResult: Belt.Result.t<AwsSdk.DynamoDb.DocumentClient.QueryCommand.output, 'a>,
-): Belt.Result.t<int, 'a> => {
+  scanResult: result<AwsSdk.DynamoDb.DocumentClient.QueryCommand.output, 'a>,
+): result<int, 'a> => {
   if mode == #debug {
     Js.log("Clean table " ++ tableConfig.name)
   }
@@ -91,7 +91,7 @@ let handleScanResult = async (
 }
 
 let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
-  Belt.Result.t<string, string>,
+  result<string, string>,
 > => {
   if mode == #debug {
     Js.log("Scan " ++ tableConfig.name)

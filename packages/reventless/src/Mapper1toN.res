@@ -10,7 +10,7 @@
 //   let toAbstractAction:
 //     (
 //       action('a),
-//       Js.Json.t => Belt.Result.t('a, Decco.decodeError),
+//       Js.Json.t => result('a, Decco.decodeError),
 //       'a => Js.Json.t
 //     ) =>
 //     abstractAction;
