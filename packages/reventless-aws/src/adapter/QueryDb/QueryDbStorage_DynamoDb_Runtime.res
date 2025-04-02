@@ -69,7 +69,7 @@ let writeMultiple = async (writeRequests, op, ids, table) => {
   if batches > 1 {
     Js.log(
       __MODULE__ ++
-      `writeBatch: splitting up batch of size ${size->Belt.Int.toString} into ${batches->Belt.Int.toString} batches`,
+      `writeBatch: splitting up batch of size ${size->Int.toString} into ${batches->Int.toString} batches`,
     )
   }
   let results = Array.fromInitializer(~length=batches, batchNr =>
@@ -88,10 +88,10 @@ let writeMultiple = async (writeRequests, op, ids, table) => {
         let batchIdsStr = batchIds->Js.Array2.joinWith(", ")
         switch (result.value, result.reason) {
         | (Some(Error(error)), _) =>
-          Some(`Batch ${batchNr->Belt.Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
+          Some(`Batch ${batchNr->Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
         | (_, Some(reason)) =>
           let error = (reason->Reventless.Util.Error.ofPromise).message
-          Some(`Batch ${batchNr->Belt.Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
+          Some(`Batch ${batchNr->Int.toString}: ${count} ids:${batchIdsStr}: ${error}`)
         | _ => None
         }
       })
@@ -133,7 +133,7 @@ let saveBatch = table => async items =>
 
 let count = table => async (id, fieldName, inc) => {
   let tableName = table.name
-  Js.log(__MODULE__ ++ `.count: ${tableName}, ${id}, ${fieldName}, ${inc->Belt.Int.toString}`)
+  Js.log(__MODULE__ ++ `.count: ${tableName}, ${id}, ${fieldName}, ${inc->Int.toString}`)
   switch await UpdateCommand.make({
     tableName,
     key: [("id", id->Js.Json.string)]->Js.Dict.fromArray,

@@ -83,7 +83,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
               ];
       });
   var deletedCount = batchToDelete.length;
-  var str = action + "(" + id + "): beforeStates:" + String(beforeCount) + " afterStates:" + String(afterCount) + " added:" + String(addedCount) + " changed:" + String(changedCount) + " deleted:" + String(deletedCount);
+  var str = action + "(" + id + "): beforeStates:" + beforeCount.toString() + " afterStates:" + afterCount.toString() + " added:" + addedCount.toString() + " changed:" + changedCount.toString() + " deleted:" + deletedCount.toString();
   console.log("Projection.handleAction:", str);
   await Promise.all([
         param.deleteBatch(batchToDelete),
@@ -614,11 +614,11 @@ async function handleActions(actions, operations, subIdConfig) {
   var handleActionsForId = async function (actions, id) {
     var actionCount = actions.length;
     if (actionCount > 1) {
-      console.log("Projection.handleActions: optimizing " + String(actionCount) + " actions for id=" + id);
+      console.log("Projection.handleActions: optimizing " + actionCount.toString() + " actions for id=" + id);
     }
     var optimizedActions = optimizeActions(actions);
     var optimizedActionCount = optimizedActions.length;
-    console.log("Projection.handleActions: handling " + String(optimizedActionCount) + " optimized actions for id=" + id);
+    console.log("Projection.handleActions: handling " + optimizedActionCount.toString() + " optimized actions for id=" + id);
     return await Core__Array.reduce(optimizedActions, Promise.resolve({
                     TAG: "Ok",
                     _0: undefined
@@ -644,7 +644,7 @@ async function handleActions(actions, operations, subIdConfig) {
     return ;
   }
   var count = errors.length;
-  return Js_exn.raiseError("Projection.handleActions failed with " + String(count) + " errors: " + errors.map(QueryDb$Reventless.storageErrorToString).join(","));
+  return Js_exn.raiseError("Projection.handleActions failed with " + count.toString() + " errors: " + errors.map(QueryDb$Reventless.storageErrorToString).join(","));
 }
 
 var $$Set;

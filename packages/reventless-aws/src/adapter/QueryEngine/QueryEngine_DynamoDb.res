@@ -30,7 +30,7 @@ let createSubIdExprNamesValues = (subIdConfig: option<SubId.config>) =>
 let createFilterExprNamesValues = filterConfigs =>
   filterConfigs
   ->Array.mapWithIndex(((fieldName, comparator, value), idx) => {
-    let valueName = `${fieldName}${idx->Belt.Int.toString}`
+    let valueName = `${fieldName}${idx->Int.toString}`
     (
       switch comparator {
       | Filter.Equal => `#${fieldName} = :${valueName}`

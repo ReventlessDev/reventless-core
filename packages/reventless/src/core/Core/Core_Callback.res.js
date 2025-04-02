@@ -9,7 +9,7 @@ function Make(Spec) {
     var count = eventsJson$p.length;
     return Util_Promise$Reventless.toUnit(Promise.all(eventsJson$p.map(async function (eventJson$p, idx) {
                         var idx$1 = idx + 1 | 0;
-                        Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
+                        Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "Core eventHandler: outgoing event " + idx$1.toString() + "/" + count.toString() + ":");
                         return Util_Promise$Reventless.toUnit(Promise.all(Spec.outgoingExtensionPointEventHandlers.map(function (handleEvent) {
                                             return handleEvent(eventJson$p, Spec.pluginDefinition);
                                           })));

@@ -88,8 +88,8 @@ function Make(Spec, Config) {
       return ;
     }
     chunkCount.contents = chunkCount.contents + 1 | 0;
-    var sizeStr = String(size$1);
-    var bufferSizeStr = String(buffer.length);
+    var sizeStr = size$1.toString();
+    var bufferSizeStr = buffer.length.toString();
     var chunkCountStr = chunkCount.contents.toString();
     Logger$Reventless.debug("File \"CommandPublisher.res\", line 55, characters 15-22", undefined, undefined, "send", "bufferSize: " + bufferSizeStr + ", chunk: " + chunkCountStr + ", size: " + sizeStr);
     var commandsToSend$1 = buffer.splice(0, size$1);

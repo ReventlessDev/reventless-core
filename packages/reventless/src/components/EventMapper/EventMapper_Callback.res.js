@@ -126,7 +126,7 @@ function MakeCounterHandler(Target, Mappings, Ops) {
     var eventsCount = eventsJson.length;
     var match = Belt_Array.partition(Core__Array.filterMap(eventsJson.map(function (eventJson, idx) {
                     var idx$1 = idx + 1 | 0;
-                    Logger$Reventless.logJsonEvent(undefined, undefined, eventJson, "EventMapper.eventsHandler: incoming event " + String(idx$1) + "/" + String(eventsCount) + ":");
+                    Logger$Reventless.logJsonEvent(undefined, undefined, eventJson, "EventMapper.eventsHandler: incoming event " + idx$1.toString() + "/" + eventsCount.toString() + ":");
                     var event$p = Js_json.decodeObject(eventJson);
                     var match = findMapping(Mappings.mappings, event$p);
                     if (match === undefined) {

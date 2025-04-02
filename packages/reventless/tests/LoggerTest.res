@@ -37,7 +37,7 @@ describe("Logger", () => {
         let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
           (command, idx) => {
             {
-              Message.id: idx->Belt.Int.toString,
+              Message.id: idx->Int.toString,
               meta,
               commandJson: command->PluginSpec.command_encode,
               delay: None,
@@ -80,7 +80,7 @@ describe("Logger", () => {
         let arr: array<Message.commandJson> = commands->Array.mapWithIndex(
           (command, idx) => {
             {
-              Message.id: idx->Belt.Int.toString,
+              Message.id: idx->Int.toString,
               meta,
               commandJson: command->PluginSpec.command_encode,
               delay: None,

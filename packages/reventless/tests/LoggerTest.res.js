@@ -31,7 +31,7 @@ Jest.describe("Logger", (function () {
                         var metaStr = JSON.stringify(Message$Reventless.meta_encode(meta));
                         var arr = commands.map(function (command, idx) {
                               return {
-                                      id: String(idx),
+                                      id: idx.toString(),
                                       meta: meta,
                                       commandJson: PluginSpec$Reventless.command_encode(command),
                                       delay: undefined
@@ -73,7 +73,7 @@ Jest.describe("Logger", (function () {
                         var metaStr = JSON.stringify(Message$Reventless.meta_encode(meta));
                         var arr = commands.map(function (command, idx) {
                               return {
-                                      id: String(idx),
+                                      id: idx.toString(),
                                       meta: meta,
                                       commandJson: PluginSpec$Reventless.command_encode(command),
                                       delay: undefined

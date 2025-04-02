@@ -21,13 +21,13 @@ module Make = (Spec: Spec, EventTopicSpec: EventTopic.Spec) => {
         eventJson'->Logger.logJsonEvent(
           ~loc=__LOC__,
           ~level=Error,
-          `Couldn't publish event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
+          `Couldn't publish event ${idx->Int.toString}/${eventCount->Int.toString}:`,
         )
         raise(e)
       | _ =>
         eventJson'->Logger.logJsonEvent(
           ~loc=__LOC__,
-          `Published event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString}:`,
+          `Published event ${idx->Int.toString}/${eventCount->Int.toString}:`,
         )
       }
     })

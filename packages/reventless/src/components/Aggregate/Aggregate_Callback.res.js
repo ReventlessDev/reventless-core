@@ -141,7 +141,7 @@ function Make(Spec, Behaviour, Ops) {
                                             });
                                 }).flat() : Js_exn.raiseError(result._0);
                         if (events.length !== 0) {
-                          var eventCount = String(events.length);
+                          var eventCount = events.length.toString();
                           Logger$Reventless.debug(undefined, undefined, undefined, "Aggregate.handleCommands(" + Spec.Id.toString(id) + "): " + eventCount + " Event(s) generated:", events.map(function (event$p) {
                                     return Message$Reventless.variantNameOfJson(Spec.event_encode(event$p.event));
                                   }));

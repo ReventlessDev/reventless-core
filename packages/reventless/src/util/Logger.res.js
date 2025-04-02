@@ -122,9 +122,9 @@ function commandJsonToLogMessage(param) {
 }
 
 function commandJsonsToLogMessages(cmds) {
-  var count = String(cmds.length);
+  var count = cmds.length.toString();
   return cmds.map(function (cmd, idx) {
-              var idx$1 = String(idx + 1 | 0);
+              var idx$1 = (idx + 1 | 0).toString();
               return idx$1 + "/" + count + ": " + commandJsonToLogMessage(cmd);
             });
 }

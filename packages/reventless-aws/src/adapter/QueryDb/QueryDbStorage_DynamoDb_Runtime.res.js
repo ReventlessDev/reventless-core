@@ -102,7 +102,7 @@ async function writeMultiple(writeRequests, op, ids, table) {
   var size = writeRequests.length;
   var batches = Js_math.ceil_int(size / DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize);
   if (batches > 1) {
-    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + ("writeBatch: splitting up batch of size " + String(size) + " into " + String(batches) + " batches"));
+    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + ("writeBatch: splitting up batch of size " + size.toString() + " into " + batches.toString() + " batches"));
   }
   var results = Promise.allSettled(Core__Array.fromInitializer(batches, (function (batchNr) {
               return Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(sliceBatch(writeRequests, batchNr), tableName));
@@ -133,13 +133,13 @@ async function writeMultiple(writeRequests, op, ids, table) {
             var match = result.value;
             var match$1 = result.reason;
             if (match !== undefined && match.TAG !== "Ok") {
-              return "Batch " + String(batchNr) + ": " + count + " ids:" + batchIdsStr + ": " + match._0;
+              return "Batch " + batchNr.toString() + ": " + count + " ids:" + batchIdsStr + ": " + match._0;
             }
             if (match$1 === undefined) {
               return ;
             }
             var error = Caml_option.valFromOption(match$1).message;
-            return "Batch " + String(batchNr) + ": " + count + " ids:" + batchIdsStr + ": " + error;
+            return "Batch " + batchNr.toString() + ": " + count + " ids:" + batchIdsStr + ": " + error;
           }), (function (x) {
           return x;
         }));
@@ -187,7 +187,7 @@ function saveBatch(table) {
 function count(table) {
   return async function (id, fieldName, inc) {
     var tableName = table.name;
-    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".count: " + tableName + ", " + id + ", " + fieldName + ", " + String(inc)));
+    console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + (".count: " + tableName + ", " + id + ", " + fieldName + ", " + inc.toString()));
     var updateOutput;
     try {
       updateOutput = await DynamoDb_DocumentClient$AwsSdk.UpdateCommand.send(new LibDynamodb.UpdateCommand({

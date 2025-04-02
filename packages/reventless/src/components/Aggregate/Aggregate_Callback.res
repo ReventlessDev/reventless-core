@@ -153,7 +153,7 @@ module Make = (
             references->Array.map(reference => Ok(reference))
           }
         | generatedEvents' =>
-          let eventCount = generatedEvents'->Array.length->Belt.Int.toString
+          let eventCount = generatedEvents'->Array.length->Int.toString
           Logger.debug(
             `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated:`,
             generatedEvents'->Array.map(event' => event'->eventName),

@@ -68,7 +68,7 @@ let applyChanges = async (
   let deletedCount = batchToDelete->Array.length
 
   logAction(
-    `${action}(${id}): beforeStates:${beforeCount->Belt.Int.toString} afterStates:${afterCount->Belt.Int.toString} added:${addedCount->Belt.Int.toString} changed:${changedCount->Belt.Int.toString} deleted:${deletedCount->Belt.Int.toString}`,
+    `${action}(${id}): beforeStates:${beforeCount->Int.toString} afterStates:${afterCount->Int.toString} added:${addedCount->Int.toString} changed:${changedCount->Int.toString} deleted:${deletedCount->Int.toString}`,
   )
   let result = await [deleteBatch(batchToDelete), saveBatch(batchToSave)]->Js.Promise.all
   switch result {
@@ -354,14 +354,14 @@ let handleActions = async (actions, operations, subIdConfig) => {
     let actionCount = actions->Array.length
     if actionCount > 1 {
       Js.log(
-        `Projection.handleActions: optimizing ${actionCount->Belt.Int.toString} actions for id=${id}`,
+        `Projection.handleActions: optimizing ${actionCount->Int.toString} actions for id=${id}`,
       )
     }
 
     let optimizedActions = optimizeActions(actions)
     let optimizedActionCount = optimizedActions->Array.length
     Js.log(
-      `Projection.handleActions: handling ${optimizedActionCount->Belt.Int.toString} optimized actions for id=${id}`,
+      `Projection.handleActions: handling ${optimizedActionCount->Int.toString} optimized actions for id=${id}`,
     )
 
     // FIXME: handle errors!
@@ -395,7 +395,7 @@ let handleActions = async (actions, operations, subIdConfig) => {
   | errors =>
     let count = errors->Array.length
     Js.Exn.raiseError(
-      `Projection.handleActions failed with ${count->Belt.Int.toString} errors: ${errors
+      `Projection.handleActions failed with ${count->Int.toString} errors: ${errors
         ->Array.map(QueryDb.storageErrorToString)
         ->Js.Array2.joinWith(",")}`,
     )

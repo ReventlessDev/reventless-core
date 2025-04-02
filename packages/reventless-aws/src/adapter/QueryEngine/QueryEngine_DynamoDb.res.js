@@ -72,7 +72,7 @@ function createSubIdExprNamesValues(subIdConfig) {
 function createFilterExprNamesValues(filterConfigs) {
   return Belt_Array.unzip(filterConfigs.map(function (param, idx) {
                   var fieldName = param[0];
-                  var valueName = fieldName + String(idx);
+                  var valueName = fieldName + idx.toString();
                   var tmp;
                   switch (param[1]) {
                     case "Equal" :

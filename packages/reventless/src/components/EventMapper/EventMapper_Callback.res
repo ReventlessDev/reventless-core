@@ -94,7 +94,7 @@ module MakeCounterHandler = (
       ->Array.mapWithIndex((eventJson, idx) => {
         let idx = idx + 1
         eventJson->Logger.logJsonEvent(
-          `EventMapper.eventsHandler: incoming event ${idx->Belt.Int.toString}/${eventsCount->Belt.Int.toString}:`,
+          `EventMapper.eventsHandler: incoming event ${idx->Int.toString}/${eventsCount->Int.toString}:`,
         )
         let event' = eventJson->Js.Json.decodeObject
         switch findMapping(Mappings.mappings, event') {

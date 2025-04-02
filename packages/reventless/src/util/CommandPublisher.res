@@ -48,8 +48,8 @@ module Make = (Spec: Spec, Config: Config) => {
       let size = Js.Math.min_int(chunkSize, buffer->Array.length)
       if size >= chunkSize || (size > 0 && flush.contents) {
         chunkCount := chunkCount.contents + 1
-        let sizeStr = size->Belt.Int.toString
-        let bufferSizeStr = buffer->Array.length->Belt.Int.toString
+        let sizeStr = size->Int.toString
+        let bufferSizeStr = buffer->Array.length->Int.toString
         let chunkCountStr = chunkCount.contents->Js.Int.toString
         Logger.debug(
           ~loc=__LOC__,

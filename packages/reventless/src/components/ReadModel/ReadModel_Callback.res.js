@@ -30,7 +30,7 @@ function Make(ReadModelSpec, Mappings, Spec) {
                       var sourceName = Core__Result.getOr(Core__Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
                                   return context.meta.service;
                                 })), "");
-                      console.log("ReadModel: handling event " + String(idx$1) + "/" + String(eventCount) + " from " + sourceName + ":", json);
+                      console.log("ReadModel: handling event " + idx$1.toString() + "/" + eventCount.toString() + " from " + sourceName + ":", json);
                       return EventProjector.map(sourceName, json);
                     }).flat(), Spec.operations, ReadModelSpec.subIdConfig);
   };

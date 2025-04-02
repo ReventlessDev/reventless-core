@@ -36,7 +36,7 @@ function Make(Spec) {
     var count = eventsJson.length;
     return Util_Promise$Reventless.toUnit(Promise.all(eventsJson.map(async function (eventJson$p, idx) {
                         var idx$1 = idx + 1 | 0;
-                        Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "Plugin " + id + " handleJsonEvents: incoming event " + String(idx$1) + "/" + String(count) + ":");
+                        Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "Plugin " + id + " handleJsonEvents: incoming event " + idx$1.toString() + "/" + count.toString() + ":");
                         detectUnhandledEvent(eventJson$p);
                         await handleEvent(eventJson$p, Spec.incomingConnectExtensionEventHandlers);
                         return Promise.all([
@@ -78,7 +78,7 @@ function removeStatement(policy, sid) {
         return statement.Sid !== sid;
       });
   var removedStatements = statements.length - newStatements.length | 0;
-  console.log("removeStatement: removing " + String(removedStatements) + " statement(s) with Sid " + sid);
+  console.log("removeStatement: removing " + removedStatements.toString() + " statement(s) with Sid " + sid);
   return {
           Version: policy.Version,
           Id: policy.Id,

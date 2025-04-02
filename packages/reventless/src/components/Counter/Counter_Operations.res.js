@@ -76,7 +76,7 @@ function logCountItems(countItems) {
         var references = param[1];
         var size = references.length;
         var referencesStr = references.join(",");
-        console.log("  " + String(size) + " reference(s) for counterId " + param[0] + ": " + referencesStr);
+        console.log("  " + size.toString() + " reference(s) for counterId " + param[0] + ": " + referencesStr);
       });
 }
 
@@ -102,13 +102,13 @@ function Make(Spec) {
             }));
     if (result.TAG === "Ok") {
       var batchSize = countItems.length;
-      console.log("Counter_Operations-Reventless" + (": saved batch of " + String(batchSize) + " reference(s):"));
+      console.log("Counter_Operations-Reventless" + (": saved batch of " + batchSize.toString() + " reference(s):"));
       return logCountItems(countItems);
     }
     var err = result._0;
     if (typeof err === "object" && err.TAG === "NotSavedToStorage") {
       var batchSize$1 = countItems.length;
-      console.log("Counter error: couldn't save batch of " + String(batchSize$1) + " reference(s):");
+      console.log("Counter error: couldn't save batch of " + batchSize$1.toString() + " reference(s):");
       logCountItems(countItems);
       throw {
             RE_EXN_ID: NotCounted,
@@ -117,7 +117,7 @@ function Make(Spec) {
           };
     }
     var batchSize$2 = countItems.length;
-    console.log("Unknown Counter error: couldn't save batch of " + String(batchSize$2) + " reference(s):");
+    console.log("Unknown Counter error: couldn't save batch of " + batchSize$2.toString() + " reference(s):");
     logCountItems(countItems);
     throw {
           RE_EXN_ID: NotCounted,

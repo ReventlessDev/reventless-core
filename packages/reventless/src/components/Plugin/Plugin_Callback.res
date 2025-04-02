@@ -46,7 +46,7 @@ module Make = (Spec: Spec): T => {
     ->Array.mapWithIndex(async (eventJson', idx) => {
       let idx = idx + 1
       eventJson'->Logger.logJsonEvent(
-        `Plugin ${id} handleJsonEvents: incoming event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
+        `Plugin ${id} handleJsonEvents: incoming event ${idx->Int.toString}/${count->Int.toString}:`,
       )
       detectUnhandledEvent(eventJson')
       switch await eventJson'->handleEvent(Spec.incomingConnectExtensionEventHandlers) {
@@ -89,7 +89,7 @@ let removeStatement = (policy: AwsSdk.IAM.Policy.t, sid) => {
   let newStatements = statements->Array.filter(statement => statement.sid != sid)
   let removedStatements = statements->Array.length - newStatements->Array.length
   Js.log(
-    `removeStatement: removing ${removedStatements->Belt.Int.toString} statement(s) with Sid ${sid}`,
+    `removeStatement: removing ${removedStatements->Int.toString} statement(s) with Sid ${sid}`,
   )
   {
     AwsSdk.IAM.Policy.version: policy.version,

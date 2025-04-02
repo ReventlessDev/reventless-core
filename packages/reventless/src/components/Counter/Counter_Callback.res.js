@@ -89,7 +89,7 @@ function Make(Spec) {
                         var id = match$1.id;
                         if (count === 0) {
                           var match$2 = Counter$Reventless.unmakeId(id);
-                          console.log("Counter_Callback-Reventless" + (".counterHandler: counted down " + Spec.name + "(" + id + ") to " + String(count)));
+                          console.log("Counter_Callback-Reventless" + (".counterHandler: counted down " + Spec.name + "(" + id + ") to " + count.toString()));
                           var meta = Message$Reventless.generateMeta(ComponentType$Reventless.toName("Counter"), undefined, "Counter");
                           return Js_dict.fromArray([
                                       [
@@ -106,7 +106,7 @@ function Make(Spec) {
                                       ]
                                     ]);
                         }
-                        console.log("Counter_Callback-Reventless" + (".counterHandler: counted down " + Spec.name + "(" + id + ") to " + String(count)));
+                        console.log("Counter_Callback-Reventless" + (".counterHandler: counted down " + Spec.name + "(" + id + ") to " + count.toString()));
                         return ;
                       }
                       var stateStr = JSON.stringify(state);

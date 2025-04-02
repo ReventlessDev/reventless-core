@@ -17,10 +17,10 @@ function Make(Spec, EventTopicSpec) {
                           val = await Spec.publishJson(EventTopicSpec.Id.toString(id), event$p.meta, eventJson$p);
                         }
                         catch (e){
-                          Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 22, characters 15-22", "Error", eventJson$p, "Couldn't publish event " + String(idx$1) + "/" + String(eventCount) + ":");
+                          Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 22, characters 15-22", "Error", eventJson$p, "Couldn't publish event " + idx$1.toString() + "/" + eventCount.toString() + ":");
                           throw e;
                         }
-                        return Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 29, characters 15-22", undefined, eventJson$p, "Published event " + String(idx$1) + "/" + String(eventCount) + ":");
+                        return Logger$Reventless.logJsonEvent("File \"EventTopic_Operations.res\", line 29, characters 15-22", undefined, eventJson$p, "Published event " + idx$1.toString() + "/" + eventCount.toString() + ":");
                       })));
   };
   return {

@@ -12,7 +12,7 @@ module Make = (Spec: Spec) => {
     ->Array.mapWithIndex(async (eventJson', idx) => {
       let idx = idx + 1
       eventJson'->Logger.logJsonEvent(
-        `Core eventHandler: outgoing event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
+        `Core eventHandler: outgoing event ${idx->Int.toString}/${count->Int.toString}:`,
       )
       Spec.outgoingExtensionPointEventHandlers
       ->Array.map(handleEvent => {

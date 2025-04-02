@@ -16,25 +16,25 @@ function plural(count) {
 function toScheduleExpression(x) {
   switch (x.TAG) {
     case "Single" :
-        return "cron(" + String(x._4) + " " + String(x._3) + " " + String(x._2) + " " + String(x._1) + " ? " + String(x._0) + ")";
+        return "cron(" + x._4.toString() + " " + x._3.toString() + " " + x._2.toString() + " " + x._1.toString() + " ? " + x._0.toString() + ")";
     case "Minutes" :
         var minutes = x._0;
         var plural$1 = plural(minutes);
-        return "rate(" + String(minutes) + " minute" + plural$1 + ")";
+        return "rate(" + minutes.toString() + " minute" + plural$1 + ")";
     case "Hours" :
         var hours = x._0;
         var plural$2 = plural(hours);
-        return "rate(" + String(hours) + " hour" + plural$2 + ")";
+        return "rate(" + hours.toString() + " hour" + plural$2 + ")";
     case "Days" :
         var days = x._0;
         var plural$3 = plural(days);
-        return "rate(" + String(days) + " day" + plural$3 + ")";
+        return "rate(" + days.toString() + " day" + plural$3 + ")";
     case "Daily" :
-        return "cron(" + String(x._1) + " " + String(x._0) + " * * * *)";
+        return "cron(" + x._1.toString() + " " + x._0.toString() + " * * * *)";
     case "Weekdays" :
-        return "cron(" + String(x._1) + " " + String(x._0) + " ? * MON-FRI *)";
+        return "cron(" + x._1.toString() + " " + x._0.toString() + " ? * MON-FRI *)";
     case "WeekdaysAndSaturday" :
-        return "cron(" + String(x._1) + " " + String(x._0) + " ? * MON-SAT *)";
+        return "cron(" + x._1.toString() + " " + x._0.toString() + " ? * MON-SAT *)";
     
   }
 }

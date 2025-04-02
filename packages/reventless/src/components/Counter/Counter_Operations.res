@@ -19,7 +19,7 @@ let logCountItems = countItems =>
   ->Array.forEach(((counterId, references)) => {
     let size = references->Array.length
     let referencesStr = references->Js.Array2.joinWith(",")
-    Js.log(`  ${size->Belt.Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`)
+    Js.log(`  ${size->Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`)
   })
 
 exception NotCounted(string)
@@ -41,17 +41,17 @@ module Make = (Spec: Spec) => {
     switch result {
     | Ok(_) =>
       let batchSize = countItems->Array.length
-      Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Belt.Int.toString} reference(s):`)
+      Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Int.toString} reference(s):`)
       countItems->logCountItems
     | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) =>
       let batchSize = countItems->Array.length
-      Js.log(`Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`)
+      Js.log(`Counter error: couldn't save batch of ${batchSize->Int.toString} reference(s):`)
       countItems->logCountItems
       raise(NotCounted(err))
     | Error(_) =>
       let batchSize = countItems->Array.length
       Js.log(
-        `Unknown Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
+        `Unknown Counter error: couldn't save batch of ${batchSize->Int.toString} reference(s):`,
       )
       countItems->logCountItems
       raise(NotCounted("Unknown error"))

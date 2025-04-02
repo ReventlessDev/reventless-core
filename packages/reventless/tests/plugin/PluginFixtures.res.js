@@ -51,8 +51,8 @@ var pluginDefinition2 = {
   extensionPoints: extensionPointNames2.map(function (name, idx) {
         return {
                 name: name,
-                commandTopic: "commandTopic" + String(idx),
-                eventTopic: "eventTopic" + String(idx)
+                commandTopic: "commandTopic" + idx.toString(),
+                eventTopic: "eventTopic" + idx.toString()
               };
       }),
   extensions: [],

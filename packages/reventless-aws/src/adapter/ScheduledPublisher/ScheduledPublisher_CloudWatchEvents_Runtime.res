@@ -6,21 +6,20 @@ let plural = count => count == 1 ? "" : "s"
 let toScheduleExpression = x =>
   switch x {
   | Single(year, month, day, hour, minute) =>
-    `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} ${day->Belt.Int.toString} ${month->Belt.Int.toString} ? ${year->Belt.Int.toString})`
+    `cron(${minute->Int.toString} ${hour->Int.toString} ${day->Int.toString} ${month->Int.toString} ? ${year->Int.toString})`
   | Minutes(minutes) =>
     let plural = minutes->plural
-    `rate(${minutes->Belt.Int.toString} minute${plural})`
+    `rate(${minutes->Int.toString} minute${plural})`
   | Hours(hours) =>
     let plural = hours->plural
-    `rate(${hours->Belt.Int.toString} hour${plural})`
+    `rate(${hours->Int.toString} hour${plural})`
   | Days(days) =>
     let plural = days->plural
-    `rate(${days->Belt.Int.toString} day${plural})`
-  | Daily(hour, minute) => `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} * * * *)`
-  | Weekdays(hour, minute) =>
-    `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} ? * MON-FRI *)`
+    `rate(${days->Int.toString} day${plural})`
+  | Daily(hour, minute) => `cron(${minute->Int.toString} ${hour->Int.toString} * * * *)`
+  | Weekdays(hour, minute) => `cron(${minute->Int.toString} ${hour->Int.toString} ? * MON-FRI *)`
   | WeekdaysAndSaturday(hour, minute) =>
-    `cron(${minute->Belt.Int.toString} ${hour->Belt.Int.toString} ? * MON-SAT *)`
+    `cron(${minute->Int.toString} ${hour->Int.toString} ? * MON-SAT *)`
   }
 
 let createSchedule: PulumiAws.IAM.Role.t => Reventless.Scheduler.createSchedule = role => async (

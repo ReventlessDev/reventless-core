@@ -49,7 +49,7 @@ module Make = (Spec: Spec) => {
           let (counterId, _) = id->Counter.unmakeId
           Js.log(
             __MODULE__ ++
-            `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Belt.Int.toString}`,
+            `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
           )
           let meta = Message.generateMeta(
             ~service=ComponentType.Counter->ComponentType.toName,
@@ -67,7 +67,7 @@ module Make = (Spec: Spec) => {
         | Ok({id, count}) =>
           Js.log(
             __MODULE__ ++
-            `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Belt.Int.toString}`,
+            `.counterHandler: counted down ${Spec.name}(${id}) to ${count->Int.toString}`,
           )
           None
         | _ =>
