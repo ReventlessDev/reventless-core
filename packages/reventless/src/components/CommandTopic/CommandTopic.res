@@ -5,6 +5,7 @@ type outputs = {resources: array<ReventlessSpec.Adapter.resource>}
 type allOutputs = dict<outputs>
 
 type t
+type component<'operations> = Component.t<t, outputs, 'operations>
 
 exception NotPublishedToChannel(Js.Promise.error)
 
@@ -38,7 +39,7 @@ module type T = {
     publish: publish,
     publishJsons: publishJsons,
   }
-  type component = Component.t<t, outputs, operations>
+  type component = component<operations>
 
   type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 

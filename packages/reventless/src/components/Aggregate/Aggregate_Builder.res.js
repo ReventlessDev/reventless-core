@@ -2,14 +2,11 @@
 'use strict';
 
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Aggregate$Reventless = require("./Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
-var CommandTopic$Reventless = require("../CommandTopic/CommandTopic.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
-var CommandGenerator$Reventless = require("../CommandGenerator/CommandGenerator.res.js");
 var EventLog_Builder$Reventless = require("../EventLog/EventLog_Builder.res.js");
 var Aggregate_Callback$Reventless = require("./Aggregate_Callback.res.js");
 var EventMapper_Builder$Reventless = require("../EventMapper/EventMapper_Builder.res.js");
@@ -17,9 +14,9 @@ var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Buil
 var EventCollector_Builder$Reventless = require("../EventCollector/EventCollector_Builder.res.js");
 var CommandGenerator_Builder$Reventless = require("../CommandGenerator/CommandGenerator_Builder.res.js");
 
-function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorChannel) {
+function Make(Config, Spec, Behaviour, EventMappings, RuntimeBuilder, CommandGeneratorResolvers, CommandTopicChannel, EventLogStorage, EventTopicPublisher, EventCollectorChannel) {
   var construct = function (self, name) {
-    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
+    var opts_parent = Component$Reventless.toPulumiResource(self);
     var opts = {
       parent: opts_parent
     };
@@ -54,7 +51,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                 return partial_arg$1(partial_arg, param);
               })(CommandTopicChannel);
           var commandTopic = SpecificCommandTopic.make(name$1, opts);
-          var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(commandTopic));
+          var opts_parent = Component$Reventless.toPulumiResource(commandTopic);
           var opts$1 = {
             parent: opts_parent
           };
@@ -67,7 +64,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                 EventLog: SpecificEventLog,
                 eventLog: eventLogOps
               });
-          var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandTopic$Reventless.componentType), SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands), undefined, undefined, opts$1);
+          var runtime = RuntimeBuilder.forAggregateCommandTopic(SpecificCommandTopic.makeHandler(commandTopic, AggregateCallback.handleCommands), undefined, undefined, commandTopic);
           var eventLog$1 = Component$Reventless.outputs(eventLog);
           var resources = [
               eventLog$1.resources,
@@ -84,11 +81,11 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                         };
                         var SpecificCommandGenerator = partial_arg$1(Behaviour, CommandGeneratorResolvers);
                         var commandGenerator = SpecificCommandGenerator.make(name$1, opts);
-                        var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(commandGenerator));
+                        var opts_parent = Component$Reventless.toPulumiResource(commandGenerator);
                         var opts$1 = {
                           parent: opts_parent
                         };
-                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name$1, CommandGenerator$Reventless.componentType), SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, opts$1);
+                        var runtime = RuntimeBuilder.forAggregateCommandGenerator(SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, commandGenerator);
                         var resources = Component$Reventless.outputs(commandTopic).resources;
                         SpecificCommandGenerator.connect(name$1, commandGenerator, runtime, resources, opts$1);
                         return Component$Reventless.outputs(commandGenerator);
@@ -122,7 +119,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                     var partial_arg$2 = function (param, param$1) {
                       return partial_arg$1(partial_arg, SpecificEventCollector, param, param$1);
                     };
-                    var SpecificEventMapper = partial_arg$2(EventMappings, RuntimeEnvironment);
+                    var SpecificEventMapper = partial_arg$2(EventMappings, RuntimeBuilder);
                     var outputs = Component$Reventless.outputs(self);
                     if (EventMappings.mappings.length <= 0) {
                       return outputs;

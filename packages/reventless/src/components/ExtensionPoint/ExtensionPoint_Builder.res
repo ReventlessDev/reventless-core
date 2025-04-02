@@ -1,9 +1,8 @@
 module Make = (
   Spec: ReventlessSpec.ExtensionPointMapping.Spec,
   Mappings: ExtensionPoint.Mappings with module Spec := Spec,
-  RuntimeEnvironment: Runtime.Environment,
-  CommandTopicChannel: CommandTopic_Adapter.Channel
-    with type runtimeParts = RuntimeEnvironment.parts,
+  RuntimeBuilder: Runtime_Builder.T,
+  CommandTopicChannel: CommandTopic_Adapter.Channel with type runtimeParts = RuntimeBuilder.parts,
   EventTopicAdapter: EventTopic_Adapter.Publisher,
 ): ExtensionPoint.T => {
   module Spec = Spec
@@ -71,7 +70,7 @@ module Make = (
           ~commandTopic,
           ~commandsHandler=ExtensionPointCallback.handleIncomingCommands,
         )
-        let runtime = RuntimeEnvironment.make(~name=childName, ~handler, ~opts=commandTopicOpts)
+        let runtime = commandTopic->RuntimeBuilder.forExtensionPointCommandTopic(~handler)
 
         SpecificCommandTopic.connect(
           ~name=childName,

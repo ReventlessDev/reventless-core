@@ -3,12 +3,11 @@ module Make = (
   Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
-  RuntimeEnvironment: Runtime.Environment,
+  RuntimeBuilder: Runtime_Builder.T,
   CommandGeneratorResolvers: CommandGenerator_Adapter.Resolvers
     with type api = Config.api
-    and type runtimeParts = RuntimeEnvironment.parts,
-  CommandTopicChannel: CommandTopic_Adapter.Channel
-    with type runtimeParts = RuntimeEnvironment.parts,
+    and type runtimeParts = RuntimeBuilder.parts,
+  CommandTopicChannel: CommandTopic_Adapter.Channel with type runtimeParts = RuntimeBuilder.parts,
   EventLogStorage: EventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
   EventCollectorChannel: EventCollector_Adapter.Channel,
@@ -21,7 +20,7 @@ module Make = (
       Spec,
       SpecificEventCollector,
       EventMappings,
-      RuntimeEnvironment,
+      RuntimeBuilder,
     )
 
     let outputs = aggregate->Component.outputs
@@ -74,14 +73,13 @@ module Make = (
             let eventLog = eventLogOps
           },
         )
-        let runtime = RuntimeEnvironment.make(
-          ~name=name->ComponentType.name(CommandTopic.componentType),
-          ~handler=SpecificCommandTopic.makeHandler(
-            ~commandTopic,
-            ~commandsHandler=AggregateCallback.handleCommands,
-          ),
-          ~opts,
-        )
+        let runtime =
+          commandTopic->RuntimeBuilder.forAggregateCommandTopic(
+            ~handler=SpecificCommandTopic.makeHandler(
+              ~commandTopic,
+              ~commandsHandler=AggregateCallback.handleCommands,
+            ),
+          )
 
         let eventLog = eventLog->Component.outputs
         let resources = [eventLog.resources, eventLog.eventTopic.resources]->Array.flat
@@ -102,11 +100,10 @@ module Make = (
         let commandGenerator = SpecificCommandGenerator.make(~name, ~opts)
         let opts = {Pulumi.ComponentResource.parent: commandGenerator->Component.toPulumiResource}
 
-        let runtime = RuntimeEnvironment.make(
-          ~name=name->ComponentType.name(CommandGenerator.componentType),
-          ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
-          ~opts,
-        )
+        let runtime =
+          commandGenerator->RuntimeBuilder.forAggregateCommandGenerator(
+            ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
+          )
         let resources = (commandTopic->Component.outputs).resources
         SpecificCommandGenerator.connect(~name, ~commandGenerator, ~runtime, ~resources, ~opts)
         commandGenerator->Component.outputs

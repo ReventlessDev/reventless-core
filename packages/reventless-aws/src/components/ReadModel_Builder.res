@@ -6,7 +6,7 @@ module Make = (
   Config,
   Spec,
   Mappings,
-  RuntimeEnvironment_Lambda,
+  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment_Lambda),
   QueryDbStorage.DynamoDb,
   QueryDbResolvers.AppSync,
   EventCollectorChannel.DynamoDbStream,

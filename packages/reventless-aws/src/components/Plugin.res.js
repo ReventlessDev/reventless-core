@@ -2,6 +2,7 @@
 'use strict';
 
 var Plugin_Builder$Reventless = require("@reventless/reventless/src/components/Plugin/Plugin_Builder.res.js");
+var Runtime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/Runtime_Builder_Micro.res.js");
 var QueryEngine_DynamoDb$ReventlessAws = require("../adapter/QueryEngine/QueryEngine_DynamoDb.res.js");
 var EventCollectorChannel_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_SQS.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
@@ -18,7 +19,7 @@ var partial_arg$2 = {
   make: EventCollectorChannel_SQS$ReventlessAws.make
 };
 
-var partial_arg$3 = RuntimeEnvironment_Lambda$ReventlessAws;
+var partial_arg$3 = Runtime_Builder_Micro$Reventless.Make(RuntimeEnvironment_Lambda$ReventlessAws);
 
 var partial_arg$4 = Plugin_Builder$Reventless.Make;
 

@@ -7,7 +7,7 @@ var Heartbeat$Reventless = require("./Heartbeat.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var Heartbeat_Callback$Reventless = require("./Heartbeat_Callback.res.js");
 
-function Make(Runner, RuntimeEnvironment) {
+function Make(Runner) {
   var construct = function (_self, _name) {
     
   };

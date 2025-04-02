@@ -1,5 +1,5 @@
 include Reventless.Plugin_Builder.Make(
-  RuntimeEnvironment_Lambda,
+  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment_Lambda),
   EventCollectorChannel.SQS,
   QueryEngine.DynamoDb,
   CommandTopicRemoteChannel.SQS,

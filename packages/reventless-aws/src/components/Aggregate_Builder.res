@@ -8,7 +8,7 @@ module Make = (
   Spec,
   Behaviour,
   EventMappings,
-  RuntimeEnvironment_Lambda,
+  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment_Lambda),
   CommandGeneratorResolvers.AppSync,
   CommandTopicChannel.SQS_FIFO,
   EventLogStorage.DynamoDbStream,

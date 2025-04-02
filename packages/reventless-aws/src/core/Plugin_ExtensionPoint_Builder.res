@@ -1,5 +1,5 @@
 module Make: Reventless.ExtensionPoint.T = Reventless.PluginExtensionPoint_Builder.Make(
-  RuntimeEnvironment_Lambda,
+  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment_Lambda),
   CommandTopicChannel.SQS,
   EventTopicPublisher.SNS,
 )

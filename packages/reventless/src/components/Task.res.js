@@ -2,14 +2,13 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Aggregate$Reventless = require("./Aggregate/Aggregate.res.js");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
 
 function construct(setup, queryBucketName, scheduler, publishToAggregates, queryEngine, allAggregates, self, _name) {
-  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
+  var opts_parent = Component$Reventless.toPulumiResource(self);
   var opts = {
     parent: opts_parent
   };

@@ -19,7 +19,7 @@ function Make(Config, Runner) {
   var make = function (opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString("Cloner"), ComponentType$Reventless.toString("Cloner"), (function (extra, extra$1) {
                   var api = Config.api;
-                  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
+                  var opts_parent = Component$Reventless.toPulumiResource(extra);
                   var opts = {
                     parent: opts_parent
                   };

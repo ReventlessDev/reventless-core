@@ -1,4 +1,4 @@
-module Make = (Runner: Heartbeat_Adapter.Runner, RuntimeEnvironment: Runtime.Environment) => {
+module Make = (Runner: Heartbeat_Adapter.Runner) => {
   let construct = (_self, _name) => ()
 
   let connect = (~name, ~timeout=10, ~heartbeat, ~remoteChannel, ~runtime, ~opts) => {

@@ -1,6 +1,6 @@
 module Make = (
   SpecificEventCollector: EventCollector.T,
-  RuntimeEnvironment: Runtime.Environment,
+  RuntimeBuilder: Runtime_Builder.T,
 ): SideEffectHandler.T => {
   let construct = (
     ~sideEffects,
@@ -32,7 +32,12 @@ module Make = (
       ~eventCollector,
       ~eventsHandler=Callback.eventsHandler,
     )
-    let runtime = RuntimeEnvironment.make(~name, ~handler, ~memorySize, ~timeout, ~opts)
+    let runtime =
+      eventCollector->RuntimeBuilder.forSideEffectHandlerEventCollector(
+        ~handler,
+        ~memorySize,
+        ~timeout,
+      )
 
     let _ = allCommandTopics->Pulumi.Output.apply(allCommandTopics => {
       let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)

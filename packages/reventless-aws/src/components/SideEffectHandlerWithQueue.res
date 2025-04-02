@@ -1,4 +1,4 @@
 include Reventless.SideEffectHandler_Builder.Make(
   Reventless.EventCollector_Builder.Make(EventCollectorChannel.SQS),
-  RuntimeEnvironment_Lambda,
+  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment_Lambda),
 )

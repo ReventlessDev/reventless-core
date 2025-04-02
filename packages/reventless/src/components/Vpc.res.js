@@ -3,7 +3,6 @@
 
 var Component = require("./Component").default;
 var Aws = require("@pulumi/aws");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var EC2_Eip$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Eip.res.js");
 var EC2_Vpc$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Vpc.res.js");
 var EC2_Subnet$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_Subnet.res.js");
@@ -16,7 +15,7 @@ var EC2_InternetGateway$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/E
 var EC2_RouteTableAssociation$PulumiAws = require("@reventless/bs-pulumi-aws/src/EC2/EC2_RouteTableAssociation.res.js");
 
 function construct(self, name, availabilityZone) {
-  var opts_parent = Caml_option.some(self);
+  var opts_parent = self;
   var opts = {
     parent: opts_parent
   };
@@ -47,14 +46,14 @@ function construct(self, name, availabilityZone) {
         vpc: true
       }, {
         dependsOn: [internetGateway],
-        parent: Caml_option.some(self)
+        parent: self
       });
   var natGateway = EC2_NatGateway$PulumiAws.make(name + "NatGateway", {
         allocationId: eip.id,
         subnetId: publicSubnet.id
       }, {
         dependsOn: [internetGateway],
-        parent: Caml_option.some(self)
+        parent: self
       });
   var publicSubnetRouteTable = EC2_RouteTable$PulumiAws.make(name + "PublicSubnetRouteTable", {
         vpcId: vpc.id,

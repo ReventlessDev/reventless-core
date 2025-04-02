@@ -3,7 +3,6 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
@@ -17,7 +16,7 @@ var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Buil
 var ExtensionPoint_Callback$Reventless = require("./ExtensionPoint_Callback.res.js");
 var ExtensionPoint_Operations$Reventless = require("./ExtensionPoint_Operations.res.js");
 
-function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopicAdapter) {
+function Make(Spec, Mappings, RuntimeBuilder, CommandTopicChannel, EventTopicAdapter) {
   var command_encode = Spec.command_encode;
   var command_decode = Spec.command_decode;
   var event_encode = Spec.event_encode;
@@ -34,7 +33,7 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
   };
   var make = function (aggregateResources, publishToAggregates, scheduler, queryEngine, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(ExtensionPoint$Reventless.componentType), Spec.name, (function (extra, extra$1) {
-                  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
+                  var opts_parent = Component$Reventless.toPulumiResource(extra);
                   var opts = {
                     parent: opts_parent
                   };
@@ -49,7 +48,7 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
                         return partial_arg$1(partial_arg, param);
                       })(CommandTopicChannel);
                   var commandTopic = SpecificCommandTopic.make(childName, opts);
-                  var commandTopicOpts_parent = Caml_option.some(Component$Reventless.toPulumiResource(commandTopic));
+                  var commandTopicOpts_parent = Component$Reventless.toPulumiResource(commandTopic);
                   var commandTopicOpts = {
                     parent: commandTopicOpts_parent
                   };
@@ -72,7 +71,7 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
                               };
                               var ExtensionPointCallback = partial_arg$2(Spec, Mappings);
                               var handler = SpecificCommandTopic.makeHandler(commandTopic, ExtensionPointCallback.handleIncomingCommands);
-                              var runtime = RuntimeEnvironment.make(childName, handler, undefined, undefined, commandTopicOpts);
+                              var runtime = RuntimeBuilder.forExtensionPointCommandTopic(handler, undefined, undefined, commandTopic);
                               SpecificCommandTopic.connect(childName, commandTopic, runtime, filterAggregateResources(aggregateResources, aggregateNames), commandTopicOpts);
                               var partial_arg$3 = {
                                 Id: Id$ReventlessSpec.$$String,

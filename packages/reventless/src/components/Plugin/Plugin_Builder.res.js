@@ -4,7 +4,6 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
@@ -14,13 +13,11 @@ var Adapter$Reventless = require("../../adapter/Adapter.res.js");
 var QueryDb$Reventless = require("../QueryDb/QueryDb.res.js");
 var Aggregate$Reventless = require("../Aggregate/Aggregate.res.js");
 var Component$Reventless = require("../Component.res.js");
-var Heartbeat$Reventless = require("../Heartbeat/Heartbeat.res.js");
 var ReadModel$Reventless = require("../ReadModel/ReadModel.res.js");
 var Interstack$Reventless = require("../../util/Interstack.res.js");
 var StackReference$Pulumi = require("@reventless/bs-pulumi-pulumi/src/StackReference.res.js");
 var Util_QueryDb$Reventless = require("../../util/Util_QueryDb.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
-var EventCollector$Reventless = require("../EventCollector/EventCollector.res.js");
 var ExtensionPoint$Reventless = require("../ExtensionPoint/ExtensionPoint.res.js");
 var Util_StackRefs$Reventless = require("../../util/Util_StackRefs.res.js");
 var Plugin_Callback$Reventless = require("./Plugin_Callback.res.js");
@@ -82,11 +79,11 @@ function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEvent
   return dict;
 }
 
-function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner) {
+function Make(RuntimeBuilder, EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner) {
   var make = function (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(Plugin$Reventless.componentType), name, (function (extra, extra$1) {
                   var id = Plugin$Reventless.makeId(extra$1, version);
-                  var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(extra));
+                  var opts_parent = Component$Reventless.toPulumiResource(extra);
                   var opts = {
                     parent: opts_parent
                   };
@@ -312,26 +309,25 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                     incomingExtensionEventHandlers: incomingExtensionEventHandlers
                                   });
                               var handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
-                              var eventCollectorOpts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
+                              var eventCollectorOpts_parent = Component$Reventless.toPulumiResource(eventCollector);
                               var eventCollectorOpts = {
                                 parent: eventCollectorOpts_parent
                               };
-                              var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, EventCollector$Reventless.componentType), handler, undefined, undefined, eventCollectorOpts);
+                              var runtime = RuntimeBuilder.forPluginEventCollector(handler, undefined, undefined, eventCollector);
                               PluginEventCollector.connect(childName, eventTopics, eventCollector, runtime, param[5], eventCollectorOpts);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;
                                   });
                               return eventCollectorOutputs;
                             });
-                        var partial_arg = Heartbeat_Builder$Reventless.Make;
-                        var SpecificHeartbeat = partial_arg(HeartbeatRunner, RuntimeEnvironment);
+                        var SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
                         var heartbeat = SpecificHeartbeat.make(childName, opts);
-                        var heartbeatOpts_parent = Caml_option.some(Component$Reventless.toPulumiResource(heartbeat));
+                        var heartbeatOpts_parent = Component$Reventless.toPulumiResource(heartbeat);
                         var heartbeatOpts = {
                           parent: heartbeatOpts_parent
                         };
                         var handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
-                        var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(childName, Heartbeat$Reventless.componentType), handler, undefined, undefined, heartbeatOpts);
+                        var runtime = RuntimeBuilder.forPluginHeartbeat(handler, undefined, undefined, heartbeat);
                         SpecificHeartbeat.connect(childName, heartbeatInterval, heartbeat, corePluginExtensionPointCommandTopicRemoteChannel, runtime, heartbeatOpts);
                         return {
                                 id: id,

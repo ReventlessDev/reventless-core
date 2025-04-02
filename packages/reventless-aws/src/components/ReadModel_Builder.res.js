@@ -2,6 +2,7 @@
 'use strict';
 
 var ReadModel_Builder$Reventless = require("@reventless/reventless/src/components/ReadModel/ReadModel_Builder.res.js");
+var Runtime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/Runtime_Builder_Micro.res.js");
 var QueryDbStorage_DynamoDb$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb.res.js");
 var QueryDbResolvers_AppSync$ReventlessAws = require("../adapter/QueryDb/QueryDbResolvers_AppSync.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
@@ -12,7 +13,7 @@ function Make(Config, Spec, Mappings) {
   var partial_arg$1 = {
     make: QueryDbStorage_DynamoDb$ReventlessAws.make
   };
-  var partial_arg$2 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg$2 = Runtime_Builder_Micro$Reventless.Make(RuntimeEnvironment_Lambda$ReventlessAws);
   var partial_arg$3 = ReadModel_Builder$Reventless.Make;
   var param = {
     make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make

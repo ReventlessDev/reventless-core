@@ -2,6 +2,7 @@
 'use strict';
 
 var Aggregate_Builder$Reventless = require("@reventless/reventless/src/components/Aggregate/Aggregate_Builder.res.js");
+var Runtime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/Runtime_Builder_Micro.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 var CommandTopicChannel_SQS_FIFO$ReventlessAws = require("../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.js");
 var EventLogStorage_DynamoDbStream$ReventlessAws = require("../adapter/EventLog/EventLogStorage_DynamoDbStream.res.js");
@@ -16,7 +17,7 @@ function Make(Config, Spec, Behaviour, EventMappings) {
     make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
   };
   var partial_arg$3 = CommandGeneratorResolvers_AppSync$ReventlessAws;
-  var partial_arg$4 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg$4 = Runtime_Builder_Micro$Reventless.Make(RuntimeEnvironment_Lambda$ReventlessAws);
   var partial_arg$5 = Aggregate_Builder$Reventless.Make;
   var param = {
     make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make

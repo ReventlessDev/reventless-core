@@ -3,7 +3,6 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Aws = require("@pulumi/aws");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
@@ -32,7 +31,7 @@ function callback(evt, ctx) {
               }));
 }
 
-var opts_parent = Caml_option.some(queue);
+var opts_parent = queue;
 
 var opts = {
   parent: opts_parent

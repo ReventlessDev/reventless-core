@@ -71,12 +71,12 @@ let serviceNameToEventHandlers: (
 }
 
 module Make = (
-  RuntimeEnvironment: Runtime.Environment,
+  RuntimeBuilder: Runtime_Builder.T,
   EventCollectorChannel: EventCollector_Adapter.Channel
-    with type runtimeParts = RuntimeEnvironment.parts,
+    with type runtimeParts = RuntimeBuilder.parts,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   CorePluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
-  HeartbeatRunner: Heartbeat_Adapter.Runner with type runtimeParts = RuntimeEnvironment.parts,
+  HeartbeatRunner: Heartbeat_Adapter.Runner with type runtimeParts = RuntimeBuilder.parts,
 ): Plugin.T => {
   type readModel = {
     module_: module(ReadModel.T),
@@ -452,11 +452,7 @@ module Make = (
             let eventCollectorOpts = {
               Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource,
             }
-            let runtime = RuntimeEnvironment.make(
-              ~name=childName->ComponentType.name(EventCollector.componentType),
-              ~handler,
-              ~opts=eventCollectorOpts,
-            )
+            let runtime = eventCollector->RuntimeBuilder.forPluginEventCollector(~handler)
 
             PluginEventCollector.connect(
               ~name=childName,
@@ -474,7 +470,7 @@ module Make = (
             eventCollectorOutputs
           })
 
-        module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner, RuntimeEnvironment)
+        module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner)
         let heartbeat = SpecificHeartbeat.make(~name=childName, ~opts)
         let heartbeatOpts = {Pulumi.ComponentResource.parent: heartbeat->Component.toPulumiResource}
 
@@ -483,11 +479,7 @@ module Make = (
           ~timeout=heartbeatInterval,
           ~publishToCorePluginExtensionPoint,
         )
-        let runtime = RuntimeEnvironment.make(
-          ~name=childName->ComponentType.name(Heartbeat.componentType),
-          ~handler,
-          ~opts=heartbeatOpts,
-        )
+        let runtime = heartbeat->RuntimeBuilder.forPluginHeartbeat(~handler)
 
         SpecificHeartbeat.connect(
           ~name=childName,

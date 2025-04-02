@@ -5,5 +5,5 @@ module Make = (
   EventCollectorChannel.SQS,
   QueryEngine.DynamoDb,
   ClonerRunner.Fargate,
-  RuntimeEnvironment_Lambda,
+  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment_Lambda),
 )

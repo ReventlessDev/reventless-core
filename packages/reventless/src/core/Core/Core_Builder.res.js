@@ -3,7 +3,6 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
@@ -15,12 +14,11 @@ var Component$Reventless = require("../../components/Component.res.js");
 var ReadModel$Reventless = require("../../components/ReadModel/ReadModel.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var Core_Callback$Reventless = require("./Core_Callback.res.js");
-var EventCollector$Reventless = require("../../components/EventCollector/EventCollector.res.js");
 var EventCollector_Builder$Reventless = require("../../components/EventCollector/EventCollector_Builder.res.js");
 
-function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, RuntimeEnvironment) {
+function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, RuntimeBuilder) {
   var construct = function (version, extensionPoints, aggregates, readModels, scheduler, self, param) {
-    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(self));
+    var opts_parent = Component$Reventless.toPulumiResource(self);
     var opts = {
       parent: opts_parent
     };
@@ -114,7 +112,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                     var CoreEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                     var eventCollector = CoreEventCollector.make(name, opts);
                     var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
-                    var opts_parent = Caml_option.some(Component$Reventless.toPulumiResource(eventCollector));
+                    var opts_parent = Component$Reventless.toPulumiResource(eventCollector);
                     var opts$1 = {
                       parent: opts_parent
                     };
@@ -123,7 +121,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                           outgoingExtensionPointEventHandlers: param[0]
                         });
                     var handler = CoreEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
-                    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(name, EventCollector$Reventless.componentType), handler, undefined, undefined, opts$1);
+                    var runtime = RuntimeBuilder.forPluginEventCollector(handler, undefined, undefined, eventCollector);
                     CoreEventCollector.connect(name, eventTopics, eventCollector, runtime, param[1], opts$1);
                     return eventCollectorOutputs;
                   });

@@ -21,8 +21,8 @@ type t =
   | Heartbeat
   | Cloner
 
-let toString = x =>
-  switch x {
+let toString = componentType =>
+  switch componentType {
   | Aggregate => "Aggregate"
   | Counter => "Counter"
   | Plugin => "Plugin"
@@ -46,8 +46,8 @@ let toString = x =>
   | Cloner => "Cloner"
   }
 
-let ofString = x =>
-  switch x {
+let ofString = str =>
+  switch str {
   | "Aggregate" => Aggregate->Some
   | "Counter" => Counter->Some
   | "Plugin" => Plugin->Some
@@ -72,8 +72,8 @@ let ofString = x =>
   | _ => None
   }
 
-let toName = x =>
-  switch x {
+let toName = componentType =>
+  switch componentType {
   | Aggregate => "Aggr"
   | Counter => "Counter"
   | Plugin => "Plugin"
@@ -98,3 +98,4 @@ let toName = x =>
   }
 
 let name = (name, t) => name ++ t->toName
+let nameOpt = (name, t) => name->Option.getOr("") ++ t->toName
