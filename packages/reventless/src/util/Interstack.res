@@ -8,7 +8,7 @@ let stackDependencies =
     open Pulumi.Config
     make(Some("interstack"))->getObject("dependencies")
   }
-  ->Belt.Option.getWithDefault([])
+  ->Option.getOr([])
   ->Array.map(stackName => {
     open Pulumi.StackReference
     make(stackName)

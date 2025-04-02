@@ -40,7 +40,7 @@ module Make = (Config: Config.T, Runner: Adapter.Runner with type api := Config.
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
     let fullQualifiedStackName = {
-      organization: Env.pulumiOrganization->Belt.Option.getWithDefault("NO_ORGANIZATION"),
+      organization: Env.pulumiOrganization->Option.getOr("NO_ORGANIZATION"),
       project: Pulumi.Pulumi.getProjectName(),
       stack: Pulumi.Pulumi.getStackName(),
     }

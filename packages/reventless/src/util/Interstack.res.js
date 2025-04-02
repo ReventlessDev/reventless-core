@@ -10,7 +10,7 @@ var coreStackReference = Core__Option.map(new Pulumi.Config("core").get("stack")
         return new Pulumi.StackReference(stack);
       }));
 
-var stackDependencies = Belt_Option.getWithDefault(new Pulumi.Config("interstack").getObject("dependencies"), []).map(function (stackName) {
+var stackDependencies = Core__Option.getOr(new Pulumi.Config("interstack").getObject("dependencies"), []).map(function (stackName) {
         return new Pulumi.StackReference(stackName);
       }).concat(Belt_Option.mapWithDefault(coreStackReference, [], (function (coreStack) {
             return [coreStack];

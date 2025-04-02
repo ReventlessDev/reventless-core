@@ -21,7 +21,7 @@ function toInfo(param) {
                 param.hashKey,
                 param.rangeKey
               ]).apply(function (param) {
-              return param[0] + ("," + Belt_Option.getWithDefault(param[1], ""));
+              return param[0] + ("," + Core__Option.getOr(param[1], ""));
             });
 }
 

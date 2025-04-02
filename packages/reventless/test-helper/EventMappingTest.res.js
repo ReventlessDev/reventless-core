@@ -3,8 +3,8 @@
 
 var Jest = require("@glennsl/rescript-jest/src/jest.res.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
@@ -177,12 +177,12 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
                 }))).flat();
     return Core__Array.reduce(commands, {}, (function (targetEvents, param) {
                   var id = Target.Id.toString(param[0]);
-                  var targetHistory = Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), []).concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []));
+                  var targetHistory = Core__Option.getOr(Js_dict.get(targetHistories, id), []).concat(Core__Option.getOr(Js_dict.get(targetEvents, id), []));
                   var newEvents = exec$1({
                         id: id,
                         meta: TestFixtures$Reventless.context.meta
                       }, param[1], targetHistory);
-                  targetEvents[id] = Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []).concat(newEvents);
+                  targetEvents[id] = Core__Option.getOr(Js_dict.get(targetEvents, id), []).concat(newEvents);
                   return targetEvents;
                 }));
   };

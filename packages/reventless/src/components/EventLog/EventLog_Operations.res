@@ -44,9 +44,7 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
     | Js.Exn.Error(err) =>
       let msg = `EventLog.appendFn(${id->Spec.Id.toString}): EventTopic.publish Error: `
       Js.log2(msg, err)
-      Js.Exn.raiseError(
-        msg ++ err->Js.Exn.message->Belt.Option.getWithDefault("no error message given"),
-      )
+      Js.Exn.raiseError(msg ++ err->Js.Exn.message->Option.getOr("no error message given"))
     }
   }
 

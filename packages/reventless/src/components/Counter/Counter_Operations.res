@@ -7,7 +7,7 @@ type referencesState = {
 let groupCountItemsByCounterId = countItems => {
   let dict = Js.Dict.empty()
   countItems->Array.forEach(({Counter.counterId: counterId, reference}) => {
-    let currentReferences = dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault([])
+    let currentReferences = dict->Js.Dict.get(counterId)->Option.getOr([])
     dict->Js.Dict.set(counterId, currentReferences->Array.concat([reference]))
   })
   dict->Js.Dict.entries

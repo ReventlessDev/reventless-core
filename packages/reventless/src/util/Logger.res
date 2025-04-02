@@ -24,13 +24,13 @@ external identity: 'a => 'a = "%identity"
 
 let createTag = (~level as _, ~loc) => {
   let re = %re("/File \"(.*).res\", line (.*), characters (.*)-(.*)/")
-  switch Js.Re.exec_(re, loc->Belt.Option.getWithDefault("")) {
+  switch Js.Re.exec_(re, loc->Option.getOr("")) {
   | Some(result) =>
     let captures =
       result
       ->Js.Re.captures
       ->Array.map(capture => capture->Js.Nullable.toOption)
-      ->Array.map(Belt.Option.getWithDefault(_, ""))
+      ->Array.map(Option.getOr(_, ""))
     `${captures->Array.getUnsafe(1)}#${captures->Array.getUnsafe(2)}:`
   | _ => ""
   }

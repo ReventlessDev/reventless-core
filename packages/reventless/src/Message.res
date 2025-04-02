@@ -65,7 +65,7 @@ let variantNameOfJson = json =>
   ->Js.Json.decodeArray
   ->Option.flatMap(evtArr => evtArr->Array.get(0))
   ->Option.flatMap(evt => evt->Js.Json.decodeString)
-  ->Belt.Option.getWithDefault("unknown")
+  ->Option.getOr("unknown")
 
 // TODO: group all functions on event`Json into submodule with the according type
 
@@ -87,19 +87,19 @@ let idMetaEventOfEvent'Json = json => {
   let id =
     dict
     ->Option.flatMap(dict => dict->Dict.get("id")->Option.flatMap(id => id->Js.Json.decodeString))
-    ->Belt.Option.getWithDefault("unknownId")
+    ->Option.getOr("unknownId")
   let meta =
     dict
     ->Option.flatMap(dict =>
       dict->Dict.get("meta")->Option.map(metaStr => metaStr->Js.Json.stringify)
     )
-    ->Belt.Option.getWithDefault("noMeta")
+    ->Option.getOr("noMeta")
   let event =
     dict
     ->Option.flatMap(dict =>
       dict->Dict.get("event")->Option.map(eventStr => eventStr->Js.Json.stringify)
     )
-    ->Belt.Option.getWithDefault("noEvent")
+    ->Option.getOr("noEvent")
 
   (id, meta, event)
 }

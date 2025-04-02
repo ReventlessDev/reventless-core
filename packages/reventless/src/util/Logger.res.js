@@ -3,6 +3,7 @@
 
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Message$Reventless = require("../Message.res.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.res.js");
 
@@ -30,7 +31,7 @@ var Level = {
 
 function createTag(param, loc) {
   var re = /File \"(.*).res\", line (.*), characters (.*)-(.*)/;
-  var result = re.exec(Belt_Option.getWithDefault(loc, ""));
+  var result = re.exec(Core__Option.getOr(loc, ""));
   if (result === null) {
     return "";
   }
@@ -41,7 +42,7 @@ function createTag(param, loc) {
             return Caml_option.some(capture);
           }
         }).map(function (__x) {
-        return Belt_Option.getWithDefault(__x, "");
+        return Core__Option.getOr(__x, "");
       });
   return captures[1] + "#" + captures[2] + ":";
 }

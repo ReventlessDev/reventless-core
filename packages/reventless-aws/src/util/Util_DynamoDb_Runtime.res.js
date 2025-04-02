@@ -169,7 +169,7 @@ function calcPurgeTime(ttl) {
 }
 
 function insertTtl(json, ttl) {
-  return Belt_Option.getWithDefault(Core__Option.flatMap(ttl, (function (ttl) {
+  return Core__Option.getOr(Core__Option.flatMap(ttl, (function (ttl) {
                     return Belt_Option.mapWithDefault(Js_json.decodeObject(json), (function () {
                                     console.log("Util_DynamoDb_Runtime-ReventlessAws" + ".insertTtl: Error: Couldn't decode JSON", JSON.stringify(json));
                                   }), (function (obj) {

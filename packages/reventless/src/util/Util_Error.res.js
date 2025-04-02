@@ -2,9 +2,10 @@
 'use strict';
 
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 
 function message(loc, exn) {
-  return Belt_Option.getWithDefault(exn.message, "unspecified error") + Belt_Option.mapWithDefault(loc, "", (function (loc) {
+  return Core__Option.getOr(exn.message, "unspecified error") + Belt_Option.mapWithDefault(loc, "", (function (loc) {
                 return " at " + loc;
               }));
 }

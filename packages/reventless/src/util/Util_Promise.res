@@ -8,7 +8,7 @@ let filterRejected = results =>
     idx,
     result.reason
     ->Option.map(reason => (reason->Util_Error.ofPromise).message)
-    ->Belt.Option.getWithDefault("Unknown error"),
+    ->Option.getOr("Unknown error"),
   ))
 
 @ocaml.doc(

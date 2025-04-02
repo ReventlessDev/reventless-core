@@ -36,7 +36,7 @@ var PluginConnectExtension_Builder$Reventless = require("../../core/Extensions/C
 function getRemoteStorageResources(pluginName, queryDbName) {
   var resources = Core__Option.map(Util_StackRefs$Reventless.get(pluginName), (function (stackRef) {
           return stackRef.requireOutput("plugin").apply(function (plugin) {
-                      return Belt_Option.getWithDefault(Core__Option.map(Js_dict.get(plugin.readModels, queryDbName), (function (readModel) {
+                      return Core__Option.getOr(Core__Option.map(Js_dict.get(plugin.readModels, queryDbName), (function (readModel) {
                                         return readModel.queryDb.resources;
                                       })), []);
                     });

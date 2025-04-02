@@ -15,7 +15,7 @@ let globalSecondaryIndexes = indexes =>
     }
     {
       name: index,
-      hashKey: indexConfig.idField->Belt.Option.getWithDefault(index),
+      hashKey: indexConfig.idField->Option.getOr(index),
       rangeKey: ?indexConfig.subIdField,
       projectionType,
       nonKeyAttributes: ?includes,

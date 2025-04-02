@@ -5,6 +5,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_splice_call = require("@rescript/std/lib/js/caml_splice_call.js");
 var Logger$Reventless = require("./Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -104,7 +105,7 @@ function Make(Spec, Config) {
     catch (raw_e$1){
       var e$1 = Caml_js_exceptions.internalToOCamlException(raw_e$1);
       if (e$1.RE_EXN_ID === Js_exn.$$Error) {
-        var errorMessage = Belt_Option.getWithDefault(e$1._1.message, "unknown Error");
+        var errorMessage = Core__Option.getOr(e$1._1.message, "unknown Error");
         console.log("CommandPublisher.send: Error: Couldn't publish chunk " + chunkCountStr + ": " + errorMessage);
         var timeout = Js_math.random_int(3000, 7000);
         await Util_Promise$Reventless.finishTimeout(timeout);

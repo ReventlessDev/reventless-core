@@ -3,6 +3,7 @@
 
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var QueryDb$Reventless = require("@reventless/reventless/src/components/QueryDb/QueryDb.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
@@ -29,7 +30,7 @@ function globalSecondaryIndexes(indexes) {
                   projectionType._0
                 ];
               return {
-                      hashKey: Belt_Option.getWithDefault(indexConfig.idField, index),
+                      hashKey: Core__Option.getOr(indexConfig.idField, index),
                       name: index,
                       projectionType: match[0],
                       nonKeyAttributes: match[1],

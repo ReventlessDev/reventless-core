@@ -13,7 +13,7 @@ let groupByCounterId = references => {
   let dict = Js.Dict.empty()
   references->Array.forEach(((reference, inc)) => {
     let counterId = reference->Counter.unmakeId->fst
-    let current = dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault(0)
+    let current = dict->Js.Dict.get(counterId)->Option.getOr(0)
     dict->Js.Dict.set(counterId, current + inc)
   })
   dict->Js.Dict.entries

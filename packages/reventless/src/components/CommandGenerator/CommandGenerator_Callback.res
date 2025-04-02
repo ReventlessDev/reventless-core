@@ -17,7 +17,7 @@ module Make = (
     let meta = {
       {
         Message.service: AggregateSpec.name,
-        ip: payload.meta.ip->Js.Array.shift->Belt.Option.getWithDefault(""),
+        ip: payload.meta.ip->Js.Array.shift->Option.getOr(""),
         user: payload.meta.user,
         time: Message.nowAsISOString(),
         msgId,
@@ -35,7 +35,7 @@ module Make = (
         "Couldn't decode:" ++
         payload.arguments
         ->Js.Json.stringifyAny
-        ->Belt.Option.getWithDefault("<payload.arguments>"),
+        ->Option.getOr("<payload.arguments>"),
       )
     }
     params[0] = Js.Json.string(payload.command)

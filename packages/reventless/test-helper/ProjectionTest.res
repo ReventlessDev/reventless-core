@@ -81,7 +81,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
 
   let getSubId = state => Projection.subIdConfig->Option.map(({getSubId}) => state->getSubId)
   let hasSubId = (subId, state) => state->getSubId->Belt.Option.getExn == subId
-  let states = (store, id) => store->Js.Dict.get(id)->Belt.Option.getWithDefault([])
+  let states = (store, id) => store->Js.Dict.get(id)->Option.getOr([])
   let setStates = (store, id, states) => store->Js.Dict.set(id, states)
   let updateState = (store, id, subId, newState) =>
     store->states(id)->Array.map(state => hasSubId(subId, state) ? newState : state)
@@ -102,7 +102,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       store
       ->Js.Dict.get(id)
       ->Option.map(states => states->Array.filter(state => state->getSubId != subId))
-      ->Belt.Option.getWithDefault([]),
+      ->Option.getOr([]),
     )
 
   open Belt.Result
@@ -180,7 +180,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     expect((
       store->Js.Dict.keys->Array.length,
       store->Js.Dict.keys->Array.get(0),
-      store->Js.Dict.values->Array.get(0)->Belt.Option.getWithDefault([]),
+      store->Js.Dict.values->Array.get(0)->Option.getOr([]),
     ))->toEqual((1, Some(testId.contents), expectedStates))
   }
   let thenStatesWithId = async (p, id, expectedStates) => {
@@ -188,7 +188,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     expect((
       store->Js.Dict.keys->Array.length,
       store->Js.Dict.keys->Array.get(0),
-      store->Js.Dict.values->Array.get(0)->Belt.Option.getWithDefault([]),
+      store->Js.Dict.values->Array.get(0)->Option.getOr([]),
     ))->toEqual((1, Some(id), expectedStates))
   }
 
@@ -201,7 +201,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     expect((
       store->Js.Dict.keys->Array.length,
       store->Js.Dict.keys->Array.get(0),
-      store->Js.Dict.values->Array.get(0)->Belt.Option.getWithDefault([])->Array.length,
+      store->Js.Dict.values->Array.get(0)->Option.getOr([])->Array.length,
       store->Js.Dict.values->Array.getUnsafe(0)->Array.get(0),
     ))->toEqual((1, Some(testId.contents), 1, Some(expectedState)))
   }
@@ -210,7 +210,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     expect((
       store->Js.Dict.keys->Array.length,
       store->Js.Dict.keys->Array.get(0),
-      store->Js.Dict.values->Array.get(0)->Belt.Option.getWithDefault([])->Array.length,
+      store->Js.Dict.values->Array.get(0)->Option.getOr([])->Array.length,
       store->Js.Dict.values->Array.getUnsafe(0)->Array.get(0),
     ))->toEqual((1, Some(id), 1, Some(expectedState)))
   }

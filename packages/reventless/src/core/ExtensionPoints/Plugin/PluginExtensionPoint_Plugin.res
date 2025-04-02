@@ -70,7 +70,7 @@ let callHandler = async (
   switch callCommand {
   | ReventlessSpec.PluginExtensionPointSpec.CreateDisconnectSchedule(id, timeout) =>
     await createSchedule({
-      name: PulumiAws.Lambda.environment->Belt.Option.getWithDefault("unknownEnv") ++ ("-" ++ id),
+      name: PulumiAws.Lambda.environment->Option.getOr("unknownEnv") ++ ("-" ++ id),
       rate: timeout->Schedule.minutesFromNow,
       payload: {
         Message.id,

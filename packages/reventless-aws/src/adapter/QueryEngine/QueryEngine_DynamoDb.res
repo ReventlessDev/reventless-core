@@ -60,7 +60,7 @@ let queryByTableName = async (
   ~limit=1,
 ) => {
   let (subIdExpressions, subIdNamesValues) =
-    subIdConfig->createSubIdExprNamesValues->Belt.Option.getWithDefault(([], []))
+    subIdConfig->createSubIdExprNamesValues->Option.getOr(([], []))
   let (filterExpressions, filterNamesValues) = filterConfigs->createFilterExprNamesValues
 
   let keyConditionExpression =
@@ -102,7 +102,7 @@ let queryByTableName = async (
   switch await AwsSdk.DynamoDb.DocumentClient.queryRecursive(~params) {
   | result =>
     result.items
-    ->Belt.Option.getWithDefault([])
+    ->Option.getOr([])
     ->Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception err =>
     Reventless.Logger.error(~loc=__LOC__, "Error:", err)
@@ -133,7 +133,7 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   switch await AwsSdk.DynamoDb.DocumentClient.scanRecursive(~params) {
   | result =>
     result.items
-    ->Belt.Option.getWithDefault([])
+    ->Option.getOr([])
     ->Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception Js.Exn.Error(e) =>
     Reventless.Logger.error(~loc=__LOC__, "Error:", e)

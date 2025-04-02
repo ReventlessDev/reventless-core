@@ -2,7 +2,7 @@ let toInfo = (table: PulumiAws.DynamoDb.Table.t) =>
   (table.hashKey, table.rangeKey, table.streamArn)
   ->Pulumi.Output.all3
   ->Pulumi.Output.apply(((hashKey, rangeKey, streamArn)) =>
-    hashKey ++ ("," ++ (rangeKey->Belt.Option.getWithDefault("") ++ ("," ++ streamArn)))
+    hashKey ++ ("," ++ (rangeKey->Option.getOr("") ++ ("," ++ streamArn)))
   )
 
 let streamArnFromDynamoDbTableResource = (resource: ReventlessSpec.Adapter.resource) =>
@@ -83,9 +83,7 @@ let updateTable: (~ttl: int=?, PulumiAws.DynamoDb.Table.table) => PulumiAws.Dyna
   {
     ...table,
     streamEnabled: streamInfo->Pulumi.Output.apply(((enabled, _, _)) => Some(enabled)),
-    streamArn: streamInfo->Pulumi.Output.apply(((_, streamArn, _)) =>
-      streamArn->Belt.Option.getWithDefault("")
-    ),
+    streamArn: streamInfo->Pulumi.Output.apply(((_, streamArn, _)) => streamArn->Option.getOr("")),
     streamLabel: streamInfo->Pulumi.Output.apply(((_, _, streamLabel)) => streamLabel),
     ttl: newTtl,
     pointInTimeRecovery: newPointInTimeRecovery,

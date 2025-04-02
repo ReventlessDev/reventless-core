@@ -48,11 +48,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
     resolve(result.contents)
   })
   ->FTP.Client.onError(err => {
-    resolve(
-      Belt.Result.Error(
-        err->Js.Exn.message->Belt.Option.getWithDefault("Error contains no message."),
-      ),
-    )
+    resolve(Belt.Result.Error(err->Js.Exn.message->Option.getOr("Error contains no message.")))
     // client->FTP.Client.end_
   })
   ->FTP.Client.onTimeout(() =>
@@ -97,7 +93,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             ->NodeStreams.Readable.pipe(
               (path ++ ("/" ++ filename))
               ->Message.log("FTPHandler: path for write stream")
-              ->FTP.createWriteStream(sftp, ~path=_)
+              ->(FTP.createWriteStream(sftp, ~path=_))
               ->NodeStreams.Writable.onFinish(() => {
                 result := Ok(true)
                 Js.log("FTPHandler: writable ended")

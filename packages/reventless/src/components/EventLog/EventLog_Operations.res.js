@@ -4,7 +4,6 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -40,7 +39,7 @@ function Make(Spec, Ops) {
         var err$1 = err._1;
         var msg = "EventLog.appendFn(" + Spec.Id.toString(id) + "): EventTopic.publish Error: ";
         console.log(msg, err$1);
-        return Js_exn.raiseError(msg + Belt_Option.getWithDefault(err$1.message, "no error message given"));
+        return Js_exn.raiseError(msg + Core__Option.getOr(err$1.message, "no error message given"));
       }
       throw err;
     }

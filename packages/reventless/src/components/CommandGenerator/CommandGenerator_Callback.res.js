@@ -15,7 +15,7 @@ function Make(Spec, AggregateSpec, Behaviour) {
     var id = payload.arguments.id;
     var meta_service = AggregateSpec.name;
     var meta_time = Message$Reventless.nowAsISOString();
-    var meta_ip = Belt_Option.getWithDefault(Caml_option.undefined_to_opt(payload.meta.ip.shift()), "");
+    var meta_ip = Core__Option.getOr(Caml_option.undefined_to_opt(payload.meta.ip.shift()), "");
     var meta_user = payload.meta.user;
     var meta = {
       service: meta_service,
@@ -28,7 +28,7 @@ function Make(Spec, AggregateSpec, Behaviour) {
     var argumentsJson = Core__Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
             return Js_json.decodeObject(JSON.parse(jsonString));
           }));
-    var params = argumentsJson !== undefined ? Js_dict.values(argumentsJson) : Js_exn.raiseError("Couldn't decode:" + Belt_Option.getWithDefault(JSON.stringify(payload.arguments), "<payload.arguments>"));
+    var params = argumentsJson !== undefined ? Js_dict.values(argumentsJson) : Js_exn.raiseError("Couldn't decode:" + Core__Option.getOr(JSON.stringify(payload.arguments), "<payload.arguments>"));
     params[0] = payload.command;
     console.log("CommandGenerator: generated command:", params);
     var decodedCommand = Behaviour.resolverConfig.commandDecoder(params);

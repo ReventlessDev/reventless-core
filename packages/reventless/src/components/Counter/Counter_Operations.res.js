@@ -5,6 +5,7 @@ var Decco = require("@rescript-labs/decco/src/Decco.res.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Counter$Reventless = require("./Counter.res.js");
 
@@ -64,7 +65,7 @@ function groupCountItemsByCounterId(countItems) {
   var dict = {};
   countItems.forEach(function (param) {
         var counterId = param.counterId;
-        var currentReferences = Belt_Option.getWithDefault(Js_dict.get(dict, counterId), []);
+        var currentReferences = Core__Option.getOr(Js_dict.get(dict, counterId), []);
         dict[counterId] = currentReferences.concat([param.reference]);
       });
   return Js_dict.entries(dict);

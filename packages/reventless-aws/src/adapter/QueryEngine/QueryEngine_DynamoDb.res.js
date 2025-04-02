@@ -4,7 +4,6 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Pulumi = require("@pulumi/pulumi");
@@ -132,7 +131,7 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
   var filterConfigs = filterConfigsOpt !== undefined ? filterConfigsOpt : [];
   var ascending = ascendingOpt !== undefined ? ascendingOpt : true;
   var limit = limitOpt !== undefined ? limitOpt : 1;
-  var match = Belt_Option.getWithDefault(createSubIdExprNamesValues(subIdConfig), [
+  var match = Core__Option.getOr(createSubIdExprNamesValues(subIdConfig), [
         [],
         []
       ]);
@@ -181,7 +180,7 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
     Logger$Reventless.error("File \"QueryEngine_DynamoDb.res\", line 108, characters 33-40", undefined, undefined, "Error:", err);
     return [];
   }
-  return Belt_Option.getWithDefault(result.Items, []).map(function (js) {
+  return Core__Option.getOr(result.Items, []).map(function (js) {
               return JSON.parse(JSON.stringify(js));
             });
 }
@@ -223,7 +222,7 @@ async function scanByTableName(tableName, filterConfigs, limit) {
     }
     throw e;
   }
-  return Belt_Option.getWithDefault(result.Items, []).map(function (js) {
+  return Core__Option.getOr(result.Items, []).map(function (js) {
               return JSON.parse(JSON.stringify(js));
             });
 }

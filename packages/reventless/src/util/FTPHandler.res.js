@@ -4,7 +4,7 @@
 var SSH2 = require("@reventless/bs-ssh2/src/SSH2.res.js");
 var Ssh2 = require("ssh2");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var FTP$Reventless = require("./FTP.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../Message.res.js");
@@ -48,7 +48,7 @@ function ftp(connectionParams, ftpAction) {
                   })).on("error", (function (err) {
                   resolve({
                         TAG: "Error",
-                        _0: Belt_Option.getWithDefault(err.message, "Error contains no message.")
+                        _0: Core__Option.getOr(err.message, "Error contains no message.")
                       });
                 })).on("timeout", (function () {
                 client.emit("error", Message$Reventless.log(new Error("SSH-Client Error: Connection timed out"), "Client.onTimeout"));

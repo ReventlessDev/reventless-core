@@ -21,7 +21,7 @@ let getRemoteStorageResources = (pluginName, queryDbName) =>
       plugin.readModels
       ->Js.Dict.get(queryDbName)
       ->Option.map((readModel: ReadModel.outputs) => readModel.queryDb.resources)
-      ->Belt.Option.getWithDefault([])
+      ->Option.getOr([])
     )
   }) {
   | Some(resources) => resources

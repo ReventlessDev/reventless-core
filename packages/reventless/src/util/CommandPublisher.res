@@ -62,7 +62,7 @@ module Make = (Spec: Spec, Config: Config) => {
         switch await promise {
         | () => Logger.debug(~loc=__LOC__, "send", `finished chunk ${chunkCountStr}: ${sizeStr}`)
         | exception Js.Exn.Error(e) =>
-          let errorMessage = e->Js.Exn.message->Belt.Option.getWithDefault("unknown Error")
+          let errorMessage = e->Js.Exn.message->Option.getOr("unknown Error")
           Js.log(
             `CommandPublisher.send: Error: Couldn't publish chunk ${chunkCountStr}: ${errorMessage}`,
           )

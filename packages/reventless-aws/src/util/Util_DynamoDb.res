@@ -4,9 +4,7 @@ open ReventlessSpec.Adapter
 let toInfo: table => Pulumi.Output.t<string> = ({hashKey, rangeKey}) =>
   (hashKey, rangeKey)
   ->Pulumi.Output.all2
-  ->Pulumi.Output.apply(((hashKey, rangeKey)) =>
-    hashKey ++ ("," ++ rangeKey->Belt.Option.getWithDefault(""))
-  )
+  ->Pulumi.Output.apply(((hashKey, rangeKey)) => hashKey ++ ("," ++ rangeKey->Option.getOr("")))
 
 let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
   (name, id, arn, hashKey, rangeKey)

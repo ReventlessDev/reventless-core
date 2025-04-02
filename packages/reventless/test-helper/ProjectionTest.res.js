@@ -36,7 +36,7 @@ function Make(Projection) {
     return Belt_Option.getExn(getSubId(state)) === subId;
   };
   var states = function (store, id) {
-    return Belt_Option.getWithDefault(Js_dict.get(store, id), []);
+    return Core__Option.getOr(Js_dict.get(store, id), []);
   };
   var setStates = function (store, id, states) {
     store[id] = states;
@@ -54,7 +54,7 @@ function Make(Projection) {
     store[id] = [];
   };
   var deleteSubState = function (store, id, subId, getSubId) {
-    store[id] = Belt_Option.getWithDefault(Core__Option.map(Js_dict.get(store, id), (function (states) {
+    store[id] = Core__Option.getOr(Core__Option.map(Js_dict.get(store, id), (function (states) {
                 return states.filter(function (state) {
                             return Caml_obj.notequal(getSubId(state), subId);
                           });
@@ -236,7 +236,7 @@ function Make(Projection) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
                     Object.keys(store)[0],
-                    Belt_Option.getWithDefault(Js_dict.values(store)[0], [])
+                    Core__Option.getOr(Js_dict.values(store)[0], [])
                   ]), [
                 1,
                 testId.contents,
@@ -248,7 +248,7 @@ function Make(Projection) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
                     Object.keys(store)[0],
-                    Belt_Option.getWithDefault(Js_dict.values(store)[0], [])
+                    Core__Option.getOr(Js_dict.values(store)[0], [])
                   ]), [
                 1,
                 id,
@@ -264,7 +264,7 @@ function Make(Projection) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
                     Object.keys(store)[0],
-                    Belt_Option.getWithDefault(Js_dict.values(store)[0], []).length,
+                    Core__Option.getOr(Js_dict.values(store)[0], []).length,
                     Js_dict.values(store)[0][0]
                   ]), [
                 1,
@@ -278,7 +278,7 @@ function Make(Projection) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
                     Object.keys(store)[0],
-                    Belt_Option.getWithDefault(Js_dict.values(store)[0], []).length,
+                    Core__Option.getOr(Js_dict.values(store)[0], []).length,
                     Js_dict.values(store)[0][0]
                   ]), [
                 1,

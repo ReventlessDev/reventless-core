@@ -62,7 +62,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
   let resourcesMaker: Reventless.QueryDb.resolversResourcesMaker = allQueryDbs => {
     let resolversByIndex = indexes->Array.map(({index} as indexConfig) => {
       let name = name ++ ("By" ++ index->StringLabels.capitalize_ascii)
-      let idField = indexConfig.idField->Belt.Option.getWithDefault(index)
+      let idField = indexConfig.idField->Option.getOr(index)
       switch indexConfig.authorization {
       | None =>
         Resolver.makeUnitResolver(

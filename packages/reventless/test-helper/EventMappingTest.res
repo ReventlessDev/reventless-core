@@ -197,12 +197,12 @@ module Make = (
       let targetHistory =
         targetHistories
         ->Js.Dict.get(id)
-        ->Belt.Option.getWithDefault([])
-        ->Array.concat(targetEvents->Js.Dict.get(id)->Belt.Option.getWithDefault([]))
+        ->Option.getOr([])
+        ->Array.concat(targetEvents->Js.Dict.get(id)->Option.getOr([]))
       let newEvents = TargetAggregate.exec({...TestFixtures.context, id}, command, targetHistory)
       targetEvents->Js.Dict.set(
         id,
-        targetEvents->Js.Dict.get(id)->Belt.Option.getWithDefault([])->Array.concat(newEvents),
+        targetEvents->Js.Dict.get(id)->Option.getOr([])->Array.concat(newEvents),
       )
       targetEvents
     })

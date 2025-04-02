@@ -127,7 +127,7 @@ let insertTtl: (Js.Json.t, option<int>) => Js.Json.t = (json, ttl) =>
       )
     )()
   )
-  ->Belt.Option.getWithDefault(json)
+  ->Option.getOr(json)
 
 /** max. batch size is 25 */
 let batchWrite = itemRequestMap => {

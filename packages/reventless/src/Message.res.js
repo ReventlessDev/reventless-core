@@ -75,7 +75,7 @@ function serviceNameOfMsg(msgJson) {
 }
 
 function variantNameOfJson(json) {
-  return Belt_Option.getWithDefault(Core__Option.flatMap(Core__Option.flatMap(Js_json.decodeArray(json), (function (evtArr) {
+  return Core__Option.getOr(Core__Option.flatMap(Core__Option.flatMap(Js_json.decodeArray(json), (function (evtArr) {
                         return evtArr[0];
                       })), Js_json.decodeString), "unknown");
 }
@@ -97,15 +97,15 @@ function idOfEvent$pJson(json) {
 
 function idMetaEventOfEvent$pJson(json) {
   var dict = Js_json.decodeObject(json);
-  var id = Belt_Option.getWithDefault(Core__Option.flatMap(dict, (function (dict) {
+  var id = Core__Option.getOr(Core__Option.flatMap(dict, (function (dict) {
               return Core__Option.flatMap(dict["id"], Js_json.decodeString);
             })), "unknownId");
-  var meta = Belt_Option.getWithDefault(Core__Option.flatMap(dict, (function (dict) {
+  var meta = Core__Option.getOr(Core__Option.flatMap(dict, (function (dict) {
               return Core__Option.map(dict["meta"], (function (metaStr) {
                             return JSON.stringify(metaStr);
                           }));
             })), "noMeta");
-  var $$event = Belt_Option.getWithDefault(Core__Option.flatMap(dict, (function (dict) {
+  var $$event = Core__Option.getOr(Core__Option.flatMap(dict, (function (dict) {
               return Core__Option.map(dict["event"], (function (eventStr) {
                             return JSON.stringify(eventStr);
                           }));
