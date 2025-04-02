@@ -33,15 +33,15 @@ function buildStateJson(dict) {
 
 function parseDynamoDbStreamRecord(buildJson, record) {
   var record$1 = record.dynamodb;
-  var id = Belt_Option.flatMap(record$1, (function (record) {
+  var id = Core__Option.flatMap(record$1, (function (record) {
           return DynamoDb_Util$AwsSdk.unmarshall(undefined, record.Keys.id);
         }));
-  var newImageJson = Core__Option.map(Core__Option.map(Belt_Option.flatMap(record$1, (function (dynamodb) {
+  var newImageJson = Core__Option.map(Core__Option.map(Core__Option.flatMap(record$1, (function (dynamodb) {
                   return dynamodb.NewImage;
                 })), (function (newImage) {
               return DynamoDb_Util$AwsSdk.unmarshallDict(undefined, newImage);
             })), buildJson);
-  var oldImageJson = Core__Option.map(Core__Option.map(Belt_Option.flatMap(record$1, (function (dynamodb) {
+  var oldImageJson = Core__Option.map(Core__Option.map(Core__Option.flatMap(record$1, (function (dynamodb) {
                   return dynamodb.OldImage;
                 })), (function (oldImage) {
               return DynamoDb_Util$AwsSdk.unmarshallDict(undefined, oldImage);

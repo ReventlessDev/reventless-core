@@ -110,7 +110,7 @@ let calcPurgeTime = ttl => {
 }
 let insertTtl: (Js.Json.t, option<int>) => Js.Json.t = (json, ttl) =>
   ttl
-  ->Belt.Option.flatMap(ttl =>
+  ->Option.flatMap(ttl =>
     (
       json
       ->Js.Json.decodeObject

@@ -28,7 +28,7 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
   switch await items
   ->Array.map(async (item: Js.Dict.t<string>) => {
     let id = item->Js.Dict.get(tableConfig.id)
-    let sort = tableConfig.sort->Belt.Option.flatMap(sortField => item->Js.Dict.get(sortField))
+    let sort = tableConfig.sort->Option.flatMap(sortField => item->Js.Dict.get(sortField))
     switch (id, sort) {
     | (Some(id), Some(sort)) =>
       switch await AwsSdk.DynamoDb.DocumentClient.deleteByIdSort(

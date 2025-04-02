@@ -1,7 +1,7 @@
 let bucketNameOfAllTasks: (array<Task.outputs>, string) => option<string> = (tasks, taskName) =>
   tasks
   ->Array.find(task => task.name == taskName)
-  ->Belt.Option.flatMap(task => task.bucket)
+  ->Option.flatMap(task => task.bucket)
   ->Option.map(bucket => bucket.bucket->Pulumi.Output.get)
 
 let bucketNameOfTaskExn = (tasks, taskName) =>

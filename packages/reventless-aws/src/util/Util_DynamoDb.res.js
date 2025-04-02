@@ -175,7 +175,7 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
           restoreSourceName: Core__Option.map(restoreSourceName, (function (prim) {
                   return prim;
                 })),
-          restoreDateTime: Belt_Option.flatMap(restoreSourceName, (function (param) {
+          restoreDateTime: Core__Option.flatMap(restoreSourceName, (function (param) {
                   return Core__Option.map(restoreDateTime, (function (prim) {
                                 return prim;
                               }));
@@ -195,7 +195,7 @@ function option2Str(opt) {
 }
 
 function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, tags, opts, name) {
-  var restoreSourceName = Belt_Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
+  var restoreSourceName = Core__Option.flatMap(new Pulumi.Config("restore").getObject("tables"), (function (tables) {
           return Js_dict.get(tables, name);
         }));
   var match = Util_DynamoDb_TableManager$ReventlessAws.getDependencies();

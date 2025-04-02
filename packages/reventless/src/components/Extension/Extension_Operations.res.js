@@ -16,7 +16,7 @@ var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-sp
 
 function Make(Spec, MappingSpec, Mappings) {
   var findOutgoingMapping = function (aggregateNameOpt, mappings) {
-    return Belt_Option.flatMap(aggregateNameOpt, (function (aggregateName) {
+    return Core__Option.flatMap(aggregateNameOpt, (function (aggregateName) {
                   return mappings.find(function (Mapping) {
                               return Mapping.aggregateName === aggregateName;
                             });

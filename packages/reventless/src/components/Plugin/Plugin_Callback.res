@@ -17,7 +17,7 @@ module Make = (Spec: Spec): T => {
   let handleEvent = async (eventJson', eventHandlersByService) =>
     await eventJson'
     ->Message.serviceNameOfMsg
-    ->Belt.Option.flatMap(serviceName => eventHandlersByService->Js.Dict.get(serviceName))
+    ->Option.flatMap(serviceName => eventHandlersByService->Js.Dict.get(serviceName))
     ->Belt.Option.mapWithDefault(Js.Promise.resolve(), async eventHandlers => {
       await eventHandlers
       ->Array.map(eventHandler => eventHandler(eventJson', Spec.pluginDefinition))

@@ -83,7 +83,7 @@ function Make(Spec, Ops) {
     var eventsJson = await Ops.storage.replay(Spec.Id.toString(id));
     var id$1 = Spec.Id.toString(id);
     return eventsJson.map(function (json) {
-                var x = Core__Option.map(Core__Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
+                var x = Core__Option.map(Core__Option.map(Core__Option.flatMap(Js_json.decodeObject(json), (function (dict) {
                                 return Js_dict.get(dict, "event");
                               })), (function (json) {
                             return [

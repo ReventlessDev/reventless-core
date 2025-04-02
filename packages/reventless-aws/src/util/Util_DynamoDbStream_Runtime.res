@@ -17,17 +17,17 @@ let buildStateJson = dict => dict->Js.Json.object_
 
 let parseDynamoDbStreamRecord = (buildJson, record: PulumiAws.DynamoDb.Stream.record) => {
   let record = record.dynamodb
-  let id = record->Belt.Option.flatMap(record => AwsSdk.DynamoDb.Util.unmarshall(record.keys.id))
+  let id = record->Option.flatMap(record => AwsSdk.DynamoDb.Util.unmarshall(record.keys.id))
 
   let newImageJson =
     record
-    ->Belt.Option.flatMap(dynamodb => dynamodb.newImage)
+    ->Option.flatMap(dynamodb => dynamodb.newImage)
     ->Option.map(newImage => AwsSdk.DynamoDb.Util.unmarshallDict(newImage))
     ->Option.map(buildJson)
 
   let oldImageJson =
     record
-    ->Belt.Option.flatMap(dynamodb => dynamodb.oldImage)
+    ->Option.flatMap(dynamodb => dynamodb.oldImage)
     ->Option.map(oldImage => AwsSdk.DynamoDb.Util.unmarshallDict(oldImage))
     ->Option.map(buildJson)
 

@@ -63,8 +63,8 @@ let serviceNameOfMsg = msgJson =>
 let variantNameOfJson = json =>
   json
   ->Js.Json.decodeArray
-  ->Belt.Option.flatMap(evtArr => evtArr->Array.get(0))
-  ->Belt.Option.flatMap(evt => evt->Js.Json.decodeString)
+  ->Option.flatMap(evtArr => evtArr->Array.get(0))
+  ->Option.flatMap(evt => evt->Js.Json.decodeString)
   ->Belt.Option.getWithDefault("unknown")
 
 // TODO: group all functions on event`Json into submodule with the according type
@@ -79,7 +79,7 @@ let eventNameOfEvent'Json = json => {
 let idOfEvent'Json = json => {
   json
   ->Js.Json.decodeObject
-  ->Belt.Option.flatMap(event' => event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString)
+  ->Option.flatMap(event' => event'->Js.Dict.unsafeGet("id")->Js.Json.decodeString)
 }
 
 let idMetaEventOfEvent'Json = json => {
@@ -96,7 +96,7 @@ let idMetaEventOfEvent'Json = json => {
     ->Belt.Option.getWithDefault("noMeta")
   let event =
     dict
-    ->Belt.Option.flatMap(dict =>
+    ->Option.flatMap(dict =>
       dict->Dict.get("event")->Option.map(eventStr => eventStr->Js.Json.stringify)
     )
     ->Belt.Option.getWithDefault("noEvent")

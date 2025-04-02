@@ -78,7 +78,7 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
 
   let decodeEvent = (id, json) =>
     Js.Json.decodeObject(json)
-    ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
+    ->Option.flatMap(dict => dict->Js.Dict.get("event"))
     ->Option.map(json => (json, Spec.event_decode(json)))
     ->Option.map(x =>
       switch x {

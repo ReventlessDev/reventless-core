@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var LibDynamodb = require("@aws-sdk/lib-dynamodb");
@@ -168,7 +169,7 @@ function calcPurgeTime(ttl) {
 }
 
 function insertTtl(json, ttl) {
-  return Belt_Option.getWithDefault(Belt_Option.flatMap(ttl, (function (ttl) {
+  return Belt_Option.getWithDefault(Core__Option.flatMap(ttl, (function (ttl) {
                     return Belt_Option.mapWithDefault(Js_json.decodeObject(json), (function () {
                                     console.log("Util_DynamoDb_Runtime-ReventlessAws" + ".insertTtl: Error: Couldn't decode JSON", JSON.stringify(json));
                                   }), (function (obj) {

@@ -2,7 +2,7 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
@@ -11,7 +11,7 @@ var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function Make(Spec, MappingSpec, Mappings) {
   var findOutgoingMapping = function (aggregateNameOpt, mappings) {
-    return Belt_Option.flatMap(aggregateNameOpt, (function (aggregateName) {
+    return Core__Option.flatMap(aggregateNameOpt, (function (aggregateName) {
                   return mappings.find(function (Mapping) {
                               return Mapping.aggregateName === aggregateName;
                             });

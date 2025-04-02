@@ -105,7 +105,7 @@ let makeTable = (
   let restoreSourceName =
     Pulumi.Config.make(Some("restore"))
     ->Pulumi.Config.getObject("tables")
-    ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name))
+    ->Option.flatMap(tables => tables->Js.Dict.get(name))
 
   let (dependencies, registerResource) = Util_DynamoDb_TableManager.getDependencies()
 

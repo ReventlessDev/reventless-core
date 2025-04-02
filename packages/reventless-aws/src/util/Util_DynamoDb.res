@@ -135,7 +135,7 @@ let makeTableArgs = (
       enabled: true,
     }->Pulumi.Input.make,
     restoreSourceName: ?restoreSourceName->Option.map(Pulumi.Input.make),
-    restoreDateTime: ?restoreSourceName->Belt.Option.flatMap(_ =>
+    restoreDateTime: ?restoreSourceName->Option.flatMap(_ =>
       restoreDateTime->Option.map(Pulumi.Input.make)
     ),
     restoreToLatestTime: ?restoreSourceName->Option.map(_ =>
@@ -164,7 +164,7 @@ let makeTable = (
   let restoreSourceName =
     Pulumi.Config.make(Some("restore"))
     ->Pulumi.Config.getObject("tables")
-    ->Belt.Option.flatMap(tables => tables->Js.Dict.get(name))
+    ->Option.flatMap(tables => tables->Js.Dict.get(name))
 
   let (dependencies, registerResource) = Util_DynamoDb_TableManager.getDependencies()
 

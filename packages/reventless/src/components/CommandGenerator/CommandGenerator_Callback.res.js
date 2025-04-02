@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Message$Reventless = require("../../Message.res.js");
 
 function Make(Spec, AggregateSpec, Behaviour) {
@@ -24,7 +25,7 @@ function Make(Spec, AggregateSpec, Behaviour) {
       msgId: msgId,
       correlationId: msgId
     };
-    var argumentsJson = Belt_Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
+    var argumentsJson = Core__Option.flatMap(JSON.stringify(payload.arguments), (function (jsonString) {
             return Js_json.decodeObject(JSON.parse(jsonString));
           }));
     var params = argumentsJson !== undefined ? Js_dict.values(argumentsJson) : Js_exn.raiseError("Couldn't decode:" + Belt_Option.getWithDefault(JSON.stringify(payload.arguments), "<payload.arguments>"));

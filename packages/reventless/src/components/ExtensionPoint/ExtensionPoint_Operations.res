@@ -17,7 +17,7 @@ module Make = (
   Mappings: Mappings with module Spec := MappingSpec,
 ) => {
   let findOutgoingMapping = (aggregateNameOpt, mappings) =>
-    aggregateNameOpt->Belt.Option.flatMap(aggregateName =>
+    aggregateNameOpt->Option.flatMap(aggregateName =>
       mappings->Array.find((module(Mapping: Mappings.Mapping)) =>
         Mapping.aggregateName == aggregateName
       )

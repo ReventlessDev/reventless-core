@@ -27,7 +27,7 @@ module Make = (
     let argumentsJson =
       payload.arguments
       ->Js.Json.stringifyAny // FIXME: find another way to transform a Js.t into Js.Json.t
-      ->Belt.Option.flatMap(jsonString => jsonString->Js.Json.parseExn->Js.Json.decodeObject)
+      ->Option.flatMap(jsonString => jsonString->Js.Json.parseExn->Js.Json.decodeObject)
     let params = switch argumentsJson {
     | Some(obj) => obj->Js.Dict.values
     | None =>

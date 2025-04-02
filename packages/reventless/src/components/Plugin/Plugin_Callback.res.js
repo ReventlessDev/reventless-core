@@ -4,13 +4,14 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.res.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Message$Reventless = require("../../Message.res.js");
 var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function Make(Spec) {
   var handleEvent = async function (eventJson$p, eventHandlersByService) {
-    return await Belt_Option.mapWithDefault(Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(eventJson$p), (function (serviceName) {
+    return await Belt_Option.mapWithDefault(Core__Option.flatMap(Message$Reventless.serviceNameOfMsg(eventJson$p), (function (serviceName) {
                       return Js_dict.get(eventHandlersByService, serviceName);
                     })), Promise.resolve(), (async function (eventHandlers) {
                   return await Util_Promise$Reventless.toUnit(Promise.all(eventHandlers.map(function (eventHandler) {
