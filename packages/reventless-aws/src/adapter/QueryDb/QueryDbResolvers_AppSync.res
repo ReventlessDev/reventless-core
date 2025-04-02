@@ -220,9 +220,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
       )
     })
 
-    Belt.Array.concatMany([resolversByIndex, idResolvers, idsResolvers])->Array.map(
-      Util.AppSync.toResource,
-    )
+    Array.flat([resolversByIndex, idResolvers, idsResolvers])->Array.map(Util.AppSync.toResource)
   }
 
   let resolvers = switch resolverByIdMultiple {

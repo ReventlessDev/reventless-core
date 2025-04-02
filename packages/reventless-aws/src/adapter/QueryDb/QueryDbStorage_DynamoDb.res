@@ -34,10 +34,10 @@ let attributes = (sortField, indexes) =>
         indexConfig.subIdField->Belt.Option.mapWithDefault([], sortField => [
           {name: sortField, type_: "S"},
         ]),
-      ]->Belt.Array.concatMany
+      ]->Array.flat
     )
-    ->Belt.Array.concatMany,
-  ]->Belt.Array.concatMany
+    ->Array.flat,
+  ]->Array.flat
 
 let dataSource = (name, table, api, apiRole, opts) => {
   let _dataSourceRolePolicy = {

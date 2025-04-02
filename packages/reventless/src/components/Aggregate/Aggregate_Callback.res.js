@@ -51,7 +51,7 @@ function Make(Spec, Behaviour, Ops) {
   };
   var handleCommands = async function (topicItems) {
     Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 67, characters 22-29", undefined, undefined, "starting", "Aggregate.execCommands");
-    return Belt_Array.concatMany(await Promise.all(groupTopicItemsById(topicItems).map(async function (param) {
+    return (await Promise.all(groupTopicItemsById(topicItems).map(async function (param) {
                         var topicItemsForId = param[1];
                         var id = param[0];
                         var history = await Ops.eventLog.replay(id);
@@ -126,16 +126,16 @@ function Make(Spec, Behaviour, Ops) {
                                   ]
                                 }), processCommand);
                         var events;
-                        events = result.TAG === "Ok" ? Belt_Array.concatMany(result._0[1].map(function (param) {
-                                    var meta = param[1];
-                                    return param[0].map(function ($$event) {
-                                                return {
-                                                        id: id,
-                                                        meta: meta,
-                                                        event: $$event
-                                                      };
-                                              });
-                                  })) : Js_exn.raiseError(result._0);
+                        events = result.TAG === "Ok" ? result._0[1].map(function (param) {
+                                  var meta = param[1];
+                                  return param[0].map(function ($$event) {
+                                              return {
+                                                      id: id,
+                                                      meta: meta,
+                                                      event: $$event
+                                                    };
+                                            });
+                                }).flat() : Js_exn.raiseError(result._0);
                         if (events.length !== 0) {
                           var eventCount = String(events.length);
                           Logger$Reventless.debug(undefined, undefined, undefined, "Aggregate.handleCommands(" + Spec.Id.toString(id) + "): " + eventCount + " Event(s) generated:", events.map(function (event$p) {
@@ -166,7 +166,7 @@ function Make(Spec, Behaviour, Ops) {
                                             _0: reference
                                           };
                                   });
-                      })));
+                      }))).flat();
   };
   return {
           Spec: Spec,

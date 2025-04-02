@@ -5,7 +5,6 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
@@ -238,7 +237,7 @@ async function retryBatchWriteIfNecessary(p, allItems, retry, maxRetries) {
 async function batchWriteWithRetries(retryOpt, maxRetriesOpt, batchWriteRequests) {
   var retry = retryOpt !== undefined ? retryOpt : 0;
   var maxRetries = maxRetriesOpt !== undefined ? maxRetriesOpt : 5;
-  var all = Belt_Array.concatMany(Js_dict.values(batchWriteRequests)).length.toString();
+  var all = Js_dict.values(batchWriteRequests).flat().length.toString();
   var writeOutput;
   try {
     writeOutput = await batchWrite(batchWriteRequests);
@@ -276,7 +275,7 @@ async function batchWriteWithRetries(retryOpt, maxRetriesOpt, batchWriteRequests
     console.log("Retry batchWrite for " + unprocessedRequestCount + " unprocessed items after " + timeout$1.toString() + " ms");
     return await batchWriteWithRetries(retry + 1 | 0, maxRetries, unprocessedRequests);
   }
-  var count = Belt_Array.concatMany(Js_dict.values(batchWriteRequests)).length.toString();
+  var count = Js_dict.values(batchWriteRequests).flat().length.toString();
   return {
           TAG: "Error",
           _0: "batchWrite failed " + count + "/" + all + " requests after " + maxRetries.toString() + " retries"

@@ -84,7 +84,7 @@ module Make = (
         )
 
         let eventLog = eventLog->Component.outputs
-        let resources = [eventLog.resources, eventLog.eventTopic.resources]->Belt.Array.concatMany
+        let resources = [eventLog.resources, eventLog.eventTopic.resources]->Array.flat
         SpecificCommandTopic.connect(~name, ~commandTopic, ~runtime, ~resources, ~opts)
         commandTopic
       })

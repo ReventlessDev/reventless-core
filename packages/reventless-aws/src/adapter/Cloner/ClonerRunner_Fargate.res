@@ -100,7 +100,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
       )
     )
     ->Pulumi.Output.all
-    ->Pulumi.Output.apply(s => Belt.Array.concatMany(s))
+    ->Pulumi.Output.apply(s => Array.flat(s))
 
   let resources =
     (secretsManagerAccessPolicy.arn, taskRunnerPolicy.arn, vpcConfig, secrets)

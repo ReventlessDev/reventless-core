@@ -364,9 +364,9 @@ function actionsWithId(action) {
 }
 
 function groupActionsById(actions) {
-  var allActionsWithId = Belt_Array.concatMany(actions.map(function (action) {
-            return actionsWithId(action);
-          }));
+  var allActionsWithId = actions.map(function (action) {
+          return actionsWithId(action);
+        }).flat();
   var ids = allActionsWithId.map(function (param) {
         return param[0];
       });

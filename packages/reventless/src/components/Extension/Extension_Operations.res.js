@@ -22,9 +22,9 @@ function Make(Spec, MappingSpec, Mappings) {
                 }));
   };
   var mapIncomingEvent = function (event$p, pluginDef, queryEngine) {
-    return Belt_Array.concatMany(Mappings.mappings.map(function (Mapping) {
-                    return Mapping.mapIncomingEvent(event$p, pluginDef, queryEngine);
-                  }));
+    return Mappings.mappings.map(function (Mapping) {
+                  return Mapping.mapIncomingEvent(event$p, pluginDef, queryEngine);
+                }).flat();
   };
   var mapOutgoingEvent = function (eventJson$p, pluginDef) {
     var Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(eventJson$p), Mappings.mappings);

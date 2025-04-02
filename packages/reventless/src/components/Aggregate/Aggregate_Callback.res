@@ -140,7 +140,7 @@ module Make = (
         | Ok((_, generatedEventsWithMeta)) =>
           generatedEventsWithMeta
           ->Array.map(((events, meta)) => events->Array.map(event => {Message.id, meta, event}))
-          ->Belt.Array.concatMany
+          ->Array.flat
         | Error(error) => Js.Exn.raiseError(error)
         }
         switch events {
@@ -169,6 +169,6 @@ module Make = (
         }
       })
       ->Js.Promise.all
-    results->Belt.Array.concatMany
+    results->Array.flat
   }
 }

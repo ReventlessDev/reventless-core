@@ -18,9 +18,9 @@ function Make(ReadModelSpec, Spec) {
   var load = async function (id) {
     var result = await Spec.jsonOps.load(ReadModelSpec.Id.toString(id));
     return Belt_Result.map(result, (function (states) {
-                  return Belt_Array.concatMany(states.map(function (state) {
-                                  return decode(id, state);
-                                }));
+                  return states.map(function (state) {
+                                return decode(id, state);
+                              }).flat();
                 }));
   };
   var save = async function (id, state, saveMode, ttl) {

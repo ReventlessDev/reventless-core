@@ -35,7 +35,7 @@ module Make = (
         queryEngine,
       )
     )
-    ->Belt.Array.concatMany
+    ->Array.flat
 
   let applyCommandAction = async action =>
     switch action {

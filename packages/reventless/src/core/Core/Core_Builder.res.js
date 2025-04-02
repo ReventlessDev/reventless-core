@@ -94,9 +94,9 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
               var resources = Pulumi.all(extensionPointsOutputs.map(function (extensionPoint) {
                           return extensionPoint.eventTopic;
                         })).apply(function (eventTopics) {
-                    return Belt_Array.concatMany(eventTopics.map(function (eventTopic) {
-                                    return eventTopic.resources;
-                                  }));
+                    return eventTopics.map(function (eventTopic) {
+                                  return eventTopic.resources;
+                                }).flat();
                   });
               var fakePluginDefinition = {
                 id: "Core@FAKE",

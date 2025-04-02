@@ -26,7 +26,7 @@ module Make = (
       aggregateNames->Belt.Array.some(aggregateName => aggregateName == name)
     )
     ->Array.map(((_, resources)) => resources)
-    ->Belt.Array.concatMany
+    ->Array.flat
 
   let construct = (
     ~aggregateResources,

@@ -26,14 +26,14 @@ function Make(ReadModelSpec, Mappings, Spec) {
       })(Mappings);
   var eventsHandler = function (jsons) {
     var eventCount = jsons.length;
-    return Projection$Reventless.handleActions(Belt_Array.concatMany(Belt_Array.mapWithIndex(jsons, (function (idx, json) {
-                          var idx$1 = idx + 1 | 0;
-                          var sourceName = Belt_Result.getWithDefault(Belt_Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
-                                      return context.meta.service;
-                                    })), "");
-                          console.log("ReadModel: handling event " + String(idx$1) + "/" + String(eventCount) + " from " + sourceName + ":", json);
-                          return EventProjector.map(sourceName, json);
-                        }))), Spec.operations, ReadModelSpec.subIdConfig);
+    return Projection$Reventless.handleActions(Belt_Array.mapWithIndex(jsons, (function (idx, json) {
+                        var idx$1 = idx + 1 | 0;
+                        var sourceName = Belt_Result.getWithDefault(Belt_Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
+                                    return context.meta.service;
+                                  })), "");
+                        console.log("ReadModel: handling event " + String(idx$1) + "/" + String(eventCount) + " from " + sourceName + ":", json);
+                        return EventProjector.map(sourceName, json);
+                      })).flat(), Spec.operations, ReadModelSpec.subIdConfig);
   };
   return {
           EventProjector: EventProjector,

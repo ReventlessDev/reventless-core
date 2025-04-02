@@ -220,7 +220,7 @@ let actionsWithId = action =>
   }
 
 let groupActionsById = actions => {
-  let allActionsWithId = actions->Array.map(action => action->actionsWithId)->Belt.Array.concatMany
+  let allActionsWithId = actions->Array.map(action => action->actionsWithId)->Array.flat
   let ids = allActionsWithId->Array.map(((id, _)) => id)
   ids
   ->Belt.Set.String.fromArray

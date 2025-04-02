@@ -85,7 +85,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         }
       )
     )
-    ->Belt.Array.concatMany
+    ->Array.flat
 
   let mapIncomingCommands = doMapIncomingCommands(MappingImpl.mapIncomingCommand, ...)
 

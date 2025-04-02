@@ -111,7 +111,7 @@ module Make = (
           ->Pulumi.Output.apply(eventTopics =>
             eventTopics
             ->Array.map(eventTopic => eventTopic.resources)
-            ->Belt.Array.concatMany
+            ->Array.flat
           )
 
         let fakePluginDefinition: ReventlessSpec.Plugin.pluginDefinition = {

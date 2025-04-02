@@ -176,7 +176,7 @@ module Make = (
       ->Array.map(sourceEvent =>
         EventMapping.map(sourceId->Source.Id.makeFromString, sourceEvent, queryEngine)
       )
-      ->Belt.Array.concatMany
+      ->Array.flat
     let targetHistories = targetHistory->Js.Dict.fromArray
     let commands =
       (await targetActions
@@ -189,7 +189,7 @@ module Make = (
         }
       )
       ->Js.Promise.all)
-      ->Belt.Array.concatMany
+      ->Array.flat
     //  ->logTargetCommands
     //  newEvents->logTargetEvents;
     commands->Belt.Array.reduce(Js.Dict.empty(), (targetEvents, (id, command)) => {

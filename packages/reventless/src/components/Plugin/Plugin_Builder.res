@@ -356,7 +356,7 @@ module Make = (
           allQueryDbs
           ->QueryDb.allResolversMakers
           ->Array.map(resolverMaker => resolverMaker(allQueryDbs))
-          ->Belt.Array.concatMany
+          ->Array.flat
 
         module Set = Belt.Set.String
 
@@ -395,7 +395,7 @@ module Make = (
           ->Pulumi.Output.apply(eventTopics =>
             eventTopics
             ->Array.map(eventTopic => eventTopic.resources)
-            ->Belt.Array.concatMany
+            ->Array.flat
             ->Array.concat(
               corePluginExtensionPointUnwrapped.commandTopic.resources->Adapter.unwrappedToResources,
             )

@@ -140,20 +140,20 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
   var keyConditionExpression = ["#key = :value"].concat(match[0]).join(" AND ");
   var filterExpression = filterExpressions.length !== 0 ? filterExpressions.join(" AND ") : undefined;
   var match$2 = Belt_Array.unzip(match[1].concat(match$1[1]));
-  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromArray(Belt_Array.concatMany([
-                    [[
-                        ":value",
-                        toJson(id)
-                      ]],
-                    match$2[1]
-                  ]))));
-  var attributeNames = Js_dict.fromArray(Belt_Array.concatMany([
-            [[
-                "#key",
-                key
-              ]],
-            match$2[0]
-          ]));
+  var attributeValues = JSON.parse(JSON.stringify(Js_dict.fromArray([
+                  [[
+                      ":value",
+                      toJson(id)
+                    ]],
+                  match$2[1]
+                ].flat())));
+  var attributeNames = Js_dict.fromArray([
+          [[
+              "#key",
+              key
+            ]],
+          match$2[0]
+        ].flat());
   var params_ExpressionAttributeNames = attributeNames;
   var params_ExpressionAttributeValues = attributeValues;
   var params_IndexName = key === "id" ? undefined : key;

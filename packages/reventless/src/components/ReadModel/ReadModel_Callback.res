@@ -26,7 +26,7 @@ module Make = (
       )
       json->EventProjector.map(~sourceName=Some(sourceName))
     })
-    ->Belt.Array.concatMany
+    ->Array.flat
     ->Projection.handleActions(Spec.operations, ReadModelSpec.subIdConfig)
   }
 }

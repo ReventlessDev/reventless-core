@@ -39,7 +39,7 @@ module Make = (
     ->Array.map((module(Mapping: Mappings.Mapping)) =>
       Mapping.mapIncomingEvent(event', pluginDef, queryEngine)
     )
-    ->Belt.Array.concatMany
+    ->Array.flat
 
   let mapOutgoingEvent = (eventJson', pluginDef) =>
     switch eventJson'->Message.serviceNameOfMsg->findOutgoingMapping(Mappings.mappings) {

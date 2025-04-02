@@ -43,7 +43,7 @@ let allOutputsToResources = allOutputs =>
   allOutputs
   ->Dict.valuesToArray
   ->Array.map((eventTopic: outputs) => eventTopic.resources)
-  ->Belt.Array.concatMany
+  ->Array.flat
 
 let filter = (allEventTopics: allOutputs, sourceNames) =>
   sourceNames

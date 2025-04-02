@@ -123,7 +123,7 @@ module MakeCounterHandler = (
         }
       })
       ->Belt.Array.keepMap(entry => entry)
-      ->Belt.Array.concatMany
+      ->Array.flat
       ->Belt.Array.partition(resultType =>
         switch resultType {
         | Publisher(_) => true
@@ -139,7 +139,7 @@ module MakeCounterHandler = (
         }
       )
       ->Js.Promise.all)
-      ->Belt.Array.concatMany
+      ->Array.flat
       ->Js.Promise.resolve
     let counterActions = counterActions->Array.map(x =>
       switch x {

@@ -72,13 +72,13 @@ let queryByTableName = async (
 
   let (names, values) = subIdNamesValues->Array.concat(filterNamesValues)->Belt.Array.unzip
   let attributeValues =
-    Belt.Array.concatMany([[(":value", id->toJson)], values])
+    Array.flat([[(":value", id->toJson)], values])
     ->Js.Dict.fromArray
     ->Js.Json.object_
     ->Js.Json.stringify
     ->parseJs
 
-  let attributeNames = Belt.Array.concatMany([[("#key", key)], names])->Js.Dict.fromArray
+  let attributeNames = Array.flat([[("#key", key)], names])->Js.Dict.fromArray
 
   let params: AwsSdk.DynamoDb.DocumentClient.QueryCommand.input = {
     {
