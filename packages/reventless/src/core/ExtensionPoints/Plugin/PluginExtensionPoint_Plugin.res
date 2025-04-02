@@ -19,7 +19,7 @@ let forwardCommand = async (
     switch jsons {
     | [] => Js.log2("ForwardCommand: Couldn't find Plugin with ExtensionPoint", extensionPointName)
     | plugins =>
-      let plugin = plugins->Belt.Array.getExn(0)
+      let plugin = plugins->Array.getUnsafe(0)
       await plugin
       ->PluginReadModelSpec.state_decode
       ->(

@@ -2,7 +2,6 @@
 'use strict';
 
 var Decco = require("@rescript-labs/decco/src/Decco.res.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.res.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
@@ -34,7 +33,7 @@ async function forwardCommand(_id, command, extensionPointName, queryEngine) {
         ]
       ], 1000);
   if (jsons.length !== 0) {
-    var plugin = Belt_Array.getExn(jsons, 0);
+    var plugin = jsons[0];
     return await (async function (result) {
                 if (result.TAG === "Ok") {
                   var plugin$1 = result._0;

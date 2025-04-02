@@ -3,7 +3,6 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
@@ -390,7 +389,7 @@ function optimizeActions(actions) {
                 if (optimizedActionsCount === 0) {
                   return [action];
                 }
-                var lastAction = Belt_Array.getExn(optimizedActions, optimizedActionsCount - 1 | 0);
+                var lastAction = optimizedActions[optimizedActionsCount - 1 | 0];
                 var previousActions = optimizedActionsCount === 1 ? [] : optimizedActions.slice(0, optimizedActionsCount);
                 if (typeof lastAction === "object") {
                   switch (lastAction.TAG) {

@@ -238,7 +238,7 @@ let optimizeActions = actions => {
     if optimizedActionsCount == 0 {
       [action]
     } else {
-      let lastAction = optimizedActions->Belt.Array.getExn(optimizedActionsCount - 1)
+      let lastAction = optimizedActions->Array.getUnsafe(optimizedActionsCount - 1)
       let previousActions = if optimizedActionsCount == 1 {
         []
       } else {
