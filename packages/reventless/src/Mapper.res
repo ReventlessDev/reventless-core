@@ -29,7 +29,7 @@ module MakeGenericSourceFromEventSource = (EventSource: ReventlessSpec.Projectio
   let decode = json =>
     json
     ->(Message.event'_decode(EventSource.SourceId.t_decode, EventSource.sourceEvent_decode, _))
-    ->Belt.Result.map(({id, meta, event}) => {
+    ->Result.map(({id, meta, event}) => {
       ReventlessSpec.Message.id: id->EventSource.SourceId.toString,
       meta,
       event,

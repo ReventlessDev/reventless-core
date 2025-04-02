@@ -2,9 +2,9 @@
 'use strict';
 
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
+var Core__Result = require("@rescript/core/src/Core__Result.res.js");
 
 function Make(ReadModelSpec, Spec) {
   var decode = function (id, item) {
@@ -17,7 +17,7 @@ function Make(ReadModelSpec, Spec) {
   };
   var load = async function (id) {
     var result = await Spec.jsonOps.load(ReadModelSpec.Id.toString(id));
-    return Belt_Result.map(result, (function (states) {
+    return Core__Result.map(result, (function (states) {
                   return states.map(function (state) {
                                 return decode(id, state);
                               }).flat();

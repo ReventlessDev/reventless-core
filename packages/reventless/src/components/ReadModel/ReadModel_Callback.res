@@ -18,7 +18,7 @@ module Make = (
       let sourceName =
         json
         ->ReventlessSpec.Message.context_decode
-        ->Belt.Result.map(context => context.meta.service)
+        ->Result.map(context => context.meta.service)
         ->Belt.Result.getWithDefault("")
       Js.log2(
         `ReadModel: handling event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString} from ${sourceName}:`,

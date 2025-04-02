@@ -2,6 +2,7 @@
 'use strict';
 
 var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
+var Core__Result = require("@rescript/core/src/Core__Result.res.js");
 var Projection$Reventless = require("../../Projection.res.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.res.js");
 var ProjectionMapper$Reventless = require("../../ProjectionMapper.res.js");
@@ -27,7 +28,7 @@ function Make(ReadModelSpec, Mappings, Spec) {
     var eventCount = jsons.length;
     return Projection$Reventless.handleActions(jsons.map(function (json, idx) {
                       var idx$1 = idx + 1 | 0;
-                      var sourceName = Belt_Result.getWithDefault(Belt_Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
+                      var sourceName = Belt_Result.getWithDefault(Core__Result.map(Message$ReventlessSpec.context_decode(json), (function (context) {
                                   return context.meta.service;
                                 })), "");
                       console.log("ReadModel: handling event " + String(idx$1) + "/" + String(eventCount) + " from " + sourceName + ":", json);

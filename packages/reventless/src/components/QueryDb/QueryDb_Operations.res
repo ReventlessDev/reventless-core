@@ -18,7 +18,7 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
   let load = async id =>
     switch await Spec.jsonOps.load(id->ReadModelSpec.Id.toString) {
     | result =>
-      result->Belt.Result.map(states => states->Array.map(state => decode(id, state))->Array.flat)
+      result->Result.map(states => states->Array.map(state => decode(id, state))->Array.flat)
     }
 
   let save = async (id, state, saveMode, ttl) =>
