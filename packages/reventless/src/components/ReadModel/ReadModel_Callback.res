@@ -19,7 +19,7 @@ module Make = (
         json
         ->ReventlessSpec.Message.context_decode
         ->Result.map(context => context.meta.service)
-        ->Belt.Result.getWithDefault("")
+        ->Result.getOr("")
       Js.log2(
         `ReadModel: handling event ${idx->Belt.Int.toString}/${eventCount->Belt.Int.toString} from ${sourceName}:`,
         json,
