@@ -16,7 +16,7 @@ let toRuntimeTableOutput = ({name, id, arn, hashKey, rangeKey}) =>
     name,
     arn,
     hashKey,
-    rangeKey: ?rangeKey->Belt.Option.map(Js.Nullable.return),
+    rangeKey: ?rangeKey->Option.map(rangeKey => rangeKey->Js.Nullable.return),
   })
 
 let toResource: table => resource = ({id, name, arn} as table) => {
@@ -114,7 +114,7 @@ let makeTableArgs = (
   ~streamEnabled=?,
   ~streamViewType=?,
 ) => {
-  let ttl = ttl->Belt.Option.map(_ =>
+  let ttl = ttl->Option.map(_ =>
     {
       PulumiAws.DynamoDb.Table.enabled: true,
       attributeName: Util_DynamoDb_Runtime.purgeTimeAttributeName,
@@ -126,7 +126,7 @@ let makeTableArgs = (
   {
     PulumiAws.DynamoDb.Table.attributes: attributes->Pulumi.Input.make,
     hashKey: "id"->Pulumi.Input.make,
-    rangeKey: ?rangeKey->Belt.Option.map(Pulumi.Input.make),
+    rangeKey: ?rangeKey->Option.map(Pulumi.Input.make),
     billingMode: PAY_PER_REQUEST,
     ?globalSecondaryIndexes,
     ?tags,
@@ -134,11 +134,11 @@ let makeTableArgs = (
     pointInTimeRecovery: {
       enabled: true,
     }->Pulumi.Input.make,
-    restoreSourceName: ?restoreSourceName->Belt.Option.map(Pulumi.Input.make),
+    restoreSourceName: ?restoreSourceName->Option.map(Pulumi.Input.make),
     restoreDateTime: ?restoreSourceName->Belt.Option.flatMap(_ =>
-      restoreDateTime->Belt.Option.map(Pulumi.Input.make)
+      restoreDateTime->Option.map(Pulumi.Input.make)
     ),
-    restoreToLatestTime: ?restoreSourceName->Belt.Option.map(_ =>
+    restoreToLatestTime: ?restoreSourceName->Option.map(_ =>
       restoreDateTime->Belt.Option.isNone->Pulumi.Input.make
     ),
     ?streamEnabled,

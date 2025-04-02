@@ -99,7 +99,7 @@ module Make = (
         ~timeout,
         ...
       ),
-      ~opts=opts->Belt.Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions)
+      ~opts=opts->Option.map(Util.Pulumi.ComponentResourceOptions.ofCustomResourceOptions)
     )
   }
 }

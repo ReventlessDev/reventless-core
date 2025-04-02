@@ -2,8 +2,8 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
@@ -18,7 +18,7 @@ var Util_IAM_Role$ReventlessAws = require("../../util/Util_IAM_Role.res.js");
 function make(name, handler, memorySizeOpt, timeoutOpt, opts) {
   var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
   var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
-  var opts$1 = Belt_Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
+  var opts$1 = Core__Option.map(opts, Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions);
   var lambdaRole = IAM$PulumiAws.Role.makeWithDefaultPolicy(name + "Role", Pulumi.output(AWS$ReventlessAws.Lambda.principal), opts$1);
   var lambda = handler.apply(function (handler) {
         return new (Aws.lambda.CallbackFunction)(name, Lambda$PulumiAws.CallbackFunction.Args.make(handler, lambdaRole, undefined, undefined, undefined, memorySize, timeout, undefined, undefined, undefined, AWS_Tags$ReventlessAws.make(name, CommandTopic$Reventless.componentType), undefined), opts$1 !== undefined ? Caml_option.valFromOption(opts$1) : undefined);

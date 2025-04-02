@@ -34,7 +34,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
     ~opts,
   )
   let resolverByIdMultiple =
-    subIdField->Belt.Option.map(_sortField =>
+    subIdField->Option.map(_sortField =>
       Resolver.makeUnitResolver(
         ~name=name ++ "ById",
         ~api,

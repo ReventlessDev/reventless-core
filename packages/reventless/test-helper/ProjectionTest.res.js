@@ -8,6 +8,7 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Projection$Reventless = require("../src/Projection.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
 
@@ -27,7 +28,7 @@ function Make(Projection) {
     Jest.describe(description, fn);
   };
   var getSubId = function (state) {
-    return Belt_Option.map(Projection.subIdConfig, (function (param) {
+    return Core__Option.map(Projection.subIdConfig, (function (param) {
                   return param.getSubId(state);
                 }));
   };
@@ -53,7 +54,7 @@ function Make(Projection) {
     store[id] = [];
   };
   var deleteSubState = function (store, id, subId, getSubId) {
-    store[id] = Belt_Option.getWithDefault(Belt_Option.map(Js_dict.get(store, id), (function (states) {
+    store[id] = Belt_Option.getWithDefault(Core__Option.map(Js_dict.get(store, id), (function (states) {
                 return states.filter(function (state) {
                             return Caml_obj.notequal(getSubId(state), subId);
                           });

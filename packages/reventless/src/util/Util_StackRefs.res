@@ -3,7 +3,7 @@ let stackRefs: Js.Dict.t<Pulumi.StackReference.t> = Js.Dict.empty()
 let coreStackName = Pulumi.Config.make(Some("core"))->Pulumi.Config.get("stack")
 
 let stackName = pluginName =>
-  coreStackName->Belt.Option.map(name => {
+  coreStackName->Option.map(name => {
     let parts = name->Js.String2.split("/")
     parts->Array.set(1, pluginName)
     parts->Js.Array2.joinWith("/")
@@ -12,8 +12,7 @@ let stackName = pluginName =>
 let get = pluginName =>
   switch stackRefs->Js.Dict.get(pluginName) {
   | None =>
-    let stackRef =
-      pluginName->stackName->Belt.Option.map(stack => stack->Pulumi.StackReference.make)
+    let stackRef = pluginName->stackName->Option.map(stack => stack->Pulumi.StackReference.make)
 
     switch stackRef {
     | Some(stackRef) =>

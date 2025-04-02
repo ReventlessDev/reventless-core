@@ -58,7 +58,7 @@ function toMessageBody(param) {
 function serviceNameOfMsg(msgJson) {
   var msgObj = Js_json.decodeObject(msgJson);
   if (msgObj !== undefined) {
-    var x = Belt_Option.map(Js_dict.get(msgObj, "meta"), Message$ReventlessSpec.meta_decode);
+    var x = Core__Option.map(Js_dict.get(msgObj, "meta"), Message$ReventlessSpec.meta_decode);
     if (x !== undefined) {
       if (x.TAG === "Ok") {
         return x._0.service;

@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Aws = require("@pulumi/aws");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var AWS$ReventlessAws = require("../adapter/AWS.res.js");
@@ -37,8 +38,8 @@ function toRuntimeTableOutput(param) {
                       name: param[0],
                       arn: param[2],
                       hashKey: param[3],
-                      rangeKey: Belt_Option.map(param[4], (function (prim) {
-                              return prim;
+                      rangeKey: Core__Option.map(param[4], (function (rangeKey) {
+                              return rangeKey;
                             }))
                     };
             });
@@ -149,7 +150,7 @@ function updateTable(ttl, table) {
 }
 
 function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, streamEnabled, streamViewType) {
-  var ttl$1 = Belt_Option.map(ttl, (function (param) {
+  var ttl$1 = Core__Option.map(ttl, (function (param) {
           return {
                   attributeName: Util_DynamoDb_Runtime$ReventlessAws.purgeTimeAttributeName,
                   enabled: true
@@ -160,7 +161,7 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
           attributes: attributes,
           hashKey: "id",
           billingMode: "PAY_PER_REQUEST",
-          rangeKey: Belt_Option.map(rangeKey, (function (prim) {
+          rangeKey: Core__Option.map(rangeKey, (function (prim) {
                   return prim;
                 })),
           globalSecondaryIndexes: globalSecondaryIndexes,
@@ -171,15 +172,15 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
           pointInTimeRecovery: {
             enabled: true
           },
-          restoreSourceName: Belt_Option.map(restoreSourceName, (function (prim) {
+          restoreSourceName: Core__Option.map(restoreSourceName, (function (prim) {
                   return prim;
                 })),
           restoreDateTime: Belt_Option.flatMap(restoreSourceName, (function (param) {
-                  return Belt_Option.map(restoreDateTime, (function (prim) {
+                  return Core__Option.map(restoreDateTime, (function (prim) {
                                 return prim;
                               }));
                 })),
-          restoreToLatestTime: Belt_Option.map(restoreSourceName, (function (param) {
+          restoreToLatestTime: Core__Option.map(restoreSourceName, (function (param) {
                   return Belt_Option.isNone(restoreDateTime);
                 }))
         };

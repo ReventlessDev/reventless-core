@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Logger$Reventless = require("@reventless/reventless/src/util/Logger.res.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
@@ -26,7 +27,7 @@ function toJson(x) {
 }
 
 function createSubIdExprNamesValues(subIdConfig) {
-  return Belt_Option.map(subIdConfig, (function (param) {
+  return Core__Option.map(subIdConfig, (function (param) {
                 var subIdName = param[0];
                 var tmp;
                 switch (param[1]) {

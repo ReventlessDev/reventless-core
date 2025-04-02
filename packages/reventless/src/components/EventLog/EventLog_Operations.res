@@ -79,8 +79,8 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
   let decodeEvent = (id, json) =>
     Js.Json.decodeObject(json)
     ->Belt.Option.flatMap(dict => dict->Js.Dict.get("event"))
-    ->Belt.Option.map(json => (json, Spec.event_decode(json)))
-    ->Belt.Option.map(x =>
+    ->Option.map(json => (json, Spec.event_decode(json)))
+    ->Option.map(x =>
       switch x {
       | (_, Belt.Result.Ok(event)) => event
       | (json, Error(err: Decco.decodeError)) =>

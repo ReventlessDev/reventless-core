@@ -66,7 +66,7 @@ module Mapper = (
     )->Array.filterMap((module(Mapping: Mappings.Mapping)) =>
       try Some(json->Mapping.map) catch {
       | exn =>
-        Js.log2("Mapping failed:", exn->Js.Exn.asJsExn->Belt.Option.map(Js.Exn.message))
+        Js.log2("Mapping failed:", exn->Js.Exn.asJsExn->Option.map(exn => exn->Js.Exn.message))
         None
       }
     )

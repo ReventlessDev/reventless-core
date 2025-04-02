@@ -7,7 +7,7 @@ let filterRejected = results =>
   ->Array.map(((idx, result)) => (
     idx,
     result.reason
-    ->Belt.Option.map(reason => (reason->Util_Error.ofPromise).message)
+    ->Option.map(reason => (reason->Util_Error.ofPromise).message)
     ->Belt.Option.getWithDefault("Unknown error"),
   ))
 

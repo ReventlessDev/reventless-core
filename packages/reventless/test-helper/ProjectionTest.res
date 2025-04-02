@@ -79,7 +79,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
 
   type store = Js.Dict.t<array<Projection.targetState>>
 
-  let getSubId = state => Projection.subIdConfig->Belt.Option.map(({getSubId}) => state->getSubId)
+  let getSubId = state => Projection.subIdConfig->Option.map(({getSubId}) => state->getSubId)
   let hasSubId = (subId, state) => state->getSubId->Belt.Option.getExn == subId
   let states = (store, id) => store->Js.Dict.get(id)->Belt.Option.getWithDefault([])
   let setStates = (store, id, states) => store->Js.Dict.set(id, states)
@@ -101,7 +101,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       id,
       store
       ->Js.Dict.get(id)
-      ->Belt.Option.map(states => states->Array.filter(state => state->getSubId != subId))
+      ->Option.map(states => states->Array.filter(state => state->getSubId != subId))
       ->Belt.Option.getWithDefault([]),
     )
 
@@ -147,19 +147,6 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     actions->handleActions(operations, Projection.subIdConfig)
 
   let update = async (store, id, meta, event) => {
-    /* NOTE: unused
-    let logStore = text =>
-      Js.log4(
-        text,
-        event->Projection.sourceEvent_encode,
-        "\nstore:",
-        Js.Dict.map(
-          (states) => states->Belt.Array.toArray->Array.map(Projection.targetState_encode),
-          store,
-        ),
-      )
- */
-
     await [{id, meta, event}->Projection.map]->handleActions({
       load: load(store, ...),
       save: save(store, ...),

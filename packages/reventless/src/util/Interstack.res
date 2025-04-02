@@ -1,7 +1,7 @@
 let coreStackReference =
   Pulumi.Config.make(Some("core"))
   ->Pulumi.Config.get("stack")
-  ->Belt.Option.map(stack => stack->Pulumi.StackReference.make)
+  ->Option.map(stack => stack->Pulumi.StackReference.make)
 
 let stackDependencies =
   {

@@ -230,19 +230,4 @@ module Make = (
   }
 
   let thenNoTargetEvent = targetEvents => thenTargetEvents([], targetEvents)
-  // let thenEventWithError = (expectedEvent, expectedError, events) =>
-  //   expect((
-  //     events->Array.length,
-  //     events->Belt.Array.head,
-  //     (errors^)->Array.length,
-  //     (errors^)->Belt.Array.head,
-  //   ))
-  //   |> toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
-  // let thenEventsWithError = (expectedEvents, expectedError, events) =>
-  //   expect((events, (errors^)->Array.length, (errors^)->Belt.Array.head))
-  //   |> toEqual((expectedEvents, 1, Some(expectedError)));
-  // let thenError = (expectedError, events) => {
-  //   expect((events, (errors^)->Array.length, (errors^)->Belt.Array.head))
-  //   |> toEqual(([], 1, Some(expectedError)));
-  // };
 }

@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
@@ -33,9 +34,9 @@ var PluginExtensionPointSpec$ReventlessSpec = require("@reventless/reventless-sp
 var PluginConnectExtension_Builder$Reventless = require("../../core/Extensions/Connect/PluginConnectExtension_Builder.res.js");
 
 function getRemoteStorageResources(pluginName, queryDbName) {
-  var resources = Belt_Option.map(Util_StackRefs$Reventless.get(pluginName), (function (stackRef) {
+  var resources = Core__Option.map(Util_StackRefs$Reventless.get(pluginName), (function (stackRef) {
           return stackRef.requireOutput("plugin").apply(function (plugin) {
-                      return Belt_Option.getWithDefault(Belt_Option.map(Js_dict.get(plugin.readModels, queryDbName), (function (readModel) {
+                      return Belt_Option.getWithDefault(Core__Option.map(Js_dict.get(plugin.readModels, queryDbName), (function (readModel) {
                                         return readModel.queryDb.resources;
                                       })), []);
                     });

@@ -14,13 +14,13 @@ type pureOutputs = {
 }
 
 let getRemoteStorageResources = (pluginName, queryDbName) =>
-  switch Util_StackRefs.get(pluginName)->Belt.Option.map(stackRef => {
+  switch Util_StackRefs.get(pluginName)->Option.map(stackRef => {
     stackRef
     ->Pulumi.StackReference.requireOutput("plugin"->Pulumi.Input.make)
     ->Pulumi.Output.apply((plugin: pureOutputs) =>
       plugin.readModels
       ->Js.Dict.get(queryDbName)
-      ->Belt.Option.map((readModel: ReadModel.outputs) => readModel.queryDb.resources)
+      ->Option.map((readModel: ReadModel.outputs) => readModel.queryDb.resources)
       ->Belt.Option.getWithDefault([])
     )
   }) {

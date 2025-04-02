@@ -41,7 +41,7 @@ let serviceNameOfMsg = msgJson =>
   | Some(msgObj) =>
     msgObj
     ->Js.Dict.get("meta")
-    ->Belt.Option.map(meta_decode)
+    ->Option.map(meta_decode)
     ->(
       x =>
         switch x {

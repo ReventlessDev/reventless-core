@@ -10,7 +10,7 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> =
 ) => {
   open PulumiAws
   let opts =
-    opts->Belt.Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
+    opts->Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
 
   let lambdaRole = IAM.Role.makeWithDefaultPolicy(
     ~name=name ++ "Role",

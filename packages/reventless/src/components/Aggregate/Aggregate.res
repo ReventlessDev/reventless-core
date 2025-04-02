@@ -27,7 +27,7 @@ let filterEventTopics = (allAggregates, aggregateNames) =>
   ->Array.filterMap(aggregateName =>
     allAggregates
     ->Js.Dict.get(aggregateName)
-    ->Belt.Option.map(aggregateOutput => (aggregateName, aggregateOutput.eventLog.eventTopic))
+    ->Option.map(aggregateOutput => (aggregateName, aggregateOutput.eventLog.eventTopic))
   )
   ->Js.Dict.fromArray
 

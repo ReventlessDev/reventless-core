@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
 var Util_Error$Reventless = require("../../util/Util_Error.res.js");
@@ -82,7 +83,7 @@ function Make(Spec, Ops) {
     var eventsJson = await Ops.storage.replay(Spec.Id.toString(id));
     var id$1 = Spec.Id.toString(id);
     return eventsJson.map(function (json) {
-                var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
+                var x = Core__Option.map(Core__Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
                                 return Js_dict.get(dict, "event");
                               })), (function (json) {
                             return [

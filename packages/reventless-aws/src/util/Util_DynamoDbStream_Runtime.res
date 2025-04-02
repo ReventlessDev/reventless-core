@@ -22,14 +22,14 @@ let parseDynamoDbStreamRecord = (buildJson, record: PulumiAws.DynamoDb.Stream.re
   let newImageJson =
     record
     ->Belt.Option.flatMap(dynamodb => dynamodb.newImage)
-    ->Belt.Option.map(newImage => AwsSdk.DynamoDb.Util.unmarshallDict(newImage))
-    ->Belt.Option.map(buildJson)
+    ->Option.map(newImage => AwsSdk.DynamoDb.Util.unmarshallDict(newImage))
+    ->Option.map(buildJson)
 
   let oldImageJson =
     record
     ->Belt.Option.flatMap(dynamodb => dynamodb.oldImage)
-    ->Belt.Option.map(oldImage => AwsSdk.DynamoDb.Util.unmarshallDict(oldImage))
-    ->Belt.Option.map(buildJson)
+    ->Option.map(oldImage => AwsSdk.DynamoDb.Util.unmarshallDict(oldImage))
+    ->Option.map(buildJson)
 
   switch (id, newImageJson, oldImageJson) {
   | (Some(id), Some(newImage), Some(oldImage)) => NewAndOldImage(id, newImage, oldImage)

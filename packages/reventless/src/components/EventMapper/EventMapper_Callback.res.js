@@ -8,6 +8,7 @@ var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
@@ -17,7 +18,7 @@ function MakeCounterHandler(Target, Mappings, Ops) {
   var target = Target.name;
   var findMapping = function (mappings, eventObj) {
     return Belt_Option.flatMapU(eventObj, (function (eventObj$p) {
-                  var meta = Belt_Option.map(Js_dict.get(eventObj$p, "meta"), Message$Reventless.meta_decode);
+                  var meta = Core__Option.map(Js_dict.get(eventObj$p, "meta"), Message$Reventless.meta_decode);
                   if (meta !== undefined) {
                     if (meta.TAG === "Ok") {
                       var eventMeta = meta._0;
@@ -134,8 +135,8 @@ function MakeCounterHandler(Target, Mappings, Ops) {
                     }
                     var mapping = match[2];
                     var eventObj = match[0];
-                    var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), mapping.Source.Id.t_decode);
-                    var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), mapping.Source.event_decode);
+                    var idDecoded = Core__Option.map(Js_dict.get(eventObj, "id"), mapping.Source.Id.t_decode);
+                    var eventDecoded = Core__Option.map(Js_dict.get(eventObj, "event"), mapping.Source.event_decode);
                     if (idDecoded !== undefined) {
                       if (idDecoded.TAG === "Ok" && eventDecoded !== undefined && eventDecoded.TAG === "Ok") {
                         return processMappingActions(mapping.map(idDecoded._0, eventDecoded._0, Ops.queryEngine), match[1]);

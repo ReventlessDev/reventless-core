@@ -2,10 +2,11 @@
 'use strict';
 
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var ResourceQuery$Reventless = require("./ResourceQuery.res.js");
 
 function bucketNameOfAllTasks(tasks, taskName) {
-  return Belt_Option.map(Belt_Option.flatMap(tasks.find(function (task) {
+  return Core__Option.map(Belt_Option.flatMap(tasks.find(function (task) {
                       return task.name === taskName;
                     }), (function (task) {
                     return task.bucket;

@@ -43,7 +43,7 @@ module Make = (
       let result =
         Spec.publishToAggregates
         ->Js.Dict.get(aggregateName)
-        ->Belt.Option.map((publishJsons: CommandTopic.publishJsons) => publishJsons([cmdJson]))
+        ->Option.map((publishJsons: CommandTopic.publishJsons) => publishJsons([cmdJson]))
         ->Belt.Option.mapWithDefault(
           () =>
             Js.Exn.raiseError(

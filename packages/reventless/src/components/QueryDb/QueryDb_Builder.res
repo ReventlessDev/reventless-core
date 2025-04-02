@@ -12,7 +12,7 @@ module Make = (
   let construct = (self, name, ~api, ~apiRole, ~ttl=?) => {
     let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
-    let subIdField = Spec.subIdConfig->Belt.Option.map(config => config.subIdField)
+    let subIdField = Spec.subIdConfig->Option.map(config => config.subIdField)
     let storageName = name->ComponentType.name(QueryDb.componentType)
 
     let storage = Storage.make(

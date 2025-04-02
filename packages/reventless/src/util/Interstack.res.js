@@ -3,9 +3,10 @@
 
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Pulumi = require("@pulumi/pulumi");
 
-var coreStackReference = Belt_Option.map(new Pulumi.Config("core").get("stack"), (function (stack) {
+var coreStackReference = Core__Option.map(new Pulumi.Config("core").get("stack"), (function (stack) {
         return new Pulumi.StackReference(stack);
       }));
 

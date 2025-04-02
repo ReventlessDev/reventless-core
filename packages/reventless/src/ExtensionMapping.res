@@ -215,7 +215,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     }
 
   let mapOutgoingEvent =
-    MappingImpl.mapOutgoingEvent->Belt.Option.map(mapOutgoingEventImpl =>
+    MappingImpl.mapOutgoingEvent->Option.map(mapOutgoingEventImpl =>
       doMapOutgoingEvent(mapOutgoingEventImpl, ...)
     )
 }

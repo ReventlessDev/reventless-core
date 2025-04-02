@@ -151,14 +151,12 @@ module Make = (
 
       switch Spec.readModelNamesForSourceName
       ->Js.Dict.get(event'.meta.service)
-      ->Belt.Option.map(readModelNames =>
+      ->Option.map(readModelNames =>
         readModelNames
         ->Array.filterMap(readModelName =>
           Spec.publishToReadModels
           ->Js.Dict.get(readModelName)
-          ->Belt.Option.map(
-            enqueueEvent => enqueueEvent(0, event'.id, eventJson'->Js.Json.stringify),
-          )
+          ->Option.map(enqueueEvent => enqueueEvent(0, event'.id, eventJson'->Js.Json.stringify))
         ) // FIXME Error handling
         ->Js.Promise.all
       ) {

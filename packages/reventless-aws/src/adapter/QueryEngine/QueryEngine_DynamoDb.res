@@ -10,7 +10,7 @@ let toJson = x =>
 @val @scope("JSON") external parseJs: string => _ = "parse"
 
 let createSubIdExprNamesValues = (subIdConfig: option<SubId.config>) =>
-  subIdConfig->Belt.Option.map(((subIdName, comparator, value)) => {
+  subIdConfig->Option.map(((subIdName, comparator, value)) => {
     (
       [
         switch comparator {

@@ -2,8 +2,8 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 
@@ -21,7 +21,7 @@ function allCommandTopics(allAggregates) {
 
 function filterEventTopics(allAggregates, aggregateNames) {
   return Js_dict.fromArray(Core__Array.filterMap(Belt_SetString.toArray(aggregateNames), (function (aggregateName) {
-                    return Belt_Option.map(Js_dict.get(allAggregates, aggregateName), (function (aggregateOutput) {
+                    return Core__Option.map(Js_dict.get(allAggregates, aggregateName), (function (aggregateOutput) {
                                   return [
                                           aggregateName,
                                           aggregateOutput.eventLog.eventTopic

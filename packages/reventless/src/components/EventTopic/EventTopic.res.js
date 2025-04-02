@@ -2,8 +2,8 @@
 'use strict';
 
 var Core__Dict = require("@rescript/core/src/Core__Dict.res.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
@@ -27,7 +27,7 @@ function allOutputsToResources(allOutputs) {
 
 function filter(allEventTopics, sourceNames) {
   return Object.fromEntries(Core__Array.filterMap(Belt_SetString.toArray(sourceNames), (function (sourceName) {
-                    return Belt_Option.map(allEventTopics[sourceName], (function (eventTopic) {
+                    return Core__Option.map(allEventTopics[sourceName], (function (eventTopic) {
                                   return [
                                           sourceName,
                                           eventTopic

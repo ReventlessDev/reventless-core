@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Id$ReventlessSpec = require("@reventless/reventless-spec/src/Id.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -146,9 +147,9 @@ function Make(Spec, MappingSpec, Mappings) {
         return await Util_Promise$Reventless.toUnit(Promise.all(commandActions.map(applyIncomingCommandAction)));
       };
       await apply(commandActions);
-      var p = Belt_Option.map(Js_dict.get(Spec.readModelNamesForSourceName, event$p$1.meta.service), (function (readModelNames) {
+      var p = Core__Option.map(Js_dict.get(Spec.readModelNamesForSourceName, event$p$1.meta.service), (function (readModelNames) {
               return Promise.all(Core__Array.filterMap(readModelNames, (function (readModelName) {
-                                return Belt_Option.map(Js_dict.get(Spec.publishToReadModels, readModelName), (function (enqueueEvent) {
+                                return Core__Option.map(Js_dict.get(Spec.publishToReadModels, readModelName), (function (enqueueEvent) {
                                               return enqueueEvent(0, event$p$1.id, JSON.stringify(eventJson$p));
                                             }));
                               })));

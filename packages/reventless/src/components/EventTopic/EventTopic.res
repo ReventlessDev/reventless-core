@@ -49,7 +49,7 @@ let filter = (allEventTopics: allOutputs, sourceNames) =>
   sourceNames
   ->Belt.Set.String.toArray
   ->Array.filterMap(sourceName =>
-    allEventTopics->Dict.get(sourceName)->Belt.Option.map(eventTopic => (sourceName, eventTopic))
+    allEventTopics->Dict.get(sourceName)->Option.map(eventTopic => (sourceName, eventTopic))
   )
   ->Dict.fromArray
 

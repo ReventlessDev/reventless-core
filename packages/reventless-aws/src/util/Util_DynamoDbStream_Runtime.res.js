@@ -4,6 +4,7 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var DynamoDb_Util$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_Util.res.js");
@@ -35,12 +36,12 @@ function parseDynamoDbStreamRecord(buildJson, record) {
   var id = Belt_Option.flatMap(record$1, (function (record) {
           return DynamoDb_Util$AwsSdk.unmarshall(undefined, record.Keys.id);
         }));
-  var newImageJson = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(record$1, (function (dynamodb) {
+  var newImageJson = Core__Option.map(Core__Option.map(Belt_Option.flatMap(record$1, (function (dynamodb) {
                   return dynamodb.NewImage;
                 })), (function (newImage) {
               return DynamoDb_Util$AwsSdk.unmarshallDict(undefined, newImage);
             })), buildJson);
-  var oldImageJson = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(record$1, (function (dynamodb) {
+  var oldImageJson = Core__Option.map(Core__Option.map(Belt_Option.flatMap(record$1, (function (dynamodb) {
                   return dynamodb.OldImage;
                 })), (function (oldImage) {
               return DynamoDb_Util$AwsSdk.unmarshallDict(undefined, oldImage);

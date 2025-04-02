@@ -20,7 +20,7 @@ module MakeCounterHandler = (
 
   let findMapping = (mappings, eventObj) =>
     eventObj->Belt.Option.flatMapU(eventObj' => {
-      let meta = eventObj'->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
+      let meta = eventObj'->Js.Dict.get("meta")->Option.map(Message.meta_decode)
 
       switch meta {
       | Some(Belt.Result.Ok(eventMeta)) =>
@@ -101,9 +101,8 @@ module MakeCounterHandler = (
         // TODO: support multiple mappings for the same source
         | Some((eventObj, eventMeta, mapping)) =>
           module Mapping = unpack(mapping)
-          let idDecoded = eventObj->Js.Dict.get("id")->Belt.Option.map(Mapping.Source.Id.t_decode)
-          let eventDecoded =
-            eventObj->Js.Dict.get("event")->Belt.Option.map(Mapping.Source.event_decode)
+          let idDecoded = eventObj->Js.Dict.get("id")->Option.map(Mapping.Source.Id.t_decode)
+          let eventDecoded = eventObj->Js.Dict.get("event")->Option.map(Mapping.Source.event_decode)
 
           switch (idDecoded, eventDecoded) {
           | (Some(Ok(eventId)), Some(Ok(event))) =>

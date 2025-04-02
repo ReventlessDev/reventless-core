@@ -2,6 +2,7 @@
 'use strict';
 
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
 var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_QueryDb$Reventless = require("@reventless/reventless/src/util/Util_QueryDb.res.js");
@@ -16,7 +17,7 @@ var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/sr
 function make(name, api, apiRole, dataSourceName, indexes, subIdField, idResolverConfigs, idsResolverConfigs, opts) {
   var name$1 = StringLabels.capitalize_ascii(name);
   var resolverByIdSingle = AppSync_Resolver$PulumiAws.makeUnitResolver(name$1, api, dataSourceName, "Query", StringLabels.uncapitalize_ascii(name$1), subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.queryByIdSort(subIdField) : AppSync_Resolver_Templates$PulumiAws.getItemById, subIdField !== undefined ? AppSync_Resolver_Templates$PulumiAws.firstResult : AppSync_Resolver_Templates$PulumiAws.result, opts);
-  var resolverByIdMultiple = Belt_Option.map(subIdField, (function (_sortField) {
+  var resolverByIdMultiple = Core__Option.map(subIdField, (function (_sortField) {
           return AppSync_Resolver$PulumiAws.makeUnitResolver(name$1 + "ById", api, dataSourceName, "Query", StringLabels.uncapitalize_ascii(name$1) + "ById", AppSync_Resolver_Templates$PulumiAws.queryById, AppSync_Resolver_Templates$PulumiAws.result, opts);
         }));
   var fieldNameForAll = "every" + name$1;

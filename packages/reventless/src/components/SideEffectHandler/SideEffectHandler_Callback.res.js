@@ -4,6 +4,7 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../../Message.res.js");
@@ -12,7 +13,7 @@ var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 function Make(Spec) {
   var findSideEffect = function (sideEffects, eventJson$p) {
     return Belt_Option.flatMapU(Js_json.decodeObject(eventJson$p), (function (eventObj$p) {
-                  var meta = Belt_Option.map(Js_dict.get(eventObj$p, "meta"), Message$Reventless.meta_decode);
+                  var meta = Core__Option.map(Js_dict.get(eventObj$p, "meta"), Message$Reventless.meta_decode);
                   if (meta !== undefined) {
                     if (meta.TAG === "Ok") {
                       var eventMeta = meta._0;
@@ -45,8 +46,8 @@ function Make(Spec) {
                         var eventObj = match[0];
                         var sourceName = sideEffect.Source.name;
                         Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
-                        var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
-                        var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
+                        var idDecoded = Core__Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
+                        var eventDecoded = Core__Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
                         if (idDecoded !== undefined) {
                           if (idDecoded.TAG === "Ok" && eventDecoded !== undefined && eventDecoded.TAG === "Ok") {
                             try {

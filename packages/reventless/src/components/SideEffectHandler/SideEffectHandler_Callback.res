@@ -12,7 +12,7 @@ module Make = (Spec: Spec): T => {
     eventJson'
     ->Js.Json.decodeObject
     ->Belt.Option.flatMapU(eventObj' => {
-      let meta = eventObj'->Js.Dict.get("meta")->Belt.Option.map(Message.meta_decode)
+      let meta = eventObj'->Js.Dict.get("meta")->Option.map(Message.meta_decode)
 
       switch meta {
       | Some(Belt.Result.Ok(eventMeta)) =>
@@ -43,9 +43,9 @@ module Make = (Spec: Spec): T => {
         eventJson'->Logger.logJsonEvent(
           `SideEffectHandler.eventsHandler: handling event from source ${sourceName}:`,
         )
-        let idDecoded = eventObj->Js.Dict.get("id")->Belt.Option.map(SideEffect.Source.Id.t_decode)
+        let idDecoded = eventObj->Js.Dict.get("id")->Option.map(SideEffect.Source.Id.t_decode)
         let eventDecoded =
-          eventObj->Js.Dict.get("event")->Belt.Option.map(SideEffect.Source.event_decode)
+          eventObj->Js.Dict.get("event")->Option.map(SideEffect.Source.event_decode)
 
         switch (idDecoded, eventDecoded) {
         | (Some(Ok(eventId)), Some(Ok(event))) =>

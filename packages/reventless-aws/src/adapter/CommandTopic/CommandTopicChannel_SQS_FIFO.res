@@ -224,7 +224,7 @@ let make: Reventless.CommandTopic_Adapter.channelMaker<
   Util.Lambda.runtimeParts,
 > = (~name, ~opts=?) => {
   let opts =
-    opts->Belt.Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
+    opts->Option.map(Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions)
   let queue = PulumiAws.SQS.Queue.make(
     ~name,
     ~args={
