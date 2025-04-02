@@ -34,7 +34,7 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
       switch await AwsSdk.DynamoDb.DocumentClient.deleteByIdSort(
         ~tableName=tableConfig.name,
         ~id,
-        ~sortField=tableConfig.sort->Belt.Option.getExn,
+        ~sortField=tableConfig.sort->Option.getExn,
         ~sortKey=sort,
       )->promiseToResult {
       | res => res->handleDeleteResult

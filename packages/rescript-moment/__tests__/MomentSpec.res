@@ -489,8 +489,7 @@ describe("moment", () => {
   describe("#toJSON", () => {
     test(
       "valid",
-      () =>
-        expect(moment("2016-01-01")->Moment.toJSON->Belt.Option.getExn)->toContainString("000Z"),
+      () => expect(moment("2016-01-01")->Moment.toJSON->Option.getExn)->toContainString("000Z"),
     )
     test("invalid", () => expect(moment("9999-99-99")->Moment.toJSON)->toBe(None))
   })

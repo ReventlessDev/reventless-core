@@ -89,7 +89,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
     )
   }
 
-  let vpcStackName = Pulumi.Config.make(Some("vpc"))->Pulumi.Config.get("stack")->Belt.Option.getExn
+  let vpcStackName = Pulumi.Config.make(Some("vpc"))->Pulumi.Config.get("stack")->Option.getExn
   let vpcConfig = Reventless.Util.VPC.getVpcConfig(~stackName=vpcStackName, ~outputName="vpc")
 
   let secrets =
@@ -144,7 +144,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
           family: name->Pulumi.Input.make,
           containerDefinitions: containerDefinitions
           ->Js.Json.stringifyAny
-          ->Belt.Option.getExn
+          ->Option.getExn
           ->Pulumi.Input.make,
           executionRoleArn: taskExecutionRole.arn->Pulumi.Output.asInput,
           memory: "4096"->Pulumi.Input.make,

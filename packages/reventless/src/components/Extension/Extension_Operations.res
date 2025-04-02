@@ -61,7 +61,7 @@ module Make = (
     }
 
   let publishAggregateCommand = async (aggregateName, cmdJson) => {
-    let pub = Spec.publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn
+    let pub = Spec.publishToAggregates->Js.Dict.get(aggregateName)->Option.getExn
     try await pub([cmdJson]) catch {
     | err => Js.log2(`Extension: Error on publish command to aggregate ${aggregateName}:`, err)
     }

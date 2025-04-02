@@ -4,9 +4,9 @@
 var Jest = require("@glennsl/rescript-jest/src/jest.res.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
@@ -86,7 +86,7 @@ function Make(Spec, Behaviour) {
   };
   var listErrors = function () {
     return "Errors occured: " + Core__Array.reduce(errors.contents.map(function (err) {
-                    return Belt_Option.getExn(Js_json.decodeString(Belt_Option.getExn(Js_json.decodeArray(Spec.error_encode(err)))[0]));
+                    return Core__Option.getExn(Js_json.decodeString(Core__Option.getExn(Js_json.decodeArray(Spec.error_encode(err)), undefined)[0]), undefined);
                   }), "", (function (a, b) {
                   return a + (b + " ");
                 }));
@@ -116,7 +116,7 @@ function Make(Spec, Behaviour) {
         return Jest.fail("thenEvent: No event present to validate");
       }
     }
-    var firstEvent = Belt_Option.getExn(events[0]);
+    var firstEvent = Core__Option.getExn(events[0], undefined);
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     errors.contents.length,
                     events.length,

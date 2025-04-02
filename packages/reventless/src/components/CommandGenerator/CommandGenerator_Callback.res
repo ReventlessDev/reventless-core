@@ -52,7 +52,7 @@ module Make = (
           ->Array.map(param => param->Js.Json.stringify)
           ->Js.Array2.joinWith(", ")}: ${err
           ->Js.Json.stringifyAny
-          ->Belt.Option.getExn}`,
+          ->Option.getExn}`,
       )
     }
   }

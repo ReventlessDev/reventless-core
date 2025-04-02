@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var AWS$ReventlessAws = require("../adapter/AWS.res.js");
@@ -14,7 +13,7 @@ function buildEvent$pJson(dict) {
   return Js_dict.fromArray([
               [
                 "id",
-                Belt_Option.getExn(Js_dict.get(dict, "id"))
+                Core__Option.getExn(Js_dict.get(dict, "id"), undefined)
               ],
               [
                 "meta",
@@ -22,7 +21,7 @@ function buildEvent$pJson(dict) {
               ],
               [
                 "event",
-                Belt_Option.getExn(Js_dict.get(dict, "event"))
+                Core__Option.getExn(Js_dict.get(dict, "event"), undefined)
               ]
             ]);
 }

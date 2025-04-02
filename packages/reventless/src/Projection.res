@@ -76,7 +76,7 @@ let applyChanges = async (
   }
 }
 
-let stateToString: 'a => string = state => state->Js.Json.stringifyAny->Belt.Option.getExn
+let stateToString: 'a => string = state => state->Js.Json.stringifyAny->Option.getExn
 let statesToString: array<'a> => string = states =>
   states->Array.map(stateToString)->Js.Array2.joinWith(", ")
 

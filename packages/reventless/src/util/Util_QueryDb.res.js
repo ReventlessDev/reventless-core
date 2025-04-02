@@ -2,11 +2,11 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 
 function getLocalStorageResources(allQueryDbs, queryDbName) {
   try {
-    return Belt_Option.getExn(Js_dict.get(allQueryDbs, queryDbName)).resources;
+    return Core__Option.getExn(Js_dict.get(allQueryDbs, queryDbName), undefined).resources;
   }
   catch (exn){
     console.log("Util_QueryDbRuntime.getLocalStorageResources: Couldn't find QueryDb " + queryDbName + " in", allQueryDbs);

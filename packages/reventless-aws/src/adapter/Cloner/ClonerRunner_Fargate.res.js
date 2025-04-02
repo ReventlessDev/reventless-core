@@ -2,8 +2,8 @@
 'use strict';
 
 var Aws = require("@pulumi/aws");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var IAM$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/IAM.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
@@ -56,7 +56,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
         policyArn: secretsManagerAccessPolicy.arn,
         role: taskExecutionRole.id
       }, opts);
-  var vpcStackName = Belt_Option.getExn(new Pulumi.Config("vpc").get("stack"));
+  var vpcStackName = Core__Option.getExn(new Pulumi.Config("vpc").get("stack"), undefined);
   var vpcConfig = Util_Vpc$Reventless.getVpcConfig(vpcStackName, "vpc");
   var secrets = Pulumi.all(secretUrns.map(function (urn) {
               return GetSecretVersion$PulumiAws.getSecretNames(urn).apply(function (names) {
@@ -103,7 +103,7 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
           }];
         var taskDefinition = new (Aws.ecs.TaskDefinition)(name, {
               family: name,
-              containerDefinitions: Belt_Option.getExn(JSON.stringify(containerDefinitions)),
+              containerDefinitions: Core__Option.getExn(JSON.stringify(containerDefinitions), undefined),
               cpu: "1024",
               memory: "4096",
               networkMode: "awsvpc",

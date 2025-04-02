@@ -167,12 +167,12 @@ let string = x =>
 
 let composeMeta = (dict: Js.Dict.t<Js.Json.t>) =>
   [
-    ("service", dict->Js.Dict.get("service")->Belt.Option.getExn),
-    ("time", dict->Js.Dict.get("time")->Belt.Option.getExn),
+    ("service", dict->Js.Dict.get("service")->Option.getExn),
+    ("time", dict->Js.Dict.get("time")->Option.getExn),
     ("ip", dict->Js.Dict.get("ip")->string),
     ("user", dict->Js.Dict.get("user")->string),
-    ("msgId", dict->Js.Dict.get("msgId")->Belt.Option.getExn),
-    ("correlationId", dict->Js.Dict.get("correlationId")->Belt.Option.getExn),
+    ("msgId", dict->Js.Dict.get("msgId")->Option.getExn),
+    ("correlationId", dict->Js.Dict.get("correlationId")->Option.getExn),
   ]
   ->Js.Dict.fromArray
   ->Js.Json.object_

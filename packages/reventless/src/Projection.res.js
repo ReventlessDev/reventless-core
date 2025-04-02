@@ -3,8 +3,8 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Logger$Reventless = require("./util/Logger.res.js");
 var QueryDb$Reventless = require("./components/QueryDb/QueryDb.res.js");
@@ -96,7 +96,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
 }
 
 function stateToString(state) {
-  return Belt_Option.getExn(JSON.stringify(state));
+  return Core__Option.getExn(JSON.stringify(state), undefined);
 }
 
 function statesToString(states) {
@@ -118,7 +118,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "Create" :
         var state = action._1;
         var id = action._0;
-        var str = "Create(" + id + ", " + Belt_Option.getExn(JSON.stringify(state)) + ")";
+        var str = "Create(" + id + ", " + stateToString(state) + ")";
         console.log("Projection.handleAction:", str);
         return await save(id, state, "Init", undefined);
     case "CreateMany" :
@@ -130,7 +130,7 @@ async function handleAction(action, operations, subIdConfig) {
                     ];
             });
         var statesStr = batch.map(function (param) {
-                return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
+                return "(" + param[0] + "," + stateToString(param[1]) + ")";
               }).join(", ");
         console.log("Projection.handleAction:", "CreateMany(" + statesStr + ")");
         return await saveBatch(batch);
@@ -162,7 +162,7 @@ async function handleAction(action, operations, subIdConfig) {
         }
         var oldState = states$1[0];
         var newState = action._1(oldState);
-        var str$1 = "Update(" + id$1 + ", " + Belt_Option.getExn(JSON.stringify(oldState)) + " => " + Belt_Option.getExn(JSON.stringify(newState)) + ")";
+        var str$1 = "Update(" + id$1 + ", " + stateToString(oldState) + " => " + stateToString(newState) + ")";
         console.log("Projection.handleAction:", str$1);
         return await save(id$1, newState, "Overwrite", undefined);
     case "UpdateWithDefault" :
@@ -181,13 +181,13 @@ async function handleAction(action, operations, subIdConfig) {
                       _0: "StaleState"
                     };
             }
-            var str$2 = "UpdateWithDefault(" + id$2 + ", default: " + Belt_Option.getExn(JSON.stringify($$default)) + ")";
+            var str$2 = "UpdateWithDefault(" + id$2 + ", default: " + stateToString($$default) + ")";
             console.log("Projection.handleAction:", str$2);
             return await save(id$2, $$default, "Init", undefined);
           }
           var oldState$1 = states$3[0];
           var newState$1 = action._2(oldState$1);
-          var str$3 = "UpdateWithDefault(" + id$2 + ", " + Belt_Option.getExn(JSON.stringify(oldState$1)) + " => " + Belt_Option.getExn(JSON.stringify(newState$1)) + ")";
+          var str$3 = "UpdateWithDefault(" + id$2 + ", " + stateToString(oldState$1) + " => " + stateToString(newState$1) + ")";
           console.log("Projection.handleAction:", str$3);
           return await save(id$2, newState$1, "Overwrite", undefined);
         }
@@ -201,7 +201,7 @@ async function handleAction(action, operations, subIdConfig) {
     case "Set" :
         var state$1 = action._1;
         var id$3 = action._0;
-        var str$5 = "Set(" + id$3 + ", " + Belt_Option.getExn(JSON.stringify(state$1)) + ")";
+        var str$5 = "Set(" + id$3 + ", " + stateToString(state$1) + ")";
         console.log("Projection.handleAction:", str$5);
         return await save(id$3, state$1, "Any", undefined);
     case "SetMany" :
@@ -214,7 +214,7 @@ async function handleAction(action, operations, subIdConfig) {
                     ];
             });
         var statesStr$1 = batch$1.map(function (param) {
-                return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
+                return "(" + param[0] + "," + stateToString(param[1]) + ")";
               }).join(", ");
         console.log("Projection.handleAction:", "SetMany(" + statesStr$1 + ")");
         return await saveBatch(batch$1);
@@ -236,7 +236,7 @@ async function handleAction(action, operations, subIdConfig) {
         var states$4 = action._1;
         var id$5 = action._0;
         var str$7 = "CreateMultiState(" + id$5 + ", " + states$4.map(function (state) {
-                return Belt_Option.getExn(JSON.stringify(state));
+                return stateToString(state);
               }).join(", ") + ")";
         console.log("Projection.handleAction:", str$7);
         var len$2 = states$4.length;

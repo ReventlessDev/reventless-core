@@ -10,7 +10,7 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
       Js.log(
         `QueryDb: Error: Couldn't decode state for ${id->ReadModelSpec.Id.toString}: ${err
           ->Js.Json.stringifyAny
-          ->Belt.Option.getExn}`,
+          ->Option.getExn}`,
       )
       []
     }

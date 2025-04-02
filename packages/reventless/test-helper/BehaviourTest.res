@@ -101,10 +101,10 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
       err
       ->Spec.error_encode
       ->Js.Json.decodeArray
-      ->Belt.Option.getExn
+      ->Option.getExn
       ->Array.getUnsafe(0)
       ->Js.Json.decodeString
-      ->Belt.Option.getExn
+      ->Option.getExn
     )
     ->Array.reduce("", (a, b) => a ++ (b ++ " "))
 
@@ -123,7 +123,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
 
   let thenCompareEvent = (events, expectedEvent, cmp) =>
     if events->Array.length > 0 {
-      let firstEvent = events->Array.get(0)->Belt.Option.getExn
+      let firstEvent = events->Array.get(0)->Option.getExn
       expect((
         errors.contents->Array.length,
         events->Array.length,

@@ -222,7 +222,7 @@ async function retryBatchWriteIfNecessary(p, allItems, retry, maxRetries) {
             _0: undefined
           };
   }
-  var unprocessedItems = Belt_Option.getExn(writeOutput.UnprocessedItems);
+  var unprocessedItems = Core__Option.getExn(writeOutput.UnprocessedItems, undefined);
   var unprocessedItemsCount = Object.keys(unprocessedItems).length.toString();
   console.log("Util_DynamoDb_Runtime-ReventlessAws" + (".retryBatchWriteIfNecessary: retry " + retry.toString() + ": " + unprocessedItemsCount + " unprocessed items"));
   if (retry < maxRetries) {
@@ -267,7 +267,7 @@ async function batchWriteWithRetries(retryOpt, maxRetriesOpt, batchWriteRequests
             _0: undefined
           };
   }
-  var unprocessedRequests = Belt_Option.getExn(writeOutput.UnprocessedItems);
+  var unprocessedRequests = Core__Option.getExn(writeOutput.UnprocessedItems, undefined);
   var unprocessedRequestCount = Object.keys(unprocessedRequests).length.toString();
   console.log("Util_DynamoDb_Runtime-ReventlessAws" + (".batchWriteWithRetries: retry " + retry.toString() + ": " + unprocessedRequestCount + " unprocessed items"));
   if (retry < maxRetries) {

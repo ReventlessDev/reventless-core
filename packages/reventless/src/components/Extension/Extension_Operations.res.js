@@ -3,7 +3,6 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
@@ -41,7 +40,7 @@ function Make(Spec, MappingSpec, Mappings) {
     }
   };
   var publishAggregateCommand = async function (aggregateName, cmdJson) {
-    var pub = Belt_Option.getExn(Js_dict.get(Spec.publishToAggregates, aggregateName));
+    var pub = Core__Option.getExn(Js_dict.get(Spec.publishToAggregates, aggregateName), undefined);
     try {
       return await pub([cmdJson]);
     }

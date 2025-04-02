@@ -3,7 +3,7 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 
 function filterSupportedResources(resources, supportedServices) {
   return resources.filter(function (resource) {
@@ -27,7 +27,7 @@ function findResource(resources, service) {
     return matching[0];
   }
   var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + resources.map(function (res) {
-          return Belt_Option.getExn(JSON.stringify(res));
+          return Core__Option.getExn(JSON.stringify(res), undefined);
         }).join(", ");
   console.log(err);
   return Js_exn.raiseError(err);
@@ -39,7 +39,7 @@ function findUnwrappedResource(resources, service) {
     return resources$1[0];
   }
   var err = "Util.Adapter.findUnwrappedResource: Couldn't find service " + service + " in resources: " + resources.map(function (res) {
-          return Belt_Option.getExn(JSON.stringify(res));
+          return Core__Option.getExn(JSON.stringify(res), undefined);
         }).join(", ");
   console.log(err);
   return Js_exn.raiseError(err);

@@ -6,7 +6,6 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Js_option = require("@rescript/std/lib/js/js_option.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Message$ReventlessSpec = require("@reventless/reventless-spec/src/Message.res.js");
@@ -179,11 +178,11 @@ function composeMeta(dict) {
   return Js_dict.fromArray([
               [
                 "service",
-                Belt_Option.getExn(Js_dict.get(dict, "service"))
+                Core__Option.getExn(Js_dict.get(dict, "service"), undefined)
               ],
               [
                 "time",
-                Belt_Option.getExn(Js_dict.get(dict, "time"))
+                Core__Option.getExn(Js_dict.get(dict, "time"), undefined)
               ],
               [
                 "ip",
@@ -195,11 +194,11 @@ function composeMeta(dict) {
               ],
               [
                 "msgId",
-                Belt_Option.getExn(Js_dict.get(dict, "msgId"))
+                Core__Option.getExn(Js_dict.get(dict, "msgId"), undefined)
               ],
               [
                 "correlationId",
-                Belt_Option.getExn(Js_dict.get(dict, "correlationId"))
+                Core__Option.getExn(Js_dict.get(dict, "correlationId"), undefined)
               ]
             ]);
 }

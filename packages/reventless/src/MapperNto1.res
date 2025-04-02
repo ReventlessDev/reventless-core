@@ -12,7 +12,7 @@ let makeGenericMap: (Mapper.decode<'msg>, mapImpl<'msg, 'action>) => mapGeneric<
     Js.Exn.raiseError(
       `Error: Couldn't decode source message: ${err
         ->Js.Json.stringifyAny
-        ->Belt.Option.getExn}, ${jsonStr}`,
+        ->Option.getExn}, ${jsonStr}`,
     )
   }
 

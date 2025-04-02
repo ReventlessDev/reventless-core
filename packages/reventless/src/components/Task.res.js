@@ -2,8 +2,8 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Aggregate$Reventless = require("./Aggregate/Aggregate.res.js");
 var Component$Reventless = require("./Component.res.js");
 var ComponentType$Reventless = require("../ComponentType.res.js");
@@ -14,7 +14,7 @@ function construct(setup, queryBucketName, scheduler, publishToAggregates, query
     parent: opts_parent
   };
   var publishCommands = function (aggregateName, cmdJsons) {
-    return Belt_Option.getExn(Js_dict.get(publishToAggregates, aggregateName))(cmdJsons);
+    return Core__Option.getExn(Js_dict.get(publishToAggregates, aggregateName), undefined)(cmdJsons);
   };
   return Component$Reventless.setOutputs(self, setup(queryEngine, scheduler, publishCommands, queryBucketName, Aggregate$Reventless.allEventTopics(allAggregates), Aggregate$Reventless.allCommandTopics(allAggregates), opts));
 }

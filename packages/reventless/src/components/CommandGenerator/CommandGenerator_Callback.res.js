@@ -4,7 +4,6 @@
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Message$Reventless = require("../../Message.res.js");
@@ -35,7 +34,7 @@ function Make(Spec, AggregateSpec, Behaviour) {
     if (decodedCommand.TAG !== "Ok") {
       return Js_exn.raiseError("Error: Couldn't decode " + params.map(function (param) {
                         return JSON.stringify(param);
-                      }).join(", ") + ": " + Belt_Option.getExn(JSON.stringify(decodedCommand._0)));
+                      }).join(", ") + ": " + Core__Option.getExn(JSON.stringify(decodedCommand._0), undefined));
     }
     await Spec.publishJsons([{
             id: id,

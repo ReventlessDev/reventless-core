@@ -2,9 +2,9 @@
 'use strict';
 
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Belt_Result = require("@rescript/std/lib/js/belt_Result.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 
 function Make(ReadModelSpec, Spec) {
   var decode = function (id, item) {
@@ -12,7 +12,7 @@ function Make(ReadModelSpec, Spec) {
     if (state.TAG === "Ok") {
       return [state._0];
     }
-    console.log("QueryDb: Error: Couldn't decode state for " + ReadModelSpec.Id.toString(id) + ": " + Belt_Option.getExn(JSON.stringify(state._0)));
+    console.log("QueryDb: Error: Couldn't decode state for " + ReadModelSpec.Id.toString(id) + ": " + Core__Option.getExn(JSON.stringify(state._0), undefined));
     return [];
   };
   var load = async function (id) {

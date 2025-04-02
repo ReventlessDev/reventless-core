@@ -80,7 +80,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   type store = Js.Dict.t<array<Projection.targetState>>
 
   let getSubId = state => Projection.subIdConfig->Option.map(({getSubId}) => state->getSubId)
-  let hasSubId = (subId, state) => state->getSubId->Belt.Option.getExn == subId
+  let hasSubId = (subId, state) => state->getSubId->Option.getExn == subId
   let states = (store, id) => store->Js.Dict.get(id)->Option.getOr([])
   let setStates = (store, id, states) => store->Js.Dict.set(id, states)
   let updateState = (store, id, subId, newState) =>

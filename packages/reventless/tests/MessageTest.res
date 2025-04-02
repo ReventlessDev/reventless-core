@@ -75,7 +75,7 @@ describe("Message should", () => {
       event: UnknownPluginDetected,
     }
     let eventJson': Js.Json.t = event'->(event'_encode(Decco.stringToJson, event_encode, _))
-    let eventId = idOfEvent'Json(eventJson')->Belt.Option.getExn
+    let eventId = idOfEvent'Json(eventJson')->Option.getExn
 
     expect(eventId)->toBe("testId")
   })

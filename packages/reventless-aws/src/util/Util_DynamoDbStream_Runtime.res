@@ -6,9 +6,9 @@ type result =
 
 let buildEvent'Json = dict =>
   [
-    ("id", dict->Js.Dict.get("id")->Belt.Option.getExn),
+    ("id", dict->Js.Dict.get("id")->Option.getExn),
     ("meta", dict->Reventless.Message.composeMeta),
-    ("event", dict->Js.Dict.get("event")->Belt.Option.getExn),
+    ("event", dict->Js.Dict.get("event")->Option.getExn),
   ]
   ->Js.Dict.fromArray
   ->Js.Json.object_

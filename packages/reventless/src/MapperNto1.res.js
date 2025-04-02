@@ -15,7 +15,7 @@ function makeGenericMap(decode, map) {
       return map(msg._0);
     }
     var jsonStr = JSON.stringify(json);
-    return Js_exn.raiseError("Error: Couldn't decode source message: " + Belt_Option.getExn(JSON.stringify(msg._0)) + ", " + jsonStr);
+    return Js_exn.raiseError("Error: Couldn't decode source message: " + Core__Option.getExn(JSON.stringify(msg._0), undefined) + ", " + jsonStr);
   };
 }
 

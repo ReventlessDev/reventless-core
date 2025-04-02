@@ -49,7 +49,7 @@ let construct = (
   let opts = {Pulumi.CustomResourceOptions.parent: self->Component.toPulumiResource}
 
   let publishCommands: publishCommands = (aggregateName, cmdJsons) => {
-    (publishToAggregates->Js.Dict.get(aggregateName)->Belt.Option.getExn)(cmdJsons)
+    (publishToAggregates->Js.Dict.get(aggregateName)->Option.getExn)(cmdJsons)
   }
 
   self->Component.setOutputs(

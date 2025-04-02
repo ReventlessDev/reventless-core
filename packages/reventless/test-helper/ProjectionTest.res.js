@@ -5,7 +5,6 @@ var Jest = require("@glennsl/rescript-jest/src/jest.res.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
@@ -33,7 +32,7 @@ function Make(Projection) {
                 }));
   };
   var hasSubId = function (subId, state) {
-    return Belt_Option.getExn(getSubId(state)) === subId;
+    return Core__Option.getExn(getSubId(state), undefined) === subId;
   };
   var states = function (store, id) {
     return Core__Option.getOr(Js_dict.get(store, id), []);

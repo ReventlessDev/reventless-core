@@ -152,7 +152,7 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): res
   switch await p {
   | writeOutput =>
     if writeOutput->hasUnprocessedItems {
-      let unprocessedItems = writeOutput.BatchWriteCommand.unprocessedItems->Belt.Option.getExn
+      let unprocessedItems = writeOutput.BatchWriteCommand.unprocessedItems->Option.getExn
       let unprocessedItemsCount: string =
         unprocessedItems
         ->Js.Dict.keys
@@ -194,7 +194,7 @@ let rec batchWriteWithRetries = async (~retry=0, ~maxRetries=5, batchWriteReques
   switch await batchWrite(batchWriteRequests) {
   | writeOutput =>
     if writeOutput->hasUnprocessedItems {
-      let unprocessedRequests = writeOutput.BatchWriteCommand.unprocessedItems->Belt.Option.getExn
+      let unprocessedRequests = writeOutput.BatchWriteCommand.unprocessedItems->Option.getExn
       let unprocessedRequestCount: string =
         unprocessedRequests
         ->Js.Dict.keys
