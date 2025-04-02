@@ -5,7 +5,6 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Aws = require("@pulumi/aws");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
@@ -202,7 +201,7 @@ function makeTable(attributes, globalSecondaryIndexes, ttl, rangeKey, tags, opts
   var newrecord = Caml_obj.obj_dup(opts);
   var table = new (Aws.dynamodb.Table)(name, makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restoreSourceName, tags, undefined, undefined), (newrecord.dependsOn = match[0], newrecord));
   match[1](table);
-  if (Belt_Option.isSome(restoreSourceName)) {
+  if (Core__Option.isNone(restoreSourceName)) {
     return updateTable(ttl, table);
   } else {
     return table;

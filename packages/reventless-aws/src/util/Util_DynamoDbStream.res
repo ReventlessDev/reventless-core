@@ -127,7 +127,7 @@ let makeTable = (
 
   registerResource(table->Pulumi.Resource.makeFromJs)
 
-  restoreSourceName->Belt.Option.isSome
+  restoreSourceName->Option.isNone
   // Workaround when restore enabled
     ? updateTable(~ttl?, table)
     : table

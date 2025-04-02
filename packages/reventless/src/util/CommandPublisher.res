@@ -114,7 +114,7 @@ module Make = (Spec: Spec, Config: Config) => {
     switch running.contents {
     | None => await send()
     | _ =>
-      while running.contents->Belt.Option.isSome {
+      while running.contents->Option.isNone {
         await finishRunning()
       }
     }

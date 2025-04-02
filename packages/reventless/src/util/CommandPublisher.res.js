@@ -3,7 +3,6 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_splice_call = require("@rescript/std/lib/js/caml_splice_call.js");
@@ -148,7 +147,7 @@ function Make(Spec, Config) {
     if (match === undefined) {
       return await send();
     }
-    while(Belt_Option.isSome(running.contents)) {
+    while(Core__Option.isNone(running.contents)) {
       await finishRunning();
     };
   };
