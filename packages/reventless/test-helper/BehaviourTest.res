@@ -88,7 +88,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
       events->Array.length,
       Belt.Array.zip(events, expectedEvents)
       ->Array.map(((event, expectedEvent)) => cmp->compare(event, expectedEvent))
-      ->Belt.Array.every(result => result),
+      ->Array.every(result => result),
     ))->toEqual((0, expectedEvents->Array.length, true))
 
   let listErrors = () =>

@@ -73,11 +73,11 @@ function Make(Spec, Behaviour) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     errors.contents.length,
                     events.length,
-                    Belt_Array.every(Belt_Array.zip(events, expectedEvents).map(function (param) {
-                              return compare(cmp, param[0], param[1]);
-                            }), (function (result) {
-                            return result;
-                          }))
+                    Belt_Array.zip(events, expectedEvents).map(function (param) {
+                            return compare(cmp, param[0], param[1]);
+                          }).every(function (result) {
+                          return result;
+                        })
                   ]), [
                 0,
                 expectedEvents.length,
