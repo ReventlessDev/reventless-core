@@ -39,7 +39,7 @@ module Make = (Spec: Spec) => {
       }),
     )
     switch result {
-    | Belt.Result.Ok(_) =>
+    | Ok(_) =>
       let batchSize = countItems->Array.length
       Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Belt.Int.toString} reference(s):`)
       countItems->logCountItems

@@ -15,7 +15,7 @@ module Make = (Spec: Spec): T => {
       let meta = eventObj'->Js.Dict.get("meta")->Option.map(Message.meta_decode)
 
       switch meta {
-      | Some(Belt.Result.Ok(eventMeta)) =>
+      | Some(Ok(eventMeta)) =>
         let sideEffect =
           sideEffects->Array.find((module(SideEffect: ReventlessSpec.SideEffect.T)) =>
             SideEffect.Source.name == eventMeta.service

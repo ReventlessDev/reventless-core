@@ -52,18 +52,18 @@ module Make = (
           x => {() => x},
         )
       switch result() {
-      | _ => Belt.Result.Ok(reference)
+      | _ => Ok(reference)
       | exception err => {
           Js.log2("ExtensionPoint: Error on publish command:", err)
-          Belt.Result.Error(reference)
+          Error(reference)
         }
       }
     | AbstractCall(reference, handler) =>
       switch await handler() {
-      | _ => Belt.Result.Ok(reference)
+      | _ => Ok(reference)
       | exception err => {
           err->Js.log2("ExtensionPoint: Error on calling handler:")
-          Belt.Result.Error(reference)
+          Error(reference)
         }
       }
     }

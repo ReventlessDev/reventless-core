@@ -386,7 +386,7 @@ let handleActions = async (actions, operations, subIdConfig) => {
     ->Js.Promise.all
   let errors = results->Array.filterMap(x =>
     switch x {
-    | Belt.Result.Error(err) => Some(err)
+    | Error(err) => Some(err)
     | _ => None
     }
   )

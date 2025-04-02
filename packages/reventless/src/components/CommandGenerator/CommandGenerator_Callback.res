@@ -43,7 +43,7 @@ module Make = (
     Js.log2("CommandGenerator: generated command:", commandJson)
     let decodedCommand = commandJson->Behaviour.resolverConfig.commandDecoder
     switch decodedCommand {
-    | Belt.Result.Ok(_) =>
+    | Ok(_) =>
       await Spec.publishJsons([{id, meta, commandJson, delay: None}])
       meta.msgId
     | Error(err) =>

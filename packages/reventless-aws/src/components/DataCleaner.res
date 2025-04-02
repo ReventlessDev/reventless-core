@@ -7,8 +7,8 @@ type event = {tables: Js.nullable<array<tableConfig>>}
 
 let promiseToResult: Js.Promise.t<'a> => Js.Promise.t<result<'a, 'b>> = async p =>
   switch await p {
-  | res => Belt.Result.Ok(res)
-  | exception err => Belt.Result.Error(err)
+  | res => Ok(res)
+  | exception err => Error(err)
   }
 
 let handleDeleteResult = result => {
@@ -47,7 +47,7 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
       | res => res->handleDeleteResult
       }
     //Promise.handlePromise(handeDeleteResult)
-    | _ => Belt.Result.Error("No valid Config found!")
+    | _ => Error("No valid Config found!")
     }
   })
   ->Js.Promise.all {
@@ -55,8 +55,8 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
     result
     ->Array.reduce(0, (state, item) =>
       switch item {
-      | Belt.Result.Ok(_) => state + 1
-      | Belt.Result.Error(_) => state
+      | Ok(_) => state + 1
+      | Error(_) => state
       }
     )
     ->Js.log3(
@@ -76,17 +76,17 @@ let handleScanResult = async (
     Js.log("Clean table " ++ tableConfig.name)
   }
   switch scanResult {
-  | Belt.Result.Ok(scanResult) =>
+  | Ok(scanResult) =>
     if mode == #debug {
       Js.log2("Items in scan-result:", scanResult.items->Array.length)
     }
     let _ = await scanResult.items->deleteAllItems(tableConfig)
-    Belt.Result.Ok(-1)
-  | Belt.Result.Error(error) =>
+    Ok(-1)
+  | Error(error) =>
     if mode == #debug {
       Js.log2("Couldn't scan table " ++ (tableConfig.name ++ ":"), error)
     }
-    Belt.Result.Error(error)
+    Error(error)
   }
 }
 
@@ -117,9 +117,9 @@ let scanTableAndClean = async (tableConfig: tableConfig): Js.Promise.t<
   | res => {
       let scanResult = await handleScanResult(tableConfig, res)
       let deletedItemsCount = switch scanResult {
-      | Belt.Result.Ok(deletedItemsCount) =>
-        Belt.Result.Ok(tableConfig.name ++ (" [" ++ (string_of_int(deletedItemsCount) ++ "]")))
-      | Belt.Result.Error(_err) => Belt.Result.Error(tableConfig.name ++ " [ERROR]")
+      | Ok(deletedItemsCount) =>
+        Ok(tableConfig.name ++ (" [" ++ (string_of_int(deletedItemsCount) ++ "]")))
+      | Error(_err) => Error(tableConfig.name ++ " [ERROR]")
       }
       deletedItemsCount->Js.Promise.resolve
     }
@@ -143,8 +143,8 @@ let cleanerFn = async (tablesToClean, _event, _context) =>
           (await state) ++
           (" | " ++
           switch await result {
-          | Belt.Result.Ok(successMsg) => successMsg
-          | Belt.Result.Error(errorMsg) => errorMsg
+          | Ok(successMsg) => successMsg
+          | Error(errorMsg) => errorMsg
           })
         )
         "Cleaned tables " ++ (await summary)

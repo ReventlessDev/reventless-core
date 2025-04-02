@@ -23,7 +23,7 @@ module MakeCounterHandler = (
       let meta = eventObj'->Js.Dict.get("meta")->Option.map(Message.meta_decode)
 
       switch meta {
-      | Some(Belt.Result.Ok(eventMeta)) =>
+      | Some(Ok(eventMeta)) =>
         let source = eventMeta.service
         let mapping =
           mappings->Array.find((module(Mapping: Mappings.Mapping)) => Mapping.Source.name == source)

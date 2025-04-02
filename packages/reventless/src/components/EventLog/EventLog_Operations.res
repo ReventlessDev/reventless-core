@@ -36,7 +36,7 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
       `EventLog: Error: Couldn't append for ${Spec.name}(${id->Spec.Id.toString}):` ++
       err->Util.Error.message
     Js.log(errMsg)
-    errMsg->Belt.Result.Error
+    errMsg->Error
   }
 
   let publishToEventTopic = async (id, events') => {
@@ -80,7 +80,7 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
     ->Option.map(json => (json, Spec.event_decode(json)))
     ->Option.map(x =>
       switch x {
-      | (_, Belt.Result.Ok(event)) => event
+      | (_, Ok(event)) => event
       | (json, Error(err: Decco.decodeError)) =>
         let eventStr = json->Js.Json.stringify
         let message = err.message

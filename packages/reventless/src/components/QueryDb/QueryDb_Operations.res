@@ -29,7 +29,7 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
       await Spec.jsonOps.save(id->ReadModelSpec.Id.toString, json, saveMode, ttl)
     | None =>
       Js.log2("QueryDB.saveState: Error: Couldn't decodeObject:", state->Js.Json.stringifyAny)
-      Belt.Result.Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
+      Error(ReventlessSpec.QueryDb.NotSavedToStorage("Couldn't decodeObject"))
     }
 
   let saveBatch = async items => {

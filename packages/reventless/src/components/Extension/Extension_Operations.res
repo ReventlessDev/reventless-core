@@ -139,7 +139,7 @@ module Make = (
     )
 
     switch event' {
-    | Belt.Result.Ok(event') =>
+    | Ok(event') =>
       let commandActions = mapIncomingEvent(event', pluginDef, Spec.queryEngine)
       let apply = async commandActions => {
         await commandActions

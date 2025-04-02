@@ -25,7 +25,7 @@ let forwardCommand = async (
       ->(
         async result =>
           switch result {
-          | Belt.Result.Ok(plugin: PluginReadModelSpec.state) =>
+          | Ok(plugin: PluginReadModelSpec.state) =>
             await plugin.extensionPoints
             ->Array.find(extensionPoint => extensionPoint.name == extensionPointName)
             ->(

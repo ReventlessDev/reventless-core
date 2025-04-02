@@ -48,7 +48,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
     resolve(result.contents)
   })
   ->FTP.Client.onError(err => {
-    resolve(Belt.Result.Error(err->Js.Exn.message->Option.getOr("Error contains no message.")))
+    resolve(Error(err->Js.Exn.message->Option.getOr("Error contains no message.")))
     // client->FTP.Client.end_
   })
   ->FTP.Client.onTimeout(() =>
@@ -83,9 +83,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             switch await sftp->FTP.readdir(path) {
             | entities =>
               result :=
-                (
-                  await downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp)
-                )->Belt.Result.Ok
+                (await downloadAction(~connectionParams, ~entities, ~sftp, ~fail, ~endFtp))->Ok
             | exception Js.Exn.Error(e) => result := e->Reventless.Util.Error.message->Error
             }
           | Upload(readableStream, filename) =>
