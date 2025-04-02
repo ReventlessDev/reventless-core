@@ -53,7 +53,7 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
   ->Js.Promise.all {
   | result =>
     result
-    ->Belt.Array.reduce(0, (state, item) =>
+    ->Array.reduce(0, (state, item) =>
       switch item {
       | Belt.Result.Ok(_) => state + 1
       | Belt.Result.Error(_) => state
@@ -139,7 +139,7 @@ let cleanerFn = async (tablesToClean, _event, _context) =>
   | tableConfigs =>
     switch await tableConfigs->Array.map(scanTableAndClean)->Js.Promise.all {
     | results => {
-        let summary = results->Belt.Array.reduce(Js.Promise.resolve(""), async (state, result) =>
+        let summary = results->Array.reduce(Js.Promise.resolve(""), async (state, result) =>
           (await state) ++
           (" | " ++
           switch await result {

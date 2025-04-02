@@ -6,6 +6,7 @@ var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
@@ -15,7 +16,7 @@ function Make(Spec, Behaviour) {
     return Behaviour.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Belt_Array.reduce(Belt_Array.sliceToEnd(events, 1), Behaviour.init(events[0]), apply$p);
+    return Core__Array.reduce(Belt_Array.sliceToEnd(events, 1), Behaviour.init(events[0]), apply$p);
   };
   var errors = {
     contents: []
@@ -84,7 +85,7 @@ function Make(Spec, Behaviour) {
               ]);
   };
   var listErrors = function () {
-    return "Errors occured: " + Belt_Array.reduce(errors.contents.map(function (err) {
+    return "Errors occured: " + Core__Array.reduce(errors.contents.map(function (err) {
                     return Belt_Option.getExn(Js_json.decodeString(Belt_Option.getExn(Js_json.decodeArray(Spec.error_encode(err)))[0]));
                   }), "", (function (a, b) {
                   return a + (b + " ");

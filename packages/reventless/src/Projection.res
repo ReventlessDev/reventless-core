@@ -235,7 +235,7 @@ let groupActionsById = actions => {
 
 let optimizeActions = actions => {
   // [ UpdateMultiSate(f), UpdateMultiState(g), Create(..)] => [ UpdateMultiState(f(g)), Create(..) ]
-  actions->Belt.Array.reduce([], (optimizedActions, action) => {
+  actions->Array.reduce([], (optimizedActions, action) => {
     let optimizedActionsCount = optimizedActions->Array.length
     if optimizedActionsCount == 0 {
       [action]
@@ -367,7 +367,7 @@ let handleActions = async (actions, operations, subIdConfig) => {
     )
 
     // FIXME: handle errors!
-    await optimizedActions->Belt.Array.reduce(Ok()->Js.Promise.resolve, async (p, action) => {
+    await optimizedActions->Array.reduce(Ok()->Js.Promise.resolve, async (p, action) => {
       switch await p {
       | Ok() => ()
       | Error(err) =>

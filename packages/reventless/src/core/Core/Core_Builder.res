@@ -101,7 +101,7 @@ module Make = (
           ->Array.map(extensionPointOutputs =>
             extensionPointOutputs.aggregateNames->Belt.Set.String.fromArray
           )
-          ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union)
+          ->Array.reduce(Belt.Set.String.empty, (acc, names) => acc->Belt.Set.String.union(names))
 
         let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
         let resources =

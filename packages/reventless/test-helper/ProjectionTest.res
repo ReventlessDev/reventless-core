@@ -172,11 +172,11 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   }
 
   let givenEvents = events =>
-    events->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, async (store, event) =>
+    events->Array.reduce(Js.Dict.empty()->Js.Promise.resolve, async (store, event) =>
       await (await store)->update(testId.contents, meta.contents, event)
     )
   let givenEventsWithTime = events =>
-    events->Belt.Array.reduce(Js.Dict.empty()->Js.Promise.resolve, async (store, (time, event)) =>
+    events->Array.reduce(Js.Dict.empty()->Js.Promise.resolve, async (store, (time, event)) =>
       await (await store)->update(testId.contents, {...meta.contents, time}, event)
     )
 
@@ -230,7 +230,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let thenNoState = async p => {
     let store = await (p->unpackPlainPartial)()
     expect(
-      store->Js.Dict.values->Belt.Array.reduce(0, (acc, states) => acc + states->Array.length),
+      store->Js.Dict.values->Array.reduce(0, (acc, states) => acc + states->Array.length),
     )->toEqual(0)
   }
   let thenThrow = async p => {p->toThrow}

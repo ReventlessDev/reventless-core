@@ -74,7 +74,7 @@ module MakeAggregate = (
   let currentState = events =>
     events
     ->Belt.Array.sliceToEnd(1)
-    ->Belt.Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
+    ->Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
 
@@ -192,7 +192,7 @@ module Make = (
       ->Array.flat
     //  ->logTargetCommands
     //  newEvents->logTargetEvents;
-    commands->Belt.Array.reduce(Js.Dict.empty(), (targetEvents, (id, command)) => {
+    commands->Array.reduce(Js.Dict.empty(), (targetEvents, (id, command)) => {
       let id = id->Target.Id.toString
       let targetHistory =
         targetHistories

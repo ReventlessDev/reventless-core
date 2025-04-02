@@ -55,7 +55,7 @@ module Make = (
     | None => Some(Behaviour.init(event))
     }
 
-  let updateState = (stateOpt, events) => events->Belt.Array.reduce(stateOpt, apply')
+  let updateState = (stateOpt, events) => events->Array.reduce(stateOpt, apply')
 
   let updateMeta = (command': Message.command'<'id, 'command>) => {
     ...command'.meta,
@@ -132,7 +132,7 @@ module Make = (
           ->Array.map(({reference, command}) => (reference, command))
           ->Belt.Array.unzip
         let result =
-          await commands'->Belt.Array.reduce(
+          await commands'->Array.reduce(
             Ok((updateState(None, history), []))->Js.Promise.resolve,
             processCommand,
           )

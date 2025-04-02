@@ -5,6 +5,7 @@ var Jest = require("@glennsl/rescript-jest/src/jest.res.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var Message$Reventless = require("../src/Message.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
@@ -14,7 +15,7 @@ function MakeAggregate(Spec, Behaviour) {
     return Behaviour.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Belt_Array.reduce(Belt_Array.sliceToEnd(events, 1), Behaviour.init(events[0]), apply$p);
+    return Core__Array.reduce(Belt_Array.sliceToEnd(events, 1), Behaviour.init(events[0]), apply$p);
   };
   var errors = {
     contents: []
@@ -67,7 +68,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     return SourceBehaviour.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Belt_Array.reduce(Belt_Array.sliceToEnd(events, 1), SourceBehaviour.init(events[0]), apply$p);
+    return Core__Array.reduce(Belt_Array.sliceToEnd(events, 1), SourceBehaviour.init(events[0]), apply$p);
   };
   var errors = {
     contents: []
@@ -108,7 +109,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
     return TargetBehaviour.apply(state, $$event);
   };
   var currentState$1 = function (events) {
-    return Belt_Array.reduce(Belt_Array.sliceToEnd(events, 1), TargetBehaviour.init(events[0]), apply$p$1);
+    return Core__Array.reduce(Belt_Array.sliceToEnd(events, 1), TargetBehaviour.init(events[0]), apply$p$1);
   };
   var errors$1 = {
     contents: []
@@ -175,7 +176,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
                       return [];
                   }
                 }))).flat();
-    return Belt_Array.reduce(commands, {}, (function (targetEvents, param) {
+    return Core__Array.reduce(commands, {}, (function (targetEvents, param) {
                   var id = Target.Id.toString(param[0]);
                   var targetHistory = Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), []).concat(Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []));
                   var newEvents = exec$1({

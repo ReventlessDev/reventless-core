@@ -5,6 +5,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -37,6 +38,9 @@ function Make(Spec, Behaviour, Ops) {
     } else {
       return Caml_option.some(Behaviour.init($$event));
     }
+  };
+  var updateState = function (stateOpt, events) {
+    return Core__Array.reduce(events, stateOpt, apply$p);
   };
   var updateMeta = function (command$p) {
     var init = command$p.meta;
@@ -81,7 +85,7 @@ function Make(Spec, Behaviour, Ops) {
                               return {
                                       TAG: "Ok",
                                       _0: [
-                                        Belt_Array.reduce(generatedEvents, stateO, apply$p),
+                                        updateState(stateO, generatedEvents),
                                         events.concat([[
                                                 generatedEvents,
                                                 updateMeta(command$p)
@@ -96,7 +100,7 @@ function Make(Spec, Behaviour, Ops) {
                             return {
                                     TAG: "Ok",
                                     _0: [
-                                      Belt_Array.reduce(generatedEvents$1, undefined, apply$p),
+                                      updateState(undefined, generatedEvents$1),
                                       events.concat([[
                                               generatedEvents$1,
                                               updateMeta(command$p)
@@ -118,10 +122,10 @@ function Make(Spec, Behaviour, Ops) {
                                         ];
                                 }));
                         var references = match[0];
-                        var result = await Belt_Array.reduce(match[1], Promise.resolve({
+                        var result = await Core__Array.reduce(match[1], Promise.resolve({
                                   TAG: "Ok",
                                   _0: [
-                                    Belt_Array.reduce(history, undefined, apply$p),
+                                    updateState(undefined, history),
                                     []
                                   ]
                                 }), processCommand);

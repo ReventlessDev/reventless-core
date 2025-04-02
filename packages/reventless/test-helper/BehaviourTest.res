@@ -40,7 +40,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   let currentState = events =>
     events
     ->Belt.Array.sliceToEnd(1)
-    ->Belt.Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
+    ->Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])
 
@@ -106,7 +106,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
       ->Js.Json.decodeString
       ->Belt.Option.getExn
     )
-    ->Belt.Array.reduce("", (a, b) => a ++ (b ++ " "))
+    ->Array.reduce("", (a, b) => a ++ (b ++ " "))
 
   let thenEvent = (events, expectedEvent) =>
     if events->Belt.Array.length > 0 {

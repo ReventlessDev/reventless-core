@@ -4,6 +4,7 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
@@ -87,7 +88,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                               ];
                       }));
               var extensionPointsOutputs = match[0];
-              var aggregateNames = Belt_Array.reduce(extensionPointsOutputs.map(function (extensionPointOutputs) {
+              var aggregateNames = Core__Array.reduce(extensionPointsOutputs.map(function (extensionPointOutputs) {
                         return Belt_SetString.fromArray(extensionPointOutputs.aggregateNames);
                       }), undefined, Belt_SetString.union);
               var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames);

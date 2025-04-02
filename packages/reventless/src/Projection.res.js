@@ -5,6 +5,7 @@ var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
 var Logger$Reventless = require("./util/Logger.res.js");
 var QueryDb$Reventless = require("./components/QueryDb/QueryDb.res.js");
@@ -384,7 +385,7 @@ function groupActionsById(actions) {
 }
 
 function optimizeActions(actions) {
-  return Belt_Array.reduce(actions, [], (function (optimizedActions, action) {
+  return Core__Array.reduce(actions, [], (function (optimizedActions, action) {
                 var optimizedActionsCount = optimizedActions.length;
                 if (optimizedActionsCount === 0) {
                   return [action];
@@ -619,7 +620,7 @@ async function handleActions(actions, operations, subIdConfig) {
     var optimizedActions = optimizeActions(actions);
     var optimizedActionCount = optimizedActions.length;
     console.log("Projection.handleActions: handling " + String(optimizedActionCount) + " optimized actions for id=" + id);
-    return await Belt_Array.reduce(optimizedActions, Promise.resolve({
+    return await Core__Array.reduce(optimizedActions, Promise.resolve({
                     TAG: "Ok",
                     _0: undefined
                   }), (async function (p, action) {

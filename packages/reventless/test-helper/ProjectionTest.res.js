@@ -7,6 +7,7 @@ var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Projection$Reventless = require("../src/Projection.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
 
@@ -194,12 +195,12 @@ function Make(Projection) {
     return store;
   };
   var givenEvents = function (events) {
-    return Belt_Array.reduce(events, Promise.resolve({}), (async function (store, $$event) {
+    return Core__Array.reduce(events, Promise.resolve({}), (async function (store, $$event) {
                   return await update(await store, testId.contents, meta.contents, $$event);
                 }));
   };
   var givenEventsWithTime = function (events) {
-    return Belt_Array.reduce(events, Promise.resolve({}), (async function (store, param) {
+    return Core__Array.reduce(events, Promise.resolve({}), (async function (store, param) {
                   var init = meta.contents;
                   return await update(await store, testId.contents, {
                               service: init.service,
@@ -287,7 +288,7 @@ function Make(Projection) {
   };
   var thenNoState = async function (p) {
     var store = await p.VAL();
-    return Jest.Expect.toEqual(Jest.Expect.expect(Belt_Array.reduce(Js_dict.values(store), 0, (function (acc, states) {
+    return Jest.Expect.toEqual(Jest.Expect.expect(Core__Array.reduce(Js_dict.values(store), 0, (function (acc, states) {
                           return acc + states.length | 0;
                         }))), 0);
   };
