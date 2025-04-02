@@ -153,12 +153,12 @@ module Make = (
             references->Array.map(reference => Ok(reference))
           }
         | generatedEvents' =>
-          let eventCount = generatedEvents'->Belt.Array.length->Belt.Int.toString
+          let eventCount = generatedEvents'->Array.length->Belt.Int.toString
           Logger.debug(
             `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated:`,
             generatedEvents'->Array.map(event' => event'->eventName),
           )
-          switch await Ops.eventLog.append(history->Belt.Array.length, id, generatedEvents') {
+          switch await Ops.eventLog.append(history->Array.length, id, generatedEvents') {
           | Ok(_) =>
             Logger.debug(~loc=__LOC__, "finished eventLogAppend for id", id->Spec.Id.toString)
             references->Array.map(reference => Ok(reference))

@@ -63,7 +63,7 @@ let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableC
       "Deleted",
       _,
       "of " ++
-      (result->Belt.Array.length->string_of_int ++
+      (result->Array.length->string_of_int ++
       (" items in table " ++ tableConfig.name)),
     )
   }
@@ -78,7 +78,7 @@ let handleScanResult = async (
   switch scanResult {
   | Belt.Result.Ok(scanResult) =>
     if mode == #debug {
-      Js.log2("Items in scan-result:", scanResult.items->Belt.Array.length)
+      Js.log2("Items in scan-result:", scanResult.items->Array.length)
     }
     let _ = await scanResult.items->deleteAllItems(tableConfig)
     Belt.Result.Ok(-1)
@@ -135,7 +135,7 @@ let toTableConfig: resource => tableConfig = resource => {
 
 let cleanerFn = async (tablesToClean, _event, _context) =>
   switch tablesToClean->Array.map(toTableConfig) {
-  | tableConfigs if tableConfigs->Belt.Array.length == 0 => "No tables to clean."
+  | tableConfigs if tableConfigs->Array.length == 0 => "No tables to clean."
   | tableConfigs =>
     switch await tableConfigs->Array.map(scanTableAndClean)->Js.Promise.all {
     | results => {

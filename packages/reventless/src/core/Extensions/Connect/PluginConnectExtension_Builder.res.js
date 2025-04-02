@@ -66,7 +66,7 @@ function Make(Spec) {
                   var extensionPointName = param.name;
                   if (Message$Reventless.log(Belt_Array.keep(Spec.extensionsOutputs, (function (extension) {
                                 return extension.extensionPointName === extensionPointName;
-                              })), "matching Extensions:").length !== 0) {
+                              })), "matching Extensions:").length > 0) {
                     return Caml_option.some(subscribe("connectToExtensionPoints", extensionPointName, param.eventTopic, id, pluginDefinition.eventCollector));
                   }
                   
@@ -74,7 +74,7 @@ function Make(Spec) {
           var connectToExtensions = Belt_Array.keepMap(Message$Reventless.log(Spec.extensionPointsOutputs, "extensionPoints:"), (function (extensionPoint) {
                   if (Message$Reventless.log(Belt_Array.keep(otherPluginExtensions, (function (param) {
                                 return extensionPoint.name === param.extensionPointName;
-                              })), "matching otherPluginExtensions:").length !== 0) {
+                              })), "matching otherPluginExtensions:").length > 0) {
                     return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id, otherPluginId, otherPluginEventCollector));
                   }
                   
@@ -89,7 +89,7 @@ function Make(Spec) {
                   var extensionPointName = param.name;
                   if (Belt_Array.keep(Spec.extensionsOutputs, (function (extension) {
                             return extension.extensionPointName === extensionPointName;
-                          })).length !== 0) {
+                          })).length > 0) {
                     return Caml_option.some(unsubscribe("disconnectFromExtensionPoints", extensionPointName, param.eventTopic, id, pluginDefinition.eventCollector));
                   }
                   
@@ -97,7 +97,7 @@ function Make(Spec) {
           var disconnectFromExtensions = Belt_Array.keepMap(Spec.extensionPointsOutputs, (function (extensionPoint) {
                   if (Belt_Array.keep(pluginExtensions, (function (param) {
                             return extensionPoint.name === param.extensionPointName;
-                          })).length !== 0) {
+                          })).length > 0) {
                     return Caml_option.some(unsubscribe("disconnectFromExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id, pluginId, pluginEventCollector));
                   }
                   

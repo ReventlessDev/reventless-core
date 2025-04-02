@@ -87,7 +87,7 @@ let addStatement = (policy: AwsSdk.IAM.Policy.t, sid, queueArn, topicArn) => {
 let removeStatement = (policy: AwsSdk.IAM.Policy.t, sid) => {
   let statements = policy.statement
   let newStatements = statements->Belt.Array.keep(statement => statement.sid != sid)
-  let removedStatements = statements->Belt.Array.length - newStatements->Belt.Array.length
+  let removedStatements = statements->Array.length - newStatements->Array.length
   Js.log(
     `removeStatement: removing ${removedStatements->Belt.Int.toString} statement(s) with Sid ${sid}`,
   )

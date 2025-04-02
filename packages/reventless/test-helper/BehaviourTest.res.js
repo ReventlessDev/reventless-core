@@ -92,7 +92,7 @@ function Make(Spec, Behaviour) {
                 }));
   };
   var thenEvent = function (events, expectedEvent) {
-    if (events.length !== 0) {
+    if (events.length > 0) {
       return Jest.Expect.toEqual(Jest.Expect.expect([
                       errors.contents.length,
                       events.length,
@@ -102,15 +102,15 @@ function Make(Spec, Behaviour) {
                   1,
                   Caml_option.some(expectedEvent)
                 ]);
-    } else if (errors.contents.length !== 0) {
+    } else if (errors.contents.length > 0) {
       return Jest.fail(listErrors());
     } else {
       return Jest.fail("thenEvent: No event present to validate");
     }
   };
   var thenCompareEvent = function (events, expectedEvent, cmp) {
-    if (events.length === 0) {
-      if (errors.contents.length !== 0) {
+    if (events.length <= 0) {
+      if (errors.contents.length > 0) {
         return Jest.fail(listErrors());
       } else {
         return Jest.fail("thenEvent: No event present to validate");

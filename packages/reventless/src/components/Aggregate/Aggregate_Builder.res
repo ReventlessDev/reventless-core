@@ -25,7 +25,7 @@ module Make = (
     )
 
     let outputs = aggregate->Component.outputs
-    if EventMappings.mappings->Belt.Array.length > 0 {
+    if EventMappings.mappings->Array.length > 0 {
       let eventMapper =
         (aggregate->Component.operations, (aggregate->Component.outputs).commandTopic)
         ->Pulumi.Output.all2

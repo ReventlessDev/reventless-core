@@ -70,7 +70,7 @@ function partitionSupportedResources(allResources, supportedServices) {
   var names = match[0];
   return Pulumi.all(match[1]).apply(function (resources) {
               var match = Belt_Array.partition(Belt_Array.zip(names, resources), (function (param) {
-                      return param[1].length !== 0;
+                      return param[1].length > 0;
                     }));
               return [
                       match[0].map(function (param) {

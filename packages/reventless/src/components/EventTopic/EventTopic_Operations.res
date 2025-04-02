@@ -4,7 +4,7 @@ module type Spec = {
 
 module Make = (Spec: Spec, EventTopicSpec: EventTopic.Spec) => {
   let publish = async events' => {
-    let eventCount = events'->Belt.Array.length
+    let eventCount = events'->Array.length
     await events'
     ->Array.mapWithIndex(async (event', idx) => {
       let eventJson' = Message.event'_encode(

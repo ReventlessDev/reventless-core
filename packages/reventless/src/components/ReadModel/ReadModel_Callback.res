@@ -11,7 +11,7 @@ module Make = (
   module EventProjector = ProjectionMapper.Make(ReadModelSpec, Mappings)
 
   let eventsHandler = jsons => {
-    let eventCount = jsons->Belt.Array.length
+    let eventCount = jsons->Array.length
     jsons
     ->Array.mapWithIndex((json, idx) => {
       let idx = idx + 1

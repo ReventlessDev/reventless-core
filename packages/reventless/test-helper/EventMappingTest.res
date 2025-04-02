@@ -212,8 +212,8 @@ module Make = (
 
   let thenTargetEvents = async (expectedTargetEvents, targetEvents) => {
     expect((
-      SourceAggregate.errors.contents->Belt.Array.length,
-      TargetAggregate.errors.contents->Belt.Array.length,
+      SourceAggregate.errors.contents->Array.length,
+      TargetAggregate.errors.contents->Array.length,
       await targetEvents,
     ))->toEqual((0, 0, expectedTargetEvents->Js.Dict.fromArray))
   }
@@ -222,9 +222,9 @@ module Make = (
   let thenTargetEvent = async (id, expectedTargetEvent, targetEvents) => {
     let events = (await targetEvents)->Js.Dict.entries
     expect((
-      SourceAggregate.errors.contents->Belt.Array.length,
-      TargetAggregate.errors.contents->Belt.Array.length,
-      events->Belt.Array.length,
+      SourceAggregate.errors.contents->Array.length,
+      TargetAggregate.errors.contents->Array.length,
+      events->Array.length,
       events->Belt.Array.get(0),
     ))->toEqual((0, 0, 1, Some((id, [expectedTargetEvent]))))
   }
@@ -232,17 +232,17 @@ module Make = (
   let thenNoTargetEvent = targetEvents => thenTargetEvents([], targetEvents)
   // let thenEventWithError = (expectedEvent, expectedError, events) =>
   //   expect((
-  //     events->Belt.Array.length,
+  //     events->Array.length,
   //     events->Belt.Array.head,
-  //     (errors^)->Belt.Array.length,
+  //     (errors^)->Array.length,
   //     (errors^)->Belt.Array.head,
   //   ))
   //   |> toEqual((1, Some(expectedEvent), 1, Some(expectedError)));
   // let thenEventsWithError = (expectedEvents, expectedError, events) =>
-  //   expect((events, (errors^)->Belt.Array.length, (errors^)->Belt.Array.head))
+  //   expect((events, (errors^)->Array.length, (errors^)->Belt.Array.head))
   //   |> toEqual((expectedEvents, 1, Some(expectedError)));
   // let thenError = (expectedError, events) => {
-  //   expect((events, (errors^)->Belt.Array.length, (errors^)->Belt.Array.head))
+  //   expect((events, (errors^)->Array.length, (errors^)->Belt.Array.head))
   //   |> toEqual(([], 1, Some(expectedError)));
   // };
 }

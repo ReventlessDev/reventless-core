@@ -10,7 +10,7 @@ let streamArnFromDynamoDbTableResource = (resource: ReventlessSpec.Adapter.resou
   ->Pulumi.Output.all2
   ->Pulumi.Output.apply(((tableInfo, tableName)) =>
     switch tableInfo->Js.String2.split(",") {
-    | parts if parts->Belt.Array.length < 3 || parts->Array.getUnsafe(2)->Js.String2.trim == "" =>
+    | parts if parts->Array.length < 3 || parts->Array.getUnsafe(2)->Js.String2.trim == "" =>
       Js.Exn.raiseError("No streamArn field given for table " ++ tableName)
     | parts => parts->Array.getUnsafe(2)
     }

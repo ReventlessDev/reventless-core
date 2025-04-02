@@ -124,7 +124,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                     };
                     var SpecificEventMapper = partial_arg$2(EventMappings, RuntimeEnvironment);
                     var outputs = Component$Reventless.outputs(self);
-                    if (EventMappings.mappings.length === 0) {
+                    if (EventMappings.mappings.length <= 0) {
                       return outputs;
                     }
                     var eventMapper = Pulumi.all([

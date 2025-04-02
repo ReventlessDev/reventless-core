@@ -73,7 +73,7 @@ let partitionSupportedResources = (allResources, supportedServices) => {
     let (supported, unsupported) =
       names
       ->Belt.Array.zip(resources)
-      ->Belt.Array.partition(((_, resources)) => resources->Belt.Array.length > 0)
+      ->Belt.Array.partition(((_, resources)) => resources->Array.length > 0)
     (
       supported->Array.map(((name, resources)) => (
         name,

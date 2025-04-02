@@ -45,10 +45,10 @@ let applyChanges = async (
   {QueryDb.saveBatch: saveBatch, deleteBatch},
   {subIdField, getSubId},
 ) => {
-  let beforeCount = beforeStates->Belt.Array.length
+  let beforeCount = beforeStates->Array.length
   let beforeSubIds = beforeStates->Array.map(state => state->getSubId)->Set.fromArray
 
-  let afterCount = afterStates->Belt.Array.length
+  let afterCount = afterStates->Array.length
   let afterSubIds = afterStates->Array.map(state => state->getSubId)->Set.fromArray
 
   let addedSubIds = afterSubIds->Set.diff(beforeSubIds)
