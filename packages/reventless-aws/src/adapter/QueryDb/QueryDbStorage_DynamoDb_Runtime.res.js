@@ -6,6 +6,7 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 var LibDynamodb = require("@aws-sdk/lib-dynamodb");
 var Util_Error$Reventless = require("@reventless/reventless/src/util/Util_Error.res.js");
@@ -104,7 +105,7 @@ async function writeMultiple(writeRequests, op, ids, table) {
   if (batches > 1) {
     console.log("QueryDbStorage_DynamoDb_Runtime-ReventlessAws" + ("writeBatch: splitting up batch of size " + String(size) + " into " + String(batches) + " batches"));
   }
-  var results = Promise.allSettled(Belt_Array.makeBy(batches, (function (batchNr) {
+  var results = Promise.allSettled(Core__Array.fromInitializer(batches, (function (batchNr) {
               return Util_DynamoDb_Runtime$ReventlessAws.batchWriteWithRetries(undefined, undefined, Util_DynamoDb_Runtime$ReventlessAws.toTable(sliceBatch(writeRequests, batchNr), tableName));
             })));
   var results$1;

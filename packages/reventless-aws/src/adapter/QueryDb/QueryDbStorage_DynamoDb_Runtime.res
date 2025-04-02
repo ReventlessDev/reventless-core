@@ -72,7 +72,7 @@ let writeMultiple = async (writeRequests, op, ids, table) => {
       `writeBatch: splitting up batch of size ${size->Belt.Int.toString} into ${batches->Belt.Int.toString} batches`,
     )
   }
-  let results = Belt.Array.makeBy(batches, batchNr =>
+  let results = Array.fromInitializer(~length=batches, batchNr =>
     writeRequests
     ->sliceBatch(batchNr)
     ->toTable(tableName)
