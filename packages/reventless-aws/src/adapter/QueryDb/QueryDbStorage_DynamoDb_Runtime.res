@@ -61,9 +61,9 @@ let sliceBatch = (arr, batchNr) => {
 
 let writeMultiple = async (writeRequests, op, ids, table) => {
   let tableName = table.name
-  let count = ids->Belt.Array.size->Js.Int.toString
+  let count = ids->Array.length->Js.Int.toString
   let allIdsStr = ids->Js.Array2.joinWith(", ")
-  let size = writeRequests->Belt.Array.size
+  let size = writeRequests->Array.length
   let batches =
     (size->float_of_int /. BatchWriteCommand.maxBatchSize->Js.Int.toFloat)->Js.Math.ceil_int
   if batches > 1 {
@@ -84,7 +84,7 @@ let writeMultiple = async (writeRequests, op, ids, table) => {
       results
       ->Array.mapWithIndex((result, batchNr) => {
         let batchIds = ids->sliceBatch(batchNr)
-        let count = batchIds->Belt.Array.size->Js.Int.toString
+        let count = batchIds->Array.length->Js.Int.toString
         let batchIdsStr = batchIds->Js.Array2.joinWith(", ")
         switch (result.value, result.reason) {
         | (Some(Error(error)), _) =>

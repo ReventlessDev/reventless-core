@@ -183,7 +183,7 @@ function MakeCounterHandler(Target, Mappings, Ops) {
   };
   var handleCounterEvents = async function (eventsJson$p) {
     var match = await commonEventsHandler(eventsJson$p);
-    if (match[1].length !== 0) {
+    if (match[1].length > 0) {
       console.log("EventMapper.handleCounterEvents: Counter actions are not allowed in Count mapping!");
     }
     return await Ops.publishJsons(await match[0]);

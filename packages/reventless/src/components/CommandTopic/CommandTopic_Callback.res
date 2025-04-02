@@ -9,12 +9,12 @@ module type T = {
 
 module Make = (Spec: CommandTopic.Spec, Ops: Ops with module Spec = Spec): T => {
   let handleJsonCommands = async jsonItems => {
-    Logger.debug(~loc=__LOC__, "starting handleCommands. Command count", jsonItems->Belt.Array.size)
+    Logger.debug(~loc=__LOC__, "starting handleCommands. Command count", jsonItems->Array.length)
     let topicItems = jsonItems->Belt.Array.keepMap(({
       CommandTopic.reference: reference,
       command: json,
     }) =>
-      switch json->Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _) {
+      switch json->(Message.command'_decode(Spec.Id.t_decode, Spec.command_decode, _)) {
       | Belt_Result.Ok(command') => Some({CommandTopic.reference, command: command'})
       | Belt_Result.Error(err) =>
         let commandStr = json->Js.Json.stringify

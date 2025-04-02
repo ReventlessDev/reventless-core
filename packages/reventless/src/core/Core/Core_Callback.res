@@ -7,7 +7,7 @@ module type Spec = {
 
 module Make = (Spec: Spec) => {
   let eventsHandler = eventsJson' => {
-    let count = eventsJson'->Belt.Array.size
+    let count = eventsJson'->Array.length
     eventsJson'
     ->Array.mapWithIndex(async (eventJson', idx) => {
       let idx = idx + 1

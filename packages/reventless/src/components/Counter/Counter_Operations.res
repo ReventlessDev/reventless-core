@@ -17,7 +17,7 @@ let logCountItems = countItems =>
   countItems
   ->groupCountItemsByCounterId
   ->Belt.Array.forEach(((counterId, references)) => {
-    let size = references->Belt.Array.size
+    let size = references->Array.length
     let referencesStr = references->Js.Array2.joinWith(",")
     Js.log(`  ${size->Belt.Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`)
   })
@@ -40,16 +40,16 @@ module Make = (Spec: Spec) => {
     )
     switch result {
     | Belt.Result.Ok(_) =>
-      let batchSize = countItems->Belt.Array.size
+      let batchSize = countItems->Array.length
       Js.log(__MODULE__ ++ `: saved batch of ${batchSize->Belt.Int.toString} reference(s):`)
       countItems->logCountItems
     | Error(ReventlessSpec.QueryDb.NotSavedToStorage(err)) =>
-      let batchSize = countItems->Belt.Array.size
+      let batchSize = countItems->Array.length
       Js.log(`Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`)
       countItems->logCountItems
       raise(NotCounted(err))
     | Error(_) =>
-      let batchSize = countItems->Belt.Array.size
+      let batchSize = countItems->Array.length
       Js.log(
         `Unknown Counter error: couldn't save batch of ${batchSize->Belt.Int.toString} reference(s):`,
       )

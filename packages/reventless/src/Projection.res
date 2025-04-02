@@ -53,19 +53,19 @@ let applyChanges = async (
 
   let addedSubIds = afterSubIds->Set.diff(beforeSubIds)
   let addedStates = afterStates->Belt.Array.keep(state => addedSubIds->Set.has(state->getSubId))
-  let addedCount = addedStates->Belt.Array.size
+  let addedCount = addedStates->Array.length
 
   let changedStates = beforeStates->Belt.Array.keepMap(before => {
     let beforeSubId = before->getSubId
     afterStates->Array.find(after => after->getSubId == beforeSubId && after != before)
   })
-  let changedCount = changedStates->Belt.Array.size
+  let changedCount = changedStates->Array.length
 
   let batchToSave = addedStates->Array.concat(changedStates)->Array.map(state => (id, state, None))
 
   let deletedSubIds = beforeSubIds->Set.diff(afterSubIds)->Set.toArray
   let batchToDelete = deletedSubIds->Array.map(subId => (id, Some((subIdField, subId))))
-  let deletedCount = batchToDelete->Belt.Array.size
+  let deletedCount = batchToDelete->Array.length
 
   logAction(
     `${action}(${id}): beforeStates:${beforeCount->Belt.Int.toString} afterStates:${afterCount->Belt.Int.toString} added:${addedCount->Belt.Int.toString} changed:${changedCount->Belt.Int.toString} deleted:${deletedCount->Belt.Int.toString}`,
@@ -236,7 +236,7 @@ let groupActionsById = actions => {
 let optimizeActions = actions => {
   // [ UpdateMultiSate(f), UpdateMultiState(g), Create(..)] => [ UpdateMultiState(f(g)), Create(..) ]
   actions->Belt.Array.reduce([], (optimizedActions, action) => {
-    let optimizedActionsCount = optimizedActions->Belt.Array.size
+    let optimizedActionsCount = optimizedActions->Array.length
     if optimizedActionsCount == 0 {
       [action]
     } else {
@@ -353,7 +353,7 @@ let optimizeActions = actions => {
 
 let handleActions = async (actions, operations, subIdConfig) => {
   let handleActionsForId = async (actions, id) => {
-    let actionCount = actions->Belt.Array.size
+    let actionCount = actions->Array.length
     if actionCount > 1 {
       Js.log(
         `Projection.handleActions: optimizing ${actionCount->Belt.Int.toString} actions for id=${id}`,
@@ -361,7 +361,7 @@ let handleActions = async (actions, operations, subIdConfig) => {
     }
 
     let optimizedActions = optimizeActions(actions)
-    let optimizedActionCount = optimizedActions->Belt.Array.size
+    let optimizedActionCount = optimizedActions->Array.length
     Js.log(
       `Projection.handleActions: handling ${optimizedActionCount->Belt.Int.toString} optimized actions for id=${id}`,
     )
@@ -395,7 +395,7 @@ let handleActions = async (actions, operations, subIdConfig) => {
   switch errors {
   | [] => ()
   | errors =>
-    let count = errors->Belt.Array.size
+    let count = errors->Array.length
     Js.Exn.raiseError(
       `Projection.handleActions failed with ${count->Belt.Int.toString} errors: ${errors
         ->Array.map(QueryDb.storageErrorToString)

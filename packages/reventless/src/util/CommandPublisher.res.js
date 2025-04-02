@@ -91,7 +91,7 @@ function Make(Spec, Config) {
     var sizeStr = String(size$1);
     var bufferSizeStr = String(buffer.length);
     var chunkCountStr = chunkCount.contents.toString();
-    Logger$Reventless.debug("File \"CommandPublisher.res\", line 60, characters 15-22", undefined, undefined, "send", "bufferSize: " + bufferSizeStr + ", chunk: " + chunkCountStr + ", size: " + sizeStr);
+    Logger$Reventless.debug("File \"CommandPublisher.res\", line 55, characters 15-22", undefined, undefined, "send", "bufferSize: " + bufferSizeStr + ", chunk: " + chunkCountStr + ", size: " + sizeStr);
     var commandsToSend$1 = buffer.splice(0, size$1);
     var promise$1 = Config.publishCommands(Spec.name, toJsons(commandsToSend$1));
     running.contents = Caml_option.some(promise$1);
@@ -116,7 +116,7 @@ function Make(Spec, Config) {
       }
     }
     if (exit$1 === 1) {
-      Logger$Reventless.debug("File \"CommandPublisher.res\", line 68, characters 34-41", undefined, undefined, "send", "finished chunk " + chunkCountStr + ": " + sizeStr);
+      Logger$Reventless.debug("File \"CommandPublisher.res\", line 63, characters 34-41", undefined, undefined, "send", "finished chunk " + chunkCountStr + ": " + sizeStr);
     }
     return await send();
   };

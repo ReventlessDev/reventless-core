@@ -27,7 +27,7 @@ module type Spec = {
 
 module Make = (Spec: Spec) => {
   let counterHandler = async (~references, ~counts) => {
-    Js.log2("counterHandler: references:", references->Belt.Array.size)
+    Js.log2("counterHandler: references:", references->Array.length)
     Js.log2("counterHandler: counts:", counts)
     await references
     ->groupByCounterId

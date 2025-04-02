@@ -230,7 +230,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let thenNoState = async p => {
     let store = await (p->unpackPlainPartial)()
     expect(
-      store->Js.Dict.values->Belt.Array.reduce(0, (acc, states) => acc + states->Belt.Array.size),
+      store->Js.Dict.values->Belt.Array.reduce(0, (acc, states) => acc + states->Array.length),
     )->toEqual(0)
   }
   let thenThrow = async p => {p->toThrow}

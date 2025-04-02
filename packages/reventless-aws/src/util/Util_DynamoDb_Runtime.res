@@ -142,7 +142,7 @@ let batchWrite = itemRequestMap => {
 
 let hasUnprocessedItems = writeOutput =>
   writeOutput.BatchWriteCommand.unprocessedItems->Belt.Option.mapWithDefault(0, items =>
-    items->Js.Dict.keys->Belt.Array.size
+    items->Js.Dict.keys->Array.length
   ) > 0
 
 let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): result<
@@ -156,7 +156,7 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): res
       let unprocessedItemsCount: string =
         unprocessedItems
         ->Js.Dict.keys
-        ->Belt.Array.size
+        ->Array.length
         ->Js.Int.toString
       Js.log(
         __MODULE__ ++
@@ -190,7 +190,7 @@ let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): res
 }
 
 let rec batchWriteWithRetries = async (~retry=0, ~maxRetries=5, batchWriteRequests) => {
-  let all = batchWriteRequests->Js.Dict.values->Array.flat->Belt.Array.size->Js.Int.toString
+  let all = batchWriteRequests->Js.Dict.values->Array.flat->Array.length->Js.Int.toString
   switch await batchWrite(batchWriteRequests) {
   | writeOutput =>
     if writeOutput->hasUnprocessedItems {
@@ -198,7 +198,7 @@ let rec batchWriteWithRetries = async (~retry=0, ~maxRetries=5, batchWriteReques
       let unprocessedRequestCount: string =
         unprocessedRequests
         ->Js.Dict.keys
-        ->Belt.Array.size
+        ->Array.length
         ->Js.Int.toString
       Js.log(
         __MODULE__ ++
@@ -216,7 +216,7 @@ let rec batchWriteWithRetries = async (~retry=0, ~maxRetries=5, batchWriteReques
           batchWriteRequests
           ->Js.Dict.values
           ->Array.flat
-          ->Belt.Array.size
+          ->Array.length
           ->Js.Int.toString
         Error(
           `batchWrite failed ${count}/${all} requests after ${maxRetries->Js.Int.toString} retries`,
