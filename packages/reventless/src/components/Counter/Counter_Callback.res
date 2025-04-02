@@ -11,7 +11,7 @@ type counterHandler = (
 
 let groupByCounterId = references => {
   let dict = Js.Dict.empty()
-  references->Belt.Array.forEach(((reference, inc)) => {
+  references->Array.forEach(((reference, inc)) => {
     let counterId = reference->Counter.unmakeId->fst
     let current = dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault(0)
     dict->Js.Dict.set(counterId, current + inc)

@@ -63,7 +63,7 @@ let handleStreamEvent = (
         (record.eventSourceARN == referencesARN || record.eventSourceARN == countsARN)
     )
 
-  ignoredRecords->Belt.Array.forEach(record =>
+  ignoredRecords->Array.forEach(record =>
     Js.log4(
       __MODULE__ ++ ": ignoring record from eventSource:",
       record.eventSource,

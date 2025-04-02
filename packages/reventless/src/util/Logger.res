@@ -102,7 +102,7 @@ let logCmdJson = (~loc=?, ~level=Level.Info, cmdJson, desc) =>
 let logCmdJsons = (~loc=?, ~level=Level.Info, cmdJsons, desc) => {
   cmdJsons
   ->commandJsonsToLogMessages
-  ->Belt.Array.forEach(msg => {
+  ->Array.forEach(msg => {
     log(~loc?, ~level, desc, msg)
   })
 }

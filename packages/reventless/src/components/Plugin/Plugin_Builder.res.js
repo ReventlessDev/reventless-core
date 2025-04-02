@@ -66,19 +66,19 @@ function getOutgoingEventHandler(eventHandlers) {
 
 function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEventHandler) {
   var dict = {};
-  Belt_Array.forEach(Belt_Array.zip(outputs, handlers), (function (param) {
-          var outputs = param[0];
-          Belt_Option.forEach(getEventHandler(param[1]), (function (eventHandler) {
-                  Belt_Array.forEach(getServiceNames(outputs), (function (serviceName) {
-                          var eventHandlers = Js_dict.get(dict, serviceName);
-                          if (eventHandlers !== undefined) {
-                            dict[serviceName] = eventHandlers.concat([eventHandler]);
-                          } else {
-                            dict[serviceName] = [eventHandler];
-                          }
-                        }));
-                }));
-        }));
+  Belt_Array.zip(outputs, handlers).forEach(function (param) {
+        var outputs = param[0];
+        Belt_Option.forEach(getEventHandler(param[1]), (function (eventHandler) {
+                getServiceNames(outputs).forEach(function (serviceName) {
+                      var eventHandlers = Js_dict.get(dict, serviceName);
+                      if (eventHandlers !== undefined) {
+                        dict[serviceName] = eventHandlers.concat([eventHandler]);
+                      } else {
+                        dict[serviceName] = [eventHandler];
+                      }
+                    });
+              }));
+      });
   return dict;
 }
 
@@ -116,14 +116,14 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                   var publishToReadModels = {};
                   var readModels$1 = readModels.map(function (SpecificReadModel) {
                         var readModel = SpecificReadModel.make(allEventTopics, opts);
-                        Belt_Array.forEach(Component$Reventless.outputs(readModel).sourceNames, (function (sourceName) {
-                                var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
-                                if (readModelNames !== undefined) {
-                                  readModelNamesForSourceName[sourceName] = readModelNames.concat([SpecificReadModel.Spec.name]);
-                                } else {
-                                  readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
-                                }
-                              }));
+                        Component$Reventless.outputs(readModel).sourceNames.forEach(function (sourceName) {
+                              var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
+                              if (readModelNames !== undefined) {
+                                readModelNamesForSourceName[sourceName] = readModelNames.concat([SpecificReadModel.Spec.name]);
+                              } else {
+                                readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
+                              }
+                            });
                         publishToReadModels[SpecificReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(function (param) {
                               return param.enqueueEvent;
                             });

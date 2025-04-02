@@ -117,26 +117,26 @@ function Make(Projection) {
                         });
             }),
           saveBatch: (function (extra) {
-              Belt_Array.forEach(extra, (function (param) {
-                      var id = param[0];
-                      var state = param[1];
-                      var subId = getSubId(state);
-                      var match = subId !== undefined ? (
-                          Belt_Array.some(states(store, id), (function (state) {
-                                  return hasSubId(subId, state);
-                                })) ? [
-                              updateState(store, id, subId, state),
-                              []
-                            ] : [
-                              states(store, id),
-                              [state]
-                            ]
-                        ) : [
-                          states(store, id),
-                          [state]
-                        ];
-                      store[id] = match[0].concat(match[1]);
-                    }));
+              extra.forEach(function (param) {
+                    var id = param[0];
+                    var state = param[1];
+                    var subId = getSubId(state);
+                    var match = subId !== undefined ? (
+                        Belt_Array.some(states(store, id), (function (state) {
+                                return hasSubId(subId, state);
+                              })) ? [
+                            updateState(store, id, subId, state),
+                            []
+                          ] : [
+                            states(store, id),
+                            [state]
+                          ]
+                      ) : [
+                        states(store, id),
+                        [state]
+                      ];
+                    store[id] = match[0].concat(match[1]);
+                  });
               return Promise.resolve({
                           TAG: "Ok",
                           _0: undefined
@@ -172,20 +172,20 @@ function Make(Projection) {
               }
             }),
           deleteBatch: (function (extra) {
-              Belt_Array.forEach(extra, (function (param) {
-                      var subId = param[1];
-                      var id = param[0];
-                      var match = Projection.subIdConfig;
-                      if (subId !== undefined) {
-                        if (match !== undefined) {
-                          return deleteSubState(store, id, subId[1], match.getSubId);
-                        } else {
-                          return ;
-                        }
+              extra.forEach(function (param) {
+                    var subId = param[1];
+                    var id = param[0];
+                    var match = Projection.subIdConfig;
+                    if (subId !== undefined) {
+                      if (match !== undefined) {
+                        return deleteSubState(store, id, subId[1], match.getSubId);
                       } else {
-                        return deleteStates(store, id);
+                        return ;
                       }
-                    }));
+                    } else {
+                      return deleteStates(store, id);
+                    }
+                  });
               return Promise.resolve({
                           TAG: "Ok",
                           _0: undefined

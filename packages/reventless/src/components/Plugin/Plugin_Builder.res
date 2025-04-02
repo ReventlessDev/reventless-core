@@ -51,13 +51,13 @@ let serviceNameToEventHandlers: (
   eventHandlers => option<eventHandler>,
 ) => dict<array<eventHandler>> = (outputs, getServiceNames, handlers, getEventHandler) => {
   let dict = Js.Dict.empty()
-  Belt.Array.zip(outputs, handlers)->Belt.Array.forEach(((outputs, eventHandlers)) => {
+  Belt.Array.zip(outputs, handlers)->Array.forEach(((outputs, eventHandlers)) => {
     eventHandlers
     ->getEventHandler
     ->Belt.Option.forEach(eventHandler =>
       outputs
       ->getServiceNames
-      ->Belt.Array.forEach(
+      ->Array.forEach(
         serviceName =>
           switch dict->Js.Dict.get(serviceName) {
           | Some(eventHandlers) =>
@@ -131,7 +131,7 @@ module Make = (
 
     let readModels = readModels->Array.map((module(SpecificReadModel: ReadModel.T)) => {
       let readModel = SpecificReadModel.make(~allEventTopics, ~opts)
-      (readModel->Component.outputs).sourceNames->Belt.Array.forEach(sourceName =>
+      (readModel->Component.outputs).sourceNames->Array.forEach(sourceName =>
         switch readModelNamesForSourceName->Js.Dict.get(sourceName) {
         | Some(readModelNames) =>
           readModelNamesForSourceName->Js.Dict.set(

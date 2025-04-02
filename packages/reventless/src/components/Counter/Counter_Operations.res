@@ -6,7 +6,7 @@ type referencesState = {
 
 let groupCountItemsByCounterId = countItems => {
   let dict = Js.Dict.empty()
-  countItems->Belt.Array.forEach(({Counter.counterId: counterId, reference}) => {
+  countItems->Array.forEach(({Counter.counterId: counterId, reference}) => {
     let currentReferences = dict->Js.Dict.get(counterId)->Belt.Option.getWithDefault([])
     dict->Js.Dict.set(counterId, currentReferences->Array.concat([reference]))
   })
@@ -16,7 +16,7 @@ let groupCountItemsByCounterId = countItems => {
 let logCountItems = countItems =>
   countItems
   ->groupCountItemsByCounterId
-  ->Belt.Array.forEach(((counterId, references)) => {
+  ->Array.forEach(((counterId, references)) => {
     let size = references->Array.length
     let referencesStr = references->Js.Array2.joinWith(",")
     Js.log(`  ${size->Belt.Int.toString} reference(s) for counterId ${counterId}: ${referencesStr}`)

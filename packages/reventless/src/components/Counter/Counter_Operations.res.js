@@ -4,7 +4,6 @@
 var Decco = require("@rescript-labs/decco/src/Decco.res.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
 var Counter$Reventless = require("./Counter.res.js");
@@ -63,21 +62,21 @@ function referencesState_decode(value) {
 
 function groupCountItemsByCounterId(countItems) {
   var dict = {};
-  Belt_Array.forEach(countItems, (function (param) {
-          var counterId = param.counterId;
-          var currentReferences = Belt_Option.getWithDefault(Js_dict.get(dict, counterId), []);
-          dict[counterId] = currentReferences.concat([param.reference]);
-        }));
+  countItems.forEach(function (param) {
+        var counterId = param.counterId;
+        var currentReferences = Belt_Option.getWithDefault(Js_dict.get(dict, counterId), []);
+        dict[counterId] = currentReferences.concat([param.reference]);
+      });
   return Js_dict.entries(dict);
 }
 
 function logCountItems(countItems) {
-  Belt_Array.forEach(groupCountItemsByCounterId(countItems), (function (param) {
-          var references = param[1];
-          var size = references.length;
-          var referencesStr = references.join(",");
-          console.log("  " + String(size) + " reference(s) for counterId " + param[0] + ": " + referencesStr);
-        }));
+  groupCountItemsByCounterId(countItems).forEach(function (param) {
+        var references = param[1];
+        var size = references.length;
+        var referencesStr = references.join(",");
+        console.log("  " + String(size) + " reference(s) for counterId " + param[0] + ": " + referencesStr);
+      });
 }
 
 var NotCounted = /* @__PURE__ */Caml_exceptions.create("Counter_Operations-Reventless.NotCounted");

@@ -4,7 +4,6 @@
 var Decco = require("@rescript-labs/decco/src/Decco.res.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Counter$Reventless = require("./Counter.res.js");
@@ -66,11 +65,11 @@ function countsState_decode(value) {
 
 function groupByCounterId(references) {
   var dict = {};
-  Belt_Array.forEach(references, (function (param) {
-          var counterId = Counter$Reventless.unmakeId(param[0])[0];
-          var current = Belt_Option.getWithDefault(Js_dict.get(dict, counterId), 0);
-          dict[counterId] = current + param[1] | 0;
-        }));
+  references.forEach(function (param) {
+        var counterId = Counter$Reventless.unmakeId(param[0])[0];
+        var current = Belt_Option.getWithDefault(Js_dict.get(dict, counterId), 0);
+        dict[counterId] = current + param[1] | 0;
+      });
   return Js_dict.entries(dict);
 }
 

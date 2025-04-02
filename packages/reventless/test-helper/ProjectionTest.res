@@ -118,7 +118,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     | _ => Error(ReventlessSpec.QueryDb.StaleState)->Js.Promise.resolve
     }
   let saveBatch = (store, batch) => {
-    batch->Belt.Array.forEach(((id, state, _ttl)) => store->addState(id, state))
+    batch->Array.forEach(((id, state, _ttl)) => store->addState(id, state))
     Ok()->Js.Promise.resolve
   }
   let delete = (store, id, subId) =>
@@ -132,7 +132,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     | _ => Ok()->Js.Promise.resolve
     }
   let deleteBatch = (store, ids) => {
-    ids->Belt.Array.forEach(((id, subId)) =>
+    ids->Array.forEach(((id, subId)) =>
       switch (subId, Projection.subIdConfig) {
       | (None, _) => store->deleteStates(id)
       | (Some((_, subId)), Some({ReventlessSpec.ReadModel_Spec.getSubId: getSubId})) =>

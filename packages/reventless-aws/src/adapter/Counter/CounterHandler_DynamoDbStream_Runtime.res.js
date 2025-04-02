@@ -143,9 +143,9 @@ function handleStreamEvent(referencesStream, countsStream, counterHandler, strea
             return false;
           }
         }));
-  Belt_Array.forEach(match[1], (function (record) {
-          console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource:", record.eventSource, record.eventSourceARN, JSON.stringify(record));
-        }));
+  match[1].forEach(function (record) {
+        console.log("CounterHandler_DynamoDbStream_Runtime-ReventlessAws" + ": ignoring record from eventSource:", record.eventSource, record.eventSourceARN, JSON.stringify(record));
+      });
   var match$1 = Belt_Array.partition(match[0], (function (record) {
           return record.eventSourceARN === referencesARN;
         }));
