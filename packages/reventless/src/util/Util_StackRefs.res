@@ -5,7 +5,7 @@ let coreStackName = Pulumi.Config.make(Some("core"))->Pulumi.Config.get("stack")
 let stackName = pluginName =>
   coreStackName->Belt.Option.map(name => {
     let parts = name->Js.String2.split("/")
-    let _ = parts->Belt.Array.set(1, pluginName)
+    parts->Array.set(1, pluginName)
     parts->Js.Array2.joinWith("/")
   })
 
@@ -17,7 +17,7 @@ let get = pluginName =>
 
     switch stackRef {
     | Some(stackRef) =>
-      let _ = stackRefs->Js.Dict.set(pluginName, stackRef)
+      stackRefs->Js.Dict.set(pluginName, stackRef)
       Some(stackRef)
     | None => None
     }

@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Pulumi = require("@pulumi/pulumi");
@@ -14,7 +13,7 @@ var coreStackName = new Pulumi.Config("core").get("stack");
 function stackName(pluginName) {
   return Belt_Option.map(coreStackName, (function (name) {
                 var parts = name.split("/");
-                Belt_Array.set(parts, 1, pluginName);
+                parts[1] = pluginName;
                 return parts.join("/");
               }));
 }
