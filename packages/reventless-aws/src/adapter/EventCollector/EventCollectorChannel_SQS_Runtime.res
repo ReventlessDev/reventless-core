@@ -27,7 +27,7 @@ let handleDynamoDbOrSqsEvent = (queue, handleEvents) => async (
   | _ =>
     let entries =
       records
-      ->Belt.Array.keep(record =>
+      ->Array.filter(record =>
         switch record.eventSource {
         | "aws:sqs" => true
         | _ => false

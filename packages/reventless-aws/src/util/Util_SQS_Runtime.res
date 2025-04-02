@@ -56,7 +56,7 @@ let rec sendMessages = async (queue, queueService, commandJsons) => {
   | Error(failedIds) =>
     Js.log2("Util.SQS_Runtime.sendMessages: Error: failed ids:", failedIds)
     let commandJsonsToRetry =
-      commandJsons->Belt.Array.keep(({meta: {msgId}}) =>
+      commandJsons->Array.filter(({meta: {msgId}}) =>
         failedIds->Belt.Array.some(failedId => failedId == msgId)
       )
     let timeout = Js.Math.random_int(3000, 7000)

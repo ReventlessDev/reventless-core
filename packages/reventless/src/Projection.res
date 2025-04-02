@@ -52,7 +52,7 @@ let applyChanges = async (
   let afterSubIds = afterStates->Array.map(state => state->getSubId)->Set.fromArray
 
   let addedSubIds = afterSubIds->Set.diff(beforeSubIds)
-  let addedStates = afterStates->Belt.Array.keep(state => addedSubIds->Set.has(state->getSubId))
+  let addedStates = afterStates->Array.filter(state => addedSubIds->Set.has(state->getSubId))
   let addedCount = addedStates->Array.length
 
   let changedStates = beforeStates->Array.filterMap(before => {

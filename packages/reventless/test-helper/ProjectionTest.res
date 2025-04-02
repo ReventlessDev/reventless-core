@@ -101,7 +101,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       id,
       store
       ->Js.Dict.get(id)
-      ->Belt.Option.map(states => states->Belt.Array.keep(state => state->getSubId != subId))
+      ->Belt.Option.map(states => states->Array.filter(state => state->getSubId != subId))
       ->Belt.Option.getWithDefault([]),
     )
 

@@ -70,7 +70,7 @@ module Make = (Spec: Spec) => {
         ->Message.log("otherPluginExtensionPoints:")
         ->Array.filterMap(({name: extensionPointName, eventTopic}) =>
           Spec.extensionsOutputs
-          ->Belt.Array.keep((extension: Extension.outputs) =>
+          ->Array.filter((extension: Extension.outputs) =>
             extension.extensionPointName == extensionPointName
           )
           ->Message.log("matching Extensions:")
@@ -92,7 +92,7 @@ module Make = (Spec: Spec) => {
         ->Message.log("extensionPoints:")
         ->Array.filterMap(extensionPoint =>
           otherPluginExtensions
-          ->Belt.Array.keep(({extensionPointName}) => extensionPoint.name == extensionPointName)
+          ->Array.filter(({extensionPointName}) => extensionPoint.name == extensionPointName)
           ->Message.log("matching otherPluginExtensions:")
           ->Array.length > 0
             ? Some(
@@ -123,7 +123,7 @@ module Make = (Spec: Spec) => {
         eventTopic,
       }) =>
         Spec.extensionsOutputs
-        ->Belt.Array.keep(extension => extension.extensionPointName == extensionPointName)
+        ->Array.filter(extension => extension.extensionPointName == extensionPointName)
         ->Array.length > 0
           ? Some(
               unsubscribe(
@@ -139,7 +139,7 @@ module Make = (Spec: Spec) => {
 
       let disconnectFromExtensions = Spec.extensionPointsOutputs->Array.filterMap(extensionPoint =>
         pluginExtensions
-        ->Belt.Array.keep(({extensionPointName}) => extensionPoint.name == extensionPointName)
+        ->Array.filter(({extensionPointName}) => extensionPoint.name == extensionPointName)
         ->Array.length > 0
           ? Some(
               unsubscribe(

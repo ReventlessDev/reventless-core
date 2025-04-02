@@ -45,7 +45,7 @@ module Make = (
     ->Belt.Set.String.toArray
     ->Array.map(id => (
       id->Spec.Id.makeFromString,
-      topicItems->Belt.Array.keep(({command}) => command.id == id->Spec.Id.makeFromString),
+      topicItems->Array.filter(({command}) => command.id == id->Spec.Id.makeFromString),
     ))
   }
 

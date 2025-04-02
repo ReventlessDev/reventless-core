@@ -22,7 +22,7 @@ module Make = (
   let filterAggregateResources = (aggregateResources, aggregateNames) =>
     aggregateResources
     ->Js.Dict.entries
-    ->Belt.Array.keep(((name, _)) =>
+    ->Array.filter(((name, _)) =>
       aggregateNames->Belt.Array.some(aggregateName => aggregateName == name)
     )
     ->Array.map(((_, resources)) => resources)

@@ -1,7 +1,7 @@
 open Adapter
 
 let filterSupportedResources = (resources, supportedServices) =>
-  resources->Belt.Array.keep((resource: ReventlessSpec.Adapter.resource) =>
+  resources->Array.filter((resource: ReventlessSpec.Adapter.resource) =>
     supportedServices->Belt.Array.some(supportedService =>
       resource.service->Pulumi.Output.get == supportedService
     )
@@ -11,7 +11,7 @@ let filterSupportedUnwrappedResources: (
   array<unwrappedResource>,
   array<string>,
 ) => array<unwrappedResource> = (resources, supportedServices) =>
-  resources->Belt.Array.keep(resource =>
+  resources->Array.filter(resource =>
     supportedServices->Belt.Array.some(supportedService => resource.service == supportedService)
   )
 

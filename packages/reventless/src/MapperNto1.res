@@ -55,7 +55,7 @@ module Mapper = (
 ) => {
   let findMappings = (sourceNameOpt, mappings) =>
     sourceNameOpt->Belt.Option.mapWithDefault([], sourceName =>
-      mappings->Belt.Array.keep((module(Mapping: Mappings.Mapping)) =>
+      mappings->Array.filter((module(Mapping: Mappings.Mapping)) =>
         Mapping.sourceName == sourceName
       )
     )

@@ -6,19 +6,19 @@ var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 
 function filterSupportedResources(resources, supportedServices) {
-  return Belt_Array.keep(resources, (function (resource) {
-                return Belt_Array.some(supportedServices, (function (supportedService) {
-                              return resource.service.get() === supportedService;
-                            }));
-              }));
+  return resources.filter(function (resource) {
+              return Belt_Array.some(supportedServices, (function (supportedService) {
+                            return resource.service.get() === supportedService;
+                          }));
+            });
 }
 
 function filterSupportedUnwrappedResources(resources, supportedServices) {
-  return Belt_Array.keep(resources, (function (resource) {
-                return Belt_Array.some(supportedServices, (function (supportedService) {
-                              return resource.service === supportedService;
-                            }));
-              }));
+  return resources.filter(function (resource) {
+              return Belt_Array.some(supportedServices, (function (supportedService) {
+                            return resource.service === supportedService;
+                          }));
+            });
 }
 
 function findResource(resources, service) {

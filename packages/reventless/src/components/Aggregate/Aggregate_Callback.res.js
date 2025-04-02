@@ -26,9 +26,9 @@ function Make(Spec, Behaviour, Ops) {
     return Belt_SetString.toArray(Belt_SetString.fromArray(ids)).map(function (id) {
                 return [
                         Spec.Id.makeFromString(id),
-                        Belt_Array.keep(topicItems, (function (param) {
-                                return Caml_obj.equal(param.command.id, Spec.Id.makeFromString(id));
-                              }))
+                        topicItems.filter(function (param) {
+                              return Caml_obj.equal(param.command.id, Spec.Id.makeFromString(id));
+                            })
                       ];
               });
   };

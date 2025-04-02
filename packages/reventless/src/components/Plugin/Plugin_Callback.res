@@ -66,7 +66,7 @@ module Make = (Spec: Spec): T => {
 let addStatement = (policy: AwsSdk.IAM.Policy.t, sid, queueArn, topicArn) => {
   let newStatements =
     policy.statement
-    ->Belt.Array.keep(statement => statement.sid != sid)
+    ->Array.filter(statement => statement.sid != sid)
     ->Array.concat([
       {
         AwsSdk.IAM.Policy.sid,
@@ -86,7 +86,7 @@ let addStatement = (policy: AwsSdk.IAM.Policy.t, sid, queueArn, topicArn) => {
 }
 let removeStatement = (policy: AwsSdk.IAM.Policy.t, sid) => {
   let statements = policy.statement
-  let newStatements = statements->Belt.Array.keep(statement => statement.sid != sid)
+  let newStatements = statements->Array.filter(statement => statement.sid != sid)
   let removedStatements = statements->Array.length - newStatements->Array.length
   Js.log(
     `removeStatement: removing ${removedStatements->Belt.Int.toString} statement(s) with Sid ${sid}`,

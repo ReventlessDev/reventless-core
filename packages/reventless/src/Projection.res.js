@@ -51,9 +51,9 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
             return getSubId(state);
           }));
   var addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
-  var addedStates = Belt_Array.keep(afterStates, (function (state) {
-          return Belt_SetString.has(addedSubIds, getSubId(state));
-        }));
+  var addedStates = afterStates.filter(function (state) {
+        return Belt_SetString.has(addedSubIds, getSubId(state));
+      });
   var addedCount = addedStates.length;
   var changedStates = Core__Array.filterMap(beforeStates, (function (before) {
           var beforeSubId = getSubId(before);

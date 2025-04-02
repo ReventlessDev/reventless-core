@@ -10,7 +10,7 @@ let filterSupportedResources: (
   ->Pulumi.Output.apply(services =>
     resources
     ->Belt.Array.zip(services)
-    ->Belt.Array.keep(((_resource, service)) =>
+    ->Array.filter(((_resource, service)) =>
       supportedServices->Belt.Array.some(supportedService => service == supportedService)
     )
     ->Array.map(((resource, _)) => resource)
@@ -20,7 +20,7 @@ let filterSupportedUnwrappedResources: (
   array<Adapter.unwrappedResource>,
   array<string>,
 ) => array<Adapter.unwrappedResource> = (resources, supportedServices) =>
-  resources->Belt.Array.keep(resource =>
+  resources->Array.filter(resource =>
     supportedServices->Belt.Array.some(supportedService => resource.service == supportedService)
   )
 

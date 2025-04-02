@@ -23,12 +23,12 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
   var event_encode = Spec.event_encode;
   var event_decode = Spec.event_decode;
   var filterAggregateResources = function (aggregateResources, aggregateNames) {
-    return Belt_Array.keep(Js_dict.entries(aggregateResources), (function (param) {
-                      var name = param[0];
-                      return Belt_Array.some(aggregateNames, (function (aggregateName) {
-                                    return aggregateName === name;
-                                  }));
-                    })).map(function (param) {
+    return Js_dict.entries(aggregateResources).filter(function (param) {
+                    var name = param[0];
+                    return Belt_Array.some(aggregateNames, (function (aggregateName) {
+                                  return aggregateName === name;
+                                }));
+                  }).map(function (param) {
                   return param[1];
                 }).flat();
   };

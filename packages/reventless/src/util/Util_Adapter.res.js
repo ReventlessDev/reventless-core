@@ -11,23 +11,23 @@ function filterSupportedResources(resources, supportedServices) {
   return Pulumi.all(resources.map(function (resource) {
                     return resource.service;
                   })).apply(function (services) {
-              return Belt_Array.keep(Belt_Array.zip(resources, services), (function (param) {
-                              var service = param[1];
-                              return Belt_Array.some(supportedServices, (function (supportedService) {
-                                            return service === supportedService;
-                                          }));
-                            })).map(function (param) {
+              return Belt_Array.zip(resources, services).filter(function (param) {
+                            var service = param[1];
+                            return Belt_Array.some(supportedServices, (function (supportedService) {
+                                          return service === supportedService;
+                                        }));
+                          }).map(function (param) {
                           return param[0];
                         });
             });
 }
 
 function filterSupportedUnwrappedResources(resources, supportedServices) {
-  return Belt_Array.keep(resources, (function (resource) {
-                return Belt_Array.some(supportedServices, (function (supportedService) {
-                              return resource.service === supportedService;
-                            }));
-              }));
+  return resources.filter(function (resource) {
+              return Belt_Array.some(supportedServices, (function (supportedService) {
+                            return resource.service === supportedService;
+                          }));
+            });
 }
 
 function findResource(resources, service) {

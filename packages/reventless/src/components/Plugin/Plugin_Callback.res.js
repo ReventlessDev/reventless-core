@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SQS$AwsSdk = require("@reventless/bs-aws-sdk/src/SQS.res.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
@@ -53,9 +52,9 @@ function Make(Spec) {
 }
 
 function addStatement(policy, sid, queueArn, topicArn) {
-  var newStatements = Belt_Array.keep(policy.Statement, (function (statement) {
-            return statement.Sid !== sid;
-          })).concat([{
+  var newStatements = policy.Statement.filter(function (statement) {
+          return statement.Sid !== sid;
+        }).concat([{
           Sid: sid,
           Effect: "Allow",
           Principal: "*",
@@ -75,9 +74,9 @@ function addStatement(policy, sid, queueArn, topicArn) {
 
 function removeStatement(policy, sid) {
   var statements = policy.Statement;
-  var newStatements = Belt_Array.keep(statements, (function (statement) {
-          return statement.Sid !== sid;
-        }));
+  var newStatements = statements.filter(function (statement) {
+        return statement.Sid !== sid;
+      });
   var removedStatements = statements.length - newStatements.length | 0;
   console.log("removeStatement: removing " + String(removedStatements) + " statement(s) with Sid " + sid);
   return {

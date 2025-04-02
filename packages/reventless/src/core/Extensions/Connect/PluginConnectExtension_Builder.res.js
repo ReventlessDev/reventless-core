@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var SNS$AwsSdk = require("@reventless/bs-aws-sdk/src/SNS.res.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
@@ -65,17 +64,17 @@ function Make(Spec) {
           var otherPluginEventCollector = match.eventCollector;
           var connectToExtensionPoints = Core__Array.filterMap(Message$Reventless.log(match.extensionPoints, "otherPluginExtensionPoints:"), (function (param) {
                   var extensionPointName = param.name;
-                  if (Message$Reventless.log(Belt_Array.keep(Spec.extensionsOutputs, (function (extension) {
-                                return extension.extensionPointName === extensionPointName;
-                              })), "matching Extensions:").length > 0) {
+                  if (Message$Reventless.log(Spec.extensionsOutputs.filter(function (extension) {
+                              return extension.extensionPointName === extensionPointName;
+                            }), "matching Extensions:").length > 0) {
                     return Caml_option.some(subscribe("connectToExtensionPoints", extensionPointName, param.eventTopic, id, pluginDefinition.eventCollector));
                   }
                   
                 }));
           var connectToExtensions = Core__Array.filterMap(Message$Reventless.log(Spec.extensionPointsOutputs, "extensionPoints:"), (function (extensionPoint) {
-                  if (Message$Reventless.log(Belt_Array.keep(otherPluginExtensions, (function (param) {
-                                return extensionPoint.name === param.extensionPointName;
-                              })), "matching otherPluginExtensions:").length > 0) {
+                  if (Message$Reventless.log(otherPluginExtensions.filter(function (param) {
+                              return extensionPoint.name === param.extensionPointName;
+                            }), "matching otherPluginExtensions:").length > 0) {
                     return Caml_option.some(subscribe("connectToExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id, otherPluginId, otherPluginEventCollector));
                   }
                   
@@ -88,17 +87,17 @@ function Make(Spec) {
           var pluginEventCollector = match$1.eventCollector;
           var disconnectFromExtensionPoints = Core__Array.filterMap(match$1.extensionPoints, (function (param) {
                   var extensionPointName = param.name;
-                  if (Belt_Array.keep(Spec.extensionsOutputs, (function (extension) {
-                            return extension.extensionPointName === extensionPointName;
-                          })).length > 0) {
+                  if (Spec.extensionsOutputs.filter(function (extension) {
+                          return extension.extensionPointName === extensionPointName;
+                        }).length > 0) {
                     return Caml_option.some(unsubscribe("disconnectFromExtensionPoints", extensionPointName, param.eventTopic, id, pluginDefinition.eventCollector));
                   }
                   
                 }));
           var disconnectFromExtensions = Core__Array.filterMap(Spec.extensionPointsOutputs, (function (extensionPoint) {
-                  if (Belt_Array.keep(pluginExtensions, (function (param) {
-                            return extensionPoint.name === param.extensionPointName;
-                          })).length > 0) {
+                  if (pluginExtensions.filter(function (param) {
+                          return extensionPoint.name === param.extensionPointName;
+                        }).length > 0) {
                     return Caml_option.some(unsubscribe("disconnectFromExtensions", extensionPoint.name, extensionPoint.eventTopic.resources[0].id, pluginId, pluginEventCollector));
                   }
                   

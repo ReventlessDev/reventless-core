@@ -54,9 +54,9 @@ function Make(Projection) {
   };
   var deleteSubState = function (store, id, subId, getSubId) {
     store[id] = Belt_Option.getWithDefault(Belt_Option.map(Js_dict.get(store, id), (function (states) {
-                return Belt_Array.keep(states, (function (state) {
-                              return Caml_obj.notequal(getSubId(state), subId);
-                            }));
+                return states.filter(function (state) {
+                            return Caml_obj.notequal(getSubId(state), subId);
+                          });
               })), []);
   };
   var handleActions = function (actions, operations) {
