@@ -137,27 +137,27 @@ module Make = (
   /*
    TODO: The following functions were unused and are due to be deleted:
      let logSourceEvents = events =>
-       events->Belt.Array.forEachWithIndex((idx, event) => {
+       events->Array.forEachWithIndex((event, idx) => {
          let eventStr = event->Source.event_encode;
          Js.log({j|Source event[$idx]: $eventStr|j});
        });
      let logTargetCommands = commands => {
-       commands->Belt.Array.forEachWithIndex((idx, (id, command)) => {
+       commands->Array.forEachWithIndex(((id, command), idx) => {
          let commandStr = command->Target.command_encode;
          Js.log({j|Target command[$idx]: $commandStr id:$id|j});
        });
        commands;
      };
      let logTargetEvents = events =>
-       events->Belt.Array.forEachWithIndex((idx, event) => {
+       events->Array.forEachWithIndex((event, idx) => {
          let eventStr = event->Target.event_encode;
          Js.log({j|  new Target event[$idx]: $eventStr|j});
        });
      let logTargetEventsDict = (events, prefix) =>
        events
        ->Js.Dict.entries
-       ->Belt.Array.forEachWithIndex((idx1, (id, events)) =>
-           events->Belt.Array.forEachWithIndex((idx2, event) => {
+       ->Array.forEachWithIndex(((id, events), idx1) =>
+           events->Array.forEachWithIndex((event, idx2) => {
              let eventStr = event->Target.event_encode;
              Js.log({j|$prefix Target event[$idx1,$idx2]: $eventStr id:$id|j});
            })
