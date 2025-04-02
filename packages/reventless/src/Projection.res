@@ -244,7 +244,7 @@ let optimizeActions = actions => {
       let previousActions = if optimizedActionsCount == 1 {
         []
       } else {
-        optimizedActions->Belt.Array.slice(~offset=0, ~len=optimizedActionsCount - 1)
+        optimizedActions->Array.slice(~start=0, ~end=optimizedActionsCount)
       }
 
       switch (lastAction, action) {

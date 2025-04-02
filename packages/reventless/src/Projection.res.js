@@ -390,7 +390,7 @@ function optimizeActions(actions) {
                   return [action];
                 }
                 var lastAction = Belt_Array.getExn(optimizedActions, optimizedActionsCount - 1 | 0);
-                var previousActions = optimizedActionsCount === 1 ? [] : Belt_Array.slice(optimizedActions, 0, optimizedActionsCount - 1 | 0);
+                var previousActions = optimizedActionsCount === 1 ? [] : optimizedActions.slice(0, optimizedActionsCount);
                 if (typeof lastAction === "object") {
                   switch (lastAction.TAG) {
                     case "Create" :

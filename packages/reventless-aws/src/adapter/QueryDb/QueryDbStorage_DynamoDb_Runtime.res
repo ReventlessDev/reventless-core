@@ -53,11 +53,11 @@ let save = table => async (id, json, saveMode: Reventless.QueryDb.saveMode, ttl)
   }
 }
 
-let sliceBatch = (arr, batchNr) =>
-  arr->Belt.Array.slice(
-    ~offset=batchNr * BatchWriteCommand.maxBatchSize,
-    ~len=BatchWriteCommand.maxBatchSize,
-  )
+let sliceBatch = (arr, batchNr) => {
+  let start = batchNr * BatchWriteCommand.maxBatchSize
+  let end = start + BatchWriteCommand.maxBatchSize
+  arr->Array.slice(~start, ~end)
+}
 
 let writeMultiple = async (writeRequests, op, ids, table) => {
   let tableName = table.name

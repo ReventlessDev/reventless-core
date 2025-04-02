@@ -90,7 +90,9 @@ function save(table) {
 }
 
 function sliceBatch(arr, batchNr) {
-  return Belt_Array.slice(arr, Math.imul(batchNr, DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize), DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize);
+  var start = Math.imul(batchNr, DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize);
+  var end = start + DynamoDb_DocumentClient$AwsSdk.BatchWriteCommand.maxBatchSize | 0;
+  return arr.slice(start, end);
 }
 
 async function writeMultiple(writeRequests, op, ids, table) {

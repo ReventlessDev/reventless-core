@@ -4,13 +4,13 @@ type registerResource = Pulumi.Resource.t => unit
 
 let getDependencies = () => {
   let currentLen = dependencies.contents->Belt.Array.length
-  let (offset, len) = switch currentLen / 4 {
+  let (start, end) = switch currentLen / 4 {
   | 0 => (0, 0)
-  | idx => ((idx - 1) * 4, 4)
+  | idx => ((idx - 1) * 4, idx * 4)
   }
   let deps =
     dependencies.contents
-    ->Belt.Array.slice(~offset, ~len)
+    ->Array.slice(~start, ~end)
     ->Js.Promise.all
     ->Pulumi.Output.fromPromise
 
