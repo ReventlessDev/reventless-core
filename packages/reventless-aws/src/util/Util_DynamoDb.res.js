@@ -181,7 +181,7 @@ function makeTableArgs(attributes, globalSecondaryIndexes, ttl, rangeKey, restor
                               }));
                 })),
           restoreToLatestTime: Core__Option.map(restoreSourceName, (function (param) {
-                  return Belt_Option.isNone(restoreDateTime);
+                  return Core__Option.isNone(restoreDateTime);
                 }))
         };
 }

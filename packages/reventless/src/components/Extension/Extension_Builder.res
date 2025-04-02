@@ -41,7 +41,7 @@ module Make = (
       extensionPointName: Spec.name,
       aggregateNames: Mappings.mappings->Array.filterMap((module(Mapping)) =>
         Mapping.aggregateName == ReventlessSpec.ExtensionMapping.NoAggregate.name ||
-          Mapping.mapOutgoingEvent->Belt.Option.isNone
+          Mapping.mapOutgoingEvent->Option.isNone
           ? None
           : Some(Mapping.aggregateName)
       ),

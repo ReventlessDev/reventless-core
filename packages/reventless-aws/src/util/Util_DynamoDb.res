@@ -137,7 +137,7 @@ let makeTableArgs = (
       restoreDateTime->Option.map(Pulumi.Input.make)
     ),
     restoreToLatestTime: ?restoreSourceName->Option.map(_ =>
-      restoreDateTime->Belt.Option.isNone->Pulumi.Input.make
+      restoreDateTime->Option.isNone->Pulumi.Input.make
     ),
     ?streamEnabled,
     ?streamViewType,
