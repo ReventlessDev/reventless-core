@@ -8,7 +8,7 @@ module type T = {
   let describeWithId: (string, string, unit => unit) => unit
   let test: (string, ~timeout: int=?, unit => Js.Promise.t<Jest.assertion>) => unit
 
-  type store = Js.Dict.t<array<targetState>>
+  type store = dict<array<targetState>>
 
   let givenEvents: array<sourceEvent> => Js.Promise.t<store>
   let givenEventsWithTime: array<(string, sourceEvent)> => Js.Promise.t<store>
@@ -77,7 +77,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   }
   let test = Jest.testPromise
 
-  type store = Js.Dict.t<array<Projection.targetState>>
+  type store = dict<array<Projection.targetState>>
 
   let getSubId = state => Projection.subIdConfig->Option.map(({getSubId}) => state->getSubId)
   let hasSubId = (subId, state) => state->getSubId->Option.getExn == subId

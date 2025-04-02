@@ -165,7 +165,7 @@ let string = x =>
   | None => ""->Js.Json.string
   }
 
-let composeMeta = (dict: Js.Dict.t<Js.Json.t>) =>
+let composeMeta = (dict: dict<Js.Json.t>) =>
   [
     ("service", dict->Js.Dict.get("service")->Option.getExn),
     ("time", dict->Js.Dict.get("time")->Option.getExn),

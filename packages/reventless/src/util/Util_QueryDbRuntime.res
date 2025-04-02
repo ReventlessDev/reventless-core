@@ -1,4 +1,4 @@
-let getRuntimeResource = (allQueryDbs: Js.Dict.t<Adapter.unwrappedResource>, queryDbName) =>
+let getRuntimeResource = (allQueryDbs: dict<Adapter.unwrappedResource>, queryDbName) =>
   try allQueryDbs->Js.Dict.get(queryDbName)->Option.getExn catch {
   | exn =>
     Js.log2(

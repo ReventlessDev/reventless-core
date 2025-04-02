@@ -15,22 +15,20 @@ module type T = {
     string,
     Source.command,
     (array<(string, array<Target.event>)>, array<Source.event>),
-  ) => Js.Promise.t<Js.Dict.t<array<Target.event>>>
+  ) => Js.Promise.t<dict<array<Target.event>>>
 
   let thenTargetEvents: (
     array<(string, array<Target.event>)>,
-    Js.Promise.t<Js.Dict.t<array<Target.event>>>,
+    Js.Promise.t<dict<array<Target.event>>>,
   ) => Js.Promise.t<Jest.assertion>
 
   let thenTargetEvent: (
     string,
     Target.event,
-    Js.Promise.t<Js.Dict.t<array<Target.event>>>,
+    Js.Promise.t<dict<array<Target.event>>>,
   ) => Js.Promise.t<Jest.assertion>
 
-  let thenNoTargetEvent: Js.Promise.t<Js.Dict.t<array<Target.event>>> => Js.Promise.t<
-    Jest.assertion,
-  >
+  let thenNoTargetEvent: Js.Promise.t<dict<array<Target.event>>> => Js.Promise.t<Jest.assertion>
   // let thenTargetEventWithError:
   //   (
   //     Target.Id.t,

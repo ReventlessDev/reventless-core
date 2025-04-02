@@ -147,7 +147,7 @@ let hasUnprocessedItems = writeOutput =>
 
 let rec retryBatchWriteIfNecessary = async (p, allItems, retry, maxRetries): result<
   unit,
-  Js.Dict.t<array<AwsSdk.DynamoDb.DocumentClient.BatchWriteCommand.writeRequest>>,
+  dict<array<AwsSdk.DynamoDb.DocumentClient.BatchWriteCommand.writeRequest>>,
 > => {
   switch await p {
   | writeOutput =>
@@ -245,7 +245,7 @@ let toPutRequest: Js.Json.t => BatchWriteCommand.writeRequest = json => {
   {putRequest: {BatchWriteCommand.item: json}}
 }
 
-let toDeleteRequest: Js.Dict.t<Js.Json.t> => BatchWriteCommand.writeRequest = keys => {
+let toDeleteRequest: dict<Js.Json.t> => BatchWriteCommand.writeRequest = keys => {
   {deleteRequest: {BatchWriteCommand.key: keys}}
 }
 

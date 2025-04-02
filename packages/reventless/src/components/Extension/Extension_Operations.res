@@ -8,8 +8,8 @@ module type Mappings = {
 module type Spec = {
   let publishToAggregates: dict<CommandTopic.publishJsons>
   let publishToCorePluginExtensionPoint: CommandTopic.publishJsons
-  let readModelNamesForSourceName: Js.Dict.t<array<string>>
-  let publishToReadModels: Js.Dict.t<EventCollector.enqueueEvent>
+  let readModelNamesForSourceName: dict<array<string>>
+  let publishToReadModels: dict<EventCollector.enqueueEvent>
   let queryEngine: ReventlessSpec.QueryEngine.operations
 }
 

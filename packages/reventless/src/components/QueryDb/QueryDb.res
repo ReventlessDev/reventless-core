@@ -1,11 +1,11 @@
 let componentType = ComponentType.QueryDb
 
-type rec resolversResourcesMaker = Js.Dict.t<outputs> => array<ReventlessSpec.Adapter.resource>
+type rec resolversResourcesMaker = dict<outputs> => array<ReventlessSpec.Adapter.resource>
 and outputs = {
   resources: array<ReventlessSpec.Adapter.resource>,
   resolversMaker: resolversResourcesMaker,
 }
-type allOutputs = Js.Dict.t<outputs>
+type allOutputs = dict<outputs>
 
 type t
 

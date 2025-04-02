@@ -10,7 +10,7 @@ and outputs = {
   eventMapper?: Pulumi.Output.t<EventMapper.outputs>,
   addEventMapper: addEventMapper,
 }
-type allOutputs = Js.Dict.t<outputs>
+type allOutputs = dict<outputs>
 type operations = {publishJsons: CommandTopic.publishJsons}
 type component = Component.t<t, outputs, operations>
 

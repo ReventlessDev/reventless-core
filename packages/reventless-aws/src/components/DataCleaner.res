@@ -24,9 +24,9 @@ let handleDeleteResult = result => {
   }
 }
 
-let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableConfig): unit =>
+let deleteAllItems = async (items: array<dict<string>>, tableConfig: tableConfig): unit =>
   switch await items
-  ->Array.map(async (item: Js.Dict.t<string>) => {
+  ->Array.map(async (item: dict<string>) => {
     let id = item->Js.Dict.get(tableConfig.id)
     let sort = tableConfig.sort->Option.flatMap(sortField => item->Js.Dict.get(sortField))
     switch (id, sort) {

@@ -1,4 +1,4 @@
-let stackRefs: Js.Dict.t<Pulumi.StackReference.t> = Js.Dict.empty()
+let stackRefs: dict<Pulumi.StackReference.t> = Js.Dict.empty()
 
 let coreStackName = Pulumi.Config.make(Some("core"))->Pulumi.Config.get("stack")
 

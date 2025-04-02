@@ -10,9 +10,9 @@ module Make = (
 
   let construct = (
     ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
-    ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
-    ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
-    ~publishToReadModels: Js.Dict.t<EventCollector.enqueueEvent>,
+    ~publishToAggregates: dict<CommandTopic.publishJsons>,
+    ~readModelNamesForSourceName: dict<array<string>>,
+    ~publishToReadModels: dict<EventCollector.enqueueEvent>,
     ~queryEngine,
     self,
     name,

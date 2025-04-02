@@ -15,9 +15,9 @@ module type T = {
 
   let make: (
     ~publishToCorePluginExtensionPoint: CommandTopic.publishJsons,
-    ~publishToAggregates: Js.Dict.t<CommandTopic.publishJsons>,
-    ~readModelNamesForSourceName: Js.Dict.t<array<string>>,
-    ~publishToReadModels: Js.Dict.t<EventCollector.enqueueEvent>,
+    ~publishToAggregates: dict<CommandTopic.publishJsons>,
+    ~readModelNamesForSourceName: dict<array<string>>,
+    ~publishToReadModels: dict<EventCollector.enqueueEvent>,
     ~queryEngine: ReventlessSpec.QueryEngine.operations,
     ~opts: option<Pulumi.ComponentResource.options>,
   ) => component
