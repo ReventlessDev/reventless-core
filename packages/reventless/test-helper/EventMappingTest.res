@@ -73,7 +73,7 @@ module MakeAggregate = (
 
   let currentState = events =>
     events
-    ->Belt.Array.sliceToEnd(1)
+    ->Array.sliceToEnd(~start=1)
     ->Array.reduce(Behaviour.init(events->Array.getUnsafe(0)), apply')
 
   let errors = ref([])

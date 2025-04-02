@@ -16,7 +16,7 @@ function Make(Spec, Behaviour) {
     return Behaviour.apply(state, $$event);
   };
   var currentState = function (events) {
-    return Core__Array.reduce(Belt_Array.sliceToEnd(events, 1), Behaviour.init(events[0]), apply$p);
+    return Core__Array.reduce(events.slice(1), Behaviour.init(events[0]), apply$p);
   };
   var errors = {
     contents: []
