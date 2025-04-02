@@ -63,7 +63,7 @@ let serviceNameOfMsg = msgJson =>
 let variantNameOfJson = json =>
   json
   ->Js.Json.decodeArray
-  ->Belt.Option.flatMap(evtArr => evtArr->Belt.Array.get(0))
+  ->Belt.Option.flatMap(evtArr => evtArr->Array.get(0))
   ->Belt.Option.flatMap(evt => evt->Js.Json.decodeString)
   ->Belt.Option.getWithDefault("unknown")
 

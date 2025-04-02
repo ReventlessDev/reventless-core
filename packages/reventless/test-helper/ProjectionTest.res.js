@@ -234,8 +234,8 @@ function Make(Projection) {
     var store = await p.VAL();
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
-                    Belt_Array.get(Object.keys(store), 0),
-                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), [])
+                    Object.keys(store)[0],
+                    Belt_Option.getWithDefault(Js_dict.values(store)[0], [])
                   ]), [
                 1,
                 testId.contents,
@@ -246,8 +246,8 @@ function Make(Projection) {
     var store = await p.VAL();
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
-                    Belt_Array.get(Object.keys(store), 0),
-                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), [])
+                    Object.keys(store)[0],
+                    Belt_Option.getWithDefault(Js_dict.values(store)[0], [])
                   ]), [
                 1,
                 id,
@@ -262,9 +262,9 @@ function Make(Projection) {
     var store = await p.VAL();
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
-                    Belt_Array.get(Object.keys(store), 0),
-                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), []).length,
-                    Belt_Array.get(Js_dict.values(store)[0], 0)
+                    Object.keys(store)[0],
+                    Belt_Option.getWithDefault(Js_dict.values(store)[0], []).length,
+                    Js_dict.values(store)[0][0]
                   ]), [
                 1,
                 testId.contents,
@@ -276,9 +276,9 @@ function Make(Projection) {
     var store = await p.VAL();
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     Object.keys(store).length,
-                    Belt_Array.get(Object.keys(store), 0),
-                    Belt_Option.getWithDefault(Belt_Array.get(Js_dict.values(store), 0), []).length,
-                    Belt_Array.get(Js_dict.values(store)[0], 0)
+                    Object.keys(store)[0],
+                    Belt_Option.getWithDefault(Js_dict.values(store)[0], []).length,
+                    Js_dict.values(store)[0][0]
                   ]), [
                 1,
                 id,

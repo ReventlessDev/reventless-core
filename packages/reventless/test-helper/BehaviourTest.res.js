@@ -96,7 +96,7 @@ function Make(Spec, Behaviour) {
       return Jest.Expect.toEqual(Jest.Expect.expect([
                       errors.contents.length,
                       events.length,
-                      Belt_Array.get(events, 0)
+                      events[0]
                     ]), [
                   0,
                   1,
@@ -116,7 +116,7 @@ function Make(Spec, Behaviour) {
         return Jest.fail("thenEvent: No event present to validate");
       }
     }
-    var firstEvent = Belt_Option.getExn(Belt_Array.get(events, 0));
+    var firstEvent = Belt_Option.getExn(events[0]);
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     errors.contents.length,
                     events.length,
@@ -133,9 +133,9 @@ function Make(Spec, Behaviour) {
   var thenEventWithError = function (events, expectedEvent, expectedError) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     events.length,
-                    Belt_Array.get(events, 0),
+                    events[0],
                     errors.contents.length,
-                    Belt_Array.get(errors.contents, 0)
+                    errors.contents[0]
                   ]), [
                 1,
                 Caml_option.some(expectedEvent),
@@ -147,7 +147,7 @@ function Make(Spec, Behaviour) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     events,
                     errors.contents.length,
-                    Belt_Array.get(errors.contents, 0)
+                    errors.contents[0]
                   ]), [
                 expectedEvents,
                 1,
@@ -158,7 +158,7 @@ function Make(Spec, Behaviour) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     events,
                     errors.contents.length,
-                    Belt_Array.get(errors.contents, 0)
+                    errors.contents[0]
                   ]), [
                 [],
                 1,

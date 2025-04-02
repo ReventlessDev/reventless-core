@@ -204,7 +204,7 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
                     errors.contents.length,
                     errors$1.contents.length,
                     events.length,
-                    Belt_Array.get(events, 0)
+                    events[0]
                   ]), [
                 0,
                 0,

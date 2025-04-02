@@ -6,7 +6,6 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Js_option = require("@rescript/std/lib/js/js_option.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Caml_exceptions = require("@rescript/std/lib/js/caml_exceptions.js");
@@ -77,7 +76,7 @@ function serviceNameOfMsg(msgJson) {
 
 function variantNameOfJson(json) {
   return Belt_Option.getWithDefault(Belt_Option.flatMap(Belt_Option.flatMap(Js_json.decodeArray(json), (function (evtArr) {
-                        return Belt_Array.get(evtArr, 0);
+                        return evtArr[0];
                       })), Js_json.decodeString), "unknown");
 }
 

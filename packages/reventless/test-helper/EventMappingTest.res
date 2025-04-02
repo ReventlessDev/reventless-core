@@ -225,7 +225,7 @@ module Make = (
       SourceAggregate.errors.contents->Array.length,
       TargetAggregate.errors.contents->Array.length,
       events->Array.length,
-      events->Belt.Array.get(0),
+      events->Array.get(0),
     ))->toEqual((0, 0, 1, Some((id, [expectedTargetEvent]))))
   }
 

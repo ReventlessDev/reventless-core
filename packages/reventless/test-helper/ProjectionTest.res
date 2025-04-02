@@ -192,16 +192,16 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     let store = await (p->unpackPlainPartial)()
     expect((
       store->Js.Dict.keys->Array.length,
-      store->Js.Dict.keys->Belt.Array.get(0),
-      store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([]),
+      store->Js.Dict.keys->Array.get(0),
+      store->Js.Dict.values->Array.get(0)->Belt.Option.getWithDefault([]),
     ))->toEqual((1, Some(testId.contents), expectedStates))
   }
   let thenStatesWithId = async (p, id, expectedStates) => {
     let store = await (p->unpackPlainPartial)()
     expect((
       store->Js.Dict.keys->Array.length,
-      store->Js.Dict.keys->Belt.Array.get(0),
-      store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([]),
+      store->Js.Dict.keys->Array.get(0),
+      store->Js.Dict.values->Array.get(0)->Belt.Option.getWithDefault([]),
     ))->toEqual((1, Some(id), expectedStates))
   }
 
@@ -213,18 +213,18 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
     let store = await (p->unpackPlainPartial)()
     expect((
       store->Js.Dict.keys->Array.length,
-      store->Js.Dict.keys->Belt.Array.get(0),
-      store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Array.length,
-      store->Js.Dict.values->Array.getUnsafe(0)->Belt.Array.get(0),
+      store->Js.Dict.keys->Array.get(0),
+      store->Js.Dict.values->Array.get(0)->Belt.Option.getWithDefault([])->Array.length,
+      store->Js.Dict.values->Array.getUnsafe(0)->Array.get(0),
     ))->toEqual((1, Some(testId.contents), 1, Some(expectedState)))
   }
   let thenStateWithId = async (p, id, expectedState) => {
     let store = await (p->unpackPlainPartial)()
     expect((
       store->Js.Dict.keys->Array.length,
-      store->Js.Dict.keys->Belt.Array.get(0),
-      store->Js.Dict.values->Belt.Array.get(0)->Belt.Option.getWithDefault([])->Array.length,
-      store->Js.Dict.values->Array.getUnsafe(0)->Belt.Array.get(0),
+      store->Js.Dict.keys->Array.get(0),
+      store->Js.Dict.values->Array.get(0)->Belt.Option.getWithDefault([])->Array.length,
+      store->Js.Dict.values->Array.getUnsafe(0)->Array.get(0),
     ))->toEqual((1, Some(id), 1, Some(expectedState)))
   }
   let thenNoState = async p => {

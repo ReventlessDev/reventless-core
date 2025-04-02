@@ -110,11 +110,11 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
 
   let thenEvent = (events, expectedEvent) =>
     if events->Array.length > 0 {
-      expect((
-        errors.contents->Array.length,
-        events->Array.length,
-        events->Belt.Array.get(0),
-      ))->toEqual((0, 1, Some(expectedEvent)))
+      expect((errors.contents->Array.length, events->Array.length, events->Array.get(0)))->toEqual((
+        0,
+        1,
+        Some(expectedEvent),
+      ))
     } else if errors.contents->Array.length > 0 {
       listErrors()->Jest.fail
     } else {
@@ -123,7 +123,7 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
 
   let thenCompareEvent = (events, expectedEvent, cmp) =>
     if events->Array.length > 0 {
-      let firstEvent = events->Belt.Array.get(0)->Belt.Option.getExn
+      let firstEvent = events->Array.get(0)->Belt.Option.getExn
       expect((
         errors.contents->Array.length,
         events->Array.length,
@@ -140,20 +140,20 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
   let thenEventWithError = (events, expectedEvent, expectedError) =>
     expect((
       events->Array.length,
-      events->Belt.Array.get(0),
+      events->Array.get(0),
       errors.contents->Array.length,
-      errors.contents->Belt.Array.get(0),
+      errors.contents->Array.get(0),
     ))->toEqual((1, Some(expectedEvent), 1, Some(expectedError)))
 
   let thenEventsWithError = (events, expectedEvents, expectedError) =>
-    expect((events, errors.contents->Array.length, errors.contents->Belt.Array.get(0)))->toEqual((
+    expect((events, errors.contents->Array.length, errors.contents->Array.get(0)))->toEqual((
       expectedEvents,
       1,
       Some(expectedError),
     ))
 
   let thenError = (events, expectedError) =>
-    expect((events, errors.contents->Array.length, errors.contents->Belt.Array.get(0)))->toEqual((
+    expect((events, errors.contents->Array.length, errors.contents->Array.get(0)))->toEqual((
       [],
       1,
       Some(expectedError),
