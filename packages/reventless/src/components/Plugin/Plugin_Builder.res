@@ -367,12 +367,12 @@ module Make = (
 
         let extensionPointAggregateNames =
           extensionPointsOutputs
-          ->Belt.Array.flatMap(ex => ex.aggregateNames)
+          ->Array.flatMap(ex => ex.aggregateNames)
           ->collectAggregateNames
 
         let extensionAggregateNames =
           extensionsOutputs
-          ->Belt.Array.flatMap(ex => ex.aggregateNames)
+          ->Array.flatMap(ex => ex.aggregateNames)
           ->collectAggregateNames
 
         let eventTopics =

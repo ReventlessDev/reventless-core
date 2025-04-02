@@ -263,12 +263,12 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         var collectAggregateNames = function (ex) {
                           return Belt_SetString.remove(Belt_SetString.fromArray(ex), ExtensionMapping$ReventlessSpec.NoAggregate.name);
                         };
-                        var extensionPointAggregateNames = collectAggregateNames(Belt_Array.flatMap(extensionPointsOutputs, (function (ex) {
-                                    return ex.aggregateNames;
-                                  })));
-                        var extensionAggregateNames = collectAggregateNames(Belt_Array.flatMap(extensionsOutputs, (function (ex) {
-                                    return ex.aggregateNames;
-                                  })));
+                        var extensionPointAggregateNames = collectAggregateNames(extensionPointsOutputs.flatMap(function (ex) {
+                                  return ex.aggregateNames;
+                                }));
+                        var extensionAggregateNames = collectAggregateNames(extensionsOutputs.flatMap(function (ex) {
+                                  return ex.aggregateNames;
+                                }));
                         var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
                         eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
                           resources: corePluginExtensionPointUnwrapped.eventTopic.resources.map(AdapterDeploytime$Reventless.unwrappedToResource)
