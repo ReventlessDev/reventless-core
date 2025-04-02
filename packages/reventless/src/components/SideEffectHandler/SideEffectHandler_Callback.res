@@ -11,7 +11,7 @@ module Make = (Spec: Spec): T => {
   let findSideEffect = (sideEffects, eventJson') =>
     eventJson'
     ->Js.Json.decodeObject
-    ->Belt.Option.flatMapU(eventObj' => {
+    ->Option.flatMap(eventObj' => {
       let meta = eventObj'->Js.Dict.get("meta")->Option.map(Message.meta_decode)
 
       switch meta {

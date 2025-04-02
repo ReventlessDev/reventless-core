@@ -19,7 +19,7 @@ module MakeCounterHandler = (
   let target = Target.name
 
   let findMapping = (mappings, eventObj) =>
-    eventObj->Belt.Option.flatMapU(eventObj' => {
+    eventObj->Option.flatMap(eventObj' => {
       let meta = eventObj'->Js.Dict.get("meta")->Option.map(Message.meta_decode)
 
       switch meta {

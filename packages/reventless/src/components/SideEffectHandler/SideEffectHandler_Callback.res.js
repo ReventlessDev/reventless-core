@@ -3,7 +3,6 @@
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -12,7 +11,7 @@ var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 
 function Make(Spec) {
   var findSideEffect = function (sideEffects, eventJson$p) {
-    return Belt_Option.flatMapU(Js_json.decodeObject(eventJson$p), (function (eventObj$p) {
+    return Core__Option.flatMap(Js_json.decodeObject(eventJson$p), (function (eventObj$p) {
                   var meta = Core__Option.map(Js_dict.get(eventObj$p, "meta"), Message$Reventless.meta_decode);
                   if (meta !== undefined) {
                     if (meta.TAG === "Ok") {

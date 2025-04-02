@@ -6,7 +6,6 @@ var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Js_json = require("@rescript/std/lib/js/js_json.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
-var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Logger$Reventless = require("../../util/Logger.res.js");
@@ -17,7 +16,7 @@ var Util_Promise$Reventless = require("../../util/Util_Promise.res.js");
 function MakeCounterHandler(Target, Mappings, Ops) {
   var target = Target.name;
   var findMapping = function (mappings, eventObj) {
-    return Belt_Option.flatMapU(eventObj, (function (eventObj$p) {
+    return Core__Option.flatMap(eventObj, (function (eventObj$p) {
                   var meta = Core__Option.map(Js_dict.get(eventObj$p, "meta"), Message$Reventless.meta_decode);
                   if (meta !== undefined) {
                     if (meta.TAG === "Ok") {
