@@ -37,43 +37,43 @@ function Make(Spec) {
                 }));
   };
   var eventsHandler = function (eventsJson$p) {
-    return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventsJson$p, (async function (eventJson$p) {
-                          var match = findSideEffect(Spec.sideEffects, eventJson$p);
-                          if (match === undefined) {
-                            return ;
-                          }
-                          var sideEffect = match[2];
-                          var eventObj = match[0];
-                          var sourceName = sideEffect.Source.name;
-                          Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
-                          var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
-                          var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
-                          if (idDecoded !== undefined) {
-                            if (idDecoded.TAG === "Ok" && eventDecoded !== undefined && eventDecoded.TAG === "Ok") {
-                              try {
-                                return await sideEffect.execute(idDecoded._0, match[1], eventDecoded._0, Spec.queryEngine);
-                              }
-                              catch (raw_err){
-                                var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-                                console.log("SideEffect: Error while processing:", err);
-                                return ;
-                              }
+    return Util_Promise$Reventless.toUnit(Promise.all(eventsJson$p.map(async function (eventJson$p) {
+                        var match = findSideEffect(Spec.sideEffects, eventJson$p);
+                        if (match === undefined) {
+                          return ;
+                        }
+                        var sideEffect = match[2];
+                        var eventObj = match[0];
+                        var sourceName = sideEffect.Source.name;
+                        Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "SideEffectHandler.eventsHandler: handling event from source " + sourceName + ":");
+                        var idDecoded = Belt_Option.map(Js_dict.get(eventObj, "id"), sideEffect.Source.Id.t_decode);
+                        var eventDecoded = Belt_Option.map(Js_dict.get(eventObj, "event"), sideEffect.Source.event_decode);
+                        if (idDecoded !== undefined) {
+                          if (idDecoded.TAG === "Ok" && eventDecoded !== undefined && eventDecoded.TAG === "Ok") {
+                            try {
+                              return await sideEffect.execute(idDecoded._0, match[1], eventDecoded._0, Spec.queryEngine);
                             }
-                            
-                          } else {
-                            console.log("SideEffectHandler.eventHandler: Invalid event");
-                            return ;
-                          }
-                          if (eventDecoded !== undefined) {
-                            if (eventDecoded.TAG === "Ok") {
-                              console.log("SideEffectHandler.eventHandler: Couldn't decode event:", idDecoded._0);
+                            catch (raw_err){
+                              var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+                              console.log("SideEffect: Error while processing:", err);
                               return ;
                             }
-                            console.log("SideEffectHandler.eventHandler: Couldn't decode event:", eventDecoded._0);
+                          }
+                          
+                        } else {
+                          console.log("SideEffectHandler.eventHandler: Invalid event");
+                          return ;
+                        }
+                        if (eventDecoded !== undefined) {
+                          if (eventDecoded.TAG === "Ok") {
+                            console.log("SideEffectHandler.eventHandler: Couldn't decode event:", idDecoded._0);
                             return ;
                           }
-                          console.log("SideEffectHandler.eventHandler: Invalid event");
-                        }))));
+                          console.log("SideEffectHandler.eventHandler: Couldn't decode event:", eventDecoded._0);
+                          return ;
+                        }
+                        console.log("SideEffectHandler.eventHandler: Invalid event");
+                      })));
   };
   return {
           eventsHandler: eventsHandler

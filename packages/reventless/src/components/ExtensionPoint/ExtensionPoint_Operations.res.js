@@ -72,7 +72,7 @@ function Make(Spec, MappingSpec, Mappings) {
   var outgoingEventHandler = async function (eventJson$p, _pluginDef) {
     console.log("ExtensionPoint_Operations.outgoingEventHandler:", JSON.stringify(eventJson$p));
     var eventActions = mapOutgoingEvent(eventJson$p, Mappings.mappings, Spec.scheduler, Spec.commandTopicResources, Spec.queryEngine);
-    return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventActions, applyEventAction)));
+    return await Util_Promise$Reventless.toUnit(Promise.all(eventActions.map(applyEventAction)));
   };
   return {
           findOutgoingMapping: findOutgoingMapping,

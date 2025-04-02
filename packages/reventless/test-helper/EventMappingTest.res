@@ -173,14 +173,14 @@ module Make = (
     // sourceEvents->logSourceEvents;
     let targetActions =
       sourceEvents
-      ->Belt.Array.map(sourceEvent =>
+      ->Array.map(sourceEvent =>
         EventMapping.map(sourceId->Source.Id.makeFromString, sourceEvent, queryEngine)
       )
       ->Belt.Array.concatMany
     let targetHistories = targetHistory->Js.Dict.fromArray
     let commands =
       (await targetActions
-      ->Belt.Array.map(async action =>
+      ->Array.map(async action =>
         switch action {
         | Publish(id, command) => [(id, command)]
         | PublishDelayed(id, command, _) => [(id, command)]

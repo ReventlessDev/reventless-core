@@ -142,7 +142,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
       }
       `->Pulumi.Input.make
 
-  let resolvers = fields->Belt.Array.map(field => {
+  let resolvers = fields->Array.map(field => {
     let commandName = switch field->Js.String2.split("_") {
     | [_aggregate, commandName] => commandName->StringLabels.capitalize_ascii
     | _ => field->StringLabels.capitalize_ascii
@@ -159,7 +159,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
     )
   })
 
-  let resources = resolvers->Belt.Array.map(Util_AppSync.toResource)
+  let resources = resolvers->Array.map(Util_AppSync.toResource)
 
   {resources: resources}
 }

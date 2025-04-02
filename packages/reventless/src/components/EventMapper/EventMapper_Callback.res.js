@@ -58,68 +58,68 @@ function MakeCounterHandler(Target, Mappings, Ops) {
           };
   };
   var processMappingActions = function (actions, eventMeta) {
-    return Belt_Array.map(actions, (function (action) {
-                  switch (action.TAG) {
-                    case "Publish" :
-                        return {
-                                TAG: "Publisher",
-                                _0: Promise.resolve([createCommandJson(undefined, action._0, eventMeta, action._1)])
-                              };
-                    case "PublishDelayed" :
-                        return {
-                                TAG: "Publisher",
-                                _0: Promise.resolve([createCommandJson(action._2, action._0, eventMeta, action._1)])
-                              };
-                    case "PublishAsync" :
-                        var toCommandJson = async function (promise) {
-                          return Belt_Array.map(await promise, (function (param) {
-                                        return createCommandJson(undefined, param[0], eventMeta, param[1]);
-                                      }));
-                        };
-                        return {
-                                TAG: "Publisher",
-                                _0: toCommandJson(action._0)
-                              };
-                    case "AddToCounterTarget" :
-                        var match = action._0;
-                        return {
-                                TAG: "Counter",
+    return actions.map(function (action) {
+                switch (action.TAG) {
+                  case "Publish" :
+                      return {
+                              TAG: "Publisher",
+                              _0: Promise.resolve([createCommandJson(undefined, action._0, eventMeta, action._1)])
+                            };
+                  case "PublishDelayed" :
+                      return {
+                              TAG: "Publisher",
+                              _0: Promise.resolve([createCommandJson(action._2, action._0, eventMeta, action._1)])
+                            };
+                  case "PublishAsync" :
+                      var toCommandJson = async function (promise) {
+                        return (await promise).map(function (param) {
+                                    return createCommandJson(undefined, param[0], eventMeta, param[1]);
+                                  });
+                      };
+                      return {
+                              TAG: "Publisher",
+                              _0: toCommandJson(action._0)
+                            };
+                  case "AddToCounterTarget" :
+                      var match = action._0;
+                      return {
+                              TAG: "Counter",
+                              _0: {
+                                TAG: "AddToCounterTarget",
                                 _0: {
-                                  TAG: "AddToCounterTarget",
-                                  _0: {
-                                    counterId: match.counterId,
-                                    target: match.target,
-                                    targetRef: eventMeta.correlationId
-                                  }
+                                  counterId: match.counterId,
+                                  target: match.target,
+                                  targetRef: eventMeta.correlationId
                                 }
-                              };
-                    case "Count" :
-                        return {
-                                TAG: "Counter",
+                              }
+                            };
+                  case "Count" :
+                      return {
+                              TAG: "Counter",
+                              _0: {
+                                TAG: "Count",
                                 _0: {
-                                  TAG: "Count",
-                                  _0: {
-                                    counterId: action._0,
-                                    reference: eventMeta.correlationId,
-                                    inc: 1
-                                  }
+                                  counterId: action._0,
+                                  reference: eventMeta.correlationId,
+                                  inc: 1
                                 }
-                              };
-                    case "CountMulti" :
-                        return {
-                                TAG: "Counter",
+                              }
+                            };
+                  case "CountMulti" :
+                      return {
+                              TAG: "Counter",
+                              _0: {
+                                TAG: "Count",
                                 _0: {
-                                  TAG: "Count",
-                                  _0: {
-                                    counterId: action._0,
-                                    reference: eventMeta.correlationId,
-                                    inc: action._1
-                                  }
+                                  counterId: action._0,
+                                  reference: eventMeta.correlationId,
+                                  inc: action._1
                                 }
-                              };
-                    
-                  }
-                }));
+                              }
+                            };
+                  
+                }
+              });
   };
   var commonEventsHandler = async function (eventsJson) {
     var eventsCount = eventsJson.length;
@@ -162,20 +162,20 @@ function MakeCounterHandler(Target, Mappings, Ops) {
               return true;
             }
           }));
-    var publisherEntries = Promise.resolve(Belt_Array.concatMany(await Promise.all(Belt_Array.map(match[0], (function (action) {
-                        if (action.TAG === "Counter") {
-                          return Js_exn.raiseError("Invalid EventMapper action");
-                        } else {
-                          return action._0;
-                        }
-                      })))));
-    var counterActions = Belt_Array.map(match[1], (function (x) {
-            if (x.TAG === "Counter") {
-              return x._0;
-            } else {
-              return Js_exn.raiseError("Invalid EventMapper action");
-            }
-          }));
+    var publisherEntries = Promise.resolve(Belt_Array.concatMany(await Promise.all(match[0].map(function (action) {
+                      if (action.TAG === "Counter") {
+                        return Js_exn.raiseError("Invalid EventMapper action");
+                      } else {
+                        return action._0;
+                      }
+                    }))));
+    var counterActions = match[1].map(function (x) {
+          if (x.TAG === "Counter") {
+            return x._0;
+          } else {
+            return Js_exn.raiseError("Invalid EventMapper action");
+          }
+        });
     return [
             publisherEntries,
             counterActions
@@ -232,13 +232,13 @@ function MakeEventCollectorHandler(Ops) {
     console.log("EventMapper.eventCollectorEventsHandler: countItems:", countItems.length);
     await doCount(countItems);
     console.log("EventMapper.eventCollectorEventsHandler: addToCounterTargetActions:", JSON.stringify(addToCounterTargetActions));
-    await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(addToCounterTargetActions, (async function (x) {
-                    if (x.TAG === "Count") {
-                      return ;
-                    } else {
-                      return await Ops.addToCounterTarget(x._0);
-                    }
-                  }))));
+    await Util_Promise$Reventless.toUnit(Promise.all(addToCounterTargetActions.map(async function (x) {
+                  if (x.TAG === "Count") {
+                    return ;
+                  } else {
+                    return await Ops.addToCounterTarget(x._0);
+                  }
+                })));
     return await Ops.publishJsons(await match[0]);
   };
   return {

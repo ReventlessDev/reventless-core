@@ -93,54 +93,54 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                   var addEventMapperFns = {};
                   var aggregateResources = {};
                   var publishToAggregates = {};
-                  var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (SpecificAggregate) {
-                                  var aggregate = SpecificAggregate.make(opts);
-                                  addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
-                                  var resources = Component$Reventless.outputs(aggregate).commandTopic.apply(function (commandTopic) {
-                                        return commandTopic.resources;
-                                      });
-                                  aggregateResources[SpecificAggregate.Spec.name] = resources;
-                                  var publishJsons = Component$Reventless.operations(aggregate).apply(function (param) {
-                                        return param.publishJsons;
-                                      });
-                                  publishToAggregates[SpecificAggregate.Spec.name] = publishJsons;
-                                  return Component$Reventless.outputs(aggregate);
-                                })), (function (aggregate) {
-                              return [
-                                      aggregate.name,
-                                      aggregate
-                                    ];
-                            })));
+                  var aggregatesWithoutEventMappers = Js_dict.fromArray(aggregates.map(function (SpecificAggregate) {
+                              var aggregate = SpecificAggregate.make(opts);
+                              addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
+                              var resources = Component$Reventless.outputs(aggregate).commandTopic.apply(function (commandTopic) {
+                                    return commandTopic.resources;
+                                  });
+                              aggregateResources[SpecificAggregate.Spec.name] = resources;
+                              var publishJsons = Component$Reventless.operations(aggregate).apply(function (param) {
+                                    return param.publishJsons;
+                                  });
+                              publishToAggregates[SpecificAggregate.Spec.name] = publishJsons;
+                              return Component$Reventless.outputs(aggregate);
+                            }).map(function (aggregate) {
+                            return [
+                                    aggregate.name,
+                                    aggregate
+                                  ];
+                          }));
                   var allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
                   var readModelNamesForSourceName = {};
                   var publishToReadModels = {};
-                  var readModels$1 = Belt_Array.map(readModels, (function (SpecificReadModel) {
-                          var readModel = SpecificReadModel.make(allEventTopics, opts);
-                          Belt_Array.forEach(Component$Reventless.outputs(readModel).sourceNames, (function (sourceName) {
-                                  var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
-                                  if (readModelNames !== undefined) {
-                                    readModelNamesForSourceName[sourceName] = Belt_Array.concat(readModelNames, [SpecificReadModel.Spec.name]);
-                                  } else {
-                                    readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
-                                  }
-                                }));
-                          publishToReadModels[SpecificReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(function (param) {
-                                return param.enqueueEvent;
-                              });
-                          return [
-                                  SpecificReadModel.Spec.name,
-                                  {
-                                    module_: SpecificReadModel,
-                                    readModel: readModel
-                                  }
-                                ];
-                        }));
-                  var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(Js_dict.fromArray(readModels$1)), (function (param) {
-                              return [
-                                      param[0],
-                                      Component$Reventless.outputs(param[1].readModel)
-                                    ];
-                            })));
+                  var readModels$1 = readModels.map(function (SpecificReadModel) {
+                        var readModel = SpecificReadModel.make(allEventTopics, opts);
+                        Belt_Array.forEach(Component$Reventless.outputs(readModel).sourceNames, (function (sourceName) {
+                                var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
+                                if (readModelNames !== undefined) {
+                                  readModelNamesForSourceName[sourceName] = Belt_Array.concat(readModelNames, [SpecificReadModel.Spec.name]);
+                                } else {
+                                  readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
+                                }
+                              }));
+                        publishToReadModels[SpecificReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(function (param) {
+                              return param.enqueueEvent;
+                            });
+                        return [
+                                SpecificReadModel.Spec.name,
+                                {
+                                  module_: SpecificReadModel,
+                                  readModel: readModel
+                                }
+                              ];
+                      });
+                  var readModelsOutputs = Js_dict.fromArray(Js_dict.entries(Js_dict.fromArray(readModels$1)).map(function (param) {
+                            return [
+                                    param[0],
+                                    Component$Reventless.outputs(param[1].readModel)
+                                  ];
+                          }));
                   var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
                   var queryEngine = QueryEngineAdapter.make(allQueryDbs);
                   var coreExtensionPoints = Belt_Option.mapWithDefault(Interstack$Reventless.coreStackReference, Pulumi.output(undefined), (function (coreStack) {
@@ -163,64 +163,64 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
                                 return addEventMapperFn(allEventTopics, queryEngine);
                               }), addEventMapperFns);
-                        var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
-                                    var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
-                                    return [
-                                            Component$Reventless.outputs(extensionPoint),
-                                            Component$Reventless.operations(extensionPoint).apply(function (param) {
-                                                  return {
-                                                          outgoing: param.outgoingEventHandler
-                                                        };
-                                                })
-                                          ];
-                                  })));
+                        var match = Belt_Array.unzip(extensionPoints.map(function (SpecificExtensionPoint) {
+                                  var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
+                                  return [
+                                          Component$Reventless.outputs(extensionPoint),
+                                          Component$Reventless.operations(extensionPoint).apply(function (param) {
+                                                return {
+                                                        outgoing: param.outgoingEventHandler
+                                                      };
+                                              })
+                                        ];
+                                }));
                         var extensionPointsOutputs = match[0];
                         var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
                         var corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
                         var corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources);
                         var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
-                        var match$1 = Belt_Array.unzip(Belt_Array.map(extensions, (function (SpecificExtension) {
-                                    var extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
-                                    return [
-                                            Component$Reventless.outputs(extension),
-                                            Component$Reventless.operations(extension).apply(function (param) {
-                                                  return {
-                                                          outgoing: param.outgoingEventHandler,
-                                                          incoming: param.incomingEventHandler
-                                                        };
-                                                })
-                                          ];
-                                  })));
-                        var extensionsOutputs = match$1[0];
-                        var extensionPointsDefinitions = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPointOutputs) {
-                                    return Pulumi.all([
-                                                  Output$Pulumi.flatMap(extensionPointOutputs.commandTopic, (function (param) {
-                                                          return param.resources[0].id;
-                                                        })),
-                                                  Output$Pulumi.flatMap(extensionPointOutputs.eventTopic, (function (param) {
-                                                          return param.resources[0].id;
-                                                        }))
-                                                ]).apply(function (param) {
+                        var match$1 = Belt_Array.unzip(extensions.map(function (SpecificExtension) {
+                                  var extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
+                                  return [
+                                          Component$Reventless.outputs(extension),
+                                          Component$Reventless.operations(extension).apply(function (param) {
                                                 return {
-                                                        name: extensionPointOutputs.name,
-                                                        commandTopic: param[0],
-                                                        eventTopic: param[1]
+                                                        outgoing: param.outgoingEventHandler,
+                                                        incoming: param.incomingEventHandler
                                                       };
-                                              });
-                                  })));
-                        var extensionsDefinitions = Belt_Array.map(extensionsOutputs, (function (extensionOutputs) {
-                                return {
-                                        name: extensionOutputs.name,
-                                        extensionPointName: extensionOutputs.extensionPointName
-                                      };
-                              }));
+                                              })
+                                        ];
+                                }));
+                        var extensionsOutputs = match$1[0];
+                        var extensionPointsDefinitions = Pulumi.all(extensionPointsOutputs.map(function (extensionPointOutputs) {
+                                  return Pulumi.all([
+                                                Output$Pulumi.flatMap(extensionPointOutputs.commandTopic, (function (param) {
+                                                        return param.resources[0].id;
+                                                      })),
+                                                Output$Pulumi.flatMap(extensionPointOutputs.eventTopic, (function (param) {
+                                                        return param.resources[0].id;
+                                                      }))
+                                              ]).apply(function (param) {
+                                              return {
+                                                      name: extensionPointOutputs.name,
+                                                      commandTopic: param[0],
+                                                      eventTopic: param[1]
+                                                    };
+                                            });
+                                }));
+                        var extensionsDefinitions = extensionsOutputs.map(function (extensionOutputs) {
+                              return {
+                                      name: extensionOutputs.name,
+                                      extensionPointName: extensionOutputs.extensionPointName
+                                    };
+                            });
                         var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                         var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
                         var eventCollector = PluginEventCollector.make(childName, opts);
                         var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                         var eventCollectorUrn = eventCollectorOutputs.resources[0].urn;
                         var match$2 = Output$Pulumi.unzip3(Pulumi.all([
-                                    Pulumi.all(Belt_Array.map(extensionPointsOutputs, ExtensionPoint$Reventless.toUnwrappedOutputs)),
+                                    Pulumi.all(extensionPointsOutputs.map(ExtensionPoint$Reventless.toUnwrappedOutputs)),
                                     extensionPointsDefinitions,
                                     eventCollectorUrn
                                   ]).apply(function (param) {
@@ -254,12 +254,12 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         var queryBucketName = function (taskName) {
                           return ResourceQueryRuntime$Reventless.bucketNameOfTaskExn(tasksOutputs.contents, taskName);
                         };
-                        tasksOutputs.contents = Belt_Array.map(taskMakers, (function (taskMaker) {
-                                return Component$Reventless.outputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
-                              }));
-                        var resolvers = Belt_Array.concatMany(Belt_Array.map(QueryDb$Reventless.allResolversMakers(allQueryDbs), (function (resolverMaker) {
-                                    return resolverMaker(allQueryDbs);
-                                  })));
+                        tasksOutputs.contents = taskMakers.map(function (taskMaker) {
+                              return Component$Reventless.outputs(taskMaker(queryBucketName, scheduler, publishToAggregates, queryEngine, aggregatesOutputs, opts));
+                            });
+                        var resolvers = Belt_Array.concatMany(QueryDb$Reventless.allResolversMakers(allQueryDbs).map(function (resolverMaker) {
+                                  return resolverMaker(allQueryDbs);
+                                }));
                         var collectAggregateNames = function (ex) {
                           return Belt_SetString.remove(Belt_SetString.fromArray(ex), ExtensionMapping$ReventlessSpec.NoAggregate.name);
                         };
@@ -271,14 +271,14 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                   })));
                         var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
                         eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
-                          resources: Belt_Array.map(corePluginExtensionPointUnwrapped.eventTopic.resources, AdapterDeploytime$Reventless.unwrappedToResource)
+                          resources: corePluginExtensionPointUnwrapped.eventTopic.resources.map(AdapterDeploytime$Reventless.unwrappedToResource)
                         };
-                        var resources = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
-                                      return extensionPoint.eventTopic;
-                                    }))).apply(function (eventTopics) {
-                              return Belt_Array.concatMany(Belt_Array.map(eventTopics, (function (eventTopic) {
-                                                  return eventTopic.resources;
-                                                }))).concat(Adapter$Reventless.unwrappedToResources(corePluginExtensionPointUnwrapped.commandTopic.resources));
+                        var resources = Pulumi.all(extensionPointsOutputs.map(function (extensionPoint) {
+                                    return extensionPoint.eventTopic;
+                                  })).apply(function (eventTopics) {
+                              return Belt_Array.concatMany(eventTopics.map(function (eventTopic) {
+                                                return eventTopic.resources;
+                                              })).concat(Adapter$Reventless.unwrappedToResources(corePluginExtensionPointUnwrapped.commandTopic.resources));
                             });
                         var eventCollectorOutputs$1 = Pulumi.all([
                                 match$2[2],
@@ -338,26 +338,26 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                 version: version,
                                 heartbeatInterval: heartbeatInterval,
                                 eventCollector: eventCollectorOutputs$1,
-                                extensionPoints: Js_dict.fromArray(Belt_Array.map(extensionPointsOutputs, (function (el) {
-                                            return [
-                                                    el.name,
-                                                    el
-                                                  ];
-                                          }))),
-                                extensions: Js_dict.fromArray(Belt_Array.map(extensionsOutputs, (function (el) {
-                                            return [
-                                                    el.name,
-                                                    el
-                                                  ];
-                                          }))),
+                                extensionPoints: Js_dict.fromArray(extensionPointsOutputs.map(function (el) {
+                                          return [
+                                                  el.name,
+                                                  el
+                                                ];
+                                        })),
+                                extensions: Js_dict.fromArray(extensionsOutputs.map(function (el) {
+                                          return [
+                                                  el.name,
+                                                  el
+                                                ];
+                                        })),
                                 aggregates: aggregatesOutputs,
                                 readModels: readModelsOutputs,
-                                tasks: Js_dict.fromArray(Belt_Array.map(tasksOutputs.contents, (function (el) {
-                                            return [
-                                                    el.name,
-                                                    el
-                                                  ];
-                                          }))),
+                                tasks: Js_dict.fromArray(tasksOutputs.contents.map(function (el) {
+                                          return [
+                                                  el.name,
+                                                  el
+                                                ];
+                                        })),
                                 resolvers: resolvers,
                                 heartbeat: Component$Reventless.outputs(heartbeat)
                               };

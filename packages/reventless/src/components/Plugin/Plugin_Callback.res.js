@@ -14,9 +14,9 @@ function Make(Spec) {
     return await Belt_Option.mapWithDefault(Belt_Option.flatMap(Message$Reventless.serviceNameOfMsg(eventJson$p), (function (serviceName) {
                       return Js_dict.get(eventHandlersByService, serviceName);
                     })), Promise.resolve(), (async function (eventHandlers) {
-                  return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(eventHandlers, (function (eventHandler) {
-                                        return eventHandler(eventJson$p, Spec.pluginDefinition);
-                                      }))));
+                  return await Util_Promise$Reventless.toUnit(Promise.all(eventHandlers.map(function (eventHandler) {
+                                      return eventHandler(eventJson$p, Spec.pluginDefinition);
+                                    })));
                 }));
   };
   var detectUnhandledEvent = function (eventJson$p) {

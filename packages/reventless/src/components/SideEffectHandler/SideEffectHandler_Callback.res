@@ -35,7 +35,7 @@ module Make = (Spec: Spec): T => {
 
   let eventsHandler = eventsJson' => {
     eventsJson'
-    ->Belt.Array.map(async eventJson' =>
+    ->Array.map(async eventJson' =>
       switch Spec.sideEffects->findSideEffect(eventJson') {
       | Some((eventObj, eventMeta, sideEffect)) =>
         module SideEffect = unpack(sideEffect)

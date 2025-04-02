@@ -170,12 +170,12 @@ function saveBatch(table) {
                 _0: undefined
               };
       }
-      var ids = Belt_Array.map(items, (function (param) {
-              return param[0];
-            }));
-      return await writeMultiple(Belt_Array.map(items, (function (param) {
-                        return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
-                      })), "finished put", ids, table);
+      var ids = items.map(function (param) {
+            return param[0];
+          });
+      return await writeMultiple(items.map(function (param) {
+                      return Util_DynamoDb_Runtime$ReventlessAws.toPutRequest(Util_DynamoDb_Runtime$ReventlessAws.insertTtl(param[1], param[2]));
+                    }), "finished put", ids, table);
     }
     var match = items[0];
     return await save(table)(match[0], match[1], "Any", match[2]);
@@ -274,30 +274,30 @@ function deleteBatch(table) {
                 _0: undefined
               };
       }
-      var ids = Belt_Array.map(items, (function (param) {
-              return param[0];
-            }));
-      return await writeMultiple(Belt_Array.map(items, (function (param) {
-                        var sort = param[1];
-                        var id = param[0];
-                        if (sort !== undefined) {
-                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([
-                                          [
-                                            "id",
-                                            id
-                                          ],
-                                          [
-                                            sort[0],
-                                            sort[1]
-                                          ]
-                                        ]));
-                        } else {
-                          return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([[
-                                            "id",
-                                            id
-                                          ]]));
-                        }
-                      })), "deleted", ids, table);
+      var ids = items.map(function (param) {
+            return param[0];
+          });
+      return await writeMultiple(items.map(function (param) {
+                      var sort = param[1];
+                      var id = param[0];
+                      if (sort !== undefined) {
+                        return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([
+                                        [
+                                          "id",
+                                          id
+                                        ],
+                                        [
+                                          sort[0],
+                                          sort[1]
+                                        ]
+                                      ]));
+                      } else {
+                        return Util_DynamoDb_Runtime$ReventlessAws.toDeleteRequest(Js_dict.fromArray([[
+                                          "id",
+                                          id
+                                        ]]));
+                      }
+                    }), "deleted", ids, table);
     }
     var match = items[0];
     return await $$delete(table)(match[0], match[1]);

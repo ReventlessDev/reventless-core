@@ -35,15 +35,15 @@ function createTag(param, loc) {
   if (result === null) {
     return "";
   }
-  var captures = Belt_Array.map(Belt_Array.map(result, (function (prim) {
-              if (prim == null) {
-                return ;
-              } else {
-                return Caml_option.some(prim);
-              }
-            })), (function (__x) {
-          return Belt_Option.getWithDefault(__x, "");
-        }));
+  var captures = result.map(function (capture) {
+          if (capture == null) {
+            return ;
+          } else {
+            return Caml_option.some(capture);
+          }
+        }).map(function (__x) {
+        return Belt_Option.getWithDefault(__x, "");
+      });
   return captures[1] + "#" + captures[2] + ":";
 }
 

@@ -26,7 +26,7 @@ let handleDeleteResult = result => {
 
 let deleteAllItems = async (items: array<Js.Dict.t<string>>, tableConfig: tableConfig): unit =>
   switch await items
-  ->Belt.Array.map(async (item: Js.Dict.t<string>) => {
+  ->Array.map(async (item: Js.Dict.t<string>) => {
     let id = item->Js.Dict.get(tableConfig.id)
     let sort = tableConfig.sort->Belt.Option.flatMap(sortField => item->Js.Dict.get(sortField))
     switch (id, sort) {
@@ -134,10 +134,10 @@ let toTableConfig: resource => tableConfig = resource => {
 }
 
 let cleanerFn = async (tablesToClean, _event, _context) =>
-  switch tablesToClean->Belt.Array.map(toTableConfig) {
+  switch tablesToClean->Array.map(toTableConfig) {
   | tableConfigs if tableConfigs->Belt.Array.length == 0 => "No tables to clean."
   | tableConfigs =>
-    switch await tableConfigs->Belt.Array.map(scanTableAndClean)->Js.Promise.all {
+    switch await tableConfigs->Array.map(scanTableAndClean)->Js.Promise.all {
     | results => {
         let summary = results->Belt.Array.reduce(Js.Promise.resolve(""), async (state, result) =>
           (await state) ++

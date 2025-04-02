@@ -59,9 +59,9 @@ function makeEntry(queueService, commandJson) {
 }
 
 async function sendMessages(queue, queueService, commandJsons) {
-  var failedIds = await SQS$AwsSdk.sendMessagesParallel(queue.id, Belt_Array.map(commandJsons, (function (commandJson) {
-              return makeEntry(queueService, commandJson);
-            })));
+  var failedIds = await SQS$AwsSdk.sendMessagesParallel(queue.id, commandJsons.map(function (commandJson) {
+            return makeEntry(queueService, commandJson);
+          }));
   if (failedIds.TAG === "Ok") {
     return ;
   }

@@ -38,9 +38,6 @@
         "cloc": "cloc . --exclude-dir=node_modules,lib,milk,tmp-bs-platform --not-match-f=package.*\\.json"
     },
     "dependencies": {
-        "@rescript-labs/decco": "^2.0.4",
-        "@rescript/core": "^1.6.0",
-        "@rescript/std": "^11.1.4",
         "@reventless/bs-aws-sdk": "^2.0.1-policies.0",
         "@reventless/bs-fast-csv": "^1.0.0",
         "@reventless/bs-hash-obj": "^1.0.0",
@@ -56,6 +53,8 @@
         "rescript": "^11.1.4"
     },
     "peerDependencies": {
+        "@rescript-labs/decco": "2.0.4",
+        "@rescript/core": "^1.6.0",
         "@rescript/std": "^11.1.4",
         "rescript": "^11.1.4"
     },

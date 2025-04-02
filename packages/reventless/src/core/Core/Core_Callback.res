@@ -15,7 +15,7 @@ module Make = (Spec: Spec) => {
         `Core eventHandler: outgoing event ${idx->Belt.Int.toString}/${count->Belt.Int.toString}:`,
       )
       Spec.outgoingExtensionPointEventHandlers
-      ->Belt.Array.map(handleEvent => {
+      ->Array.map(handleEvent => {
         handleEvent(eventJson', Spec.pluginDefinition)
       })
       ->Js.Promise.all

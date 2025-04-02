@@ -8,17 +8,17 @@ var Pulumi = require("@pulumi/pulumi");
 var Adapter$Reventless = require("../adapter/Adapter.res.js");
 
 function filterSupportedResources(resources, supportedServices) {
-  return Pulumi.all(Belt_Array.map(resources, (function (resource) {
-                      return resource.service;
-                    }))).apply(function (services) {
-              return Belt_Array.map(Belt_Array.keep(Belt_Array.zip(resources, services), (function (param) {
-                                var service = param[1];
-                                return Belt_Array.some(supportedServices, (function (supportedService) {
-                                              return service === supportedService;
-                                            }));
-                              })), (function (param) {
-                            return param[0];
-                          }));
+  return Pulumi.all(resources.map(function (resource) {
+                    return resource.service;
+                  })).apply(function (services) {
+              return Belt_Array.keep(Belt_Array.zip(resources, services), (function (param) {
+                              var service = param[1];
+                              return Belt_Array.some(supportedServices, (function (supportedService) {
+                                            return service === supportedService;
+                                          }));
+                            })).map(function (param) {
+                          return param[0];
+                        });
             });
 }
 
@@ -36,7 +36,7 @@ function findResource(resources, service) {
                     return resources[0];
                   }
                   var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources";
-                  Pulumi.all(Belt_Array.map(resources, Adapter$Reventless.resourceToUnwrappedOutput)).apply(function (resources) {
+                  Pulumi.all(resources.map(Adapter$Reventless.resourceToUnwrappedOutput)).apply(function (resources) {
                         var resourcesStr = Adapter$Reventless.unwrappedToString(resources);
                         console.log(err, resourcesStr);
                       });
@@ -61,29 +61,29 @@ function findResourceInOutput(resourcesOutput, service) {
 }
 
 function partitionSupportedResources(allResources, supportedServices) {
-  var match = Belt_Array.unzip(Belt_Array.map(Js_dict.entries(allResources), (function (param) {
-              return [
-                      param[0],
-                      filterSupportedResources(param[1], supportedServices)
-                    ];
-            })));
+  var match = Belt_Array.unzip(Js_dict.entries(allResources).map(function (param) {
+            return [
+                    param[0],
+                    filterSupportedResources(param[1], supportedServices)
+                  ];
+          }));
   var names = match[0];
   return Pulumi.all(match[1]).apply(function (resources) {
               var match = Belt_Array.partition(Belt_Array.zip(names, resources), (function (param) {
                       return param[1].length !== 0;
                     }));
               return [
-                      Belt_Array.map(match[0], (function (param) {
-                              return [
-                                      param[0],
-                                      Belt_Array.map(param[1], (function (prim) {
-                                              return prim;
-                                            }))
-                                    ];
-                            })),
-                      Belt_Array.map(match[1], (function (param) {
-                              return param[0];
-                            }))
+                      match[0].map(function (param) {
+                            return [
+                                    param[0],
+                                    param[1].map(function (prim) {
+                                          return prim;
+                                        })
+                                  ];
+                          }),
+                      match[1].map(function (param) {
+                            return param[0];
+                          })
                     ];
             });
 }

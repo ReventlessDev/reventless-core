@@ -19,7 +19,7 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
     switch await Spec.jsonOps.load(id->ReadModelSpec.Id.toString) {
     | result =>
       result->Belt.Result.map(states =>
-        states->Belt.Array.map(state => decode(id, state))->Belt.Array.concatMany
+        states->Array.map(state => decode(id, state))->Belt.Array.concatMany
       )
     }
 
@@ -55,7 +55,7 @@ module Make = (ReadModelSpec: ReventlessSpec.ReadModel_Spec.T, Spec: Spec) => {
   let delete = async (id, subId) => await Spec.jsonOps.delete(id->ReadModelSpec.Id.toString, subId)
 
   let deleteBatch = async ids => {
-    let ids = ids->Belt.Array.map(((id, sort)) => (id->ReadModelSpec.Id.toString, sort))
+    let ids = ids->Array.map(((id, sort)) => (id->ReadModelSpec.Id.toString, sort))
     await Spec.jsonOps.deleteBatch(ids)
   }
 }

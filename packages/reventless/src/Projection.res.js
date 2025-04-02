@@ -42,13 +42,13 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
   var getSubId = param$1.getSubId;
   var subIdField = param$1.subIdField;
   var beforeCount = beforeStates.length;
-  var beforeSubIds = Belt_SetString.fromArray(Belt_Array.map(beforeStates, (function (state) {
-              return getSubId(state);
-            })));
+  var beforeSubIds = Belt_SetString.fromArray(beforeStates.map(function (state) {
+            return getSubId(state);
+          }));
   var afterCount = afterStates.length;
-  var afterSubIds = Belt_SetString.fromArray(Belt_Array.map(afterStates, (function (state) {
-              return getSubId(state);
-            })));
+  var afterSubIds = Belt_SetString.fromArray(afterStates.map(function (state) {
+            return getSubId(state);
+          }));
   var addedSubIds = Belt_SetString.diff(afterSubIds, beforeSubIds);
   var addedStates = Belt_Array.keep(afterStates, (function (state) {
           return Belt_SetString.has(addedSubIds, getSubId(state));
@@ -65,23 +65,23 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
                       }));
         }));
   var changedCount = changedStates.length;
-  var batchToSave = Belt_Array.map(Belt_Array.concat(addedStates, changedStates), (function (state) {
-          return [
-                  id,
-                  state,
-                  undefined
-                ];
-        }));
+  var batchToSave = Belt_Array.concat(addedStates, changedStates).map(function (state) {
+        return [
+                id,
+                state,
+                undefined
+              ];
+      });
   var deletedSubIds = Belt_SetString.toArray(Belt_SetString.diff(beforeSubIds, afterSubIds));
-  var batchToDelete = Belt_Array.map(deletedSubIds, (function (subId) {
-          return [
-                  id,
-                  [
-                    subIdField,
-                    subId
-                  ]
-                ];
-        }));
+  var batchToDelete = deletedSubIds.map(function (subId) {
+        return [
+                id,
+                [
+                  subIdField,
+                  subId
+                ]
+              ];
+      });
   var deletedCount = batchToDelete.length;
   var str = action + "(" + id + "): beforeStates:" + String(beforeCount) + " afterStates:" + String(afterCount) + " added:" + String(addedCount) + " changed:" + String(changedCount) + " deleted:" + String(deletedCount);
   console.log("Projection.handleAction:", str);
@@ -100,7 +100,7 @@ function stateToString(state) {
 }
 
 function statesToString(states) {
-  return Belt_Array.map(states, stateToString).join(", ");
+  return states.map(stateToString).join(", ");
 }
 
 async function handleAction(action, operations, subIdConfig) {
@@ -122,16 +122,16 @@ async function handleAction(action, operations, subIdConfig) {
         console.log("Projection.handleAction:", str);
         return await save(id, state, "Init", undefined);
     case "CreateMany" :
-        var batch = Belt_Array.map(action._0, (function (param) {
-                return [
-                        param[0],
-                        param[1],
-                        undefined
-                      ];
-              }));
-        var statesStr = Belt_Array.map(batch, (function (param) {
-                  return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
-                })).join(", ");
+        var batch = action._0.map(function (param) {
+              return [
+                      param[0],
+                      param[1],
+                      undefined
+                    ];
+            });
+        var statesStr = batch.map(function (param) {
+                return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
+              }).join(", ");
         console.log("Projection.handleAction:", "CreateMany(" + statesStr + ")");
         return await saveBatch(batch);
     case "Update" :
@@ -206,16 +206,16 @@ async function handleAction(action, operations, subIdConfig) {
         return await save(id$3, state$1, "Any", undefined);
     case "SetMany" :
         var set = action._1;
-        var batch$1 = Belt_Array.map(action._0, (function (id) {
-                return [
-                        id,
-                        set(id),
-                        undefined
-                      ];
-              }));
-        var statesStr$1 = Belt_Array.map(batch$1, (function (param) {
-                  return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
-                })).join(", ");
+        var batch$1 = action._0.map(function (id) {
+              return [
+                      id,
+                      set(id),
+                      undefined
+                    ];
+            });
+        var statesStr$1 = batch$1.map(function (param) {
+                return "(" + param[0] + "," + Belt_Option.getExn(JSON.stringify(param[1])) + ")";
+              }).join(", ");
         console.log("Projection.handleAction:", "SetMany(" + statesStr$1 + ")");
         return await saveBatch(batch$1);
     case "Delete" :
@@ -226,18 +226,18 @@ async function handleAction(action, operations, subIdConfig) {
         var ids = action._0;
         var str$6 = "DeleteMany(" + ids.join(", ") + ")";
         console.log("Projection.handleAction:", str$6);
-        return await operations.deleteBatch(Belt_Array.map(ids, (function (id) {
-                          return [
-                                  id,
-                                  undefined
-                                ];
-                        })));
+        return await operations.deleteBatch(ids.map(function (id) {
+                        return [
+                                id,
+                                undefined
+                              ];
+                      }));
     case "CreateMultiState" :
         var states$4 = action._1;
         var id$5 = action._0;
-        var str$7 = "CreateMultiState(" + id$5 + ", " + Belt_Array.map(states$4, (function (state) {
-                  return Belt_Option.getExn(JSON.stringify(state));
-                })).join(", ") + ")";
+        var str$7 = "CreateMultiState(" + id$5 + ", " + states$4.map(function (state) {
+                return Belt_Option.getExn(JSON.stringify(state));
+              }).join(", ") + ")";
         console.log("Projection.handleAction:", str$7);
         var len$2 = states$4.length;
         if (len$2 !== 1) {
@@ -247,13 +247,13 @@ async function handleAction(action, operations, subIdConfig) {
                     _0: undefined
                   };
           }
-          var batch$2 = Belt_Array.map(states$4, (function (state) {
-                  return [
-                          id$5,
-                          state,
-                          undefined
-                        ];
-                }));
+          var batch$2 = states$4.map(function (state) {
+                return [
+                        id$5,
+                        state,
+                        undefined
+                      ];
+              });
           return await saveBatch(batch$2);
         }
         var state$2 = states$4[0];
@@ -302,39 +302,39 @@ function actionsWithId(action) {
   }
   switch (action.TAG) {
     case "CreateMany" :
-        return Belt_Array.map(action._0, (function (param) {
-                      var id = param[0];
-                      return [
-                              id,
-                              {
-                                TAG: "Create",
-                                _0: id,
-                                _1: param[1]
-                              }
-                            ];
-                    }));
+        return action._0.map(function (param) {
+                    var id = param[0];
+                    return [
+                            id,
+                            {
+                              TAG: "Create",
+                              _0: id,
+                              _1: param[1]
+                            }
+                          ];
+                  });
     case "SetMany" :
         var set = action._1;
-        return Belt_Array.map(action._0, (function (id) {
-                      return [
-                              id,
-                              {
-                                TAG: "Set",
-                                _0: id,
-                                _1: set(id)
-                              }
-                            ];
-                    }));
+        return action._0.map(function (id) {
+                    return [
+                            id,
+                            {
+                              TAG: "Set",
+                              _0: id,
+                              _1: set(id)
+                            }
+                          ];
+                  });
     case "DeleteMany" :
-        return Belt_Array.map(action._0, (function (id) {
-                      return [
-                              id,
-                              {
-                                TAG: "Delete",
-                                _0: id
-                              }
-                            ];
-                    }));
+        return action._0.map(function (id) {
+                    return [
+                            id,
+                            {
+                              TAG: "Delete",
+                              _0: id
+                            }
+                          ];
+                  });
     case "UpdateMany" :
     case "UpdateManyWithDefault" :
     case "DeleteIf" :
@@ -343,18 +343,18 @@ function actionsWithId(action) {
         return [];
     case "UpdateManyMultiStates" :
         var update = action._1;
-        return Belt_Array.map(action._0, (function (id) {
-                      return [
-                              id,
-                              {
-                                TAG: "UpdateMultiState",
-                                _0: id,
-                                _1: (function (states) {
-                                    return update(id, states);
-                                  })
-                              }
-                            ];
-                    }));
+        return action._0.map(function (id) {
+                    return [
+                            id,
+                            {
+                              TAG: "UpdateMultiState",
+                              _0: id,
+                              _1: (function (states) {
+                                  return update(id, states);
+                                })
+                            }
+                          ];
+                  });
     default:
       return [[
                 action._0,
@@ -364,23 +364,23 @@ function actionsWithId(action) {
 }
 
 function groupActionsById(actions) {
-  var allActionsWithId = Belt_Array.concatMany(Belt_Array.map(actions, (function (action) {
-              return actionsWithId(action);
-            })));
-  var ids = Belt_Array.map(allActionsWithId, (function (param) {
-          return param[0];
-        }));
-  return Belt_Array.map(Belt_SetString.toArray(Belt_SetString.fromArray(ids)), (function (id) {
-                return [
-                        id,
-                        Belt_Array.keepMap(allActionsWithId, (function (param) {
-                                if (param[0] === id) {
-                                  return param[1];
-                                }
-                                
-                              }))
-                      ];
-              }));
+  var allActionsWithId = Belt_Array.concatMany(actions.map(function (action) {
+            return actionsWithId(action);
+          }));
+  var ids = allActionsWithId.map(function (param) {
+        return param[0];
+      });
+  return Belt_SetString.toArray(Belt_SetString.fromArray(ids)).map(function (id) {
+              return [
+                      id,
+                      Belt_Array.keepMap(allActionsWithId, (function (param) {
+                              if (param[0] === id) {
+                                return param[1];
+                              }
+                              
+                            }))
+                    ];
+            });
 }
 
 function optimizeActions(actions) {
@@ -625,14 +625,14 @@ async function handleActions(actions, operations, subIdConfig) {
                   }), (async function (p, action) {
                   var err = await p;
                   if (err.TAG !== "Ok") {
-                    Logger$Reventless.error("File \"Projection.res\", line 377, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
+                    Logger$Reventless.error("File \"Projection.res\", line 376, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
                   }
                   return await handleAction(action, operations, subIdConfig);
                 }));
   };
-  var results = await Promise.all(Belt_Array.map(groupActionsById(actions), (function (param) {
-              return handleActionsForId(param[1], param[0]);
-            })));
+  var results = await Promise.all(groupActionsById(actions).map(function (param) {
+            return handleActionsForId(param[1], param[0]);
+          }));
   var errors = Belt_Array.keepMap(results, (function (x) {
           if (x.TAG === "Ok") {
             return ;
@@ -644,7 +644,7 @@ async function handleActions(actions, operations, subIdConfig) {
     return ;
   }
   var count = errors.length;
-  return Js_exn.raiseError("Projection.handleActions failed with " + String(count) + " errors: " + Belt_Array.map(errors, QueryDb$Reventless.storageErrorToString).join(","));
+  return Js_exn.raiseError("Projection.handleActions failed with " + String(count) + " errors: " + errors.map(QueryDb$Reventless.storageErrorToString).join(","));
 }
 
 var $$Set;

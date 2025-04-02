@@ -49,7 +49,7 @@ module Make = (
     | Error(err) =>
       Js.Exn.raiseError(
         `Error: Couldn't decode ${params
-          ->Belt.Array.map(Js.Json.stringify)
+          ->Array.map(param => param->Js.Json.stringify)
           ->Js.Array2.joinWith(", ")}: ${err
           ->Js.Json.stringifyAny
           ->Belt.Option.getExn}`,

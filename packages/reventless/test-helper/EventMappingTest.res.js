@@ -157,24 +157,24 @@ function Make(Source, SourceBehaviour, Target, TargetBehaviour, EventMapping) {
           id: sourceId,
           meta: TestFixtures$Reventless.context.meta
         }, cmd, param[1]);
-    var targetActions = Belt_Array.concatMany(Belt_Array.map(sourceEvents, (function (sourceEvent) {
-                return EventMapping.map(Source.Id.makeFromString(sourceId), sourceEvent, queryEngine);
-              })));
+    var targetActions = Belt_Array.concatMany(sourceEvents.map(function (sourceEvent) {
+              return EventMapping.map(Source.Id.makeFromString(sourceId), sourceEvent, queryEngine);
+            }));
     var targetHistories = Js_dict.fromArray(param[0]);
-    var commands = Belt_Array.concatMany(await Promise.all(Belt_Array.map(targetActions, (async function (action) {
-                    switch (action.TAG) {
-                      case "Publish" :
-                      case "PublishDelayed" :
-                          return [[
-                                    action._0,
-                                    action._1
-                                  ]];
-                      case "PublishAsync" :
-                          return await action._0;
-                      default:
-                        return [];
-                    }
-                  }))));
+    var commands = Belt_Array.concatMany(await Promise.all(targetActions.map(async function (action) {
+                  switch (action.TAG) {
+                    case "Publish" :
+                    case "PublishDelayed" :
+                        return [[
+                                  action._0,
+                                  action._1
+                                ]];
+                    case "PublishAsync" :
+                        return await action._0;
+                    default:
+                      return [];
+                  }
+                })));
     return Belt_Array.reduce(commands, {}, (function (targetEvents, param) {
                   var id = Target.Id.toString(param[0]);
                   var targetHistory = Belt_Array.concat(Belt_Option.getWithDefault(Js_dict.get(targetHistories, id), []), Belt_Option.getWithDefault(Js_dict.get(targetEvents, id), []));

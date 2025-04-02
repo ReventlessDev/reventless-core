@@ -77,9 +77,9 @@ function Make(Spec) {
   var counterHandler = async function (references, counts) {
     console.log("counterHandler: references:", references.length);
     console.log("counterHandler: counts:", counts);
-    await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(groupByCounterId(references), (function (param) {
-                    return Spec.countsDbCount(param[0], "count", -param[1] | 0);
-                  }))));
+    await Util_Promise$Reventless.toUnit(Promise.all(groupByCounterId(references).map(function (param) {
+                  return Spec.countsDbCount(param[0], "count", -param[1] | 0);
+                })));
     return await Spec.counterEventsHandler(Belt_Array.keepMap(counts, (function (state) {
                       var match = countsState_decode(state);
                       if (match.TAG === "Ok") {

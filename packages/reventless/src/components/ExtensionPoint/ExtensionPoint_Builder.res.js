@@ -22,14 +22,14 @@ function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopi
   var event_encode = Spec.event_encode;
   var event_decode = Spec.event_decode;
   var filterAggregateResources = function (aggregateResources, aggregateNames) {
-    return Belt_Array.concatMany(Belt_Array.map(Belt_Array.keep(Js_dict.entries(aggregateResources), (function (param) {
-                          var name = param[0];
-                          return Belt_Array.some(aggregateNames, (function (aggregateName) {
-                                        return aggregateName === name;
-                                      }));
-                        })), (function (param) {
-                      return param[1];
-                    })));
+    return Belt_Array.concatMany(Belt_Array.keep(Js_dict.entries(aggregateResources), (function (param) {
+                        var name = param[0];
+                        return Belt_Array.some(aggregateNames, (function (aggregateName) {
+                                      return aggregateName === name;
+                                    }));
+                      })).map(function (param) {
+                    return param[1];
+                  }));
   };
   var make = function (aggregateResources, publishToAggregates, scheduler, queryEngine, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(ExtensionPoint$Reventless.componentType), Spec.name, (function (extra, extra$1) {

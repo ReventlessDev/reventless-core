@@ -35,7 +35,7 @@ module Make = (Spec: Spec, Config: Config) => {
       "rest:",
       buffer->Belt.Array.size,
     )
-    commandsToSend->Belt.Array.map(((id, command)) => {
+    commandsToSend->Array.map(((id, command)) => {
       let commandJson = command->Spec.command_encode
       {
         ReventlessSpec.Message.id,

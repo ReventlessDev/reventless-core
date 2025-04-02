@@ -20,7 +20,7 @@ module Make = (Spec: Spec): T => {
     ->Belt.Option.flatMap(serviceName => eventHandlersByService->Js.Dict.get(serviceName))
     ->Belt.Option.mapWithDefault(Js.Promise.resolve(), async eventHandlers => {
       await eventHandlers
-      ->Belt.Array.map(eventHandler => eventHandler(eventJson', Spec.pluginDefinition))
+      ->Array.map(eventHandler => eventHandler(eventJson', Spec.pluginDefinition))
       ->Js.Promise.all
       ->Util.Promise.toUnit
     })

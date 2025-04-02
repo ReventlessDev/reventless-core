@@ -7,7 +7,7 @@ type role = Pulumi.Output.t<IAM.Role.t>
 
 let globalSecondaryIndexes = indexes =>
   indexes
-  ->Belt.Array.map(({index, projectionType} as indexConfig) => {
+  ->Array.map(({index, projectionType} as indexConfig) => {
     let (projectionType, includes) = switch projectionType {
     | ALL as _projection => (PulumiAws.DynamoDb.Table.ALL, None)
     | KEYS_ONLY as _projection => (KEYS_ONLY, None)
@@ -28,7 +28,7 @@ let attributes = (sortField, indexes) =>
     [{name: "id", type_: "S"}],
     sortField->Belt.Option.mapWithDefault([], sortField => [{name: sortField, type_: "S"}]),
     indexes
-    ->Belt.Array.map(({index, type_} as indexConfig) =>
+    ->Array.map(({index, type_} as indexConfig) =>
       [
         [{name: index, type_}],
         indexConfig.subIdField->Belt.Option.mapWithDefault([], sortField => [
@@ -48,7 +48,7 @@ let dataSource = (name, table, api, apiRole, opts) => {
         ->Pulumi.Output.apply(tableArn => {
           open PolicyDocument
           PolicyDocument.make(
-            ~id = name ++ "DataSourcePolicy",
+            ~id=name ++ "DataSourcePolicy",
             ~statements=[
               {
                 sid: "AllowDynamoDbActions",

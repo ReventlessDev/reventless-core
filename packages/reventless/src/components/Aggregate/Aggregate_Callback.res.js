@@ -19,17 +19,17 @@ function Make(Spec, Behaviour, Ops) {
     return [];
   };
   var groupTopicItemsById = function (topicItems) {
-    var ids = Belt_Array.map(topicItems, (function (param) {
-            return Spec.Id.toString(param.command.id);
-          }));
-    return Belt_Array.map(Belt_SetString.toArray(Belt_SetString.fromArray(ids)), (function (id) {
-                  return [
-                          Spec.Id.makeFromString(id),
-                          Belt_Array.keep(topicItems, (function (param) {
-                                  return Caml_obj.equal(param.command.id, Spec.Id.makeFromString(id));
-                                }))
-                        ];
-                }));
+    var ids = topicItems.map(function (param) {
+          return Spec.Id.toString(param.command.id);
+        });
+    return Belt_SetString.toArray(Belt_SetString.fromArray(ids)).map(function (id) {
+                return [
+                        Spec.Id.makeFromString(id),
+                        Belt_Array.keep(topicItems, (function (param) {
+                                return Caml_obj.equal(param.command.id, Spec.Id.makeFromString(id));
+                              }))
+                      ];
+              });
   };
   var apply$p = function (stateOpt, $$event) {
     if (stateOpt !== undefined) {
@@ -51,122 +51,122 @@ function Make(Spec, Behaviour, Ops) {
   };
   var handleCommands = async function (topicItems) {
     Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 67, characters 22-29", undefined, undefined, "starting", "Aggregate.execCommands");
-    return Belt_Array.concatMany(await Promise.all(Belt_Array.map(groupTopicItemsById(topicItems), (async function (param) {
-                          var topicItemsForId = param[1];
-                          var id = param[0];
-                          var history = await Ops.eventLog.replay(id);
-                          var processCommand = async function (accP, command$p) {
-                            var acc = await accP;
-                            if (acc.TAG === "Ok") {
-                              var param = acc._0;
-                              var events = param[1];
-                              var stateO = param[0];
-                              if (stateO !== undefined) {
-                                var generatedEvents;
-                                try {
-                                  generatedEvents = Behaviour.execute(Caml_option.valFromOption(stateO), command$p.command, {
-                                        id: Spec.Id.toString(command$p.id),
-                                        meta: command$p.meta
-                                      }, errorHandler);
-                                }
-                                catch (raw_event){
-                                  var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
-                                  if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
-                                    Logger$Reventless.error("File \"Aggregate_Callback.res\", line 87, characters 34-41", undefined, undefined, "Behaviour.execute: InvalidEvent", $$event._1);
-                                    generatedEvents = [];
-                                  } else {
-                                    throw $$event;
-                                  }
-                                }
-                                return {
-                                        TAG: "Ok",
-                                        _0: [
-                                          Belt_Array.reduce(generatedEvents, stateO, apply$p),
-                                          Belt_Array.concat(events, [[
-                                                  generatedEvents,
-                                                  updateMeta(command$p)
-                                                ]])
-                                        ]
-                                      };
+    return Belt_Array.concatMany(await Promise.all(groupTopicItemsById(topicItems).map(async function (param) {
+                        var topicItemsForId = param[1];
+                        var id = param[0];
+                        var history = await Ops.eventLog.replay(id);
+                        var processCommand = async function (accP, command$p) {
+                          var acc = await accP;
+                          if (acc.TAG === "Ok") {
+                            var param = acc._0;
+                            var events = param[1];
+                            var stateO = param[0];
+                            if (stateO !== undefined) {
+                              var generatedEvents;
+                              try {
+                                generatedEvents = Behaviour.execute(Caml_option.valFromOption(stateO), command$p.command, {
+                                      id: Spec.Id.toString(command$p.id),
+                                      meta: command$p.meta
+                                    }, errorHandler);
                               }
-                              var generatedEvents$1 = Behaviour.create(command$p.command, {
-                                    id: Spec.Id.toString(command$p.id),
-                                    meta: command$p.meta
-                                  }, errorHandler);
+                              catch (raw_event){
+                                var $$event = Caml_js_exceptions.internalToOCamlException(raw_event);
+                                if ($$event.RE_EXN_ID === Message$Reventless.InvalidEvent) {
+                                  Logger$Reventless.error("File \"Aggregate_Callback.res\", line 87, characters 34-41", undefined, undefined, "Behaviour.execute: InvalidEvent", $$event._1);
+                                  generatedEvents = [];
+                                } else {
+                                  throw $$event;
+                                }
+                              }
                               return {
                                       TAG: "Ok",
                                       _0: [
-                                        Belt_Array.reduce(generatedEvents$1, undefined, apply$p),
+                                        Belt_Array.reduce(generatedEvents, stateO, apply$p),
                                         Belt_Array.concat(events, [[
-                                                generatedEvents$1,
+                                                generatedEvents,
                                                 updateMeta(command$p)
                                               ]])
                                       ]
                                     };
-                            } else {
-                              return acc;
                             }
-                          };
-                          Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 115, characters 26-33", undefined, undefined, "finished eventLogReplay for id", id);
-                          Logger$Reventless.logCmdJsons("File \"Aggregate_Callback.res\", line 127, characters 34-41", undefined, Belt_Array.map(topicItemsForId, (function (param) {
-                                      return Message$Reventless.commandJsonOfCommand$p(Spec.Id.toString, Spec.command_encode, param.command);
-                                    })), "Handling command");
-                          var match = Belt_Array.unzip(Belt_Array.map(topicItemsForId, (function (param) {
-                                      return [
-                                              param.reference,
-                                              param.command
-                                            ];
-                                    })));
-                          var references = match[0];
-                          var result = await Belt_Array.reduce(match[1], Promise.resolve({
+                            var generatedEvents$1 = Behaviour.create(command$p.command, {
+                                  id: Spec.Id.toString(command$p.id),
+                                  meta: command$p.meta
+                                }, errorHandler);
+                            return {
                                     TAG: "Ok",
                                     _0: [
-                                      Belt_Array.reduce(history, undefined, apply$p),
-                                      []
+                                      Belt_Array.reduce(generatedEvents$1, undefined, apply$p),
+                                      Belt_Array.concat(events, [[
+                                              generatedEvents$1,
+                                              updateMeta(command$p)
+                                            ]])
                                     ]
-                                  }), processCommand);
-                          var events;
-                          events = result.TAG === "Ok" ? Belt_Array.concatMany(Belt_Array.map(result._0[1], (function (param) {
-                                        var meta = param[1];
-                                        return Belt_Array.map(param[0], (function ($$event) {
-                                                      return {
-                                                              id: id,
-                                                              meta: meta,
-                                                              event: $$event
-                                                            };
-                                                    }));
-                                      }))) : Js_exn.raiseError(result._0);
-                          if (events.length !== 0) {
-                            var eventCount = String(events.length);
-                            Logger$Reventless.debug(undefined, undefined, undefined, "Aggregate.handleCommands(" + Spec.Id.toString(id) + "): " + eventCount + " Event(s) generated:", Belt_Array.map(events, (function (event$p) {
-                                        return Message$Reventless.variantNameOfJson(Spec.event_encode(event$p.event));
-                                      })));
-                            var match$1 = await Ops.eventLog.append(history.length, id, events);
-                            if (match$1.TAG === "Ok") {
-                              Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 165, characters 30-37", undefined, undefined, "finished eventLogAppend for id", Spec.Id.toString(id));
-                              return Belt_Array.map(references, (function (reference) {
-                                            return {
-                                                    TAG: "Ok",
-                                                    _0: reference
-                                                  };
-                                          }));
-                            }
-                            Logger$Reventless.error("File \"Aggregate_Callback.res\", line 168, characters 30-37", undefined, undefined, "failed eventLogAppend for id", Spec.Id.toString(id));
-                            return Belt_Array.map(references, (function (reference) {
-                                          return {
-                                                  TAG: "Error",
-                                                  _0: reference
-                                                };
-                                        }));
+                                  };
+                          } else {
+                            return acc;
                           }
-                          Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 151, characters 19-26", undefined, undefined, "handleCommands(" + Spec.Id.toString(id) + ")", "no Event generated");
-                          return Belt_Array.map(references, (function (reference) {
+                        };
+                        Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 115, characters 26-33", undefined, undefined, "finished eventLogReplay for id", id);
+                        Logger$Reventless.logCmdJsons("File \"Aggregate_Callback.res\", line 127, characters 34-41", undefined, topicItemsForId.map(function (param) {
+                                  return Message$Reventless.commandJsonOfCommand$p(Spec.Id.toString, Spec.command_encode, param.command);
+                                }), "Handling command");
+                        var match = Belt_Array.unzip(topicItemsForId.map(function (param) {
+                                  return [
+                                          param.reference,
+                                          param.command
+                                        ];
+                                }));
+                        var references = match[0];
+                        var result = await Belt_Array.reduce(match[1], Promise.resolve({
+                                  TAG: "Ok",
+                                  _0: [
+                                    Belt_Array.reduce(history, undefined, apply$p),
+                                    []
+                                  ]
+                                }), processCommand);
+                        var events;
+                        events = result.TAG === "Ok" ? Belt_Array.concatMany(result._0[1].map(function (param) {
+                                    var meta = param[1];
+                                    return param[0].map(function ($$event) {
+                                                return {
+                                                        id: id,
+                                                        meta: meta,
+                                                        event: $$event
+                                                      };
+                                              });
+                                  })) : Js_exn.raiseError(result._0);
+                        if (events.length !== 0) {
+                          var eventCount = String(events.length);
+                          Logger$Reventless.debug(undefined, undefined, undefined, "Aggregate.handleCommands(" + Spec.Id.toString(id) + "): " + eventCount + " Event(s) generated:", events.map(function (event$p) {
+                                    return Message$Reventless.variantNameOfJson(Spec.event_encode(event$p.event));
+                                  }));
+                          var match$1 = await Ops.eventLog.append(history.length, id, events);
+                          if (match$1.TAG === "Ok") {
+                            Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 163, characters 30-37", undefined, undefined, "finished eventLogAppend for id", Spec.Id.toString(id));
+                            return references.map(function (reference) {
                                         return {
                                                 TAG: "Ok",
                                                 _0: reference
                                               };
-                                      }));
-                        }))));
+                                      });
+                          }
+                          Logger$Reventless.error("File \"Aggregate_Callback.res\", line 166, characters 30-37", undefined, undefined, "failed eventLogAppend for id", Spec.Id.toString(id));
+                          return references.map(function (reference) {
+                                      return {
+                                              TAG: "Error",
+                                              _0: reference
+                                            };
+                                    });
+                        }
+                        Logger$Reventless.debug("File \"Aggregate_Callback.res\", line 149, characters 19-26", undefined, undefined, "handleCommands(" + Spec.Id.toString(id) + ")", "no Event generated");
+                        return references.map(function (reference) {
+                                    return {
+                                            TAG: "Ok",
+                                            _0: reference
+                                          };
+                                  });
+                      })));
   };
   return {
           Spec: Spec,

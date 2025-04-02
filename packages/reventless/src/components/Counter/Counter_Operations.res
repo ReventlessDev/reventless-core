@@ -32,7 +32,7 @@ module type Spec = {
 module Make = (Spec: Spec) => {
   let count = async countItems => {
     let result = await Spec.saveBatch(
-      countItems->Belt.Array.map(({Counter.counterId: counterId, reference, inc}) => {
+      countItems->Array.map(({Counter.counterId: counterId, reference, inc}) => {
         let id = Counter.makeId((counterId, reference))
         let state: referencesState = {id, inc}
         (id, state, Spec.ttl)

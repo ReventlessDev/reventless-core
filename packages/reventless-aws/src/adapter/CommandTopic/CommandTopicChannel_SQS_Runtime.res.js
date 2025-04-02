@@ -23,14 +23,14 @@ function handleQueueEvent(queue, handleCommands) {
             }
             return json;
           }));
-    var topicItems = Belt_Array.map(Belt_Array.zip(Belt_Array.map(records, (function (record) {
-                    return record.receiptHandle;
-                  })), jsons), (function (param) {
-            return {
-                    command: param[1],
-                    reference: param[0]
-                  };
-          }));
+    var topicItems = Belt_Array.zip(records.map(function (record) {
+                return record.receiptHandle;
+              }), jsons).map(function (param) {
+          return {
+                  command: param[1],
+                  reference: param[0]
+                };
+        });
     var exit = 0;
     var results;
     try {
@@ -72,7 +72,7 @@ function handleQueueEvent(queue, handleCommands) {
         throw e;
       }
       if (exit$1 === 2) {
-        return Logger$Reventless.debug("File \"CommandTopicChannel_SQS_Runtime.res\", line 54, characters 15-22", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
+        return Logger$Reventless.debug("File \"CommandTopicChannel_SQS_Runtime.res\", line 48, characters 35-42", undefined, undefined, "handleQueueEvent:", "Deleted all commands from queue");
       }
       
     }

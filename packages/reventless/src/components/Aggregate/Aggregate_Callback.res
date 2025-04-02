@@ -39,11 +39,11 @@ module Make = (
     topicItems: array<CommandTopic.topicItem<Message.command'<'id, 'command>>>,
   ) => {
     // FIXME: rethink usage of Set & Belt structures -> optimize
-    let ids = topicItems->Belt.Array.map(({command}) => command.id->Spec.Id.toString)
+    let ids = topicItems->Array.map(({command}) => command.id->Spec.Id.toString)
     ids
     ->Belt.Set.String.fromArray
     ->Belt.Set.String.toArray
-    ->Belt.Array.map(id => (
+    ->Array.map(id => (
       id->Spec.Id.makeFromString,
       topicItems->Belt.Array.keep(({command}) => command.id == id->Spec.Id.makeFromString),
     ))
@@ -68,7 +68,7 @@ module Make = (
     let results =
       await topicItems
       ->groupTopicItemsById
-      ->Belt.Array.map(async ((id, topicItemsForId)) => {
+      ->Array.map(async ((id, topicItemsForId)) => {
         let history = await Ops.eventLog.replay(id)
         let processCommand = async (accP, command': Message.command'<Spec.Id.t, Spec.command>) => {
           let runBehaviour = ((stateO, events)) =>
@@ -118,7 +118,7 @@ module Make = (
         //    also: do we need the additional info of Message.command'
         //            (compared to Spec.command)
         topicItemsForId
-        ->Belt.Array.map(({command}) =>
+        ->Array.map(({command}) =>
           command->Message.commandJsonOfCommand'(
             ~idToString=Spec.Id.toString,
             ~commandEncode=Spec.command_encode,
@@ -129,7 +129,7 @@ module Make = (
         let (references, commands') =
           // TODO: handle finer granular references
           topicItemsForId
-          ->Belt.Array.map(({reference, command}) => (reference, command))
+          ->Array.map(({reference, command}) => (reference, command))
           ->Belt.Array.unzip
         let result =
           await commands'->Belt.Array.reduce(
@@ -139,9 +139,7 @@ module Make = (
         let events = switch result {
         | Ok((_, generatedEventsWithMeta)) =>
           generatedEventsWithMeta
-          ->Belt.Array.map(((events, meta)) =>
-            events->Belt.Array.map(event => {Message.id, meta, event})
-          )
+          ->Array.map(((events, meta)) => events->Array.map(event => {Message.id, meta, event}))
           ->Belt.Array.concatMany
         | Error(error) => Js.Exn.raiseError(error)
         }
@@ -152,21 +150,21 @@ module Make = (
               `handleCommands(${id->Spec.Id.toString})`,
               "no Event generated",
             )
-            references->Belt.Array.map(reference => Ok(reference))
+            references->Array.map(reference => Ok(reference))
           }
         | generatedEvents' =>
           let eventCount = generatedEvents'->Belt.Array.length->Belt.Int.toString
           Logger.debug(
             `Aggregate.handleCommands(${id->Spec.Id.toString}): ${eventCount} Event(s) generated:`,
-            generatedEvents'->Belt.Array.map(event' => event'->eventName),
+            generatedEvents'->Array.map(event' => event'->eventName),
           )
           switch await Ops.eventLog.append(history->Belt.Array.length, id, generatedEvents') {
           | Ok(_) =>
             Logger.debug(~loc=__LOC__, "finished eventLogAppend for id", id->Spec.Id.toString)
-            references->Belt.Array.map(reference => Ok(reference))
+            references->Array.map(reference => Ok(reference))
           | Error(_) =>
             Logger.error(~loc=__LOC__, "failed eventLogAppend for id", id->Spec.Id.toString)
-            references->Belt.Array.map(reference => Error(reference))
+            references->Array.map(reference => Error(reference))
           }
         }
       })

@@ -65,7 +65,7 @@ module MakeCounterHandler = (
   }
 
   let processMappingActions = (actions, eventMeta) =>
-    actions->Belt.Array.map(action =>
+    actions->Array.map(action =>
       switch action {
       | ReventlessSpec.EventMapping.Publish(id, command) =>
         Publisher([createCommandJson(id, eventMeta, command)]->Js.Promise.resolve)
@@ -73,9 +73,7 @@ module MakeCounterHandler = (
         Publisher([createCommandJson(~delay, id, eventMeta, command)]->Js.Promise.resolve)
       | PublishAsync(promise) =>
         let toCommandJson = async promise =>
-          {await promise}->Belt.Array.map(((id, command)) =>
-            createCommandJson(id, eventMeta, command)
-          )
+          {await promise}->Array.map(((id, command)) => createCommandJson(id, eventMeta, command))
         Publisher(promise->toCommandJson)
       | AddToCounterTarget({counterId, target}) =>
         Counter(
@@ -134,7 +132,7 @@ module MakeCounterHandler = (
       )
     let publisherEntries =
       (await publisherActions
-      ->Belt.Array.map(action =>
+      ->Array.map(action =>
         switch action {
         | Publisher(entries) => entries
         | Counter(_) => Js.Exn.raiseError("Invalid EventMapper action")
@@ -143,7 +141,7 @@ module MakeCounterHandler = (
       ->Js.Promise.all)
       ->Belt.Array.concatMany
       ->Js.Promise.resolve
-    let counterActions = counterActions->Belt.Array.map(x =>
+    let counterActions = counterActions->Array.map(x =>
       switch x {
       | Counter(action) => action
       | Publisher(_) => Js.Exn.raiseError("Invalid EventMapper action")
@@ -214,7 +212,7 @@ module MakeEventCollectorHandler = (Ops: EventCollectorOps): EventCollectorHandl
       addToCounterTargetActions->Js.Json.stringifyAny,
     )
     await addToCounterTargetActions
-    ->Belt.Array.map(async x =>
+    ->Array.map(async x =>
       switch x {
       | AddToCounterTarget(counterTarget) => await Ops.addToCounterTarget(counterTarget)
       | _ => ()

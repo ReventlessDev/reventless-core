@@ -29,8 +29,8 @@ let createTag = (~level as _, ~loc) => {
     let captures =
       result
       ->Js.Re.captures
-      ->Belt.Array.map(Js.Nullable.toOption)
-      ->Belt.Array.map(Belt.Option.getWithDefault(_, ""))
+      ->Array.map(capture => capture->Js.Nullable.toOption)
+      ->Array.map(Belt.Option.getWithDefault(_, ""))
     `${captures->Array.getUnsafe(1)}#${captures->Array.getUnsafe(2)}:`
   | _ => ""
   }

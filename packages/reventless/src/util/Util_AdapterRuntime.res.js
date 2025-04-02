@@ -26,9 +26,9 @@ function findResource(resources, service) {
   if (matching.length !== 0) {
     return matching[0];
   }
-  var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (res) {
-            return Belt_Option.getExn(JSON.stringify(res));
-          })).join(", ");
+  var err = "Util.Adapter.findResource: Couldn't find service " + service + " in resources: " + resources.map(function (res) {
+          return Belt_Option.getExn(JSON.stringify(res));
+        }).join(", ");
   console.log(err);
   return Js_exn.raiseError(err);
 }
@@ -38,9 +38,9 @@ function findUnwrappedResource(resources, service) {
   if (resources$1.length !== 0) {
     return resources$1[0];
   }
-  var err = "Util.Adapter.findUnwrappedResource: Couldn't find service " + service + " in resources: " + Belt_Array.map(resources, (function (res) {
-            return Belt_Option.getExn(JSON.stringify(res));
-          })).join(", ");
+  var err = "Util.Adapter.findUnwrappedResource: Couldn't find service " + service + " in resources: " + resources.map(function (res) {
+          return Belt_Option.getExn(JSON.stringify(res));
+        }).join(", ");
   console.log(err);
   return Js_exn.raiseError(err);
 }

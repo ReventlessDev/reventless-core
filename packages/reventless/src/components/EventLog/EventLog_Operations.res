@@ -29,7 +29,7 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
     ->Js.Dict.fromArray
     ->Js.Json.object_
 
-  let eventsToJson = (events', id) => events'->Belt.Array.map(event => eventToJson(id, event))
+  let eventsToJson = (events', id) => events'->Array.map(event => eventToJson(id, event))
 
   let storageAppendErrorHandler = (id, err) => {
     let errMsg =
@@ -101,7 +101,7 @@ module Make = (Spec: EventLog.Spec, Ops: Ops with module Spec = Spec): (
         }
     )
 
-  let decodeEvents = (jsons, id) => jsons->Belt.Array.map(json => decodeEvent(id, json))
+  let decodeEvents = (jsons, id) => jsons->Array.map(json => decodeEvent(id, json))
 
   let replay = async id => {
     let eventsJson = await Ops.storage.replay(id->Spec.Id.toString)

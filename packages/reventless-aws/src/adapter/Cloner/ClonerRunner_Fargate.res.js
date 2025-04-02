@@ -59,16 +59,16 @@ function make(name, api, fullQualifiedStackName, reventlessCiSecretUrn, secretUr
       }, opts);
   var vpcStackName = Belt_Option.getExn(new Pulumi.Config("vpc").get("stack"));
   var vpcConfig = Util_Vpc$Reventless.getVpcConfig(vpcStackName, "vpc");
-  var secrets = Pulumi.all(Belt_Array.map(secretUrns, (function (urn) {
-                return GetSecretVersion$PulumiAws.getSecretNames(urn).apply(function (names) {
-                            return Belt_Array.map(names, (function (name) {
-                                          return {
-                                                  name: name,
-                                                  valueFrom: urn + ":" + name + "::"
-                                                };
-                                        }));
-                          });
-              }))).apply(Belt_Array.concatMany);
+  var secrets = Pulumi.all(secretUrns.map(function (urn) {
+              return GetSecretVersion$PulumiAws.getSecretNames(urn).apply(function (names) {
+                          return names.map(function (name) {
+                                      return {
+                                              name: name,
+                                              valueFrom: urn + ":" + name + "::"
+                                            };
+                                    });
+                        });
+            })).apply(Belt_Array.concatMany);
   var resources = Pulumi.all([
           secretsManagerAccessPolicy.arn,
           taskRunnerPolicy.arn,

@@ -84,22 +84,22 @@ var NotCounted = /* @__PURE__ */Caml_exceptions.create("Counter_Operations-Reven
 
 function Make(Spec) {
   var count = async function (countItems) {
-    var result = await Spec.saveBatch(Belt_Array.map(countItems, (function (param) {
-                var id = Counter$Reventless.makeId([
-                      param.counterId,
-                      param.reference
-                    ]);
-                var state_inc = param.inc;
-                var state = {
-                  id: id,
-                  inc: state_inc
-                };
-                return [
-                        id,
-                        state,
-                        Spec.ttl
-                      ];
-              })));
+    var result = await Spec.saveBatch(countItems.map(function (param) {
+              var id = Counter$Reventless.makeId([
+                    param.counterId,
+                    param.reference
+                  ]);
+              var state_inc = param.inc;
+              var state = {
+                id: id,
+                inc: state_inc
+              };
+              return [
+                      id,
+                      state,
+                      Spec.ttl
+                    ];
+            }));
     if (result.TAG === "Ok") {
       var batchSize = countItems.length;
       console.log("Counter_Operations-Reventless" + (": saved batch of " + String(batchSize) + " reference(s):"));

@@ -8,21 +8,21 @@ var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
 
 function filterRejected(results) {
-  return Belt_Array.map(Belt_Array.keep(Belt_Array.mapWithIndex(results, (function (idx, result) {
-                        return [
-                                idx,
-                                result
-                              ];
-                      })), (function (param) {
-                    return param[1].status === "rejected";
-                  })), (function (param) {
-                return [
-                        param[0],
-                        Belt_Option.getWithDefault(Belt_Option.map(param[1].reason, (function (reason) {
-                                    return reason.message;
-                                  })), "Unknown error")
-                      ];
-              }));
+  return Belt_Array.keep(Belt_Array.mapWithIndex(results, (function (idx, result) {
+                      return [
+                              idx,
+                              result
+                            ];
+                    })), (function (param) {
+                  return param[1].status === "rejected";
+                })).map(function (param) {
+              return [
+                      param[0],
+                      Belt_Option.getWithDefault(Belt_Option.map(param[1].reason, (function (reason) {
+                                  return reason.message;
+                                })), "Unknown error")
+                    ];
+            });
 }
 
 async function map(p, mapOk, mapExn) {

@@ -31,7 +31,7 @@ module Make = (Spec: Spec) => {
     Js.log2("counterHandler: counts:", counts)
     await references
     ->groupByCounterId
-    ->Belt.Array.map(((counterId, dec)) =>
+    ->Array.map(((counterId, dec)) =>
       Spec.countsDbCount(
         counterId->ReventlessSpec.Id.StringPure.makeFromString,
         Counter.countFieldName,

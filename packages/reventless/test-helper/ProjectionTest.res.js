@@ -40,13 +40,13 @@ function Make(Projection) {
     store[id] = states;
   };
   var updateState = function (store, id, subId, newState) {
-    return Belt_Array.map(states(store, id), (function (state) {
-                  if (hasSubId(subId, state)) {
-                    return newState;
-                  } else {
-                    return state;
-                  }
-                }));
+    return states(store, id).map(function (state) {
+                if (hasSubId(subId, state)) {
+                  return newState;
+                } else {
+                  return state;
+                }
+              });
   };
   var deleteStates = function (store, id) {
     store[id] = [];

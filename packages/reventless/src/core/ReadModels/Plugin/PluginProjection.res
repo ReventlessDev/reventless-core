@@ -1,12 +1,12 @@
 open ReventlessSpec.Message
 
 module Util = {
-  let extractExtensionPointNames = Belt.Array.map(_, (
+  let extractExtensionPointNames = Array.map(_, (
     extensionPoint: ReventlessSpec.Plugin.extensionPointDefinition,
   ) => extensionPoint.name)
-  let extractExtensionNames = Belt.Array.map(_, (
-    extension: ReventlessSpec.Plugin.extensionDefinition,
-  ) => extension.extensionPointName)
+  let extractExtensionNames = Array.map(_, (extension: ReventlessSpec.Plugin.extensionDefinition) =>
+    extension.extensionPointName
+  )
 }
 
 module PluginMapping = Projection.Mapping.Make(

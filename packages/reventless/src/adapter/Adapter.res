@@ -40,7 +40,7 @@ let unwrappedToResource = (
 }
 
 let unwrappedToResources = (unwrapped: array<unwrappedResource>) =>
-  unwrapped->Belt.Array.map(unwrapped => unwrapped->unwrappedToResource)
+  unwrapped->Array.map(unwrapped => unwrapped->unwrappedToResource)
 
 let unwrappedOutputToResource: Pulumi.Output.t<
   unwrappedResource,
@@ -59,7 +59,7 @@ let resourceToUnwrappedOutput = (r: ReventlessSpec.Adapter.resource) =>
 
 let resourcesToUnwrappedOutput = (resources: array<ReventlessSpec.Adapter.resource>) =>
   resources
-  ->Belt.Array.map(resource => resource->resourceToUnwrappedOutput)
+  ->Array.map(resource => resource->resourceToUnwrappedOutput)
   ->Pulumi.Output.all
 
 let logResource = r => {

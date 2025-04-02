@@ -13,22 +13,22 @@ var Util_Error$Reventless = require("../../util/Util_Error.res.js");
 
 function Make(Spec, Ops) {
   var eventsToJson = function (events$p, id) {
-    return Belt_Array.map(events$p, (function ($$event) {
-                  return Js_dict.fromArray(Belt_Array.concat([
-                                  [
-                                    "id",
-                                    Spec.Id.t_encode(id)
-                                  ],
-                                  [
-                                    "sequenceNr",
-                                    Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now())
-                                  ],
-                                  [
-                                    "event",
-                                    Spec.event_encode($$event.event)
-                                  ]
-                                ], Message$Reventless.decomposeMeta($$event.meta)));
-                }));
+    return events$p.map(function ($$event) {
+                return Js_dict.fromArray(Belt_Array.concat([
+                                [
+                                  "id",
+                                  Spec.Id.t_encode(id)
+                                ],
+                                [
+                                  "sequenceNr",
+                                  Message$Reventless.hrtimeToString(process.hrtime(), Message$Reventless.now())
+                                ],
+                                [
+                                  "event",
+                                  Spec.event_encode($$event.event)
+                                ]
+                              ], Message$Reventless.decomposeMeta($$event.meta)));
+              });
   };
   var publishToEventTopic = async function (id, events$p) {
     try {
@@ -82,29 +82,29 @@ function Make(Spec, Ops) {
   var replay = async function (id) {
     var eventsJson = await Ops.storage.replay(Spec.Id.toString(id));
     var id$1 = Spec.Id.toString(id);
-    return Belt_Array.map(eventsJson, (function (json) {
-                  var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
-                                  return Js_dict.get(dict, "event");
-                                })), (function (json) {
-                              return [
-                                      json,
-                                      Spec.event_decode(json)
-                                    ];
-                            })), (function (x) {
-                          var $$event = x[1];
-                          if ($$event.TAG === "Ok") {
-                            return $$event._0;
-                          }
-                          var eventStr = JSON.stringify(x[0]);
-                          var message = $$event._0.message;
-                          return Js_exn.raiseError("EventLog.replay: Error: id:" + id$1 + ": Couldn't decode " + eventStr + ": " + message);
-                        }));
-                  if (x !== undefined) {
-                    return Caml_option.valFromOption(x);
-                  }
-                  var eventStr = JSON.stringify(json);
-                  return Js_exn.raiseError("EventLog.replay: Error: id:" + id$1 + ": Couldn't decodeObject " + eventStr);
-                }));
+    return eventsJson.map(function (json) {
+                var x = Belt_Option.map(Belt_Option.map(Belt_Option.flatMap(Js_json.decodeObject(json), (function (dict) {
+                                return Js_dict.get(dict, "event");
+                              })), (function (json) {
+                            return [
+                                    json,
+                                    Spec.event_decode(json)
+                                  ];
+                          })), (function (x) {
+                        var $$event = x[1];
+                        if ($$event.TAG === "Ok") {
+                          return $$event._0;
+                        }
+                        var eventStr = JSON.stringify(x[0]);
+                        var message = $$event._0.message;
+                        return Js_exn.raiseError("EventLog.replay: Error: id:" + id$1 + ": Couldn't decode " + eventStr + ": " + message);
+                      }));
+                if (x !== undefined) {
+                  return Caml_option.valFromOption(x);
+                }
+                var eventStr = JSON.stringify(json);
+                return Js_exn.raiseError("EventLog.replay: Error: id:" + id$1 + ": Couldn't decodeObject " + eventStr);
+              });
   };
   return {
           Spec: Spec,

@@ -27,7 +27,7 @@ module Make = (
 
   let mapIncomingCommands = (topicItems, mappings, scheduler, queryEngine, queue) =>
     mappings
-    ->Belt.Array.map((module(Mapping: Mappings.Mapping)) =>
+    ->Array.map((module(Mapping: Mappings.Mapping)) =>
       Mapping.mapIncomingCommands(
         topicItems,
         Schedule.create(scheduler, queue),
@@ -77,6 +77,6 @@ module Make = (
         Spec.commandTopicResources,
       )
 
-    await commandActions->Belt.Array.map(applyCommandAction)->Js.Promise.all
+    await commandActions->Array.map(applyCommandAction)->Js.Promise.all
   }
 }

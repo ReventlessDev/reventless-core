@@ -28,7 +28,7 @@ module Make = (
 
     let aggregatesWithoutEventMappers =
       aggregates
-      ->Belt.Array.map((module(SpecificAggregate: Aggregate.T)) => {
+      ->Array.map((module(SpecificAggregate: Aggregate.T)) => {
         let aggregate = SpecificAggregate.make(~opts)
         addEventMapperFns->Js.Dict.set(
           SpecificAggregate.Spec.name,
@@ -44,12 +44,12 @@ module Make = (
         publishToAggregates->Js.Dict.set(SpecificAggregate.Spec.name, publishJsons)
         aggregate->Component.outputs
       })
-      ->Belt.Array.map(aggregate => {(aggregate.name, aggregate)})
+      ->Array.map(aggregate => {(aggregate.name, aggregate)})
       ->Js.Dict.fromArray
 
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
 
-    let readModels = readModels->Belt.Array.map((module(SpecificReadModel: ReadModel.T)) => {
+    let readModels = readModels->Array.map((module(SpecificReadModel: ReadModel.T)) => {
       let readModel = SpecificReadModel.make(~allEventTopics, ~opts)
       (SpecificReadModel.Spec.name, {module_: module(SpecificReadModel), readModel})
     })
@@ -57,7 +57,7 @@ module Make = (
       readModels
       ->Js.Dict.fromArray
       ->Js.Dict.entries
-      ->Belt.Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
+      ->Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
       ->Js.Dict.fromArray
 
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
@@ -79,7 +79,7 @@ module Make = (
 
         let (extensionPointsOutputs, extensionPointsOutgoingEventHandlers) =
           extensionPoints
-          ->Belt.Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
+          ->Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
             let extensionPoint = SpecificExtensionPoint.make(
               ~aggregateResources,
               ~publishToAggregates,
@@ -98,7 +98,7 @@ module Make = (
 
         let aggregateNames =
           extensionPointsOutputs
-          ->Belt.Array.map(extensionPointOutputs =>
+          ->Array.map(extensionPointOutputs =>
             extensionPointOutputs.aggregateNames->Belt.Set.String.fromArray
           )
           ->Belt.Array.reduce(Belt.Set.String.empty, Belt.Set.String.union)
@@ -106,11 +106,11 @@ module Make = (
         let eventTopics = aggregatesOutputs->Aggregate.filterEventTopics(aggregateNames)
         let resources =
           extensionPointsOutputs
-          ->Belt.Array.map(extensionPoint => extensionPoint.eventTopic)
+          ->Array.map(extensionPoint => extensionPoint.eventTopic)
           ->Pulumi.Output.all
           ->Pulumi.Output.apply(eventTopics =>
             eventTopics
-            ->Belt.Array.map(eventTopic => eventTopic.resources)
+            ->Array.map(eventTopic => eventTopic.resources)
             ->Belt.Array.concatMany
           )
 
@@ -170,7 +170,7 @@ module Make = (
       ),
       extensionPoints: extensionPointsOutputs->Pulumi.Output.apply(extensionPointsOutputs =>
         extensionPointsOutputs
-        ->Belt.Array.map(ep => (ep.name, ep))
+        ->Array.map(ep => (ep.name, ep))
         ->Js.Dict.fromArray
       ),
       aggregates: aggregatesOutputs,

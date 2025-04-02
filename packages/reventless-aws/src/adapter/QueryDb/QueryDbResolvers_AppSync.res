@@ -60,7 +60,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
   )
 
   let resourcesMaker: Reventless.QueryDb.resolversResourcesMaker = allQueryDbs => {
-    let resolversByIndex = indexes->Belt.Array.map(({index} as indexConfig) => {
+    let resolversByIndex = indexes->Array.map(({index} as indexConfig) => {
       let name = name ++ ("By" ++ index->StringLabels.capitalize_ascii)
       let idField = indexConfig.idField->Belt.Option.getWithDefault(index)
       switch indexConfig.authorization {
@@ -131,7 +131,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
       ->Pulumi.Output.apply(realTableName => template(realTableName))
       ->Pulumi.Output.asInput
 
-    let idResolvers = idResolverConfigs->Belt.Array.map(config => {
+    let idResolvers = idResolverConfigs->Array.map(config => {
       let {
         source: {idField: sourceIdField, subId: sourceSubId, resolvedField},
         target: {tableName, idField: targetId} as target,
@@ -198,7 +198,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
       }
     })
 
-    let idsResolvers = idsResolverConfigs->Belt.Array.map(config => {
+    let idsResolvers = idsResolverConfigs->Array.map(config => {
       let {source: {idsField, resolvedField}, target: {tableName} as target} = config
       let storageResource = storageResource(~pluginName=target.pluginName, ~tableName)
 
@@ -220,7 +220,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
       )
     })
 
-    Belt.Array.concatMany([resolversByIndex, idResolvers, idsResolvers])->Belt.Array.map(
+    Belt.Array.concatMany([resolversByIndex, idResolvers, idsResolvers])->Array.map(
       Util.AppSync.toResource,
     )
   }
@@ -230,7 +230,7 @@ let make: Reventless.QueryDb_Adapter.resolversMaker<api, role> = (
   | None => [resolverByIdSingle, resolverAll]
   } // TODO add other resolvers (from maker)
 
-  let resources = resolvers->Belt.Array.map(Util.AppSync.toResource)
+  let resources = resolvers->Array.map(Util.AppSync.toResource)
 
   {resources, resourcesMaker}
 }

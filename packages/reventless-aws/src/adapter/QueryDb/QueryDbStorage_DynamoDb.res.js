@@ -13,30 +13,30 @@ var AppSync_DataSource$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSyn
 var QueryDbStorage_DynamoDb_Runtime$ReventlessAws = require("./QueryDbStorage_DynamoDb_Runtime.res.js");
 
 function globalSecondaryIndexes(indexes) {
-  return Belt_Array.map(indexes, (function (indexConfig) {
-                var projectionType = indexConfig.projectionType;
-                var index = indexConfig.index;
-                var match;
-                match = typeof projectionType !== "object" ? (
-                    projectionType === "KEYS_ONLY" ? [
-                        "KEYS_ONLY",
-                        undefined
-                      ] : [
-                        "ALL",
-                        undefined
-                      ]
-                  ) : [
-                    "INCLUDE",
-                    projectionType._0
-                  ];
-                return {
-                        hashKey: Belt_Option.getWithDefault(indexConfig.idField, index),
-                        name: index,
-                        projectionType: match[0],
-                        nonKeyAttributes: match[1],
-                        rangeKey: indexConfig.subIdField
-                      };
-              }));
+  return indexes.map(function (indexConfig) {
+              var projectionType = indexConfig.projectionType;
+              var index = indexConfig.index;
+              var match;
+              match = typeof projectionType !== "object" ? (
+                  projectionType === "KEYS_ONLY" ? [
+                      "KEYS_ONLY",
+                      undefined
+                    ] : [
+                      "ALL",
+                      undefined
+                    ]
+                ) : [
+                  "INCLUDE",
+                  projectionType._0
+                ];
+              return {
+                      hashKey: Belt_Option.getWithDefault(indexConfig.idField, index),
+                      name: index,
+                      projectionType: match[0],
+                      nonKeyAttributes: match[1],
+                      rangeKey: indexConfig.subIdField
+                    };
+            });
 }
 
 function attributes(sortField, indexes) {
@@ -51,20 +51,20 @@ function attributes(sortField, indexes) {
                                 type: "S"
                               }];
                     })),
-              Belt_Array.concatMany(Belt_Array.map(indexes, (function (indexConfig) {
-                          return Belt_Array.concatMany([
-                                      [{
-                                          name: indexConfig.index,
-                                          type: indexConfig.type_
-                                        }],
-                                      Belt_Option.mapWithDefault(indexConfig.subIdField, [], (function (sortField) {
-                                              return [{
-                                                        name: sortField,
-                                                        type: "S"
-                                                      }];
-                                            }))
-                                    ]);
-                        })))
+              Belt_Array.concatMany(indexes.map(function (indexConfig) {
+                        return Belt_Array.concatMany([
+                                    [{
+                                        name: indexConfig.index,
+                                        type: indexConfig.type_
+                                      }],
+                                    Belt_Option.mapWithDefault(indexConfig.subIdField, [], (function (sortField) {
+                                            return [{
+                                                      name: sortField,
+                                                      type: "S"
+                                                    }];
+                                          }))
+                                  ]);
+                      }))
             ]);
 }
 

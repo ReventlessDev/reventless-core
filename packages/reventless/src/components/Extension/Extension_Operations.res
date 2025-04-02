@@ -36,7 +36,7 @@ module Make = (
     queryEngine,
   ) =>
     Mappings.mappings
-    ->Belt.Array.map((module(Mapping: Mappings.Mapping)) =>
+    ->Array.map((module(Mapping: Mappings.Mapping)) =>
       Mapping.mapIncomingEvent(event', pluginDef, queryEngine)
     )
     ->Belt.Array.concatMany
@@ -106,7 +106,7 @@ module Make = (
           await promise
           ->Util.Promise.mapOk(arr =>
             arr
-            ->Belt.Array.map(((aggregateName, commandJson)) =>
+            ->Array.map(((aggregateName, commandJson)) =>
               publishAggregateCommand(aggregateName, commandJson)
             )
             ->Js.Promise.all
@@ -143,7 +143,7 @@ module Make = (
       let commandActions = mapIncomingEvent(event', pluginDef, Spec.queryEngine)
       let apply = async commandActions => {
         await commandActions
-        ->Belt.Array.map(applyIncomingCommandAction)
+        ->Array.map(applyIncomingCommandAction)
         ->Js.Promise.all
         ->Util.Promise.toUnit
       }
@@ -174,7 +174,7 @@ module Make = (
   let outgoingEventHandler = (eventJson', pluginDef) => {
     let commandActions = mapOutgoingEvent(eventJson', pluginDef)
     commandActions
-    ->Belt.Array.map(applyOutgoingCommandAction)
+    ->Array.map(applyOutgoingCommandAction)
     ->Js.Promise.all
     ->Util.Promise.toUnit
   }

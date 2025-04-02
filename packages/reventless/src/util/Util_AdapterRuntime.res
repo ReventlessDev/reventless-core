@@ -19,7 +19,7 @@ let findResource = (resources, service) =>
   switch resources->filterSupportedResources([service]) {
   | [] =>
     let err = `Util.Adapter.findResource: Couldn't find service ${service} in resources: ${resources
-      ->Belt.Array.map(res => res->Js.Json.stringifyAny->Belt.Option.getExn)
+      ->Array.map(res => res->Js.Json.stringifyAny->Belt.Option.getExn)
       ->Js.Array2.joinWith(", ")}`
     Js.log(err)
     Js.Exn.raiseError(err)
@@ -30,7 +30,7 @@ let findUnwrappedResource = (resources, service) =>
   switch resources->filterSupportedUnwrappedResources([service]) {
   | [] =>
     let err = `Util.Adapter.findUnwrappedResource: Couldn't find service ${service} in resources: ${resources
-      ->Belt.Array.map(res => res->Js.Json.stringifyAny->Belt.Option.getExn)
+      ->Array.map(res => res->Js.Json.stringifyAny->Belt.Option.getExn)
       ->Js.Array2.joinWith(", ")}`
     Js.log(err)
     Js.Exn.raiseError(err)

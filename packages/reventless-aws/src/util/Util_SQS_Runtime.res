@@ -50,7 +50,7 @@ let makeEntry = (queueService, {id, meta: {msgId: messageId}, delay} as commandJ
 
 let rec sendMessages = async (queue, queueService, commandJsons) => {
   switch await commandJsons
-  ->Belt.Array.map(commandJson => makeEntry(queueService, commandJson))
+  ->Array.map(commandJson => makeEntry(queueService, commandJson))
   ->SQS.sendMessagesParallel(~queueId=queue.id) {
   | Ok() => ()
   | Error(failedIds) =>

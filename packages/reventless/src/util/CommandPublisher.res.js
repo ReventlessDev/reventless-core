@@ -3,7 +3,6 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_math = require("@rescript/std/lib/js/js_math.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Caml_splice_call = require("@rescript/std/lib/js/caml_splice_call.js");
@@ -41,15 +40,15 @@ function Make(Spec, Config) {
   };
   var toJsons = function (commandsToSend) {
     console.log("toJsons: commandsToSend:", commandsToSend.length, "rest:", buffer.length);
-    return Belt_Array.map(commandsToSend, (function (param) {
-                  var commandJson = Spec.command_encode(param[1]);
-                  return {
-                          id: param[0],
-                          meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user),
-                          commandJson: commandJson,
-                          delay: undefined
-                        };
-                }));
+    return commandsToSend.map(function (param) {
+                var commandJson = Spec.command_encode(param[1]);
+                return {
+                        id: param[0],
+                        meta: Message$Reventless.generateMeta(Spec.name, undefined, Config.user),
+                        commandJson: commandJson,
+                        delay: undefined
+                      };
+              });
   };
   var send = async function () {
     await finishRunning();

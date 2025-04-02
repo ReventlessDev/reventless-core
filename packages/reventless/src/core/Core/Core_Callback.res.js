@@ -11,9 +11,9 @@ function Make(Spec) {
     return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.mapWithIndex(eventsJson$p, (async function (idx, eventJson$p) {
                           var idx$1 = idx + 1 | 0;
                           Logger$Reventless.logJsonEvent(undefined, undefined, eventJson$p, "Core eventHandler: outgoing event " + String(idx$1) + "/" + String(count) + ":");
-                          return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(Spec.outgoingExtensionPointEventHandlers, (function (handleEvent) {
-                                                return handleEvent(eventJson$p, Spec.pluginDefinition);
-                                              }))));
+                          return Util_Promise$Reventless.toUnit(Promise.all(Spec.outgoingExtensionPointEventHandlers.map(function (handleEvent) {
+                                              return handleEvent(eventJson$p, Spec.pluginDefinition);
+                                            })));
                         }))));
   };
   return {

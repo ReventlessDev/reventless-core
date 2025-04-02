@@ -10,9 +10,9 @@ var Schedule$Reventless = require("../../util/Schedule.res.js");
 
 function Make(Spec, MappingSpec, Mappings) {
   var mapIncomingCommands = function (topicItems, mappings, scheduler, queryEngine, queue) {
-    return Belt_Array.concatMany(Belt_Array.map(mappings, (function (Mapping) {
-                      return Mapping.mapIncomingCommands(topicItems, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
-                    })));
+    return Belt_Array.concatMany(mappings.map(function (Mapping) {
+                    return Mapping.mapIncomingCommands(topicItems, Schedule$Reventless.create(scheduler, queue), Schedule$Reventless.$$delete(scheduler, queue), queryEngine);
+                  }));
   };
   var applyCommandAction = async function (action) {
     if (action.TAG === "AbstractPublishCommand") {
@@ -65,7 +65,7 @@ function Make(Spec, MappingSpec, Mappings) {
   };
   var handleIncomingCommands = async function (topicItems) {
     var commandActions = mapIncomingCommands(topicItems, Mappings.mappings, Spec.scheduler, Spec.queryEngine, Spec.commandTopicResources);
-    return await Promise.all(Belt_Array.map(commandActions, applyCommandAction));
+    return await Promise.all(commandActions.map(applyCommandAction));
   };
   return {
           MappingSpec: MappingSpec,

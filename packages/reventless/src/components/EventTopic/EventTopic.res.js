@@ -20,9 +20,9 @@ function toUnwrappedOutputs(outputs) {
 }
 
 function allOutputsToResources(allOutputs) {
-  return Belt_Array.concatMany(Belt_Array.map(Object.values(allOutputs), (function (eventTopic) {
-                    return eventTopic.resources;
-                  })));
+  return Belt_Array.concatMany(Object.values(allOutputs).map(function (eventTopic) {
+                  return eventTopic.resources;
+                }));
 }
 
 function filter(allEventTopics, sourceNames) {

@@ -18,9 +18,9 @@ function Make(ReadModelSpec, Spec) {
   var load = async function (id) {
     var result = await Spec.jsonOps.load(ReadModelSpec.Id.toString(id));
     return Belt_Result.map(result, (function (states) {
-                  return Belt_Array.concatMany(Belt_Array.map(states, (function (state) {
-                                    return decode(id, state);
-                                  })));
+                  return Belt_Array.concatMany(states.map(function (state) {
+                                  return decode(id, state);
+                                }));
                 }));
   };
   var save = async function (id, state, saveMode, ttl) {
@@ -65,12 +65,12 @@ function Make(ReadModelSpec, Spec) {
     return await Spec.jsonOps.delete(ReadModelSpec.Id.toString(id), subId);
   };
   var deleteBatch = async function (ids) {
-    var ids$1 = Belt_Array.map(ids, (function (param) {
-            return [
-                    ReadModelSpec.Id.toString(param[0]),
-                    param[1]
-                  ];
-          }));
+    var ids$1 = ids.map(function (param) {
+          return [
+                  ReadModelSpec.Id.toString(param[0]),
+                  param[1]
+                ];
+        });
     return await Spec.jsonOps.deleteBatch(ids$1);
   };
   return {

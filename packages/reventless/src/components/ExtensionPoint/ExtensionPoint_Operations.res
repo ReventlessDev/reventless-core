@@ -80,7 +80,7 @@ module Make = (
     )
 
     await eventActions
-    ->Belt.Array.map(applyEventAction)
+    ->Array.map(applyEventAction)
     ->Js.Promise.all
     ->Util.Promise.toUnit
   }

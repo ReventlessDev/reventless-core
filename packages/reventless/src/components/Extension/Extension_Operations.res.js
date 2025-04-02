@@ -22,9 +22,9 @@ function Make(Spec, MappingSpec, Mappings) {
                 }));
   };
   var mapIncomingEvent = function (event$p, pluginDef, queryEngine) {
-    return Belt_Array.concatMany(Belt_Array.map(Mappings.mappings, (function (Mapping) {
-                      return Mapping.mapIncomingEvent(event$p, pluginDef, queryEngine);
-                    })));
+    return Belt_Array.concatMany(Mappings.mappings.map(function (Mapping) {
+                    return Mapping.mapIncomingEvent(event$p, pluginDef, queryEngine);
+                  }));
   };
   var mapOutgoingEvent = function (eventJson$p, pluginDef) {
     var Mapping = findOutgoingMapping(Message$Reventless.serviceNameOfMsg(eventJson$p), Mappings.mappings);
@@ -106,9 +106,9 @@ function Make(Spec, MappingSpec, Mappings) {
       case "AbstractPublishAggregateCommandsAsync" :
           var publish = async function (promise) {
             return await Util_Promise$Reventless.toUnit(Util_Promise$Reventless.mapOk(promise, (function (arr) {
-                              return Promise.all(Belt_Array.map(arr, (function (param) {
-                                                return publishAggregateCommand(param[0], param[1]);
-                                              })));
+                              return Promise.all(arr.map(function (param) {
+                                              return publishAggregateCommand(param[0], param[1]);
+                                            }));
                             })));
           };
           tmp = publish(action._0);
@@ -143,7 +143,7 @@ function Make(Spec, MappingSpec, Mappings) {
       var event$p$1 = event$p._0;
       var commandActions = mapIncomingEvent(event$p$1, pluginDef, Spec.queryEngine);
       var apply = async function (commandActions) {
-        return await Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(commandActions, applyIncomingCommandAction)));
+        return await Util_Promise$Reventless.toUnit(Promise.all(commandActions.map(applyIncomingCommandAction)));
       };
       await apply(commandActions);
       var p = Belt_Option.map(Js_dict.get(Spec.readModelNamesForSourceName, event$p$1.meta.service), (function (readModelNames) {
@@ -164,7 +164,7 @@ function Make(Spec, MappingSpec, Mappings) {
   };
   var outgoingEventHandler = function (eventJson$p, pluginDef) {
     var commandActions = mapOutgoingEvent(eventJson$p, pluginDef);
-    return Util_Promise$Reventless.toUnit(Promise.all(Belt_Array.map(commandActions, applyOutgoingCommandAction)));
+    return Util_Promise$Reventless.toUnit(Promise.all(commandActions.map(applyOutgoingCommandAction)));
   };
   return {
           incomingEventHandler: incomingEventHandler,

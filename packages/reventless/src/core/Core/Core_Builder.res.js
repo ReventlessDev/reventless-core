@@ -27,41 +27,41 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
     var addEventMapperFns = {};
     var aggregateResources = {};
     var publishToAggregates = {};
-    var aggregatesWithoutEventMappers = Js_dict.fromArray(Belt_Array.map(Belt_Array.map(aggregates, (function (SpecificAggregate) {
-                    var aggregate = SpecificAggregate.make(opts);
-                    addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
-                    var resources = Component$Reventless.outputs(aggregate).commandTopic.apply(function (commandTopic) {
-                          return commandTopic.resources;
-                        });
-                    aggregateResources[SpecificAggregate.Spec.name] = resources;
-                    var publishJsons = Component$Reventless.operations(aggregate).apply(function (param) {
-                          return param.publishJsons;
-                        });
-                    publishToAggregates[SpecificAggregate.Spec.name] = publishJsons;
-                    return Component$Reventless.outputs(aggregate);
-                  })), (function (aggregate) {
-                return [
-                        aggregate.name,
-                        aggregate
-                      ];
-              })));
+    var aggregatesWithoutEventMappers = Js_dict.fromArray(aggregates.map(function (SpecificAggregate) {
+                var aggregate = SpecificAggregate.make(opts);
+                addEventMapperFns[SpecificAggregate.Spec.name] = Component$Reventless.outputs(aggregate).addEventMapper;
+                var resources = Component$Reventless.outputs(aggregate).commandTopic.apply(function (commandTopic) {
+                      return commandTopic.resources;
+                    });
+                aggregateResources[SpecificAggregate.Spec.name] = resources;
+                var publishJsons = Component$Reventless.operations(aggregate).apply(function (param) {
+                      return param.publishJsons;
+                    });
+                publishToAggregates[SpecificAggregate.Spec.name] = publishJsons;
+                return Component$Reventless.outputs(aggregate);
+              }).map(function (aggregate) {
+              return [
+                      aggregate.name,
+                      aggregate
+                    ];
+            }));
     var allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
-    var readModels$1 = Belt_Array.map(readModels, (function (SpecificReadModel) {
-            var readModel = SpecificReadModel.make(allEventTopics, opts);
-            return [
-                    SpecificReadModel.Spec.name,
-                    {
-                      module_: SpecificReadModel,
-                      readModel: readModel
-                    }
-                  ];
-          }));
-    var readModelsOutputs = Js_dict.fromArray(Belt_Array.map(Js_dict.entries(Js_dict.fromArray(readModels$1)), (function (param) {
-                return [
-                        param[0],
-                        Component$Reventless.outputs(param[1].readModel)
-                      ];
-              })));
+    var readModels$1 = readModels.map(function (SpecificReadModel) {
+          var readModel = SpecificReadModel.make(allEventTopics, opts);
+          return [
+                  SpecificReadModel.Spec.name,
+                  {
+                    module_: SpecificReadModel,
+                    readModel: readModel
+                  }
+                ];
+        });
+    var readModelsOutputs = Js_dict.fromArray(Js_dict.entries(Js_dict.fromArray(readModels$1)).map(function (param) {
+              return [
+                      param[0],
+                      Component$Reventless.outputs(param[1].readModel)
+                    ];
+            }));
     var allQueryDbs = ReadModel$Reventless.allQueryDbs(readModelsOutputs);
     var queryEngine = QueryEngineAdapter.make(allQueryDbs);
     var match = Output$Pulumi.unzip3(Pulumi.all([
@@ -77,26 +77,26 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
               var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
                       return addEventMapperFn(allEventTopics, queryEngine);
                     }), addEventMapperFns);
-              var match = Belt_Array.unzip(Belt_Array.map(extensionPoints, (function (SpecificExtensionPoint) {
-                          var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
-                          return [
-                                  Component$Reventless.outputs(extensionPoint),
-                                  Component$Reventless.operations(extensionPoint).apply(function (param) {
-                                        return param.outgoingEventHandler;
-                                      })
-                                ];
-                        })));
+              var match = Belt_Array.unzip(extensionPoints.map(function (SpecificExtensionPoint) {
+                        var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
+                        return [
+                                Component$Reventless.outputs(extensionPoint),
+                                Component$Reventless.operations(extensionPoint).apply(function (param) {
+                                      return param.outgoingEventHandler;
+                                    })
+                              ];
+                      }));
               var extensionPointsOutputs = match[0];
-              var aggregateNames = Belt_Array.reduce(Belt_Array.map(extensionPointsOutputs, (function (extensionPointOutputs) {
-                          return Belt_SetString.fromArray(extensionPointOutputs.aggregateNames);
-                        })), undefined, Belt_SetString.union);
+              var aggregateNames = Belt_Array.reduce(extensionPointsOutputs.map(function (extensionPointOutputs) {
+                        return Belt_SetString.fromArray(extensionPointOutputs.aggregateNames);
+                      }), undefined, Belt_SetString.union);
               var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, aggregateNames);
-              var resources = Pulumi.all(Belt_Array.map(extensionPointsOutputs, (function (extensionPoint) {
-                            return extensionPoint.eventTopic;
-                          }))).apply(function (eventTopics) {
-                    return Belt_Array.concatMany(Belt_Array.map(eventTopics, (function (eventTopic) {
-                                      return eventTopic.resources;
-                                    })));
+              var resources = Pulumi.all(extensionPointsOutputs.map(function (extensionPoint) {
+                          return extensionPoint.eventTopic;
+                        })).apply(function (eventTopics) {
+                    return Belt_Array.concatMany(eventTopics.map(function (eventTopic) {
+                                    return eventTopic.resources;
+                                  }));
                   });
               var fakePluginDefinition = {
                 id: "Core@FAKE",
@@ -141,12 +141,12 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                         return eventCollectorOutputs;
                       })),
                 extensionPoints: match[1].apply(function (extensionPointsOutputs) {
-                      return Js_dict.fromArray(Belt_Array.map(extensionPointsOutputs, (function (ep) {
-                                        return [
-                                                ep.name,
-                                                ep
-                                              ];
-                                      })));
+                      return Js_dict.fromArray(extensionPointsOutputs.map(function (ep) {
+                                      return [
+                                              ep.name,
+                                              ep
+                                            ];
+                                    }));
                     }),
                 aggregates: match[0],
                 readModels: readModelsOutputs,

@@ -40,9 +40,6 @@
         "@reventless/reventless-spec",
         "@rescript-labs/decco"
     ],
-    "bsc-flags": [
-        "-open RescriptCore"
-    ],
     "pinned-dependencies": [
         "@reventless/reventless-spec",
         "@reventless/bs-aws-sdk",
@@ -53,6 +50,9 @@
         "@reventless/bs-pulumi-pulumi",
         "@reventless/bs-ssh2",
         "@reventless/bs-uuid"
+    ],
+    "bsc-flags": [
+        "-open RescriptCore"
     ],
     "external-stdlib": "@rescript/std"
 }

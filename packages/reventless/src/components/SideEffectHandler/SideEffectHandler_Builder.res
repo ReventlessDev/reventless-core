@@ -18,7 +18,7 @@ module Make = (
 
     let aggregateNames =
       sideEffects
-      ->Belt.Array.map((module(SideEffect: ReventlessSpec.SideEffect.T)) => SideEffect.Source.name)
+      ->Array.map((module(SideEffect: ReventlessSpec.SideEffect.T)) => SideEffect.Source.name)
       ->Belt.Set.String.fromArray
 
     let eventCollector = SpecificEventCollector.make(~name, ~opts)

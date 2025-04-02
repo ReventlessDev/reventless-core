@@ -85,7 +85,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
       ->Spec.command_encode
       ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
 
-    mapIncomingEventImpl(id, event, meta, pluginDef, queryEngine)->Belt.Array.map(x =>
+    mapIncomingEventImpl(id, event, meta, pluginDef, queryEngine)->Array.map(x =>
       switch x {
       | PublishAggregateCommand(aggregateId, aggregateCmd) =>
         AbstractPublishAggregateCommand(
@@ -100,7 +100,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         AbstractPublishAggregateCommandAsync(promise->toCommandJson)
       | PublishAggregateCommandsAsync(promise) =>
         let toCommandJsons = async promise =>
-          (await promise)->Belt.Array.map(((aggregateId, aggregateCmd)) => (
+          (await promise)->Array.map(((aggregateId, aggregateCmd)) => (
             aggregateName,
             aggregateCmd->encodeAggregateCommandJson(aggregateId),
           ))
@@ -170,7 +170,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         ->Spec.command_encode
         ->encodeExtensionPointCommandJson(~id, ~extensionPointName, ~action)
 
-      mapOutgoingEventImpl(id->Aggregate.Id.toString, event, meta, pluginDef)->Belt.Array.map(x =>
+      mapOutgoingEventImpl(id->Aggregate.Id.toString, event, meta, pluginDef)->Array.map(x =>
         switch x {
         | PublishExtensionPointCommand(id, command)
           if Spec.name == ReventlessSpec.PluginExtensionPointSpec.name =>

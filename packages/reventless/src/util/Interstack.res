@@ -9,7 +9,7 @@ let stackDependencies =
     make(Some("interstack"))->getObject("dependencies")
   }
   ->Belt.Option.getWithDefault([])
-  ->Belt.Array.map(stackName => {
+  ->Array.map(stackName => {
     open Pulumi.StackReference
     make(stackName)
   })
@@ -17,7 +17,7 @@ let stackDependencies =
 
 let getOutputs = name =>
   stackDependencies
-  ->Belt.Array.map(stackRef => stackRef->Pulumi.StackReference.getOutput(name))
+  ->Array.map(stackRef => stackRef->Pulumi.StackReference.getOutput(name))
   ->Pulumi.Output.all
   ->Pulumi.Output.apply(outputs => outputs->Belt.Array.keepMap(x => x))
 

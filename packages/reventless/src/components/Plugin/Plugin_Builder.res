@@ -105,7 +105,7 @@ module Make = (
 
     let aggregatesWithoutEventMappers =
       aggregates
-      ->Belt.Array.map((module(SpecificAggregate: Aggregate.T)) => {
+      ->Array.map((module(SpecificAggregate: Aggregate.T)) => {
         let aggregate = SpecificAggregate.make(~opts)
         addEventMapperFns->Js.Dict.set(
           SpecificAggregate.Spec.name,
@@ -121,7 +121,7 @@ module Make = (
         publishToAggregates->Js.Dict.set(SpecificAggregate.Spec.name, publishJsons)
         aggregate->Component.outputs
       })
-      ->Belt.Array.map(aggregate => {(aggregate.name, aggregate)})
+      ->Array.map(aggregate => {(aggregate.name, aggregate)})
       ->Js.Dict.fromArray
 
     let allEventTopics = Aggregate.allEventTopics(aggregatesWithoutEventMappers)
@@ -129,7 +129,7 @@ module Make = (
     let readModelNamesForSourceName = Js.Dict.empty()
     let publishToReadModels = Js.Dict.empty()
 
-    let readModels = readModels->Belt.Array.map((module(SpecificReadModel: ReadModel.T)) => {
+    let readModels = readModels->Array.map((module(SpecificReadModel: ReadModel.T)) => {
       let readModel = SpecificReadModel.make(~allEventTopics, ~opts)
       (readModel->Component.outputs).sourceNames->Belt.Array.forEach(sourceName =>
         switch readModelNamesForSourceName->Js.Dict.get(sourceName) {
@@ -156,7 +156,7 @@ module Make = (
       readModels
       ->Js.Dict.fromArray
       ->Js.Dict.entries
-      ->Belt.Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
+      ->Array.map(((name, {readModel})) => (name, readModel->Component.outputs))
       ->Js.Dict.fromArray
     let allQueryDbs = readModelsOutputs->ReadModel.allQueryDbs
     let queryEngine = QueryEngineAdapter.make(allQueryDbs)
@@ -192,7 +192,7 @@ module Make = (
 
         let (extensionPointsOutputs, extensionPointsHandlers) =
           extensionPoints
-          ->Belt.Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
+          ->Array.map((module(SpecificExtensionPoint: ExtensionPoint.T)) => {
             let extensionPoint = SpecificExtensionPoint.make(
               ~aggregateResources,
               ~publishToAggregates,
@@ -227,7 +227,7 @@ module Make = (
 
         let (extensionsOutputs, extensionsHandlers) =
           extensions
-          ->Belt.Array.map((module(SpecificExtension: Extension.T)) => {
+          ->Array.map((module(SpecificExtension: Extension.T)) => {
             let extension = SpecificExtension.make(
               ~publishToCorePluginExtensionPoint,
               ~publishToAggregates,
@@ -252,7 +252,7 @@ module Make = (
 
         let extensionPointsDefinitions =
           extensionPointsOutputs
-          ->Belt.Array.map(extensionPointOutputs =>
+          ->Array.map(extensionPointOutputs =>
             (
               extensionPointOutputs.commandTopic->Pulumi.Output.flatMap(
                 ({resources}) => (resources->Array.getUnsafe(0)).id, // FIXME
@@ -272,7 +272,7 @@ module Make = (
           )
           ->Pulumi.Output.all
 
-        let extensionsDefinitions = extensionsOutputs->Belt.Array.map(extensionOutputs => {
+        let extensionsDefinitions = extensionsOutputs->Array.map(extensionOutputs => {
           ReventlessSpec.Plugin.name: extensionOutputs.name,
           extensionPointName: extensionOutputs.extensionPointName,
         })
@@ -290,7 +290,7 @@ module Make = (
         ) =
           (
             extensionPointsOutputs
-            ->Belt.Array.map(ExtensionPoint.toUnwrappedOutputs)
+            ->Array.map(ExtensionPoint.toUnwrappedOutputs)
             ->Pulumi.Output.all,
             extensionPointsDefinitions,
             eventCollectorUrn,
@@ -341,7 +341,7 @@ module Make = (
           ResourceQueryRuntime.bucketNameOfTaskExn(tasksOutputs.contents, taskName)
 
         tasksOutputs :=
-          taskMakers->Belt.Array.map(taskMaker =>
+          taskMakers->Array.map(taskMaker =>
             taskMaker(
               ~queryBucketName,
               ~scheduler,
@@ -355,7 +355,7 @@ module Make = (
         let resolvers =
           allQueryDbs
           ->QueryDb.allResolversMakers
-          ->Belt.Array.map(resolverMaker => resolverMaker(allQueryDbs))
+          ->Array.map(resolverMaker => resolverMaker(allQueryDbs))
           ->Belt.Array.concatMany
 
         module Set = Belt.Set.String
@@ -382,7 +382,7 @@ module Make = (
         eventTopics->Js.Dict.set(
           ReventlessSpec.PluginExtensionPointSpec.name,
           {
-            resources: corePluginExtensionPointUnwrapped.eventTopic.resources->Belt.Array.map(
+            resources: corePluginExtensionPointUnwrapped.eventTopic.resources->Array.map(
               AdapterDeploytime.unwrappedToResource,
             ),
           },
@@ -390,11 +390,11 @@ module Make = (
 
         let resources =
           extensionPointsOutputs
-          ->Belt.Array.map(extensionPoint => extensionPoint.eventTopic)
+          ->Array.map(extensionPoint => extensionPoint.eventTopic)
           ->Pulumi.Output.all
           ->Pulumi.Output.apply(eventTopics =>
             eventTopics
-            ->Belt.Array.map(eventTopic => eventTopic.resources)
+            ->Array.map(eventTopic => eventTopic.resources)
             ->Belt.Array.concatMany
             ->Array.concat(
               corePluginExtensionPointUnwrapped.commandTopic.resources->Adapter.unwrappedToResources,
@@ -505,15 +505,15 @@ module Make = (
           heartbeatInterval,
           eventCollector: eventCollectorOutputs,
           extensionPoints: extensionPointsOutputs
-          ->Belt.Array.map(el => (el.name, el))
+          ->Array.map(el => (el.name, el))
           ->Js.Dict.fromArray,
           extensions: extensionsOutputs
-          ->Belt.Array.map(el => (el.name, el))
+          ->Array.map(el => (el.name, el))
           ->Js.Dict.fromArray,
           aggregates: aggregatesOutputs,
           readModels: readModelsOutputs,
           tasks: tasksOutputs.contents
-          ->Belt.Array.map(el => (el.name, el))
+          ->Array.map(el => (el.name, el))
           ->Js.Dict.fromArray,
           resolvers,
           heartbeat: heartbeat->Component.outputs,

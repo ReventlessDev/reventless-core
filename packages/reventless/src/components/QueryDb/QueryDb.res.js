@@ -2,12 +2,11 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 
 function allResolversMakers(allQueryDbs) {
-  return Belt_Array.map(Js_dict.values(allQueryDbs), (function (queryDb) {
-                return queryDb.resolversMaker;
-              }));
+  return Js_dict.values(allQueryDbs).map(function (queryDb) {
+              return queryDb.resolversMaker;
+            });
 }
 
 function storageErrorToString(err) {

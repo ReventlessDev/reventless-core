@@ -42,7 +42,7 @@ let toUnwrappedOutputs = (outputs: outputs): Pulumi.Output.t<unwrappedOutputs> =
 let allOutputsToResources = allOutputs =>
   allOutputs
   ->Dict.valuesToArray
-  ->Belt.Array.map((eventTopic: outputs) => eventTopic.resources)
+  ->Array.map((eventTopic: outputs) => eventTopic.resources)
   ->Belt.Array.concatMany
 
 let filter = (allEventTopics: allOutputs, sourceNames) =>

@@ -87,14 +87,14 @@ module Make = (Spec: Behaviour.Spec, Behaviour: Behaviour.T with module Spec := 
       errors.contents->Belt.Array.length,
       events->Belt.Array.length,
       Belt.Array.zip(events, expectedEvents)
-      ->Belt.Array.map(((event, expectedEvent)) => cmp->compare(event, expectedEvent))
+      ->Array.map(((event, expectedEvent)) => cmp->compare(event, expectedEvent))
       ->Belt.Array.every(result => result),
     ))->toEqual((0, expectedEvents->Belt.Array.length, true))
 
   let listErrors = () =>
     "Errors occured: " ++
     errors.contents
-    ->Belt.Array.map(err =>
+    ->Array.map(err =>
       /* NOTE: this process is very fragile!!
               it relies on decco decoding the error-varints to arrays of string
  */

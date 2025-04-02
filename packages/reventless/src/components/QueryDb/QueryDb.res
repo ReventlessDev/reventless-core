@@ -60,7 +60,7 @@ module type T = {
 let allResolversMakers = allQueryDbs =>
   allQueryDbs
   ->Js.Dict.values
-  ->Belt.Array.map((queryDb: outputs) => queryDb.resolversMaker)
+  ->Array.map((queryDb: outputs) => queryDb.resolversMaker)
 
 let storageErrorToString: ReventlessSpec.QueryDb.storageError => string = err =>
   switch err {

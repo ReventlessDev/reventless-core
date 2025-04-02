@@ -103,7 +103,7 @@ let queryByTableName = async (
   | result =>
     result.items
     ->Belt.Option.getWithDefault([])
-    ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
+    ->Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception err =>
     Reventless.Logger.error(~loc=__LOC__, "Error:", err)
     []
@@ -134,7 +134,7 @@ let scanByTableName = async (~tableName, ~filterConfigs, ~limit) => {
   | result =>
     result.items
     ->Belt.Option.getWithDefault([])
-    ->Belt.Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
+    ->Array.map(js => js->Js.Json.stringify->Js.Json.parseExn)
   | exception Js.Exn.Error(e) =>
     Reventless.Logger.error(~loc=__LOC__, "Error:", e)
     []

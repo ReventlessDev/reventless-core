@@ -94,9 +94,9 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
 
   let secrets =
     secretUrns
-    ->Belt.Array.map(urn =>
+    ->Array.map(urn =>
       PulumiAws.GetSecretVersion.getSecretNames(urn)->Pulumi.Output.apply(names =>
-        names->Belt.Array.map(name => {ECS.Container.name, valueFrom: `${urn}:${name}::`})
+        names->Array.map(name => {ECS.Container.name, valueFrom: `${urn}:${name}::`})
       )
     )
     ->Pulumi.Output.all
@@ -158,7 +158,7 @@ let make: Reventless.Cloner.Adapter.runnerMaker<api> = (
       let lambdaRole = PulumiAws.IAM.Role.makeWithDefaultPolicy(
         ~name,
         ~servicePrincipal=AWS.AppSync.principal->Pulumi.Output.make,
-        ~opts?
+        ~opts?,
       )
 
       let lambda = Lambda.CallbackFunction.make(

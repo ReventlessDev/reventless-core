@@ -5,7 +5,7 @@ let filterSupportedResources: (
   array<string>,
 ) => Pulumi.Output.t<array<resource>> = (resources, supportedServices) =>
   resources
-  ->Belt.Array.map(resource => resource.service)
+  ->Array.map(resource => resource.service)
   ->Pulumi.Output.all
   ->Pulumi.Output.apply(services =>
     resources
@@ -13,7 +13,7 @@ let filterSupportedResources: (
     ->Belt.Array.keep(((_resource, service)) =>
       supportedServices->Belt.Array.some(supportedService => service == supportedService)
     )
-    ->Belt.Array.map(((resource, _)) => resource)
+    ->Array.map(((resource, _)) => resource)
   )
 
 let filterSupportedUnwrappedResources: (
@@ -33,7 +33,7 @@ let findResource = (resources, service) =>
       let err = `Util.Adapter.findResource: Couldn't find service ${service} in resources`
       let _ =
         resources
-        ->Belt.Array.map(Adapter.resourceToUnwrappedOutput)
+        ->Array.map(Adapter.resourceToUnwrappedOutput)
         ->Pulumi.Output.all
         ->Pulumi.Output.apply(resources => {
           let resourcesStr = resources->Adapter.unwrappedToString
@@ -61,7 +61,7 @@ let partitionSupportedResources = (allResources, supportedServices) => {
   let (names, resourceOutputs) =
     allResources
     ->Js.Dict.entries
-    ->Belt.Array.map(((name, resources)) => (
+    ->Array.map(((name, resources)) => (
       name,
       resources->filterSupportedResources(supportedServices),
     ))
@@ -75,11 +75,11 @@ let partitionSupportedResources = (allResources, supportedServices) => {
       ->Belt.Array.zip(resources)
       ->Belt.Array.partition(((_, resources)) => resources->Belt.Array.length > 0)
     (
-      supported->Belt.Array.map(((name, resources)) => (
+      supported->Array.map(((name, resources)) => (
         name,
-        resources->Belt.Array.map(AdapterDeploytime.unsafeUnwrapResource),
+        resources->Array.map(AdapterDeploytime.unsafeUnwrapResource),
       )),
-      unsupported->Belt.Array.map(((name, _)) => name),
+      unsupported->Array.map(((name, _)) => name),
     )
   })
 }

@@ -32,18 +32,16 @@ module Make = (
       load: id => load(id->Spec.Id.makeFromString),
       save: (id, state, saveMode, ttl) => save(id->Spec.Id.makeFromString, state, saveMode, ttl),
       saveBatch: batch =>
-        saveBatch(
-          batch->Belt.Array.map(((id, state, ttl)) => (id->Spec.Id.makeFromString, state, ttl)),
-        ),
+        saveBatch(batch->Array.map(((id, state, ttl)) => (id->Spec.Id.makeFromString, state, ttl))),
       count: (id, fieldName, inc) => count(id->Spec.Id.makeFromString, fieldName, inc),
       delete: (id, subId) => delete(id->Spec.Id.makeFromString, subId),
       deleteBatch: ids =>
-        deleteBatch(ids->Belt.Array.map(((id, sort)) => (id->Spec.Id.makeFromString, sort))),
+        deleteBatch(ids->Array.map(((id, sort)) => (id->Spec.Id.makeFromString, sort))),
     }
 
     let sourceNames =
       Mappings.mappings
-      ->Belt.Array.map((module(Mapping: Mappings.Mapping)) => Mapping.sourceName)
+      ->Array.map((module(Mapping: Mappings.Mapping)) => Mapping.sourceName)
       ->Belt.Set.String.fromArray
 
     module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)

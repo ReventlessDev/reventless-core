@@ -72,9 +72,9 @@ function Make(Spec, Behaviour) {
     return Jest.Expect.toEqual(Jest.Expect.expect([
                     errors.contents.length,
                     events.length,
-                    Belt_Array.every(Belt_Array.map(Belt_Array.zip(events, expectedEvents), (function (param) {
-                                return compare(cmp, param[0], param[1]);
-                              })), (function (result) {
+                    Belt_Array.every(Belt_Array.zip(events, expectedEvents).map(function (param) {
+                              return compare(cmp, param[0], param[1]);
+                            }), (function (result) {
                             return result;
                           }))
                   ]), [
@@ -84,9 +84,9 @@ function Make(Spec, Behaviour) {
               ]);
   };
   var listErrors = function () {
-    return "Errors occured: " + Belt_Array.reduce(Belt_Array.map(errors.contents, (function (err) {
-                      return Belt_Option.getExn(Js_json.decodeString(Belt_Option.getExn(Js_json.decodeArray(Spec.error_encode(err)))[0]));
-                    })), "", (function (a, b) {
+    return "Errors occured: " + Belt_Array.reduce(errors.contents.map(function (err) {
+                    return Belt_Option.getExn(Js_json.decodeString(Belt_Option.getExn(Js_json.decodeArray(Spec.error_encode(err)))[0]));
+                  }), "", (function (a, b) {
                   return a + (b + " ");
                 }));
   };

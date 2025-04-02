@@ -61,9 +61,9 @@ function unwrappedToResource(param) {
 }
 
 function unwrappedToResources(unwrapped) {
-  return Belt_Array.map(unwrapped, (function (unwrapped) {
-                return unwrappedToResource(unwrapped);
-              }));
+  return unwrapped.map(function (unwrapped) {
+              return unwrappedToResource(unwrapped);
+            });
 }
 
 function unwrappedOutputToResource(unwrappedResource) {
@@ -105,9 +105,9 @@ function resourceToUnwrappedOutput(r) {
 }
 
 function resourcesToUnwrappedOutput(resources) {
-  return Pulumi.all(Belt_Array.map(resources, (function (resource) {
-                    return resourceToUnwrappedOutput(resource);
-                  })));
+  return Pulumi.all(resources.map(function (resource) {
+                  return resourceToUnwrappedOutput(resource);
+                }));
 }
 
 function logResource(r) {

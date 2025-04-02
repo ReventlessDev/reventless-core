@@ -46,10 +46,10 @@ let applyChanges = async (
   {subIdField, getSubId},
 ) => {
   let beforeCount = beforeStates->Belt.Array.length
-  let beforeSubIds = beforeStates->Belt.Array.map(state => state->getSubId)->Set.fromArray
+  let beforeSubIds = beforeStates->Array.map(state => state->getSubId)->Set.fromArray
 
   let afterCount = afterStates->Belt.Array.length
-  let afterSubIds = afterStates->Belt.Array.map(state => state->getSubId)->Set.fromArray
+  let afterSubIds = afterStates->Array.map(state => state->getSubId)->Set.fromArray
 
   let addedSubIds = afterSubIds->Set.diff(beforeSubIds)
   let addedStates = afterStates->Belt.Array.keep(state => addedSubIds->Set.has(state->getSubId))
@@ -62,10 +62,10 @@ let applyChanges = async (
   let changedCount = changedStates->Belt.Array.size
 
   let batchToSave =
-    addedStates->Belt.Array.concat(changedStates)->Belt.Array.map(state => (id, state, None))
+    addedStates->Belt.Array.concat(changedStates)->Array.map(state => (id, state, None))
 
   let deletedSubIds = beforeSubIds->Set.diff(afterSubIds)->Set.toArray
-  let batchToDelete = deletedSubIds->Belt.Array.map(subId => (id, Some((subIdField, subId))))
+  let batchToDelete = deletedSubIds->Array.map(subId => (id, Some((subIdField, subId))))
   let deletedCount = batchToDelete->Belt.Array.size
 
   logAction(
@@ -79,7 +79,7 @@ let applyChanges = async (
 
 let stateToString: 'a => string = state => state->Js.Json.stringifyAny->Belt.Option.getExn
 let statesToString: array<'a> => string = states =>
-  states->Belt.Array.map(stateToString)->Js.Array2.joinWith(", ")
+  states->Array.map(stateToString)->Js.Array2.joinWith(", ")
 
 let handleAction = async (
   action,
@@ -97,21 +97,21 @@ let handleAction = async (
   | CreateMultiState(id, states) =>
     logAction(
       `CreateMultiState(${id}, ${states
-        ->Belt.Array.map(state => state->stateToString)
+        ->Array.map(state => state->stateToString)
         ->Js.Array2.joinWith(", ")})`,
     )
     switch states {
     | [] => Ok()
     | [state] => await save(id, state, Init, None)
     | states =>
-      let batch = states->Belt.Array.map(state => (id, state, None))
+      let batch = states->Array.map(state => (id, state, None))
       await saveBatch(batch)
     }
   | CreateMany(states) =>
-    let batch = states->Belt.Array.map(((id, state)) => (id, state, None))
+    let batch = states->Array.map(((id, state)) => (id, state, None))
     let statesStr =
       batch
-      ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
+      ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
       ->Js.Array2.joinWith(", ")
     logAction(`CreateMany(${statesStr})`)
     await saveBatch(batch) // TODO: think about using single saves with saveMode Init
@@ -120,10 +120,10 @@ let handleAction = async (
     logAction(`Set(${id}, ${state->stateToString})`)
     await save(id, state, Any, None)
   | SetMany(ids, set) =>
-    let batch = ids->Belt.Array.map(id => (id, set(id), None))
+    let batch = ids->Array.map(id => (id, set(id), None))
     let statesStr =
       batch
-      ->Belt.Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
+      ->Array.map(((id, state, _)) => `(${id},${state->stateToString})`)
       ->Js.Array2.joinWith(", ")
     logAction(`SetMany(${statesStr})`)
     await saveBatch(batch)
@@ -190,7 +190,7 @@ let handleAction = async (
     await delete(id, None)
   | DeleteMany(ids) =>
     logAction(`DeleteMany(${ids->Js.Array2.joinWith(", ")})`)
-    await deleteBatch(ids->Belt.Array.map(id => (id, None)))
+    await deleteBatch(ids->Array.map(id => (id, None)))
 
   // TODO: add missing actions
   | _ =>
@@ -203,16 +203,16 @@ let actionsWithId = action =>
   | Ignore => []
   | Create(id, _) => [(id, action)]
   | CreateMultiState(id, _) => [(id, action)]
-  | CreateMany(states) => states->Belt.Array.map(((id, state)) => (id, Create(id, state)))
+  | CreateMany(states) => states->Array.map(((id, state)) => (id, Create(id, state)))
   | Set(id, _) => [(id, action)]
-  | SetMany(ids, set) => ids->Belt.Array.map(id => (id, Set(id, id->set)))
+  | SetMany(ids, set) => ids->Array.map(id => (id, Set(id, id->set)))
   | Update(id, _) => [(id, action)]
   | UpdateWithDefault(id, _, _) => [(id, action)]
   | UpdateMultiState(id, _) => [(id, action)]
   | UpdateManyMultiStates(ids, update) =>
-    ids->Belt.Array.map(id => (id, UpdateMultiState(id, states => update(id, states))))
+    ids->Array.map(id => (id, UpdateMultiState(id, states => update(id, states))))
   | Delete(id) => [(id, action)]
-  | DeleteMany(ids) => ids->Belt.Array.map(id => (id, Delete(id)))
+  | DeleteMany(ids) => ids->Array.map(id => (id, Delete(id)))
 
   // TODO: add missing actions
   | _ =>
@@ -221,13 +221,12 @@ let actionsWithId = action =>
   }
 
 let groupActionsById = actions => {
-  let allActionsWithId =
-    actions->Belt.Array.map(action => action->actionsWithId)->Belt.Array.concatMany
-  let ids = allActionsWithId->Belt.Array.map(((id, _)) => id)
+  let allActionsWithId = actions->Array.map(action => action->actionsWithId)->Belt.Array.concatMany
+  let ids = allActionsWithId->Array.map(((id, _)) => id)
   ids
   ->Belt.Set.String.fromArray
   ->Belt.Set.String.toArray
-  ->Belt.Array.map(id => (
+  ->Array.map(id => (
     id,
     allActionsWithId->Belt.Array.keepMap(((actionId, action)) =>
       actionId == id ? Some(action) : None
@@ -386,7 +385,7 @@ let handleActions = async (actions, operations, subIdConfig) => {
   let results =
     await actions
     ->groupActionsById
-    ->Belt.Array.map(((id, actions)) => actions->handleActionsForId(id))
+    ->Array.map(((id, actions)) => actions->handleActionsForId(id))
     ->Js.Promise.all
   let errors = results->Belt.Array.keepMap(x =>
     switch x {
@@ -400,7 +399,7 @@ let handleActions = async (actions, operations, subIdConfig) => {
     let count = errors->Belt.Array.size
     Js.Exn.raiseError(
       `Projection.handleActions failed with ${count->Belt.Int.toString} errors: ${errors
-        ->Belt.Array.map(QueryDb.storageErrorToString)
+        ->Array.map(QueryDb.storageErrorToString)
         ->Js.Array2.joinWith(",")}`,
     )
   }

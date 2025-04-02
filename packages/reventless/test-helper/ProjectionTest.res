@@ -84,7 +84,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let states = (store, id) => store->Js.Dict.get(id)->Belt.Option.getWithDefault([])
   let setStates = (store, id, states) => store->Js.Dict.set(id, states)
   let updateState = (store, id, subId, newState) =>
-    store->states(id)->Belt.Array.map(state => hasSubId(subId, state) ? newState : state)
+    store->states(id)->Array.map(state => hasSubId(subId, state) ? newState : state)
   let addState = (store, id, state) => {
     let (updatedStates, newStates) = switch state->getSubId {
     | Some(subId) =>
@@ -154,7 +154,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
         event->Projection.sourceEvent_encode,
         "\nstore:",
         Js.Dict.map(
-          (states) => states->Belt.Array.toArray->Belt.Array.map(Projection.targetState_encode),
+          (states) => states->Belt.Array.toArray->Array.map(Projection.targetState_encode),
           store,
         ),
       )

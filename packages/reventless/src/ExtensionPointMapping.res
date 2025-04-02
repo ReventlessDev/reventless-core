@@ -49,15 +49,8 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
     queryEngine,
   ) =>
     topicItems
-    ->Belt.Array.map(({
-      CommandTopic.reference: reference,
-      command: {Message.id: id, command, meta},
-    }) =>
-      mapIncomingEventImpl(
-        id->ReventlessSpec.Id.String.toString,
-        command,
-        meta,
-      )->Belt.Array.map(x =>
+    ->Array.map(({CommandTopic.reference: reference, command: {Message.id: id, command, meta}}) =>
+      mapIncomingEventImpl(id->ReventlessSpec.Id.String.toString, command, meta)->Array.map(x =>
         switch x {
         | PublishCommand(aggregateId, aggregateCmd) =>
           let commandStr = aggregateCmd->Aggregate.command_encode->Js.Json.stringify
@@ -114,7 +107,7 @@ module Make = (Spec: Spec, MappingImpl: Impl with module ExtensionPoint := Spec)
         event,
         meta,
         queryEngine,
-      )->Belt.Array.map(eventAction =>
+      )->Array.map(eventAction =>
         switch eventAction {
         | PublishEvent(id, event) =>
           let eventJson = event->Spec.event_encode

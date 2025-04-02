@@ -31,7 +31,7 @@ module Make = (
       with module Spec := Spec
       and type target := DiscreteTarget.state
 
-    let mappings: array<module(Mapping)> = Mappings.mappings->Belt.Array.map((module(M)) => {
+    let mappings: array<module(Mapping)> = Mappings.mappings->Array.map((module(M)) => {
       module GenericMapping = {
         let sourceName = M.sourceName
         module Source = Mapper.MakeGenericSourceFromEventSource(M)

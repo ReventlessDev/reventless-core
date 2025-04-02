@@ -180,9 +180,9 @@ async function queryByTableName(tableName, keyOpt, id, subIdConfig, filterConfig
     Logger$Reventless.error("File \"QueryEngine_DynamoDb.res\", line 108, characters 33-40", undefined, undefined, "Error:", err);
     return [];
   }
-  return Belt_Array.map(Belt_Option.getWithDefault(result.Items, []), (function (js) {
-                return JSON.parse(JSON.stringify(js));
-              }));
+  return Belt_Option.getWithDefault(result.Items, []).map(function (js) {
+              return JSON.parse(JSON.stringify(js));
+            });
 }
 
 async function scanByTableName(tableName, filterConfigs, limit) {
@@ -222,9 +222,9 @@ async function scanByTableName(tableName, filterConfigs, limit) {
     }
     throw e;
   }
-  return Belt_Array.map(Belt_Option.getWithDefault(result.Items, []), (function (js) {
-                return JSON.parse(JSON.stringify(js));
-              }));
+  return Belt_Option.getWithDefault(result.Items, []).map(function (js) {
+              return JSON.parse(JSON.stringify(js));
+            });
 }
 
 function make(allQueryDbs) {
