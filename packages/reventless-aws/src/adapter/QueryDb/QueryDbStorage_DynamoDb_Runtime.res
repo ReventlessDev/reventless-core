@@ -139,7 +139,7 @@ let count = table => async (id, fieldName, inc) => {
     key: [("id", id->Js.Json.string)]->Js.Dict.fromArray,
     updateExpression: "ADD #fieldName :inc",
     expressionAttributeNames: [("#fieldName", fieldName)]->Js.Dict.fromArray,
-    expressionAttributeValues: [(":inc", inc->Belt.Int.toFloat->Js.Json.number)]->Js.Dict.fromArray,
+    expressionAttributeValues: [(":inc", inc->Int.toFloat->Js.Json.number)]->Js.Dict.fromArray,
     returnValues: #UPDATED_NEW,
   })->UpdateCommand.send {
   | updateOutput =>

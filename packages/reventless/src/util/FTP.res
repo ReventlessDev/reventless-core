@@ -24,11 +24,11 @@ let parseUrl: string => (
       colonI < slashI
         ? url->sliceToEnd(~from=slashI + 1)
         : url->slice(~from=slashI + 1, ~to_=colonI)
-    (url->slice(~from=0, ~to_=fst), port->Belt.Int.fromString, path)
+    (url->slice(~from=0, ~to_=fst), port->Int.fromString, path)
   | (false, true) => (url->slice(~from=0, ~to_=slashI), None, url->sliceToEnd(~from=slashI + 1))
   | (true, false) => (
       url->slice(~from=0, ~to_=colonI),
-      url->sliceToEnd(~from=colonI + 1)->Belt.Int.fromString,
+      url->sliceToEnd(~from=colonI + 1)->Int.fromString,
       "",
     )
   | (false, false) => (url, None, "")

@@ -22,8 +22,8 @@ let addToCounterTarget = async (
       ("#targetRefs", "targetRefs"),
     ]->Js.Dict.fromArray,
     expressionAttributeValues: [
-      (":inc", target->Belt.Int.toFloat->Js.Json.number),
-      (":targetSingle", [target->Belt.Int.toFloat->Js.Json.number]->Js.Json.array),
+      (":inc", target->Int.toFloat->Js.Json.number),
+      (":targetSingle", [target->Int.toFloat->Js.Json.number]->Js.Json.array),
       (":targetRefSingle", [targetRef->Js.Json.string]->Js.Json.array),
       (":targetRef", targetRef->Js.Json.string),
       (":empty", []->Js.Json.array),
