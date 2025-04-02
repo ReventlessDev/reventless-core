@@ -54,7 +54,7 @@ let serviceNameToEventHandlers: (
   Belt.Array.zip(outputs, handlers)->Array.forEach(((outputs, eventHandlers)) => {
     eventHandlers
     ->getEventHandler
-    ->Belt.Option.forEach(eventHandler =>
+    ->Option.forEach(eventHandler =>
       outputs
       ->getServiceNames
       ->Array.forEach(
