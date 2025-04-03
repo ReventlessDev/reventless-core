@@ -7,6 +7,8 @@ var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
+var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
+var Belt_SortArray = require("@rescript/std/lib/js/belt_SortArray.js");
 var Projection$Reventless = require("../src/Projection.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
 
@@ -30,7 +32,7 @@ function Make(Projection) {
                   return param.getSubId(state);
                 }));
   };
-  var hasSubId = function (subId, state) {
+  var hasSubId = function (state, subId) {
     return Belt_Option.getExn(getSubId(state)) === subId;
   };
   var states = function (store, id) {
@@ -41,7 +43,7 @@ function Make(Projection) {
   };
   var updateState = function (store, id, subId, newState) {
     return Belt_Array.map(states(store, id), (function (state) {
-                  if (hasSubId(subId, state)) {
+                  if (hasSubId(state, subId)) {
                     return newState;
                   } else {
                     return state;
@@ -118,21 +120,21 @@ function Make(Projection) {
           saveBatch: (function (extra) {
               Belt_Array.forEach(extra, (function (param) {
                       var id = param[0];
-                      var state = param[1];
-                      var subId = getSubId(state);
+                      var newState = param[1];
+                      var subId = getSubId(newState);
                       var match = subId !== undefined ? (
                           Belt_Array.some(states(store, id), (function (state) {
-                                  return hasSubId(subId, state);
+                                  return hasSubId(state, subId);
                                 })) ? [
-                              updateState(store, id, subId, state),
+                              updateState(store, id, subId, newState),
                               []
                             ] : [
                               states(store, id),
-                              [state]
+                              [newState]
                             ]
                         ) : [
                           states(store, id),
-                          [state]
+                          [newState]
                         ];
                       store[id] = Belt_Array.concat(match[0], match[1]);
                     }));
@@ -185,7 +187,15 @@ function Make(Projection) {
                         });
             })
         });
-    return store;
+    if (Projection.subIdConfig !== undefined) {
+      return Js_dict.map((function (states) {
+                    return Belt_SortArray.stableSortBy(states, (function (state1, state2) {
+                                  return StringLabels.compare(getSubId(state1), getSubId(state2));
+                                }));
+                  }), store);
+    } else {
+      return store;
+    }
   };
   var givenEvents = function (events) {
     return Belt_Array.reduce(events, Promise.resolve({}), (async function (store, $$event) {

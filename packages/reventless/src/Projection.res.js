@@ -65,7 +65,7 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
                       }));
         }));
   var changedCount = changedStates.length;
-  var batchToSave = Belt_Array.map(Belt_Array.concat(addedStates, changedStates), (function (state) {
+  var batchToSave = Belt_Array.map(Belt_Array.concat(changedStates, addedStates), (function (state) {
           return [
                   id,
                   state,

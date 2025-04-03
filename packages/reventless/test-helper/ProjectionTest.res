@@ -1,8 +1,6 @@
 module type T = {
   type sourceEvent
   type targetState
-  //module Source: ReventlessSpec.Projection.Spec.Source
-  //module Target: ReventlessSpec.Projection.Spec.Target
 
   let describe: (string, unit => unit) => unit
   let describeWithId: (string, string, unit => unit) => unit
@@ -64,9 +62,6 @@ let handleActions = Projection.handleActions // create alias to avoid shadowing 
 module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   T with type sourceEvent := Projection.sourceEvent and type targetState := Projection.targetState
 ) => {
-  //module Source = Projection.Source
-  //module Target = Projection.Target
-
   let testId = ref(TestFixtures.id)
   let meta = ref(TestFixtures.meta)
 
@@ -80,18 +75,18 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   type store = Js.Dict.t<array<Projection.targetState>>
 
   let getSubId = state => Projection.subIdConfig->Belt.Option.map(({getSubId}) => state->getSubId)
-  let hasSubId = (subId, state) => state->getSubId->Belt.Option.getExn == subId
+  let hasSubId = (state, subId) => state->getSubId->Belt.Option.getExn == subId
   let states = (store, id) => store->Js.Dict.get(id)->Belt.Option.getWithDefault([])
   let setStates = (store, id, states) => store->Js.Dict.set(id, states)
   let updateState = (store, id, subId, newState) =>
-    store->states(id)->Belt.Array.map(state => hasSubId(subId, state) ? newState : state)
-  let addState = (store, id, state) => {
-    let (updatedStates, newStates) = switch state->getSubId {
+    store->states(id)->Belt.Array.map(state => state->hasSubId(subId) ? newState : state)
+  let addState = (store, id, newState) => {
+    let (updatedStates, newStates) = switch newState->getSubId {
     | Some(subId) =>
-      store->states(id)->Belt.Array.some(state => hasSubId(subId, state))
-        ? (store->updateState(id, subId, state), [])
-        : (store->states(id), [state])
-    | None => (store->states(id), [state])
+      store->states(id)->Belt.Array.some(state => state->hasSubId(subId))
+        ? (store->updateState(id, subId, newState), [])
+        : (store->states(id), [newState])
+    | None => (store->states(id), [newState])
     }
     store->Js.Dict.set(id, Belt.Array.concat(updatedStates, newStates))
   }
@@ -146,20 +141,23 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
   let handleActions = (actions, primitives) =>
     actions->handleActions(primitives, Projection.subIdConfig)
 
-  let update = async (store, id, meta, event) => {
-    /* NOTE: unused
-    let logStore = text =>
-      Js.log4(
-        text,
-        event->Projection.sourceEvent_encode,
-        "\nstore:",
-        Js.Dict.map(
-          (states) => states->Belt.Array.toArray->Belt.Array.map(Projection.targetState_encode),
-          store,
-        ),
+  let sortStore = store =>
+    switch Projection.subIdConfig {
+    | None => store
+    | Some(_) =>
+      Js.Dict.map(
+        states =>
+          states->Belt.SortArray.stableSortBy((state1, state2) =>
+            StringLabels.compare(
+              state1->getSubId->Option.getUnsafe,
+              state2->getSubId->Option.getUnsafe,
+            )
+          ),
+        store,
       )
- */
+    }
 
+  let update = async (store, id, meta, event) => {
     await [{id, meta, event}->Projection.map]->handleActions({
       load: load(store, ...),
       save: save(store, ...),
@@ -167,7 +165,8 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
       delete: delete(store, ...),
       deleteBatch: deleteBatch(store, ...),
     })
-    store
+
+    store->sortStore
   }
 
   let givenEvents = events =>
@@ -189,6 +188,7 @@ module Make = (Projection: ReventlessSpec.Projection.Mapping): (
 
   let thenStates = async (p, expectedStates) => {
     let store = await (p->unpackPlainPartial)()
+    // Js.log2("####### store:", store)
     expect((
       store->Js.Dict.keys->Belt.Array.length,
       store->Js.Dict.keys->Belt.Array.get(0),

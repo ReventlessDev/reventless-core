@@ -70,7 +70,7 @@ let applyChanges = async (
   let changedCount = changedStates->Belt.Array.size
 
   let batchToSave =
-    addedStates->Belt.Array.concat(changedStates)->Belt.Array.map(state => (id, state, None))
+    changedStates->Belt.Array.concat(addedStates)->Belt.Array.map(state => (id, state, None))
 
   let deletedSubIds = beforeSubIds->Set.diff(afterSubIds)->Set.toArray
   let batchToDelete = deletedSubIds->Belt.Array.map(subId => (id, Some((subIdField, subId))))
