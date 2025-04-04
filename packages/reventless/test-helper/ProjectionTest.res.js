@@ -5,9 +5,12 @@ var Jest = require("@glennsl/rescript-jest/src/jest.res.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Belt_Option = require("@rescript/std/lib/js/belt_Option.js");
 var Caml_option = require("@rescript/std/lib/js/caml_option.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
+var StringLabels = require("@rescript/std/lib/js/stringLabels.js");
+var Belt_SortArray = require("@rescript/std/lib/js/belt_SortArray.js");
 var Projection$Reventless = require("../src/Projection.res.js");
 var TestFixtures$Reventless = require("./TestFixtures.res.js");
 
@@ -27,27 +30,27 @@ function Make(Projection) {
     Jest.describe(description, fn);
   };
   var getSubId = function (state) {
-    return Core__Option.map(Projection.subIdConfig, (function (param) {
+    return Belt_Option.map(Projection.subIdConfig, (function (param) {
                   return param.getSubId(state);
                 }));
   };
-  var hasSubId = function (subId, state) {
-    return Core__Option.getExn(getSubId(state), undefined) === subId;
+  var hasSubId = function (state, subId) {
+    return Belt_Option.getExn(getSubId(state)) === subId;
   };
   var states = function (store, id) {
-    return Core__Option.getOr(Js_dict.get(store, id), []);
+    return Belt_Option.getWithDefault(Js_dict.get(store, id), []);
   };
   var setStates = function (store, id, states) {
     store[id] = states;
   };
   var updateState = function (store, id, subId, newState) {
-    return states(store, id).map(function (state) {
-                if (hasSubId(subId, state)) {
-                  return newState;
-                } else {
-                  return state;
-                }
-              });
+    return Belt_Array.map(states(store, id), (function (state) {
+                  if (hasSubId(state, subId)) {
+                    return newState;
+                  } else {
+                    return state;
+                  }
+                }));
   };
   var deleteStates = function (store, id) {
     store[id] = [];
@@ -119,21 +122,21 @@ function Make(Projection) {
           saveBatch: (function (extra) {
               extra.forEach(function (param) {
                     var id = param[0];
-                    var state = param[1];
-                    var subId = getSubId(state);
+                    var newState = param[1];
+                    var subId = getSubId(newState);
                     var match = subId !== undefined ? (
                         Belt_Array.some(states(store, id), (function (state) {
-                                return hasSubId(subId, state);
+                                return hasSubId(state, subId);
                               })) ? [
-                            updateState(store, id, subId, state),
+                            updateState(store, id, subId, newState),
                             []
                           ] : [
                             states(store, id),
-                            [state]
+                            [newState]
                           ]
                       ) : [
                         states(store, id),
-                        [state]
+                        [newState]
                       ];
                     store[id] = match[0].concat(match[1]);
                   });
@@ -192,7 +195,15 @@ function Make(Projection) {
                         });
             })
         });
-    return store;
+    if (Projection.subIdConfig !== undefined) {
+      return Js_dict.map((function (states) {
+                    return Belt_SortArray.stableSortBy(states, (function (state1, state2) {
+                                  return StringLabels.compare(getSubId(state1), getSubId(state2));
+                                }));
+                  }), store);
+    } else {
+      return store;
+    }
   };
   var givenEvents = function (events) {
     return Core__Array.reduce(events, Promise.resolve({}), (async function (store, $$event) {

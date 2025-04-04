@@ -3,6 +3,7 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
+var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Belt_SetString = require("@rescript/std/lib/js/belt_SetString.js");
@@ -65,13 +66,13 @@ async function applyChanges(action, id, beforeStates, afterStates, param, param$
                     });
         }));
   var changedCount = changedStates.length;
-  var batchToSave = addedStates.concat(changedStates).map(function (state) {
-        return [
-                id,
-                state,
-                undefined
-              ];
-      });
+  var batchToSave = Belt_Array.map(Belt_Array.concat(changedStates, addedStates), (function (state) {
+          return [
+                  id,
+                  state,
+                  undefined
+                ];
+        }));
   var deletedSubIds = Belt_SetString.toArray(Belt_SetString.diff(beforeSubIds, afterSubIds));
   var batchToDelete = deletedSubIds.map(function (subId) {
         return [
@@ -625,7 +626,7 @@ async function handleActions(actions, operations, subIdConfig) {
                   }), (async function (p, action) {
                   var err = await p;
                   if (err.TAG !== "Ok") {
-                    Logger$Reventless.error("File \"Projection.res\", line 373, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
+                    Logger$Reventless.error("File \"Projection.res\", line 374, characters 15-22", undefined, undefined, "storage error:", JSON.stringify(QueryDb$ReventlessSpec.storageError_encode(err._0)));
                   }
                   return await handleAction(action, operations, subIdConfig);
                 }));

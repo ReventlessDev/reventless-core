@@ -4,6 +4,7 @@
 var SSH2 = require("@reventless/bs-ssh2/src/SSH2.res.js");
 var Ssh2 = require("ssh2");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
+var Stream = require("stream");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var FTP$Reventless = require("./FTP.res.js");
 var Caml_js_exceptions = require("@rescript/std/lib/js/caml_js_exceptions.js");
@@ -109,23 +110,27 @@ function ftp(connectionParams, ftpAction) {
                         }
                         
                       } else {
-                        ftpAction._0.pipe((function (__x) {
-                                        return sftp.createWriteStream(__x);
-                                      })(Message$Reventless.log(path + ("/" + ftpAction._1), "FTPHandler: path for write stream")).on("finish", (function () {
-                                        result.contents = {
-                                          TAG: "Ok",
-                                          _0: true
-                                        };
-                                        console.log("FTPHandler: writable ended");
-                                      })).on("close", (function () {
-                                      console.log("FTPHandler: writable closed");
-                                      client.end();
-                                    })).on("error", (function (err) {
-                                    console.error("FTPHandler: FTPHandler: Error in Write Stream:", err);
-                                    var err$1 = new Error("FTPHandler: Error in Write Stream");
-                                    sftp.emit("error", err$1);
-                                  })));
-                        return ;
+                        var ws = (function (__x) {
+                                    return sftp.createWriteStream(__x);
+                                  })(Message$Reventless.log(path + ("/" + ftpAction._1), "FTPHandler: path for write stream")).on("finish", (function () {
+                                    result.contents = {
+                                      TAG: "Ok",
+                                      _0: true
+                                    };
+                                    console.log("FTPHandler: writable ended");
+                                  })).on("close", (function () {
+                                  result.contents = {
+                                    TAG: "Ok",
+                                    _0: true
+                                  };
+                                  console.log("FTPHandler: writable closed");
+                                  client.end();
+                                })).on("error", (function (err) {
+                                console.error("FTPHandler: FTPHandler: Error in Write Stream:", err);
+                                var err$1 = new Error("FTPHandler: Error in Write Stream");
+                                sftp.emit("error", err$1);
+                              }));
+                        return await Stream.promises.pipeline(ftpAction._0, ws);
                       }
                     }
                     

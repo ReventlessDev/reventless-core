@@ -87,8 +87,7 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
             | exception Js.Exn.Error(e) => result := e->Reventless.Util.Error.message->Error
             }
           | Upload(readableStream, filename) =>
-            readableStream
-            ->NodeStreams.Readable.pipe(
+            let ws =
               (path ++ ("/" ++ filename))
               ->Message.log("FTPHandler: path for write stream")
               ->(FTP.createWriteStream(sftp, ~path=_))
@@ -97,15 +96,15 @@ let ftp = (~connectionParams: connectionParams, ~ftpAction: ftpAction) => {
                 Js.log("FTPHandler: writable ended")
               })
               ->NodeStreams.Writable.onClose(() => {
+                result := Ok(true) // Workaround: since Node 18 there is no call to onFinish() anymore
                 Js.log("FTPHandler: writable closed")
                 endFtp()
               })
               ->NodeStreams.Writable.onError(err => {
                 Js.Console.error2("FTPHandler: FTPHandler: Error in Write Stream:", err)
                 FTP.makeError("FTPHandler: Error in Write Stream")->fail
-              }),
-            )
-            ->ignore
+              })
+            await readableStream->NodeStreams.pipeline0(ws)
           }
         | exception FTP.CouldNotEstablishSftpConnection(err) =>
           client
