@@ -29,7 +29,7 @@ module Make = (
       Behaviour,
     )
 
-    Resolvers.makeHandler(Callback.generateCommand)
+    Resolvers.handleResolversEvent(Callback.generateCommand)
   }
 
   let make = (~name, ~opts=?): CommandGenerator.component =>

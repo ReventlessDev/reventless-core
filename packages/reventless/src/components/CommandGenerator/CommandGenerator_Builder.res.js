@@ -25,7 +25,7 @@ function Make(Config, Spec, Behaviour, Resolvers) {
       return partial_arg$1(partial_arg, param, param$1);
     };
     var Callback = partial_arg$2(Spec, Behaviour);
-    return Resolvers.makeHandler(Callback.generateCommand);
+    return Resolvers.handleResolversEvent(Callback.generateCommand);
   };
   var make = function (name, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(CommandGenerator$Reventless.componentType), name, construct, opts);

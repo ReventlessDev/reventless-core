@@ -17,8 +17,8 @@ var AppSync_Resolver$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/
 var Util_AppSync$ReventlessAws = require("../../util/Util_AppSync.res.js");
 var AppSync_Resolver_Templates$PulumiAws = require("@reventless/bs-pulumi-aws/src/AppSync/AppSync_Resolver_Templates.res.js");
 
-function makeHandler(generateCommand) {
-  return Pulumi.output(function ($$event, param) {
+function handleResolversEvent(generateCommand) {
+  return Pulumi.output(function ($$event, _context) {
               return generateCommand($$event);
             });
 }
@@ -98,6 +98,6 @@ function make(name, api, fields, runtime, resources, opts) {
         };
 }
 
-exports.makeHandler = makeHandler;
+exports.handleResolversEvent = handleResolversEvent;
 exports.make = make;
 /* @pulumi/aws Not a pure module */
