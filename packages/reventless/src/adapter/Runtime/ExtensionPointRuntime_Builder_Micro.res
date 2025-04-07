@@ -13,6 +13,10 @@ module Make = (
 
   let forCommandTopic = (~handler, ~memorySize=1024, ~timeout=30, commandTopic) => {
     let resource = commandTopic->Component.toPulumiResource
+    let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
+      Js.log4("ExtensionPointRuntime_Builder_Micro.forCommandTopic:", resource.name, event, context)
+      handler(event, context)
+    })
     RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(CommandTopic.componentType),
       ~handler,

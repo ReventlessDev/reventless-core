@@ -12,7 +12,13 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(eventCollector);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, SideEffectHandler$Reventless.componentType), handler, memorySize, timeout, {
+    var handler$1 = handler.apply(function (handler) {
+          return function ($$event, context) {
+            console.log("PluginRuntime_Builder_Micro.forSideEffectHandlerEventCollector:", resource.__name, $$event, context);
+            return handler($$event, context);
+          };
+        });
+    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, SideEffectHandler$Reventless.componentType), handler$1, memorySize, timeout, {
                 parent: resource
               });
   };
@@ -20,7 +26,13 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(eventCollector);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType), handler, memorySize, timeout, {
+    var handler$1 = handler.apply(function (handler) {
+          return function ($$event, context) {
+            console.log("PluginRuntime_Builder_Micro.forPluginEventCollector:", resource.__name, $$event, context);
+            return handler($$event, context);
+          };
+        });
+    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType), handler$1, memorySize, timeout, {
                 parent: resource
               });
   };
@@ -28,7 +40,13 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(heartbeat);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, Heartbeat$Reventless.componentType), handler, memorySize, timeout, {
+    var handler$1 = handler.apply(function (handler) {
+          return function ($$event, context) {
+            console.log("PluginRuntime_Builder_Micro.forPluginHeartbeat:", resource.__name, $$event, context);
+            return handler($$event, context);
+          };
+        });
+    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, Heartbeat$Reventless.componentType), handler$1, memorySize, timeout, {
                 parent: resource
               });
   };
