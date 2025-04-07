@@ -2,13 +2,15 @@ module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.ReadModel_Spec.T,
   Mappings: ReventlessSpec.Projection.Mappings with module Target := Spec,
-  RuntimeBuilder: Runtime_Builder.T,
+  RuntimeEnvironment: Runtime.Environment,
   QueryDbStorage: QueryDb_Adapter.Storage with type api = Config.api and type role = Config.role,
   QueryDbResolvers: QueryDb_Adapter.Resolvers
     with type api = Config.api
     and type role = Config.role,
   EventCollectorChannel: EventCollector_Adapter.Channel
-    with type runtimeParts = RuntimeBuilder.parts,
+    with type runtimeParts = RuntimeEnvironment.parts,
+  ReadModelRuntimeBuilder: ReadModelRuntime_Builder.T
+    with module EventCollectorChannel = EventCollectorChannel,
 ): (ReadModel.T with module Spec = Spec) => {
   module Spec = Spec
 
@@ -64,7 +66,7 @@ module Make = (
           ~eventCollector,
           ~eventsHandler=Callback.eventsHandler,
         )
-        let runtime = eventCollector->RuntimeBuilder.forReadModelEventCollector(~handler)
+        let runtime = eventCollector->ReadModelRuntimeBuilder.forEventCollector(~handler)
 
         let eventTopics = allEventTopics->EventTopic.filter(sourceNames)
         let resources = (queryDb->Component.outputs).resources

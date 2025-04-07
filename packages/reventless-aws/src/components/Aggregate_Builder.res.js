@@ -2,7 +2,6 @@
 'use strict';
 
 var Aggregate_Builder$Reventless = require("@reventless/reventless/src/components/Aggregate/Aggregate_Builder.res.js");
-var Runtime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/Runtime_Builder_Micro.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 var CommandTopicChannel_SQS_FIFO$ReventlessAws = require("../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.js");
 var EventLogStorage_DynamoDbStream$ReventlessAws = require("../adapter/EventLog/EventLogStorage_DynamoDbStream.res.js");
@@ -21,23 +20,22 @@ function Make(Config, Spec, Behaviour, EventMappings) {
     make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
   };
   var partial_arg$4 = CommandGeneratorResolvers_AppSync$ReventlessAws;
-  var partial_arg$5 = Runtime_Builder_Micro$Reventless.Make(RuntimeEnvironment_Lambda$ReventlessAws);
-  var partial_arg$6 = RuntimeEnvironment_Lambda$ReventlessAws;
-  var partial_arg$7 = Aggregate_Builder$Reventless.Make;
-  var partial_arg$8 = {
+  var partial_arg$5 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg$6 = Aggregate_Builder$Reventless.Make;
+  var partial_arg$7 = {
     make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
   };
-  var partial_arg$9 = RuntimeEnvironment_Lambda$ReventlessAws;
-  var partial_arg$10 = AggregateRuntime_Builder_PerAggregate$Reventless.Make;
-  var partial_arg$11 = function (param, param$1) {
-    return partial_arg$10(partial_arg$9, param, param$1);
+  var partial_arg$8 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg$9 = AggregateRuntime_Builder_PerAggregate$Reventless.Make;
+  var partial_arg$10 = function (param, param$1) {
+    return partial_arg$9(partial_arg$8, param, param$1);
   };
   var param = (function (param) {
-        return partial_arg$11(partial_arg$8, param);
+        return partial_arg$10(partial_arg$7, param);
       })({
         make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
       });
-  return partial_arg$7(Config, Spec, Behaviour, EventMappings, partial_arg$6, partial_arg$5, partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
+  return partial_arg$6(Config, Spec, Behaviour, EventMappings, partial_arg$5, partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
 }
 
 var CommandGeneratorResolvers;

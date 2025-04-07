@@ -14,7 +14,6 @@ module Make = (
   Behaviour,
   EventMappings,
   RuntimeEnvironment,
-  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment),
   CommandGeneratorResolvers,
   CommandTopicChannel,
   EventLogStorage.DynamoDbStream,

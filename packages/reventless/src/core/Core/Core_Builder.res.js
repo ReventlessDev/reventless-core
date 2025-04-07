@@ -16,7 +16,7 @@ var ComponentType$Reventless = require("../../ComponentType.res.js");
 var Core_Callback$Reventless = require("./Core_Callback.res.js");
 var EventCollector_Builder$Reventless = require("../../components/EventCollector/EventCollector_Builder.res.js");
 
-function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, RuntimeBuilder) {
+function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, CoreRuntimeBuilder) {
   var construct = function (version, extensionPoints, aggregates, readModels, scheduler, self, param) {
     var opts_parent = Component$Reventless.toPulumiResource(self);
     var opts = {
@@ -121,7 +121,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, R
                           outgoingExtensionPointEventHandlers: param[0]
                         });
                     var handler = CoreEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
-                    var runtime = RuntimeBuilder.forPluginEventCollector(handler, undefined, undefined, eventCollector);
+                    var runtime = CoreRuntimeBuilder.forPluginEventCollector(handler, undefined, undefined, eventCollector);
                     CoreEventCollector.connect(name, eventTopics, eventCollector, runtime, param[1], opts$1);
                     return eventCollectorOutputs;
                   });

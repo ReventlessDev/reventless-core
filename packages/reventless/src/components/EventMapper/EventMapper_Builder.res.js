@@ -12,7 +12,7 @@ var EventMapper$Reventless = require("./EventMapper.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventMapper_Callback$Reventless = require("./EventMapper_Callback.res.js");
 
-function Make(Target, SpecificEventCollector, Mappings, RuntimeBuilder) {
+function Make(Target, SpecificEventCollector, Mappings, AggregateRuntimeBuilder) {
   var make = function (name, allEventTopics, queryEngine, publishJsons, resources, memorySizeOpt, timeoutOpt, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
@@ -66,7 +66,7 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeBuilder) {
                               commonEventsHandler: CounterHandler.commonEventsHandler
                             });
                         var handler = SpecificEventCollector.makeHandler(eventCollector, EventCollectorHandler.handleJsonEvents);
-                        var runtime = RuntimeBuilder.forEventCollector(handler, memorySize, timeout, eventCollector);
+                        var runtime = AggregateRuntimeBuilder.forEventCollector(handler, memorySize, timeout, eventCollector);
                         var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
                         return Component$Reventless.outputs((SpecificEventCollector.connect(name, eventTopics, eventCollector, runtime, resources, opts$1), eventCollector));
                       });

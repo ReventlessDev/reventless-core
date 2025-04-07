@@ -1,6 +1,10 @@
 module Make = (
+  RuntimeEnvironment: Runtime.Environment,
+  EventCollectorChannel: EventCollector_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
   SpecificEventCollector: EventCollector.T,
-  RuntimeBuilder: Runtime_Builder.T,
+  PluginRuntimeBuilder: PluginRuntime_Builder.T
+    with type EventCollectorChannel.callbackEvent := SpecificEventCollector.callbackEvent,
 ): SideEffectHandler.T => {
   let construct = (
     ~sideEffects,
@@ -33,7 +37,7 @@ module Make = (
       ~eventsHandler=Callback.eventsHandler,
     )
     let runtime =
-      eventCollector->RuntimeBuilder.forSideEffectHandlerEventCollector(
+      eventCollector->PluginRuntimeBuilder.forSideEffectHandlerEventCollector(
         ~handler,
         ~memorySize,
         ~timeout,

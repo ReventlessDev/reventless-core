@@ -6,15 +6,19 @@ module Mappings = {
 }
 
 module Make = (
-  RuntimeBuilder: Reventless.Runtime_Builder.T,
-  CommandTopicChannel: CommandTopic_Adapter.Channel with type runtimeParts = RuntimeBuilder.parts,
+  RuntimeEnvironment: Runtime.Environment,
+  CommandTopicChannel: CommandTopic_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
   EventTopicAdapter: EventTopic_Adapter.Publisher,
+  ExtensionPointRuntimeBuilder: ExtensionPointRuntime_Builder.T
+    with module CommandTopicChannel := CommandTopicChannel,
 ): ExtensionPoint.T => {
   include ExtensionPoint_Builder.Make(
     ReventlessSpec.PluginExtensionPointSpec,
     Mappings,
-    RuntimeBuilder,
+    RuntimeEnvironment,
     CommandTopicChannel,
     EventTopicAdapter,
+    ExtensionPointRuntimeBuilder,
   )
 }

@@ -1,4 +1,9 @@
+module EventCollectorChannel = EventCollectorChannel.SQS
+module RuntimeEnvironment = RuntimeEnvironment.Lambda
+
 include Reventless.SideEffectHandler_Builder.Make(
-  Reventless.EventCollector_Builder.Make(EventCollectorChannel.SQS),
-  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment_Lambda),
+  RuntimeEnvironment,
+  EventCollectorChannel,
+  Reventless.EventCollector_Builder.Make(EventCollectorChannel),
+  Reventless.PluginRuntime_Builder_Micro.Make(RuntimeEnvironment, EventCollectorChannel),
 )

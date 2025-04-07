@@ -16,7 +16,7 @@ var CommandTopic_Builder$Reventless = require("../CommandTopic/CommandTopic_Buil
 var ExtensionPoint_Callback$Reventless = require("./ExtensionPoint_Callback.res.js");
 var ExtensionPoint_Operations$Reventless = require("./ExtensionPoint_Operations.res.js");
 
-function Make(Spec, Mappings, RuntimeBuilder, CommandTopicChannel, EventTopicAdapter) {
+function Make(Spec, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopicAdapter, ExtensionPointRuntimeBuilder) {
   var command_encode = Spec.command_encode;
   var command_decode = Spec.command_decode;
   var event_encode = Spec.event_encode;
@@ -71,7 +71,7 @@ function Make(Spec, Mappings, RuntimeBuilder, CommandTopicChannel, EventTopicAda
                               };
                               var ExtensionPointCallback = partial_arg$2(Spec, Mappings);
                               var handler = SpecificCommandTopic.makeHandler(commandTopic, ExtensionPointCallback.handleIncomingCommands);
-                              var runtime = RuntimeBuilder.forExtensionPointCommandTopic(handler, undefined, undefined, commandTopic);
+                              var runtime = ExtensionPointRuntimeBuilder.forCommandTopic(handler, undefined, undefined, commandTopic);
                               SpecificCommandTopic.connect(childName, commandTopic, runtime, filterAggregateResources(aggregateResources, aggregateNames), commandTopicOpts);
                               var partial_arg$3 = {
                                 Id: Id$ReventlessSpec.$$String,

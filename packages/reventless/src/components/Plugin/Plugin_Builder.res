@@ -71,12 +71,15 @@ let serviceNameToEventHandlers: (
 }
 
 module Make = (
-  RuntimeBuilder: Runtime_Builder.T,
+  RuntimeEnvironment: Runtime.Environment,
   EventCollectorChannel: EventCollector_Adapter.Channel
-    with type runtimeParts = RuntimeBuilder.parts,
+    with type runtimeParts = RuntimeEnvironment.parts,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   CorePluginExtensionPointRemoteChannel: CommandTopic_Adapter.RemoteChannel,
-  HeartbeatRunner: Heartbeat_Adapter.Runner with type runtimeParts = RuntimeBuilder.parts,
+  HeartbeatRunner: Heartbeat_Adapter.Runner with type runtimeParts = RuntimeEnvironment.parts,
+  PluginRuntimeBuilder: PluginRuntime_Builder.T
+    with module EventCollectorChannel = EventCollectorChannel
+    and type runtimeParts = RuntimeEnvironment.parts,
 ): Plugin.T => {
   type readModel = {
     module_: module(ReadModel.T),
@@ -452,7 +455,7 @@ module Make = (
             let eventCollectorOpts = {
               Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource,
             }
-            let runtime = eventCollector->RuntimeBuilder.forPluginEventCollector(~handler)
+            let runtime = eventCollector->PluginRuntimeBuilder.forPluginEventCollector(~handler)
 
             PluginEventCollector.connect(
               ~name=childName,
@@ -479,7 +482,7 @@ module Make = (
           ~timeout=heartbeatInterval,
           ~publishToCorePluginExtensionPoint,
         )
-        let runtime = heartbeat->RuntimeBuilder.forPluginHeartbeat(~handler)
+        let runtime = heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(~handler)
 
         SpecificHeartbeat.connect(
           ~name=childName,

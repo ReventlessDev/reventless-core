@@ -1,29 +1,22 @@
-type builder<'handler, 'parts, 'component> = (
-  ~handler: Pulumi.Output.t<'handler>,
-  ~memorySize: int=?,
-  ~timeout: int=?,
-  'component,
-) => Runtime.environment<'parts>
-
 module type T = {
   type context
-  type parts
+  type runtimeParts
   module CommandTopicChannel: CommandTopic_Adapter.Channel
   module EventCollectorChannel: EventCollector_Adapter.Channel
 
-  let forCommandGenerator: builder<
+  let forCommandGenerator: Runtime.forComponent<
     CommandGenerator.eventHandler<context>,
-    parts,
+    runtimeParts,
     CommandGenerator.component,
   >
-  let forCommandTopic: builder<
+  let forCommandTopic: Runtime.forComponent<
     Runtime.eventHandler<CommandTopicChannel.callbackEvent, context, unit>,
-    parts,
+    runtimeParts,
     CommandTopic.component<'op>,
   >
-  let forEventCollector: builder<
+  let forEventCollector: Runtime.forComponent<
     Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
-    parts,
+    runtimeParts,
     EventCollector.component,
   >
 }

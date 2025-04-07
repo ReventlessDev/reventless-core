@@ -2,32 +2,48 @@
 'use strict';
 
 var Plugin_Builder$Reventless = require("@reventless/reventless/src/components/Plugin/Plugin_Builder.res.js");
-var Runtime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/Runtime_Builder_Micro.res.js");
 var QueryEngine_DynamoDb$ReventlessAws = require("../adapter/QueryEngine/QueryEngine_DynamoDb.res.js");
+var PluginRuntime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.js");
 var EventCollectorChannel_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_SQS.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 var CommandTopicRemoteChannel_SQS$ReventlessAws = require("../adapter/CommandTopic/CommandTopicRemoteChannel_SQS.res.js");
 var HeartbeatRunner_CloudWatchEvents$ReventlessAws = require("../adapter/Heartbeat/HeartbeatRunner_CloudWatchEvents.res.js");
 
-var partial_arg = CommandTopicRemoteChannel_SQS$ReventlessAws;
+var partial_arg = HeartbeatRunner_CloudWatchEvents$ReventlessAws;
 
-var partial_arg$1 = {
+var partial_arg$1 = CommandTopicRemoteChannel_SQS$ReventlessAws;
+
+var partial_arg$2 = {
   make: QueryEngine_DynamoDb$ReventlessAws.make
 };
 
-var partial_arg$2 = {
+var partial_arg$3 = {
   make: EventCollectorChannel_SQS$ReventlessAws.make
 };
 
-var partial_arg$3 = Runtime_Builder_Micro$Reventless.Make(RuntimeEnvironment_Lambda$ReventlessAws);
+var partial_arg$4 = RuntimeEnvironment_Lambda$ReventlessAws;
 
-var partial_arg$4 = Plugin_Builder$Reventless.Make;
+var partial_arg$5 = Plugin_Builder$Reventless.Make;
+
+var partial_arg$6 = RuntimeEnvironment_Lambda$ReventlessAws;
+
+var partial_arg$7 = PluginRuntime_Builder_Micro$Reventless.Make;
 
 var include = (function (param) {
-      return partial_arg$4(partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
-    })(HeartbeatRunner_CloudWatchEvents$ReventlessAws);
+      return partial_arg$5(partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
+    })((function (param) {
+          return partial_arg$7(partial_arg$6, param);
+        })({
+          make: EventCollectorChannel_SQS$ReventlessAws.make
+        }));
+
+var EventCollectorChannel;
+
+var RuntimeEnvironment;
 
 var make = include.make;
 
+exports.EventCollectorChannel = EventCollectorChannel;
+exports.RuntimeEnvironment = RuntimeEnvironment;
 exports.make = make;
 /* include Not a pure module */

@@ -3,7 +3,8 @@ module Make = (
   EventCollectorChannel: EventCollector_Adapter.Channel,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
-  RuntimeBuilder: Runtime_Builder.T,
+  CoreRuntimeBuilder: PluginRuntime_Builder.T
+    with module EventCollectorChannel = EventCollectorChannel,
 ) => {
   type readModel = {
     module_: module(ReadModel.T),
@@ -140,7 +141,7 @@ module Make = (
               ~eventCollector,
               ~eventsHandler=Callback.eventsHandler,
             )
-            let runtime = eventCollector->RuntimeBuilder.forPluginEventCollector(~handler)
+            let runtime = eventCollector->CoreRuntimeBuilder.forPluginEventCollector(~handler)
 
             CoreEventCollector.connect(
               ~name,

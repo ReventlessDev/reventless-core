@@ -1,3 +1,6 @@
+module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
+module RuntimeEnvironment = RuntimeEnvironment.Lambda
+
 module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.ReadModel_Spec.T,
@@ -6,8 +9,9 @@ module Make = (
   Config,
   Spec,
   Mappings,
-  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment_Lambda),
+  RuntimeEnvironment,
   QueryDbStorage.DynamoDb,
   QueryDbResolvers.AppSync,
-  EventCollectorChannel.DynamoDbStream,
+  EventCollectorChannel,
+  Reventless.ReadModelRuntime_Builder_Micro.Make(RuntimeEnvironment, EventCollectorChannel),
 )

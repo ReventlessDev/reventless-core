@@ -79,7 +79,7 @@ function serviceNameToEventHandlers(outputs, getServiceNames, handlers, getEvent
   return dict;
 }
 
-function Make(RuntimeBuilder, EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner) {
+function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, CorePluginExtensionPointRemoteChannel, HeartbeatRunner, PluginRuntimeBuilder) {
   var make = function (name, version, heartbeatInterval, extensionPoints, extensions, aggregates, readModels, taskMakers, scheduler, opts) {
     return Component$Reventless.make(ComponentType$Reventless.toString(Plugin$Reventless.componentType), name, (function (extra, extra$1) {
                   var id = Plugin$Reventless.makeId(extra$1, version);
@@ -313,7 +313,7 @@ function Make(RuntimeBuilder, EventCollectorChannel, QueryEngineAdapter, CorePlu
                               var eventCollectorOpts = {
                                 parent: eventCollectorOpts_parent
                               };
-                              var runtime = RuntimeBuilder.forPluginEventCollector(handler, undefined, undefined, eventCollector);
+                              var runtime = PluginRuntimeBuilder.forPluginEventCollector(handler, undefined, undefined, eventCollector);
                               PluginEventCollector.connect(childName, eventTopics, eventCollector, runtime, param[5], eventCollectorOpts);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;
@@ -327,7 +327,7 @@ function Make(RuntimeBuilder, EventCollectorChannel, QueryEngineAdapter, CorePlu
                           parent: heartbeatOpts_parent
                         };
                         var handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
-                        var runtime = RuntimeBuilder.forPluginHeartbeat(handler, undefined, undefined, heartbeat);
+                        var runtime = PluginRuntimeBuilder.forPluginHeartbeat(handler, undefined, undefined, heartbeat);
                         SpecificHeartbeat.connect(childName, heartbeatInterval, heartbeat, corePluginExtensionPointCommandTopicRemoteChannel, runtime, heartbeatOpts);
                         return {
                                 id: id,

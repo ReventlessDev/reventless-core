@@ -2,9 +2,9 @@
 'use strict';
 
 var Core_Builder$Reventless = require("@reventless/reventless/src/core/Core/Core_Builder.res.js");
-var Runtime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/Runtime_Builder_Micro.res.js");
 var ClonerRunner_Fargate$ReventlessAws = require("../adapter/Cloner/ClonerRunner_Fargate.res.js");
 var QueryEngine_DynamoDb$ReventlessAws = require("../adapter/QueryEngine/QueryEngine_DynamoDb.res.js");
+var PluginRuntime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/PluginRuntime_Builder_Micro.res.js");
 var EventCollectorChannel_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_SQS.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 
@@ -17,9 +17,18 @@ function Make(Config) {
     make: EventCollectorChannel_SQS$ReventlessAws.make
   };
   var partial_arg$3 = Core_Builder$Reventless.Make;
-  var param = Runtime_Builder_Micro$Reventless.Make(RuntimeEnvironment_Lambda$ReventlessAws);
+  var partial_arg$4 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg$5 = PluginRuntime_Builder_Micro$Reventless.Make;
+  var param = (function (param) {
+        return partial_arg$5(partial_arg$4, param);
+      })({
+        make: EventCollectorChannel_SQS$ReventlessAws.make
+      });
   return partial_arg$3(Config, partial_arg$2, partial_arg$1, partial_arg, param);
 }
 
+var EventCollectorChannel;
+
+exports.EventCollectorChannel = EventCollectorChannel;
 exports.Make = Make;
 /* Core_Builder-Reventless Not a pure module */

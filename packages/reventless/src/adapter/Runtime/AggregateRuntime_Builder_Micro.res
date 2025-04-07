@@ -5,12 +5,12 @@ module Make = (
 ): (
   AggregateRuntime_Builder.T
     with type context = RuntimeEnvironment.context
-    and type parts = RuntimeEnvironment.parts
+    and type runtimeParts = RuntimeEnvironment.parts
     and module CommandTopicChannel = CommandTopicChannel
     and module EventCollectorChannel = EventCollectorChannel
 ) => {
   type context = RuntimeEnvironment.context
-  type parts = RuntimeEnvironment.parts
+  type runtimeParts = RuntimeEnvironment.parts
   module CommandTopicChannel = CommandTopicChannel
   module EventCollectorChannel = EventCollectorChannel
 

@@ -4,7 +4,6 @@ module Make = (
   Behaviour: Behaviour.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
   RuntimeEnvironment: Runtime.Environment,
-  RuntimeBuilder: Runtime_Builder.T with type parts = RuntimeEnvironment.parts,
   CommandGeneratorResolvers: CommandGenerator_Adapter.Resolvers
     with type api = Config.api
     and type runtimeParts = RuntimeEnvironment.parts,
@@ -16,7 +15,7 @@ module Make = (
   AggregateRuntimeBuilder: AggregateRuntime_Builder.T
     with module CommandTopicChannel = CommandTopicChannel
     and module EventCollectorChannel = EventCollectorChannel
-    and type parts = RuntimeEnvironment.parts,
+    and type runtimeParts = RuntimeEnvironment.parts,
 ): Aggregate.T => {
   module Spec = Spec
 

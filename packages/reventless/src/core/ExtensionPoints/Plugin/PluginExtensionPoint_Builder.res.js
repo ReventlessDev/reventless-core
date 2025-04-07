@@ -11,7 +11,7 @@ var Mappings = {
   mappings: mappings
 };
 
-function Make(RuntimeBuilder, CommandTopicChannel, EventTopicAdapter) {
+function Make(RuntimeEnvironment, CommandTopicChannel, EventTopicAdapter, ExtensionPointRuntimeBuilder) {
   var partial_arg = {
     name: PluginExtensionPointSpec$ReventlessSpec.name,
     command_encode: PluginExtensionPointSpec$ReventlessSpec.command_encode,
@@ -22,7 +22,7 @@ function Make(RuntimeBuilder, CommandTopicChannel, EventTopicAdapter) {
     callCommand_decode: PluginExtensionPointSpec$ReventlessSpec.callCommand_decode
   };
   var partial_arg$1 = ExtensionPoint_Builder$Reventless.Make;
-  return partial_arg$1(partial_arg, Mappings, RuntimeBuilder, CommandTopicChannel, EventTopicAdapter);
+  return partial_arg$1(partial_arg, Mappings, RuntimeEnvironment, CommandTopicChannel, EventTopicAdapter, ExtensionPointRuntimeBuilder);
 }
 
 exports.Mappings = Mappings;

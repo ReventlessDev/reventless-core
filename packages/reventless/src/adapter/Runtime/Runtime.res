@@ -18,3 +18,10 @@ module type Environment = {
   type parts
   let make: environmentMaker<'event, context, 'result, parts>
 }
+
+type forComponent<'handler, 'parts, 'component> = (
+  ~handler: Pulumi.Output.t<'handler>,
+  ~memorySize: int=?,
+  ~timeout: int=?,
+  'component,
+) => environment<'parts>

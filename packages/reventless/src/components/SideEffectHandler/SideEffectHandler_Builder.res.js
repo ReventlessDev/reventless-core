@@ -14,7 +14,7 @@ var ComponentType$Reventless = require("../../ComponentType.res.js");
 var SideEffectHandler$Reventless = require("./SideEffectHandler.res.js");
 var SideEffectHandler_Callback$Reventless = require("./SideEffectHandler_Callback.res.js");
 
-function Make(SpecificEventCollector, RuntimeBuilder) {
+function Make(RuntimeEnvironment, EventCollectorChannel, SpecificEventCollector, PluginRuntimeBuilder) {
   var make = function (name, sideEffects, allEventTopics, allCommandTopics, targets, queryEngine, scheduler, memorySizeOpt, timeoutOpt, opts) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 2048;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 180;
@@ -36,7 +36,7 @@ function Make(SpecificEventCollector, RuntimeBuilder) {
                         queryEngine: queryEngine
                       });
                   var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
-                  var runtime = RuntimeBuilder.forSideEffectHandlerEventCollector(handler, memorySize, timeout, eventCollector);
+                  var runtime = PluginRuntimeBuilder.forSideEffectHandlerEventCollector(handler, memorySize, timeout, eventCollector);
                   allCommandTopics.apply(function (allCommandTopics) {
                         var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
                         var commandTopics = Core__Option.getOr(Core__Option.map(targets, (function (targets) {
