@@ -30,7 +30,7 @@ var $$let = (function (param) {
 var Make = (function (param) {
       return partial_arg$3(partial_arg$2, partial_arg$1, partial_arg, param);
     })({
-      forExtensionPointCommandTopic: $$let.forExtensionPointCommandTopic
+      forCommandTopic: $$let.forCommandTopic
     });
 
 var CommandTopicChannel;

@@ -22,7 +22,7 @@ function Make(Spec, Mappings) {
         make: CommandTopicChannel_SQS$ReventlessAws.make
       });
   var param = {
-    forExtensionPointCommandTopic: $$let.forExtensionPointCommandTopic
+    forCommandTopic: $$let.forCommandTopic
   };
   return partial_arg$3(Spec, Mappings, partial_arg$2, partial_arg$1, partial_arg, param);
 }
