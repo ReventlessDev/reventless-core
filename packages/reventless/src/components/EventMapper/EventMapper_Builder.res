@@ -2,7 +2,8 @@ module Make = (
   Target: ReventlessSpec.EventMapping.Target,
   SpecificEventCollector: EventCollector.T,
   Mappings: EventMapper.Mappings with module Target := Target,
-  RuntimeBuilder: Runtime_Builder.T,
+  RuntimeBuilder: AggregateRuntime_Builder.T
+    with type EventCollectorChannel.callbackEvent := SpecificEventCollector.callbackEvent,
 ): EventMapper.T => {
   module Target = Target
 
@@ -75,7 +76,7 @@ module Make = (
           ~eventsHandler=EventCollectorHandler.handleJsonEvents,
         )
         let runtime =
-          eventCollector->RuntimeBuilder.forAggregateEventCollector(~handler, ~memorySize, ~timeout)
+          eventCollector->RuntimeBuilder.forEventCollector(~handler, ~memorySize, ~timeout)
 
         let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
 

@@ -3,14 +3,20 @@ module Make = (
   Spec: ReventlessSpec.Aggregate.Spec,
   Behaviour: Behaviour.T with module Spec := Spec,
   EventMappings: EventMapper.Mappings with module Target := Spec,
-  RuntimeBuilder: Runtime_Builder.T,
+  RuntimeEnvironment: Runtime.Environment,
+  RuntimeBuilder: Runtime_Builder.T with type parts = RuntimeEnvironment.parts,
   CommandGeneratorResolvers: CommandGenerator_Adapter.Resolvers
     with type api = Config.api
-    and type runtimeParts = RuntimeBuilder.parts,
-  CommandTopicChannel: CommandTopic_Adapter.Channel with type runtimeParts = RuntimeBuilder.parts,
+    and type runtimeParts = RuntimeEnvironment.parts,
+  CommandTopicChannel: CommandTopic_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
   EventLogStorage: EventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
   EventCollectorChannel: EventCollector_Adapter.Channel,
+  AggregateRuntimeBuilder: AggregateRuntime_Builder.T
+    with module CommandTopicChannel = CommandTopicChannel
+    and module EventCollectorChannel = EventCollectorChannel
+    and type parts = RuntimeEnvironment.parts,
 ): Aggregate.T => {
   module Spec = Spec
 
@@ -20,7 +26,7 @@ module Make = (
       Spec,
       SpecificEventCollector,
       EventMappings,
-      RuntimeBuilder,
+      AggregateRuntimeBuilder,
     )
 
     let outputs = aggregate->Component.outputs
@@ -74,7 +80,7 @@ module Make = (
           },
         )
         let runtime =
-          commandTopic->RuntimeBuilder.forAggregateCommandTopic(
+          commandTopic->AggregateRuntimeBuilder.forCommandTopic(
             ~handler=SpecificCommandTopic.makeHandler(
               ~commandTopic,
               ~commandsHandler=AggregateCallback.handleCommands,
@@ -101,7 +107,7 @@ module Make = (
         let opts = {Pulumi.ComponentResource.parent: commandGenerator->Component.toPulumiResource}
 
         let runtime =
-          commandGenerator->RuntimeBuilder.forAggregateCommandGenerator(
+          commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
             ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
           )
         let resources = (commandTopic->Component.outputs).resources

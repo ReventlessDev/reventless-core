@@ -66,7 +66,7 @@ function Make(Target, SpecificEventCollector, Mappings, RuntimeBuilder) {
                               commonEventsHandler: CounterHandler.commonEventsHandler
                             });
                         var handler = SpecificEventCollector.makeHandler(eventCollector, EventCollectorHandler.handleJsonEvents);
-                        var runtime = RuntimeBuilder.forAggregateEventCollector(handler, memorySize, timeout, eventCollector);
+                        var runtime = RuntimeBuilder.forEventCollector(handler, memorySize, timeout, eventCollector);
                         var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
                         return Component$Reventless.outputs((SpecificEventCollector.connect(name, eventTopics, eventCollector, runtime, resources, opts$1), eventCollector));
                       });

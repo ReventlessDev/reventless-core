@@ -8,6 +8,8 @@ type payload = {
   meta: meta,
 }
 type commandGenerator = payload => Js.Promise.t<string>
+type eventHandler<'context> = Runtime.eventHandler<payload, 'context, string>
+
 type publishJsons = CommandTopic.publishJsons
 
 type t
@@ -24,9 +26,7 @@ module type T = {
     ~opts: Pulumi.ComponentResource.options,
   ) => unit
 
-  let makeHandler: (
-    ~publishJsons: publishJsons,
-  ) => Pulumi.Output.t<Runtime.eventHandler<payload, 'context, string>>
+  let makeHandler: (~publishJsons: publishJsons) => Pulumi.Output.t<eventHandler<'context>>
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }

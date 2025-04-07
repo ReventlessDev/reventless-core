@@ -9,7 +9,7 @@ var Message$Reventless = require("@reventless/reventless/src/Message.res.js");
 var DynamoDb_Util$AwsSdk = require("@reventless/bs-aws-sdk/src/DynamoDb_Util.res.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
 
-function buildEvent$pJson(dict) {
+function buildJsonEvent$p(dict) {
   return Js_dict.fromArray([
               [
                 "id",
@@ -26,7 +26,7 @@ function buildEvent$pJson(dict) {
             ]);
 }
 
-function buildStateJson(dict) {
+function buildJsonState(dict) {
   return dict;
 }
 
@@ -76,19 +76,19 @@ function parseDynamoDbStreamRecord(buildJson, record) {
 }
 
 function parseDynamoDbStreamRecordEvent(record) {
-  return parseDynamoDbStreamRecord(buildEvent$pJson, record);
+  return parseDynamoDbStreamRecord(buildJsonEvent$p, record);
 }
 
 function parseDynamoDbStreamRecordState(record) {
-  return parseDynamoDbStreamRecord(buildStateJson, record);
+  return parseDynamoDbStreamRecord(buildJsonState, record);
 }
 
 function findResource(resources) {
   return Util_AdapterRuntime$Reventless.findResource(resources, AWS$ReventlessAws.DynamoDbStream.service);
 }
 
-exports.buildEvent$pJson = buildEvent$pJson;
-exports.buildStateJson = buildStateJson;
+exports.buildJsonEvent$p = buildJsonEvent$p;
+exports.buildJsonState = buildJsonState;
 exports.parseDynamoDbStreamRecord = parseDynamoDbStreamRecord;
 exports.parseDynamoDbStreamRecordEvent = parseDynamoDbStreamRecordEvent;
 exports.parseDynamoDbStreamRecordState = parseDynamoDbStreamRecordState;

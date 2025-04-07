@@ -1,4 +1,6 @@
-module Make = (Channel: EventCollector_Adapter.Channel): EventCollector.T => {
+module Make = (Channel: EventCollector_Adapter.Channel): (
+  EventCollector.T with type callbackEvent = Channel.callbackEvent
+) => {
   type callbackEvent = Channel.callbackEvent
 
   let construct = (self, name) => {

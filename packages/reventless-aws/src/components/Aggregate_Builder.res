@@ -1,3 +1,8 @@
+module CommandGeneratorResolvers = CommandGeneratorResolvers.AppSync
+module CommandTopicChannel = CommandTopicChannel.SQS_FIFO
+module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
+module RuntimeEnvironment = RuntimeEnvironment.Lambda
+
 module Make = (
   Config: Config.T,
   Spec: ReventlessSpec.Aggregate.Spec,
@@ -8,10 +13,16 @@ module Make = (
   Spec,
   Behaviour,
   EventMappings,
-  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment_Lambda),
-  CommandGeneratorResolvers.AppSync,
-  CommandTopicChannel.SQS_FIFO,
+  RuntimeEnvironment,
+  Reventless.Runtime_Builder_Micro.Make(RuntimeEnvironment),
+  CommandGeneratorResolvers,
+  CommandTopicChannel,
   EventLogStorage.DynamoDbStream,
   EventTopicPublisher.DynamoDbStream,
-  EventCollectorChannel_DynamoDbStream,
+  EventCollectorChannel,
+  Reventless.AggregateRuntime_Builder_PerAggregate.Make(
+    RuntimeEnvironment,
+    CommandTopicChannel,
+    EventCollectorChannel,
+  ),
 )

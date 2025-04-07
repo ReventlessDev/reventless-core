@@ -7,23 +7,50 @@ var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/Runtim
 var CommandTopicChannel_SQS_FIFO$ReventlessAws = require("../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.js");
 var EventLogStorage_DynamoDbStream$ReventlessAws = require("../adapter/EventLog/EventLogStorage_DynamoDbStream.res.js");
 var CommandGeneratorResolvers_AppSync$ReventlessAws = require("../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.js");
+var AggregateRuntime_Builder_PerAggregate$Reventless = require("@reventless/reventless/src/adapter/Runtime/AggregateRuntime_Builder_PerAggregate.res.js");
 var EventTopicPublisher_DynamoDbStream$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.js");
 var EventCollectorChannel_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.js");
 
 function Make(Config, Spec, Behaviour, EventMappings) {
-  var partial_arg = EventTopicPublisher_DynamoDbStream$ReventlessAws;
-  var partial_arg$1 = EventLogStorage_DynamoDbStream$ReventlessAws;
-  var partial_arg$2 = {
-    make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
-  };
-  var partial_arg$3 = CommandGeneratorResolvers_AppSync$ReventlessAws;
-  var partial_arg$4 = Runtime_Builder_Micro$Reventless.Make(RuntimeEnvironment_Lambda$ReventlessAws);
-  var partial_arg$5 = Aggregate_Builder$Reventless.Make;
-  var param = {
+  var partial_arg = {
     make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
   };
-  return partial_arg$5(Config, Spec, Behaviour, EventMappings, partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
+  var partial_arg$1 = EventTopicPublisher_DynamoDbStream$ReventlessAws;
+  var partial_arg$2 = EventLogStorage_DynamoDbStream$ReventlessAws;
+  var partial_arg$3 = {
+    make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+  };
+  var partial_arg$4 = CommandGeneratorResolvers_AppSync$ReventlessAws;
+  var partial_arg$5 = Runtime_Builder_Micro$Reventless.Make(RuntimeEnvironment_Lambda$ReventlessAws);
+  var partial_arg$6 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg$7 = Aggregate_Builder$Reventless.Make;
+  var partial_arg$8 = {
+    make: CommandTopicChannel_SQS_FIFO$ReventlessAws.make
+  };
+  var partial_arg$9 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg$10 = AggregateRuntime_Builder_PerAggregate$Reventless.Make;
+  var partial_arg$11 = function (param, param$1) {
+    return partial_arg$10(partial_arg$9, param, param$1);
+  };
+  var param = (function (param) {
+        return partial_arg$11(partial_arg$8, param);
+      })({
+        make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+      });
+  return partial_arg$7(Config, Spec, Behaviour, EventMappings, partial_arg$6, partial_arg$5, partial_arg$4, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
 }
 
+var CommandGeneratorResolvers;
+
+var CommandTopicChannel;
+
+var EventCollectorChannel;
+
+var RuntimeEnvironment;
+
+exports.CommandGeneratorResolvers = CommandGeneratorResolvers;
+exports.CommandTopicChannel = CommandTopicChannel;
+exports.EventCollectorChannel = EventCollectorChannel;
+exports.RuntimeEnvironment = RuntimeEnvironment;
 exports.Make = Make;
 /* Aggregate_Builder-Reventless Not a pure module */

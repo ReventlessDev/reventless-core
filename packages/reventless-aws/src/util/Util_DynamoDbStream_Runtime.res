@@ -4,7 +4,7 @@ type result =
   | NewAndOldImage(string, Js.Json.t, Js.Json.t)
   | Invalid
 
-let buildEvent'Json = dict =>
+let buildJsonEvent' = dict =>
   [
     ("id", dict->Js.Dict.get("id")->Option.getExn),
     ("meta", dict->Reventless.Message.composeMeta),
@@ -13,7 +13,7 @@ let buildEvent'Json = dict =>
   ->Js.Dict.fromArray
   ->Js.Json.object_
 
-let buildStateJson = dict => dict->Js.Json.object_
+let buildJsonState = dict => dict->Js.Json.object_
 
 let parseDynamoDbStreamRecord = (buildJson, record: PulumiAws.DynamoDb.Stream.record) => {
   let record = record.dynamodb
@@ -40,10 +40,22 @@ let parseDynamoDbStreamRecord = (buildJson, record: PulumiAws.DynamoDb.Stream.re
 }
 
 let parseDynamoDbStreamRecordEvent: PulumiAws.DynamoDb.Stream.record => result = record =>
-  parseDynamoDbStreamRecord(buildEvent'Json, record)
+  parseDynamoDbStreamRecord(buildJsonEvent', record)
+
+// let parseDynamoDbStreamRecord = record =>
+//   switch record
+//   ->PulumiAws.DynamoDb.Stream.asRecord
+//   ->parseDynamoDbStreamRecordEvent {
+//   | NewImage(_, newImage)
+//   | NewAndOldImage(_, newImage, _) =>
+//     Some(newImage)
+//   | _ =>
+//     Js.log(__MODULE__ ++ ".handleChannelEvent: no NewImage included in Stream event !")
+//     None
+//   }
 
 let parseDynamoDbStreamRecordState: PulumiAws.DynamoDb.Stream.record => result = record =>
-  parseDynamoDbStreamRecord(buildStateJson, record)
+  parseDynamoDbStreamRecord(buildJsonState, record)
 
 let findResource = resources =>
   resources->Reventless.Util.AdapterRuntime.findResource(AWS.DynamoDbStream.service)

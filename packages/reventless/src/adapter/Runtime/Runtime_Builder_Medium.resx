@@ -1,0 +1,167 @@
+module Make = (RuntimeEnvironment: Runtime.Environment): (
+  Runtime_Builder.T
+    with type context = RuntimeEnvironment.context
+    and type parts = RuntimeEnvironment.parts
+) => {
+  type context = RuntimeEnvironment.context
+  type parts = RuntimeEnvironment.parts
+
+  type handler<'e, 'r> = Runtime.eventHandler<'e, context, 'r>
+  type handlers<'e, 'r> = dict<Pulumi.Output.t<handler<'e, 'r>>>
+
+  // let aggregateRuntimes = Js.Dict.empty()
+  let aggregateCommandGeneratorHandlers = Js.Dict.empty()
+  // let aggregateCommandTopicHandlers: handlers<'e, 'r> = Js.Dict.empty()
+  // let aggregateEventCollectorHandlers: handlers<'e, 'r> = Js.Dict.empty()
+
+  let aggregateHandler /* : string => handler<'e, 'r> */ = aggregateName => async (event, _) => ()
+
+  let forAggregate = (~memorySize=?, ~timeout=?, aggregate: Pulumi.Resource.t) => {
+    let aggregateName = aggregate.name->Option.getOr("")
+    RuntimeEnvironment.make(
+      ~name=aggregateName->ComponentType.name(CommandGenerator.componentType),
+      ~handler=aggregateHandler(aggregateName)->Pulumi.Output.make,
+      ~memorySize?,
+      ~timeout?,
+      ~opts={Pulumi.ComponentResource.parent: aggregate},
+    )
+  }
+
+  let forAggregateCommandGenerator = (
+    ~handler: Pulumi.Output.t<CommandGenerator.commandGenerator>,
+    ~memorySize=1024,
+    ~timeout=30,
+    commandGenerator: CommandGenerator.component,
+  ) => {
+    let commandGeneratorResource = commandGenerator->Component.toPulumiResource
+    let commandGeneratorName = commandGeneratorResource.name->Option.getOr("Unnamed")
+    switch commandGeneratorResource.parent {
+    | Some(aggregateResource) =>
+      let aggregateName = aggregateResource.name->Option.getExn
+      aggregateCommandGeneratorHandlers->Js.Dict.set(aggregateName, handler)
+      aggregateResource->forAggregate(~memorySize, ~timeout)
+    | None =>
+      Js.Exn.raiseError(
+        `Runtime_Builder_Medium.forAggregateCommandGenerator: commandGenerator ${commandGeneratorName} has no Aggregate parent`,
+      )
+    }
+  }
+  // let forAggregateCommandTopic = (
+  //   ~handler,
+  //   ~memorySize=1024,
+  //   ~timeout=30,
+  //   commandTopic: CommandTopic.component<'op>,
+  // ) => {
+  //   let resource = commandTopic->Component.toPulumiResource
+  //   RuntimeEnvironment.make(
+  //     ~name=resource.name->ComponentType.nameOpt(CommandTopic.componentType),
+  //     ~handler,
+  //     ~memorySize,
+  //     ~timeout,
+  //     ~opts={Pulumi.ComponentResource.parent: resource},
+  //   )
+  // }
+  // let forAggregateEventCollector = (
+  //   ~handler,
+  //   ~memorySize=1024,
+  //   ~timeout=30,
+  //   eventCollector: EventCollector.component,
+  // ) => {
+  //   let resource = eventCollector->Component.toPulumiResource
+  //   RuntimeEnvironment.make(
+  //     ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
+  //     ~handler,
+  //     ~memorySize,
+  //     ~timeout,
+  //     ~opts={Pulumi.ComponentResource.parent: resource},
+  //   )
+  // }
+  // let forReadModelEventCollector = (
+  //   ~handler,
+  //   ~memorySize=1024,
+  //   ~timeout=30,
+  //   eventCollector: EventCollector.component,
+  // ) => {
+  //   let resource = eventCollector->Component.toPulumiResource
+  //   RuntimeEnvironment.make(
+  //     ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
+  //     ~handler,
+  //     ~memorySize,
+  //     ~timeout,
+  //     ~opts={Pulumi.ComponentResource.parent: resource},
+  //   )
+  // }
+  // let forExtensionPointCommandTopic = (
+  //   ~handler,
+  //   ~memorySize=1024,
+  //   ~timeout=30,
+  //   commandTopic: CommandTopic.component<'op>,
+  // ) => {
+  //   let resource = commandTopic->Component.toPulumiResource
+  //   RuntimeEnvironment.make(
+  //     ~name=resource.name->ComponentType.nameOpt(CommandTopic.componentType),
+  //     ~handler,
+  //     ~memorySize,
+  //     ~timeout,
+  //     ~opts={Pulumi.ComponentResource.parent: resource},
+  //   )
+  // }
+  // let forSideEffectHandlerEventCollector = (
+  //   ~handler,
+  //   ~memorySize=1024,
+  //   ~timeout=30,
+  //   eventCollector: EventCollector.component,
+  // ) => {
+  //   let resource = eventCollector->Component.toPulumiResource
+  //   RuntimeEnvironment.make(
+  //     ~name=resource.name->ComponentType.nameOpt(SideEffectHandler.componentType),
+  //     ~handler,
+  //     ~memorySize,
+  //     ~timeout,
+  //     ~opts={Pulumi.ComponentResource.parent: resource},
+  //   )
+  // }
+
+  // let forPluginEventCollector = (
+  //   ~handler,
+  //   ~memorySize=1024,
+  //   ~timeout=30,
+  //   eventCollector: EventCollector.component,
+  // ) => {
+  //   let resource = eventCollector->Component.toPulumiResource
+  //   RuntimeEnvironment.make(
+  //     ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
+  //     ~handler,
+  //     ~memorySize,
+  //     ~timeout,
+  //     ~opts={Pulumi.ComponentResource.parent: resource},
+  //   )
+  // }
+
+  // let forPluginHeartbeat = (
+  //   ~handler,
+  //   ~memorySize=1024,
+  //   ~timeout=30,
+  //   heartbeat: Heartbeat.component,
+  // ) => {
+  //   let resource = heartbeat->Component.toPulumiResource
+  //   RuntimeEnvironment.make(
+  //     ~name=resource.name->ComponentType.nameOpt(Heartbeat.componentType),
+  //     ~handler,
+  //     ~memorySize,
+  //     ~timeout,
+  //     ~opts={Pulumi.ComponentResource.parent: resource},
+  //   )
+  // }
+
+  // let forDeadLetterQueue = (~handler, ~memorySize=1024, ~timeout=30, plugin: Plugin.component) => {
+  //   let resource = plugin->Component.toPulumiResource
+  //   RuntimeEnvironment.make(
+  //     ~name=resource.name->Option.getOr("DeadLetterQueue"),
+  //     ~handler,
+  //     ~memorySize,
+  //     ~timeout,
+  //     ~opts={Pulumi.ComponentResource.parent: resource},
+  //   )
+  // }
+}
