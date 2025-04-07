@@ -19,7 +19,7 @@ module Make = (
   EventLogStorage.DynamoDbStream,
   EventTopicPublisher.DynamoDbStream,
   EventCollectorChannel,
-  Reventless.AggregateRuntime_Builder_PerAggregate.Make(
+  Reventless.AggregateRuntime_Builder_Micro.Make(
     RuntimeEnvironment,
     CommandTopicChannel,
     EventCollectorChannel,
