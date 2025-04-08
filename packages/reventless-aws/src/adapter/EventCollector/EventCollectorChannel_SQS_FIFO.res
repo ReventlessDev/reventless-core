@@ -39,12 +39,11 @@ let connect = (
       open PulumiAws.PolicyDocument
       open Reventless.Adapter
 
-      Js.Console.log3(
-        "EventCollectorChannel_SQS_FIFO: EventTopicResources for ",
-        name ++ ": ",
-        eventTopicResources,
-      )
-      Js.Console.log3("EventCollectorChannel_SQS_FIFO: Resources for ", name ++ ": ", resources)
+      // Js.Console.log3(
+      //   `EventCollectorChannel_SQS_FIFO: EventTopicResources for ${name}:`,
+      //   eventTopicResources,
+      // )
+      // Js.Console.log3(`EventCollectorChannel_SQS_FIFO: Resources for ${name}:`, resources)
 
       let snsFifoResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([

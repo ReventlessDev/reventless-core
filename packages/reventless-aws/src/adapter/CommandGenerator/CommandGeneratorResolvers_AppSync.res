@@ -35,7 +35,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
       open PulumiAws.PolicyDocument
       open Reventless.Adapter
 
-      Js.Console.log3("CommandGeneratorResolvers_AppSync: Resources for ", name ++ ": ", resources)
+      // Js.Console.log2(`CommandGeneratorResolvers_AppSync: Resources for ${name}:`, resources)
 
       let targetSqsResources =
         resources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([

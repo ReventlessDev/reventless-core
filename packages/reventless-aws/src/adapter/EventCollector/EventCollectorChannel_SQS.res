@@ -39,12 +39,11 @@ let connect = (
       open PulumiAws.PolicyDocument
       open Reventless.Adapter
 
-      Js.Console.log3(
-        "EventCollectorChannel_SQS: EventTopicResources for ",
-        name ++ ": ",
-        eventTopicResources,
-      )
-      Js.Console.log3("EventCollectorChannel_SQS: Resources for ", name ++ ": ", resources)
+      // Js.Console.log2(
+      //   `EventCollectorChannel_SQS: EventTopicResources  ${name}:`,
+      //   eventTopicResources,
+      // )
+      // Js.Console.log2(`EventCollectorChannel_SQS: Resources for ${name}:`, resources)
 
       let snsResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([

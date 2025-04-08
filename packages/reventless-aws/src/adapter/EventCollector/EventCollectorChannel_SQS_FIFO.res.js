@@ -38,8 +38,6 @@ function connect(name, eventTopics, channel, runtime, resources, opts) {
         var resources = param[3];
         var queueArn = param[1];
         var eventTopicResources = param[0];
-        console.log("EventCollectorChannel_SQS_FIFO: EventTopicResources for ", name + ": ", eventTopicResources);
-        console.log("EventCollectorChannel_SQS_FIFO: Resources for ", name + ": ", resources);
         var snsFifoResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.SNS_FIFO.service]);
         var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
         var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [

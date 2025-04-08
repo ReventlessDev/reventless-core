@@ -38,9 +38,7 @@ function make(name, api, fields, runtime, resources, opts) {
           lambdaRole.id,
           Adapter$Reventless.resourcesToUnwrappedOutput(resources)
         ]).apply(function (param) {
-        var resources = param[3];
-        console.log("CommandGeneratorResolvers_AppSync: Resources for ", name + ": ", resources);
-        var targetSqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
+        var targetSqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(param[3], [
               AWS$ReventlessAws.SQS.service,
               AWS$ReventlessAws.SQS_FIFO.service
             ]);

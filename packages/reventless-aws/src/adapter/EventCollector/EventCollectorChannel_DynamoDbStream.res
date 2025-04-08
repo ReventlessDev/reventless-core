@@ -28,16 +28,11 @@ let connect = (
       open PulumiAws.PolicyDocument
       open Reventless.Adapter
 
-      Js.Console.log3(
-        "EventCollectorChannel_DynamoDbStream: EventTopicResources for ",
-        name ++ ": ",
-        eventTopicResources,
-      )
-      Js.Console.log3(
-        "EventCollectorChannel_DynamoDbStream: Resources for ",
-        name ++ ": ",
-        resources,
-      )
+      // Js.Console.log3(
+      //   `EventCollectorChannel_DynamoDbStream: EventTopicResources for ${name}:`,
+      //   eventTopicResources,
+      // )
+      // Js.Console.log3(`EventCollectorChannel_DynamoDbStream: Resources for" ${name}:`, resources)
 
       let dynamoDbStreamResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
