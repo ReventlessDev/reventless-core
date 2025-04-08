@@ -1,7 +1,7 @@
 let componentType = ComponentType.CommandGenerator
 
 type arguments = {id: string}
-type meta = {ip: array<string>, user: string}
+type meta = {ip: array<string>, user: string, info: string}
 type payload = {
   command: string,
   arguments: arguments,
