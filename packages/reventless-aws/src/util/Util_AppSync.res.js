@@ -11,7 +11,7 @@ function toResource(param) {
           id: id,
           urn: param.arn,
           info: Pulumi.all([
-                  param.type_,
+                  param.type,
                   param.field
                 ]).apply(function (param) {
                 return param[0] + ("." + param[1]);
