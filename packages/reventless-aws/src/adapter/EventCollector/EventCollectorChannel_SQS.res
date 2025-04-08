@@ -226,21 +226,21 @@ let connect = (
       )
 
       let _snsTopicSubscriptions = snsResources->Array.map(snsFifoResource => {
-        Js.log2("EventCollectorChannel_SQS: subscribeToSnsTopic:", snsFifoResource)
-        let subscription = Util_SQS.subscribeToSnsTopic(
+        // Js.log3("EventCollectorChannel_SQS: subscribeToSnsTopic:", name, snsFifoResource)
+        let _subscription = Util_SQS.subscribeToSnsTopic(
           ~queue,
           ~targetName=name,
           ~sourceName=snsFifoResource.name,
           ~topic=snsFifoResource->Reventless.AdapterDeploytime.unwrappedToResource,
           ~opts,
         )
-        subscription.id->Pulumi.Output.apply(
-          id => Js.log3("EventCollectorChannel_SQS: created SNS subscription:", id, name),
-        )
+        // subscription.id->Pulumi.Output.apply(
+        //   id => Js.log3("EventCollectorChannel_SQS: created SNS subscription:", id, name),
+        // )
       })
 
       let _printWarningForEmptySnsTopic = if snsResources->Array.length == 0 {
-        Js.Console.warn2("No SNS topics are present for EventCollectorChannel ", name)
+        Js.log2("No SNS topics are present for EventCollectorChannel_SQS", name)
       }
 
       let _eventSourceMappings =

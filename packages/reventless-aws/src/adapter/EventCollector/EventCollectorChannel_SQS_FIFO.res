@@ -237,7 +237,7 @@ let connect = (
         )
 
       let _printWarningForEmptySnsTopic = if snsFifoResources->Array.length == 0 {
-        Js.Console.warn2("No SNS topics are present for EventCollectorChannel ", name)
+        Js.Console.warn2("No SNS topics are present for EventCollectorChannel_SQS_FIFO", name)
       }
 
       let _eventSourceMappings =

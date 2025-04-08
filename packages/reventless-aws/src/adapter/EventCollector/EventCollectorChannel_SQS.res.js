@@ -129,14 +129,10 @@ function connect(name, eventTopics, channel, runtime, resources, opts) {
               role: lambdaRole.id
             }, opts$1);
         snsResources.map(function (snsFifoResource) {
-              console.log("EventCollectorChannel_SQS: subscribeToSnsTopic:", snsFifoResource);
-              var subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
-              return subscription.id.apply(function (id) {
-                          console.log("EventCollectorChannel_SQS: created SNS subscription:", id, name);
-                        });
+              Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
             });
         if (snsResources.length === 0) {
-          console.warn("No SNS topics are present for EventCollectorChannel ", name);
+          console.log("No SNS topics are present for EventCollectorChannel_SQS", name);
         }
         dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
               return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts$1);

@@ -133,7 +133,7 @@ function connect(name, eventTopics, channel, runtime, resources, opts) {
               return Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
             });
         if (snsFifoResources.length === 0) {
-          console.warn("No SNS topics are present for EventCollectorChannel ", name);
+          console.warn("No SNS topics are present for EventCollectorChannel_SQS_FIFO", name);
         }
         dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
               return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts$1);
