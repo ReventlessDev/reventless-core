@@ -128,19 +128,22 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
 
   let invokeCommandGenerator = command =>
     `
-      {
-        "version": "2017-02-28",
-        "operation": "Invoke",
-        "payload": {
-            "command": "${command}",
-            "arguments": $utils.toJson($context.arguments),
-            "meta": {
-              "ip": $util.toJson($context.identity.sourceIp),
-              "user": $util.toJson($context.identity.username)
-            }
+  #set($parentTypeName = $context.info.parentTypeName)
+  #set($fieldName = $context.info.fieldName)
+  {
+    "version": "2017-02-28",
+    "operation": "Invoke",
+    "payload": {
+        "command": "${command}",
+        "arguments": $utils.toJson($context.arguments),
+        "meta": {
+          "ip": $util.toJson($context.identity.sourceIp),
+          "user": $util.toJson($context.identity.username)
+          "info": $util.toJson("$parentTypeName.$fieldName")
         }
-      }
-      `->Pulumi.Input.make
+    }
+  }
+  `->Pulumi.Input.make
 
   let resolvers = fields->Array.map(field => {
     let commandName = switch field->Js.String2.split("_") {
