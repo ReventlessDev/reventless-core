@@ -7,6 +7,12 @@ type payload = {
   arguments: arguments,
   meta: meta,
 }
+external asPayload: 'a => payload = "%identity"
+type event = {meta?: meta}
+external asEvent: 'a => event = "%identity"
+
+let metaInfo = event => (event->asEvent).meta->Option.map(({info}) => info)
+
 type commandGenerator = payload => Js.Promise.t<string>
 type eventHandler<'context> = Runtime.eventHandler<payload, 'context, string>
 

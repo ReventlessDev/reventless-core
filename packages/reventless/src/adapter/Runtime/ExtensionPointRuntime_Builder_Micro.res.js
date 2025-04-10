@@ -10,13 +10,9 @@ function Make(RuntimeEnvironment, CommandTopicChannel) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(commandTopic);
-    var handler$1 = handler.apply(function (handler) {
-          return function ($$event, context) {
-            console.log("ExtensionPointRuntime_Builder_Micro.forCommandTopic:", resource.__name, $$event, context);
-            return handler($$event, context);
-          };
-        });
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler$1, memorySize, timeout, {
+    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler.apply(function (handler) {
+                    return RuntimeEnvironment.asEventHandler(handler);
+                  }), memorySize, timeout, {
                 parent: resource
               });
   };

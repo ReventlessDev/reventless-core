@@ -17,7 +17,14 @@ function Make(Config) {
     make: EventCollectorChannel_SQS$ReventlessAws.make
   };
   var partial_arg$3 = Core_Builder$Reventless.Make;
-  var partial_arg$4 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg_asEventHandler = function (prim) {
+    return prim;
+  };
+  var partial_arg$4 = {
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    asEventHandler: partial_arg_asEventHandler
+  };
   var partial_arg$5 = PluginRuntime_Builder_Micro$Reventless.Make;
   var param = (function (param) {
         return partial_arg$5(partial_arg$4, param);

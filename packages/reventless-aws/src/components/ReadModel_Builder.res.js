@@ -16,9 +16,23 @@ function Make(Config, Spec, Mappings) {
   var partial_arg$2 = {
     make: QueryDbStorage_DynamoDb$ReventlessAws.make
   };
-  var partial_arg$3 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg_asEventHandler = function (prim) {
+    return prim;
+  };
+  var partial_arg$3 = {
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    asEventHandler: partial_arg_asEventHandler
+  };
   var partial_arg$4 = ReadModel_Builder$Reventless.Make;
-  var partial_arg$5 = RuntimeEnvironment_Lambda$ReventlessAws;
+  var partial_arg_asEventHandler$1 = function (prim) {
+    return prim;
+  };
+  var partial_arg$5 = {
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    asEventHandler: partial_arg_asEventHandler$1
+  };
   var partial_arg$6 = ReadModelRuntime_Builder_Micro$Reventless.Make;
   var param = (function (param) {
         return partial_arg$6(partial_arg$5, param);

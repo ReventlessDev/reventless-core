@@ -1,3 +1,4 @@
+type event = PulumiAws.Lambda.CallbackFunction.event
 type context = PulumiAws.Lambda.context
 type parts = Util.Lambda.runtimeParts
 
@@ -43,3 +44,16 @@ let make: Reventless.Runtime.environmentMaker<'event, context, 'result, parts> =
     ],
   }
 }
+
+let groupBySource = (event: event) => {
+  let dict: dict<event> = Js.Dict.empty()
+  event.records->Array.forEach(record => {
+    let eventSourceArn = record.eventSourceARN
+    let currentEvent = dict->Js.Dict.get(eventSourceArn)->Option.getOr({records: []})
+    dict->Js.Dict.set(eventSourceArn, {records: currentEvent.records->Array.concat([record])})
+  })
+  dict
+}
+
+external asEventHandler: 'a => Reventless.Runtime.eventHandler<event, context, 'result> =
+  "%identity"

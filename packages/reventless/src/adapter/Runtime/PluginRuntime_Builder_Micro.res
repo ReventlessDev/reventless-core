@@ -18,18 +18,18 @@ module Make = (
     eventCollector,
   ) => {
     let resource = eventCollector->Component.toPulumiResource
-    let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
-      Js.log4(
-        "PluginRuntime_Builder_Micro.forSideEffectHandlerEventCollector:",
-        resource.name,
-        event,
-        context,
-      )
-      handler(event, context)
-    })
+    // let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
+    //   Js.log4(
+    //     "PluginRuntime_Builder_Micro.forSideEffectHandlerEventCollector:",
+    //     resource.name,
+    //     event,
+    //     context,
+    //   )
+    //   handler(event, context)
+    // })
     RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(SideEffectHandler.componentType),
-      ~handler,
+      ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},
@@ -38,28 +38,33 @@ module Make = (
 
   let forPluginEventCollector = (~handler, ~memorySize=1024, ~timeout=30, eventCollector) => {
     let resource = eventCollector->Component.toPulumiResource
-    let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
-      Js.log4("PluginRuntime_Builder_Micro.forPluginEventCollector:", resource.name, event, context)
-      handler(event, context)
-    })
+    // let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
+    //   Js.log4("PluginRuntime_Builder_Micro.forPluginEventCollector:", resource.name, event, context)
+    //   handler(event, context)
+    // })
     RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
-      ~handler,
+      ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},
     )
   }
 
-  let forPluginHeartbeat = (~handler, ~memorySize=1024, ~timeout=30, heartbeat) => {
+  let forPluginHeartbeat = (
+    ~handler: Pulumi.Output.t<(unit, RuntimeEnvironment.context) => promise<'a>>,
+    ~memorySize=1024,
+    ~timeout=30,
+    heartbeat,
+  ) => {
     let resource = heartbeat->Component.toPulumiResource
-    let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
-      Js.log4("PluginRuntime_Builder_Micro.forPluginHeartbeat:", resource.name, event, context)
-      handler(event, context)
-    })
+    // let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
+    //   Js.log4("PluginRuntime_Builder_Micro.forPluginHeartbeat:", resource.name, event, context)
+    //   handler(event, context)
+    // })
     RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(Heartbeat.componentType),
-      ~handler,
+      ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},

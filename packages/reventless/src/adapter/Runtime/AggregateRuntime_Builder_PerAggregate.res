@@ -21,13 +21,59 @@ module Make = (
   let commandTopicHandlers = Js.Dict.empty()
   let eventCollectorHandlers = Js.Dict.empty()
 
-  let aggregateHandler = aggregateName => async (event, context) =>
+  let aggregateHandler = aggregateName => async (event: RuntimeEnvironment.event, context) => {
     Js.log4(
-      "AggregateRuntime_Builder_PerAggregate.aggregateHandler:",
+      "----- AggregateRuntime_Builder_PerAggregate.aggregateHandler:",
       aggregateName,
       event,
       context,
     )
+    switch event->CommandGenerator.metaInfo {
+    | Some(info) =>
+      switch commandGeneratorHandlers->Js.Dict.get(info) {
+      | Some(handler) =>
+        Js.log2(
+          "----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for commandGenerator",
+          info,
+        )
+        await handler(event->CommandGenerator.asPayload, context)
+      | None =>
+        Js.log2("AggregateRuntime_Builder_PerAggregate.aggregateHandler: no handler found:", info)
+        ""
+      }
+    | _ =>
+      let _ =
+        await event
+        ->RuntimeEnvironment.groupBySource
+        ->Dict.toArray
+        ->Array.map(async ((urn, event)) => {
+          switch commandTopicHandlers->Js.Dict.get(urn) {
+          | Some(handler) =>
+            Js.log2(
+              "----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for commandTopic",
+              urn,
+            )
+            await handler(event, context)
+          | None =>
+            switch eventCollectorHandlers->Js.Dict.get(urn) {
+            | Some(handler) =>
+              Js.log2(
+                "----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for eventCollector",
+                urn,
+              )
+              await handler(event, context)
+            | None =>
+              Js.log2(
+                "AggregateRuntime_Builder_PerAggregate.aggregateHandler: no handler found:",
+                urn,
+              )
+            }
+          }
+        })
+        ->Promise.all
+      ""
+    }
+  }
 
   let runtimeForAggregate = (~memorySize=?, ~timeout=?, aggregate: Pulumi.Resource.t) => {
     let aggregateName = aggregate.name->Option.getOr("")
@@ -54,10 +100,22 @@ module Make = (
   ) => {
     let commandGeneratorResource = commandGenerator->Component.toPulumiResource
     let commandGeneratorName = commandGeneratorResource.name->Option.getOr("Unnamed")
+    let infos =
+      (commandGenerator->Component.outputs).resources
+      ->Array.map(resource => resource.info)
+      ->Pulumi.Output.all
     switch commandGeneratorResource.parent {
     | Some(aggregate) =>
-      let aggregateName = aggregate.name->Option.getExn
-      commandGeneratorHandlers->Js.Dict.set(aggregateName, handler)
+      let _ =
+        (infos, handler)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((infos, handler)) => {
+          Js.log2(
+            `***** AggregateRuntime_Builder_ForAggregate.forCommandGenerator ${commandGeneratorName}: set handler for`,
+            infos,
+          )
+          infos->Array.map(info => commandGeneratorHandlers->Js.Dict.set(info, handler))
+        })
       aggregate->runtimeForAggregate(~memorySize, ~timeout)
     | None =>
       Js.Exn.raiseError(
@@ -77,8 +135,15 @@ module Make = (
     let commandTopicName = commandTopicResource.name->Option.getOr("Unnamed")
     switch commandTopicResource.parent {
     | Some(aggregateResource) =>
-      let aggregateName = aggregateResource.name->Option.getExn
-      commandTopicHandlers->Js.Dict.set(aggregateName, handler)
+      let _ =
+        (commandTopicResource.urn, handler)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((urn, handler)) => {
+          Js.log(
+            `***** AggregateRuntime_Builder_ForAggregate.forCommandTopic ${commandTopicName}: set handler for ${urn}`,
+          )
+          commandTopicHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
+        })
       aggregateResource->runtimeForAggregate(~memorySize, ~timeout)
     | None =>
       Js.Exn.raiseError(
@@ -98,8 +163,12 @@ module Make = (
     let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
     switch eventCollectorResource.parent {
     | Some(aggregateResource) =>
-      let aggregateName = aggregateResource.name->Option.getExn
-      eventCollectorHandlers->Js.Dict.set(aggregateName, handler)
+      let _ = eventCollectorResource.urn->Pulumi.Output.apply(urn => {
+        Js.log(
+          `***** AggregateRuntime_Builder_ForAggregate.forEventCollector ${eventCollectorName}: set handler for ${urn}`,
+        )
+        eventCollectorHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
+      })
       aggregateResource->runtimeForAggregate(~memorySize, ~timeout)
     | None =>
       Js.Exn.raiseError(

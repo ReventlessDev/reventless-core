@@ -16,7 +16,36 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
   var eventCollectorHandlers = {};
   var aggregateHandler = function (aggregateName) {
     return async function ($$event, context) {
-      console.log("AggregateRuntime_Builder_PerAggregate.aggregateHandler:", aggregateName, $$event, context);
+      console.log("----- AggregateRuntime_Builder_PerAggregate.aggregateHandler:", aggregateName, $$event, context);
+      var info = CommandGenerator$Reventless.metaInfo($$event);
+      if (info !== undefined) {
+        var handler = Js_dict.get(commandGeneratorHandlers, info);
+        if (handler !== undefined) {
+          console.log("----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for commandGenerator", info);
+          return await handler($$event, context);
+        } else {
+          console.log("AggregateRuntime_Builder_PerAggregate.aggregateHandler: no handler found:", info);
+          return "";
+        }
+      }
+      await Promise.all(Object.entries(RuntimeEnvironment.groupBySource($$event)).map(async function (param) {
+                var $$event = param[1];
+                var urn = param[0];
+                var handler = Js_dict.get(commandTopicHandlers, urn);
+                if (handler !== undefined) {
+                  console.log("----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for commandTopic", urn);
+                  return await handler($$event, context);
+                }
+                var handler$1 = Js_dict.get(eventCollectorHandlers, urn);
+                if (handler$1 !== undefined) {
+                  console.log("----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for eventCollector", urn);
+                  return await handler$1($$event, context);
+                } else {
+                  console.log("AggregateRuntime_Builder_PerAggregate.aggregateHandler: no handler found:", urn);
+                  return ;
+                }
+              }));
+      return "";
     };
   };
   var runtimeForAggregate = function (memorySize, timeout, aggregate) {
@@ -36,13 +65,26 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var commandGeneratorResource = Component$Reventless.toPulumiResource(commandGenerator);
     var commandGeneratorName = Core__Option.getOr(commandGeneratorResource.__name, "Unnamed");
+    var infos = Pulumi.all(Component$Reventless.outputs(commandGenerator).resources.map(function (resource) {
+              return resource.info;
+            }));
     var aggregate = commandGeneratorResource.__parentResource;
-    if (aggregate === undefined) {
+    if (aggregate !== undefined) {
+      Pulumi.all([
+              infos,
+              handler
+            ]).apply(function (param) {
+            var handler = param[1];
+            var infos = param[0];
+            console.log("***** AggregateRuntime_Builder_ForAggregate.forCommandGenerator " + commandGeneratorName + ": set handler for", infos);
+            return infos.map(function (info) {
+                        commandGeneratorHandlers[info] = handler;
+                      });
+          });
+      return runtimeForAggregate(memorySize, timeout, aggregate);
+    } else {
       return Js_exn.raiseError("AggregateRuntime_Builder_ForAggregate.forCommandGenerator: commandGenerator " + commandGeneratorName + " has no Aggregate parent");
     }
-    var aggregateName = Core__Option.getExn(aggregate.__name, undefined);
-    commandGeneratorHandlers[aggregateName] = handler;
-    return runtimeForAggregate(memorySize, timeout, aggregate);
   };
   var forCommandTopic = function (handler, memorySizeOpt, timeoutOpt, commandTopic) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
@@ -50,12 +92,19 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var commandTopicResource = Component$Reventless.toPulumiResource(commandTopic);
     var commandTopicName = Core__Option.getOr(commandTopicResource.__name, "Unnamed");
     var aggregateResource = commandTopicResource.__parentResource;
-    if (aggregateResource === undefined) {
+    if (aggregateResource !== undefined) {
+      Pulumi.all([
+              commandTopicResource.urn,
+              handler
+            ]).apply(function (param) {
+            var urn = param[0];
+            console.log("***** AggregateRuntime_Builder_ForAggregate.forCommandTopic " + commandTopicName + ": set handler for " + urn);
+            commandTopicHandlers[urn] = RuntimeEnvironment.asEventHandler(param[1]);
+          });
+      return runtimeForAggregate(memorySize, timeout, aggregateResource);
+    } else {
       return Js_exn.raiseError("AggregateRuntime_Builder_ForAggregate.forCommandTopic: commandTopic " + commandTopicName + " has no Aggregate parent");
     }
-    var aggregateName = Core__Option.getExn(aggregateResource.__name, undefined);
-    commandTopicHandlers[aggregateName] = handler;
-    return runtimeForAggregate(memorySize, timeout, aggregateResource);
   };
   var forEventCollector = function (handler, memorySizeOpt, timeoutOpt, eventCollector) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
@@ -63,12 +112,15 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var eventCollectorResource = Component$Reventless.toPulumiResource(eventCollector);
     var eventCollectorName = Core__Option.getOr(eventCollectorResource.__name, "Unnamed");
     var aggregateResource = eventCollectorResource.__parentResource;
-    if (aggregateResource === undefined) {
+    if (aggregateResource !== undefined) {
+      eventCollectorResource.urn.apply(function (urn) {
+            console.log("***** AggregateRuntime_Builder_ForAggregate.forEventCollector " + eventCollectorName + ": set handler for " + urn);
+            eventCollectorHandlers[urn] = RuntimeEnvironment.asEventHandler(handler);
+          });
+      return runtimeForAggregate(memorySize, timeout, aggregateResource);
+    } else {
       return Js_exn.raiseError("AggregateRuntime_Builder_ForAggregate.forEventCollector: eventCollector " + eventCollectorName + " has no Aggregate parent");
     }
-    var aggregateName = Core__Option.getExn(aggregateResource.__name, undefined);
-    eventCollectorHandlers[aggregateName] = handler;
-    return runtimeForAggregate(memorySize, timeout, aggregateResource);
   };
   return {
           CommandTopicChannel: CommandTopicChannel,

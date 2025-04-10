@@ -21,11 +21,27 @@ var partial_arg$3 = {
   make: EventCollectorChannel_SQS$ReventlessAws.make
 };
 
-var partial_arg$4 = RuntimeEnvironment_Lambda$ReventlessAws;
+function partial_arg_asEventHandler(prim) {
+  return prim;
+}
+
+var partial_arg$4 = {
+  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  asEventHandler: partial_arg_asEventHandler
+};
 
 var partial_arg$5 = Plugin_Builder$Reventless.Make;
 
-var partial_arg$6 = RuntimeEnvironment_Lambda$ReventlessAws;
+function partial_arg_asEventHandler$1(prim) {
+  return prim;
+}
+
+var partial_arg$6 = {
+  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  asEventHandler: partial_arg_asEventHandler$1
+};
 
 var partial_arg$7 = PluginRuntime_Builder_Micro$Reventless.Make;
 

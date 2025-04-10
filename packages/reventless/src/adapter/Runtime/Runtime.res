@@ -14,9 +14,12 @@ type environmentMaker<'event, 'context, 'result, 'parts> = (
 ) => environment<'parts>
 
 module type Environment = {
+  type event
   type context
   type parts
-  let make: environmentMaker<'event, context, 'result, parts>
+  let make: environmentMaker<event, context, 'result, parts>
+  let groupBySource: event => dict<event>
+  let asEventHandler: 'a => eventHandler<event,context,'result>
 }
 
 type forComponent<'handler, 'parts, 'component> = (

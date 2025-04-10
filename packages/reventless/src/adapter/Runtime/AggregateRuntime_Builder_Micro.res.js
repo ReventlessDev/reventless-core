@@ -12,13 +12,9 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(commandGenerator);
-    var handler$1 = handler.apply(function (handler) {
-          return function (payload, context) {
-            console.log("AggregateRuntime_Builder_Micro.forCommandGenerator:", resource.__name, payload, context);
-            return handler(payload, context);
-          };
-        });
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandGenerator$Reventless.componentType), handler$1, memorySize, timeout, {
+    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandGenerator$Reventless.componentType), handler.apply(function (handler) {
+                    return RuntimeEnvironment.asEventHandler(handler);
+                  }), memorySize, timeout, {
                 parent: resource
               });
   };
@@ -26,13 +22,9 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(commandTopic);
-    var handler$1 = handler.apply(function (handler) {
-          return function ($$event, context) {
-            console.log("AggregateRuntime_Builder_Micro.forCommandTopic:", resource.__name, $$event, context);
-            return handler($$event, context);
-          };
-        });
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler$1, memorySize, timeout, {
+    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler.apply(function (handler) {
+                    return RuntimeEnvironment.asEventHandler(handler);
+                  }), memorySize, timeout, {
                 parent: resource
               });
   };
@@ -40,13 +32,9 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(eventCollector);
-    var handler$1 = handler.apply(function (handler) {
-          return function ($$event, context) {
-            console.log("AggregateRuntime_Builder_Micro.forEventCollector:", resource.__name, $$event, context);
-            return handler($$event, context);
-          };
-        });
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType), handler$1, memorySize, timeout, {
+    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType), handler.apply(function (handler) {
+                    return RuntimeEnvironment.asEventHandler(handler);
+                  }), memorySize, timeout, {
                 parent: resource
               });
   };
