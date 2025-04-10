@@ -93,9 +93,24 @@ module Make = (
   }
 
   let forCommandGenerator = (
-    ~handler: Pulumi.Output.t<CommandGenerator.eventHandler<context>>,
+    ~handler as _: Pulumi.Output.t<CommandGenerator.eventHandler<context>>,
     ~memorySize=1024,
     ~timeout=30,
+    commandGenerator: CommandGenerator.component,
+  ) => {
+    let commandGeneratorResource = commandGenerator->Component.toPulumiResource
+    let commandGeneratorName = commandGeneratorResource.name->Option.getOr("Unnamed")
+    switch commandGeneratorResource.parent {
+    | Some(aggregate) => aggregate->runtimeForAggregate(~memorySize, ~timeout)
+    | None =>
+      Js.Exn.raiseError(
+        `AggregateRuntime_Builder_ForAggregate.forCommandGenerator: commandGenerator ${commandGeneratorName} has no Aggregate parent`,
+      )
+    }
+  }
+
+  let registerCommandGeneratorHandler = (
+    ~handler: Pulumi.Output.t<CommandGenerator.eventHandler<context>>,
     commandGenerator: CommandGenerator.component,
   ) => {
     let commandGeneratorResource = commandGenerator->Component.toPulumiResource
@@ -104,25 +119,18 @@ module Make = (
       (commandGenerator->Component.outputs).resources
       ->Array.map(resource => resource.info)
       ->Pulumi.Output.all
-    switch commandGeneratorResource.parent {
-    | Some(aggregate) =>
-      let _ =
-        (infos, handler)
-        ->Pulumi.Output.all2
-        ->Pulumi.Output.apply(((infos, handler)) => {
-          Js.log2(
-            `***** AggregateRuntime_Builder_ForAggregate.forCommandGenerator ${commandGeneratorName}: set handler for`,
-            infos,
-          )
-          infos->Array.map(info => commandGeneratorHandlers->Js.Dict.set(info, handler))
-        })
-      aggregate->runtimeForAggregate(~memorySize, ~timeout)
-    | None =>
-      Js.Exn.raiseError(
-        `AggregateRuntime_Builder_ForAggregate.forCommandGenerator: commandGenerator ${commandGeneratorName} has no Aggregate parent`,
-      )
-    }
+    let _ =
+      (infos, handler)
+      ->Pulumi.Output.all2
+      ->Pulumi.Output.apply(((infos, handler)) => {
+        Js.log2(
+          `***** AggregateRuntime_Builder_ForAggregate.forCommandGenerator ${commandGeneratorName}: set handler for`,
+          infos,
+        )
+        infos->Array.map(info => commandGeneratorHandlers->Js.Dict.set(info, handler))
+      })
   }
+
   let forCommandTopic = (
     ~handler: Pulumi.Output.t<
       Runtime.eventHandler<CommandTopicChannel.callbackEvent, context, unit>,

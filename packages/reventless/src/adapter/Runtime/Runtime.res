@@ -19,7 +19,7 @@ module type Environment = {
   type parts
   let make: environmentMaker<event, context, 'result, parts>
   let groupBySource: event => dict<event>
-  let asEventHandler: 'a => eventHandler<event,context,'result>
+  let asEventHandler: 'a => eventHandler<event, context, 'result>
 }
 
 type forComponent<'handler, 'parts, 'component> = (
@@ -28,3 +28,7 @@ type forComponent<'handler, 'parts, 'component> = (
   ~timeout: int=?,
   'component,
 ) => environment<'parts>
+type registerComponentHandler<'handler, 'component> = (
+  ~handler: Pulumi.Output.t<'handler>,
+  'component,
+) => unit

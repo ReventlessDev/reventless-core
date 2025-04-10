@@ -38,6 +38,11 @@ module Make = (
       ~opts={Pulumi.ComponentResource.parent: resource},
     )
   }
+  let registerCommandGeneratorHandler = (
+    ~handler as _: Pulumi.Output.t<CommandGenerator.eventHandler<context>>,
+    _commandGenerator: CommandGenerator.component,
+  ) => ()
+
   let forCommandTopic = (
     ~handler: Pulumi.Output.t<
       Runtime.eventHandler<CommandTopicChannel.callbackEvent, context, unit>,

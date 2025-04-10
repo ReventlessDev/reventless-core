@@ -111,6 +111,9 @@ module Make = (
           )
         let resources = (commandTopic->Component.outputs).resources
         SpecificCommandGenerator.connect(~name, ~commandGenerator, ~runtime, ~resources, ~opts)
+        commandGenerator->AggregateRuntimeBuilder.registerCommandGeneratorHandler(
+          ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
+        )
         commandGenerator->Component.outputs
       })
     )

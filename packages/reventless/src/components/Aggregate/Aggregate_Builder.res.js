@@ -75,6 +75,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
         });
     var commandGenerator = Output$Pulumi.flatMap(commandTopic, (function (commandTopic) {
             return Component$Reventless.operations(commandTopic).apply(function (param) {
+                        var publishJsons = param.publishJsons;
                         var partial_arg = CommandGenerator_Builder$Reventless.Make;
                         var partial_arg$1 = function (param, param$1) {
                           return partial_arg(Config, Spec, param, param$1);
@@ -85,9 +86,10 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                         var opts$1 = {
                           parent: opts_parent
                         };
-                        var runtime = AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(param.publishJsons), undefined, undefined, commandGenerator);
+                        var runtime = AggregateRuntimeBuilder.forCommandGenerator(SpecificCommandGenerator.makeHandler(publishJsons), undefined, undefined, commandGenerator);
                         var resources = Component$Reventless.outputs(commandTopic).resources;
                         SpecificCommandGenerator.connect(name$1, commandGenerator, runtime, resources, opts$1);
+                        AggregateRuntimeBuilder.registerCommandGeneratorHandler(SpecificCommandGenerator.makeHandler(publishJsons), commandGenerator);
                         return Component$Reventless.outputs(commandGenerator);
                       });
           }));

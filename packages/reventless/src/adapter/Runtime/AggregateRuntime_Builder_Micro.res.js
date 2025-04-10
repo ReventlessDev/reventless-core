@@ -18,6 +18,9 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
                 parent: resource
               });
   };
+  var registerCommandGeneratorHandler = function (param, _commandGenerator) {
+    
+  };
   var forCommandTopic = function (handler, memorySizeOpt, timeoutOpt, commandTopic) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
@@ -42,6 +45,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
           CommandTopicChannel: CommandTopicChannel,
           EventCollectorChannel: EventCollectorChannel,
           forCommandGenerator: forCommandGenerator,
+          registerCommandGeneratorHandler: registerCommandGeneratorHandler,
           forCommandTopic: forCommandTopic,
           forEventCollector: forEventCollector
         };

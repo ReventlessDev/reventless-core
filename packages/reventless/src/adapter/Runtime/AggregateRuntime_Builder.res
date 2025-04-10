@@ -9,6 +9,10 @@ module type T = {
     runtimeParts,
     CommandGenerator.component,
   >
+  let registerCommandGeneratorHandler: Runtime.registerComponentHandler<
+    CommandGenerator.eventHandler<context>,
+    CommandGenerator.component,
+  >
   let forCommandTopic: Runtime.forComponent<
     Runtime.eventHandler<CommandTopicChannel.callbackEvent, context, unit>,
     runtimeParts,

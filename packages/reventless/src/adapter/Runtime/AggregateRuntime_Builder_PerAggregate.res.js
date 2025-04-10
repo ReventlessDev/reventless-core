@@ -60,31 +60,35 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     aggregateRuntimes[aggregateName] = runtime$1;
     return runtime$1;
   };
-  var forCommandGenerator = function (handler, memorySizeOpt, timeoutOpt, commandGenerator) {
+  var forCommandGenerator = function (param, memorySizeOpt, timeoutOpt, commandGenerator) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
+    var commandGeneratorResource = Component$Reventless.toPulumiResource(commandGenerator);
+    var commandGeneratorName = Core__Option.getOr(commandGeneratorResource.__name, "Unnamed");
+    var aggregate = commandGeneratorResource.__parentResource;
+    if (aggregate !== undefined) {
+      return runtimeForAggregate(memorySize, timeout, aggregate);
+    } else {
+      return Js_exn.raiseError("AggregateRuntime_Builder_ForAggregate.forCommandGenerator: commandGenerator " + commandGeneratorName + " has no Aggregate parent");
+    }
+  };
+  var registerCommandGeneratorHandler = function (handler, commandGenerator) {
     var commandGeneratorResource = Component$Reventless.toPulumiResource(commandGenerator);
     var commandGeneratorName = Core__Option.getOr(commandGeneratorResource.__name, "Unnamed");
     var infos = Pulumi.all(Component$Reventless.outputs(commandGenerator).resources.map(function (resource) {
               return resource.info;
             }));
-    var aggregate = commandGeneratorResource.__parentResource;
-    if (aggregate !== undefined) {
-      Pulumi.all([
-              infos,
-              handler
-            ]).apply(function (param) {
-            var handler = param[1];
-            var infos = param[0];
-            console.log("***** AggregateRuntime_Builder_ForAggregate.forCommandGenerator " + commandGeneratorName + ": set handler for", infos);
-            return infos.map(function (info) {
-                        commandGeneratorHandlers[info] = handler;
-                      });
-          });
-      return runtimeForAggregate(memorySize, timeout, aggregate);
-    } else {
-      return Js_exn.raiseError("AggregateRuntime_Builder_ForAggregate.forCommandGenerator: commandGenerator " + commandGeneratorName + " has no Aggregate parent");
-    }
+    Pulumi.all([
+            infos,
+            handler
+          ]).apply(function (param) {
+          var handler = param[1];
+          var infos = param[0];
+          console.log("***** AggregateRuntime_Builder_ForAggregate.forCommandGenerator " + commandGeneratorName + ": set handler for", infos);
+          return infos.map(function (info) {
+                      commandGeneratorHandlers[info] = handler;
+                    });
+        });
   };
   var forCommandTopic = function (handler, memorySizeOpt, timeoutOpt, commandTopic) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
@@ -126,6 +130,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
           CommandTopicChannel: CommandTopicChannel,
           EventCollectorChannel: EventCollectorChannel,
           forCommandGenerator: forCommandGenerator,
+          registerCommandGeneratorHandler: registerCommandGeneratorHandler,
           forCommandTopic: forCommandTopic,
           forEventCollector: forEventCollector
         };
