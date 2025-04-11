@@ -32,7 +32,7 @@ const npmPackages = ['npm-bundled', 'npm-install-checks', 'npm-normalize-package
 //IncludePrecompiledModules are ones that are required for applications and therefore are not in reventless. 
 const options = {
   sourcePackageName: '@reventless/reventless-aws',
-  sourcePackageVersion: '2.0.3-policies.67',
+  sourcePackageVersion: '2.0.3-policies.73',
   pathToLayerData,
   pathToSavedDependencies,
   pathToPrecompiled,
