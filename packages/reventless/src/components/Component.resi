@@ -11,6 +11,7 @@ let setOperations: (t<'component, 'outputs, 'operations>, Pulumi.Output.t<'opera
 let operations: t<'component, 'outputs, 'operations> => Pulumi.Output.t<'operations>
 
 let toPulumiResource: t<'component, 'outputs, 'operations> => Pulumi.Resource.t
+let fromPulumiResource: Pulumi.Resource.t => t<'component, 'outputs, 'operations>
 
 let make: (
   ~componentType: string,

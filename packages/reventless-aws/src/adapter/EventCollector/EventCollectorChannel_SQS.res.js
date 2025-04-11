@@ -143,7 +143,7 @@ function connect(name, eventTopics, channel, runtime, resources, opts) {
                   }))];
 }
 
-function make(name, opts) {
+function make(name, eventTopics, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = new (Aws.sqs.Queue)(name, {
         redrivePolicy: Util_DeadLetterQueue$ReventlessAws.queue.arn.apply(function (dlqArn) {
@@ -163,11 +163,14 @@ function make(name, opts) {
                 return EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbOrSqsEvent(runtimeQueue, handleEvents);
               });
   };
+  var eventTopicResources = Js_dict.values(eventTopics).map(function (outputs) {
+        return outputs.resources[0];
+      });
   return {
           parts: {
             queue: queue
           },
-          resources: [Util_SQS$ReventlessAws.toResource(queue)],
+          resources: eventTopicResources.concat([Util_SQS$ReventlessAws.toResource(queue)]),
           enqueueEvent: enqueueEvent,
           handleChannelEvent: handleChannelEvent,
           connect: connect

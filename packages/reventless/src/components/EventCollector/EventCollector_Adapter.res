@@ -31,6 +31,7 @@ external channel: EventCollector.component => channel<
 
 type channelMaker<'callbackEvent, 'context, 'channelParts, 'runtimeParts> = (
   ~name: string,
+  ~eventTopics: EventTopic.allOutputs,
   ~opts: Pulumi.ComponentResource.options,
 ) => channel<'callbackEvent, 'context, 'channelParts, 'runtimeParts>
 

@@ -110,7 +110,7 @@ function Make(Config, EventCollectorChannel, QueryEngineAdapter, ClonerRunner, C
                       resources
                     ]).apply(function (param) {
                     var CoreEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
-                    var eventCollector = CoreEventCollector.make(name, opts);
+                    var eventCollector = CoreEventCollector.make(name, eventTopics, opts);
                     var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                     var opts_parent = Component$Reventless.toPulumiResource(eventCollector);
                     var opts$1 = {

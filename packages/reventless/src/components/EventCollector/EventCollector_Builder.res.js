@@ -6,24 +6,6 @@ var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventCollector$Reventless = require("./EventCollector.res.js");
 
 function Make(Channel) {
-  var construct = function (self, name) {
-    var opts_parent = Component$Reventless.toPulumiResource(self);
-    var opts = {
-      parent: opts_parent
-    };
-    var name$1 = ComponentType$Reventless.name(name, EventCollector$Reventless.componentType);
-    var channel = Channel.make(name$1, opts);
-    self.channel = channel;
-    Component$Reventless.setOperations(self, channel.enqueueEvent.apply(function (enqueueEvent) {
-              return {
-                      enqueueEvent: enqueueEvent
-                    };
-            }));
-    return Component$Reventless.setOutputs(self, {
-                name: name$1,
-                resources: channel.resources
-              });
-  };
   var connect = function (name, eventTopics, eventCollector, runtime, resources, opts) {
     var name$1 = ComponentType$Reventless.name(name, EventCollector$Reventless.componentType);
     var channel = eventCollector.channel;
@@ -33,8 +15,25 @@ function Make(Channel) {
     var channel = eventCollector.channel;
     return channel.handleChannelEvent(eventsHandler);
   };
-  var make = function (name, opts) {
-    return Component$Reventless.make(ComponentType$Reventless.toString(EventCollector$Reventless.componentType), name, construct, opts);
+  var make = function (name, eventTopics, opts) {
+    return Component$Reventless.make(ComponentType$Reventless.toString(EventCollector$Reventless.componentType), name, (function (extra, extra$1) {
+                  var opts_parent = Component$Reventless.toPulumiResource(extra);
+                  var opts = {
+                    parent: opts_parent
+                  };
+                  var name = ComponentType$Reventless.name(extra$1, EventCollector$Reventless.componentType);
+                  var channel = Channel.make(name, eventTopics, opts);
+                  extra.channel = channel;
+                  Component$Reventless.setOperations(extra, channel.enqueueEvent.apply(function (enqueueEvent) {
+                            return {
+                                    enqueueEvent: enqueueEvent
+                                  };
+                          }));
+                  return Component$Reventless.setOutputs(extra, {
+                              name: name,
+                              resources: channel.resources
+                            });
+                }), opts);
   };
   return {
           connect: connect,

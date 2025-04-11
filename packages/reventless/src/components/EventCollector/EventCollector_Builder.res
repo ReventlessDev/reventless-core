@@ -3,11 +3,11 @@ module Make = (Channel: EventCollector_Adapter.Channel): (
 ) => {
   type callbackEvent = Channel.callbackEvent
 
-  let construct = (self, name) => {
+  let construct = (~eventTopics, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
     let name = name->ComponentType.name(EventCollector.componentType)
 
-    let channel = Channel.make(~name, ~opts)
+    let channel = Channel.make(~name, ~eventTopics, ~opts)
     self->EventCollector_Adapter.setChannel(channel)
 
     self->Component.setOperations(
@@ -49,11 +49,11 @@ module Make = (Channel: EventCollector_Adapter.Channel): (
     channel.handleChannelEvent(eventsHandler)
   }
 
-  let make = (~name, ~opts): EventCollector.component =>
+  let make = (~name, ~eventTopics, ~opts): EventCollector.component =>
     Component.make(
       ~componentType=EventCollector.componentType->ComponentType.toString,
       ~name,
-      ~construct,
-      ~opts=Some(opts),
+      ~construct=construct(~eventTopics, ...),
+      ~opts=Some(opts)
     )
 }

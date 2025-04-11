@@ -81,7 +81,7 @@ module Make = (
     | Some(runtime) => runtime
     | None =>
       let runtime = RuntimeEnvironment.make(
-        ~name=aggregateName->ComponentType.name(CommandGenerator.componentType),
+        ~name=aggregateName->ComponentType.name(Aggregate.componentType),
         ~handler=aggregateHandler(aggregateName)->Pulumi.Output.make,
         ~memorySize?,
         ~timeout?,
@@ -124,7 +124,7 @@ module Make = (
       ->Pulumi.Output.all2
       ->Pulumi.Output.apply(((infos, handler)) => {
         Js.log2(
-          `***** AggregateRuntime_Builder_ForAggregate.forCommandGenerator ${commandGeneratorName}: set handler for`,
+          `***** AggregateRuntime_Builder_ForAggregate.registerCommandGeneratorHandler ${commandGeneratorName}: set handler for`,
           infos,
         )
         infos->Array.map(info => commandGeneratorHandlers->Js.Dict.set(info, handler))
@@ -143,8 +143,9 @@ module Make = (
     let commandTopicName = commandTopicResource.name->Option.getOr("Unnamed")
     switch commandTopicResource.parent {
     | Some(aggregateResource) =>
+      let urn = ((commandTopic->Component.outputs).resources->Array.getUnsafe(0)).urn
       let _ =
-        (commandTopicResource.urn, handler)
+        (urn, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urn, handler)) => {
           Js.log(
@@ -171,12 +172,22 @@ module Make = (
     let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
     switch eventCollectorResource.parent {
     | Some(aggregateResource) =>
-      let _ = eventCollectorResource.urn->Pulumi.Output.apply(urn => {
-        Js.log(
-          `***** AggregateRuntime_Builder_ForAggregate.forEventCollector ${eventCollectorName}: set handler for ${urn}`,
-        )
-        eventCollectorHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
-      })
+      let urns =
+        (eventCollector->Component.outputs).resources
+        ->Array.map(({urn}) => urn)
+        ->Pulumi.Output.all
+      let _ =
+        (urns, handler)
+        ->Pulumi.Output.all2
+        ->Pulumi.Output.apply(((urns, handler)) => {
+          Js.log2(
+            `***** AggregateRuntime_Builder_ForAggregate.forEventCollector ${eventCollectorName}: set handler for`,
+            urns,
+          )
+          urns->Array.map(urn =>
+            eventCollectorHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
+          )
+        })
       aggregateResource->runtimeForAggregate(~memorySize, ~timeout)
     | None =>
       Js.Exn.raiseError(

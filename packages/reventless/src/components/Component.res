@@ -16,6 +16,7 @@ external operations: t<'component, 'outputs, 'operations> => Pulumi.Output.t<'op
   "operations"
 
 external toPulumiResource: t<'component, 'outputs, 'operations> => Pulumi.Resource.t = "%identity"
+external fromPulumiResource: Pulumi.Resource.t => t<'component, 'outputs, 'operations> = "%identity"
 
 type constructed
 

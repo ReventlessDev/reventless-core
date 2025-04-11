@@ -54,7 +54,8 @@ function Make(Target, SpecificEventCollector, Mappings, AggregateRuntimeBuilder)
                               
                             })));
                   var eventCollector = match[0].apply(function (param) {
-                        var eventCollector = SpecificEventCollector.make(name, opts);
+                        var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
+                        var eventCollector = SpecificEventCollector.make(name, eventTopics, opts);
                         var opts_parent = Component$Reventless.toPulumiResource(eventCollector);
                         var opts$1 = {
                           parent: opts_parent
@@ -67,7 +68,6 @@ function Make(Target, SpecificEventCollector, Mappings, AggregateRuntimeBuilder)
                             });
                         var handler = SpecificEventCollector.makeHandler(eventCollector, EventCollectorHandler.handleJsonEvents);
                         var runtime = AggregateRuntimeBuilder.forEventCollector(handler, memorySize, timeout, eventCollector);
-                        var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
                         return Component$Reventless.outputs((SpecificEventCollector.connect(name, eventTopics, eventCollector, runtime, resources, opts$1), eventCollector));
                       });
                   return Component$Reventless.setOutputs(extra, {

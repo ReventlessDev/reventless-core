@@ -95,7 +95,10 @@ function connect(name, eventTopics, param, runtime, resources, opts) {
   return [];
 }
 
-function make(param, param$1) {
+function make(param, eventTopics, param$1) {
+  var eventTopicResources = Js_dict.values(eventTopics).map(function (outputs) {
+        return outputs.resources[0];
+      });
   var enqueueEventNotSupported = function (delay, id, messageBody) {
     return Promise.resolve((console.log("EventCollectorChannel_DynamoDbStream-ReventlessAws" + " supports no enqueueEvent:", delay, id, messageBody), undefined));
   };
@@ -104,7 +107,7 @@ function make(param, param$1) {
   };
   return {
           parts: undefined,
-          resources: [],
+          resources: eventTopicResources,
           enqueueEvent: Pulumi.output(enqueueEventNotSupported),
           handleChannelEvent: handleChannelEvent,
           connect: connect

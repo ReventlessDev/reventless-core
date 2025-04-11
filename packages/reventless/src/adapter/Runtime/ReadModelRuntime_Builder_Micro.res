@@ -18,7 +18,7 @@ module Make = (
     //   handler(event, context)
     // })
     RuntimeEnvironment.make(
-      ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
+      ~name=resource.name->Option.getOr("UnnamedReadModel"),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,

@@ -15,7 +15,6 @@ var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector/EventCollector.res.js");
-var Util_SQS_FIFO$ReventlessAws = require("../../util/Util_SQS_FIFO.res.js");
 var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
 var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
@@ -144,7 +143,7 @@ function connect(name, eventTopics, channel, runtime, resources, opts) {
                   }))];
 }
 
-function make(name, opts) {
+function make(name, eventTopics, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var queue = new (Aws.sqs.Queue)(name, {
         contentBasedDeduplication: true,
@@ -168,11 +167,14 @@ function make(name, opts) {
                 return EventCollectorChannel_SQS_Runtime$ReventlessAws.handleDynamoDbOrSqsEvent(runtimeQueue, handleEvents);
               });
   };
+  var eventTopicResources = Js_dict.values(eventTopics).map(function (outputs) {
+        return outputs.resources[0];
+      });
   return {
           parts: {
             queue: queue
           },
-          resources: [Util_SQS_FIFO$ReventlessAws.toResource(queue)],
+          resources: eventTopicResources.concat([Util_SQS$ReventlessAws.toResource(queue)]),
           enqueueEvent: enqueueEvent,
           handleChannelEvent: handleChannelEvent,
           connect: connect

@@ -178,7 +178,12 @@ let make: Reventless.EventCollector_Adapter.channelMaker<
   'context,
   unit,
   runtimeParts,
-> = (~name as _, ~opts as _) => {
+> = (~name as _, ~eventTopics, ~opts as _) => {
+  let eventTopicResources =
+    eventTopics
+    ->Js.Dict.values
+    ->Array.map(outputs => outputs.resources->Array.getUnsafe(0)) // FIXME
+
   let enqueueEventNotSupported = (delay, id, messageBody) =>
     // TODO: can we check this at deploy time ?
     Js.log4(__MODULE__ ++ " supports no enqueueEvent:", delay, id, messageBody)->Js.Promise.resolve
@@ -188,7 +193,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<
 
   {
     Reventless.EventCollector_Adapter.parts: (),
-    resources: [],
+    resources: eventTopicResources,
     enqueueEvent: enqueueEventNotSupported->Pulumi.Output.make,
     connect,
     handleChannelEvent,

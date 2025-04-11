@@ -62,7 +62,8 @@ module Make = (
 
     let eventCollector = counterOperations->Pulumi.Output.apply(({count, addToCounterTarget}) =>
       {
-        let eventCollector = SpecificEventCollector.make(~name, ~opts)
+        let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
+        let eventCollector = SpecificEventCollector.make(~name, ~eventTopics, ~opts)
         let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
         module EventCollectorHandler = EventMapper_Callback.MakeEventCollectorHandler({
@@ -77,8 +78,6 @@ module Make = (
         )
         let runtime =
           eventCollector->AggregateRuntimeBuilder.forEventCollector(~handler, ~memorySize, ~timeout)
-
-        let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
 
         SpecificEventCollector.connect(
           ~name,

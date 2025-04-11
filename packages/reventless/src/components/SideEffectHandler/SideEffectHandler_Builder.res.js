@@ -26,7 +26,8 @@ function Make(RuntimeEnvironment, EventCollectorChannel, SpecificEventCollector,
                   var aggregateNames = Belt_SetString.fromArray(sideEffects.map(function (SideEffect) {
                             return SideEffect.Source.name;
                           }));
-                  var eventCollector = SpecificEventCollector.make(extra$1, opts);
+                  var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
+                  var eventCollector = SpecificEventCollector.make(extra$1, eventTopics, opts);
                   var opts_parent$1 = Component$Reventless.toPulumiResource(eventCollector);
                   var opts$1 = {
                     parent: opts_parent$1
@@ -38,7 +39,6 @@ function Make(RuntimeEnvironment, EventCollectorChannel, SpecificEventCollector,
                   var handler = SpecificEventCollector.makeHandler(eventCollector, Callback.eventsHandler);
                   var runtime = PluginRuntimeBuilder.forSideEffectHandlerEventCollector(handler, memorySize, timeout, eventCollector);
                   allCommandTopics.apply(function (allCommandTopics) {
-                        var eventTopics = EventTopic$Reventless.filter(allEventTopics, aggregateNames);
                         var commandTopics = Core__Option.getOr(Core__Option.map(targets, (function (targets) {
                                     return Object.values(CommandTopic$Reventless.filter(allCommandTopics, new Set(targets)));
                                   })), []);

@@ -129,7 +129,7 @@ module Make = (
           ->Pulumi.Output.all2
           ->Pulumi.Output.apply(((extensionPointsOutgoingEventHandlers, resources)) => {
             module CoreEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
-            let eventCollector = CoreEventCollector.make(~name, ~opts)
+            let eventCollector = CoreEventCollector.make(~name, ~eventTopics, ~opts)
             let eventCollectorOutputs = eventCollector->Component.outputs
             let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 

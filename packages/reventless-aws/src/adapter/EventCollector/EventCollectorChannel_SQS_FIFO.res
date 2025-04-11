@@ -269,7 +269,7 @@ let make: Reventless.EventCollector_Adapter.channelMaker<
   'context,
   channelParts,
   runtimeParts,
-> = (~name, ~opts) => {
+> = (~name, ~eventTopics, ~opts) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
   let queue = PulumiAws.SQS.Queue.make(
@@ -305,9 +305,14 @@ let make: Reventless.EventCollector_Adapter.channelMaker<
       runtimeQueue->(EventCollectorChannel_SQS_Runtime.handleDynamoDbOrSqsEvent(handleEvents, ...))
     )
 
+  let eventTopicResources =
+    eventTopics
+    ->Js.Dict.values
+    ->Array.map(outputs => outputs.resources->Array.getUnsafe(0)) // FIXME
+
   {
     Reventless.EventCollector_Adapter.parts: {queue: queue},
-    resources: [queue->Util_SQS_FIFO.toResource],
+    resources: eventTopicResources->Array.concat([queue->Util_SQS.toResource]),
     enqueueEvent,
     connect,
     handleChannelEvent,

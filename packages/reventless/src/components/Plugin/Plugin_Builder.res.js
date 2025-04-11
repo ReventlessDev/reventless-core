@@ -211,9 +211,19 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                       extensionPointName: extensionOutputs.extensionPointName
                                     };
                             });
+                        var collectAggregateNames = function (ex) {
+                          return Belt_SetString.remove(Belt_SetString.fromArray(ex), ExtensionMapping$ReventlessSpec.NoAggregate.name);
+                        };
+                        var extensionPointAggregateNames = collectAggregateNames(extensionPointsOutputs.flatMap(function (ex) {
+                                  return ex.aggregateNames;
+                                }));
+                        var extensionAggregateNames = collectAggregateNames(extensionsOutputs.flatMap(function (ex) {
+                                  return ex.aggregateNames;
+                                }));
+                        var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
                         var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
                         var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
-                        var eventCollector = PluginEventCollector.make(childName, opts);
+                        var eventCollector = PluginEventCollector.make(childName, eventTopics, opts);
                         var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                         var eventCollectorUrn = eventCollectorOutputs.resources[0].urn;
                         var match$2 = Output$Pulumi.unzip3(Pulumi.all([
@@ -257,16 +267,6 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         var resolvers = QueryDb$Reventless.allResolversMakers(allQueryDbs).map(function (resolverMaker) {
                                 return resolverMaker(allQueryDbs);
                               }).flat();
-                        var collectAggregateNames = function (ex) {
-                          return Belt_SetString.remove(Belt_SetString.fromArray(ex), ExtensionMapping$ReventlessSpec.NoAggregate.name);
-                        };
-                        var extensionPointAggregateNames = collectAggregateNames(extensionPointsOutputs.flatMap(function (ex) {
-                                  return ex.aggregateNames;
-                                }));
-                        var extensionAggregateNames = collectAggregateNames(extensionsOutputs.flatMap(function (ex) {
-                                  return ex.aggregateNames;
-                                }));
-                        var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
                         eventTopics[PluginExtensionPointSpec$ReventlessSpec.name] = {
                           resources: corePluginExtensionPointUnwrapped.eventTopic.resources.map(AdapterDeploytime$Reventless.unwrappedToResource)
                         };

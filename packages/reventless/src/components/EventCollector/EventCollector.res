@@ -30,5 +30,9 @@ module type T = {
     ~eventsHandler: jsonEventsHandler,
   ) => Pulumi.Output.t<Runtime.eventHandler<callbackEvent, 'context, unit>>
 
-  let make: (~name: string, ~opts: Pulumi.ComponentResource.options) => component
+  let make: (
+    ~name: string,
+    ~eventTopics: EventTopic.allOutputs,
+    ~opts: Pulumi.ComponentResource.options,
+  ) => component
 }

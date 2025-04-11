@@ -51,7 +51,8 @@ module Make = (
       queryDb
       ->Component.operations
       ->Pulumi.Output.apply(operations => {
-        let eventCollector = SpecificEventCollector.make(~name, ~opts)
+        let eventTopics = allEventTopics->EventTopic.filter(sourceNames)
+        let eventCollector = SpecificEventCollector.make(~name, ~eventTopics, ~opts)
         let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
         module Callback = ReadModel_Callback.Make(
@@ -68,7 +69,6 @@ module Make = (
         )
         let runtime = eventCollector->ReadModelRuntimeBuilder.forEventCollector(~handler)
 
-        let eventTopics = allEventTopics->EventTopic.filter(sourceNames)
         let resources = (queryDb->Component.outputs).resources
 
         SpecificEventCollector.connect(

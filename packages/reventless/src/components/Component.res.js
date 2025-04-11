@@ -38,6 +38,10 @@ function toPulumiResource(prim) {
   return prim;
 }
 
+function fromPulumiResource(prim) {
+  return prim;
+}
+
 exports.registerOutputs = registerOutputs;
 exports.setOutputs = setOutputs;
 exports.outputs = outputs;
@@ -45,5 +49,6 @@ exports.wrappedOutputs = wrappedOutputs;
 exports.setOperations = setOperations;
 exports.operations = operations;
 exports.toPulumiResource = toPulumiResource;
+exports.fromPulumiResource = fromPulumiResource;
 exports.make = make;
 /* ./Component Not a pure module */

@@ -279,9 +279,31 @@ module Make = (
           extensionPointName: extensionOutputs.extensionPointName,
         })
 
+        module Set = Belt.Set.String
+
+        let collectAggregateNames = ex =>
+          ex
+          ->Set.fromArray
+          ->Set.remove(ReventlessSpec.ExtensionMapping.NoAggregate.name)
+
+        let extensionPointAggregateNames =
+          extensionPointsOutputs
+          ->Array.flatMap(ex => ex.aggregateNames)
+          ->collectAggregateNames
+
+        let extensionAggregateNames =
+          extensionsOutputs
+          ->Array.flatMap(ex => ex.aggregateNames)
+          ->collectAggregateNames
+
+        let eventTopics =
+          aggregatesOutputs->Aggregate.filterEventTopics(
+            extensionPointAggregateNames->Set.union(extensionAggregateNames),
+          )
+
         module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
         let childName = name->ComponentType.name(Plugin.componentType)
-        let eventCollector = PluginEventCollector.make(~name=childName, ~opts)
+        let eventCollector = PluginEventCollector.make(~name=childName, ~eventTopics, ~opts)
         let eventCollectorOutputs = eventCollector->Component.outputs
         let eventCollectorUrn = (eventCollectorOutputs.resources->Array.getUnsafe(0)).urn //FIXME
 
@@ -360,27 +382,6 @@ module Make = (
           ->Array.map(resolverMaker => resolverMaker(allQueryDbs))
           ->Array.flat
 
-        module Set = Belt.Set.String
-
-        let collectAggregateNames = ex =>
-          ex
-          ->Set.fromArray
-          ->Set.remove(ReventlessSpec.ExtensionMapping.NoAggregate.name)
-
-        let extensionPointAggregateNames =
-          extensionPointsOutputs
-          ->Array.flatMap(ex => ex.aggregateNames)
-          ->collectAggregateNames
-
-        let extensionAggregateNames =
-          extensionsOutputs
-          ->Array.flatMap(ex => ex.aggregateNames)
-          ->collectAggregateNames
-
-        let eventTopics =
-          aggregatesOutputs->Aggregate.filterEventTopics(
-            extensionPointAggregateNames->Set.union(extensionAggregateNames),
-          )
         eventTopics->Js.Dict.set(
           ReventlessSpec.PluginExtensionPointSpec.name,
           {

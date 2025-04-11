@@ -25,7 +25,8 @@ module Make = (
       ->Array.map((module(SideEffect: ReventlessSpec.SideEffect.T)) => SideEffect.Source.name)
       ->Belt.Set.String.fromArray
 
-    let eventCollector = SpecificEventCollector.make(~name, ~opts)
+    let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
+    let eventCollector = SpecificEventCollector.make(~name, ~eventTopics, ~opts)
     let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
     module Callback = SideEffectHandler_Callback.Make({
@@ -44,7 +45,6 @@ module Make = (
       )
 
     let _ = allCommandTopics->Pulumi.Output.apply(allCommandTopics => {
-      let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
       let commandTopics =
         targets
         ->Option.map(targets =>
