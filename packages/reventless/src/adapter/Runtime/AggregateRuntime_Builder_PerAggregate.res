@@ -118,7 +118,7 @@ module Make = (
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((infos, handler)) => {
           Js.log2(
-            `***** AggregateRuntime_Builder_ForAggregate.registerCommandGeneratorHandler ${commandGeneratorName}: set handler for`,
+            `***** AggregateRuntime_Builder_PerAggregate.forCommandGenerator ${commandGeneratorName}: set handler for`,
             infos,
           )
           infos->Array.map(info => commandGeneratorHandlers->Js.Dict.set(info, handler))
@@ -126,7 +126,7 @@ module Make = (
 
     | None =>
       Js.Exn.raiseError(
-        `AggregateRuntime_Builder_ForAggregate.forCommandGenerator: commandGenerator ${commandGeneratorName} has no Aggregate parent`,
+        `AggregateRuntime_Builder_PerAggregate.forCommandGenerator: commandGenerator ${commandGeneratorName} has no Aggregate parent`,
       )
     }
   }
@@ -151,13 +151,13 @@ module Make = (
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urn, handler)) => {
           Js.log(
-            `***** AggregateRuntime_Builder_ForAggregate.forCommandTopic ${commandTopicName}: set handler for ${urn}`,
+            `***** AggregateRuntime_Builder_PerAggregate.forCommandTopic ${commandTopicName}: set handler for ${urn}`,
           )
           commandTopicHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
         })
     | None =>
       Js.Exn.raiseError(
-        `AggregateRuntime_Builder_ForAggregate.forCommandTopic: commandTopic ${commandTopicName} has no Aggregate parent`,
+        `AggregateRuntime_Builder_PerAggregate.forCommandTopic: commandTopic ${commandTopicName} has no Aggregate parent`,
       )
     }
   }

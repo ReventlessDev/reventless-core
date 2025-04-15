@@ -39,11 +39,11 @@ let connect = (
       open PulumiAws.PolicyDocument
       open Reventless.Adapter
 
-      // Js.Console.log2(
-      //   `EventCollectorChannel_SQS: EventTopicResources  ${name}:`,
-      //   eventTopicResources,
-      // )
-      // Js.Console.log2(`EventCollectorChannel_SQS: Resources for ${name}:`, resources)
+      Js.Console.log2(
+        `EventCollectorChannel_SQS: EventTopicResources  ${name}:`,
+        eventTopicResources,
+      )
+      Js.Console.log2(`EventCollectorChannel_SQS: Resources for ${name}:`, resources)
 
       let snsResources =
         eventTopicResources->Reventless.Util.Adapter.filterSupportedUnwrappedResources([
@@ -226,17 +226,17 @@ let connect = (
       )
 
       let _snsTopicSubscriptions = snsResources->Array.map(snsFifoResource => {
-        // Js.log3("EventCollectorChannel_SQS: subscribeToSnsTopic:", name, snsFifoResource)
-        let _subscription = Util_SQS.subscribeToSnsTopic(
+        Js.log3("EventCollectorChannel_SQS: subscribeToSnsTopic:", name, snsFifoResource)
+        let subscription = Util_SQS.subscribeToSnsTopic(
           ~queue,
           ~targetName=name,
           ~sourceName=snsFifoResource.name,
           ~topic=snsFifoResource->Reventless.AdapterDeploytime.unwrappedToResource,
           ~opts,
         )
-        // subscription.id->Pulumi.Output.apply(
-        //   id => Js.log3("EventCollectorChannel_SQS: created SNS subscription:", id, name),
-        // )
+        subscription.id->Pulumi.Output.apply(
+          id => Js.log3("EventCollectorChannel_SQS: created SNS subscription:", id, name),
+        )
       })
 
       let _printWarningForEmptySnsTopic = if snsResources->Array.length == 0 {
