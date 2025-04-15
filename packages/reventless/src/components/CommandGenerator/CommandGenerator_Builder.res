@@ -4,7 +4,16 @@ module Make = (
   Behaviour: Behaviour.T with module Spec := Spec,
   Resolvers: CommandGenerator_Adapter.Resolvers with type api := Config.api,
 ): (CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts) => {
-  let construct = (_self, _name) => ()
+  let construct = (self, _name) => {
+    let resources = Behaviour.resolverConfig.fields->Array.map(field => {
+      ReventlessSpec.Adapter.id: ""->Pulumi.Output.make,
+      info: `Mutation.${field}`->Pulumi.Output.make,
+      name: ""->Pulumi.Output.make,
+      urn: ""->Pulumi.Output.make,
+      service: ""->Pulumi.Output.make,
+    })
+    let _ = self->Component.setOutputs({CommandGenerator.resources: resources})
+  }
 
   let connect = (~resources, ~runtime, commandGenerator) => {
     let commandGeneratorResource = commandGenerator->Component.toPulumiResource

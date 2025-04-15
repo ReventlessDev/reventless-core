@@ -2,14 +2,26 @@
 'use strict';
 
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
+var Pulumi = require("@pulumi/pulumi");
 var Component$Reventless = require("../Component.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var CommandGenerator$Reventless = require("./CommandGenerator.res.js");
 var CommandGenerator_Callback$Reventless = require("./CommandGenerator_Callback.res.js");
 
 function Make(Config, Spec, Behaviour, Resolvers) {
-  var construct = function (_self, _name) {
-    
+  var construct = function (self, _name) {
+    var resources = Behaviour.resolverConfig.fields.map(function (field) {
+          return {
+                  name: Pulumi.output(""),
+                  id: Pulumi.output(""),
+                  urn: Pulumi.output(""),
+                  info: Pulumi.output("Mutation." + field),
+                  service: Pulumi.output("")
+                };
+        });
+    Component$Reventless.setOutputs(self, {
+          resources: resources
+        });
   };
   var connect = function (resources, runtime, commandGenerator) {
     var commandGeneratorResource = Component$Reventless.toPulumiResource(commandGenerator);
@@ -45,4 +57,4 @@ function Make(Config, Spec, Behaviour, Resolvers) {
 }
 
 exports.Make = Make;
-/* Component-Reventless Not a pure module */
+/* @pulumi/pulumi Not a pure module */
