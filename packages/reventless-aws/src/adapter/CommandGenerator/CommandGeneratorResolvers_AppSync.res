@@ -138,7 +138,7 @@ let make: Reventless.CommandGenerator_Adapter.resolversMaker<api, Util.Lambda.ru
         "arguments": $utils.toJson($context.arguments),
         "meta": {
           "ip": $util.toJson($context.identity.sourceIp),
-          "user": $util.toJson($context.identity.username)
+          "user": $util.toJson($context.identity.username),
           "info": $util.toJson("$parentTypeName.$fieldName")
         }
     }

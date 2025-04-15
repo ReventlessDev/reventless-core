@@ -83,7 +83,7 @@ function make(name, api, fields, runtime, resources, opts) {
         serviceRoleArn: dataSourceRole.arn
       }, opts$1);
   var invokeCommandGenerator = function (command) {
-    return "\n  #set($parentTypeName = $context.info.parentTypeName)\n  #set($fieldName = $context.info.fieldName)\n  {\n    \"version\": \"2017-02-28\",\n    \"operation\": \"Invoke\",\n    \"payload\": {\n        \"command\": \"" + command + "\",\n        \"arguments\": $utils.toJson($context.arguments),\n        \"meta\": {\n          \"ip\": $util.toJson($context.identity.sourceIp),\n          \"user\": $util.toJson($context.identity.username)\n          \"info\": $util.toJson(\"$parentTypeName.$fieldName\")\n        }\n    }\n  }\n  ";
+    return "\n  #set($parentTypeName = $context.info.parentTypeName)\n  #set($fieldName = $context.info.fieldName)\n  {\n    \"version\": \"2017-02-28\",\n    \"operation\": \"Invoke\",\n    \"payload\": {\n        \"command\": \"" + command + "\",\n        \"arguments\": $utils.toJson($context.arguments),\n        \"meta\": {\n          \"ip\": $util.toJson($context.identity.sourceIp),\n          \"user\": $util.toJson($context.identity.username),\n          \"info\": $util.toJson(\"$parentTypeName.$fieldName\")\n        }\n    }\n  }\n  ";
   };
   var resolvers = fields.map(function (field) {
         var match = field.split("_");
