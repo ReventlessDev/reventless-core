@@ -131,7 +131,6 @@ module Make = (
             module CoreEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
             let eventCollector = CoreEventCollector.make(~name, ~eventTopics, ~opts)
             let eventCollectorOutputs = eventCollector->Component.outputs
-            let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
             module Callback = Core_Callback.Make({
               let pluginDefinition = fakePluginDefinition
@@ -141,16 +140,11 @@ module Make = (
               ~eventCollector,
               ~eventsHandler=Callback.eventsHandler,
             )
-            let runtime = eventCollector->CoreRuntimeBuilder.forPluginEventCollector(~handler)
-
-            CoreEventCollector.connect(
-              ~name,
-              ~eventTopics,
-              ~eventCollector,
-              ~runtime,
-              ~resources,
-              ~opts,
+            eventCollector->CoreRuntimeBuilder.forPluginEventCollector(
+              ~handler,
+              ~connect=CoreEventCollector.connect(eventCollector, ~eventTopics, ~resources, ...)
             )
+
             eventCollectorOutputs
           })
         (aggregatesOutputs, extensionPointsOutputs, eventCollectorOutputs)

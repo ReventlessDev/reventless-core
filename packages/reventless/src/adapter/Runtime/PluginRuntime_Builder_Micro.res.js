@@ -8,41 +8,48 @@ var EventCollector$Reventless = require("../../components/EventCollector/EventCo
 var SideEffectHandler$Reventless = require("../../components/SideEffectHandler/SideEffectHandler.res.js");
 
 function Make(RuntimeEnvironment, EventCollectorChannel) {
-  var forSideEffectHandlerEventCollector = function (handler, memorySizeOpt, timeoutOpt, eventCollector) {
+  var forSideEffectHandlerEventCollector = function (handler, connect, memorySizeOpt, timeoutOpt, eventCollector) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(eventCollector);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, SideEffectHandler$Reventless.componentType), handler.apply(function (handler) {
-                    return RuntimeEnvironment.asEventHandler(handler);
-                  }), memorySize, timeout, {
-                parent: resource
-              });
+    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, SideEffectHandler$Reventless.componentType), handler.apply(function (handler) {
+              return RuntimeEnvironment.asEventHandler(handler);
+            }), memorySize, timeout, {
+          parent: resource
+        });
+    return connect(runtime);
   };
-  var forPluginEventCollector = function (handler, memorySizeOpt, timeoutOpt, eventCollector) {
+  var forPluginEventCollector = function (handler, connect, memorySizeOpt, timeoutOpt, eventCollector) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(eventCollector);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType), handler.apply(function (handler) {
-                    return RuntimeEnvironment.asEventHandler(handler);
-                  }), memorySize, timeout, {
-                parent: resource
-              });
+    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType), handler.apply(function (handler) {
+              return RuntimeEnvironment.asEventHandler(handler);
+            }), memorySize, timeout, {
+          parent: resource
+        });
+    return connect(runtime);
   };
-  var forPluginHeartbeat = function (handler, memorySizeOpt, timeoutOpt, heartbeat) {
+  var forPluginHeartbeat = function (handler, connect, memorySizeOpt, timeoutOpt, heartbeat) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(heartbeat);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, Heartbeat$Reventless.componentType), handler.apply(function (handler) {
-                    return RuntimeEnvironment.asEventHandler(handler);
-                  }), memorySize, timeout, {
-                parent: resource
-              });
+    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, Heartbeat$Reventless.componentType), handler.apply(function (handler) {
+              return RuntimeEnvironment.asEventHandler(handler);
+            }), memorySize, timeout, {
+          parent: resource
+        });
+    return connect(runtime);
+  };
+  var finish = function (_plugin) {
+    
   };
   return {
           EventCollectorChannel: EventCollectorChannel,
           forSideEffectHandlerEventCollector: forSideEffectHandlerEventCollector,
           forPluginEventCollector: forPluginEventCollector,
-          forPluginHeartbeat: forPluginHeartbeat
+          forPluginHeartbeat: forPluginHeartbeat,
+          finish: finish
         };
 }
 

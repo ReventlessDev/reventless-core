@@ -5,15 +5,16 @@ var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Component$Reventless = require("../../components/Component.res.js");
 
 function Make(RuntimeEnvironment, EventCollectorChannel) {
-  var forEventCollector = function (handler, memorySizeOpt, timeoutOpt, eventCollector) {
+  var forEventCollector = function (handler, connect, memorySizeOpt, timeoutOpt, eventCollector) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(eventCollector);
-    return RuntimeEnvironment.make(Core__Option.getOr(resource.__name, "UnnamedReadModel"), handler.apply(function (handler) {
-                    return RuntimeEnvironment.asEventHandler(handler);
-                  }), memorySize, timeout, {
-                parent: resource
-              });
+    var runtime = RuntimeEnvironment.make(Core__Option.getOr(resource.__name, "UnnamedReadModel"), handler.apply(function (handler) {
+              return RuntimeEnvironment.asEventHandler(handler);
+            }), memorySize, timeout, {
+          parent: resource
+        });
+    return connect(runtime);
   };
   return {
           EventCollectorChannel: EventCollectorChannel,

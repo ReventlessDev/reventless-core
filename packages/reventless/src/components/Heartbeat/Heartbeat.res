@@ -6,12 +6,13 @@ type t
 type component = Component.t<t, outputs, unit>
 
 module type T = {
+  type runtimeParts
+
   let connect: (
-    ~name: string,
+    ~runtime: Runtime.environment<runtimeParts>,
+    ~remoteChannel: CommandTopic_Adapter.remoteChannel,
     ~timeout: int=?,
-    ~heartbeat: component,
-    ~runtime: Runtime.environment<'runtimeParts>,
-    ~opts: Pulumi.ComponentResource.options,
+    component,
   ) => unit
 
   let makeHandler: (

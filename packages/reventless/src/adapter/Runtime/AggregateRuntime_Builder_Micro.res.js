@@ -8,46 +8,49 @@ var EventCollector$Reventless = require("../../components/EventCollector/EventCo
 var CommandGenerator$Reventless = require("../../components/CommandGenerator/CommandGenerator.res.js");
 
 function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
-  var forCommandGenerator = function (handler, memorySizeOpt, timeoutOpt, commandGenerator) {
+  var forCommandGenerator = function (handler, connect, memorySizeOpt, timeoutOpt, commandGenerator) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(commandGenerator);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandGenerator$Reventless.componentType), handler.apply(function (handler) {
-                    return RuntimeEnvironment.asEventHandler(handler);
-                  }), memorySize, timeout, {
-                parent: resource
-              });
+    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandGenerator$Reventless.componentType), handler.apply(function (handler) {
+              return RuntimeEnvironment.asEventHandler(handler);
+            }), memorySize, timeout, {
+          parent: resource
+        });
+    return connect(runtime);
   };
-  var registerCommandGeneratorHandler = function (param, _commandGenerator) {
-    
-  };
-  var forCommandTopic = function (handler, memorySizeOpt, timeoutOpt, commandTopic) {
+  var forCommandTopic = function (handler, connect, memorySizeOpt, timeoutOpt, commandTopic) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(commandTopic);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler.apply(function (handler) {
-                    return RuntimeEnvironment.asEventHandler(handler);
-                  }), memorySize, timeout, {
-                parent: resource
-              });
+    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler.apply(function (handler) {
+              return RuntimeEnvironment.asEventHandler(handler);
+            }), memorySize, timeout, {
+          parent: resource
+        });
+    return connect(runtime);
   };
-  var forEventCollector = function (handler, memorySizeOpt, timeoutOpt, eventCollector) {
+  var forEventCollector = function (handler, connect, memorySizeOpt, timeoutOpt, eventCollector) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(eventCollector);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType), handler.apply(function (handler) {
-                    return RuntimeEnvironment.asEventHandler(handler);
-                  }), memorySize, timeout, {
-                parent: resource
-              });
+    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType), handler.apply(function (handler) {
+              return RuntimeEnvironment.asEventHandler(handler);
+            }), memorySize, timeout, {
+          parent: resource
+        });
+    return connect(runtime);
+  };
+  var finish = function (_aggregate) {
+    
   };
   return {
           CommandTopicChannel: CommandTopicChannel,
           EventCollectorChannel: EventCollectorChannel,
           forCommandGenerator: forCommandGenerator,
-          registerCommandGeneratorHandler: registerCommandGeneratorHandler,
           forCommandTopic: forCommandTopic,
-          forEventCollector: forEventCollector
+          forEventCollector: forEventCollector,
+          finish: finish
         };
 }
 

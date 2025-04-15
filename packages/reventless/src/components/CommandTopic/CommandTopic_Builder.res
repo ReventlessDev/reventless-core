@@ -40,11 +40,16 @@ module Make = (Spec: CommandTopic.Spec, Channel: CommandTopic_Adapter.Channel): 
     })
   }
 
-  let connect = (~name, ~commandTopic, ~runtime, ~resources, ~opts) => {
-    let name = name->ComponentType.name(CommandTopic.componentType)
+  let connect = (~runtime, ~resources, commandTopic) => {
+    let commandTopicResource = commandTopic->Component.toPulumiResource
+    let name =
+      commandTopicResource.name
+      ->Option.getOr("Unnamed")
+      ->ComponentType.name(CommandTopic.componentType)
+    let opts = {Pulumi.ComponentResource.parent: commandTopicResource}
     let channel = commandTopic->CommandTopic_Adapter.channel
 
-    let subscribeResources = channel.connect(~name, ~channel, ~runtime, ~resources, ~opts)
+    let connectResources = channel.connect(~name, ~channel, ~runtime, ~resources, ~opts)
 
     // let _ = commandTopic->Component.setOutputs({
     //   CommandTopic.resources: channel.resources->Array.concat(subscribeResources),

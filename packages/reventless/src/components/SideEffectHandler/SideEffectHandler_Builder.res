@@ -27,7 +27,6 @@ module Make = (
 
     let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
     let eventCollector = SpecificEventCollector.make(~name, ~eventTopics, ~opts)
-    let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
     module Callback = SideEffectHandler_Callback.Make({
       let sideEffects = sideEffects
@@ -37,12 +36,6 @@ module Make = (
       ~eventCollector,
       ~eventsHandler=Callback.eventsHandler,
     )
-    let runtime =
-      eventCollector->PluginRuntimeBuilder.forSideEffectHandlerEventCollector(
-        ~handler,
-        ~memorySize,
-        ~timeout,
-      )
 
     let _ = allCommandTopics->Pulumi.Output.apply(allCommandTopics => {
       let commandTopics =
@@ -53,13 +46,11 @@ module Make = (
         ->Option.getOr([])
       let resources = commandTopics->Array.flatMap(commandTopic => commandTopic.resources)
 
-      SpecificEventCollector.connect(
-        ~name,
-        ~eventTopics,
-        ~eventCollector,
-        ~runtime,
-        ~resources,
-        ~opts,
+      eventCollector->PluginRuntimeBuilder.forSideEffectHandlerEventCollector(
+        ~handler,
+        ~connect=SpecificEventCollector.connect(eventCollector, ~eventTopics, ~resources, ...),
+        ~memorySize,
+        ~timeout
       )
     })
 

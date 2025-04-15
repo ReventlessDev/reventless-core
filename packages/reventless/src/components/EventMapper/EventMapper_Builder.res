@@ -64,7 +64,6 @@ module Make = (
       {
         let eventTopics = allEventTopics->EventTopic.filter(aggregateNames)
         let eventCollector = SpecificEventCollector.make(~name, ~eventTopics, ~opts)
-        let opts = {Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource}
 
         module EventCollectorHandler = EventMapper_Callback.MakeEventCollectorHandler({
           let publishJsons = publishJsons
@@ -76,17 +75,13 @@ module Make = (
           ~eventCollector,
           ~eventsHandler=EventCollectorHandler.handleJsonEvents,
         )
-        let runtime =
-          eventCollector->AggregateRuntimeBuilder.forEventCollector(~handler, ~memorySize, ~timeout)
-
-        SpecificEventCollector.connect(
-          ~name,
-          ~eventTopics,
-          ~eventCollector,
-          ~runtime,
-          ~resources,
-          ~opts,
+        eventCollector->AggregateRuntimeBuilder.forEventCollector(
+          ~handler,
+          ~memorySize,
+          ~timeout,
+          ~connect=SpecificEventCollector.connect(eventCollector, ~eventTopics, ~resources, ...)
         )
+
         eventCollector
       }->Component.outputs
     )

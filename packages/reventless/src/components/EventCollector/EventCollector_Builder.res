@@ -22,8 +22,13 @@ module Make = (Channel: EventCollector_Adapter.Channel): (
     })
   }
 
-  let connect = (~name, ~eventTopics, ~eventCollector, ~runtime, ~resources, ~opts) => {
-    let name = name->ComponentType.name(EventCollector.componentType)
+  let connect = (~eventTopics, ~resources, ~runtime, eventCollector) => {
+    let eventCollectorResource = eventCollector->Component.toPulumiResource
+    let name =
+      eventCollectorResource.name
+      ->Option.getOr("Unnamed")
+      ->ComponentType.name(EventCollector.componentType)
+    let opts = {Pulumi.ComponentResource.parent: eventCollectorResource}
     let channel = eventCollector->EventCollector_Adapter.channel
 
     let _connectResources = channel.connect(

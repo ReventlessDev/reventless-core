@@ -17,12 +17,10 @@ module type T = {
   type callbackEvent
 
   let connect: (
-    ~name: string,
     ~eventTopics: EventTopic.allOutputs,
-    ~eventCollector: component,
-    ~runtime: Runtime.environment<'runtimeParts>,
     ~resources: array<ReventlessSpec.Adapter.resource>,
-    ~opts: Pulumi.ComponentResource.options,
+    ~runtime: Runtime.environment<'runtimeParts>,
+    component,
   ) => unit
 
   let makeHandler: (

@@ -22,13 +22,12 @@ module type Environment = {
   let asEventHandler: 'a => eventHandler<event, context, 'result>
 }
 
+type connect<'parts> = (~runtime: environment<'parts>) => unit
+
 type forComponent<'handler, 'parts, 'component> = (
   ~handler: Pulumi.Output.t<'handler>,
+  ~connect: connect<'parts>,
   ~memorySize: int=?,
   ~timeout: int=?,
-  'component,
-) => environment<'parts>
-type registerComponentHandler<'handler, 'component> = (
-  ~handler: Pulumi.Output.t<'handler>,
   'component,
 ) => unit

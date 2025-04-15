@@ -28,7 +28,6 @@ module Make = (
       AggregateRuntimeBuilder,
     )
 
-    let outputs = aggregate->Component.outputs
     if EventMappings.mappings->Array.length > 0 {
       let eventMapper =
         (aggregate->Component.operations, (aggregate->Component.outputs).commandTopic)
@@ -43,14 +42,16 @@ module Make = (
             ~opts,
           )
         )
+      aggregate->AggregateRuntimeBuilder.finish
       {
-        ...outputs,
+        ...aggregate->Component.outputs,
         eventMapper: eventMapper->Pulumi.Output.apply(eventMapper =>
           eventMapper->Component.outputs
         ),
       }
     } else {
-      outputs
+      aggregate->AggregateRuntimeBuilder.finish
+      aggregate->Component.outputs
     }
   }
 
@@ -67,7 +68,6 @@ module Make = (
       ->Pulumi.Output.apply(eventLogOps => {
         module SpecificCommandTopic = CommandTopic_Builder.Make(Spec, CommandTopicChannel)
         let commandTopic = SpecificCommandTopic.make(~name, ~opts)
-        let opts = {Pulumi.ComponentResource.parent: commandTopic->Component.toPulumiResource}
 
         module AggregateCallback = Aggregate_Callback.Make(
           Spec,
@@ -78,17 +78,18 @@ module Make = (
             let eventLog = eventLogOps
           },
         )
-        let runtime =
-          commandTopic->AggregateRuntimeBuilder.forCommandTopic(
-            ~handler=SpecificCommandTopic.makeHandler(
-              ~commandTopic,
-              ~commandsHandler=AggregateCallback.handleCommands,
-            ),
-          )
-
+        let handler = SpecificCommandTopic.makeHandler(
+          ~commandTopic,
+          ~commandsHandler=AggregateCallback.handleCommands,
+        )
         let eventLog = eventLog->Component.outputs
         let resources = [eventLog.resources, eventLog.eventTopic.resources]->Array.flat
-        SpecificCommandTopic.connect(~name, ~commandTopic, ~runtime, ~resources, ~opts)
+
+        commandTopic->AggregateRuntimeBuilder.forCommandTopic(
+          ~handler,
+          ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...)
+        )
+
         commandTopic
       })
 
@@ -103,16 +104,10 @@ module Make = (
           CommandGeneratorResolvers,
         )
         let commandGenerator = SpecificCommandGenerator.make(~name, ~opts)
-        let opts = {Pulumi.ComponentResource.parent: commandGenerator->Component.toPulumiResource}
-
-        let runtime =
-          commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
-            ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
-          )
         let resources = (commandTopic->Component.outputs).resources
-        SpecificCommandGenerator.connect(~name, ~commandGenerator, ~runtime, ~resources, ~opts)
-        commandGenerator->AggregateRuntimeBuilder.registerCommandGeneratorHandler(
+        commandGenerator->AggregateRuntimeBuilder.forCommandGenerator(
           ~handler=SpecificCommandGenerator.makeHandler(~publishJsons),
+          ~connect=SpecificCommandGenerator.connect(commandGenerator, ~resources, ...)
         )
         commandGenerator->Component.outputs
       })

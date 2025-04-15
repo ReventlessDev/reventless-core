@@ -44,9 +44,6 @@ module Make = (
 
     module SpecificCommandTopic = CommandTopic_Builder.Make(SpecWithId, CommandTopicChannel)
     let commandTopic = SpecificCommandTopic.make(~name=childName, ~opts)
-    let commandTopicOpts = {
-      Pulumi.ComponentResource.parent: commandTopic->Component.toPulumiResource,
-    }
 
     let aggregateNames =
       Mappings.mappings->Array.filterMap((module(Mapping)) =>
@@ -73,14 +70,11 @@ module Make = (
           ~commandTopic,
           ~commandsHandler=ExtensionPointCallback.handleIncomingCommands,
         )
-        let runtime = commandTopic->ExtensionPointRuntimeBuilder.forCommandTopic(~handler)
+        let resources = aggregateResources->filterAggregateResources(aggregateNames)
 
-        SpecificCommandTopic.connect(
-          ~name=childName,
-          ~commandTopic,
-          ~runtime,
-          ~resources=aggregateResources->filterAggregateResources(aggregateNames),
-          ~opts=commandTopicOpts,
+        commandTopic->ExtensionPointRuntimeBuilder.forCommandTopic(
+          ~handler,
+          ~connect=SpecificCommandTopic.connect(commandTopic, ~resources, ...)
         )
 
         module SpecificEventTopic = EventTopic_Builder.Make(SpecWithId, EventTopicAdapter)

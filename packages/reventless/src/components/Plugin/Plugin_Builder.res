@@ -453,18 +453,11 @@ module Make = (
               ~eventCollector,
               ~eventsHandler=Callback.handleJsonEvents,
             )
-            let eventCollectorOpts = {
-              Pulumi.ComponentResource.parent: eventCollector->Component.toPulumiResource,
-            }
-            let runtime = eventCollector->PluginRuntimeBuilder.forPluginEventCollector(~handler)
-
-            PluginEventCollector.connect(
-              ~name=childName,
-              ~eventTopics,
-              ~eventCollector,
-              ~runtime,
-              ~resources,
-              ~opts=eventCollectorOpts,
+            eventCollector->PluginRuntimeBuilder.forPluginEventCollector(
+              ~handler,
+              ~connect=eventCollector->(
+                PluginEventCollector.connect(~eventTopics, ~resources, ...)
+              ),
             )
 
             let _ =
@@ -483,15 +476,14 @@ module Make = (
           ~timeout=heartbeatInterval,
           ~publishToCorePluginExtensionPoint,
         )
-        let runtime = heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(~handler)
-
-        SpecificHeartbeat.connect(
-          ~name=childName,
-          ~remoteChannel=corePluginExtensionPointCommandTopicRemoteChannel,
-          ~timeout=heartbeatInterval,
-          ~heartbeat,
-          ~runtime,
-          ~opts=heartbeatOpts,
+        heartbeat->PluginRuntimeBuilder.forPluginHeartbeat(
+          ~handler,
+          ~connect=SpecificHeartbeat.connect(
+            heartbeat,
+            ~remoteChannel=corePluginExtensionPointCommandTopicRemoteChannel,
+            ~timeout=heartbeatInterval,
+            ...
+          )
         )
 
         {

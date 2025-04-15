@@ -6,9 +6,16 @@ module Make = (
 ): (CommandGenerator.T with type runtimeParts := Resolvers.runtimeParts) => {
   let construct = (_self, _name) => ()
 
-  let connect = (~name, ~commandGenerator, ~runtime, ~resources, ~opts) => {
+  let connect = (~resources, ~runtime, commandGenerator) => {
+    let commandGeneratorResource = commandGenerator->Component.toPulumiResource
+    let name =
+      commandGeneratorResource.name
+      ->Option.getOr("Unnamed")
+      ->ComponentType.name(CommandGenerator.componentType)
+    let opts = {Pulumi.ComponentResource.parent: commandGeneratorResource}
+
     let resolvers = Resolvers.make(
-      ~name=name->ComponentType.name(CommandGenerator.componentType),
+      ~name,
       ~api=Config.api,
       ~fields=Behaviour.resolverConfig.fields,
       ~runtime,

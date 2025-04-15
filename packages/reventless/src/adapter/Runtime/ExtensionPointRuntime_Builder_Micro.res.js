@@ -6,15 +6,16 @@ var CommandTopic$Reventless = require("../../components/CommandTopic/CommandTopi
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 
 function Make(RuntimeEnvironment, CommandTopicChannel) {
-  var forCommandTopic = function (handler, memorySizeOpt, timeoutOpt, commandTopic) {
+  var forCommandTopic = function (handler, connect, memorySizeOpt, timeoutOpt, commandTopic) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(commandTopic);
-    return RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler.apply(function (handler) {
-                    return RuntimeEnvironment.asEventHandler(handler);
-                  }), memorySize, timeout, {
-                parent: resource
-              });
+    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, CommandTopic$Reventless.componentType), handler.apply(function (handler) {
+              return RuntimeEnvironment.asEventHandler(handler);
+            }), memorySize, timeout, {
+          parent: resource
+        });
+    return connect(runtime);
   };
   return {
           CommandTopicChannel: CommandTopicChannel,

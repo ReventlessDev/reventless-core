@@ -25,11 +25,9 @@ type component = Component.t<t, outputs, unit>
 module type T = {
   type runtimeParts
   let connect: (
-    ~name: string,
-    ~commandGenerator: component,
-    ~runtime: Runtime.environment<runtimeParts>,
     ~resources: array<ReventlessSpec.Adapter.resource>,
-    ~opts: Pulumi.ComponentResource.options,
+    ~runtime: Runtime.environment<runtimeParts>,
+    component,
   ) => unit
 
   let makeHandler: (~publishJsons: publishJsons) => Pulumi.Output.t<eventHandler<'context>>

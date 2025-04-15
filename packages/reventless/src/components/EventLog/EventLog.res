@@ -5,6 +5,7 @@ let componentType = ComponentType.EventLog
 type outputs = {resources: array<resource>, eventTopic: EventTopic.outputs}
 
 type t
+type component<'operations> = Component.t<t, outputs, 'operations>
 
 exception ReplayError(string)
 
@@ -27,7 +28,7 @@ module type T = {
     append: append<Spec.Id.t, Message.event'<Spec.Id.t, Spec.event>>,
     replay: replay<Spec.Id.t, Spec.event>,
   }
-  type component = Component.t<t, outputs, operations>
+  type component = component<operations>
 
   let make: (~name: string, ~opts: Pulumi.ComponentResource.options=?) => component
 }

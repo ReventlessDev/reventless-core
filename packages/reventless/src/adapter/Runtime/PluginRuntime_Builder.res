@@ -19,4 +19,5 @@ module type T = {
     Heartbeat.component,
   >
   // let forDeadLetterQueue: Runtime.forComponent<'h, runtimeParts, Plugin.component>
+  let finish: Plugin.component => unit
 }

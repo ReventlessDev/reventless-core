@@ -16,6 +16,7 @@ module Make = (
 
   let forCommandGenerator = (
     ~handler: Pulumi.Output.t<CommandGenerator.eventHandler<context>>,
+    ~connect,
     ~memorySize=1024,
     ~timeout=30,
     commandGenerator,
@@ -30,23 +31,20 @@ module Make = (
     //   )
     //   handler(payload, context)
     // })
-    RuntimeEnvironment.make(
+    let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(CommandGenerator.componentType),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},
     )
+    connect(~runtime)
   }
-  let registerCommandGeneratorHandler = (
-    ~handler as _: Pulumi.Output.t<CommandGenerator.eventHandler<context>>,
-    _commandGenerator: CommandGenerator.component,
-  ) => ()
-
   let forCommandTopic = (
     ~handler: Pulumi.Output.t<
       Runtime.eventHandler<CommandTopicChannel.callbackEvent, context, unit>,
     >,
+    ~connect,
     ~memorySize=1024,
     ~timeout=30,
     commandTopic,
@@ -56,18 +54,21 @@ module Make = (
     //   Js.log4("AggregateRuntime_Builder_Micro.forCommandTopic:", resource.name, event, context)
     //   handler(event, context)
     // })
-    RuntimeEnvironment.make(
+    let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(CommandTopic.componentType),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},
     )
+    connect(~runtime)
   }
+
   let forEventCollector = (
     ~handler: Pulumi.Output.t<
       Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
     >,
+    ~connect,
     ~memorySize=1024,
     ~timeout=30,
     eventCollector,
@@ -77,12 +78,15 @@ module Make = (
     //   Js.log4("AggregateRuntime_Builder_Micro.forEventCollector:", resource.name, event, context)
     //   handler(event, context)
     // })
-    RuntimeEnvironment.make(
+    let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},
     )
+    connect(~runtime)
   }
+
+  let finish = _aggregate => ()
 }

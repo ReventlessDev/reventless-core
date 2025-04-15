@@ -44,11 +44,9 @@ module type T = {
   type commandsHandler = commandsHandler<Message.command'<Spec.Id.t, Spec.command>>
 
   let connect: (
-    ~name: string,
-    ~commandTopic: component,
     ~runtime: Runtime.environment<'runtimeParts>,
     ~resources: array<ReventlessSpec.Adapter.resource>,
-    ~opts: Pulumi.ComponentResource.options,
+    component,
   ) => unit
 
   let makeHandler: (
