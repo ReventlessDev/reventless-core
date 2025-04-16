@@ -3,8 +3,6 @@
 
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Pulumi = require("@pulumi/pulumi");
-var Aggregate$Reventless = require("../../components/Aggregate/Aggregate.res.js");
-var ComponentType$Reventless = require("../../ComponentType.res.js");
 var AggregateRuntime_Builder_Common$Reventless = require("./AggregateRuntime_Builder_Common.res.js");
 
 function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
@@ -30,7 +28,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
           }));
     var parent = match[0];
     if (parent !== undefined) {
-      var runtime = RuntimeEnvironment.make(ComponentType$Reventless.toString(Aggregate$Reventless.componentType), Pulumi.output(aggregateHandler("Single")), match[1], match[2], {
+      var runtime = RuntimeEnvironment.make("AllAggregates", Pulumi.output(aggregateHandler("Single")), match[1], match[2], {
             parent: parent
           });
       specs.map(function (param) {

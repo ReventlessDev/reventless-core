@@ -23,7 +23,7 @@ module Make = (
   let eventCollectorHandlers = Js.Dict.empty()
 
   let aggregateHandler = aggregateName => async (event: RuntimeEnvironment.event, context) => {
-    let desc = `AggregateRuntime_Builder_PerAggregate.aggregateHandler for ${aggregateName}:`
+    let desc = `aggregateHandler for ${aggregateName}:`
     switch event->CommandGenerator.metaInfo {
     | Some(info) =>
       switch commandGeneratorHandlers->Js.Dict.get(info) {
@@ -95,16 +95,13 @@ module Make = (
         (infos, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((infos, handler)) => {
-          Js.log2(
-            `***** AggregateRuntime_Builder_PerAggregate.forCommandGenerator ${commandGeneratorName}: set handler for`,
-            infos,
-          )
+          Js.log2(`***** forCommandGenerator ${commandGeneratorName}: set handler for`, infos)
           infos->Array.map(info => commandGeneratorHandlers->Js.Dict.set(info, handler))
         })
 
     | None =>
       Js.Exn.raiseError(
-        `AggregateRuntime_Builder_PerAggregate.forCommandGenerator: commandGenerator ${commandGeneratorName} has no Aggregate parent`,
+        `forCommandGenerator: commandGenerator ${commandGeneratorName} has no Aggregate parent`,
       )
     }
   }
@@ -128,15 +125,11 @@ module Make = (
         (urn, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urn, handler)) => {
-          Js.log(
-            `***** AggregateRuntime_Builder_PerAggregate.forCommandTopic ${commandTopicName}: set handler for ${urn}`,
-          )
+          Js.log(`***** forCommandTopic ${commandTopicName}: set handler for ${urn}`)
           commandTopicHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
         })
     | None =>
-      Js.Exn.raiseError(
-        `AggregateRuntime_Builder_PerAggregate.forCommandTopic: commandTopic ${commandTopicName} has no Aggregate parent`,
-      )
+      Js.Exn.raiseError(`forCommandTopic: commandTopic ${commandTopicName} has no Aggregate parent`)
     }
   }
   let forEventCollector = (
@@ -161,17 +154,14 @@ module Make = (
         (urns, handler)
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urns, handler)) => {
-          Js.log2(
-            `***** AggregateRuntime_Builder_PerAggregate.forEventCollector ${eventCollectorName}: set handler for`,
-            urns,
-          )
+          Js.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
           urns->Array.map(urn =>
             eventCollectorHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
           )
         })
     | None =>
       Js.Exn.raiseError(
-        `AggregateRuntime_Builder_PerAggregate.forEventCollector: eventCollector ${eventCollectorName} has no Aggregate parent`,
+        `forEventCollector: eventCollector ${eventCollectorName} has no Aggregate parent`,
       )
     }
   }

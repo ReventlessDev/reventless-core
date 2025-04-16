@@ -15,7 +15,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
   var eventCollectorHandlers = {};
   var aggregateHandler = function (aggregateName) {
     return async function ($$event, context) {
-      var desc = "AggregateRuntime_Builder_PerAggregate.aggregateHandler for " + aggregateName + ":";
+      var desc = "aggregateHandler for " + aggregateName + ":";
       var info = CommandGenerator$Reventless.metaInfo($$event);
       if (info !== undefined) {
         var handler = Js_dict.get(commandGeneratorHandlers, info);
@@ -69,7 +69,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var commandGeneratorName = Core__Option.getOr(commandGeneratorResource.__name, "Unnamed");
     var aggregateResource = commandGeneratorResource.__parentResource;
     if (aggregateResource === undefined) {
-      return Js_exn.raiseError("AggregateRuntime_Builder_PerAggregate.forCommandGenerator: commandGenerator " + commandGeneratorName + " has no Aggregate parent");
+      return Js_exn.raiseError("forCommandGenerator: commandGenerator " + commandGeneratorName + " has no Aggregate parent");
     }
     registerRuntimeSpec(connect, memorySize, timeout, aggregateResource);
     var infos = Pulumi.all(Component$Reventless.outputs(commandGenerator).resources.map(function (resource) {
@@ -81,7 +81,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
           ]).apply(function (param) {
           var handler = param[1];
           var infos = param[0];
-          console.log("***** AggregateRuntime_Builder_PerAggregate.forCommandGenerator " + commandGeneratorName + ": set handler for", infos);
+          console.log("***** forCommandGenerator " + commandGeneratorName + ": set handler for", infos);
           return infos.map(function (info) {
                       commandGeneratorHandlers[info] = handler;
                     });
@@ -94,7 +94,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var commandTopicName = Core__Option.getOr(commandTopicResource.__name, "Unnamed");
     var aggregateResource = commandTopicResource.__parentResource;
     if (aggregateResource === undefined) {
-      return Js_exn.raiseError("AggregateRuntime_Builder_PerAggregate.forCommandTopic: commandTopic " + commandTopicName + " has no Aggregate parent");
+      return Js_exn.raiseError("forCommandTopic: commandTopic " + commandTopicName + " has no Aggregate parent");
     }
     registerRuntimeSpec(connect, memorySize, timeout, aggregateResource);
     var urn = Component$Reventless.outputs(commandTopic).resources[0].urn;
@@ -103,7 +103,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
             handler
           ]).apply(function (param) {
           var urn = param[0];
-          console.log("***** AggregateRuntime_Builder_PerAggregate.forCommandTopic " + commandTopicName + ": set handler for " + urn);
+          console.log("***** forCommandTopic " + commandTopicName + ": set handler for " + urn);
           commandTopicHandlers[urn] = RuntimeEnvironment.asEventHandler(param[1]);
         });
   };
@@ -114,7 +114,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var eventCollectorName = Core__Option.getOr(eventCollectorResource.__name, "Unnamed");
     var aggregateResource = eventCollectorResource.__parentResource;
     if (aggregateResource === undefined) {
-      return Js_exn.raiseError("AggregateRuntime_Builder_PerAggregate.forEventCollector: eventCollector " + eventCollectorName + " has no Aggregate parent");
+      return Js_exn.raiseError("forEventCollector: eventCollector " + eventCollectorName + " has no Aggregate parent");
     }
     registerRuntimeSpec(connect, memorySize, timeout, aggregateResource);
     var urns = Pulumi.all(Component$Reventless.outputs(eventCollector).resources.map(function (param) {
@@ -126,7 +126,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
           ]).apply(function (param) {
           var handler = param[1];
           var urns = param[0];
-          console.log("***** AggregateRuntime_Builder_PerAggregate.forEventCollector " + eventCollectorName + ": set handler for", urns);
+          console.log("***** forEventCollector " + eventCollectorName + ": set handler for", urns);
           return urns.map(function (urn) {
                       eventCollectorHandlers[urn] = RuntimeEnvironment.asEventHandler(handler);
                     });

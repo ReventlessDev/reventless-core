@@ -28,7 +28,7 @@ module Make = (
     switch parent {
     | Some(parent) =>
       let runtime = RuntimeEnvironment.make(
-        ~name=Aggregate.componentType->ComponentType.toString,
+        ~name="AllAggregates",
         ~handler=aggregateHandler("Single")->Pulumi.Output.make,
         ~memorySize,
         ~timeout,
