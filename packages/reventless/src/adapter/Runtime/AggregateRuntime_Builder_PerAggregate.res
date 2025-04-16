@@ -28,23 +28,15 @@ module Make = (
   let eventCollectorHandlers = Js.Dict.empty()
 
   let aggregateHandler = aggregateName => async (event: RuntimeEnvironment.event, context) => {
-    Js.log4(
-      "----- AggregateRuntime_Builder_PerAggregate.aggregateHandler:",
-      aggregateName,
-      event,
-      context,
-    )
+    let desc = `AggregateRuntime_Builder_PerAggregate.aggregateHandler for ${aggregateName}:`
     switch event->CommandGenerator.metaInfo {
     | Some(info) =>
       switch commandGeneratorHandlers->Js.Dict.get(info) {
       | Some(handler) =>
-        Js.log2(
-          "----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for commandGenerator",
-          info,
-        )
+        Js.log2(`----- ${desc} found handler for commandGenerator`, info)
         await handler(event->CommandGenerator.asPayload, context)
       | None =>
-        Js.log2("AggregateRuntime_Builder_PerAggregate.aggregateHandler: no handler found:", info)
+        Js.log2(`${desc} no handler found:`, info)
         ""
       }
     | _ =>
@@ -55,24 +47,14 @@ module Make = (
         ->Array.map(async ((urn, event)) => {
           switch commandTopicHandlers->Js.Dict.get(urn) {
           | Some(handler) =>
-            Js.log2(
-              "----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for commandTopic",
-              urn,
-            )
+            Js.log2(`----- ${desc} found handler for commandTopic`, urn)
             await handler(event, context)
           | None =>
             switch eventCollectorHandlers->Js.Dict.get(urn) {
             | Some(handler) =>
-              Js.log2(
-                "----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for eventCollector",
-                urn,
-              )
+              Js.log2(`----- ${desc} found handler for eventCollector`, urn)
               await handler(event, context)
-            | None =>
-              Js.log2(
-                "AggregateRuntime_Builder_PerAggregate.aggregateHandler: no handler found:",
-                urn,
-              )
+            | None => Js.log2(`${desc} no handler found:`, urn)
             }
           }
         })

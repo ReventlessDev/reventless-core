@@ -17,15 +17,15 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
   var eventCollectorHandlers = {};
   var aggregateHandler = function (aggregateName) {
     return async function ($$event, context) {
-      console.log("----- AggregateRuntime_Builder_PerAggregate.aggregateHandler:", aggregateName, $$event, context);
+      var desc = "AggregateRuntime_Builder_PerAggregate.aggregateHandler for " + aggregateName + ":";
       var info = CommandGenerator$Reventless.metaInfo($$event);
       if (info !== undefined) {
         var handler = Js_dict.get(commandGeneratorHandlers, info);
         if (handler !== undefined) {
-          console.log("----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for commandGenerator", info);
+          console.log("----- " + desc + " found handler for commandGenerator", info);
           return await handler($$event, context);
         } else {
-          console.log("AggregateRuntime_Builder_PerAggregate.aggregateHandler: no handler found:", info);
+          console.log(desc + " no handler found:", info);
           return "";
         }
       }
@@ -34,15 +34,15 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
                 var urn = param[0];
                 var handler = Js_dict.get(commandTopicHandlers, urn);
                 if (handler !== undefined) {
-                  console.log("----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for commandTopic", urn);
+                  console.log("----- " + desc + " found handler for commandTopic", urn);
                   return await handler($$event, context);
                 }
                 var handler$1 = Js_dict.get(eventCollectorHandlers, urn);
                 if (handler$1 !== undefined) {
-                  console.log("----- AggregateRuntime_Builder_PerAggregate.aggregateHandler: found handler for eventCollector", urn);
+                  console.log("----- " + desc + " found handler for eventCollector", urn);
                   return await handler$1($$event, context);
                 } else {
-                  console.log("AggregateRuntime_Builder_PerAggregate.aggregateHandler: no handler found:", urn);
+                  console.log(desc + " no handler found:", urn);
                   return ;
                 }
               }));
