@@ -3,10 +3,10 @@
 
 var Aggregate_Builder$Reventless = require("@reventless/reventless/src/components/Aggregate/Aggregate_Builder.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
+var AggregateRuntime_Builder_Single$Reventless = require("@reventless/reventless/src/adapter/Runtime/AggregateRuntime_Builder_Single.res.js");
 var CommandTopicChannel_SQS_FIFO$ReventlessAws = require("../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.js");
 var EventLogStorage_DynamoDbStream$ReventlessAws = require("../adapter/EventLog/EventLogStorage_DynamoDbStream.res.js");
 var CommandGeneratorResolvers_AppSync$ReventlessAws = require("../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.js");
-var AggregateRuntime_Builder_PerAggregate$Reventless = require("@reventless/reventless/src/adapter/Runtime/AggregateRuntime_Builder_PerAggregate.res.js");
 var EventTopicPublisher_DynamoDbStream$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_DynamoDbStream.res.js");
 var EventCollectorChannel_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.js");
 
@@ -40,7 +40,7 @@ function Make(Config, Spec, Behaviour, EventMappings) {
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     asEventHandler: partial_arg_asEventHandler$1
   };
-  var partial_arg$9 = AggregateRuntime_Builder_PerAggregate$Reventless.Make;
+  var partial_arg$9 = AggregateRuntime_Builder_Single$Reventless.Make;
   var partial_arg$10 = function (param, param$1) {
     return partial_arg$9(partial_arg$8, param, param$1);
   };
