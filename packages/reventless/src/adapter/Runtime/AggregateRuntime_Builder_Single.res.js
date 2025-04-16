@@ -13,7 +13,13 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
   var include = partial_arg$1(CommandTopicChannel, EventCollectorChannel);
   var aggregateRuntimeSpecs = include.aggregateRuntimeSpecs;
   var aggregateHandler = include.aggregateHandler;
+  var finished = {
+    contents: false
+  };
   var finish = function () {
+    if (finished.contents) {
+      return ;
+    }
     var specs = Object.values(aggregateRuntimeSpecs);
     var match = Core__Array.reduce(specs, [
           undefined,
@@ -36,9 +42,8 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
                   connect(runtime);
                 });
           });
-      return ;
     }
-    console.log("AggregateRuntime_Builder_Single: No Runtime created because no parent found for Aggregate Runtime specs", aggregateRuntimeSpecs);
+    finished.contents = true;
   };
   return {
           CommandTopicChannel: include.CommandTopicChannel,

@@ -5,6 +5,7 @@ var Curry = require("@rescript/std/lib/js/curry.js");
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Belt_Array = require("@rescript/std/lib/js/belt_Array.js");
+var Core__Dict = require("@rescript/core/src/Core__Dict.res.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
 var Pulumi = require("@pulumi/pulumi");
@@ -158,9 +159,12 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         var publishToAggregates = param[2];
                         var aggregateResources = param[1];
                         var coreExtensionPoints = param[0];
-                        var aggregatesOutputs = Js_dict.map((function (addEventMapperFn) {
+                        var aggregatesOutputs = Core__Dict.mapValues(addEventMapperFns, (function (addEventMapperFn) {
                                 return addEventMapperFn(allEventTopics, queryEngine);
-                              }), addEventMapperFns);
+                              }));
+                        aggregates.forEach(function (SpecificAggregate) {
+                              SpecificAggregate.AggregateRuntimeBuilder.finish();
+                            });
                         var match = Belt_Array.unzip(extensionPoints.map(function (SpecificExtensionPoint) {
                                   var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
                                   return [
@@ -321,7 +325,6 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                             });
                         var SpecificHeartbeat = Heartbeat_Builder$Reventless.Make(HeartbeatRunner);
                         var heartbeat = SpecificHeartbeat.make(childName, opts);
-                        Component$Reventless.toPulumiResource(heartbeat);
                         var handler = SpecificHeartbeat.makeHandler(id, heartbeatInterval, publishToCorePluginExtensionPoint);
                         PluginRuntimeBuilder.forPluginHeartbeat(handler, (function (none) {
                                 return Curry._4(SpecificHeartbeat.connect, none, corePluginExtensionPointCommandTopicRemoteChannel, heartbeatInterval, heartbeat);

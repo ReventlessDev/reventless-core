@@ -116,22 +116,20 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                       return partial_arg$1(partial_arg, SpecificEventCollector, param, param$1);
                     };
                     var SpecificEventMapper = partial_arg$2(EventMappings, AggregateRuntimeBuilder);
-                    if (EventMappings.mappings.length > 0) {
-                      var eventMapper = Pulumi.all([
-                              Component$Reventless.operations(self),
-                              Component$Reventless.outputs(self).commandTopic
-                            ]).apply(function (param) {
-                            return SpecificEventMapper.make(ComponentType$Reventless.name(Spec.name, Aggregate$Reventless.componentType), none, none$1, param[0].publishJsons, param[1].resources, undefined, undefined, opts);
-                          });
-                      AggregateRuntimeBuilder.finish();
-                      var newrecord = Caml_obj.obj_dup(Component$Reventless.outputs(self));
-                      newrecord.eventMapper = eventMapper.apply(function (eventMapper) {
-                            return Component$Reventless.outputs(eventMapper);
-                          });
-                      return newrecord;
+                    if (EventMappings.mappings.length <= 0) {
+                      return Component$Reventless.outputs(self);
                     }
-                    AggregateRuntimeBuilder.finish();
-                    return Component$Reventless.outputs(self);
+                    var eventMapper = Pulumi.all([
+                            Component$Reventless.operations(self),
+                            Component$Reventless.outputs(self).commandTopic
+                          ]).apply(function (param) {
+                          return SpecificEventMapper.make(ComponentType$Reventless.name(Spec.name, Aggregate$Reventless.componentType), none, none$1, param[0].publishJsons, param[1].resources, undefined, undefined, opts);
+                        });
+                    var newrecord = Caml_obj.obj_dup(Component$Reventless.outputs(self));
+                    newrecord.eventMapper = eventMapper.apply(function (eventMapper) {
+                          return Component$Reventless.outputs(eventMapper);
+                        });
+                    return newrecord;
                   })
               });
   };
@@ -140,6 +138,7 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
   };
   return {
           Spec: Spec,
+          AggregateRuntimeBuilder: AggregateRuntimeBuilder,
           make: make
         };
 }

@@ -33,6 +33,7 @@ let filterEventTopics = (allAggregates, aggregateNames) =>
 
 module type T = {
   module Spec: ReventlessSpec.Aggregate.Spec
+  module AggregateRuntimeBuilder: AggregateRuntime_Builder.T
 
   let make: (~opts: Pulumi.ComponentResource.options=?) => component
 }

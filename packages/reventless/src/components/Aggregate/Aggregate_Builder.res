@@ -18,6 +18,7 @@ module Make = (
     and type runtimeParts = RuntimeEnvironment.parts,
 ): Aggregate.T => {
   module Spec = Spec
+  module AggregateRuntimeBuilder = AggregateRuntimeBuilder
 
   let addEventMapperFn = (aggregate: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
     module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
@@ -42,7 +43,6 @@ module Make = (
             ~opts,
           )
         )
-      AggregateRuntimeBuilder.finish()
       {
         ...aggregate->Component.outputs,
         eventMapper: eventMapper->Pulumi.Output.apply(eventMapper =>
@@ -50,7 +50,6 @@ module Make = (
         ),
       }
     } else {
-      AggregateRuntimeBuilder.finish()
       aggregate->Component.outputs
     }
   }

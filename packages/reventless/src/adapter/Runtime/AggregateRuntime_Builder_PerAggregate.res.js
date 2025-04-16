@@ -14,17 +14,25 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
   var include = partial_arg$1(CommandTopicChannel, EventCollectorChannel);
   var aggregateRuntimeSpecs = include.aggregateRuntimeSpecs;
   var aggregateHandler = include.aggregateHandler;
+  var finished = {
+    contents: false
+  };
   var finish = function () {
-    Object.entries(aggregateRuntimeSpecs).map(function (param) {
-          var match = param[1];
-          var aggregateName = param[0];
-          var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(aggregateName, Aggregate$Reventless.componentType), Pulumi.output(aggregateHandler(aggregateName)), match.memorySize, match.timeout, {
-                parent: match.aggregate
-              });
-          match.connects.forEach(function (connect) {
-                connect(runtime);
-              });
-        });
+    if (!finished.contents) {
+      Object.entries(aggregateRuntimeSpecs).map(function (param) {
+            var match = param[1];
+            var aggregateName = param[0];
+            var runtime = RuntimeEnvironment.make(ComponentType$Reventless.name(aggregateName, Aggregate$Reventless.componentType), Pulumi.output(aggregateHandler(aggregateName)), match.memorySize, match.timeout, {
+                  parent: match.aggregate
+                });
+            match.connects.forEach(function (connect) {
+                  connect(runtime);
+                });
+          });
+      finished.contents = true;
+      return ;
+    }
+    
   };
   return {
           CommandTopicChannel: include.CommandTopicChannel,

@@ -17,31 +17,35 @@ module Make = (
     EventCollectorChannel,
   )
 
-  let finish = () => {
-    let specs = aggregateRuntimeSpecs->Dict.valuesToArray
-    let (parent, memorySize, timeout) = specs->Array.reduce((None, 0, 0), (
-      (_, accMemorySize, accTimeout),
-      {aggregate, memorySize, timeout},
-    ) => {
-      (aggregate.parent, Math.Int.max(accMemorySize, memorySize), Math.Int.max(accTimeout, timeout))
-    })
-    switch parent {
-    | Some(parent) =>
-      let runtime = RuntimeEnvironment.make(
-        ~name="AllAggregates",
-        ~handler=aggregateHandler("Single")->Pulumi.Output.make,
-        ~memorySize,
-        ~timeout,
-        ~opts={Pulumi.ComponentResource.parent: parent},
-      )
-      let _ = specs->Array.map(({connects}) => {
-        connects->Array.forEach(connect => connect(~runtime))
+  let finished = ref(false)
+
+  let finish = () =>
+    if !finished.contents {
+      let specs = aggregateRuntimeSpecs->Dict.valuesToArray
+      let (parent, memorySize, timeout) = specs->Array.reduce((None, 0, 0), (
+        (_, accMemorySize, accTimeout),
+        {aggregate, memorySize, timeout},
+      ) => {
+        (
+          aggregate.parent,
+          Math.Int.max(accMemorySize, memorySize),
+          Math.Int.max(accTimeout, timeout),
+        )
       })
-    | None =>
-      Js.log2(
-        "AggregateRuntime_Builder_Single: No Runtime created because no parent found for Aggregate Runtime specs",
-        aggregateRuntimeSpecs,
-      )
+      switch parent {
+      | Some(parent) =>
+        let runtime = RuntimeEnvironment.make(
+          ~name="AllAggregates",
+          ~handler=aggregateHandler("Single")->Pulumi.Output.make,
+          ~memorySize,
+          ~timeout,
+          ~opts={Pulumi.ComponentResource.parent: parent},
+        )
+        let _ = specs->Array.map(({connects}) => {
+          connects->Array.forEach(connect => connect(~runtime))
+        })
+      | None => ()
+      }
+      finished := true
     }
-  }
 }

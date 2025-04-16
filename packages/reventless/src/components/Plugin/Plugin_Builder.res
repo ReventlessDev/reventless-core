@@ -187,10 +187,13 @@ module Make = (
         scheduler,
         queryEngine,
       )) => {
-        let aggregatesOutputs = Js.Dict.map(
-          addEventMapperFn => addEventMapperFn(allEventTopics, queryEngine),
-          addEventMapperFns,
-        )
+        let aggregatesOutputs =
+          addEventMapperFns->Dict.mapValues(addEventMapperFn =>
+            addEventMapperFn(allEventTopics, queryEngine)
+          )
+        aggregates->Array.forEach((module(SpecificAggregate: Aggregate.T)) => {
+          SpecificAggregate.AggregateRuntimeBuilder.finish()
+        })
 
         let (extensionPointsOutputs, extensionPointsHandlers) =
           extensionPoints
@@ -469,8 +472,6 @@ module Make = (
 
         module SpecificHeartbeat = Heartbeat_Builder.Make(HeartbeatRunner)
         let heartbeat = SpecificHeartbeat.make(~name=childName, ~opts)
-        let heartbeatOpts = {Pulumi.ComponentResource.parent: heartbeat->Component.toPulumiResource}
-
         let handler = SpecificHeartbeat.makeHandler(
           ~id,
           ~timeout=heartbeatInterval,
