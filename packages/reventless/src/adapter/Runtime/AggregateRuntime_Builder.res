@@ -19,5 +19,5 @@ module type T = {
     runtimeParts,
     EventCollector.component,
   >
-  let finish: Aggregate.component => unit
+  let finish: unit => unit
 }

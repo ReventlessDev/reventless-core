@@ -123,14 +123,14 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                             ]).apply(function (param) {
                             return SpecificEventMapper.make(ComponentType$Reventless.name(Spec.name, Aggregate$Reventless.componentType), none, none$1, param[0].publishJsons, param[1].resources, undefined, undefined, opts);
                           });
-                      AggregateRuntimeBuilder.finish(self);
+                      AggregateRuntimeBuilder.finish();
                       var newrecord = Caml_obj.obj_dup(Component$Reventless.outputs(self));
                       newrecord.eventMapper = eventMapper.apply(function (eventMapper) {
                             return Component$Reventless.outputs(eventMapper);
                           });
                       return newrecord;
                     }
-                    AggregateRuntimeBuilder.finish(self);
+                    AggregateRuntimeBuilder.finish();
                     return Component$Reventless.outputs(self);
                   })
               });

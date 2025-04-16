@@ -42,7 +42,7 @@ module Make = (
             ~opts,
           )
         )
-      aggregate->AggregateRuntimeBuilder.finish
+      AggregateRuntimeBuilder.finish()
       {
         ...aggregate->Component.outputs,
         eventMapper: eventMapper->Pulumi.Output.apply(eventMapper =>
@@ -50,7 +50,7 @@ module Make = (
         ),
       }
     } else {
-      aggregate->AggregateRuntimeBuilder.finish
+      AggregateRuntimeBuilder.finish()
       aggregate->Component.outputs
     }
   }
