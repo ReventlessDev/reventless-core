@@ -145,9 +145,6 @@ module Make = (
           Js.Dict.set(readModelNamesForSourceName, sourceName, [SpecificReadModel.Spec.name])
         }
       )
-      readModels->Array.forEach((module(SpecificReadModel: ReadModel.T)) => {
-        SpecificReadModel.ReadModelRuntimeBuilder.finish()
-      })
 
       publishToReadModels->Js.Dict.set(
         SpecificReadModel.Spec.name,
@@ -157,6 +154,9 @@ module Make = (
       )
 
       (SpecificReadModel.Spec.name, {module_: module(SpecificReadModel), readModel})
+    })
+    readModels->Array.forEach((module(SpecificReadModel: ReadModel.T)) => {
+      SpecificReadModel.ReadModelRuntimeBuilder.finish()
     })
     let readModelsOutputs =
       readModelComponents

@@ -123,9 +123,6 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                 readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
                               }
                             });
-                        readModels.forEach(function (SpecificReadModel) {
-                              SpecificReadModel.ReadModelRuntimeBuilder.finish();
-                            });
                         publishToReadModels[SpecificReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(function (param) {
                               return param.enqueueEvent;
                             });
@@ -136,6 +133,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                   readModel: readModel
                                 }
                               ];
+                      });
+                  readModels.forEach(function (SpecificReadModel) {
+                        SpecificReadModel.ReadModelRuntimeBuilder.finish();
                       });
                   var readModelsOutputs = Js_dict.fromArray(Js_dict.entries(Js_dict.fromArray(readModelComponents)).map(function (param) {
                             return [
