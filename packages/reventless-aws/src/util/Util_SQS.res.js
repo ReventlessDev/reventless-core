@@ -3,6 +3,7 @@
 
 var Aws = require("@pulumi/aws");
 var Pulumi = require("@pulumi/pulumi");
+var Util$Reventless = require("@reventless/reventless/src/util/Util.res.js");
 var AWS$ReventlessAws = require("../adapter/AWS.res.js");
 var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
 var Util_AdapterRuntime$Reventless = require("@reventless/reventless/src/util/Util_AdapterRuntime.res.js");
@@ -52,7 +53,7 @@ function arn2Account(arn) {
 }
 
 function subscribeToSnsTopic(queue, targetName, sourceName, topic, opts) {
-  return new (Aws.sns.TopicSubscription)(sourceName + ("2" + targetName), {
+  return new (Aws.sns.TopicSubscription)(Util$Reventless.baseName(sourceName) + ("2" + targetName), {
               endpoint: queue.arn,
               topic: topic.urn,
               protocol: "sqs",

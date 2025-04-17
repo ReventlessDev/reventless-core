@@ -10,7 +10,7 @@ let subscribe = (
   ~opts,
 ) =>
   EventSourceMapping.make(
-    ~name=sourceName ++ ("2" ++ targetName),
+    ~name=sourceName->Reventless.Util.baseName ++ ("2" ++ targetName),
     ~args={
       EventSourceMapping.functionName: lambda
       ->Pulumi.Output.flatMap(lambda => lambda.arn)

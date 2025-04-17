@@ -3,9 +3,10 @@
 
 var Aws = require("@pulumi/aws");
 var Output$Pulumi = require("@reventless/bs-pulumi-pulumi/src/Output.res.js");
+var Util$Reventless = require("@reventless/reventless/src/util/Util.res.js");
 
 function subscribe(batchSize, lambda, targetName, sourceName, source, opts) {
-  return new (Aws.lambda.EventSourceMapping)(sourceName + ("2" + targetName), {
+  return new (Aws.lambda.EventSourceMapping)(Util$Reventless.baseName(sourceName) + ("2" + targetName), {
               functionName: Output$Pulumi.flatMap(lambda, (function (lambda) {
                       return lambda.arn;
                     })),

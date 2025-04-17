@@ -38,7 +38,7 @@ let subscribeToSnsTopic = (
   ~opts,
 ) =>
   SNS.TopicSubscription.make(
-    ~name=sourceName ++ ("2" ++ targetName),
+    ~name=sourceName->Reventless.Util.baseName ++ ("2" ++ targetName),
     ~args={
       endpoint: queue.arn->Pulumi.Output.asInput,
       protocol: SQS,
