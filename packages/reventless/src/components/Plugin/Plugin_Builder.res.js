@@ -113,7 +113,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                   var allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
                   var readModelNamesForSourceName = {};
                   var publishToReadModels = {};
-                  var readModels$1 = readModels.map(function (SpecificReadModel) {
+                  var readModelComponents = readModels.map(function (SpecificReadModel) {
                         var readModel = SpecificReadModel.make(allEventTopics, opts);
                         Component$Reventless.outputs(readModel).sourceNames.forEach(function (sourceName) {
                               var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
@@ -122,6 +122,9 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                               } else {
                                 readModelNamesForSourceName[sourceName] = [SpecificReadModel.Spec.name];
                               }
+                            });
+                        readModels.forEach(function (SpecificReadModel) {
+                              SpecificReadModel.ReadModelRuntimeBuilder.finish();
                             });
                         publishToReadModels[SpecificReadModel.Spec.name] = Component$Reventless.operations(readModel).apply(function (param) {
                               return param.enqueueEvent;
@@ -134,7 +137,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                 }
                               ];
                       });
-                  var readModelsOutputs = Js_dict.fromArray(Js_dict.entries(Js_dict.fromArray(readModels$1)).map(function (param) {
+                  var readModelsOutputs = Js_dict.fromArray(Js_dict.entries(Js_dict.fromArray(readModelComponents)).map(function (param) {
                             return [
                                     param[0],
                                     Component$Reventless.outputs(param[1].readModel)

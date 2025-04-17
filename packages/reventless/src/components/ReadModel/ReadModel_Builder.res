@@ -13,6 +13,7 @@ module Make = (
     with module EventCollectorChannel = EventCollectorChannel,
 ): (ReadModel.T with module Spec = Spec) => {
   module Spec = Spec
+  module ReadModelRuntimeBuilder = ReadModelRuntimeBuilder
 
   type projectionOperations = QueryDb.operations<string, Spec.state> // TODO: should we really use this "mixed" type?
 

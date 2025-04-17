@@ -103,6 +103,7 @@ function Make(Config, Spec, Mappings, RuntimeEnvironment, QueryDbStorage, QueryD
   };
   return {
           Spec: Spec,
+          ReadModelRuntimeBuilder: ReadModelRuntimeBuilder,
           make: make
         };
 }
