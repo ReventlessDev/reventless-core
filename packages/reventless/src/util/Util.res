@@ -1,3 +1,5 @@
+let baseName = name => (name->String.split("-"))[0]->Option.getOr(name)
+
 module Adapter = Util_Adapter
 module AdapterRuntime = Util_AdapterRuntime
 module Array = Util_Array
