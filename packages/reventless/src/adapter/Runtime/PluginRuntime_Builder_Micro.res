@@ -19,15 +19,6 @@ module Make = (
     eventCollector,
   ) => {
     let resource = eventCollector->Component.toPulumiResource
-    // let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
-    //   Js.log4(
-    //     "PluginRuntime_Builder_Micro.forSideEffectHandlerEventCollector:",
-    //     resource.name,
-    //     event,
-    //     context,
-    //   )
-    //   handler(event, context)
-    // })
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(SideEffectHandler.componentType),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
@@ -46,10 +37,6 @@ module Make = (
     eventCollector,
   ) => {
     let resource = eventCollector->Component.toPulumiResource
-    // let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
-    //   Js.log4("PluginRuntime_Builder_Micro.forPluginEventCollector:", resource.name, event, context)
-    //   handler(event, context)
-    // })
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
@@ -68,10 +55,6 @@ module Make = (
     heartbeat,
   ) => {
     let resource = heartbeat->Component.toPulumiResource
-    // let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
-    //   Js.log4("PluginRuntime_Builder_Micro.forPluginHeartbeat:", resource.name, event, context)
-    //   handler(event, context)
-    // })
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(Heartbeat.componentType),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),

@@ -13,10 +13,6 @@ module Make = (
 
   let forEventCollector = (~handler, ~connect, ~memorySize=1024, ~timeout=30, eventCollector) => {
     let resource = eventCollector->Component.toPulumiResource
-    // let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
-    //   Js.log4("ReadModelRuntime_Builder_Micro.forEventCollector:", resource.name, event, context)
-    //   handler(event, context)
-    // })
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->Option.getOr("UnnamedReadModel"),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),

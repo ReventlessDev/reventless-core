@@ -22,15 +22,6 @@ module Make = (
     commandGenerator,
   ) => {
     let resource = commandGenerator->Component.toPulumiResource
-    // let handler = handler->Pulumi.Output.apply(handler => (payload, context) => {
-    //   Js.log4(
-    //     "AggregateRuntime_Builder_Micro.forCommandGenerator:",
-    //     resource.name,
-    //     payload,
-    //     context,
-    //   )
-    //   handler(payload, context)
-    // })
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(CommandGenerator.componentType),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
@@ -50,10 +41,6 @@ module Make = (
     commandTopic,
   ) => {
     let resource = commandTopic->Component.toPulumiResource
-    // let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
-    //   Js.log4("AggregateRuntime_Builder_Micro.forCommandTopic:", resource.name, event, context)
-    //   handler(event, context)
-    // })
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(CommandTopic.componentType),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
@@ -74,10 +61,6 @@ module Make = (
     eventCollector,
   ) => {
     let resource = eventCollector->Component.toPulumiResource
-    // let handler = handler->Pulumi.Output.apply(handler => (event, context) => {
-    //   Js.log4("AggregateRuntime_Builder_Micro.forEventCollector:", resource.name, event, context)
-    //   handler(event, context)
-    // })
     let runtime = RuntimeEnvironment.make(
       ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
