@@ -132,7 +132,7 @@ module Make = (
     let readModelNamesForSourceName = Js.Dict.empty()
     let publishToReadModels = Js.Dict.empty()
 
-    let readModelComponents = readModels->Array.map((module(SpecificReadModel: ReadModel.T)) => {
+    let readModels = readModels->Array.map((module(SpecificReadModel: ReadModel.T)) => {
       let readModel = SpecificReadModel.make(~allEventTopics, ~opts)
       (readModel->Component.outputs).sourceNames->Array.forEach(sourceName =>
         switch readModelNamesForSourceName->Js.Dict.get(sourceName) {
@@ -155,11 +155,17 @@ module Make = (
 
       (SpecificReadModel.Spec.name, {module_: module(SpecificReadModel), readModel})
     })
-    readModels->Array.forEach((module(SpecificReadModel: ReadModel.T)) => {
-      SpecificReadModel.ReadModelRuntimeBuilder.finish()
-    })
+    let _ =
+      readModels
+      ->Array.map(((_, {readModel})) => readModel->Component.operations)
+      ->Pulumi.Output.all
+      ->Pulumi.Output.apply(_ =>
+        readModels->Array.forEach(((_, {module_: module(SpecificReadModel: ReadModel.T)})) => {
+          SpecificReadModel.ReadModelRuntimeBuilder.finish()
+        })
+      )
     let readModelsOutputs =
-      readModelComponents
+      readModels
       ->Js.Dict.fromArray
       ->Js.Dict.entries
       ->Array.map(((name, {readModel})) => (name, readModel->Component.outputs))

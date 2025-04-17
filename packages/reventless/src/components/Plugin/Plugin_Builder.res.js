@@ -113,7 +113,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                   var allEventTopics = Aggregate$Reventless.allEventTopics(aggregatesWithoutEventMappers);
                   var readModelNamesForSourceName = {};
                   var publishToReadModels = {};
-                  var readModelComponents = readModels.map(function (SpecificReadModel) {
+                  var readModels$1 = readModels.map(function (SpecificReadModel) {
                         var readModel = SpecificReadModel.make(allEventTopics, opts);
                         Component$Reventless.outputs(readModel).sourceNames.forEach(function (sourceName) {
                               var readModelNames = Js_dict.get(readModelNamesForSourceName, sourceName);
@@ -134,10 +134,14 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                 }
                               ];
                       });
-                  readModels.forEach(function (SpecificReadModel) {
-                        SpecificReadModel.ReadModelRuntimeBuilder.finish();
+                  Pulumi.all(readModels$1.map(function (param) {
+                              return Component$Reventless.operations(param[1].readModel);
+                            })).apply(function (param) {
+                        readModels$1.forEach(function (param) {
+                              param[1].module_.ReadModelRuntimeBuilder.finish();
+                            });
                       });
-                  var readModelsOutputs = Js_dict.fromArray(Js_dict.entries(Js_dict.fromArray(readModelComponents)).map(function (param) {
+                  var readModelsOutputs = Js_dict.fromArray(Js_dict.entries(Js_dict.fromArray(readModels$1)).map(function (param) {
                             return [
                                     param[0],
                                     Component$Reventless.outputs(param[1].readModel)
