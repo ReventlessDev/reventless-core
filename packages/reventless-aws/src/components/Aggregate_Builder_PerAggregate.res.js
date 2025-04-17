@@ -3,7 +3,7 @@
 
 var Aggregate_Builder$Reventless = require("@reventless/reventless/src/components/Aggregate/Aggregate_Builder.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
-var AggregateRuntime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/AggregateRuntime_Builder_Micro.res.js");
+var AggregateRuntime_Builder_Single$Reventless = require("@reventless/reventless/src/adapter/Runtime/AggregateRuntime_Builder_Single.res.js");
 var CommandTopicChannel_SQS_FIFO$ReventlessAws = require("../adapter/CommandTopic/CommandTopicChannel_SQS_FIFO.res.js");
 var EventLogStorage_DynamoDbStream$ReventlessAws = require("../adapter/EventLog/EventLogStorage_DynamoDbStream.res.js");
 var CommandGeneratorResolvers_AppSync$ReventlessAws = require("../adapter/CommandGenerator/CommandGeneratorResolvers_AppSync.res.js");
@@ -24,7 +24,7 @@ var partial_arg$1 = {
   asEventHandler: partial_arg_asEventHandler
 };
 
-var partial_arg$2 = AggregateRuntime_Builder_Micro$Reventless.Make;
+var partial_arg$2 = AggregateRuntime_Builder_Single$Reventless.Make;
 
 var AggregateRuntimeBuilder = (function (param) {
       return partial_arg$2(partial_arg$1, partial_arg, param);

@@ -3,7 +3,7 @@ module CommandTopicChannel = CommandTopicChannel.SQS_FIFO
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
 
-module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_Micro.Make(
+module AggregateRuntimeBuilder = Reventless.AggregateRuntime_Builder_Single.Make(
   RuntimeEnvironment,
   CommandTopicChannel,
   EventCollectorChannel,
