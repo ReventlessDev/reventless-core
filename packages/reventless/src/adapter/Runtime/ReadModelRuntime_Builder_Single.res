@@ -108,7 +108,7 @@ module Make = (
       | Some(parent) =>
         let runtime = RuntimeEnvironment.make(
           ~name="AllReadModels",
-          ~handler=readModelHandler("Single")->Pulumi.Output.make,
+          ~handler=readModelHandler("AllReadModels")->Pulumi.Output.make,
           ~memorySize,
           ~timeout,
           ~opts={Pulumi.ComponentResource.parent: parent},

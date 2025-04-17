@@ -34,7 +34,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
           }));
     var parent = match[0];
     if (parent !== undefined) {
-      var runtime = RuntimeEnvironment.make("AllAggregates", Pulumi.output(aggregateHandler("Single")), match[1], match[2], {
+      var runtime = RuntimeEnvironment.make("AllAggregates", Pulumi.output(aggregateHandler("AllAggregates")), match[1], match[2], {
             parent: parent
           });
       specs.map(function (param) {

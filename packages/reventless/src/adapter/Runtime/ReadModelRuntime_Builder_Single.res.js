@@ -88,7 +88,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
           }));
     var parent = match[0];
     if (parent !== undefined) {
-      var runtime = RuntimeEnvironment.make("AllReadModels", Pulumi.output(readModelHandler("Single")), match[1], match[2], {
+      var runtime = RuntimeEnvironment.make("AllReadModels", Pulumi.output(readModelHandler("AllReadModels")), match[1], match[2], {
             parent: parent
           });
       specs.map(function (param) {

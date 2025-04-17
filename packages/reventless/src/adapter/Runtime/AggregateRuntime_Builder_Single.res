@@ -36,7 +36,7 @@ module Make = (
       | Some(parent) =>
         let runtime = RuntimeEnvironment.make(
           ~name="AllAggregates",
-          ~handler=aggregateHandler("Single")->Pulumi.Output.make,
+          ~handler=aggregateHandler("AllAggregates")->Pulumi.Output.make,
           ~memorySize,
           ~timeout,
           ~opts={Pulumi.ComponentResource.parent: parent},
