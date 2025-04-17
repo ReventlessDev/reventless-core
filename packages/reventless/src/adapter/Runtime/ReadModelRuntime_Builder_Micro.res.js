@@ -16,9 +16,13 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
         });
     return connect(runtime);
   };
+  var finish = function () {
+    
+  };
   return {
           EventCollectorChannel: EventCollectorChannel,
-          forEventCollector: forEventCollector
+          forEventCollector: forEventCollector,
+          finish: finish
         };
 }
 

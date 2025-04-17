@@ -71,5 +71,5 @@ module Make = (
     connect(~runtime)
   }
 
-  let finish = _aggregate => ()
+  let finish = () => ()
 }

@@ -41,7 +41,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
         });
     return connect(runtime);
   };
-  var finish = function (_aggregate) {
+  var finish = function () {
     
   };
   return {

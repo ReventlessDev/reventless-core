@@ -8,4 +8,5 @@ module type T = {
     runtimeParts,
     EventCollector.component,
   >
+  let finish: unit => unit
 }

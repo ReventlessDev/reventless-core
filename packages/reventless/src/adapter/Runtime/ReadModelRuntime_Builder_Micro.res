@@ -22,4 +22,6 @@ module Make = (
     )
     connect(~runtime)
   }
+
+  let finish = () => ()
 }
