@@ -65,7 +65,7 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, resources, 
       }
 
       let _snsTopicSubscriptions = snsResources->Array.map(snsFifoResource => {
-        Js.log3("EventCollectorChannel_SQS: subscribeToSnsTopic:", name, snsFifoResource)
+        Js.log3("EventCollectorChannel_Common: subscribeToSnsTopic:", name, snsFifoResource)
         let subscription = Util_SQS.subscribeToSnsTopic(
           ~queue,
           ~targetName=name,
@@ -77,7 +77,7 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, resources, 
       })
 
       // let _printWarningForEmptySnsTopic = if snsResources->Array.length == 0 {
-      //   Js.log2("No SNS topics are present for EventCollectorChannel_SQS", name)
+      //   Js.log2("No SNS topics are present for EventCollectorChannel_Common", name)
       // }
     })
 }
@@ -109,10 +109,10 @@ let connectLambda = (
       open Reventless.Adapter
 
       Js.Console.log2(
-        `EventCollectorChannel_SQS: EventTopicResources  ${name}:`,
+        `EventCollectorChannel_Common: EventTopicResources  ${name}:`,
         eventTopicResources,
       )
-      Js.Console.log2(`EventCollectorChannel_SQS: Resources for ${name}:`, resources)
+      Js.Console.log2(`EventCollectorChannel_Common: Resources for ${name}:`, resources)
 
       let dynamoDbStreamResources = eventTopicResources->dynamoDbStreamResources
       let targetSnsResources = resources->targetSnsResources

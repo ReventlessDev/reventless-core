@@ -72,7 +72,7 @@ function connectSqsQueue2SnsTopics(queue, name, resources, opts) {
               queueUrl: param[1]
             }, opts);
         snsResources$1.map(function (snsFifoResource) {
-              console.log("EventCollectorChannel_SQS: subscribeToSnsTopic:", name, snsFifoResource);
+              console.log("EventCollectorChannel_Common: subscribeToSnsTopic:", name, snsFifoResource);
               var subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts);
               return subscription.id.apply(function (id) {
                           console.log("created SNS subscription:", id, name);
@@ -95,8 +95,8 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
         var resources = param[2];
         var queueArns = param[1];
         var eventTopicResources = param[0];
-        console.log("EventCollectorChannel_SQS: EventTopicResources  " + name + ":", eventTopicResources);
-        console.log("EventCollectorChannel_SQS: Resources for " + name + ":", resources);
+        console.log("EventCollectorChannel_Common: EventTopicResources  " + name + ":", eventTopicResources);
+        console.log("EventCollectorChannel_Common: Resources for " + name + ":", resources);
         var dynamoDbStreamResources$1 = dynamoDbStreamResources(eventTopicResources);
         var targetSnsResources$1 = targetSnsResources(resources);
         var targetSqsResources$1 = targetSqsResources(resources);
