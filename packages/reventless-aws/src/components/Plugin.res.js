@@ -18,7 +18,8 @@ var partial_arg$2 = {
 };
 
 var partial_arg$3 = {
-  make: EventCollectorChannel_SQS$ReventlessAws.make
+  make: EventCollectorChannel_SQS$ReventlessAws.make,
+  connect: EventCollectorChannel_SQS$ReventlessAws.connect
 };
 
 function partial_arg_asEventHandler(prim) {
@@ -50,7 +51,8 @@ var include = (function (param) {
     })((function (param) {
           return partial_arg$7(partial_arg$6, param);
         })({
-          make: EventCollectorChannel_SQS$ReventlessAws.make
+          make: EventCollectorChannel_SQS$ReventlessAws.make,
+          connect: EventCollectorChannel_SQS$ReventlessAws.connect
         }));
 
 var EventCollectorChannel;

@@ -1,7 +1,13 @@
-module Make = (Channel: EventCollector_Adapter.Channel): (
-  EventCollector.T with type callbackEvent = Channel.callbackEvent
+module Make = (
+  RuntimeEnvironment: Runtime.Environment,
+  Channel: EventCollector_Adapter.Channel with type runtimeParts = RuntimeEnvironment.parts,
+): (
+  EventCollector.T
+    with type callbackEvent = Channel.callbackEvent
+    and type runtimeParts = RuntimeEnvironment.parts
 ) => {
   type callbackEvent = Channel.callbackEvent
+  type runtimeParts = RuntimeEnvironment.parts
 
   let construct = (~eventTopics, self, name) => {
     let opts = {Pulumi.ComponentResource.parent: self->Component.toPulumiResource}
@@ -28,16 +34,14 @@ module Make = (Channel: EventCollector_Adapter.Channel): (
       eventCollectorResource.name
       ->Option.getOr("Unnamed")
       ->ComponentType.name(EventCollector.componentType)
-    let opts = {Pulumi.ComponentResource.parent: eventCollectorResource}
-    let channel = eventCollector->EventCollector_Adapter.channel
 
-    let _connectResources = channel.connect(
+    let _connectResources = Channel.connect(
       ~name,
-      ~eventTopics,
-      ~channel,
+      ~channelSpecs=[
+        {channel: eventCollector->EventCollector_Adapter.channel, eventTopics, resources},
+      ],
       ~runtime,
-      ~resources,
-      ~opts,
+      ~opts={Pulumi.ComponentResource.parent: eventCollectorResource},
     )
 
     // let _ = eventCollector->Component.setOutputs({

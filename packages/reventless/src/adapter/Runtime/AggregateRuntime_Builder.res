@@ -14,9 +14,8 @@ module type T = {
     runtimeParts,
     CommandTopic.component<'op>,
   >
-  let forEventCollector: Runtime.forComponent<
+  let forEventCollector: Runtime.forEventCollector<
     Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
-    runtimeParts,
     EventCollector.component,
   >
   let finish: unit => unit

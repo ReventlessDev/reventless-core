@@ -49,7 +49,7 @@ module Make = (Spec: CommandTopic.Spec, Channel: CommandTopic_Adapter.Channel): 
     let opts = {Pulumi.ComponentResource.parent: commandTopicResource}
     let channel = commandTopic->CommandTopic_Adapter.channel
 
-    let connectResources = channel.connect(~name, ~channel, ~runtime, ~resources, ~opts)
+    let _connectResources = channel.connect(~name, ~channel, ~runtime, ~resources, ~opts)
 
     // let _ = commandTopic->Component.setOutputs({
     //   CommandTopic.resources: channel.resources->Array.concat(subscribeResources),

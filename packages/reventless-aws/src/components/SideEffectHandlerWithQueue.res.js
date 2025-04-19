@@ -7,25 +7,29 @@ var PluginRuntime_Builder_Micro$Reventless = require("@reventless/reventless/src
 var EventCollectorChannel_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_SQS.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
 
-var partial_arg = EventCollector_Builder$Reventless.Make({
-      make: EventCollectorChannel_SQS$ReventlessAws.make
-    });
-
-var partial_arg$1 = {
-  make: EventCollectorChannel_SQS$ReventlessAws.make
-};
-
 function partial_arg_asEventHandler(prim) {
   return prim;
 }
 
-var partial_arg$2 = {
+var partial_arg = {
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: partial_arg_asEventHandler
 };
 
-var partial_arg$3 = SideEffectHandler_Builder$Reventless.Make;
+var partial_arg$1 = EventCollector_Builder$Reventless.Make;
+
+var partial_arg$2 = (function (param) {
+      return partial_arg$1(partial_arg, param);
+    })({
+      make: EventCollectorChannel_SQS$ReventlessAws.make,
+      connect: EventCollectorChannel_SQS$ReventlessAws.connect
+    });
+
+var partial_arg$3 = {
+  make: EventCollectorChannel_SQS$ReventlessAws.make,
+  connect: EventCollectorChannel_SQS$ReventlessAws.connect
+};
 
 function partial_arg_asEventHandler$1(prim) {
   return prim;
@@ -37,14 +41,27 @@ var partial_arg$4 = {
   asEventHandler: partial_arg_asEventHandler$1
 };
 
-var partial_arg$5 = PluginRuntime_Builder_Micro$Reventless.Make;
+var partial_arg$5 = SideEffectHandler_Builder$Reventless.Make;
+
+function partial_arg_asEventHandler$2(prim) {
+  return prim;
+}
+
+var partial_arg$6 = {
+  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  asEventHandler: partial_arg_asEventHandler$2
+};
+
+var partial_arg$7 = PluginRuntime_Builder_Micro$Reventless.Make;
 
 var include = (function (param) {
-      return partial_arg$3(partial_arg$2, partial_arg$1, partial_arg, param);
+      return partial_arg$5(partial_arg$4, partial_arg$3, partial_arg$2, param);
     })((function (param) {
-          return partial_arg$5(partial_arg$4, param);
+          return partial_arg$7(partial_arg$6, param);
         })({
-          make: EventCollectorChannel_SQS$ReventlessAws.make
+          make: EventCollectorChannel_SQS$ReventlessAws.make,
+          connect: EventCollectorChannel_SQS$ReventlessAws.connect
         }));
 
 var EventCollectorChannel;

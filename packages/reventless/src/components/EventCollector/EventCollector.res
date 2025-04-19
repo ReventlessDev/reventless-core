@@ -15,11 +15,12 @@ type jsonEventsHandler = array<Js.Json.t> => Js.Promise.t<unit>
 
 module type T = {
   type callbackEvent
+  type runtimeParts
 
   let connect: (
     ~eventTopics: EventTopic.allOutputs,
     ~resources: array<ReventlessSpec.Adapter.resource>,
-    ~runtime: Runtime.environment<'runtimeParts>,
+    ~runtime: Runtime.environment<runtimeParts>,
     component,
   ) => unit
 

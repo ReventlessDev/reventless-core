@@ -5,25 +5,31 @@ var CommandTopicChannel_SQS$ReventlessAws = require("../adapter/CommandTopic/Com
 var EventTopicPublisher_SNS$ReventlessAws = require("../adapter/EventTopic/EventTopicPublisher_SNS.res.js");
 var PluginExtensionPoint_Builder$Reventless = require("@reventless/reventless/src/core/ExtensionPoints/Plugin/PluginExtensionPoint_Builder.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
-var ExtensionPointRuntime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/ExtensionPointRuntime_Builder_Micro.res.js");
-
-var partial_arg = EventTopicPublisher_SNS$ReventlessAws;
-
-var partial_arg$1 = {
-  make: CommandTopicChannel_SQS$ReventlessAws.make
-};
+var ExtensionPointRuntime_Builder_PerExtensionPoint$Reventless = require("@reventless/reventless/src/adapter/Runtime/ExtensionPointRuntime_Builder_PerExtensionPoint.res.js");
 
 function partial_arg_asEventHandler(prim) {
   return prim;
 }
 
-var partial_arg$2 = {
+var partial_arg = {
   make: RuntimeEnvironment_Lambda$ReventlessAws.make,
   groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
   asEventHandler: partial_arg_asEventHandler
 };
 
-var partial_arg$3 = PluginExtensionPoint_Builder$Reventless.Make;
+var partial_arg$1 = ExtensionPointRuntime_Builder_PerExtensionPoint$Reventless.Make;
+
+var ExtensionPointRuntimeBuilder = (function (param) {
+      return partial_arg$1(partial_arg, param);
+    })({
+      make: CommandTopicChannel_SQS$ReventlessAws.make
+    });
+
+var partial_arg$2 = EventTopicPublisher_SNS$ReventlessAws;
+
+var partial_arg$3 = {
+  make: CommandTopicChannel_SQS$ReventlessAws.make
+};
 
 function partial_arg_asEventHandler$1(prim) {
   return prim;
@@ -35,18 +41,12 @@ var partial_arg$4 = {
   asEventHandler: partial_arg_asEventHandler$1
 };
 
-var partial_arg$5 = ExtensionPointRuntime_Builder_Micro$Reventless.Make;
-
-var $$let = (function (param) {
-      return partial_arg$5(partial_arg$4, param);
-    })({
-      make: CommandTopicChannel_SQS$ReventlessAws.make
-    });
+var partial_arg$5 = PluginExtensionPoint_Builder$Reventless.Make;
 
 var Make = (function (param) {
-      return partial_arg$3(partial_arg$2, partial_arg$1, partial_arg, param);
+      return partial_arg$5(partial_arg$4, partial_arg$3, partial_arg$2, param);
     })({
-      forCommandTopic: $$let.forCommandTopic
+      forCommandTopic: ExtensionPointRuntimeBuilder.forCommandTopic
     });
 
 var CommandTopicChannel;
@@ -55,5 +55,6 @@ var RuntimeEnvironment;
 
 exports.CommandTopicChannel = CommandTopicChannel;
 exports.RuntimeEnvironment = RuntimeEnvironment;
+exports.ExtensionPointRuntimeBuilder = ExtensionPointRuntimeBuilder;
 exports.Make = Make;
-/* Make Not a pure module */
+/* ExtensionPointRuntimeBuilder Not a pure module */

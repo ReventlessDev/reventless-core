@@ -1,6 +1,8 @@
 module Make = (
   Config: Config.T,
-  EventCollectorChannel: EventCollector_Adapter.Channel,
+  RuntimeEnvironment: Runtime.Environment,
+  EventCollectorChannel: EventCollector_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
   QueryEngineAdapter: QueryDb_Adapter.QueryEngineAdapter,
   ClonerRunner: Cloner.Adapter.Runner with type api := Config.api,
   CoreRuntimeBuilder: PluginRuntime_Builder.T
@@ -128,7 +130,10 @@ module Make = (
           (extensionPointsOutgoingEventHandlers->Pulumi.Output.all, resources)
           ->Pulumi.Output.all2
           ->Pulumi.Output.apply(((extensionPointsOutgoingEventHandlers, resources)) => {
-            module CoreEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
+            module CoreEventCollector = EventCollector_Builder.Make(
+              RuntimeEnvironment,
+              EventCollectorChannel,
+            )
             let eventCollector = CoreEventCollector.make(~name, ~eventTopics, ~opts)
             let eventCollectorOutputs = eventCollector->Component.outputs
 
@@ -142,7 +147,8 @@ module Make = (
             )
             eventCollector->CoreRuntimeBuilder.forPluginEventCollector(
               ~handler,
-              ~connect=CoreEventCollector.connect(eventCollector, ~eventTopics, ~resources, ...)
+              ~eventTopics,
+              ~resources,
             )
 
             eventCollectorOutputs

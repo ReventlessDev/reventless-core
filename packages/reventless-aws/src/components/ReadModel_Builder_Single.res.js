@@ -23,12 +23,14 @@ var partial_arg$1 = ReadModelRuntime_Builder_Single$Reventless.Make;
 var ReadModelRuntimeBuilder = (function (param) {
       return partial_arg$1(partial_arg, param);
     })({
-      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+      connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
     });
 
 function Make(Config, Spec, Mappings) {
   var partial_arg = {
-    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+    connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
   };
   var partial_arg$1 = QueryDbResolvers_AppSync$ReventlessAws;
   var partial_arg$2 = {

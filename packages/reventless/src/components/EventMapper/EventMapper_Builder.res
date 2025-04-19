@@ -77,9 +77,10 @@ module Make = (
         )
         eventCollector->AggregateRuntimeBuilder.forEventCollector(
           ~handler,
+          ~eventTopics,
+          ~resources,
           ~memorySize,
           ~timeout,
-          ~connect=SpecificEventCollector.connect(eventCollector, ~eventTopics, ~resources, ...)
         )
 
         eventCollector

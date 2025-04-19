@@ -313,7 +313,10 @@ module Make = (
             extensionPointAggregateNames->Set.union(extensionAggregateNames),
           )
 
-        module PluginEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
+        module PluginEventCollector = EventCollector_Builder.Make(
+          RuntimeEnvironment,
+          EventCollectorChannel,
+        )
         let childName = name->ComponentType.name(Plugin.componentType)
         let eventCollector = PluginEventCollector.make(~name=childName, ~eventTopics, ~opts)
         let eventCollectorOutputs = eventCollector->Component.outputs
@@ -467,9 +470,8 @@ module Make = (
             )
             eventCollector->PluginRuntimeBuilder.forPluginEventCollector(
               ~handler,
-              ~connect=eventCollector->(
-                PluginEventCollector.connect(~eventTopics, ~resources, ...)
-              ),
+              ~eventTopics,
+              ~resources,
             )
 
             let _ =

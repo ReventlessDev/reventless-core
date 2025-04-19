@@ -100,22 +100,23 @@ function Make(Config, Spec, Behaviour, EventMappings, RuntimeEnvironment, Comman
                 commandTopic: Component$Reventless.wrappedOutputs(commandTopic),
                 eventLog: Component$Reventless.outputs(eventLog),
                 addEventMapper: (function (none, none$1) {
-                    var SpecificEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
+                    var partial_arg = EventCollector_Builder$Reventless.Make;
+                    var SpecificEventCollector = partial_arg(RuntimeEnvironment, EventCollectorChannel);
                     var partial_arg_name = Spec.name;
                     var partial_arg_Id = Spec.Id;
                     var partial_arg_command_encode = Spec.command_encode;
                     var partial_arg_command_decode = Spec.command_decode;
-                    var partial_arg = {
+                    var partial_arg$1 = {
                       name: partial_arg_name,
                       Id: partial_arg_Id,
                       command_encode: partial_arg_command_encode,
                       command_decode: partial_arg_command_decode
                     };
-                    var partial_arg$1 = EventMapper_Builder$Reventless.Make;
-                    var partial_arg$2 = function (param, param$1) {
-                      return partial_arg$1(partial_arg, SpecificEventCollector, param, param$1);
+                    var partial_arg$2 = EventMapper_Builder$Reventless.Make;
+                    var partial_arg$3 = function (param, param$1) {
+                      return partial_arg$2(partial_arg$1, SpecificEventCollector, param, param$1);
                     };
-                    var SpecificEventMapper = partial_arg$2(EventMappings, AggregateRuntimeBuilder);
+                    var SpecificEventMapper = partial_arg$3(EventMappings, AggregateRuntimeBuilder);
                     if (EventMappings.mappings.length <= 0) {
                       return Component$Reventless.outputs(self);
                     }

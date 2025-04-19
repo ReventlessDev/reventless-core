@@ -1,7 +1,8 @@
 module Make = (
   RuntimeEnvironment: Runtime.Environment,
   CommandTopicChannel: CommandTopic_Adapter.Channel,
-  EventCollectorChannel: EventCollector_Adapter.Channel,
+  EventCollectorChannel: EventCollector_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
 ): (
   AggregateRuntime_Builder.T
     with type context = RuntimeEnvironment.context
@@ -55,20 +56,30 @@ module Make = (
     ~handler: Pulumi.Output.t<
       Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
     >,
-    ~connect,
+    ~eventTopics: EventTopic.allOutputs,
+    ~resources: array<ReventlessSpec.Adapter.resource>,
     ~memorySize=1024,
     ~timeout=30,
     eventCollector,
   ) => {
     let resource = eventCollector->Component.toPulumiResource
+    let name = resource.name->ComponentType.nameOpt(EventCollector.componentType)
+    let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment.make(
-      ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
+      ~name,
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,
-      ~opts={Pulumi.ComponentResource.parent: resource},
+      ~opts,
     )
-    connect(~runtime)
+    let _connectResources = EventCollectorChannel.connect(
+      ~name,
+      ~channelSpecs=[
+        {channel: eventCollector->EventCollector_Adapter.channel, eventTopics, resources},
+      ],
+      ~runtime,
+      ~opts,
+    )
   }
 
   let finish = () => ()

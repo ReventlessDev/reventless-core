@@ -6,11 +6,31 @@ var QueryDbStorage_DynamoDb$ReventlessAws = require("../adapter/QueryDb/QueryDbS
 var QueryDbResolvers_AppSync$ReventlessAws = require("../adapter/QueryDb/QueryDbResolvers_AppSync.res.js");
 var EventCollectorChannel_SQS$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_SQS.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
-var ReadModelRuntime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/ReadModelRuntime_Builder_Micro.res.js");
+var ReadModelRuntime_Builder_PerReadModel$Reventless = require("@reventless/reventless/src/adapter/Runtime/ReadModelRuntime_Builder_PerReadModel.res.js");
+
+function partial_arg_asEventHandler(prim) {
+  return prim;
+}
+
+var partial_arg = {
+  make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+  groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+  asEventHandler: partial_arg_asEventHandler
+};
+
+var partial_arg$1 = ReadModelRuntime_Builder_PerReadModel$Reventless.Make;
+
+var ReadModelRuntimeBuilder = (function (param) {
+      return partial_arg$1(partial_arg, param);
+    })({
+      make: EventCollectorChannel_SQS$ReventlessAws.make,
+      connect: EventCollectorChannel_SQS$ReventlessAws.connect
+    });
 
 function Make(Config, Spec, Mappings) {
   var partial_arg = {
-    make: EventCollectorChannel_SQS$ReventlessAws.make
+    make: EventCollectorChannel_SQS$ReventlessAws.make,
+    connect: EventCollectorChannel_SQS$ReventlessAws.connect
   };
   var partial_arg$1 = QueryDbResolvers_AppSync$ReventlessAws;
   var partial_arg$2 = {
@@ -25,21 +45,7 @@ function Make(Config, Spec, Mappings) {
     asEventHandler: partial_arg_asEventHandler
   };
   var partial_arg$4 = ReadModel_Builder$Reventless.Make;
-  var partial_arg_asEventHandler$1 = function (prim) {
-    return prim;
-  };
-  var partial_arg$5 = {
-    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
-    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
-    asEventHandler: partial_arg_asEventHandler$1
-  };
-  var partial_arg$6 = ReadModelRuntime_Builder_Micro$Reventless.Make;
-  var param = (function (param) {
-        return partial_arg$6(partial_arg$5, param);
-      })({
-        make: EventCollectorChannel_SQS$ReventlessAws.make
-      });
-  return partial_arg$4(Config, Spec, Mappings, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
+  return partial_arg$4(Config, Spec, Mappings, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, ReadModelRuntimeBuilder);
 }
 
 var EventCollectorChannel;
@@ -48,5 +54,6 @@ var RuntimeEnvironment;
 
 exports.EventCollectorChannel = EventCollectorChannel;
 exports.RuntimeEnvironment = RuntimeEnvironment;
+exports.ReadModelRuntimeBuilder = ReadModelRuntimeBuilder;
 exports.Make = Make;
-/* ReadModel_Builder-Reventless Not a pure module */
+/* ReadModelRuntimeBuilder Not a pure module */

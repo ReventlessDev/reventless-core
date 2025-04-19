@@ -11,7 +11,8 @@ module Make = (
     with type runtimeParts = RuntimeEnvironment.parts,
   EventLogStorage: EventLog_Adapter.Storage,
   EventTopicPublisher: EventTopic_Adapter.Publisher,
-  EventCollectorChannel: EventCollector_Adapter.Channel,
+  EventCollectorChannel: EventCollector_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
   AggregateRuntimeBuilder: AggregateRuntime_Builder.T
     with module CommandTopicChannel = CommandTopicChannel
     and module EventCollectorChannel = EventCollectorChannel
@@ -21,7 +22,10 @@ module Make = (
   module AggregateRuntimeBuilder = AggregateRuntimeBuilder
 
   let addEventMapperFn = (aggregate: Aggregate.component, allEventTopics, queryEngine, ~opts) => {
-    module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
+    module SpecificEventCollector = EventCollector_Builder.Make(
+      RuntimeEnvironment,
+      EventCollectorChannel,
+    )
     module SpecificEventMapper = EventMapper_Builder.Make(
       Spec,
       SpecificEventCollector,

@@ -14,28 +14,41 @@ function Make(Config) {
     make: QueryEngine_DynamoDb$ReventlessAws.make
   };
   var partial_arg$2 = {
-    make: EventCollectorChannel_SQS$ReventlessAws.make
+    make: EventCollectorChannel_SQS$ReventlessAws.make,
+    connect: EventCollectorChannel_SQS$ReventlessAws.connect
   };
-  var partial_arg$3 = Core_Builder$Reventless.Make;
   var partial_arg_asEventHandler = function (prim) {
     return prim;
   };
-  var partial_arg$4 = {
+  var partial_arg$3 = {
     make: RuntimeEnvironment_Lambda$ReventlessAws.make,
     groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
     asEventHandler: partial_arg_asEventHandler
   };
-  var partial_arg$5 = PluginRuntime_Builder_Micro$Reventless.Make;
+  var partial_arg$4 = Core_Builder$Reventless.Make;
+  var partial_arg_asEventHandler$1 = function (prim) {
+    return prim;
+  };
+  var partial_arg$5 = {
+    make: RuntimeEnvironment_Lambda$ReventlessAws.make,
+    groupBySource: RuntimeEnvironment_Lambda$ReventlessAws.groupBySource,
+    asEventHandler: partial_arg_asEventHandler$1
+  };
+  var partial_arg$6 = PluginRuntime_Builder_Micro$Reventless.Make;
   var param = (function (param) {
-        return partial_arg$5(partial_arg$4, param);
+        return partial_arg$6(partial_arg$5, param);
       })({
-        make: EventCollectorChannel_SQS$ReventlessAws.make
+        make: EventCollectorChannel_SQS$ReventlessAws.make,
+        connect: EventCollectorChannel_SQS$ReventlessAws.connect
       });
-  return partial_arg$3(Config, partial_arg$2, partial_arg$1, partial_arg, param);
+  return partial_arg$4(Config, partial_arg$3, partial_arg$2, partial_arg$1, partial_arg, param);
 }
+
+var RuntimeEnvironment;
 
 var EventCollectorChannel;
 
+exports.RuntimeEnvironment = RuntimeEnvironment;
 exports.EventCollectorChannel = EventCollectorChannel;
 exports.Make = Make;
 /* Core_Builder-Reventless Not a pure module */

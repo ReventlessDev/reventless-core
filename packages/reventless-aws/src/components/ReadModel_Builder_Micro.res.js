@@ -5,7 +5,7 @@ var ReadModel_Builder$Reventless = require("@reventless/reventless/src/component
 var QueryDbStorage_DynamoDb$ReventlessAws = require("../adapter/QueryDb/QueryDbStorage_DynamoDb.res.js");
 var QueryDbResolvers_AppSync$ReventlessAws = require("../adapter/QueryDb/QueryDbResolvers_AppSync.res.js");
 var RuntimeEnvironment_Lambda$ReventlessAws = require("../adapter/Runtime/RuntimeEnvironment_Lambda.res.js");
-var ReadModelRuntime_Builder_Micro$Reventless = require("@reventless/reventless/src/adapter/Runtime/ReadModelRuntime_Builder_Micro.res.js");
+var ReadModelRuntime_Builder_PerReadModel$Reventless = require("@reventless/reventless/src/adapter/Runtime/ReadModelRuntime_Builder_PerReadModel.res.js");
 var EventCollectorChannel_DynamoDbStream$ReventlessAws = require("../adapter/EventCollector/EventCollectorChannel_DynamoDbStream.res.js");
 
 function partial_arg_asEventHandler(prim) {
@@ -18,17 +18,19 @@ var partial_arg = {
   asEventHandler: partial_arg_asEventHandler
 };
 
-var partial_arg$1 = ReadModelRuntime_Builder_Micro$Reventless.Make;
+var partial_arg$1 = ReadModelRuntime_Builder_PerReadModel$Reventless.Make;
 
 var ReadModelRuntimeBuilder = (function (param) {
       return partial_arg$1(partial_arg, param);
     })({
-      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+      connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
     });
 
 function Make(Config, Spec, Mappings) {
   var partial_arg = {
-    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+    connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
   };
   var partial_arg$1 = QueryDbResolvers_AppSync$ReventlessAws;
   var partial_arg$2 = {

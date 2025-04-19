@@ -29,12 +29,14 @@ var partial_arg$2 = AggregateRuntime_Builder_Micro$Reventless.Make;
 var AggregateRuntimeBuilder = (function (param) {
       return partial_arg$2(partial_arg$1, partial_arg, param);
     })({
-      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+      make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+      connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
     });
 
 function Make(Config, Spec, Behaviour, EventMappings) {
   var partial_arg = {
-    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make
+    make: EventCollectorChannel_DynamoDbStream$ReventlessAws.make,
+    connect: EventCollectorChannel_DynamoDbStream$ReventlessAws.connect
   };
   var partial_arg$1 = EventTopicPublisher_DynamoDbStream$ReventlessAws;
   var partial_arg$2 = EventLogStorage_DynamoDbStream$ReventlessAws;

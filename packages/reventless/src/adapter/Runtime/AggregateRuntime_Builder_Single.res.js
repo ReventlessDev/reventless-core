@@ -11,7 +11,8 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     return partial_arg(RuntimeEnvironment, param, param$1);
   };
   var include = partial_arg$1(CommandTopicChannel, EventCollectorChannel);
-  var aggregateRuntimeSpecs = include.aggregateRuntimeSpecs;
+  var EventCollectorChannel$1 = include.EventCollectorChannel;
+  var runtimeSpecs = include.runtimeSpecs;
   var aggregateHandler = include.aggregateHandler;
   var finished = {
     contents: false
@@ -20,7 +21,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     if (finished.contents) {
       return ;
     }
-    var specs = Object.values(aggregateRuntimeSpecs);
+    var specs = Object.values(runtimeSpecs);
     var match = Core__Array.reduce(specs, [
           undefined,
           0,
@@ -34,20 +35,26 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
           }));
     var parent = match[0];
     if (parent !== undefined) {
-      var runtime = RuntimeEnvironment.make("AllAggregates", Pulumi.output(aggregateHandler("AllAggregates")), match[1], match[2], {
-            parent: parent
-          });
+      var opts_parent = parent;
+      var opts = {
+        parent: opts_parent
+      };
+      var runtime = RuntimeEnvironment.make("AllAggregates", Pulumi.output(aggregateHandler("AllAggregates")), match[1], match[2], opts);
       specs.map(function (param) {
             param.connects.forEach(function (connect) {
                   connect(runtime);
                 });
           });
+      var channelSpecs = Core__Array.keepSome(specs.map(function (param) {
+                return param.eventCollectorChannelSpec;
+              }));
+      EventCollectorChannel$1.connect("AllReadModels", channelSpecs, runtime, opts);
     }
     finished.contents = true;
   };
   return {
           CommandTopicChannel: include.CommandTopicChannel,
-          EventCollectorChannel: include.EventCollectorChannel,
+          EventCollectorChannel: EventCollectorChannel$1,
           forCommandGenerator: include.forCommandGenerator,
           forCommandTopic: include.forCommandTopic,
           forEventCollector: include.forEventCollector,

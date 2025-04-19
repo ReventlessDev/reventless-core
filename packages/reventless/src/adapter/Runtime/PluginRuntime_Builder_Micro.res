@@ -1,6 +1,7 @@
 module Make = (
   RuntimeEnvironment: Runtime.Environment,
-  EventCollectorChannel: EventCollector_Adapter.Channel,
+  EventCollectorChannel: EventCollector_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
 ): (
   PluginRuntime_Builder.T
     with type context = RuntimeEnvironment.context
@@ -13,38 +14,57 @@ module Make = (
 
   let forSideEffectHandlerEventCollector = (
     ~handler,
-    ~connect,
+    ~eventTopics: EventTopic.allOutputs,
+    ~resources: array<ReventlessSpec.Adapter.resource>,
     ~memorySize=1024,
     ~timeout=30,
     eventCollector,
   ) => {
     let resource = eventCollector->Component.toPulumiResource
+    let name = resource.name->ComponentType.nameOpt(SideEffectHandler.componentType)
+    let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment.make(
-      ~name=resource.name->ComponentType.nameOpt(SideEffectHandler.componentType),
+      ~name,
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},
     )
-    connect(~runtime)
+    let channel = eventCollector->EventCollector_Adapter.channel
+    let _connectResources = EventCollectorChannel.connect(
+      ~name,
+      ~channelSpecs=[{channel, eventTopics, resources}],
+      ~runtime,
+      ~opts,
+    )
   }
 
   let forPluginEventCollector = (
     ~handler,
-    ~connect,
+    ~eventTopics: EventTopic.allOutputs,
+    ~resources: array<ReventlessSpec.Adapter.resource>,
     ~memorySize=1024,
     ~timeout=30,
     eventCollector,
   ) => {
     let resource = eventCollector->Component.toPulumiResource
+    let name = resource.name->ComponentType.nameOpt(EventCollector.componentType)
+    let opts = {Pulumi.ComponentResource.parent: resource}
     let runtime = RuntimeEnvironment.make(
-      ~name=resource.name->ComponentType.nameOpt(EventCollector.componentType),
+      ~name,
       ~handler=handler->Pulumi.Output.apply(handler => handler->RuntimeEnvironment.asEventHandler),
       ~memorySize,
       ~timeout,
       ~opts={Pulumi.ComponentResource.parent: resource},
     )
-    connect(~runtime)
+    let _connectResources = EventCollectorChannel.connect(
+      ~name,
+      ~channelSpecs=[
+        {channel: eventCollector->EventCollector_Adapter.channel, eventTopics, resources},
+      ],
+      ~runtime,
+      ~opts,
+    )
   }
 
   let forPluginHeartbeat = (

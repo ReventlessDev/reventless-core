@@ -48,9 +48,10 @@ module Make = (
 
       eventCollector->PluginRuntimeBuilder.forSideEffectHandlerEventCollector(
         ~handler,
-        ~connect=SpecificEventCollector.connect(eventCollector, ~eventTopics, ~resources, ...),
+        ~eventTopics,
+        ~resources,
         ~memorySize,
-        ~timeout
+        ~timeout,
       )
     })
 

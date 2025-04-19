@@ -47,7 +47,10 @@ module Make = (
       ->Array.map((module(Mapping: Mappings.Mapping)) => Mapping.sourceName)
       ->Belt.Set.String.fromArray
 
-    module SpecificEventCollector = EventCollector_Builder.Make(EventCollectorChannel)
+    module SpecificEventCollector = EventCollector_Builder.Make(
+      RuntimeEnvironment,
+      EventCollectorChannel,
+    )
     let eventCollector =
       queryDb
       ->Component.operations
@@ -71,7 +74,8 @@ module Make = (
 
         eventCollector->ReadModelRuntimeBuilder.forEventCollector(
           ~handler,
-          ~connect=SpecificEventCollector.connect(eventCollector, ~eventTopics, ~resources, ...)
+          ~eventTopics,
+          ~resources,
         )
 
         eventCollector

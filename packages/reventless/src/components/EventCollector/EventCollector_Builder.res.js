@@ -6,16 +6,17 @@ var Component$Reventless = require("../Component.res.js");
 var ComponentType$Reventless = require("../../ComponentType.res.js");
 var EventCollector$Reventless = require("./EventCollector.res.js");
 
-function Make(Channel) {
+function Make(RuntimeEnvironment, Channel) {
   var connect = function (eventTopics, resources, runtime, eventCollector) {
     var eventCollectorResource = Component$Reventless.toPulumiResource(eventCollector);
     var name = ComponentType$Reventless.name(Core__Option.getOr(eventCollectorResource.__name, "Unnamed"), EventCollector$Reventless.componentType);
-    var opts_parent = eventCollectorResource;
-    var opts = {
-      parent: opts_parent
-    };
-    var channel = eventCollector.channel;
-    channel.connect(name, eventTopics, channel, runtime, resources, opts);
+    Channel.connect(name, [{
+            channel: eventCollector.channel,
+            eventTopics: eventTopics,
+            resources: resources
+          }], runtime, {
+          parent: eventCollectorResource
+        });
   };
   var makeHandler = function (eventCollector, eventsHandler) {
     var channel = eventCollector.channel;

@@ -3,13 +3,22 @@
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Core__Array = require("@rescript/core/src/Core__Array.res.js");
+var Caml_obj = require("@rescript/std/lib/js/caml_obj.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Component$Reventless = require("../../components/Component.res.js");
 
 function Make(RuntimeEnvironment, EventCollectorChannel) {
-  var readModelRuntimeSpecs = {};
+  var plugin = {
+    contents: undefined
+  };
+  var runtimeSpec = {
+    contents: {
+      channelSpecs: [],
+      maxMemorySize: 0,
+      maxTimeout: 0
+    }
+  };
   var eventCollectorHandlers = {};
   var readModelHandler = function (readModelName) {
     return async function ($$event, context) {
@@ -27,31 +36,40 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
               }));
     };
   };
-  var registerRuntimeSpec = function (connect, memorySize, timeout, readModel) {
-    var readModelName = Core__Option.getOr(readModel.__name, "Unnamed");
-    var spec = Core__Option.getOr(readModelRuntimeSpecs[readModelName], {
-          readModel: readModel,
-          connects: [],
-          memorySize: 0,
-          timeout: 0
-        });
-    readModelRuntimeSpecs[readModelName] = {
-      readModel: readModel,
-      connects: spec.connects.concat([connect]),
-      memorySize: Math.max(spec.memorySize, memorySize),
-      timeout: Math.max(spec.timeout, timeout)
+  var registerRuntimeSpec = function (channel, eventTopics, resources, memorySize, timeout, readModel) {
+    var readModelName = Core__Option.getOr(readModel.__name, "UnnamedReadModel");
+    var plugin$1 = plugin.contents;
+    if (plugin$1 !== undefined) {
+      var pluginName = Core__Option.getOr(plugin$1.__name, "UnnamedPlugin");
+      if (Caml_obj.notequal(plugin$1, readModel.__parentResource)) {
+        Js_exn.raiseError("registerRuntimeSpec: readModel " + readModelName + " has different parent than plugin " + pluginName);
+      }
+      
+    } else {
+      plugin.contents = readModel.__parentResource;
+    }
+    var match = runtimeSpec.contents;
+    runtimeSpec.contents = {
+      channelSpecs: match.channelSpecs.concat([{
+              channel: channel,
+              eventTopics: eventTopics,
+              resources: resources
+            }]),
+      maxMemorySize: Math.max(match.maxMemorySize, memorySize),
+      maxTimeout: Math.max(match.maxTimeout, timeout)
     };
   };
-  var forEventCollector = function (handler, connect, memorySizeOpt, timeoutOpt, eventCollector) {
+  var forEventCollector = function (handler, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var eventCollectorResource = Component$Reventless.toPulumiResource(eventCollector);
     var eventCollectorName = Core__Option.getOr(eventCollectorResource.__name, "Unnamed");
+    var channel = eventCollector.channel;
     var readModelResource = eventCollectorResource.__parentResource;
     if (readModelResource === undefined) {
       return Js_exn.raiseError("forEventCollector: eventCollector " + eventCollectorName + " has no ReadModel parent");
     }
-    registerRuntimeSpec(connect, memorySize, timeout, readModelResource);
+    registerRuntimeSpec(channel, eventTopics, resources, memorySize, timeout, readModelResource);
     var urns = Pulumi.all(Component$Reventless.outputs(eventCollector).resources.map(function (param) {
               return param.urn;
             }));
@@ -74,28 +92,17 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     if (finished.contents) {
       return ;
     }
-    var specs = Object.values(readModelRuntimeSpecs);
-    var match = Core__Array.reduce(specs, [
-          undefined,
-          0,
-          0
-        ], (function (param, param$1) {
-            return [
-                    param$1.readModel.__parentResource,
-                    Math.max(param[1], param$1.memorySize),
-                    Math.max(param[2], param$1.timeout)
-                  ];
-          }));
-    var parent = match[0];
-    if (parent !== undefined) {
-      var runtime = RuntimeEnvironment.make("AllReadModels", Pulumi.output(readModelHandler("AllReadModels")), match[1], match[2], {
-            parent: parent
+    var plugin$1 = plugin.contents;
+    if (plugin$1 !== undefined) {
+      var match = runtimeSpec.contents;
+      var runtime = RuntimeEnvironment.make("AllReadModels", Pulumi.output(readModelHandler("AllReadModels")), match.maxMemorySize, match.maxTimeout, {
+            parent: plugin$1
           });
-      specs.map(function (param) {
-            param.connects.forEach(function (connect) {
-                  connect(runtime);
-                });
-          });
+      var opts_parent = plugin$1;
+      var opts = {
+        parent: opts_parent
+      };
+      EventCollectorChannel.connect("AllReadModels", match.channelSpecs, runtime, opts);
     }
     finished.contents = true;
   };

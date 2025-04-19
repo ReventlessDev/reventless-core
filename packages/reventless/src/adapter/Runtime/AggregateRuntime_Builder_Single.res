@@ -21,7 +21,7 @@ module Make = (
 
   let finish = () =>
     if !finished.contents {
-      let specs = aggregateRuntimeSpecs->Dict.valuesToArray
+      let specs = runtimeSpecs->Dict.valuesToArray
       let (parent, memorySize, timeout) = specs->Array.reduce((None, 0, 0), (
         (_, accMemorySize, accTimeout),
         {aggregate, memorySize, timeout},
@@ -34,16 +34,29 @@ module Make = (
       })
       switch parent {
       | Some(parent) =>
+        let opts = {Pulumi.ComponentResource.parent: parent}
         let runtime = RuntimeEnvironment.make(
           ~name="AllAggregates",
           ~handler=aggregateHandler("AllAggregates")->Pulumi.Output.make,
           ~memorySize,
           ~timeout,
-          ~opts={Pulumi.ComponentResource.parent: parent},
+          ~opts,
         )
+
         let _ = specs->Array.map(({connects}) => {
           connects->Array.forEach(connect => connect(~runtime))
         })
+
+        let channelSpecs =
+          specs
+          ->Array.map(({eventCollectorChannelSpec}) => eventCollectorChannelSpec)
+          ->Array.keepSome
+        let _connectResources = EventCollectorChannel.connect(
+          ~name="AllReadModels",
+          ~channelSpecs,
+          ~runtime,
+          ~opts,
+        )
       | None => ()
       }
       finished := true

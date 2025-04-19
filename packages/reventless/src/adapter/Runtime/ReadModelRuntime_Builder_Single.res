@@ -1,6 +1,7 @@
 module Make = (
   RuntimeEnvironment: Runtime.Environment,
-  EventCollectorChannel: EventCollector_Adapter.Channel,
+  EventCollectorChannel: EventCollector_Adapter.Channel
+    with type runtimeParts = RuntimeEnvironment.parts,
 ): (
   ReadModelRuntime_Builder.T
     with type context = RuntimeEnvironment.context
@@ -12,13 +13,23 @@ module Make = (
   module EventCollectorChannel = EventCollectorChannel
 
   type runtimeSpec = {
-    readModel: Pulumi.Resource.t,
-    connects: array<Runtime.connect<runtimeParts>>,
-    memorySize: int,
-    timeout: int,
+    channelSpecs: array<
+      EventCollector_Adapter.channelSpec<
+        EventCollectorChannel.callbackEvent,
+        context,
+        EventCollectorChannel.channelParts,
+      >,
+    >,
+    maxMemorySize: int,
+    maxTimeout: int,
   }
 
-  let readModelRuntimeSpecs = Js.Dict.empty()
+  let plugin = ref(None)
+  let runtimeSpec = ref({
+    channelSpecs: [],
+    maxMemorySize: 0,
+    maxTimeout: 0,
+  })
   let eventCollectorHandlers = Js.Dict.empty()
 
   let readModelHandler = readModelName => async (event: RuntimeEnvironment.event, context) => {
@@ -38,37 +49,55 @@ module Make = (
       ->Promise.all
   }
 
-  let registerRuntimeSpec = (~connect, ~memorySize, ~timeout, readModel: Pulumi.Resource.t) => {
-    let readModelName = readModel.name->Option.getOr("Unnamed")
-    let spec =
-      readModelRuntimeSpecs
-      ->Dict.get(readModelName)
-      ->Option.getOr({readModel, connects: [], memorySize: 0, timeout: 0})
-    readModelRuntimeSpecs->Dict.set(
-      readModelName,
-      {
-        readModel,
-        connects: spec.connects->Array.concat([connect]),
-        memorySize: Math.Int.max(spec.memorySize, memorySize),
-        timeout: Math.Int.max(spec.timeout, timeout),
-      },
-    )
+  let registerRuntimeSpec = (
+    ~channel,
+    ~eventTopics,
+    ~resources,
+    ~memorySize,
+    ~timeout,
+    readModel: Pulumi.Resource.t,
+  ) => {
+    let readModelName = readModel.name->Option.getOr("UnnamedReadModel")
+    switch plugin.contents {
+    | None => plugin := readModel.parent
+    | Some(plugin) =>
+      let pluginName = plugin.name->Option.getOr("UnnamedPlugin")
+      if Some(plugin) != readModel.parent {
+        Js.Exn.raiseError(
+          `registerRuntimeSpec: readModel ${readModelName} has different parent than plugin ${pluginName}`,
+        )
+      }
+    }
+    let {channelSpecs, maxMemorySize, maxTimeout} = runtimeSpec.contents
+    runtimeSpec := {
+        channelSpecs: channelSpecs->Array.concat([{channel, eventTopics, resources}]),
+        maxMemorySize: Math.Int.max(maxMemorySize, memorySize),
+        maxTimeout: Math.Int.max(maxTimeout, timeout),
+      }
   }
 
   let forEventCollector = (
     ~handler: Pulumi.Output.t<
       Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
     >,
-    ~connect,
+    ~eventTopics: EventTopic.allOutputs,
+    ~resources: array<ReventlessSpec.Adapter.resource>,
     ~memorySize=1024,
     ~timeout=30,
     eventCollector: EventCollector.component,
   ) => {
     let eventCollectorResource = eventCollector->Component.toPulumiResource
     let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
+    let channel = eventCollector->EventCollector_Adapter.channel
     switch eventCollectorResource.parent {
     | Some(readModelResource) =>
-      readModelResource->registerRuntimeSpec(~connect, ~memorySize, ~timeout)
+      readModelResource->registerRuntimeSpec(
+        ~channel,
+        ~eventTopics,
+        ~resources,
+        ~memorySize,
+        ~timeout,
+      )
       let urns =
         (eventCollector->Component.outputs).resources
         ->Array.map(({urn}) => urn)
@@ -93,29 +122,24 @@ module Make = (
 
   let finish = () =>
     if !finished.contents {
-      let specs = readModelRuntimeSpecs->Dict.valuesToArray
-      let (parent, memorySize, timeout) = specs->Array.reduce((None, 0, 0), (
-        (_, accMemorySize, accTimeout),
-        {readModel, memorySize, timeout},
-      ) => {
-        (
-          readModel.parent,
-          Math.Int.max(accMemorySize, memorySize),
-          Math.Int.max(accTimeout, timeout),
-        )
-      })
-      switch parent {
-      | Some(parent) =>
+      switch plugin.contents {
+      | Some(plugin) =>
+        let {channelSpecs, maxMemorySize, maxTimeout} = runtimeSpec.contents
         let runtime = RuntimeEnvironment.make(
           ~name="AllReadModels",
           ~handler=readModelHandler("AllReadModels")->Pulumi.Output.make,
-          ~memorySize,
-          ~timeout,
-          ~opts={Pulumi.ComponentResource.parent: parent},
+          ~memorySize=maxMemorySize,
+          ~timeout=maxTimeout,
+          ~opts={Pulumi.ComponentResource.parent: plugin},
         )
-        let _ = specs->Array.map(({connects}) => {
-          connects->Array.forEach(connect => connect(~runtime))
-        })
+        let opts = {Pulumi.ComponentResource.parent: plugin}
+
+        let _connectResources = EventCollectorChannel.connect(
+          ~name="AllReadModels",
+          ~channelSpecs,
+          ~runtime,
+          ~opts,
+        )
       | None => ()
       }
       finished := true

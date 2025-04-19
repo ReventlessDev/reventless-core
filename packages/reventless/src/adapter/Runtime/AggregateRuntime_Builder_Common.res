@@ -13,11 +13,18 @@ module Make = (
   type runtimeSpec = {
     aggregate: Pulumi.Resource.t,
     connects: array<Runtime.connect<runtimeParts>>,
+    eventCollectorChannelSpec: option<
+      EventCollector_Adapter.channelSpec<
+        EventCollectorChannel.callbackEvent,
+        context,
+        EventCollectorChannel.channelParts,
+      >,
+    >,
     memorySize: int,
     timeout: int,
   }
 
-  let aggregateRuntimeSpecs = Js.Dict.empty()
+  let runtimeSpecs = Js.Dict.empty()
   let commandGeneratorHandlers = Js.Dict.empty()
   let commandTopicHandlers = Js.Dict.empty()
   let eventCollectorHandlers = Js.Dict.empty()
@@ -58,21 +65,48 @@ module Make = (
     }
   }
 
+  let getRuntimeSpec = (aggregate: Pulumi.Resource.t) =>
+    runtimeSpecs
+    ->Dict.get(aggregate.name->Option.getOr("Unnamed"))
+    ->Option.getOr({
+      aggregate,
+      connects: [],
+      eventCollectorChannelSpec: None,
+      memorySize: 0,
+      timeout: 0,
+    })
+  let setRuntimeSpec = (aggregate: Pulumi.Resource.t, runtimeSpec) =>
+    runtimeSpecs->Dict.set(aggregate.name->Option.getOr("Unnamed"), runtimeSpec)
+
   let registerRuntimeSpec = (~connect, ~memorySize, ~timeout, aggregate: Pulumi.Resource.t) => {
-    let aggregateName = aggregate.name->Option.getOr("Unnamed")
-    let spec =
-      aggregateRuntimeSpecs
-      ->Dict.get(aggregateName)
-      ->Option.getOr({aggregate, connects: [], memorySize: 0, timeout: 0})
-    aggregateRuntimeSpecs->Js.Dict.set(
-      aggregateName,
-      {
-        aggregate,
-        connects: spec.connects->Array.concat([connect]),
-        memorySize: Math.Int.max(spec.memorySize, memorySize),
-        timeout: Math.Int.max(spec.timeout, timeout),
-      },
-    )
+    let spec = aggregate->getRuntimeSpec
+    aggregate->setRuntimeSpec({
+      ...spec,
+      connects: spec.connects->Array.concat([connect]),
+      memorySize: Math.Int.max(spec.memorySize, memorySize),
+      timeout: Math.Int.max(spec.timeout, timeout),
+    })
+  }
+
+  let registerEventCollectorRuntimeSpec = (
+    ~channel,
+    ~eventTopics,
+    ~resources,
+    ~memorySize,
+    ~timeout,
+    aggregate: Pulumi.Resource.t,
+  ) => {
+    let spec = aggregate->getRuntimeSpec
+    aggregate->setRuntimeSpec({
+      ...spec,
+      eventCollectorChannelSpec: Some({
+        channel,
+        eventTopics,
+        resources,
+      }),
+      memorySize: Math.Int.max(spec.memorySize, memorySize),
+      timeout: Math.Int.max(spec.timeout, timeout),
+    })
   }
 
   let forCommandGenerator = (
@@ -136,16 +170,24 @@ module Make = (
     ~handler: Pulumi.Output.t<
       Runtime.eventHandler<EventCollectorChannel.callbackEvent, context, unit>,
     >,
-    ~connect,
+    ~eventTopics: EventTopic.allOutputs,
+    ~resources: array<ReventlessSpec.Adapter.resource>,
     ~memorySize=1024,
     ~timeout=30,
     eventCollector: EventCollector.component,
   ) => {
     let eventCollectorResource = eventCollector->Component.toPulumiResource
     let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
+    let channel = eventCollector->EventCollector_Adapter.channel
     switch eventCollectorResource.parent {
     | Some(aggregateResource) =>
-      aggregateResource->registerRuntimeSpec(~connect, ~memorySize, ~timeout)
+      aggregateResource->registerEventCollectorRuntimeSpec(
+        ~channel,
+        ~eventTopics,
+        ~resources,
+        ~memorySize,
+        ~timeout,
+      )
       let urns =
         (eventCollector->Component.outputs).resources
         ->Array.map(({urn}) => urn)

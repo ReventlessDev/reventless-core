@@ -22,17 +22,30 @@ module Make = (
   let finish = () =>
     if !finished.contents {
       let _ =
-        aggregateRuntimeSpecs
+        runtimeSpecs
         ->Dict.toArray
-        ->Array.map(((aggregateName, {aggregate, connects, memorySize, timeout})) => {
+        ->Array.map(((
+          aggregateName,
+          {aggregate, connects, eventCollectorChannelSpec, memorySize, timeout},
+        )) => {
+          let opts = {Pulumi.ComponentResource.parent: aggregate}
           let runtime = RuntimeEnvironment.make(
             ~name=aggregateName->ComponentType.name(Aggregate.componentType),
             ~handler=aggregateHandler(aggregateName)->Pulumi.Output.make,
             ~memorySize,
             ~timeout,
-            ~opts={Pulumi.ComponentResource.parent: aggregate},
+            ~opts,
           )
           connects->Array.forEach(connect => connect(~runtime))
+          let _connectResources =
+            eventCollectorChannelSpec->Option.map(channelSpec =>
+              EventCollectorChannel.connect(
+                ~name="AllReadModels",
+                ~channelSpecs=[channelSpec],
+                ~runtime,
+                ~opts,
+              )
+            )
         })
       finished := true
     }

@@ -4,149 +4,36 @@
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Aws = require("@pulumi/aws");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
-var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
-var AWS$ReventlessAws = require("../AWS.res.js");
-var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var SQS_Queue$PulumiAws = require("@reventless/bs-pulumi-aws/src/SQS/SQS_Queue.res.js");
 var AWS_Tags$ReventlessAws = require("../AWS_Tags.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
 var Util_SQS$ReventlessAws = require("../../util/Util_SQS.res.js");
-var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
 var EventCollector$Reventless = require("@reventless/reventless/src/components/EventCollector/EventCollector.res.js");
-var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
 var Util_DeadLetterQueue$ReventlessAws = require("../../util/Util_DeadLetterQueue.res.js");
-var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
+var EventCollectorChannel_Common$ReventlessAws = require("./EventCollectorChannel_Common.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
-function connect(name, eventTopics, channel, runtime, resources, opts) {
+function connect(name, channelSpecs, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
-  var queue = channel.parts.queue;
+  channelSpecs.map(function (channelSpec) {
+        return channelSpec.channel.parts.queue;
+      });
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
-  var eventTopicResources = Adapter$Reventless.resourcesToUnwrappedOutput(Js_dict.values(eventTopics).flatMap(function (outputs) {
-            return outputs.resources;
-          }));
-  Pulumi.all([
-          eventTopicResources,
-          queue.arn,
-          queue.id,
-          Adapter$Reventless.resourcesToUnwrappedOutput(resources)
-        ]).apply(function (param) {
-        var resources = param[3];
-        var queueArn = param[1];
-        var eventTopicResources = param[0];
-        console.log("EventCollectorChannel_SQS: EventTopicResources  " + name + ":", eventTopicResources);
-        console.log("EventCollectorChannel_SQS: Resources for " + name + ":", resources);
-        var snsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.SNS.service]);
-        var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(eventTopicResources, [AWS$ReventlessAws.DynamoDbStream.service]);
-        var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.SNS.service,
-              AWS$ReventlessAws.SNS_FIFO.service
-            ]);
-        var targetSqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.SQS.service,
-              AWS$ReventlessAws.SQS_FIFO.service
-            ]);
-        var targetDynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.DynamoDb.service,
-              AWS$ReventlessAws.DynamoDbStream.service
-            ]);
-        new (Aws.sqs.QueuePolicy)(name + "QueuePolicy", {
-              policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
-                          Sid: "AllowReceiveSnsEvents",
-                          Principal: {
-                            Service: [AWS$ReventlessAws.SNS.principal]
-                          },
-                          Effect: "Allow",
-                          Action: ["sqs:SendMessage"],
-                          Resource: queueArn,
-                          Condition: {
-                            ArnEquals: Js_dict.fromArray([[
-                                    "aws:SourceArn",
-                                    Adapter$Reventless.urns(snsResources)
-                                  ]])
-                          }
-                        }])),
-              queueUrl: param[2]
-            }, opts$1);
-        var lambdaDynamoDbStreamPolicyDocuments = dynamoDbStreamResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaDynamoDbStreamPolicy", [{
-                  Sid: "AllowLambdaToReadStream",
-                  Effect: "Allow",
-                  Action: [
-                    "dynamodb:DescribeStream",
-                    "dynamodb:GetRecords",
-                    "dynamodb:GetShardIterator",
-                    "dynamodb:ListStreams"
-                  ],
-                  Resource: Adapter$Reventless.urns(dynamoDbStreamResources)
-                }]) : undefined;
-        var lambdaWriteDynamoDbPolicyDocument = targetDynamoDbResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaAllowDynamoDbWrite", [{
-                  Sid: "AllowLambdaReadWriteDynamoDb",
-                  Effect: "Allow",
-                  Action: [
-                    "dynamodb:GetItem",
-                    "dynamodb:Query",
-                    "dynamodb:Scan",
-                    "dynamodb:BatchGetItem",
-                    "dynamodb:PutItem",
-                    "dynamodb:UpdateItem",
-                    "dynamodb:DeleteItem",
-                    "dynamodb:BatchWriteItem"
-                  ],
-                  Resource: Adapter$Reventless.urns(targetDynamoDbResources)
-                }]) : undefined;
-        var lambdaSnsPublishNotificationPolicyDocument = targetSnsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "PublishSNS", [{
-                  Sid: "LambdaAllowPublishSNS",
-                  Effect: "Allow",
-                  Action: "sns:Publish",
-                  Resource: Adapter$Reventless.urns(targetSnsResources)
-                }]) : undefined;
-        var lambdaSqsSendPolicyDocument = targetSqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "SendSQS", [{
-                  Sid: "LambdaAllowSendSQS",
-                  Effect: "Allow",
-                  Action: "sqs:SendMessage",
-                  Resource: Adapter$Reventless.urns(targetSqsResources)
-                }]) : undefined;
-        var lambdaQueuePolicyDocument = PolicyDocument$PulumiAws.make(undefined, name + "LambdaSQSPolicy", [{
-                Sid: "AllowLambdaReceiveSQSMessage",
-                Effect: "Allow",
-                Action: [
-                  "sqs:ReceiveMessage",
-                  "sqs:DeleteMessage",
-                  "sqs:GetQueueAttributes"
-                ],
-                Resource: queueArn
-              }]);
-        new (Aws.iam.RolePolicy)(name + "LambdaPolicy", {
-              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Core__Array.keepSome([
-                        Lambda$PulumiAws.defaultLoggingPolicyDocument,
-                        lambdaQueuePolicyDocument,
-                        lambdaDynamoDbStreamPolicyDocuments,
-                        lambdaWriteDynamoDbPolicyDocument,
-                        lambdaSnsPublishNotificationPolicyDocument,
-                        lambdaSqsSendPolicyDocument
-                      ])),
-              role: lambdaRole.id
-            }, opts$1);
-        snsResources.map(function (snsFifoResource) {
-              console.log("EventCollectorChannel_SQS: subscribeToSnsTopic:", name, snsFifoResource);
-              var subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts$1);
-              return subscription.id.apply(function (id) {
-                          console.log("EventCollectorChannel_SQS: created SNS subscription:", id, name);
-                        });
-            });
-        if (snsResources.length === 0) {
-          console.log("No SNS topics are present for EventCollectorChannel_SQS", name);
-        }
-        dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
-              return Util_EventSourceMapping$ReventlessAws.subscribe(undefined, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts$1);
-            });
+  channelSpecs.map(function (param) {
+        var queue = param.channel.parts.queue;
+        EventCollectorChannel_Common$ReventlessAws.connectSqsQueue2SnsTopics(queue, name, param.resources, opts$1);
       });
-  return [Adapter$Reventless.outputToResource(lambda.apply(function (lambda) {
-                    return Util_SQS$ReventlessAws.Subscription.toResource(queue.onEvent(name, lambda, undefined, opts$1));
-                  }))];
+  var queues = channelSpecs.map(function (param) {
+        return param.channel.parts.queue;
+      });
+  var eventTopics = Core__Array.reduce(channelSpecs, {}, (function (acc, param) {
+          return Object.assign(acc, param.eventTopics);
+        }));
+  var resources = channelSpecs.map(function (param) {
+          return param.resources;
+        }).flat();
+  return EventCollectorChannel_Common$ReventlessAws.connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts$1);
 }
 
 function make(name, eventTopics, opts) {
@@ -178,8 +65,7 @@ function make(name, eventTopics, opts) {
           },
           resources: eventTopicResources.concat([Util_SQS$ReventlessAws.toResource(queue)]),
           enqueueEvent: enqueueEvent,
-          handleChannelEvent: handleChannelEvent,
-          connect: connect
+          handleChannelEvent: handleChannelEvent
         };
 }
 

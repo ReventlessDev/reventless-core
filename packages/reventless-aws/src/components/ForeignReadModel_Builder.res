@@ -1,5 +1,9 @@
 module EventCollectorChannel = EventCollectorChannel.SQS
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
+module ReadModelRuntimeBuilder = Reventless.ReadModelRuntime_Builder_PerReadModel.Make(
+  RuntimeEnvironment,
+  EventCollectorChannel,
+)
 
 module Make = (
   Config: Config.T,
@@ -13,5 +17,5 @@ module Make = (
   QueryDbStorage.DynamoDb,
   QueryDbResolvers.AppSync,
   EventCollectorChannel,
-  Reventless.ReadModelRuntime_Builder_Micro.Make(RuntimeEnvironment, EventCollectorChannel),
+  ReadModelRuntimeBuilder,
 )

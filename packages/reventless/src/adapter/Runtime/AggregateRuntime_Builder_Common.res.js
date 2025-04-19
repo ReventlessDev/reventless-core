@@ -9,7 +9,7 @@ var Component$Reventless = require("../../components/Component.res.js");
 var CommandGenerator$Reventless = require("../../components/CommandGenerator/CommandGenerator.res.js");
 
 function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
-  var aggregateRuntimeSpecs = {};
+  var runtimeSpecs = {};
   var commandGeneratorHandlers = {};
   var commandTopicHandlers = {};
   var eventCollectorHandlers = {};
@@ -47,20 +47,41 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
       return "";
     };
   };
+  var getRuntimeSpec = function (aggregate) {
+    return Core__Option.getOr(runtimeSpecs[Core__Option.getOr(aggregate.__name, "Unnamed")], {
+                aggregate: aggregate,
+                connects: [],
+                eventCollectorChannelSpec: undefined,
+                memorySize: 0,
+                timeout: 0
+              });
+  };
+  var setRuntimeSpec = function (aggregate, runtimeSpec) {
+    runtimeSpecs[Core__Option.getOr(aggregate.__name, "Unnamed")] = runtimeSpec;
+  };
   var registerRuntimeSpec = function (connect, memorySize, timeout, aggregate) {
-    var aggregateName = Core__Option.getOr(aggregate.__name, "Unnamed");
-    var spec = Core__Option.getOr(aggregateRuntimeSpecs[aggregateName], {
-          aggregate: aggregate,
-          connects: [],
-          memorySize: 0,
-          timeout: 0
+    var spec = getRuntimeSpec(aggregate);
+    setRuntimeSpec(aggregate, {
+          aggregate: spec.aggregate,
+          connects: spec.connects.concat([connect]),
+          eventCollectorChannelSpec: spec.eventCollectorChannelSpec,
+          memorySize: Math.max(spec.memorySize, memorySize),
+          timeout: Math.max(spec.timeout, timeout)
         });
-    aggregateRuntimeSpecs[aggregateName] = {
-      aggregate: aggregate,
-      connects: spec.connects.concat([connect]),
-      memorySize: Math.max(spec.memorySize, memorySize),
-      timeout: Math.max(spec.timeout, timeout)
-    };
+  };
+  var registerEventCollectorRuntimeSpec = function (channel, eventTopics, resources, memorySize, timeout, aggregate) {
+    var spec = getRuntimeSpec(aggregate);
+    setRuntimeSpec(aggregate, {
+          aggregate: spec.aggregate,
+          connects: spec.connects,
+          eventCollectorChannelSpec: {
+            channel: channel,
+            eventTopics: eventTopics,
+            resources: resources
+          },
+          memorySize: Math.max(spec.memorySize, memorySize),
+          timeout: Math.max(spec.timeout, timeout)
+        });
   };
   var forCommandGenerator = function (handler, connect, memorySizeOpt, timeoutOpt, commandGenerator) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
@@ -107,16 +128,17 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
           commandTopicHandlers[urn] = RuntimeEnvironment.asEventHandler(param[1]);
         });
   };
-  var forEventCollector = function (handler, connect, memorySizeOpt, timeoutOpt, eventCollector) {
+  var forEventCollector = function (handler, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var eventCollectorResource = Component$Reventless.toPulumiResource(eventCollector);
     var eventCollectorName = Core__Option.getOr(eventCollectorResource.__name, "Unnamed");
+    var channel = eventCollector.channel;
     var aggregateResource = eventCollectorResource.__parentResource;
     if (aggregateResource === undefined) {
       return Js_exn.raiseError("forEventCollector: eventCollector " + eventCollectorName + " has no Aggregate parent");
     }
-    registerRuntimeSpec(connect, memorySize, timeout, aggregateResource);
+    registerEventCollectorRuntimeSpec(channel, eventTopics, resources, memorySize, timeout, aggregateResource);
     var urns = Pulumi.all(Component$Reventless.outputs(eventCollector).resources.map(function (param) {
               return param.urn;
             }));
@@ -135,12 +157,15 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
   return {
           CommandTopicChannel: CommandTopicChannel,
           EventCollectorChannel: EventCollectorChannel,
-          aggregateRuntimeSpecs: aggregateRuntimeSpecs,
+          runtimeSpecs: runtimeSpecs,
           commandGeneratorHandlers: commandGeneratorHandlers,
           commandTopicHandlers: commandTopicHandlers,
           eventCollectorHandlers: eventCollectorHandlers,
           aggregateHandler: aggregateHandler,
+          getRuntimeSpec: getRuntimeSpec,
+          setRuntimeSpec: setRuntimeSpec,
           registerRuntimeSpec: registerRuntimeSpec,
+          registerEventCollectorRuntimeSpec: registerEventCollectorRuntimeSpec,
           forCommandGenerator: forCommandGenerator,
           forCommandTopic: forCommandTopic,
           forEventCollector: forEventCollector

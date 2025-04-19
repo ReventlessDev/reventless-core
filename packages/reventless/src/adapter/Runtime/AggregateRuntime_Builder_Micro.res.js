@@ -30,16 +30,23 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
         });
     return connect(runtime);
   };
-  var forEventCollector = function (handler, connect, memorySizeOpt, timeoutOpt, eventCollector) {
+  var forEventCollector = function (handler, eventTopics, resources, memorySizeOpt, timeoutOpt, eventCollector) {
     var memorySize = memorySizeOpt !== undefined ? memorySizeOpt : 1024;
     var timeout = timeoutOpt !== undefined ? timeoutOpt : 30;
     var resource = Component$Reventless.toPulumiResource(eventCollector);
-    var runtime = RuntimeEnvironment.make(ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType), handler.apply(function (handler) {
+    var name = ComponentType$Reventless.nameOpt(resource.__name, EventCollector$Reventless.componentType);
+    var opts_parent = resource;
+    var opts = {
+      parent: opts_parent
+    };
+    var runtime = RuntimeEnvironment.make(name, handler.apply(function (handler) {
               return RuntimeEnvironment.asEventHandler(handler);
-            }), memorySize, timeout, {
-          parent: resource
-        });
-    return connect(runtime);
+            }), memorySize, timeout, opts);
+    EventCollectorChannel.connect(name, [{
+            channel: eventCollector.channel,
+            eventTopics: eventTopics,
+            resources: resources
+          }], runtime, opts);
   };
   var finish = function () {
     

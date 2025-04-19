@@ -1,6 +1,6 @@
 module EventCollectorChannel = EventCollectorChannel.DynamoDbStream
 module RuntimeEnvironment = RuntimeEnvironment.Lambda
-module ReadModelRuntimeBuilder = Reventless.ReadModelRuntime_Builder_Micro.Make(
+module ReadModelRuntimeBuilder = Reventless.ReadModelRuntime_Builder_PerReadModel.Make(
   RuntimeEnvironment,
   EventCollectorChannel,
 )

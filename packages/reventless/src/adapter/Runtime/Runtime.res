@@ -31,3 +31,12 @@ type forComponent<'handler, 'parts, 'component> = (
   ~timeout: int=?,
   'component,
 ) => unit
+
+type forEventCollector<'handler, 'component> = (
+  ~handler: Pulumi.Output.t<'handler>,
+  ~eventTopics: EventTopic.allOutputs,
+  ~resources: array<ReventlessSpec.Adapter.resource>,
+  ~memorySize: int=?,
+  ~timeout: int=?,
+  'component,
+) => unit

@@ -2,97 +2,24 @@
 'use strict';
 
 var Js_dict = require("@rescript/std/lib/js/js_dict.js");
-var Aws = require("@pulumi/aws");
 var Core__Array = require("@rescript/core/src/Core__Array.res.js");
 var Pulumi = require("@pulumi/pulumi");
-var Lambda$PulumiAws = require("@reventless/bs-pulumi-aws/src/Lambda/Lambda.res.js");
-var AWS$ReventlessAws = require("../AWS.res.js");
-var Adapter$Reventless = require("@reventless/reventless/src/adapter/Adapter.res.js");
 var Util_Pulumi$Reventless = require("@reventless/reventless/src/util/Util_Pulumi.res.js");
-var Util_Adapter$Reventless = require("@reventless/reventless/src/util/Util_Adapter.res.js");
-var PolicyDocument$PulumiAws = require("@reventless/bs-pulumi-aws/src/IAM/PolicyDocument.res.js");
-var AdapterDeploytime$Reventless = require("@reventless/reventless/src/adapter/AdapterDeploytime.res.js");
-var Util_EventSourceMapping$ReventlessAws = require("../../util/Util_EventSourceMapping.res.js");
+var EventCollectorChannel_Common$ReventlessAws = require("./EventCollectorChannel_Common.res.js");
 var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorChannel_SQS_Runtime.res.js");
 
-function connect(name, eventTopics, param, runtime, resources, opts) {
+function connect(name, channelSpecs, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
-  var eventTopicResources = Adapter$Reventless.resourcesToUnwrappedOutput(Js_dict.values(eventTopics).flatMap(function (outputs) {
-            return outputs.resources;
-          }));
-  Pulumi.all([
-          eventTopicResources,
-          Adapter$Reventless.resourcesToUnwrappedOutput(resources)
-        ]).apply(function (param) {
-        var resources = param[1];
-        var dynamoDbStreamResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(param[0], [AWS$ReventlessAws.DynamoDbStream.service]);
-        var targetDynamoDbResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.DynamoDb.service,
-              AWS$ReventlessAws.DynamoDbStream.service
-            ]);
-        var targetSqsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.SQS.service,
-              AWS$ReventlessAws.SQS_FIFO.service
-            ]);
-        var targetSnsResources = Util_Adapter$Reventless.filterSupportedUnwrappedResources(resources, [
-              AWS$ReventlessAws.SNS.service,
-              AWS$ReventlessAws.SNS_FIFO.service
-            ]);
-        var streamSourcesWithPolicy = dynamoDbStreamResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "Policy", [{
-                  Sid: "AllowLambdaToReadStream",
-                  Effect: "Allow",
-                  Action: [
-                    "dynamodb:DescribeStream",
-                    "dynamodb:GetRecords",
-                    "dynamodb:GetShardIterator",
-                    "dynamodb:ListStreams"
-                  ],
-                  Resource: Adapter$Reventless.urns(dynamoDbStreamResources)
-                }]) : undefined;
-        var lambdaWriteDynamoDbPolicyDocument = targetDynamoDbResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "LambdaAllowDynamoDbWrite", [{
-                  Sid: "AllowLambdaReadWriteDynamoDb",
-                  Effect: "Allow",
-                  Action: [
-                    "dynamodb:GetItem",
-                    "dynamodb:Query",
-                    "dynamodb:Scan",
-                    "dynamodb:BatchGetItem",
-                    "dynamodb:PutItem",
-                    "dynamodb:UpdateItem",
-                    "dynamodb:DeleteItem",
-                    "dynamodb:BatchWriteItem"
-                  ],
-                  Resource: Adapter$Reventless.urns(targetDynamoDbResources)
-                }]) : undefined;
-        var lambdaSnsPublishNotificationPolicyDocument = targetSnsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "PublishSNS", [{
-                  Sid: "LambdaAllowPublishSNS",
-                  Effect: "Allow",
-                  Action: "sns:Publish",
-                  Resource: Adapter$Reventless.urns(targetSnsResources)
-                }]) : undefined;
-        var lambdaSqsSendPolicyDocument = targetSqsResources.length > 0 ? PolicyDocument$PulumiAws.make(undefined, name + "SendSQS", [{
-                  Sid: "LambdaAllowSendSQS",
-                  Effect: "Allow",
-                  Action: "sqs:SendMessage",
-                  Resource: Adapter$Reventless.urns(targetSqsResources)
-                }]) : undefined;
-        new (Aws.iam.RolePolicy)(name, {
-              policy: PolicyDocument$PulumiAws.mergePolicyDocuments(name + "LambdaPolicy", Core__Array.keepSome([
-                        Lambda$PulumiAws.defaultLoggingPolicyDocument,
-                        streamSourcesWithPolicy,
-                        lambdaWriteDynamoDbPolicyDocument,
-                        lambdaSnsPublishNotificationPolicyDocument,
-                        lambdaSqsSendPolicyDocument
-                      ])),
-              role: lambdaRole.id
-            }, opts$1);
-        dynamoDbStreamResources.map(function (dynamoDbStreamResource) {
-              return Util_EventSourceMapping$ReventlessAws.subscribe(25, lambda, name, dynamoDbStreamResource.name, AdapterDeploytime$Reventless.unwrappedToResource(dynamoDbStreamResource), opts$1);
-            });
-      });
-  return [];
+  var queues = [];
+  var eventTopics = Core__Array.reduce(channelSpecs, {}, (function (acc, param) {
+          return Object.assign(acc, param.eventTopics);
+        }));
+  var resources = channelSpecs.map(function (param) {
+          return param.resources;
+        }).flat();
+  return EventCollectorChannel_Common$ReventlessAws.connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts$1);
 }
 
 function make(param, eventTopics, param$1) {
@@ -109,11 +36,10 @@ function make(param, eventTopics, param$1) {
           parts: undefined,
           resources: eventTopicResources,
           enqueueEvent: Pulumi.output(enqueueEventNotSupported),
-          handleChannelEvent: handleChannelEvent,
-          connect: connect
+          handleChannelEvent: handleChannelEvent
         };
 }
 
 exports.connect = connect;
 exports.make = make;
-/* @pulumi/aws Not a pure module */
+/* @pulumi/pulumi Not a pure module */

@@ -233,7 +233,8 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                   return ex.aggregateNames;
                                 }));
                         var eventTopics = Aggregate$Reventless.filterEventTopics(aggregatesOutputs, Belt_SetString.union(extensionPointAggregateNames, extensionAggregateNames));
-                        var PluginEventCollector = EventCollector_Builder$Reventless.Make(EventCollectorChannel);
+                        var partial_arg = EventCollector_Builder$Reventless.Make;
+                        var PluginEventCollector = partial_arg(RuntimeEnvironment, EventCollectorChannel);
                         var childName = ComponentType$Reventless.name(extra$1, Plugin$Reventless.componentType);
                         var eventCollector = PluginEventCollector.make(childName, eventTopics, opts);
                         var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
@@ -297,7 +298,6 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                 match$2[0],
                                 resources
                               ]).apply(function (param) {
-                              var resources = param[5];
                               var extensionsHandlers = param[2];
                               var pluginDefinition = param[0];
                               var outgoingExtensionPointEventHandlers = serviceNameToEventHandlers(extensionPointsOutputs, (function (outputs) {
@@ -322,9 +322,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                     incomingExtensionEventHandlers: incomingExtensionEventHandlers
                                   });
                               var handler = PluginEventCollector.makeHandler(eventCollector, Callback.handleJsonEvents);
-                              PluginRuntimeBuilder.forPluginEventCollector(handler, (function (none) {
-                                      return Curry._4(PluginEventCollector.connect, eventTopics, resources, none, eventCollector);
-                                    }), undefined, undefined, eventCollector);
+                              PluginRuntimeBuilder.forPluginEventCollector(handler, eventTopics, param[5], undefined, undefined, eventCollector);
                               eventCollectorOutputs.resources[0].urn.apply(function (urn) {
                                     pluginDefinition.eventCollector = urn;
                                   });
