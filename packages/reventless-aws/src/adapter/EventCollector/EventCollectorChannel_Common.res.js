@@ -58,10 +58,10 @@ function connectSqsQueue2SnsTopics(queue, name, eventTopics, opts) {
           queue.id,
           toResources(eventTopics)
         ]).apply(function (param) {
-        var resources = param[2];
+        var eventTopicResources = param[2];
         var queueId = param[1];
-        console.log("EventCollectorChannel_Common: connectSqsQueue2SnsTopics " + queueId + ": Resources:", resources);
-        var snsResources$1 = snsResources(resources);
+        console.log("EventCollectorChannel_Common: connectSqsQueue2SnsTopics " + queueId + ": eventTopicResources:", eventTopicResources);
+        var snsResources$1 = snsResources(eventTopicResources);
         new (Aws.sqs.QueuePolicy)(name + "QueuePolicy", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
                           Sid: "AllowReceiveSnsEvents",
@@ -101,8 +101,8 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
         var resources = param[2];
         var queueArns = param[1];
         var eventTopicResources = param[0];
-        console.log("EventCollectorChannel_Common: connectLambda " + name + ": EventTopicResources:", eventTopicResources);
-        console.log("EventCollectorChannel_Common: connectLambda " + name + ": Resources:", resources);
+        console.log("EventCollectorChannel_Common: connectLambda " + name + ": eventTopicResources:", eventTopicResources);
+        console.log("EventCollectorChannel_Common: connectLambda " + name + ": resources:", resources);
         var dynamoDbStreamResources$1 = dynamoDbStreamResources(eventTopicResources);
         var targetSnsResources$1 = targetSnsResources(resources);
         var targetSqsResources$1 = targetSqsResources(resources);

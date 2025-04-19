@@ -36,12 +36,12 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics
   let _ =
     (queue.arn, queue.id, eventTopics->toResources)
     ->Pulumi.Output.all3
-    ->Pulumi.Output.apply(((queueArn, queueId, resources)) => {
+    ->Pulumi.Output.apply(((queueArn, queueId, eventTopicResources)) => {
       Js.Console.log2(
-        `EventCollectorChannel_Common: connectSqsQueue2SnsTopics ${queueId}: Resources:`,
-        resources,
+        `EventCollectorChannel_Common: connectSqsQueue2SnsTopics ${queueId}: eventTopicResources:`,
+        eventTopicResources,
       )
-      let snsResources = resources->snsResources
+      let snsResources = eventTopicResources->snsResources
 
       let _queuePolicy = {
         PulumiAws.SQS.QueuePolicy.make(
@@ -113,10 +113,10 @@ let connectLambda = (
       open Reventless.Adapter
 
       Js.Console.log2(
-        `EventCollectorChannel_Common: connectLambda ${name}: EventTopicResources:`,
+        `EventCollectorChannel_Common: connectLambda ${name}: eventTopicResources:`,
         eventTopicResources,
       )
-      Js.Console.log2(`EventCollectorChannel_Common: connectLambda ${name}: Resources:`, resources)
+      Js.Console.log2(`EventCollectorChannel_Common: connectLambda ${name}: resources:`, resources)
 
       let dynamoDbStreamResources = eventTopicResources->dynamoDbStreamResources
       let targetSnsResources = resources->targetSnsResources
