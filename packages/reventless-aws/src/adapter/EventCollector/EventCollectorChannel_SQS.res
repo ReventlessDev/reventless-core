@@ -12,15 +12,14 @@ let connect = (
 ) => {
   let opts = opts->Reventless.Util.Pulumi.ComponentResourceOptions.toCustomResourceOptions
 
-  let queues = channelSpecs->Array.map(channelSpec => channelSpec.channel.parts.queue)
   let lambda = runtime.parts.lambda
   let lambdaRole = runtime.parts.lambdaRole
 
   open EventCollectorChannel_Common
 
-  let _ = channelSpecs->Array.map(({channel, resources}) => {
+  let _ = channelSpecs->Array.map(({channel, eventTopics}) => {
     let queue = channel.parts.queue
-    queue->connectSqsQueue2SnsTopics(name, resources, opts)
+    queue->connectSqsQueue2SnsTopics(name, eventTopics, opts)
   })
 
   let queues = channelSpecs->Array.map(({channel}) => channel.parts.queue)

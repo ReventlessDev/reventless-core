@@ -15,14 +15,11 @@ var EventCollectorChannel_SQS_Runtime$ReventlessAws = require("./EventCollectorC
 
 function connect(name, channelSpecs, runtime, opts) {
   var opts$1 = Util_Pulumi$Reventless.ComponentResourceOptions.toCustomResourceOptions(opts);
-  channelSpecs.map(function (channelSpec) {
-        return channelSpec.channel.parts.queue;
-      });
   var lambda = runtime.parts.lambda;
   var lambdaRole = runtime.parts.lambdaRole;
   channelSpecs.map(function (param) {
         var queue = param.channel.parts.queue;
-        EventCollectorChannel_Common$ReventlessAws.connectSqsQueue2SnsTopics(queue, name, param.resources, opts$1);
+        EventCollectorChannel_Common$ReventlessAws.connectSqsQueue2SnsTopics(queue, name, param.eventTopics, opts$1);
       });
   var queues = channelSpecs.map(function (param) {
         return param.channel.parts.queue;

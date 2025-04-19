@@ -26,9 +26,15 @@ let targetDynamoDbResources = resources =>
     AWS.DynamoDbStream.service,
   ])
 
-let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, resources, opts) => {
+let toResources = (eventTopics: Reventless.EventTopic.allOutputs) =>
+  eventTopics
+  ->Js.Dict.values
+  ->Array.flatMap(outputs => outputs.resources)
+  ->Reventless.Adapter.resourcesToUnwrappedOutput
+
+let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, eventTopics, opts) => {
   let _ =
-    (queue.arn, queue.id, resources->Reventless.Adapter.resourcesToUnwrappedOutput)
+    (queue.arn, queue.id, eventTopics->toResources)
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((queueArn, queueId, resources)) => {
       Js.Console.log2(
@@ -95,15 +101,9 @@ let connectLambda = (
   resources: array<ReventlessSpec.Adapter.resource>,
   opts: Pulumi.CustomResourceOptions.t,
 ) => {
-  let eventTopicResources =
-    eventTopics
-    ->Js.Dict.values
-    ->Array.flatMap(outputs => outputs.resources)
-    ->Reventless.Adapter.resourcesToUnwrappedOutput
-
   let _ =
     (
-      eventTopicResources,
+      eventTopics->toResources,
       queues->Array.map(queue => queue.arn)->Pulumi.Output.all,
       resources->Reventless.Adapter.resourcesToUnwrappedOutput,
     )

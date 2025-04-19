@@ -46,11 +46,17 @@ function targetDynamoDbResources(resources) {
             ]);
 }
 
-function connectSqsQueue2SnsTopics(queue, name, resources, opts) {
+function toResources(eventTopics) {
+  return Adapter$Reventless.resourcesToUnwrappedOutput(Js_dict.values(eventTopics).flatMap(function (outputs) {
+                  return outputs.resources;
+                }));
+}
+
+function connectSqsQueue2SnsTopics(queue, name, eventTopics, opts) {
   Pulumi.all([
           queue.arn,
           queue.id,
-          Adapter$Reventless.resourcesToUnwrappedOutput(resources)
+          toResources(eventTopics)
         ]).apply(function (param) {
         var resources = param[2];
         var queueId = param[1];
@@ -85,11 +91,8 @@ function connectSqsQueue2SnsTopics(queue, name, resources, opts) {
 }
 
 function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources, opts) {
-  var eventTopicResources = Adapter$Reventless.resourcesToUnwrappedOutput(Js_dict.values(eventTopics).flatMap(function (outputs) {
-            return outputs.resources;
-          }));
   Pulumi.all([
-          eventTopicResources,
+          toResources(eventTopics),
           Pulumi.all(queues.map(function (queue) {
                     return queue.arn;
                   })),
@@ -179,6 +182,7 @@ exports.dynamoDbStreamResources = dynamoDbStreamResources;
 exports.targetSnsResources = targetSnsResources;
 exports.targetSqsResources = targetSqsResources;
 exports.targetDynamoDbResources = targetDynamoDbResources;
+exports.toResources = toResources;
 exports.connectSqsQueue2SnsTopics = connectSqsQueue2SnsTopics;
 exports.connectLambda = connectLambda;
 /* @pulumi/aws Not a pure module */
