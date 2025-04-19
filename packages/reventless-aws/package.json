@@ -1,6 +1,6 @@
 {
   "name": "@reventless/reventless-aws",
-  "version": "2.0.3-policies.87",
+  "version": "2.0.3-policies.88",
   "description": "AWS adapters for Reventless",
   "author": "Atos",
   "license": "proprietary",
