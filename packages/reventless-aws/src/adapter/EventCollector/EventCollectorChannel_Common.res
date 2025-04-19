@@ -31,6 +31,10 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, resources, 
     (queue.arn, queue.id, resources->Reventless.Adapter.resourcesToUnwrappedOutput)
     ->Pulumi.Output.all3
     ->Pulumi.Output.apply(((queueArn, queueId, resources)) => {
+      Js.Console.log2(
+        `EventCollectorChannel_Common: connectSqsQueue2SnsTopics ${queueId}: Resources:`,
+        resources,
+      )
       let snsResources = resources->snsResources
 
       let _queuePolicy = {
@@ -64,13 +68,13 @@ let connectSqsQueue2SnsTopics = (queue: PulumiAws.SQS.Queue.t, name, resources, 
         )
       }
 
-      let _snsTopicSubscriptions = snsResources->Array.map(snsFifoResource => {
-        Js.log3("EventCollectorChannel_Common: subscribeToSnsTopic:", name, snsFifoResource)
+      let _snsTopicSubscriptions = snsResources->Array.map(snsResource => {
+        Js.log3("EventCollectorChannel_Common: subscribeToSnsTopic:", name, snsResource)
         let subscription = Util_SQS.subscribeToSnsTopic(
           ~queue,
           ~targetName=name,
-          ~sourceName=snsFifoResource.name,
-          ~topic=snsFifoResource->Reventless.AdapterDeploytime.unwrappedToResource,
+          ~sourceName=snsResource.name,
+          ~topic=snsResource->Reventless.AdapterDeploytime.unwrappedToResource,
           ~opts,
         )
         subscription.id->Pulumi.Output.apply(id => Js.log3("created SNS subscription:", id, name))
@@ -109,10 +113,10 @@ let connectLambda = (
       open Reventless.Adapter
 
       Js.Console.log2(
-        `EventCollectorChannel_Common: EventTopicResources  ${name}:`,
+        `EventCollectorChannel_Common: connectLambda ${name}: EventTopicResources:`,
         eventTopicResources,
       )
-      Js.Console.log2(`EventCollectorChannel_Common: Resources for ${name}:`, resources)
+      Js.Console.log2(`EventCollectorChannel_Common: connectLambda ${name}: Resources:`, resources)
 
       let dynamoDbStreamResources = eventTopicResources->dynamoDbStreamResources
       let targetSnsResources = resources->targetSnsResources

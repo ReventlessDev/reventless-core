@@ -52,7 +52,10 @@ function connectSqsQueue2SnsTopics(queue, name, resources, opts) {
           queue.id,
           Adapter$Reventless.resourcesToUnwrappedOutput(resources)
         ]).apply(function (param) {
-        var snsResources$1 = snsResources(param[2]);
+        var resources = param[2];
+        var queueId = param[1];
+        console.log("EventCollectorChannel_Common: connectSqsQueue2SnsTopics " + queueId + ": Resources:", resources);
+        var snsResources$1 = snsResources(resources);
         new (Aws.sqs.QueuePolicy)(name + "QueuePolicy", {
               policy: PolicyDocument$PulumiAws.toJsonString(PolicyDocument$PulumiAws.make(undefined, name + "QueuePolicy", [{
                           Sid: "AllowReceiveSnsEvents",
@@ -69,11 +72,11 @@ function connectSqsQueue2SnsTopics(queue, name, resources, opts) {
                                   ]])
                           }
                         }])),
-              queueUrl: param[1]
+              queueUrl: queueId
             }, opts);
-        snsResources$1.map(function (snsFifoResource) {
-              console.log("EventCollectorChannel_Common: subscribeToSnsTopic:", name, snsFifoResource);
-              var subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsFifoResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsFifoResource), opts);
+        snsResources$1.map(function (snsResource) {
+              console.log("EventCollectorChannel_Common: subscribeToSnsTopic:", name, snsResource);
+              var subscription = Util_SQS$ReventlessAws.subscribeToSnsTopic(queue, name, snsResource.name, AdapterDeploytime$Reventless.unwrappedToResource(snsResource), opts);
               return subscription.id.apply(function (id) {
                           console.log("created SNS subscription:", id, name);
                         });
@@ -95,8 +98,8 @@ function connectLambda(lambda, name, lambdaRole, queues, eventTopics, resources,
         var resources = param[2];
         var queueArns = param[1];
         var eventTopicResources = param[0];
-        console.log("EventCollectorChannel_Common: EventTopicResources  " + name + ":", eventTopicResources);
-        console.log("EventCollectorChannel_Common: Resources for " + name + ":", resources);
+        console.log("EventCollectorChannel_Common: connectLambda " + name + ": EventTopicResources:", eventTopicResources);
+        console.log("EventCollectorChannel_Common: connectLambda " + name + ": Resources:", resources);
         var dynamoDbStreamResources$1 = dynamoDbStreamResources(eventTopicResources);
         var targetSnsResources$1 = targetSnsResources(resources);
         var targetSqsResources$1 = targetSqsResources(resources);
