@@ -52,7 +52,7 @@ module Make = (
           ->Array.map(({eventCollectorChannelSpec}) => eventCollectorChannelSpec)
           ->Array.keepSome
         let _connectResources = EventCollectorChannel.connect(
-          ~name="AllReadModels",
+          ~name="AllAggregates",
           ~channelSpecs,
           ~runtime,
           ~opts,

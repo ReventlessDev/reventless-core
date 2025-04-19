@@ -48,7 +48,7 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
       var channelSpecs = Core__Array.keepSome(specs.map(function (param) {
                 return param.eventCollectorChannelSpec;
               }));
-      EventCollectorChannel$1.connect("AllReadModels", channelSpecs, runtime, opts);
+      EventCollectorChannel$1.connect("AllAggregates", channelSpecs, runtime, opts);
     }
     finished.contents = true;
   };
