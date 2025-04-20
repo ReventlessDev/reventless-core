@@ -21,7 +21,7 @@ module Make = (
         ->Result.map(context => context.meta.service)
         ->Result.getOr("")
       Js.log2(
-        `ReadModel: handling event ${idx->Int.toString}/${eventCount->Int.toString} from ${sourceName}:`,
+        `ReadModel ${ReadModelSpec.name}: handling event ${idx->Int.toString}/${eventCount->Int.toString} from ${sourceName}:`,
         json,
       )
       json->EventProjector.map(~sourceName=Some(sourceName))
