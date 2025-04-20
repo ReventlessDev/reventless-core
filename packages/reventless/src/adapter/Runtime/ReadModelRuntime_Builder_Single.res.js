@@ -24,15 +24,18 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
     return async function ($$event, context) {
       var desc = "readModelHandler for " + readModelName + ":";
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource($$event)).map(async function (param) {
+                var $$event = param[1];
                 var urn = param[0];
-                var handler = Js_dict.get(eventCollectorHandlers, urn);
-                if (handler !== undefined) {
-                  console.log("----- " + desc + " found handler for eventCollector", urn);
-                  return await handler(param[1], context);
-                } else {
-                  console.log(desc + " no handler found:", urn);
+                var handlers = Js_dict.get(eventCollectorHandlers, urn);
+                if (handlers !== undefined) {
+                  var count = handlers.length.toString();
+                  console.log("----- " + desc + " found " + count + " handler(s) for EventCollector", urn);
+                  await Promise.all(handlers.map(function (handler) {
+                            return handler($$event, context);
+                          }));
                   return ;
                 }
+                console.log(desc + " no handler found:", urn);
               }));
     };
   };
@@ -81,7 +84,8 @@ function Make(RuntimeEnvironment, EventCollectorChannel) {
           var urns = param[0];
           console.log("***** forEventCollector " + eventCollectorName + ": set handler for", urns);
           return urns.map(function (urn) {
-                      eventCollectorHandlers[urn] = RuntimeEnvironment.asEventHandler(handler);
+                      var handlers = Core__Option.getOr(eventCollectorHandlers[urn], []);
+                      eventCollectorHandlers[urn] = handlers.concat([RuntimeEnvironment.asEventHandler(handler)]);
                     });
         });
   };

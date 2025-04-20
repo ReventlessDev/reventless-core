@@ -23,19 +23,20 @@ module Make = (
     memorySize: int,
     timeout: int,
   }
+  type eventHandler = Runtime.eventHandler<RuntimeEnvironment.event, context, unit>
 
-  let runtimeSpecs = Js.Dict.empty()
-  let commandGeneratorHandlers = Js.Dict.empty()
-  let commandTopicHandlers = Js.Dict.empty()
-  let eventCollectorHandlers = Js.Dict.empty()
+  let runtimeSpecs: dict<runtimeSpec> = Js.Dict.empty()
+  let commandGeneratorHandlers: dict<CommandGenerator.eventHandler<context>> = Js.Dict.empty()
+  let commandTopicHandlers: dict<eventHandler> = Js.Dict.empty()
+  let eventCollectorHandlers: dict<array<eventHandler>> = Js.Dict.empty()
 
   let aggregateHandler = aggregateName => async (event: RuntimeEnvironment.event, context) => {
     let desc = `aggregateHandler for ${aggregateName}:`
     switch event->CommandGenerator.metaInfo {
     | Some(info) =>
-      switch commandGeneratorHandlers->Js.Dict.get(info) {
+      switch commandGeneratorHandlers->Dict.get(info) {
       | Some(handler) =>
-        Js.log2(`----- ${desc} found handler for commandGenerator`, info)
+        Js.log2(`----- ${desc} found handler for CommandGenerator`, info)
         await handler(event->CommandGenerator.asPayload, context)
       | None =>
         Js.log2(`${desc} no handler found:`, info)
@@ -47,15 +48,16 @@ module Make = (
         ->RuntimeEnvironment.groupBySource
         ->Dict.toArray
         ->Array.map(async ((urn, event)) => {
-          switch commandTopicHandlers->Js.Dict.get(urn) {
+          switch commandTopicHandlers->Dict.get(urn) {
           | Some(handler) =>
-            Js.log2(`----- ${desc} found handler for commandTopic`, urn)
+            Js.log2(`----- ${desc} found handler for CommandTopic`, urn)
             await handler(event, context)
           | None =>
-            switch eventCollectorHandlers->Js.Dict.get(urn) {
-            | Some(handler) =>
-              Js.log2(`----- ${desc} found handler for eventCollector`, urn)
-              await handler(event, context)
+            switch eventCollectorHandlers->Dict.get(urn) {
+            | Some(handlers) =>
+              let count = handlers->Array.length->Int.toString
+              Js.log2(`----- ${desc} found ${count} handler(s) for EventCollector`, urn)
+              let _ = await handlers->Array.map(handler => handler(event, context))->Promise.all
             | None => Js.log2(`${desc} no handler found:`, urn)
             }
           }
@@ -197,9 +199,16 @@ module Make = (
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urns, handler)) => {
           Js.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
-          urns->Array.map(urn =>
-            eventCollectorHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
-          )
+          // urns->Array.map(urn =>
+          //   eventCollectorHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
+          // )
+          urns->Array.map(urn => {
+            let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
+            eventCollectorHandlers->Dict.set(
+              urn,
+              handlers->Array.concat([handler->RuntimeEnvironment.asEventHandler]),
+            )
+          })
         })
     | None =>
       Js.Exn.raiseError(

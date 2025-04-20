@@ -2,7 +2,6 @@
 'use strict';
 
 var Js_exn = require("@rescript/std/lib/js/js_exn.js");
-var Js_dict = require("@rescript/std/lib/js/js_dict.js");
 var Core__Option = require("@rescript/core/src/Core__Option.res.js");
 var Pulumi = require("@pulumi/pulumi");
 var Component$Reventless = require("../../components/Component.res.js");
@@ -18,9 +17,9 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
       var desc = "aggregateHandler for " + aggregateName + ":";
       var info = CommandGenerator$Reventless.metaInfo($$event);
       if (info !== undefined) {
-        var handler = Js_dict.get(commandGeneratorHandlers, info);
+        var handler = commandGeneratorHandlers[info];
         if (handler !== undefined) {
-          console.log("----- " + desc + " found handler for commandGenerator", info);
+          console.log("----- " + desc + " found handler for CommandGenerator", info);
           return await handler($$event, context);
         } else {
           console.log(desc + " no handler found:", info);
@@ -30,19 +29,21 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
       await Promise.all(Object.entries(RuntimeEnvironment.groupBySource($$event)).map(async function (param) {
                 var $$event = param[1];
                 var urn = param[0];
-                var handler = Js_dict.get(commandTopicHandlers, urn);
+                var handler = commandTopicHandlers[urn];
                 if (handler !== undefined) {
-                  console.log("----- " + desc + " found handler for commandTopic", urn);
+                  console.log("----- " + desc + " found handler for CommandTopic", urn);
                   return await handler($$event, context);
                 }
-                var handler$1 = Js_dict.get(eventCollectorHandlers, urn);
-                if (handler$1 !== undefined) {
-                  console.log("----- " + desc + " found handler for eventCollector", urn);
-                  return await handler$1($$event, context);
-                } else {
-                  console.log(desc + " no handler found:", urn);
+                var handlers = eventCollectorHandlers[urn];
+                if (handlers !== undefined) {
+                  var count = handlers.length.toString();
+                  console.log("----- " + desc + " found " + count + " handler(s) for EventCollector", urn);
+                  await Promise.all(handlers.map(function (handler) {
+                            return handler($$event, context);
+                          }));
                   return ;
                 }
+                console.log(desc + " no handler found:", urn);
               }));
       return "";
     };
@@ -150,7 +151,8 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
           var urns = param[0];
           console.log("***** forEventCollector " + eventCollectorName + ": set handler for", urns);
           return urns.map(function (urn) {
-                      eventCollectorHandlers[urn] = RuntimeEnvironment.asEventHandler(handler);
+                      var handlers = Core__Option.getOr(eventCollectorHandlers[urn], []);
+                      eventCollectorHandlers[urn] = handlers.concat([RuntimeEnvironment.asEventHandler(handler)]);
                     });
         });
   };

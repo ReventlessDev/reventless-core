@@ -40,9 +40,10 @@ module Make = (
       ->Dict.toArray
       ->Array.map(async ((urn, event)) => {
         switch eventCollectorHandlers->Js.Dict.get(urn) {
-        | Some(handler) =>
-          Js.log2(`----- ${desc} found handler for eventCollector`, urn)
-          await handler(event, context)
+        | Some(handlers) =>
+          let count = handlers->Array.length->Int.toString
+          Js.log2(`----- ${desc} found ${count} handler(s) for EventCollector`, urn)
+          let _ = await handlers->Array.map(handler => handler(event, context))->Promise.all
         | None => Js.log2(`${desc} no handler found:`, urn)
         }
       })
@@ -107,9 +108,13 @@ module Make = (
         ->Pulumi.Output.all2
         ->Pulumi.Output.apply(((urns, handler)) => {
           Js.log2(`***** forEventCollector ${eventCollectorName}: set handler for`, urns)
-          urns->Array.map(urn =>
-            eventCollectorHandlers->Js.Dict.set(urn, handler->RuntimeEnvironment.asEventHandler)
-          )
+          urns->Array.map(urn => {
+            let handlers = eventCollectorHandlers->Dict.get(urn)->Option.getOr([])
+            eventCollectorHandlers->Dict.set(
+              urn,
+              handlers->Array.concat([handler->RuntimeEnvironment.asEventHandler]),
+            )
+          })
         })
     | None =>
       Js.Exn.raiseError(
