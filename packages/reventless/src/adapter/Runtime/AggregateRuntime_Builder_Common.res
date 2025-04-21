@@ -181,7 +181,7 @@ module Make = (
     let eventCollectorResource = eventCollector->Component.toPulumiResource
     let eventCollectorName = eventCollectorResource.name->Option.getOr("Unnamed")
     let channel = eventCollector->EventCollector_Adapter.channel
-    switch eventCollectorResource.parent {
+    switch eventCollectorResource.parent->Option.flatMap(parent => parent.parent) {
     | Some(aggregateResource) =>
       aggregateResource->registerEventCollectorRuntimeSpec(
         ~channel,

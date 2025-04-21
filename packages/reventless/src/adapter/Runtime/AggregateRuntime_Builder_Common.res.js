@@ -135,7 +135,9 @@ function Make(RuntimeEnvironment, CommandTopicChannel, EventCollectorChannel) {
     var eventCollectorResource = Component$Reventless.toPulumiResource(eventCollector);
     var eventCollectorName = Core__Option.getOr(eventCollectorResource.__name, "Unnamed");
     var channel = eventCollector.channel;
-    var aggregateResource = eventCollectorResource.__parentResource;
+    var aggregateResource = Core__Option.flatMap(eventCollectorResource.__parentResource, (function (parent) {
+            return parent.__parentResource;
+          }));
     if (aggregateResource === undefined) {
       return Js_exn.raiseError("forEventCollector: eventCollector " + eventCollectorName + " has no Aggregate parent");
     }
