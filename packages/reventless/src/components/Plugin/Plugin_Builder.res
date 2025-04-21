@@ -206,11 +206,17 @@ module Make = (
           ->Array.map(aggregatesOutput => aggregatesOutput.eventMapper)
           ->Array.keepSome
           ->Pulumi.Output.all
-          ->Pulumi.Output.apply(_ =>
-            aggregates->Array.forEach(
-              (module(SpecificAggregate: Aggregate.T)) => {
-                SpecificAggregate.AggregateRuntimeBuilder.finish()
-              },
+          ->Pulumi.Output.apply(eventMapperOutputs =>
+            eventMapperOutputs
+            ->Array.map(eventMapperOutput => eventMapperOutput.eventCollector)
+            ->Pulumi.Output.all
+            ->Pulumi.Output.apply(
+              _ =>
+                aggregates->Array.forEach(
+                  (module(SpecificAggregate: Aggregate.T)) => {
+                    SpecificAggregate.AggregateRuntimeBuilder.finish()
+                  },
+                ),
             )
           )
 

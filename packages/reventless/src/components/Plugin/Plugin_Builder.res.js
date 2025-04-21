@@ -172,10 +172,14 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                               }));
                         Pulumi.all(Core__Array.keepSome(Object.values(aggregatesOutputs).map(function (aggregatesOutput) {
                                         return aggregatesOutput.eventMapper;
-                                      }))).apply(function (param) {
-                              aggregates.forEach(function (SpecificAggregate) {
-                                    SpecificAggregate.AggregateRuntimeBuilder.finish();
-                                  });
+                                      }))).apply(function (eventMapperOutputs) {
+                              return Pulumi.all(eventMapperOutputs.map(function (eventMapperOutput) {
+                                                return eventMapperOutput.eventCollector;
+                                              })).apply(function (param) {
+                                          aggregates.forEach(function (SpecificAggregate) {
+                                                SpecificAggregate.AggregateRuntimeBuilder.finish();
+                                              });
+                                        });
                             });
                         var match = Belt_Array.unzip(extensionPoints.map(function (SpecificExtensionPoint) {
                                   var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
