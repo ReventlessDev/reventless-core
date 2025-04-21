@@ -200,9 +200,19 @@ module Make = (
           addEventMapperFns->Dict.mapValues(addEventMapperFn =>
             addEventMapperFn(allEventTopics, queryEngine)
           )
-        aggregates->Array.forEach((module(SpecificAggregate: Aggregate.T)) => {
-          SpecificAggregate.AggregateRuntimeBuilder.finish()
-        })
+        let _ =
+          aggregatesOutputs
+          ->Dict.valuesToArray
+          ->Array.map(aggregatesOutput => aggregatesOutput.eventMapper)
+          ->Array.keepSome
+          ->Pulumi.Output.all
+          ->Pulumi.Output.apply(_ =>
+            aggregates->Array.forEach(
+              (module(SpecificAggregate: Aggregate.T)) => {
+                SpecificAggregate.AggregateRuntimeBuilder.finish()
+              },
+            )
+          )
 
         let (extensionPointsOutputs, extensionPointsHandlers) =
           extensionPoints
