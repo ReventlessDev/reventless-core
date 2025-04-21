@@ -170,18 +170,28 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         var aggregatesOutputs = Core__Dict.mapValues(addEventMapperFns, (function (addEventMapperFn) {
                                 return addEventMapperFn(allEventTopics, queryEngine);
                               }));
-                        Pulumi.all(Core__Array.keepSome(Object.values(aggregatesOutputs).map(function (aggregatesOutput) {
-                                        return aggregatesOutput.eventMapper;
-                                      }))).apply(function (eventMapperOutputs) {
-                              return Pulumi.all(eventMapperOutputs.map(function (eventMapperOutput) {
+                        var match = Belt_Array.unzip(Core__Array.keepSome(Object.values(aggregatesOutputs).map(function (aggregateOutputs) {
+                                      return Core__Option.map(aggregateOutputs.eventMapper, (function (eventMapper) {
+                                                    return [
+                                                            eventMapper,
+                                                            aggregateOutputs.commandTopic
+                                                          ];
+                                                  }));
+                                    })));
+                        Pulumi.all([
+                                Pulumi.all(match[0]),
+                                Pulumi.all(match[1])
+                              ]).apply(function (param) {
+                              return Pulumi.all(param[0].map(function (eventMapperOutput) {
                                                 return eventMapperOutput.eventCollector;
                                               })).apply(function (param) {
                                           aggregates.forEach(function (SpecificAggregate) {
+                                                console.log("Plugin_Builder: AggregateRuntimeBuilder.finish", extra$1);
                                                 SpecificAggregate.AggregateRuntimeBuilder.finish();
                                               });
                                         });
                             });
-                        var match = Belt_Array.unzip(extensionPoints.map(function (SpecificExtensionPoint) {
+                        var match$1 = Belt_Array.unzip(extensionPoints.map(function (SpecificExtensionPoint) {
                                   var extensionPoint = SpecificExtensionPoint.make(aggregateResources, publishToAggregates, scheduler, queryEngine, opts);
                                   return [
                                           Component$Reventless.outputs(extensionPoint),
@@ -192,12 +202,12 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                               })
                                         ];
                                 }));
-                        var extensionPointsOutputs = match[0];
+                        var extensionPointsOutputs = match$1[0];
                         var coreExtensionPoints$1 = coreExtensionPoints !== undefined ? coreExtensionPoints : Js_exn.raiseError("No Core Stack configured or no Core ExtensionPoints! (Please set 'core:stack: user/project/stack' in you Pulumi.*.config!");
                         var corePluginExtensionPointUnwrapped = StackReference$Pulumi.get(coreExtensionPoints$1, PluginExtensionPointSpec$ReventlessSpec.name);
                         var corePluginExtensionPointCommandTopicRemoteChannel = CorePluginExtensionPointRemoteChannel.make(corePluginExtensionPointUnwrapped.commandTopic.resources);
                         var publishToCorePluginExtensionPoint = corePluginExtensionPointCommandTopicRemoteChannel.remotePublish;
-                        var match$1 = Belt_Array.unzip(extensions.map(function (SpecificExtension) {
+                        var match$2 = Belt_Array.unzip(extensions.map(function (SpecificExtension) {
                                   var extension = SpecificExtension.make(publishToCorePluginExtensionPoint, publishToAggregates, readModelNamesForSourceName, publishToReadModels, queryEngine, opts);
                                   return [
                                           Component$Reventless.outputs(extension),
@@ -209,7 +219,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                               })
                                         ];
                                 }));
-                        var extensionsOutputs = match$1[0];
+                        var extensionsOutputs = match$2[0];
                         var extensionPointsDefinitions = Pulumi.all(extensionPointsOutputs.map(function (extensionPointOutputs) {
                                   return Pulumi.all([
                                                 Output$Pulumi.flatMap(extensionPointOutputs.commandTopic, (function (param) {
@@ -248,7 +258,7 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                         var eventCollector = PluginEventCollector.make(childName, eventTopics, opts);
                         var eventCollectorOutputs = Component$Reventless.outputs(eventCollector);
                         var eventCollectorUrn = eventCollectorOutputs.resources[0].urn;
-                        var match$2 = Output$Pulumi.unzip3(Pulumi.all([
+                        var match$3 = Output$Pulumi.unzip3(Pulumi.all([
                                     Pulumi.all(extensionPointsOutputs.map(ExtensionPoint$Reventless.toUnwrappedOutputs)),
                                     extensionPointsDefinitions,
                                     eventCollectorUrn
@@ -300,11 +310,11 @@ function Make(RuntimeEnvironment, EventCollectorChannel, QueryEngineAdapter, Cor
                                             }).flat().concat(Adapter$Reventless.unwrappedToResources(corePluginExtensionPointUnwrapped.commandTopic.resources));
                             });
                         var eventCollectorOutputs$1 = Pulumi.all([
-                                match$2[2],
-                                match$2[1],
+                                match$3[2],
+                                match$3[1],
+                                Pulumi.all(match$2[1]),
                                 Pulumi.all(match$1[1]),
-                                Pulumi.all(match[1]),
-                                match$2[0],
+                                match$3[0],
                                 resources
                               ]).apply(function (param) {
                               var extensionsHandlers = param[2];

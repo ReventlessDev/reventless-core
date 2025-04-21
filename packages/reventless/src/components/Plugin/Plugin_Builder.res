@@ -200,13 +200,20 @@ module Make = (
           addEventMapperFns->Dict.mapValues(addEventMapperFn =>
             addEventMapperFn(allEventTopics, queryEngine)
           )
-        let _ =
+        let (eventMapperOutputs, commandTopicOutputs) =
           aggregatesOutputs
           ->Dict.valuesToArray
-          ->Array.map(aggregatesOutput => aggregatesOutput.eventMapper)
+          ->Array.map(aggregateOutputs =>
+            aggregateOutputs.eventMapper->Option.map(
+              eventMapper => (eventMapper, aggregateOutputs.commandTopic),
+            )
+          )
           ->Array.keepSome
-          ->Pulumi.Output.all
-          ->Pulumi.Output.apply(eventMapperOutputs =>
+          ->Belt.Array.unzip
+        let _ =
+          (eventMapperOutputs->Pulumi.Output.all, commandTopicOutputs->Pulumi.Output.all)
+          ->Pulumi.Output.all2
+          ->Pulumi.Output.apply(((eventMapperOutputs, _)) =>
             eventMapperOutputs
             ->Array.map(eventMapperOutput => eventMapperOutput.eventCollector)
             ->Pulumi.Output.all
@@ -214,6 +221,7 @@ module Make = (
               _ =>
                 aggregates->Array.forEach(
                   (module(SpecificAggregate: Aggregate.T)) => {
+                    Js.log2("Plugin_Builder: AggregateRuntimeBuilder.finish", name)
                     SpecificAggregate.AggregateRuntimeBuilder.finish()
                   },
                 ),
